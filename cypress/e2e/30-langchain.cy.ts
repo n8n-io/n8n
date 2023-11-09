@@ -32,7 +32,7 @@ import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
 	closeManualChatModal,
 	getManualChatMessages,
-	getManualChatModalLogsEmpty,
+	getManualChatModalLogs,
 	getManualChatModalLogsEntries,
 	getManualChatModalLogsTree,
 	sendManualChatMessage,
@@ -169,7 +169,7 @@ describe('Langchain Integration', () => {
 
 		clickManualChatButton();
 
-		getManualChatModalLogsEmpty().should('be.visible');
+		getManualChatModalLogs().should('not.be.visible');
 
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';

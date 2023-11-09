@@ -313,11 +313,24 @@ export const nodeHelpers = defineComponent({
 				const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
 
 				if (parentNodes.length === 0) {
-					foundIssues[input.type] = [
-						this.$locale.baseText('nodeIssues.input.missing', {
-							interpolate: { inputName: input.displayName || input.type },
-						}),
-					];
+					// We want to show different error for missing AI subnodes
+					if (input.type.startsWith('ai_')) {
+						foundIssues[input.type] = [
+							this.$locale.baseText('nodeIssues.input.missingSubNode', {
+								interpolate: {
+									inputName: input.displayName?.toLocaleLowerCase() ?? input.type,
+									inputType: input.type,
+									node: node.name,
+								},
+							}),
+						];
+					} else {
+						foundIssues[input.type] = [
+							this.$locale.baseText('nodeIssues.input.missing', {
+								interpolate: { inputName: input.displayName ?? input.type },
+							}),
+						];
+					}
 				}
 			});
 

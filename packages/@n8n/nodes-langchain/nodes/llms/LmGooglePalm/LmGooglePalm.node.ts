@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { GooglePaLM } from 'langchain/llms/googlepalm';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,6 +51,7 @@ export class LmGooglePalm implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'modelName',

@@ -20,6 +20,7 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 interface MessagesTemplate {
 	type: string;
@@ -75,20 +76,11 @@ async function createSimpleLLMChain(
 }
 
 async function getChain(
-	context: IExecuteFunctions,
 	query: string,
+	llm: BaseLanguageModel,
+	outputParsers: BaseOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
-	const llm = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
-
-	const outputParsers = (await context.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
-
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = getChainPromptTemplate(llm, messages);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
@@ -119,7 +111,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'A simple chain to prompt a large language mode',
+		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
 			color: '#909298',
@@ -156,6 +148,7 @@ export class ChainLlm implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
+			getTemplateNoticeField(1951),
 			{
 				displayName: 'Prompt',
 				name: 'prompt',
@@ -164,14 +157,7 @@ export class ChainLlm implements INodeType {
 				default: '={{ $json.input }}',
 			},
 			{
-				displayName:
-					'The options below to add prompts are only valid for chat models, they will be ignored for other models.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
-			{
-				displayName: 'Chat Messages',
+				displayName: 'Chat Messages (if Using a Chat Model)',
 				name: 'messages',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -223,19 +209,25 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
+		const llm = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
+
+		const outputParsers = (await this.getInputConnectionData(
+			NodeConnectionType.AiOutputParser,
+			0,
+		)) as BaseOutputParser[];
 
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
 			const messages = this.getNodeParameter('messages.messageValues', i, []) as MessagesTemplate[];
 
 			if (prompt === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'No value for the required parameter "Prompt" was returned.',
-				);
+				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const responses = await getChain(this, prompt, messages);
+			const responses = await getChain(prompt, llm, outputParsers, messages);
 
 			responses.forEach((response) => {
 				let data: IDataObject;

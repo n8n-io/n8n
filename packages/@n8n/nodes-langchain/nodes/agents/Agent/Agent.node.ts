@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 
@@ -17,7 +18,6 @@ import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
-
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
@@ -41,7 +41,6 @@ function getInputs(
 		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
-				// displayName: type in displayNames ? displayNames[type] : undefined,
 				displayName: type in displayNames ? displayNames[type] : undefined,
 				required: type === NodeConnectionType.AiLanguageModel,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
@@ -127,16 +126,16 @@ function getInputs(
 
 export class Agent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Agent',
+		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Seamlessly coordinates LLMs & tools per user input',
+		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
 		defaults: {
-			name: 'Agent',
+			name: 'AI Agent',
 			color: '#404040',
 		},
 		codex: {
@@ -180,6 +179,14 @@ export class Agent implements INodeType {
 			},
 		],
 		properties: [
+			{
+				...getTemplateNoticeField(1954),
+				displayOptions: {
+					show: {
+						agent: ['conversationalAgent'],
+					},
+				},
+			},
 			{
 				displayName: 'Agent',
 				name: 'agent',

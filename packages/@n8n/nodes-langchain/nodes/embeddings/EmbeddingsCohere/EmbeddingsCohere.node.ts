@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { CohereEmbeddings } from 'langchain/embeddings/cohere';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +50,7 @@ export class EmbeddingsCohere implements INodeType {
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName:
 					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',

@@ -9,6 +9,7 @@ import {
 import { BedrockEmbeddings } from 'langchain/embeddings/bedrock';
 
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,6 +52,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Model',
 				name: 'model',

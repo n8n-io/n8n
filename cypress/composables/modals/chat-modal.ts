@@ -26,10 +26,6 @@ export function getManualChatModalLogs() {
 	return getManualChatModal().getByTestId('lm-chat-logs');
 }
 
-export function getManualChatModalLogsEmpty() {
-	return getManualChatModalLogs().getByTestId('lm-chat-logs-empty');
-}
-
 export function getManualChatModalLogsTree() {
 	return getManualChatModalLogs().getByTestId('lm-chat-logs-tree');
 }

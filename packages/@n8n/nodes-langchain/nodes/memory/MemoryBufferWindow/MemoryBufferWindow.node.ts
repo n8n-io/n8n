@@ -9,6 +9,7 @@ import {
 import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 class MemoryChatBufferSingleton {
 	private static instance: MemoryChatBufferSingleton;
@@ -65,7 +66,7 @@ class MemoryChatBufferSingleton {
 
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Window Buffer Memory',
+		displayName: 'Window Buffer Memory (easiest)',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
 		group: ['transform'],
@@ -93,6 +94,7 @@ export class MemoryBufferWindow implements INodeType {
 		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',

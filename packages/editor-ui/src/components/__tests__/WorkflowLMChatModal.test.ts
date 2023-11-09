@@ -136,7 +136,6 @@ describe('WorkflowLMChatModal', () => {
 		);
 
 		expect(wrapper.getByTestId('workflow-lm-chat-dialog')).toBeInTheDocument();
-		expect(wrapper.getByTestId('lm-chat-logs')).toBeInTheDocument();
 	});
 
 	it('should send and display chat message', async () => {

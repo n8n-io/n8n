@@ -83,10 +83,7 @@ export async function openAiFunctionsAgentExecute(
 		let input = this.getNodeParameter('text', itemIndex) as string;
 
 		if (input === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No value for the required parameter "Text" was returned.',
-			);
+			throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 		}
 
 		if (prompt) {

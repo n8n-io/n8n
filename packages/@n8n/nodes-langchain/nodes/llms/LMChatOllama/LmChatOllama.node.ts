@@ -10,6 +10,7 @@ import {
 import { ChatOllama } from 'langchain/chat_models/ollama';
 // import { ChatAnthropic } from 'langchain/chat_models/anthropic';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,6 +53,7 @@ export class LmChatOllama implements INodeType {
 			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',

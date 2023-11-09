@@ -67,13 +67,16 @@ export async function conversationalAgentExecute(
 		} else {
 			outputParser = new CombiningOutputParser(...outputParsers);
 		}
-		const formatInstructions = outputParser.getFormatInstructions();
 
-		prompt = new PromptTemplate({
-			template: '{input}\n{formatInstructions}',
-			inputVariables: ['input'],
-			partialVariables: { formatInstructions },
-		});
+		if (outputParser) {
+			const formatInstructions = outputParser.getFormatInstructions();
+
+			prompt = new PromptTemplate({
+				template: '{input}\n{formatInstructions}',
+				inputVariables: ['input'],
+				partialVariables: { formatInstructions },
+			});
+		}
 	}
 
 	const items = this.getInputData();
@@ -81,10 +84,7 @@ export async function conversationalAgentExecute(
 		let input = this.getNodeParameter('text', itemIndex) as string;
 
 		if (input === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No value for the required parameter "Text" was returned.',
-			);
+			throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
 		}
 
 		if (prompt) {

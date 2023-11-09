@@ -28,6 +28,13 @@ import { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
+const errorsMap: { [key: string]: { message: string; description: string } } = {
+	'You exceeded your current quota, please check your plan and billing details.': {
+		message: 'OpenAI quota exceeded',
+		description: 'You exceeded your current quota, please check your plan and billing details.',
+	},
+};
+
 export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
@@ -42,15 +49,28 @@ export async function callMethodAsync<T>(
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
 		const connectedNode = parameters.executeFunctions.getNode();
-		const error = new NodeOperationError(connectedNode, e);
+		const error = new NodeOperationError(connectedNode, e, {
+			functionality: 'configuration-node',
+		});
+
+		if (errorsMap[error.message]) {
+			error.description = errorsMap[error.message].description;
+			error.message = errorsMap[error.message].message;
+		}
+
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,
 			parameters.currentNodeRunIndex,
 			error,
 		);
+		if (error.message) {
+			error.description = error.message;
+			throw error;
+		}
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+			{ functionality: 'configuration-node' },
 		);
 	}
 }
@@ -78,6 +98,7 @@ export function callMethodSync<T>(
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+			{ functionality: 'configuration-node' },
 		);
 	}
 }
