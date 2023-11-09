@@ -4,33 +4,32 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/constants';
-import { ManualTrigger } from '../../../nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
-import { ManualChatTrigger } from '../../../@n8n/nodes-langchain/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node';
-import { Agent } from '../../../@n8n/nodes-langchain/nodes/agents/Agent/Agent.node';
+import nodeTypesJson from '../../../nodes-base/dist/types/nodes.json';
+import aiNodeTypesJson from '../../../@n8n/nodes-langchain/dist/types/nodes.json';
+
+const allNodeTypes = [...nodeTypesJson, ...aiNodeTypesJson];
+
+function findNodeWithName(name: string): INodeTypeDescription {
+	return allNodeTypes.find((node) => node.name === name) as INodeTypeDescription;
+}
 
 export const testingNodeTypes: INodeTypeData = {
 	[MANUAL_TRIGGER_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: new ManualTrigger().description,
+			description: findNodeWithName(MANUAL_TRIGGER_NODE_TYPE),
 		},
 	},
 	[MANUAL_CHAT_TRIGGER_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: {
-				...new ManualChatTrigger().description,
-				name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-			},
+			description: findNodeWithName(MANUAL_CHAT_TRIGGER_NODE_TYPE),
 		},
 	},
 	[AGENT_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: {
-				...new Agent().description,
-				name: AGENT_NODE_TYPE,
-			},
+			description: findNodeWithName(AGENT_NODE_TYPE),
 		},
 	},
 };
