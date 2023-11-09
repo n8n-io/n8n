@@ -4,7 +4,7 @@ import * as ExpressionError from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
 import { encode } from 'js-base64';
-import { transliterate } from 'transliteration';
+// import { transliterate } from 'transliteration';
 
 const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 	md5: CryptoJS.MD5,
@@ -283,7 +283,8 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	// return transliterate(value, { unknown: '?' });
+	return value;
 }
 
 function toSentenceCase(value: string) {
