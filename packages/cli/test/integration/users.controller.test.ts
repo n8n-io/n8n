@@ -322,7 +322,7 @@ describe('POST /users', () => {
 
 	//TODO - check that members cannot  use the invitation endpoint
 
-	test.only('should invite member and "send" email', async () => {
+	test('should invite members', async () => {
 		const email = randomEmail();
 
 		jest.spyOn(mailer, 'invite').mockImplementation(async (data) => {
