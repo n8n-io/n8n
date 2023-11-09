@@ -8,10 +8,12 @@ import {
 } from 'n8n-workflow';
 
 import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
+import { PromptTemplate } from 'langchain/prompts';
 import type { BaseLanguageModel } from 'langchain/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
 
 import { logWrapper } from '../../../utils/logWrapper';
+import { DEFAULT_MULTI_QUERY_SYSTEM_PROMPT } from './prompt';
 
 export class RetrieverMultiQuery implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,6 +79,14 @@ export class RetrieverMultiQuery implements INodeType {
 						description: 'Number of different versions of the given question to generate',
 						type: 'number',
 					},
+					{
+						displayName: 'System Prompt',
+						name: 'systemPrompt',
+						default: DEFAULT_MULTI_QUERY_SYSTEM_PROMPT,
+						typeOptions: { rows: 6 },
+						description: 'The system prompt for the multi-query retriever',
+						type: 'string',
+					},
 				],
 			},
 		],
@@ -85,7 +95,10 @@ export class RetrieverMultiQuery implements INodeType {
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for MultiQuery Retriever');
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			queryCount?: number;
+			systemPrompt?: string;
+		};
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
@@ -99,9 +112,17 @@ export class RetrieverMultiQuery implements INodeType {
 
 		// TODO: Add support for parserKey
 
+		const prompt: PromptTemplate = new PromptTemplate({
+			inputVariables: ['question', 'queryCount'],
+			template: options.systemPrompt ?? DEFAULT_MULTI_QUERY_SYSTEM_PROMPT,
+		});
+
+		delete options.systemPrompt;
+
 		const retriever = MultiQueryRetriever.fromLLM({
 			llm: model,
 			retriever: baseRetriever,
+			prompt,
 			...options,
 		});
 
