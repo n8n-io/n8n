@@ -39,6 +39,13 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
+const ifEmpty = <T, V>(value: V, defaultValue: T) => {
+	if (value === undefined || value === null || value === '') {
+		return defaultValue;
+	}
+	return value;
+};
+
 export const extendedFunctions = {
 	min,
 	max,
@@ -50,4 +57,5 @@ export const extendedFunctions = {
 	$max: max,
 	$average: average,
 	$not: not,
+	$ifEmpty: ifEmpty,
 };
