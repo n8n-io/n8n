@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
+import type { ActivationError } from '@/ActiveWorkflowRunner';
 
 class NotInitializedError extends Error {
 	constructor() {
@@ -118,6 +119,18 @@ export class MultiMainSetup extends SingleMainSetup {
 
 		await this.redisPublisher.publishToCommandChannel({
 			command: 'workflowActiveStateChanged',
+			payload,
+		});
+	}
+
+	async broadcastWorkflowActivationError(payload: {
+		workflowId: string;
+		activationError: ActivationError;
+	}) {
+		if (!this.sanityCheck()) return;
+
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowActivationErrorOccurred',
 			payload,
 		});
 	}

@@ -8,6 +8,7 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { ActivationError } from '@/ActiveWorkflowRunner';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Push } from '@/push';
@@ -105,6 +106,22 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				break;
 
+			case 'workflowActivationErrorOccurred': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId, workflowActivationError } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string' || typeof workflowActivationError !== 'object') break;
+
+				activeWorkflowRunner.setActivationError(
+					workflowId,
+					workflowActivationError as ActivationError,
+				);
+			}
+
 			case 'workflowActiveStateChanged':
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
@@ -131,6 +148,8 @@ export async function handleCommandMessageMain(messageString: string) {
 					await activeWorkflowRunner.remove(workflowId);
 					await activeWorkflowRunner.add(workflowId, 'update');
 				}
+
+				activeWorkflowRunner.unsetActivationError(workflowId);
 
 				break;
 

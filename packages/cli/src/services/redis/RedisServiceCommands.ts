@@ -1,3 +1,4 @@
+import type { ActivationError } from '@/ActiveWorkflowRunner';
 import type { WorkerJobStatusSummary } from '../orchestration/worker/types';
 
 export type RedisServiceCommand =
@@ -8,7 +9,8 @@ export type RedisServiceCommand =
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
 	| 'workflowWasUpdated'
-	| 'workflowActiveStateChanged'; // multi-main only
+	| 'workflowActiveStateChanged' // multi-main only
+	| 'workflowActivationErrorOccurred'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -20,7 +22,7 @@ type RedisServiceBaseCommand = {
 	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
-		[key: string]: string | number | boolean | string[] | number[] | boolean[];
+		[key: string]: string | number | boolean | string[] | number[] | boolean[] | ActivationError;
 	};
 };
 
@@ -70,6 +72,13 @@ export type RedisServiceWorkerResponseObject = {
 			payload: {
 				oldState: boolean;
 				newState: boolean;
+				workflowId: string;
+			};
+	  }
+	| {
+			command: 'workflowActivationErrorOccurred';
+			payload: {
+				activationError: ActivationError;
 				workflowId: string;
 			};
 	  }

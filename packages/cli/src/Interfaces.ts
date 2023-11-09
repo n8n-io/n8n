@@ -25,7 +25,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { ActivationError, ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import type { WorkflowExecute } from 'n8n-core';
 
@@ -506,7 +506,13 @@ export type IPushData =
 	| PushDataExecutionRecovered
 	| PushDataActiveWorkflowUsersChanged
 	| PushDataActiveWorkflowAdded
-	| PushDataActiveWorkflowRemoved;
+	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowActivationErrorOccurred;
+
+type PushDataWorkflowActivationErrorOccurred = {
+	data: IWorkflowActivationErrorOccurred;
+	type: 'workflowActivationErrorOccurred';
+};
 
 type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
@@ -576,6 +582,11 @@ export type PushDataNodeDescriptionUpdated = {
 export interface IActiveWorkflowUser {
 	user: User;
 	lastSeen: Date;
+}
+
+export interface IWorkflowActivationErrorOccurred {
+	activationError: ActivationError;
+	workflowId: string;
 }
 
 export interface IActiveWorkflowAdded {

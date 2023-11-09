@@ -69,17 +69,19 @@ import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee'
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
+export type ActivationError = {
+	time: number; // ms
+	error: {
+		message: string;
+	};
+};
+
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
 	activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
-		[workflowId: string]: {
-			time: number; // ms
-			error: {
-				message: string;
-			};
-		};
+		[workflowId: string]: ActivationError;
 	} = {};
 
 	private queuedActivations: {
@@ -90,6 +92,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			workflowData: IWorkflowDb;
 		};
 	} = {};
+
+	setActivationError(workflowId: string, activationError: ActivationError) {
+		this.activationErrors[workflowId] = activationError;
+	}
+
+	unsetActivationError(workflowId: string) {
+		delete this.activationErrors[workflowId];
+	}
 
 	constructor(
 		private readonly logger: Logger,
@@ -811,12 +821,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await WorkflowsService.updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (error) {
-			this.activationErrors[workflowId] = {
+			const activationError: ActivationError = {
 				time: new Date().getTime(),
 				error: {
 					message: error.message,
 				},
 			};
+			this.activationErrors[workflowId] = activationError;
+
+			await this.multiMainSetup.broadcastWorkflowActivationError({ workflowId, activationError });
 
 			throw error;
 		}

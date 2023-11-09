@@ -551,6 +551,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = true;
 			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(true);
+			}
 		},
 
 		setWorkflowInactive(workflowId: string): void {
@@ -560,6 +563,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = false;
+			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(false);
 			}
 		},
 
