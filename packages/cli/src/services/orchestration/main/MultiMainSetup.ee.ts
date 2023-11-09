@@ -12,12 +12,19 @@ class NotInitializedError extends Error {
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
-	isEnabled =
-		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
-
 	private id = this.queueModeId;
 
 	private leaderId: string | undefined;
+
+	private isLicensed = false;
+
+	get isEnabled() {
+		return (
+			config.getEnv('executions.mode') === 'queue' &&
+			config.getEnv('leaderSelection.enabled') &&
+			this.isLicensed
+		);
+	}
 
 	get isLeader() {
 		if (!this.isInitialized) throw new NotInitializedError();
@@ -27,6 +34,10 @@ export class MultiMainSetup extends SingleMainSetup {
 
 	get isFollower() {
 		return !this.isLeader;
+	}
+
+	setLicensed(newState: boolean) {
+		this.isLicensed = newState;
 	}
 
 	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';

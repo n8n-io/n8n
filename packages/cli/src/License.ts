@@ -116,6 +116,12 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
+			| boolean
+			| undefined;
+
+		this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+
 		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
 			this.logger.debug(
 				'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
