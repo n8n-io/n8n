@@ -501,7 +501,8 @@ export default defineComponent({
 	z-index: 9999;
 
 	.logs-wrapper {
-		border: 1px solid #e0e0e0;
+		--node-icon-color: var(--color-text-base);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		overflow-y: auto;
@@ -513,8 +514,8 @@ export default defineComponent({
 		}
 	}
 	.messages {
-		background-color: var(--color-background-base);
-		border: 1px solid #e0e0e0;
+		background-color: var(--color-lm-chat-messages-background);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		width: 100%;
@@ -528,16 +529,17 @@ export default defineComponent({
 			width: 100%;
 
 			.content {
-				border-radius: 10px;
+				border-radius: var(--border-radius-large);
 				line-height: 1.5;
-				margin: 0.5em 1em;
+				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
 				padding: 1em;
 				white-space: pre-wrap;
 				overflow-x: auto;
 
 				&.bot {
-					background-color: #e0d0d0;
+					background-color: var(--color-lm-chat-bot-background);
+					border: 1px solid var(--color-lm-chat-bot-border);
 					float: left;
 
 					.message-options {
@@ -546,7 +548,8 @@ export default defineComponent({
 				}
 
 				&.user {
-					background-color: #d0e0d0;
+					background-color: var(--color-lm-chat-user-background);
+					border: 1px solid var(--color-lm-chat-user-border);
 					float: right;
 					text-align: right;
 
