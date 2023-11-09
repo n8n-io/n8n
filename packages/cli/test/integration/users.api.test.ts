@@ -564,7 +564,7 @@ describe('POST /users', () => {
 		expect(inviteUrl.searchParams.get('inviteeId')).toBe(user.id);
 	});
 
-	test.only('should email invites and create user shells but ignore existing', async () => {
+	test('should email invites and create user shells but ignore existing', async () => {
 		const internalHooks = Container.get(InternalHooks);
 
 		jest.spyOn(mailer, 'invite').mockImplementation(async () => ({ emailSent: true }));
