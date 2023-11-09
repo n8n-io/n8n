@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { CONTROLLER_AUTH_ROLES } from './constants';
 import type { AuthRoleMetadata } from './types';

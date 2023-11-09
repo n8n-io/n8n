@@ -40,9 +40,7 @@ import type { Job, JobData, JobResponse } from '@/Queue';
 
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';

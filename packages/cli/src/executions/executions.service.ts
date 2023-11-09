@@ -33,7 +33,6 @@ export interface IGetExecutionsQueryFilter {
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
 	workflowId?: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
