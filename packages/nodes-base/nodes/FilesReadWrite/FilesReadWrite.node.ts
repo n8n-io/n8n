@@ -84,32 +84,40 @@ export class FilesReadWrite implements INodeType {
 			},
 
 			{
-				displayName: 'File Selector',
+				displayName: 'File(s) Selector',
 				name: 'fileSelector',
 				type: 'string',
 				default: '',
 				required: true,
-				placeholder: '*.jpg',
-				description: 'Pattern for files to read',
+				placeholder: 'e.g. /home/user/Pictures/**/*.png',
+				hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
+				description: "Specify a file's path or path pattern to read multiple files",
 				displayOptions: displayOnRead,
 			},
 			{
-				displayName: 'Property Name',
-				name: 'dataPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				description: 'Name of the binary property to which to write the data of the read files',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
 				displayOptions: displayOnRead,
+				options: [
+					{
+						displayName: 'Property Name',
+						name: 'dataPropertyName',
+						type: 'string',
+						default: 'data',
+						description: 'Name of the binary property to which to write the data of the read files',
+					},
+				],
 			},
-
 			{
 				displayName: 'File Name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
 				required: true,
-				placeholder: '/data/example.jpg',
+				placeholder: 'e.g. /data/example.jpg',
 				description: 'Path to which the file should be written',
 				displayOptions: displayOnWrite,
 			},
@@ -152,7 +160,11 @@ export class FilesReadWrite implements INodeType {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+					const dataPropertyName = this.getNodeParameter(
+						'options.dataPropertyName',
+						itemIndex,
+						'data',
+					) as string;
 
 					const files = await glob(fileSelector);
 
