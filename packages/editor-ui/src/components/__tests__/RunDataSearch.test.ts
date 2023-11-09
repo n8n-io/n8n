@@ -1,4 +1,3 @@
-import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -19,75 +18,7 @@ describe('RunDataSearch', () => {
 		settingsStore = useSettingsStore();
 	});
 
-	it('should show upgrade tooltip on hover and keyboard shortcut if not licensed', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => false);
-		const { getByRole, queryByRole, emitted } = renderComponent({
-			pinia,
-			props: {
-				modelValue: '',
-				isAreaActive: true,
-			},
-		});
-
-		const input = getByRole('textbox');
-
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.hover(input);
-		expect(getByRole('tooltip')).toBeInTheDocument();
-
-		await userEvent.unhover(input);
-		await waitFor(() => expect(queryByRole('tooltip')).not.toBeInTheDocument());
-
-		await userEvent.keyboard('/');
-		expect(getByRole('tooltip')).toBeInTheDocument();
-		expect(emitted().focus).not.toBeDefined();
-		await waitFor(() => expect(queryByRole('tooltip')).not.toBeInTheDocument(), { timeout: 3000 });
-	});
-
-	it('should not show upgrade tooltip on keyboard shortcut the area is not active', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => false);
-		const { queryByRole, emitted } = renderComponent({
-			pinia,
-			props: {
-				modelValue: '',
-			},
-		});
-
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.keyboard('/');
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-		expect(emitted().focus).not.toBeDefined();
-	});
-
-	it('should not show upgrade tooltip if licensed', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
-		const { getByRole, queryByRole, emitted } = renderComponent({
-			pinia,
-			props: {
-				modelValue: '',
-				isAreaActive: true,
-			},
-		});
-
-		const input = getByRole('textbox');
-
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.hover(input);
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.unhover(input);
-		await waitFor(() => expect(queryByRole('tooltip')).not.toBeInTheDocument());
-
-		await userEvent.keyboard('/');
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-		expect(emitted().focus).toHaveLength(1);
-	});
-
 	it('should not be focused on keyboard shortcut when area is not active', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
 		const { emitted } = renderComponent({
 			pinia,
 			props: {
@@ -100,7 +31,6 @@ describe('RunDataSearch', () => {
 	});
 
 	it('should be focused on click regardless of active area and keyboard shortcut should work after', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
 		const { getByRole, emitted, rerender } = renderComponent({
 			pinia,
 			props: {
@@ -118,7 +48,6 @@ describe('RunDataSearch', () => {
 	});
 
 	it('should be focused twice if area is already active', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
 		const { getByRole, emitted } = renderComponent({
 			pinia,
 			props: {
@@ -135,7 +64,7 @@ describe('RunDataSearch', () => {
 		expect(emitted().focus).toHaveLength(2);
 	});
 
-	it('should be select all text when focused', async () => {
+	it('should select all text when focused', async () => {
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
 		const { getByRole, emitted } = renderComponent({
 			pinia,

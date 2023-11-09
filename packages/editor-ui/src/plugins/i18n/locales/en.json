@@ -1739,8 +1739,6 @@
 	"ndv.trigger.pollingNode.executionsHelp.inactive": "<b>While building your workflow</b>, click the 'fetch' button to fetch a single mock event. It will show up in this editor.<br /><br /><b>Once you're happy with your workflow</b>, <a data-key=\"activate\">activate</a> it. Then n8n will regularly check {service} for new events, and execute this workflow if it finds any. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.",
 	"ndv.trigger.pollingNode.executionsHelp.active": "<b>While building your workflow</b>, click the 'fetch' button to fetch a single mock event. It will show up in this editor.<br /><br /><b>Your workflow will also execute automatically</b>, since it's activated. n8n will regularly check {app_name} for new events, and execute this workflow if it finds any. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.",
 	"ndv.trigger.webhookBasedNode.action": "Pull in events from {name}",
-	"ndv.search.upgrade.tooltip": "Quick filtering of node output is available on Pro and Enterprise plans. {link}",
-	"ndv.search.upgrade.tooltip.link": "More info",
 	"ndv.search.placeholder.output": "Filter output",
 	"ndv.search.placeholder.input": "Filter input",
 	"ndv.search.noMatch.title": "No matching items",

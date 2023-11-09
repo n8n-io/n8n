@@ -500,7 +500,6 @@ export const enum EnterpriseEditionFeature {
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
-	NodeIOFilters = 'nodeIOFilters',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
