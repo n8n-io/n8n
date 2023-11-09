@@ -480,6 +480,9 @@ export class NodeApiError extends NodeError {
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
 			this.description = this.updateDescription(this.message, this.description);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
+
+			if (this.httpCode === '404') this.severity = 'warning';
+
 			return;
 		}
 
