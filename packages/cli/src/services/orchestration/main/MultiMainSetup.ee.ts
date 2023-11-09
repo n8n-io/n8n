@@ -6,9 +6,7 @@ import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import type { ActivationError } from '@/ActiveWorkflowRunner';
 
 class NotInitializedError extends Error {
-	constructor() {
-		super('MultiMainSetup class has not been initialized');
-	}
+	message = 'MultiMainSetup not initialized yet';
 }
 
 @Service()

@@ -48,16 +48,10 @@ export class Push extends EventEmitter {
 		this.emit('editorUiConnected', sessionId);
 	}
 
-	/**
-	 * Send message to all connected clients.
-	 */
 	broadcast<D>(type: IPushDataType, data?: D) {
 		this.backend.broadcast(type, data);
 	}
 
-	/**
-	 * Send message to specific connected client.
-	 */
 	send<D>(type: IPushDataType, data: D, sessionId: string) {
 		this.backend.send(type, data, sessionId);
 	}

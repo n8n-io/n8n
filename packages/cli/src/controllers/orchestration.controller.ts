@@ -7,7 +7,7 @@ import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 @RestController('/orchestration')
 @Service()
 export class OrchestrationController {
-	constructor(private readonly orchestrationService: SingleMainSetup) {}
+	constructor(private readonly singleMainSetup: SingleMainSetup) {}
 
 	/**
 	 * These endpoint currently do not return anything, they just trigger the messsage to
@@ -17,16 +17,16 @@ export class OrchestrationController {
 	@Get('/worker/status/:id')
 	async getWorkersStatus(req: OrchestrationRequest.Get) {
 		const id = req.params.id;
-		return this.orchestrationService.getWorkerStatus(id);
+		return this.singleMainSetup.getWorkerStatus(id);
 	}
 
 	@Get('/worker/status')
 	async getWorkersStatusAll() {
-		return this.orchestrationService.getWorkerStatus();
+		return this.singleMainSetup.getWorkerStatus();
 	}
 
 	@Get('/worker/ids')
 	async getWorkerIdsAll() {
-		return this.orchestrationService.getWorkerIds();
+		return this.singleMainSetup.getWorkerIds();
 	}
 }

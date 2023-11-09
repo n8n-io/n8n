@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from 'typedi';
 import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
@@ -6,11 +5,8 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { ActivationError } from '@/ActiveWorkflowRunner';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { ExternalHooks } from '@/ExternalHooks';
 import { Push } from '@/push';
 
 export async function handleCommandMessageMain(messageString: string) {
@@ -18,10 +14,7 @@ export async function handleCommandMessageMain(messageString: string) {
 	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
-	const multiMainSetup = Container.get(MultiMainSetup);
-	const externalHooks = Container.get(ExternalHooks);
 	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-	const push = Container.get(Push);
 
 	if (message) {
 		logger.debug(
@@ -55,7 +48,6 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 				await Container.get(License).reload();
 				break;
-
 			case 'restartEventBus':
 				if (!debounceMessageReceiver(message, 200)) {
 					message.payload = {
@@ -64,8 +56,6 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(MessageEventBus).restart();
-				break;
-
 			case 'reloadExternalSecretsProviders':
 				if (!debounceMessageReceiver(message, 200)) {
 					message.payload = {
@@ -76,35 +66,37 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
 
-			case 'workflowWasUpdated':
+			case 'workflowActiveStateChanged': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				if (multiMainSetup.isFollower) break;
+				const { workflowId, oldState, newState } = message.payload ?? {};
 
-				const workflowRepository = Container.get(WorkflowRepository);
-
-				const workflow = await workflowRepository.findOne({
-					select: ['id', 'active'],
-					where: {
-						id: (message.payload?.workflowId as string) ?? '',
-					},
-				});
-
-				if (!workflow) break;
-
-				try {
-					await activeWorkflowRunner.remove(workflow.id);
-					await activeWorkflowRunner.add(workflow.id, workflow.active ? 'update' : 'activate');
-					await externalHooks.run('workflow.activate', [workflow]);
-				} catch (e) {
-					const error = e instanceof Error ? e : new Error(`${e}`);
-					logger.error(`Error while trying to handle workflow update: ${error.message}`);
+				if (
+					typeof workflowId !== 'string' ||
+					typeof oldState !== 'boolean' ||
+					typeof newState !== 'boolean'
+				) {
+					break;
 				}
 
-				break;
+				const push = Container.get(Push);
+
+				if (!oldState && newState) {
+					await activeWorkflowRunner.add(workflowId, 'activate');
+					push.broadcast('workflowActivated', { workflowId });
+				} else if (oldState && !newState) {
+					await activeWorkflowRunner.remove(workflowId);
+					push.broadcast('workflowDeactivated', { workflowId });
+				} else {
+					await activeWorkflowRunner.remove(workflowId);
+					await activeWorkflowRunner.add(workflowId, 'update');
+				}
+
+				activeWorkflowRunner.unsetActivationError(workflowId);
+			}
 
 			case 'workflowActivationErrorOccurred': {
 				if (!debounceMessageReceiver(message, 100)) {
@@ -122,43 +114,10 @@ export async function handleCommandMessageMain(messageString: string) {
 				);
 			}
 
-			case 'workflowActiveStateChanged':
-				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
-				}
-
-				const { workflowId, oldState, newState } = message.payload ?? {};
-
-				if (
-					typeof workflowId !== 'string' ||
-					typeof oldState !== 'boolean' ||
-					typeof newState !== 'boolean'
-				) {
-					break;
-				}
-
-				if (!oldState && newState) {
-					await activeWorkflowRunner.add(workflowId, 'activate');
-					push.broadcast('workflowActivated', { workflowId });
-				} else if (oldState && !newState) {
-					await activeWorkflowRunner.remove(workflowId);
-					push.broadcast('workflowDeactivated', { workflowId });
-				} else {
-					await activeWorkflowRunner.remove(workflowId);
-					await activeWorkflowRunner.add(workflowId, 'update');
-				}
-
-				activeWorkflowRunner.unsetActivationError(workflowId);
-
-				break;
-
 			default:
 				break;
 		}
-
 		return message;
 	}
-
 	return;
 }

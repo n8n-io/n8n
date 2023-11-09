@@ -740,8 +740,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 	) {
-		if (this.allActiveInMemory().includes(workflowId)) return;
-
 		let workflow: Workflow;
 
 		let shouldAddWebhooks = true;
@@ -941,7 +939,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
-
 		try {
 			await this.clearWebhooks(workflowId);
 		} catch (error) {

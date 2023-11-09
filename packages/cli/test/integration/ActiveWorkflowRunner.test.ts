@@ -105,7 +105,6 @@ describe('init()', () => {
 		expect(inMemory).toHaveLength(1);
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test('should start with multiple active workflows', async () => {
 		await createWorkflow({ active: true }, owner);
 		await createWorkflow({ active: true }, owner);
@@ -333,30 +332,6 @@ describe('add()', () => {
 
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
 					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
-				});
-			});
-
-			describe("on 'activate' or 'update' activation mode", () => {
-				test('should broadcast "workflowWasUpdated" into command channel', async () => {
-					for (const mode of ['activate', 'update'] as WorkflowActivateMode[]) {
-						jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-						jest.replaceProperty(multiMainSetup, 'isFollower', true);
-
-						const workflow = await createWorkflow({ active: true }, owner);
-
-						const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowWasUpdated');
-
-						await activeWorkflowRunner.init();
-						broadcastSpy.mockReset();
-
-						await activeWorkflowRunner.add(workflow.id, mode);
-
-						expect(broadcastSpy).toHaveBeenCalledTimes(1);
-
-						const [workflowId] = broadcastSpy.mock.calls[0];
-
-						expect(workflowId).toBe(workflow.id);
-					}
 				});
 			});
 		});

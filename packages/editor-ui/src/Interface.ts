@@ -419,12 +419,6 @@ export type IPushData =
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved;
 
-export interface IActiveWorkflowAdded {
-	workflowId: string;
-}
-
-type IActiveWorkflowRemoved = IActiveWorkflowAdded;
-
 type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
 	type: 'workflowActivated';
@@ -496,6 +490,14 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionId: string;
 	retryOf?: string;
+}
+
+export interface IActiveWorkflowAdded {
+	workflowId: string;
+}
+
+export interface IActiveWorkflowRemoved {
+	workflowId: string;
 }
 
 export interface IPushDataUnsavedExecutionFinished {

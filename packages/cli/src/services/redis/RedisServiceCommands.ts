@@ -8,7 +8,6 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowWasUpdated'
 	| 'workflowActiveStateChanged' // multi-main only
 	| 'workflowActivationErrorOccurred'; // multi-main only
 

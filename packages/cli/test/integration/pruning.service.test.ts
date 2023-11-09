@@ -12,7 +12,6 @@ import { Logger } from '@/Logger';
 import { mockInstance } from './shared/utils';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -28,7 +27,6 @@ describe('softDeleteOnPruningCycle()', () => {
 			mockInstance(Logger),
 			Db.collections.Execution,
 			mockInstance(BinaryDataService),
-			mockInstance(MultiMainSetup),
 		);
 
 		workflow = await createWorkflow();

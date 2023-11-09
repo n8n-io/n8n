@@ -12,9 +12,11 @@ import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { Logger } from '@/Logger';
 import { Push } from '@/push';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 const os = Container.get(SingleMainSetup);
 const handler = Container.get(OrchestrationHandlerMainService);
+mockInstance(ActiveWorkflowRunner);
 
 let queueModeId: string;
 
