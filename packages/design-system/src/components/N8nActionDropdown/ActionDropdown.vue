@@ -3,7 +3,6 @@
 		<el-dropdown
 			:placement="placement"
 			:trigger="trigger"
-			:class="$style.foo"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 			ref="elementDropdown"
