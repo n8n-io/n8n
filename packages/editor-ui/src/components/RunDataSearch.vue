@@ -72,6 +72,7 @@ onUnmounted(() => {
 <template>
 	<n8n-input
 		ref="inputRef"
+		data-test-id="ndv-search"
 		:class="{
 			[$style.ioSearch]: true,
 			[$style.ioSearchOpened]: opened,

@@ -525,6 +525,7 @@
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
+			data-test-id="ndv-data-pagination"
 		>
 			<el-pagination
 				background
