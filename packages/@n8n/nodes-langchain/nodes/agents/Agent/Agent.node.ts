@@ -14,6 +14,8 @@ import { conversationalAgentExecute } from './agents/ConversationalAgent/execute
 
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
 import { openAiFunctionsAgentExecute } from './agents/OpenAiFunctionsAgent/execute';
+import { planAndExecuteAgentProperties } from './agents/PlanAndExecuteAgent/description';
+import { planAndExecuteAgentExecute } from './agents/PlanAndExecuteAgent/execute';
 import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
@@ -119,6 +121,18 @@ function getInputs(
 				type: NodeConnectionType.AiLanguageModel,
 			},
 		];
+	} else if (agent === 'planAndExecuteAgent') {
+		specialInputs = [
+			{
+				type: NodeConnectionType.AiLanguageModel,
+			},
+			{
+				type: NodeConnectionType.AiTool,
+			},
+			{
+				type: NodeConnectionType.AiOutputParser,
+			},
+		];
 	}
 
 	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
@@ -206,6 +220,12 @@ export class Agent implements INodeType {
 							"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
 					},
 					{
+						name: 'Plan and Execute Agent',
+						value: 'planAndExecuteAgent',
+						description:
+							'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
+					},
+					{
 						name: 'ReAct Agent',
 						value: 'reActAgent',
 						description: 'Strategically select tools to accomplish a given task',
@@ -223,6 +243,7 @@ export class Agent implements INodeType {
 			...openAiFunctionsAgentProperties,
 			...reActAgentAgentProperties,
 			...sqlAgentAgentProperties,
+			...planAndExecuteAgentProperties,
 		],
 	};
 
@@ -237,6 +258,8 @@ export class Agent implements INodeType {
 			return reActAgentAgentExecute.call(this);
 		} else if (agentType === 'sqlAgent') {
 			return sqlAgentAgentExecute.call(this);
+		} else if (agentType === 'planAndExecuteAgent') {
+			return planAndExecuteAgentExecute.call(this);
 		}
 
 		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);
