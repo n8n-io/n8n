@@ -629,6 +629,7 @@ export default defineComponent({
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
+				this.uiStore.isModalActive ||
 				dataItemsCount === 0
 			)
 				return;

@@ -56,6 +56,10 @@ export class Push extends EventEmitter {
 		this.backend.send(type, data, sessionId);
 	}
 
+	getBackend() {
+		return this.backend;
+	}
+
 	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
 	}

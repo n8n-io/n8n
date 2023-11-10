@@ -3,7 +3,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
-import { useSettingsStore, useUsersStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 

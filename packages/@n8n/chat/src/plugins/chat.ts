@@ -85,7 +85,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
 		}
 
-		app.provide(ChatSymbol, {
+		const chatStore = {
 			initialMessages,
 			messages,
 			currentSessionId,
@@ -93,6 +93,9 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			loadPreviousSession,
 			startNewSession,
 			sendMessage,
-		});
+		};
+
+		app.provide(ChatSymbol, chatStore);
+		app.config.globalProperties.$chat = chatStore;
 	},
 };
