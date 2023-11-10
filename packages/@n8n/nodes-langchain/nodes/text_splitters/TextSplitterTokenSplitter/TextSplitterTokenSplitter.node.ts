@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class TextSplitterTokenSplitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,6 +40,7 @@ export class TextSplitterTokenSplitter implements INodeType {
 		outputs: [NodeConnectionType.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
 			{
 				displayName: 'Chunk Size',
 				name: 'chunkSize',

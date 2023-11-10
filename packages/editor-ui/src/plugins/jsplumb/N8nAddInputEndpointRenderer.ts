@@ -16,7 +16,7 @@ export const register = () => {
 			const sizeDifference = (unconnectedPlusSize - unconnectedDiamondWidth) / 2;
 
 			const container = svg.node('g', {
-				style: `--svg-color: var(${endpointInstance.params.color})`,
+				style: `--svg-color: var(--endpoint-svg-color, var(${endpointInstance.params.color}))`,
 				width,
 				height,
 			});

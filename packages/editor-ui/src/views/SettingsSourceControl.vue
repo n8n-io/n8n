@@ -2,7 +2,8 @@
 import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM } from '@/constants';
-import { useUIStore, useSourceControlStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';

@@ -9,10 +9,13 @@ import {
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {
+		// This node is deprecated and will be removed in the future.
+		// The functionality was merged with the `DocumentBinaryInputLoader` to `DocumentDefaultDataLoader`
+		hidden: true,
 		displayName: 'JSON Input Loader',
 		name: 'documentJsonInputLoader',
 		icon: 'file:json.svg',
@@ -48,6 +51,7 @@ export class DocumentJsonInputLoader implements INodeType {
 		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Pointers',
 				name: 'pointers',

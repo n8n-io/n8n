@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { ChatBedrock } from 'langchain/chat_models/bedrock';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,6 +52,7 @@ export class LmChatAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
 			{
 				displayName: 'Model',
 				name: 'model',

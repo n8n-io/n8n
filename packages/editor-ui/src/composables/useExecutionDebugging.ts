@@ -7,7 +7,9 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 
 export const useExecutionDebugging = () => {

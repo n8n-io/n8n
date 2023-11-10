@@ -16,6 +16,7 @@ import { StructuredOutputParser } from 'langchain/output_parsers';
 import { OutputParserException } from 'langchain/schema/output_parser';
 import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -110,6 +111,7 @@ export class OutputParserStructured implements INodeType {
 		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'JSON Schema',
 				name: 'jsonSchema',

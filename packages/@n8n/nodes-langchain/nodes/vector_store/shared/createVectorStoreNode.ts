@@ -17,6 +17,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
 
 interface NodeMeta {
@@ -134,6 +135,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							action: 'Retrieve documents from vector store to be used with AI nodes',
 						},
 					],
+				},
+				{
+					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
+					displayOptions: {
+						show: {
+							mode: ['retrieve'],
+						},
+					},
 				},
 				...args.sharedFields,
 				...transformDescriptionForOperationMode(args.insertFields ?? [], 'insert'),

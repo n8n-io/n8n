@@ -10,6 +10,7 @@ import {
 import type { ClientOptions } from 'openai';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,7 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',

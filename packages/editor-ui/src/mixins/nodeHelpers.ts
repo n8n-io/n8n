@@ -40,7 +40,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
@@ -313,11 +313,24 @@ export const nodeHelpers = defineComponent({
 				const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
 
 				if (parentNodes.length === 0) {
-					foundIssues[input.type] = [
-						this.$locale.baseText('nodeIssues.input.missing', {
-							interpolate: { inputName: input.displayName || input.type },
-						}),
-					];
+					// We want to show different error for missing AI subnodes
+					if (input.type.startsWith('ai_')) {
+						foundIssues[input.type] = [
+							this.$locale.baseText('nodeIssues.input.missingSubNode', {
+								interpolate: {
+									inputName: input.displayName?.toLocaleLowerCase() ?? input.type,
+									inputType: input.type,
+									node: node.name,
+								},
+							}),
+						];
+					} else {
+						foundIssues[input.type] = [
+							this.$locale.baseText('nodeIssues.input.missing', {
+								interpolate: { inputName: input.displayName ?? input.type },
+							}),
+						];
+					}
 				}
 			});
 

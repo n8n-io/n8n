@@ -12,6 +12,7 @@ import { N8nEPubLoader } from './EpubLoader';
 import { getMetadataFiltersValues } from './helpers';
 
 const SUPPORTED_MIME_TYPES = {
+	auto: ['*/*'],
 	pdfLoader: ['application/pdf'],
 	csvLoader: ['text/csv'],
 	epubLoader: ['application/epub+zip'],
@@ -23,8 +24,11 @@ const SUPPORTED_MIME_TYPES = {
 export class N8nBinaryLoader {
 	private context: IExecuteFunctions;
 
-	constructor(context: IExecuteFunctions) {
+	private optionsPrefix: string;
+
+	constructor(context: IExecuteFunctions, optionsPrefix = '') {
 		this.context = context;
+		this.optionsPrefix = optionsPrefix;
 	}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
@@ -63,7 +67,7 @@ export class N8nBinaryLoader {
 		const { mimeType } = binaryData;
 
 		// Check if loader matches the mime-type of the data
-		if (!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
+		if (selectedLoader !== 'auto' && !SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
 			const neededLoader = Object.keys(SUPPORTED_MIME_TYPES).find((loader) =>
 				SUPPORTED_MIME_TYPES[loader as keyof typeof SUPPORTED_MIME_TYPES].includes(mimeType),
 			);
@@ -79,7 +83,8 @@ export class N8nBinaryLoader {
 		}
 		if (
 			!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType) &&
-			selectedLoader !== 'textLoader'
+			selectedLoader !== 'textLoader' &&
+			selectedLoader !== 'auto'
 		) {
 			throw new NodeOperationError(
 				this.context.getNode(),
@@ -93,17 +98,29 @@ export class N8nBinaryLoader {
 		let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
 		switch (mimeType) {
 			case 'application/pdf':
-				const splitPages = this.context.getNodeParameter('splitPages', itemIndex) as boolean;
+				const splitPages = this.context.getNodeParameter(
+					`${this.optionsPrefix}splitPages`,
+					itemIndex,
+					false,
+				) as boolean;
 				loader = new PDFLoader(itemBlob, {
 					splitPages,
 				});
 				break;
 			case 'text/csv':
-				const column = this.context.getNodeParameter('column', itemIndex) as string;
-				const separator = this.context.getNodeParameter('separator', itemIndex) as string;
+				const column = this.context.getNodeParameter(
+					`${this.optionsPrefix}column`,
+					itemIndex,
+					null,
+				) as string;
+				const separator = this.context.getNodeParameter(
+					`${this.optionsPrefix}separator`,
+					itemIndex,
+					',',
+				) as string;
 
 				loader = new CSVLoader(itemBlob, {
-					column,
+					column: column ?? undefined,
 					separator,
 				});
 				break;
@@ -117,12 +134,16 @@ export class N8nBinaryLoader {
 				loader = new TextLoader(itemBlob);
 				break;
 			case 'application/json':
-				const pointers = this.context.getNodeParameter('pointers', itemIndex) as string;
+				const pointers = this.context.getNodeParameter(
+					`${this.optionsPrefix}pointers`,
+					itemIndex,
+					'',
+				) as string;
 				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
 				loader = new JSONLoader(itemBlob, pointersArray);
 				break;
 			default:
-				throw new NodeOperationError(this.context.getNode(), `Unsupported mime type: ${mimeType}`);
+				loader = new TextLoader(itemBlob);
 		}
 
 		const textSplitter = (await this.context.getInputConnectionData(

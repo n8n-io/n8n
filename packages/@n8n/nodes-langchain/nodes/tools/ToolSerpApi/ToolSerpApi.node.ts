@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { SerpAPI } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,6 +46,7 @@ export class ToolSerpApi implements INodeType {
 			},
 		],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

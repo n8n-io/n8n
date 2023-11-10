@@ -64,7 +64,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs-wrapper" v-if="node">
+				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
@@ -82,6 +82,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
+					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
 				<n8n-button
@@ -92,7 +93,7 @@
 					size="large"
 					icon="comment"
 					type="primary"
-					data-test-id="workflow-chat-button"
+					data-test-id="workflow-chat-send-button"
 				/>
 
 				<n8n-info-tip class="mt-s">
@@ -126,7 +127,8 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useUIStore, useWorkflowsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
@@ -501,7 +503,8 @@ export default defineComponent({
 	z-index: 9999;
 
 	.logs-wrapper {
-		border: 1px solid #e0e0e0;
+		--node-icon-color: var(--color-text-base);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		overflow-y: auto;
@@ -513,8 +516,8 @@ export default defineComponent({
 		}
 	}
 	.messages {
-		background-color: var(--color-background-base);
-		border: 1px solid #e0e0e0;
+		background-color: var(--color-lm-chat-messages-background);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		width: 100%;
@@ -528,16 +531,17 @@ export default defineComponent({
 			width: 100%;
 
 			.content {
-				border-radius: 10px;
+				border-radius: var(--border-radius-large);
 				line-height: 1.5;
-				margin: 0.5em 1em;
+				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
 				padding: 1em;
 				white-space: pre-wrap;
 				overflow-x: auto;
 
 				&.bot {
-					background-color: #e0d0d0;
+					background-color: var(--color-lm-chat-bot-background);
+					border: 1px solid var(--color-lm-chat-bot-border);
 					float: left;
 
 					.message-options {
@@ -546,7 +550,8 @@ export default defineComponent({
 				}
 
 				&.user {
-					background-color: #d0e0d0;
+					background-color: var(--color-lm-chat-user-background);
+					border: 1px solid var(--color-lm-chat-user-border);
 					float: right;
 					text-align: right;
 

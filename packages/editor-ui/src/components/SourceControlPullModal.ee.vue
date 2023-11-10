@@ -6,7 +6,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { computed, nextTick, ref } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';

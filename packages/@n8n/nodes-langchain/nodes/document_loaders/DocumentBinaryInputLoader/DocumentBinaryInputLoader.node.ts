@@ -9,7 +9,7 @@ import {
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
@@ -20,6 +20,9 @@ import 'pdf-parse'; // for pdf
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
+		// This node is deprecated and will be removed in the future.
+		// The functionality was merged with the `DocumentJSONInputLoader` to `DocumentDefaultDataLoader`
+		hidden: true,
 		displayName: 'Binary Input Loader',
 		name: 'documentBinaryInputLoader',
 		icon: 'file:binary.svg',
@@ -55,6 +58,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Loader Type',
 				name: 'loader',
