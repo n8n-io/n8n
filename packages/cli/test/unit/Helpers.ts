@@ -1,4 +1,3 @@
-import type { MockedFunction } from 'jest-mock';
 import type { INodeTypeData } from 'n8n-workflow';
 
 /**
