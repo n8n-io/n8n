@@ -246,7 +246,7 @@ export class Start extends BaseCommand {
 
 		const isMultiMainLicensed = Container.get(License).isMultipleMainInstancesLicensed();
 
-		if (config.getEnv('multiMainSetup.instanceType') === 'leader' && !isMultiMainLicensed) {
+		if (!isMultiMainLicensed) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 

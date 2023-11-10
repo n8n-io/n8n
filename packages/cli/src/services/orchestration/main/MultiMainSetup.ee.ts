@@ -44,7 +44,7 @@ export class MultiMainSetup extends SingleMainSetup {
 
 		this.isInitialized = true;
 
-		await this.tryBecomeLeader();
+		await this.tryBecomeLeader(); // prevent 10 sec wait
 
 		this.leaderCheckInterval = setInterval(
 			async () => {
@@ -104,6 +104,8 @@ export class MultiMainSetup extends SingleMainSetup {
 			config.set('multiMainSetup.instanceType', 'leader');
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
+		} else {
+			config.set('multiMainSetup.instanceType', 'follower');
 		}
 	}
 
