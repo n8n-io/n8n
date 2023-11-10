@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { LessThan } from 'typeorm';
 import { DateTime } from 'luxon';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { WORKFLOW_HISTORY_PRUNE_INTERVAL } from './constants';
 import { getWorkflowHistoryPruneTime, isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';
 

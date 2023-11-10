@@ -8,6 +8,10 @@ on:
     paths:
       - packages/cli/src/databases/migrations/**
 
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Install & Build

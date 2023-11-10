@@ -1,8 +1,9 @@
 import { flags } from '@oclif/command';
 import type { FindOptionsWhere } from 'typeorm';
-import * as Db from '@/Db';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 export class ListWorkflowCommand extends BaseCommand {
 	static description = '\nList workflows';
@@ -36,7 +37,7 @@ export class ListWorkflowCommand extends BaseCommand {
 			findQuery.active = flags.active === 'true';
 		}
 
-		const workflows = await Db.collections.Workflow.findBy(findQuery);
+		const workflows = await Container.get(WorkflowRepository).findBy(findQuery);
 		if (flags.onlyId) {
 			workflows.forEach((workflow) => this.logger.info(workflow.id));
 		} else {

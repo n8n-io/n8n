@@ -1,5 +1,4 @@
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
 import { audit } from '@/audit';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/audit/constants';
 import {
@@ -13,6 +12,8 @@ import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
 import config from '@/config';
 import { generateNanoId } from '@db/utils/generators';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -53,7 +54,7 @@ test('should report webhook lacking authentication', async () => {
 		],
 	};
 
-	await Db.collections.Workflow.save(details);
+	await Container.get(WorkflowRepository).save(details);
 
 	const testAudit = await audit(['instance']);
 
@@ -97,7 +98,7 @@ test('should not report webhooks having basic or header auth', async () => {
 			],
 		};
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
@@ -158,7 +159,7 @@ test('should not report webhooks validated by direct children', async () => {
 			},
 		};
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);

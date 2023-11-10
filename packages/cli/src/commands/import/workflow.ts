@@ -19,6 +19,8 @@ import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { UserRepository } from '@db/repositories/user.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -95,7 +97,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		await this.initOwnerWorkflowRole();
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
-		const credentials = await Db.collections.Credentials.find();
+		const credentials = await Container.get(CredentialsRepository).find();
 		const tags = await this.tagService.getAll();
 
 		let totalImported = 0;
@@ -239,7 +241,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 		const owner =
 			ownerGlobalRole &&
-			(await Db.collections.User.findOneBy({ globalRoleId: ownerGlobalRole?.id }));
+			(await Container.get(UserRepository).findOneBy({ globalRoleId: ownerGlobalRole?.id }));
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
@@ -249,7 +251,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User.findOneBy({ id: userId });
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

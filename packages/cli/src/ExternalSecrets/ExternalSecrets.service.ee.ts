@@ -76,7 +76,6 @@ export class ExternalSecretsService {
 		return copiedData;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
