@@ -19,12 +19,12 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 			type: 'options',
 			options: [
 				{
-					name: 'EU',
-					value: 'eu',
+					name: 'US',
+					value: 'cloud',
 				},
 				{
-					name: 'Global',
-					value: 'cloud',
+					name: 'EU',
+					value: 'eu',
 				},
 			],
 			default: 'cloud',
