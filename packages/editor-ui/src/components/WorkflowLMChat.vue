@@ -133,7 +133,6 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 

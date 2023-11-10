@@ -1,13 +1,15 @@
-import type { INodeType, INodeTypeData, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import {
+import type {
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
+	IVersionedNodeType,
 	IConnections,
 	IDataObject,
 	INode,
 	IPinData,
 	IWorkflowSettings,
-	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
+import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
 import type {
