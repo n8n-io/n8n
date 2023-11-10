@@ -299,15 +299,31 @@ export class GoogleSheet {
 			valueInputOption: valueInputMode,
 		};
 
-		const response = await apiRequest.call(
-			this.executeFunctions,
-			'PUT',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
-			body,
-			query,
-		);
+		try {
+			//:append endpoint in some cases missaligns the data, so we use :update instead
+			const response = await apiRequest.call(
+				this.executeFunctions,
+				'PUT',
+				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+				body,
+				query,
+			);
 
-		return response;
+			return response;
+		} catch (error) {
+			if ((error.description as string).includes('exceeds grid limits')) {
+				//in case of exceeding grid limits try to recover by using :append endpoint
+				const response = await apiRequest.call(
+					this.executeFunctions,
+					'POST',
+					`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+					body,
+					query,
+				);
+
+				return response;
+			}
+		}
 	}
 
 	/**
