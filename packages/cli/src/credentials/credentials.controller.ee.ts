@@ -10,7 +10,7 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 export const EECredentialsController = express.Router();
 

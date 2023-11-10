@@ -1,15 +1,17 @@
 import config from '@/config';
-import * as Db from '@/Db';
 import { BinaryDataService } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
+import Container from 'typedi';
 
 import * as testDb from './shared/testDb';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
 import { Logger } from '@/Logger';
-import { mockInstance } from './shared/utils';
+
+import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
 
@@ -25,7 +27,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
-			Db.collections.Execution,
+			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 		);
 
@@ -45,7 +47,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	async function findAllExecutions() {
-		return Db.collections.Execution.find({
+		return Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
 			withDeleted: true,
 		});

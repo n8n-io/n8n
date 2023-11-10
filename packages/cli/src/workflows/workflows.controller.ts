@@ -26,6 +26,7 @@ import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { Logger } from '@/Logger';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -205,7 +206,7 @@ workflowsController.get(
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
 		}
 
-		const shared = await Db.collections.SharedWorkflow.findOne({
+		const shared = await Container.get(SharedWorkflowRepository).findOne({
 			relations,
 			where: whereClause({
 				user: req.user,

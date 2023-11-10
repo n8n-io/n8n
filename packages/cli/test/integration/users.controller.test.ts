@@ -1,7 +1,7 @@
 import { createMember, createOwner } from './shared/db/users';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils/';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { PublicUser } from '@/Interfaces';
 
 const { any } = expect;

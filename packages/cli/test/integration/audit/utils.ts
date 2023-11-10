@@ -1,12 +1,13 @@
 import nock from 'nock';
 import config from '@/config';
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
 import { toReportTitle } from '@/audit/utils';
 import * as constants from '@/constants';
 import type { Risk } from '@/audit/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	? Risk.InstanceSection
@@ -52,7 +53,7 @@ export async function saveManualTriggerWorkflow() {
 		],
 	};
 
-	return Db.collections.Workflow.save(details);
+	return Container.get(WorkflowRepository).save(details);
 }
 
 export const MOCK_09990_N8N_VERSION = {
