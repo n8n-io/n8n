@@ -1181,7 +1181,7 @@ export default defineComponent({
 				!this.readOnlyEnv
 			) {
 				void this.onRunWorkflow();
-			} else if (e.key === 's' && e.shiftKey && !this.isReadOnlyRoute && !this.readOnlyEnv) {
+			} else if (e.key === 'S' && e.shiftKey && !this.isReadOnlyRoute && !this.readOnlyEnv) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;

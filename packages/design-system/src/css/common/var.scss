@@ -75,15 +75,11 @@ $focus-outline-width: 2px;
 /* Box shadow
 -------------------------- */
 /// boxShadow|1|Shadow|1
-$box-shadow-base:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.04);
+$box-shadow-base: var(--box-shadow-base);
 // boxShadow|1|Shadow|1
-$box-shadow-dark:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.12);
+$box-shadow-dark: var(--box-shadow-dark);
 /// boxShadow|1|Shadow|1
-$box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+$box-shadow-light: var(--box-shadow-light);
 
 /* Fill
 -------------------------- */
@@ -765,7 +761,7 @@ $tree-expand-icon-color: var(--color-text-lighter);
 /* Dropdown
 -------------------------- */
 $dropdown-menu-box-shadow: $box-shadow-light;
-$dropdown-menuItem-hover-fill: var(--color-background-xlight);
+$dropdown-menuItem-hover-fill: var(--color-action-dropdown-item-active-background);
 $dropdown-menuItem-hover-color: var(--color-text-dark);
 
 /* Badge

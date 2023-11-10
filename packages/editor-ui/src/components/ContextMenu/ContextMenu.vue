@@ -4,7 +4,7 @@ import { N8nActionDropdown } from 'n8n-design-system';
 import type { INode } from 'n8n-workflow';
 import { watch, ref } from 'vue';
 
-const { isOpen, actions, position, targetNodes, close } = useContextMenu();
+const { isOpen, actions, position, targetNodes, target, close } = useContextMenu();
 const contextMenu = ref<InstanceType<typeof N8nActionDropdown>>();
 const emit = defineEmits<{ (event: 'action', action: ContextMenuAction, nodes: INode[]): void }>();
 
@@ -39,7 +39,7 @@ function onVisibleChange(open: boolean) {
 				:items="actions"
 				placement="bottom-start"
 				data-test-id="context-menu"
-				:showArrow="false"
+				:hideArrow="target.source !== 'node-button'"
 				@select="onActionSelect"
 				@visibleChange="onVisibleChange"
 			>

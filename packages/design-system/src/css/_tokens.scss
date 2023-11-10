@@ -227,6 +227,9 @@
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
 
+	// Action Dropdown
+	--color-action-dropdown-item-active-background: var(--color-background-base);
+
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);
 	--color-avatar-accent-2: var(--prim-color-alt-e-shade-100);
@@ -273,6 +276,10 @@
 			);
 		}
 	}
+
+	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
+	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.07);
 
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;

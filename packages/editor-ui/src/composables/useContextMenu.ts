@@ -3,7 +3,7 @@ import { NOT_DUPLICATABE_NODE_TYPES, PIN_DATA_NODE_TYPES_DENYLIST } from '@/cons
 import { useNodeTypesStore, useSourceControlStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
 import { useDataSchema } from './useDataSchema';
@@ -84,6 +84,13 @@ export const useContextMenu = () => {
 
 		return [currentTarget.node];
 	});
+
+	watch(
+		() => uiStore.nodeViewOffsetPosition,
+		() => {
+			close();
+		},
+	);
 
 	return {
 		isOpen,

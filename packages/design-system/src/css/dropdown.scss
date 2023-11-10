@@ -81,7 +81,6 @@
 	background-color: var.$color-white;
 	border: 1px solid var(--border-color-light);
 	border-radius: var(--border-radius-base);
-	box-shadow: var.$dropdown-menu-box-shadow;
 	position: relative;
 	list-style: none;
 
@@ -117,7 +116,6 @@
 				content: '';
 				height: $divided-offset;
 				display: block;
-				margin: 0 -16px;
 				background-color: var.$color-white;
 			}
 		}
@@ -143,7 +141,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -17px;
 				}
 			}
 		}
@@ -163,7 +160,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -15px;
 				}
 			}
 		}
@@ -183,7 +179,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -10px;
 				}
 			}
 		}

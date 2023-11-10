@@ -4,6 +4,7 @@
 			:placement="placement"
 			:trigger="trigger"
 			@command="onSelect"
+			:popper-class="{ [$style.shadow]: true, [$style.hideArrow]: hideArrow }"
 			@visible-change="onVisibleChange"
 			ref="elementDropdown"
 		>
@@ -115,6 +116,10 @@ export default defineComponent({
 			default: 'click',
 			validator: (value: string): boolean => ['click', 'hover'].includes(value),
 		},
+		hideArrow: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
@@ -163,6 +168,16 @@ export default defineComponent({
 	}
 }
 
+.hideArrow {
+	:global(.el-popper__arrow) {
+		display: none;
+	}
+}
+
+.shadow {
+	box-shadow: var(--box-shadow-light);
+}
+
 .activator {
 	&:hover {
 		background-color: var(--color-background-base);
@@ -177,10 +192,6 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 	line-height: 18px;
 	padding: var(--spacing-3xs) var(--spacing-2xs);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
 
 	&.disabled {
 		.shortcut {
