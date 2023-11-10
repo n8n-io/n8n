@@ -51,14 +51,17 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Text',
 				value: 'text',
+				description: 'Send email as plain text',
 			},
 			{
 				name: 'HTML',
 				value: 'html',
+				description: 'Send email as HTML',
 			},
 			{
 				name: 'Both',
 				value: 'both',
+				description: "Send both formats, recipient's client selects version to display",
 			},
 		],
 		default: 'html',

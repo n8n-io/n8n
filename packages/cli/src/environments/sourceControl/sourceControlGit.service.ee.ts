@@ -174,7 +174,9 @@ export class SourceControlGitService {
 			}
 		}
 		await this.setGitUserDetails(
-			`${user.firstName} ${user.lastName}` ?? SOURCE_CONTROL_DEFAULT_NAME,
+			user.firstName && user.lastName
+				? `${user.firstName} ${user.lastName}`
+				: SOURCE_CONTROL_DEFAULT_NAME,
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
 		if (sourceControlPreferences.initRepo) {
