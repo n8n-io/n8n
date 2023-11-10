@@ -6,7 +6,7 @@ import { Push } from '@/push';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,

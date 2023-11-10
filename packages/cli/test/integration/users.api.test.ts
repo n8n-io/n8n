@@ -1,7 +1,6 @@
 import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
-import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -9,6 +8,14 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 
+import Container from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+
+import { mockInstance } from '../shared/mocking';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomCredentialPayload,
@@ -26,7 +33,6 @@ import { createWorkflow } from './shared/db/workflows';
 import type { PublicUser } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
 
 const { any } = expect;
 
@@ -39,8 +45,9 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authlessAgent: SuperAgentTest;
 
-const externalHooks = utils.mockInstance(ExternalHooks);
-const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
+mockInstance(InternalHooks);
+const externalHooks = mockInstance(ExternalHooks);
+const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
@@ -59,11 +66,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	jest.resetAllMocks();
 	await testDb.truncate(['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
 	owner = await createOwner();
 	member = await createMember();
-	externalHooks.run.mockReset();
-	mailer.invite.mockReset();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authlessAgent = testServer.authlessAgent;
 });
@@ -293,9 +299,9 @@ describe('DELETE /users/:id', () => {
 			nodes: [],
 		});
 
-		const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
+		const savedWorkflow = await Container.get(WorkflowRepository).save(newWorkflow);
 
-		await Db.collections.SharedWorkflow.save({
+		await Container.get(SharedWorkflowRepository).save({
 			role: workflowOwnerRole,
 			user: member,
 			workflow: savedWorkflow,
@@ -310,9 +316,9 @@ describe('DELETE /users/:id', () => {
 			nodesAccess: [],
 		});
 
-		const savedCredential = await Db.collections.Credentials.save(newCredential);
+		const savedCredential = await Container.get(CredentialsRepository).save(newCredential);
 
-		await Db.collections.SharedCredentials.save({
+		await Container.get(SharedCredentialsRepository).save({
 			role: credentialOwnerRole,
 			user: member,
 			credentials: savedCredential,
@@ -323,27 +329,29 @@ describe('DELETE /users/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-		const user = await Db.collections.User.findOneBy({ id: member.id });
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 		expect(user).toBeNull(); // deleted
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['user'],
 			where: { userId: member.id, roleId: workflowOwnerRole.id },
 		});
 		expect(sharedWorkflow).toBeNull(); // deleted
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOne({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			relations: ['user'],
 			where: { userId: member.id, roleId: credentialOwnerRole.id },
 		});
 		expect(sharedCredential).toBeNull(); // deleted
 
-		const workflow = await Db.collections.Workflow.findOneBy({ id: savedWorkflow.id });
+		const workflow = await Container.get(WorkflowRepository).findOneBy({ id: savedWorkflow.id });
 		expect(workflow).toBeNull(); // deleted
 
 		// TODO: Include active workflow and check whether webhook has been removed
 
-		const credential = await Db.collections.Credentials.findOneBy({ id: savedCredential.id });
+		const credential = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
 		expect(credential).toBeNull(); // deleted
 	});
 
@@ -352,7 +360,7 @@ describe('DELETE /users/:id', () => {
 
 		expect(response.statusCode).toBe(400);
 
-		const user = await Db.collections.User.findOneBy({ id: owner.id });
+		const user = await Container.get(UserRepository).findOneBy({ id: owner.id });
 		expect(user).toBeDefined();
 	});
 
@@ -365,7 +373,7 @@ describe('DELETE /users/:id', () => {
 
 		expect(response.statusCode).toBe(400);
 
-		const user = await Db.collections.User.findOneBy({ id: idToDelete });
+		const user = await Container.get(UserRepository).findOneBy({ id: idToDelete });
 		expect(user).toBeDefined();
 	});
 
@@ -385,7 +393,7 @@ describe('DELETE /users/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneOrFail({
 			relations: ['workflow'],
 			where: { userId: owner.id },
 		});
@@ -393,7 +401,7 @@ describe('DELETE /users/:id', () => {
 		expect(sharedWorkflow.workflow).toBeDefined();
 		expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { userId: owner.id },
 		});
@@ -401,7 +409,7 @@ describe('DELETE /users/:id', () => {
 		expect(sharedCredential.credentials).toBeDefined();
 		expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
-		const deletedUser = await Db.collections.User.findOneBy({ id: userToDelete.id });
+		const deletedUser = await Container.get(UserRepository).findOneBy({ id: userToDelete.id });
 
 		expect(deletedUser).toBeNull();
 	});
@@ -445,7 +453,7 @@ describe('POST /users/:id', () => {
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
 
-		const member = await Db.collections.User.findOneByOrFail({ id: memberShell.id });
+		const member = await Container.get(UserRepository).findOneByOrFail({ id: memberShell.id });
 		expect(member.firstName).toBe(memberData.firstName);
 		expect(member.lastName).toBe(memberData.lastName);
 		expect(member.password).not.toBe(memberData.password);
@@ -454,7 +462,7 @@ describe('POST /users/:id', () => {
 	test('should fail with invalid inputs', async () => {
 		const memberShellEmail = randomEmail();
 
-		const memberShell = await Db.collections.User.save({
+		const memberShell = await Container.get(UserRepository).save({
 			email: memberShellEmail,
 			globalRole: globalMemberRole,
 		});
@@ -492,7 +500,7 @@ describe('POST /users/:id', () => {
 			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedUser = await Db.collections.User.findOneOrFail({
+			const storedUser = await Container.get(UserRepository).findOneOrFail({
 				where: { email: memberShellEmail },
 			});
 
@@ -516,7 +524,7 @@ describe('POST /users/:id', () => {
 
 		expect(response.statusCode).toBe(400);
 
-		const storedMember = await Db.collections.User.findOneOrFail({
+		const storedMember = await Container.get(UserRepository).findOneOrFail({
 			where: { email: member.email },
 		});
 		expect(storedMember.firstName).not.toBe(newMemberData.firstName);
@@ -543,7 +551,7 @@ describe('POST /users', () => {
 				const response = await authOwnerAgent.post('/users').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 
-				const users = await Db.collections.User.find();
+				const users = await Container.get(UserRepository).find();
 				expect(users.length).toBe(2); // DB unaffected
 			}),
 		);
@@ -558,7 +566,7 @@ describe('POST /users', () => {
 		expect(Array.isArray(data)).toBe(true);
 		expect(data.length).toBe(0);
 
-		const users = await Db.collections.User.find();
+		const users = await Container.get(UserRepository).find();
 		expect(users.length).toBe(2);
 	});
 
@@ -604,10 +612,10 @@ describe('POST /users', () => {
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		const [hookName, hookData] = externalHooks.run.mock.calls[0];
 		expect(hookName).toBe('user.invited');
-		expect(hookData[0]).toStrictEqual(usersToCreate);
+		expect(hookData?.[0]).toStrictEqual(usersToCreate);
 
 		for (const invitationResponse of response.body.data as UserInvitationResponse[]) {
-			const storedUser = await Db.collections.User.findOneByOrFail({
+			const storedUser = await Container.get(UserRepository).findOneByOrFail({
 				id: invitationResponse.user.id,
 			});
 

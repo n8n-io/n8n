@@ -5,12 +5,7 @@ import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
-import type { DataSource, Repository } from 'typeorm';
-
-export type CollectionName =
-	| keyof IDatabaseCollections
-	| { new (dataSource: DataSource): Repository<any> };
+import type { BooleanLicenseFeature, ICredentialsDb } from '@/Interfaces';
 
 type EndpointGroup =
 	| 'me'

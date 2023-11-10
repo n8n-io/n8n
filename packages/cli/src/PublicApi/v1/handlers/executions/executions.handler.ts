@@ -8,7 +8,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export = {
 	deleteExecution: [

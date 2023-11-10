@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-
 import { Service } from 'typedi';
-import * as Db from '@/Db';
 import type {
 	IExternalHooksClass,
 	IExternalHooksFileData,
 	IExternalHooksFunctions,
 } from '@/Interfaces';
-
 import config from '@/config';
+import { UserRepository } from '@db/repositories/user.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 @Service()
 export class ExternalHooks implements IExternalHooksClass {
@@ -16,7 +17,25 @@ export class ExternalHooks implements IExternalHooksClass {
 		[key: string]: Array<() => {}>;
 	} = {};
 
-	initDidRun = false;
+	private initDidRun = false;
+
+	private dbCollections: IExternalHooksFunctions['dbCollections'];
+
+	constructor(
+		userRepository: UserRepository,
+		settingsRepository: SettingsRepository,
+		credentialsRepository: CredentialsRepository,
+		workflowRepository: WorkflowRepository,
+	) {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		this.dbCollections = {
+			User: userRepository,
+			Settings: settingsRepository,
+			Credentials: credentialsRepository,
+			Workflow: workflowRepository,
+		};
+		/* eslint-enable @typescript-eslint/naming-convention */
+	}
 
 	async init(): Promise<void> {
 		if (this.initDidRun) {
@@ -82,15 +101,14 @@ export class ExternalHooks implements IExternalHooksClass {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async run(hookName: string, hookParameters?: any[]): Promise<void> {
-		const externalHookFunctions: IExternalHooksFunctions = {
-			dbCollections: Db.collections,
-		};
-
 		if (this.externalHooks[hookName] === undefined) {
 			return;
 		}
+
+		const externalHookFunctions: IExternalHooksFunctions = {
+			dbCollections: this.dbCollections,
+		};
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);

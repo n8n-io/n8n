@@ -96,7 +96,7 @@ export async function haloPSAApiRequest(
 		return result;
 	} catch (error) {
 		const message = (error as JsonObject).message as string;
-		if (method === 'DELETE' || 'GET' || ('UPDATE' && message)) {
+		if (method === 'DELETE' || method === 'GET' || (method === 'UPDATE' && message)) {
 			let newErrorMessage;
 			if (message.includes('400')) {
 				console.log(message);
