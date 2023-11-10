@@ -185,11 +185,24 @@ export class WorkflowPage extends BasePage {
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
+		openContextMenu: (nodeTypeName: string) => {
+			const node = this.getters.canvasNodeByName(nodeTypeName);
+			node.trigger('contextmenu');
+		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
-		duplicateNode: (node: Chainable<JQuery<HTMLElement>>) => {
-			node.find('[data-test-id="duplicate-node-button"]').click({ force: true });
+		duplicateNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			cy.getByTestId('context-menu-item-duplicate').click();
+		},
+		deleteNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			cy.getByTestId('context-menu-item-delete').click();
+		},
+		disableNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			cy.getByTestId('context-menu-item-toggle_activation').click();
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -284,7 +297,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+			cy.get('body').type('d');
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');

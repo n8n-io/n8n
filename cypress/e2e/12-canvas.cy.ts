@@ -129,13 +129,10 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.get('.jtk-connector').should('have.length', 4);
 	});
 
-	it('should delete node using node action button', () => {
+	it('should delete node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodeByName(CODE_NODE_NAME)
-			.find('[data-test-id=delete-node-button]')
-			.click({ force: true });
+		WorkflowPage.actions.deleteNode(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
@@ -272,15 +269,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().last().should('be.visible');
 	});
 
-	it('should disable node by pressing the disable button', () => {
+	it('should disable node by pressing disable in the context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="disable-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 	});
 
@@ -319,11 +312,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="duplicate-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
@@ -392,15 +381,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.executeWorkflow();
 		cy.contains('Node not found').should('be.visible');
 
-		WorkflowPage.getters
-			.canvasNodeByName(`${unknownNodeName} 1`)
-			.find('[data-test-id=delete-node-button]')
-			.click({ force: true });
-
-			WorkflowPage.getters
-			.canvasNodeByName(`${unknownNodeName} 2`)
-			.find('[data-test-id=delete-node-button]')
-			.click({ force: true });
+		WorkflowPage.actions.deleteNode(`${unknownNodeName} 1`);
+		WorkflowPage.actions.deleteNode(`${unknownNodeName} 2`);
 
 		WorkflowPage.actions.executeWorkflow();
 

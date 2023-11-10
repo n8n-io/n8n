@@ -78,7 +78,7 @@ describe('Data pinning', () => {
 		ndv.actions.setPinnedData([{ test: 1 }]);
 		ndv.actions.close();
 
-		workflowPage.actions.duplicateNode(workflowPage.getters.canvasNodes().last());
+		workflowPage.actions.duplicateNode('Edit Fields');
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
