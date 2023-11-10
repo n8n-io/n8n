@@ -10,6 +10,8 @@ import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { DataSource } from 'typeorm';
+
+import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -97,7 +99,9 @@ export async function sqlAgentAgentExecute(
 		const toolkit = new SqlToolkit(dbInstance, model);
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-		const response = await agentExecutor.call({ input });
+		const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleAgentAction');
+
+		const response = await agentExecutor.call({ input, signal }, { callbacks });
 
 		returnData.push({ json: response });
 	}

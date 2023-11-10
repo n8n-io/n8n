@@ -203,6 +203,7 @@ export class LmChatOpenAi implements INodeType {
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			maxRetries: 1,
 			configuration,
 		});
 
