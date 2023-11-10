@@ -247,24 +247,8 @@ export class GoogleSheet {
 		data: string[][],
 		valueInputMode: ValueInputOption,
 		lastRow?: number,
+		useAppend?: boolean,
 	) {
-		// const body = {
-		// 	range,
-		// 	values: data,
-		// };
-
-		// const query = {
-		// 	valueInputOption: valueInputMode,
-		// };
-
-		// const response = await apiRequest.call(
-		// 	this.executeFunctions,
-		// 	'POST',
-		// 	`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
-		// 	body,
-		// 	query,
-		// );
-
 		const lastRowWithData =
 			lastRow ||
 			(((await this.getData(range, 'UNFORMATTED_VALUE')) as string[][]) || []).length + 1;
@@ -275,6 +259,7 @@ export class GoogleSheet {
 			valueInputMode,
 			lastRowWithData,
 			data.length,
+			useAppend,
 		);
 
 		return response;
@@ -286,6 +271,7 @@ export class GoogleSheet {
 		valueInputMode: ValueInputOption,
 		row: number,
 		rowsLength?: number,
+		useAppend?: boolean,
 	) {
 		const [name, _sheetRange] = sheetName.split('!');
 		const range = `${name}!${row}:${rowsLength ? row + rowsLength - 1 : row}`;
@@ -299,31 +285,27 @@ export class GoogleSheet {
 			valueInputOption: valueInputMode,
 		};
 
-		try {
-			//:append endpoint in some cases missaligns the data, so we use :update instead
-			const response = await apiRequest.call(
+		let response;
+
+		if (useAppend) {
+			response = await apiRequest.call(
+				this.executeFunctions,
+				'POST',
+				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+				body,
+				query,
+			);
+		} else {
+			response = await apiRequest.call(
 				this.executeFunctions,
 				'PUT',
 				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 				body,
 				query,
 			);
-
-			return response;
-		} catch (error) {
-			if ((error.description as string).includes('exceeds grid limits')) {
-				//in case of exceeding grid limits try to recover by using :append endpoint
-				const response = await apiRequest.call(
-					this.executeFunctions,
-					'POST',
-					`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
-					body,
-					query,
-				);
-
-				return response;
-			}
 		}
+
+		return response;
 	}
 
 	/**
@@ -402,6 +384,7 @@ export class GoogleSheet {
 		usePathForKeyRow: boolean,
 		columnNamesList?: string[][],
 		lastRow?: number,
+		useAppend?: boolean,
 	): Promise<string[][]> {
 		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
@@ -410,7 +393,7 @@ export class GoogleSheet {
 			usePathForKeyRow,
 			columnNamesList,
 		);
-		return this.appendData(range, data, valueInputMode, lastRow);
+		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
