@@ -49,7 +49,7 @@
 			>
 				<n8n-radio-buttons
 					v-show="
-						hasNodeRun && (jsonData.length || binaryData.length || search) && !editMode.enabled
+						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
 					:modelValue="displayMode"
 					:options="buttons"
@@ -194,6 +194,7 @@
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
+			data-test-id="ndv-items-count"
 		>
 			<n8n-text v-if="search">
 				{{
@@ -309,10 +310,7 @@
 				</n8n-text>
 			</div>
 
-			<div
-				v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && !search"
-				:class="$style.center"
-			>
+			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
@@ -349,7 +347,7 @@
 					hasNodeRun &&
 					displayMode === 'table' &&
 					binaryData.length > 0 &&
-					jsonData.length === 1 &&
+					inputData.length === 1 &&
 					Object.keys(jsonData[0] || {}).length === 0
 				"
 				:class="$style.center"
