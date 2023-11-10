@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import { Logger } from '@/Logger';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 
 /**
  * Abstract class for two-way push communication.

@@ -1,6 +1,5 @@
 import Container from 'typedi';
 import config from '@/config';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomPassword } from '@/Ldap/helpers';
@@ -10,6 +9,7 @@ import { randomDigit, randomString, randomValidPassword, uniqueId } from '../sha
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
 import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
+import { UserRepository } from '@db/repositories/user.repository';
 
 jest.mock('@/telemetry');
 
@@ -161,7 +161,7 @@ describe('Enable MFA setup', () => {
 
 			expect(statusCode).toBe(200);
 
-			const user = await Db.collections.User.findOneOrFail({
+			const user = await Container.get(UserRepository).findOneOrFail({
 				where: {},
 				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
@@ -181,7 +181,7 @@ describe('Disable MFA setup', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const dbUser = await Db.collections.User.findOneOrFail({
+		const dbUser = await Container.get(UserRepository).findOneOrFail({
 			where: { id: user.id },
 			select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 		});
@@ -375,7 +375,7 @@ describe('Login', () => {
 			expect(data.mfaEnabled).toBe(true);
 			expect(data.hasRecoveryCodesLeft).toBe(true);
 
-			const dbUser = await Db.collections.User.findOneOrFail({
+			const dbUser = await Container.get(UserRepository).findOneOrFail({
 				where: { id: user.id },
 				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});

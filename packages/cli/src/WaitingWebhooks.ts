@@ -12,7 +12,7 @@ import type {
 	WaitingWebhookRequest,
 } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
