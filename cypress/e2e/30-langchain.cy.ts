@@ -169,7 +169,7 @@ describe('Langchain Integration', () => {
 
 		clickManualChatButton();
 
-		getManualChatModalLogs().should('not.be.visible');
+		getManualChatModalLogs().should('not.exist');
 
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
