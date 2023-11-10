@@ -3,7 +3,8 @@ import { hash } from 'bcryptjs';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { AuthIdentityRepository, UserRepository } from '@db/repositories';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 

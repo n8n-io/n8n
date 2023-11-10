@@ -1,4 +1,3 @@
-import * as Db from '@/Db';
 import { separate } from '@/utils';
 import config from '@/config';
 import { RISK_CATEGORIES } from '@/audit/constants';
@@ -9,6 +8,8 @@ import { reportNodesRisk } from '@/audit/risks/nodes.risk';
 import { reportFilesystemRisk } from '@/audit/risks/filesystem.risk';
 import { reportInstanceRisk } from '@/audit/risks/instance.risk';
 import type { Risk } from '@/audit/types';
+import Container from 'typedi';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 export const SYNC_MAP: Record<string, Risk.SyncReportFn> = {
 	database: reportDatabaseRisk,
@@ -35,7 +36,7 @@ export async function audit(
 		config.set('security.audit.daysAbandonedWorkflow', daysAbandonedWorkflow);
 	}
 
-	const workflows = await Db.collections.Workflow.find({
+	const workflows = await Container.get(WorkflowRepository).find({
 		select: ['id', 'name', 'active', 'nodes', 'connections'],
 	});
 

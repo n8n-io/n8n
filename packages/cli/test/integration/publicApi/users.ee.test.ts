@@ -5,13 +5,14 @@ import { v4 as uuid } from 'uuid';
 import type { Role } from '@db/entities/Role';
 import { License } from '@/License';
 
+import { mockInstance } from '../../shared/mocking';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createUser, createUserShell } from '../shared/db/users';
 
-utils.mockInstance(License, {
+mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),
 });
 
@@ -216,7 +217,7 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		utils.mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
+		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
 
 		const owner = await createUser({
 			globalRole: globalOwnerRole,

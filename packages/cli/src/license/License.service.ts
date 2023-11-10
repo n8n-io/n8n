@@ -1,11 +1,13 @@
 import { Container } from 'typedi';
 import { License } from '@/License';
 import type { ILicenseReadResponse } from '@/Interfaces';
-import * as Db from '@/Db';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 export class LicenseService {
 	static async getActiveTriggerCount(): Promise<number> {
-		const totalTriggerCount = await Db.collections.Workflow.sum('triggerCount', { active: true });
+		const totalTriggerCount = await Container.get(WorkflowRepository).sum('triggerCount', {
+			active: true,
+		});
 		return totalTriggerCount ?? 0;
 	}
 

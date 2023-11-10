@@ -4,7 +4,6 @@ import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
 
 import { License } from '@/License';
-import * as Db from '@/Db';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -13,8 +12,10 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { JwtService } from '@/services/jwt.service';
 import { UserService } from '@/services/user.service';
 import { UserManagementMailer } from '@/UserManagement/email';
+import { UserRepository } from '@db/repositories/user.repository';
 
-import * as utils from './shared/utils/';
+import { mockInstance } from '../shared/mocking';
+import { getAuthToken, setupTestServer } from './shared/utils/';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -33,9 +34,9 @@ let globalMemberRole: Role;
 let owner: User;
 let member: User;
 
-const externalHooks = utils.mockInstance(ExternalHooks);
-const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
-const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
+const externalHooks = mockInstance(ExternalHooks);
+const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
+const testServer = setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 let userService: UserService;
 
@@ -199,10 +200,10 @@ describe('POST /change-password', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const authToken = utils.getAuthToken(response);
+		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
-		const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
 			id: owner.id,
 		});
 
@@ -243,7 +244,7 @@ describe('POST /change-password', () => {
 				.post('/change-password')
 				.query(invalidPayload);
 			expect(response.statusCode).toBe(400);
-			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+			const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
 				id: owner.id,
 			});
 			expect(owner.password).toBe(storedPassword);
@@ -276,10 +277,10 @@ describe('POST /change-password', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const authToken = utils.getAuthToken(response);
+		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
-		const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
 			id: owner.id,
 		});
 

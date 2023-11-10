@@ -1,6 +1,5 @@
 import type { DeleteResult, EntityManager } from 'typeorm';
 import { In, Not } from 'typeorm';
-import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -16,7 +15,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -73,7 +73,7 @@ export class EEWorkflowsService extends WorkflowsService {
 				userId: user.id,
 				roleId: role?.id,
 			};
-			acc.push(Db.collections.SharedWorkflow.create(entity));
+			acc.push(Container.get(SharedWorkflowRepository).create(entity));
 			return acc;
 		}, []);
 

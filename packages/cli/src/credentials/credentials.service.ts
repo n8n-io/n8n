@@ -25,13 +25,15 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 export class CredentialsService {
 	static async get(
 		where: FindOptionsWhere<ICredentialsDb>,
 		options?: { relations: string[] },
 	): Promise<ICredentialsDb | null> {
-		return Db.collections.Credentials.findOne({
+		return Container.get(CredentialsRepository).findOne({
 			relations: options?.relations,
 			where,
 		});
@@ -88,14 +90,14 @@ export class CredentialsService {
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
-			const credentials = await Db.collections.Credentials.find(findManyOptions);
+			const credentials = await Container.get(CredentialsRepository).find(findManyOptions);
 
 			return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
 		}
 
 		const ids = await this.getAccessibleCredentials(user.id);
 
-		const credentials = await Db.collections.Credentials.find({
+		const credentials = await Container.get(CredentialsRepository).find({
 			...findManyOptions,
 			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
@@ -107,7 +109,7 @@ export class CredentialsService {
 	 * Get the IDs of all credentials owned by or shared with a user.
 	 */
 	private static async getAccessibleCredentials(userId: string) {
-		const sharings = await Db.collections.SharedCredentials.find({
+		const sharings = await Container.get(SharedCredentialsRepository).find({
 			relations: ['role'],
 			where: {
 				userId,
@@ -125,7 +127,7 @@ export class CredentialsService {
 			options.relations = ['shared', 'shared.user', 'shared.role'];
 		}
 
-		return Db.collections.Credentials.find(options);
+		return Container.get(CredentialsRepository).find(options);
 	}
 
 	/**
@@ -152,7 +154,7 @@ export class CredentialsService {
 			}
 		}
 
-		return Db.collections.SharedCredentials.findOne({ where, relations });
+		return Container.get(SharedCredentialsRepository).findOne({ where, relations });
 	}
 
 	static async prepareCreateData(
@@ -162,7 +164,7 @@ export class CredentialsService {
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const newCredentials = Db.collections.Credentials.create(rest as ICredentialsDb);
+		const newCredentials = Container.get(CredentialsRepository).create(rest as ICredentialsDb);
 
 		await validateEntity(newCredentials);
 
@@ -185,7 +187,7 @@ export class CredentialsService {
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const updateData = Db.collections.Credentials.create(mergedData as ICredentialsDb);
+		const updateData = Container.get(CredentialsRepository).create(mergedData as ICredentialsDb);
 
 		await validateEntity(updateData);
 
@@ -234,11 +236,11 @@ export class CredentialsService {
 		await Container.get(ExternalHooks).run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialId, newCredentialData);
+		await Container.get(CredentialsRepository).update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOneBy({ id: credentialId });
+		return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 	}
 
 	static async save(
@@ -281,7 +283,7 @@ export class CredentialsService {
 	static async delete(credentials: CredentialsEntity): Promise<void> {
 		await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 
-		await Db.collections.Credentials.remove(credentials);
+		await Container.get(CredentialsRepository).remove(credentials);
 	}
 
 	static async test(

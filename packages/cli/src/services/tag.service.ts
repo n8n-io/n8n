@@ -1,8 +1,8 @@
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
 import { Service } from 'typedi';
 import { validateEntity } from '@/GenericHelpers';
 import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
-import type { TagEntity } from '@/databases/entities/TagEntity';
+import type { TagEntity } from '@db/entities/TagEntity';
 import type { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
 import type { UpsertOptions } from 'typeorm/repository/UpsertOptions';
 import { ExternalHooks } from '@/ExternalHooks';

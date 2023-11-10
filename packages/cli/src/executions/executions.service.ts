@@ -18,11 +18,11 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 
 export interface IGetExecutionsQueryFilter {
@@ -274,7 +274,7 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOneBy({
+			const workflowData = (await Container.get(WorkflowRepository).findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;
 
