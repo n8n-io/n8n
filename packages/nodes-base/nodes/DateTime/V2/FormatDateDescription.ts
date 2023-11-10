@@ -123,9 +123,11 @@ export const FormatDateDescription: INodeProperties[] = [
 				displayName: 'From Date Format',
 				name: 'fromFormat',
 				type: 'string',
-				default: '',
+				default: 'e.g yyyyMMdd',
+				hint: 'Tokens are case sensitive',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description:
-					'Format for parsing the value as a date. If unrecognized, specify the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/#supported-date-formats">format</a> for the value.',
+					'Format in which the input \'Date\' is, it\'s helpful when the format is not recognized automatically. Use those <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens&id=table-of-tokens" target="_blank">tokens</a> to define the format.',
 			},
 			{
 				displayName: 'Use Workflow Timezone',
