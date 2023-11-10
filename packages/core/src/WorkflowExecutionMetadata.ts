@@ -74,7 +74,7 @@ export function getAllWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 ): Record<string, string> {
 	// Make a copy so it can't be modified directly
-	return { ...executionData.resultData.metadata } ?? {};
+	return executionData.resultData.metadata ? { ...executionData.resultData.metadata } : {};
 }
 
 export function getWorkflowExecutionMetadata(
