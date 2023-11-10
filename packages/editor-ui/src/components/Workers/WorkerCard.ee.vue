@@ -21,9 +21,7 @@
 					{{ worker.version }} | Uptime: {{ upTime(worker.uptime) }}</span
 				>
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
-				<WorkerNetAccordion
-					:items="worker.interfaces.sort((a, b) => a.family.localeCompare(b.family))"
-				/>
+				<WorkerNetAccordion :items="sortedWorkerInterfaces" />
 				<WorkerChartsAccordion :worker-id="worker.workerId" />
 			</n8n-text>
 		</div>
@@ -39,7 +37,7 @@
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
-import { averageWorkerLoadFromLoadsAsString, memAsGb } from './helpers';
+import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
@@ -58,6 +56,10 @@ const stale = ref<boolean>(false);
 const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
+
+const sortedWorkerInterfaces = computed(
+	() => worker.value?.interfaces.toSorted((a, b) => a.family.localeCompare(b.family)) ?? [],
+);
 
 function upTime(seconds: number): string {
 	const days = Math.floor(seconds / (3600 * 24));

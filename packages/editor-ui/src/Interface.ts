@@ -99,6 +99,8 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		Cypress: unknown;
 	}
 }
 

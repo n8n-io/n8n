@@ -33,55 +33,33 @@
 
 <script setup lang="ts">
 import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '@/stores/orchestration.store';
 import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
-import {
-	Chart as ChartJS,
-	Title,
-	Tooltip,
-	Legend,
-	BarElement,
-	LineElement,
-	PointElement,
-	CategoryScale,
-	LinearScale,
-} from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
-import { averageWorkerLoadFromLoads, memAsGb } from './helpers';
-
-ChartJS.register(
-	CategoryScale,
-	LinearScale,
-	BarElement,
-	LineElement,
-	PointElement,
-	Title,
-	Tooltip,
-	Legend,
-);
+import { averageWorkerLoadFromLoads, memAsGb } from '../../utils/workerUtils';
 
 const props = defineProps<{
 	workerId: string;
 }>();
 
-const blankDataSet = (label?: string, color?: string) => ({
+const blankDataSet = (label: string, color: string, prefill: number = 0) => ({
 	datasets: [
 		{
-			label: label ?? 'JobCount',
-			backgroundColor: color ?? '#f87979',
-			data: [],
+			label,
+			backgroundColor: color,
+			data: prefill ? Array<number>(Math.min(WORKER_HISTORY_LENGTH, prefill)).fill(0) : [],
 		},
 	],
-	labels: [],
+	labels: Array<string>(Math.min(WORKER_HISTORY_LENGTH, prefill)).fill(''),
 });
 
 const orchestrationStore = useOrchestrationStore();
 const chartRefJobs = ref<ChartComponentRef | undefined>(undefined);
 const chartRefCPU = ref<ChartComponentRef | undefined>(undefined);
 const chartRefMemory = ref<ChartComponentRef | undefined>(undefined);
-const optionsJobs: Partial<ChartOptions<'line'>> = {
+const optionsBase: () => Partial<ChartOptions<'line'>> = () => ({
 	responsive: true,
 	maintainAspectRatio: true,
 	scales: {
@@ -93,43 +71,44 @@ const optionsJobs: Partial<ChartOptions<'line'>> = {
 			suggestedMax: 5,
 		},
 	},
-};
-const optionsCPU: Partial<ChartOptions<'line'>> = {
-	responsive: true,
-	maintainAspectRatio: true,
-	scales: {
-		y: {
-			type: 'linear',
-			display: true,
-			position: 'left',
-			min: 0,
-			suggestedMax: 100,
-		},
-	},
-};
+	// uncomment to disable animation
+	// animation: {
+	// 	duration: 0,
+	// },
+});
+const optionsJobs: Partial<ChartOptions<'line'>> = optionsBase();
+const optionsCPU: Partial<ChartOptions<'line'>> = optionsBase();
+if (optionsCPU.scales?.y) optionsCPU.scales.y.suggestedMax = 100;
 const maxMemory = memAsGb(orchestrationStore.workers[props.workerId]?.totalMem) ?? 1;
-const optionsMemory: Partial<ChartOptions<'line'>> = {
-	responsive: true,
-	maintainAspectRatio: true,
-	scales: {
-		y: {
-			type: 'linear',
-			display: true,
-			position: 'left',
-			min: 0,
-			suggestedMax: maxMemory,
-		},
-	},
-};
-const dataJobs = ref<ChartData>(blankDataSet('Job Count'));
-const dataCPU = ref<ChartData>(blankDataSet('Processor Usage'));
-const dataMemory = ref<ChartData>(blankDataSet('Memory Usage'));
+const optionsMemory: Partial<ChartOptions<'line'>> = optionsBase();
+if (optionsMemory.scales?.y) optionsMemory.scales.y.suggestedMax = maxMemory;
+
+// prefilled initial arrays
+const dataJobs = ref<ChartData>(
+	blankDataSet('Job Count', 'rgb(255, 111, 92)', WORKER_HISTORY_LENGTH),
+);
+const dataCPU = ref<ChartData>(
+	blankDataSet('Processor Usage', 'rgb(19, 205, 103)', WORKER_HISTORY_LENGTH),
+);
+const dataMemory = ref<ChartData>(
+	blankDataSet('Memory Usage', 'rgb(244, 216, 174)', WORKER_HISTORY_LENGTH),
+);
 
 orchestrationStore.$onAction(({ name, store }) => {
 	if (name === 'updateWorkerStatus') {
-		const newDataJobs: ChartData = blankDataSet('Job Count', 'rgb(255, 111, 92)');
-		const newDataCPU: ChartData = blankDataSet('Processor Usage', 'rgb(19, 205, 103)');
-		const newDataMemory: ChartData = blankDataSet('Memory Usage', 'rgb(244, 216, 174)');
+		const prefillCount =
+			WORKER_HISTORY_LENGTH - (store.workersHistory[props.workerId]?.length ?? 0);
+		const newDataJobs: ChartData = blankDataSet('Job Count', 'rgb(255, 111, 92)', prefillCount);
+		const newDataCPU: ChartData = blankDataSet(
+			'Processor Usage',
+			'rgb(19, 205, 103)',
+			prefillCount,
+		);
+		const newDataMemory: ChartData = blankDataSet(
+			'Memory Usage',
+			'rgb(244, 216, 174)',
+			prefillCount,
+		);
 		store.workersHistory[props.workerId]?.forEach((item) => {
 			newDataJobs.datasets[0].data.push(item.data.runningJobsSummary.length);
 			newDataJobs.labels?.push(new Date(item.timestamp).toLocaleTimeString());

@@ -219,7 +219,7 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workersview',
+		path: '/workers',
 		name: VIEWS.WORKER_VIEW,
 		components: {
 			default: WorkerView,

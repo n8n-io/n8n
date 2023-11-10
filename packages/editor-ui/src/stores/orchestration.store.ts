@@ -1,10 +1,9 @@
 import { defineStore } from 'pinia';
 import type { IPushDataWorkerStatusPayload } from '../Interface';
-import { makeRestApiRequest } from '../utils/apiUtils';
 import { useRootStore } from './n8nRoot.store';
+import { sendGetWorkerStatus } from '../api/orchestration';
 
-const GET_STATUS_ENDPOINT = '/orchestration//worker/status';
-const HISTORY_LENGTH = 100;
+export const WORKER_HISTORY_LENGTH = 100;
 const STALE_SECONDS = 120 * 1000;
 
 export interface IOrchestrationStoreState {
@@ -35,7 +34,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 				this.workersHistory[data.workerId] = [];
 			}
 			this.workersHistory[data.workerId].push({ data, timestamp: Date.now() });
-			if (this.workersHistory[data.workerId].length > HISTORY_LENGTH) {
+			if (this.workersHistory[data.workerId].length > WORKER_HISTORY_LENGTH) {
 				this.workersHistory[data.workerId].shift();
 			}
 			this.workersLastUpdated[data.workerId] = Date.now();
@@ -53,7 +52,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 			const rootStore = useRootStore();
 			if (!this.statusInterval) {
 				this.statusInterval = setInterval(async () => {
-					await makeRestApiRequest(rootStore.getRestApiContext, 'POST', GET_STATUS_ENDPOINT);
+					await sendGetWorkerStatus(rootStore.getRestApiContext);
 					this.removeStaleWorkers();
 				}, 1000);
 			}
