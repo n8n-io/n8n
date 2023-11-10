@@ -2358,6 +2358,13 @@ export class HubspotV2 implements INodeType {
 									value: updateFields.dealName as string,
 								});
 							}
+							if (updateFields.dealOwner) {
+								const dealOwner = updateFields.dealOwner as IDataObject;
+								body.properties.push({
+									name: 'hubspot_owner_id',
+									value: dealOwner.value,
+								});
+							}
 							if (updateFields.closeDate) {
 								body.properties.push({
 									name: 'closedate',
