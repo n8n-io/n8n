@@ -70,6 +70,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
+		[LICENSE_FEATURES.WORKER_VIEW]: false,
 	};
 
 	constructor(
@@ -97,6 +98,13 @@ export class E2EController {
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
+	}
+
+	@Patch('/queue-mode')
+	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
+		const { enabled } = req.body;
+		config.set('executions.mode', enabled ? 'queue' : 'regular');
+		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
 	}
 
 	private resetFeatures() {

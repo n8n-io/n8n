@@ -48,6 +48,7 @@ const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
 const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
+const WorkerView = async () => import('./views/WorkerView.vue');
 const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
@@ -207,6 +208,21 @@ export const routes = [
 		name: VIEWS.EXECUTIONS,
 		components: {
 			default: ExecutionsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workers',
+		name: VIEWS.WORKER_VIEW,
+		components: {
+			default: WorkerView,
 			sidebar: MainSidebar,
 		},
 		meta: {

@@ -46,6 +46,7 @@ import type { UserRepository } from '@db/repositories/user.repository';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
+import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -466,7 +467,8 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataActiveWorkflowUsersChanged
+	| PushDataWorkerStatusMessage;
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -503,7 +505,12 @@ export type PushDataConsoleMessage = {
 	type: 'sendConsoleMessage';
 };
 
-export type PushDataReloadNodeType = {
+type PushDataWorkerStatusMessage = {
+	data: IPushDataWorkerStatusMessage;
+	type: 'sendWorkerStatusMessage';
+};
+
+type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
@@ -581,6 +588,30 @@ export interface IPushDataTestWebhook {
 export interface IPushDataConsoleMessage {
 	source: string;
 	message: string;
+}
+
+export interface IPushDataWorkerStatusMessage {
+	workerId: string;
+	status: IPushDataWorkerStatusPayload;
+}
+
+export interface IPushDataWorkerStatusPayload {
+	workerId: string;
+	runningJobsSummary: WorkerJobStatusSummary[];
+	freeMem: number;
+	totalMem: number;
+	uptime: number;
+	loadAvg: number[];
+	cpus: string;
+	arch: string;
+	platform: NodeJS.Platform;
+	hostname: string;
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
+	version: string;
 }
 
 export interface IResponseCallbackData {
