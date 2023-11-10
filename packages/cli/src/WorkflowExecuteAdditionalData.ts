@@ -52,7 +52,7 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { EventsService } from '@/services/events.service';
 import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';

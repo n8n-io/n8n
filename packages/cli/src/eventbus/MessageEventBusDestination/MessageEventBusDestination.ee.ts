@@ -6,13 +6,13 @@ import {
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
-import * as Db from '@/Db';
 import { Logger } from '@/Logger';
 import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -96,7 +96,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			id: this.getId(),
 			destination: this.serialize(),
 		};
-		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(data, {
+		const dbResult: InsertResult = await Container.get(EventDestinationsRepository).upsert(data, {
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
 		});
@@ -108,7 +108,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	}
 
 	static async deleteFromDb(id: string): Promise<DeleteResult> {
-		const dbResult = await Db.collections.EventDestinations.delete({ id });
+		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
 		return dbResult;
 	}
 

@@ -4,7 +4,6 @@ import type { INodeTypes } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -14,7 +13,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { OwnershipService } from '@/services/ownership.service';
 
-import { mockInstance } from '../integration/shared/utils/';
+import { mockInstance } from '../shared/mocking';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
@@ -25,6 +24,8 @@ import { mockNodeTypesData } from './Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { getCredentialOwnerRole, getWorkflowOwnerRole } from '../integration/shared/db/roles';
 import { createOwner, createUser } from '../integration/shared/db/users';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
@@ -199,9 +200,9 @@ describe('PermissionChecker.check()', () => {
 			],
 		};
 
-		const workflowEntity = await Db.collections.Workflow.save(workflowDetails);
+		const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
 
-		await Db.collections.SharedWorkflow.save({
+		await Container.get(SharedWorkflowRepository).save({
 			workflow: workflowEntity,
 			user: member,
 			role: workflowOwnerRole,

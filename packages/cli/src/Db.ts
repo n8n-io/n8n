@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-
-import type { IDatabaseCollections } from '@/Interfaces';
 
 import config from '@/config';
 
@@ -21,28 +18,6 @@ import {
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
-import {
-	AuthIdentityRepository,
-	AuthProviderSyncHistoryRepository,
-	CredentialsRepository,
-	EventDestinationsRepository,
-	ExecutionDataRepository,
-	ExecutionMetadataRepository,
-	ExecutionRepository,
-	InstalledNodesRepository,
-	InstalledPackagesRepository,
-	RoleRepository,
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	UserRepository,
-	VariablesRepository,
-	WorkflowRepository,
-	WorkflowStatisticsRepository,
-	WorkflowTagMappingRepository,
-} from '@db/repositories';
-
-export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
@@ -165,32 +140,6 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	}
 
 	connectionState.connected = true;
-
-	/**
-	 * @important Do not add to these collections. Inject the repository as a dependency instead.
-	 */
-	collections.AuthIdentity = Container.get(AuthIdentityRepository);
-	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
-	collections.EventDestinations = Container.get(EventDestinationsRepository);
-	collections.Execution = Container.get(ExecutionRepository);
-	collections.ExecutionData = Container.get(ExecutionDataRepository);
-	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
-	collections.InstalledNodes = Container.get(InstalledNodesRepository);
-	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
-	collections.SharedCredentials = Container.get(SharedCredentialsRepository);
-	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
-	collections.Variables = Container.get(VariablesRepository);
-	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
-	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
-
-	/**
-	 * @important Do not remove these collections until cloud hooks are backwards compatible.
-	 */
-	collections.Role = Container.get(RoleRepository);
-	collections.User = Container.get(UserRepository);
-	collections.Settings = Container.get(SettingsRepository);
-	collections.Credentials = Container.get(CredentialsRepository);
-	collections.Workflow = Container.get(WorkflowRepository);
 }
 
 export async function migrate() {

@@ -6,11 +6,9 @@ import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
 import type { Risk } from '@/audit/types';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import {
-	CredentialsRepository,
-	ExecutionDataRepository,
-	ExecutionRepository,
-} from '@db/repositories';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();
