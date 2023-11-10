@@ -1,4 +1,4 @@
-import { ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
 import { average as aAverage } from './ArrayExtensions';
 
 const min = Math.min;
@@ -39,11 +39,26 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
-const ifEmpty = <T, V>(value: V, defaultValue: T) => {
+function ifEmpty<T, V>(value: V, defaultValue: T) {
+	if (arguments.length !== 2) {
+		throw new ExpressionError('expected two arguments (value, defaultValue) for this function');
+	}
 	if (value === undefined || value === null || value === '') {
 		return defaultValue;
 	}
 	return value;
+}
+
+ifEmpty.doc = {
+	name: 'ifEmpty',
+	description:
+		'Returns the default value if the value is empty. Empty values are undefined, null, and empty strings.',
+	returnType: 'any',
+	args: [
+		{ name: 'value', type: 'any' },
+		{ name: 'defaultValue', type: 'any' },
+	],
+	docURL: 'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/#if-empty',
 };
 
 export const extendedFunctions = {

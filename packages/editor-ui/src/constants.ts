@@ -456,6 +456,7 @@ export const MAPPING_PARAMS = [
 	'$env',
 	'$evaluateExpression',
 	'$execution',
+	'$ifEmpty',
 	'$input',
 	'$item',
 	'$jmespath',
