@@ -429,6 +429,7 @@ export const enum VIEWS {
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
+	WORKER_VIEW = 'WorkerView',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -501,6 +502,7 @@ export const enum EnterpriseEditionFeature {
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
+	WorkerView = 'workerView',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
