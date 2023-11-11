@@ -2,7 +2,8 @@ import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SharedWorkflowRepository, WorkflowRepository } from '@db/repositories';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { getWorkflowEditorRole, getWorkflowOwnerRole } from './roles';
 
 export async function createManyWorkflows(

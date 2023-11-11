@@ -1,9 +1,10 @@
 import { flags } from '@oclif/command';
 import type { FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import * as Db from '@/Db';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 export class UpdateWorkflowCommand extends BaseCommand {
 	static description = 'Update workflows';
@@ -64,7 +65,7 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			findQuery.active = true;
 		}
 
-		await Db.collections.Workflow.update(findQuery, updateQuery);
+		await Container.get(WorkflowRepository).update(findQuery, updateQuery);
 		this.logger.info('Done');
 	}
 

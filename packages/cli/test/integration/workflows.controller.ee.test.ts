@@ -7,9 +7,10 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { License } from '@/License';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
+import { mockInstance } from '../shared/mocking';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
@@ -28,11 +29,11 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const licenseLike = utils.mockInstance(License, {
+const licenseLike = mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
-const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
+const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
@@ -62,7 +63,7 @@ beforeEach(async () => {
 	activeWorkflowRunnerLike.add.mockReset();
 	activeWorkflowRunnerLike.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', WorkflowHistoryRepository]);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 

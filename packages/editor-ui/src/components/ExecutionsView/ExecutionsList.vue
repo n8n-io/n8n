@@ -139,6 +139,7 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
+		this.stopAutoRefreshInterval();
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
 			return;
@@ -350,6 +351,7 @@ export default defineComponent({
 		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
 				await this.loadAutoRefresh();
+				this.stopAutoRefreshInterval();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();
 				}, 4000);

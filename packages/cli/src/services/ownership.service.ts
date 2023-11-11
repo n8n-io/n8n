@@ -1,12 +1,12 @@
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import { SharedWorkflowRepository } from '@/databases/repositories';
-import type { User } from '@/databases/entities/User';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
 import type { Credentials, ListQuery } from '@/requests';
-import type { Role } from '@/databases/entities/Role';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { Role } from '@db/entities/Role';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 @Service()
 export class OwnershipService {

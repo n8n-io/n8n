@@ -4,7 +4,8 @@ import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } f
 import config from '@/config';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import { CredentialsRepository, SharedCredentialsRepository } from '@db/repositories';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import type { ICredentialsDb } from '@/Interfaces';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { OAuthRequest } from '@/requests';

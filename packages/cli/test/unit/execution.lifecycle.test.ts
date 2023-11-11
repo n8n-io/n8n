@@ -1,6 +1,6 @@
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
-import { mockInstance } from '../integration/shared/utils/mocking';
+import { mockInstance } from '../shared/mocking';
 import { toSaveSettings } from '@/executionLifecycleHooks/toSaveSettings';
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';

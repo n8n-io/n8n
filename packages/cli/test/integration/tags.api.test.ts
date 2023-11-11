@@ -1,7 +1,7 @@
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
 import Container from 'typedi';
 import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUserShell } from './shared/db/users';

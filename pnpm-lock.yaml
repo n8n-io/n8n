@@ -198,7 +198,7 @@ importers:
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
         specifier: ~2.7.1
-        version: 2.7.1
+        version: 2.7.2
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
@@ -856,6 +856,9 @@ importers:
       axios:
         specifier: ^0.21.1
         version: 0.21.4
+      chart.js:
+        specifier: ^4.4.0
+        version: 4.4.0
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -925,6 +928,9 @@ importers:
       vue-agile:
         specifier: ^2.0.0
         version: 2.0.0
+      vue-chartjs:
+        specifier: ^5.2.0
+        version: 5.2.0(chart.js@4.4.0)(vue@3.3.4)
       vue-i18n:
         specifier: ^9.2.2
         version: 9.2.2(vue@3.3.4)
@@ -4444,6 +4450,10 @@ packages:
       mappersmith: 2.40.0
     dev: false
 
+  /@kurkle/color@0.3.2:
+    resolution: {integrity: sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==}
+    dev: false
+
   /@kwsites/file-exists@1.1.1:
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
     dependencies:
@@ -4621,11 +4631,11 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.7.1:
-    resolution: {integrity: sha512-SiPKI/wN2coLPB8Tyb28UlLgAszU2SkSR8PWNioTWAd8PnUhTYg8KN9jfUOZipVF+YMOAHc/hQUq6kJA1PF0xg==}
+  /@n8n_io/license-sdk@2.7.2:
+    resolution: {integrity: sha512-GalBo+2YxbFUR1I7cx3JDEiippqKw8ml3FdFK9hRRB9NfpP+H0QYnWf/sGOmKcb4nZ2lqU38nU7ZdIF96jBkXg==}
     engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
-      crypto-js: 4.1.1
+      crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
       undici: 5.26.4
@@ -10353,6 +10363,13 @@ packages:
 
   /charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==}
+    dev: false
+
+  /chart.js@4.4.0:
+    resolution: {integrity: sha512-vQEj6d+z0dcsKLlQvbKIMYFHd3t8W/7L2vfJIbYcfyPcRx92CsHqECpueN8qVGNlKyDcr5wBrYAYKnfu/9Q1hQ==}
+    engines: {pnpm: '>=7'}
+    dependencies:
+      '@kurkle/color': 0.3.2
     dev: false
 
   /check-error@1.0.2:
@@ -22271,6 +22288,16 @@ packages:
     peerDependencies:
       vue: ^3.0.0
     dependencies:
+      vue: 3.3.4
+    dev: false
+
+  /vue-chartjs@5.2.0(chart.js@4.4.0)(vue@3.3.4):
+    resolution: {integrity: sha512-d3zpKmGZr2OWHQ1xmxBcAn5ShTG917+/UCLaSpaCDDqT0U7DBsvFzTs69ZnHCgKoXT55GZDW8YEj9Av+dlONLA==}
+    peerDependencies:
+      chart.js: ^4.1.1
+      vue: ^3.0.0-0 || ^2.7.0
+    dependencies:
+      chart.js: 4.4.0
       vue: 3.3.4
     dev: false
 
