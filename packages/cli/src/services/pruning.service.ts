@@ -65,7 +65,7 @@ export class PruningService {
 	private setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
 		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
 
-		this.logger.debug(`Setting soft-deletion interval at every ${when} (pruning cycle)`);
+		this.logger.debug(`[Pruning] Setting soft-deletion interval at every ${when}`);
 
 		this.softDeletionInterval = setInterval(
 			async () => this.softDeleteOnPruningCycle(),
@@ -76,7 +76,7 @@ export class PruningService {
 	private scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
 		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
 
-		this.logger.debug(`Scheduling hard-deletion for next ${when} (pruning cycle)`);
+		this.logger.debug(`[Pruning] Scheduling hard-deletion for next ${when}`);
 
 		this.hardDeletionTimeout = setTimeout(
 			async () => this.hardDeleteOnPruningCycle(),
@@ -88,7 +88,7 @@ export class PruningService {
 	 * Mark executions as deleted based on age and count, in a pruning cycle.
 	 */
 	async softDeleteOnPruningCycle() {
-		this.logger.debug('Starting soft-deletion of executions (pruning cycle)');
+		this.logger.debug('[Pruning] Starting soft-deletion of executions');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
