@@ -1,18 +1,19 @@
 import type { SuperAgentTest } from 'supertest';
-import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
 import { License } from '@/License';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
-import Container from 'typedi';
+import type { Role } from '@db/entities/Role';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { User } from '@db/entities/User';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+
+import { mockInstance } from '../../shared/mocking';
+import { randomApiKey } from '../shared/random';
+import * as utils from '../shared/utils/';
+import * as testDb from '../shared/testDb';
 import { getAllRoles } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
@@ -59,7 +60,7 @@ beforeEach(async () => {
 		'Tag',
 		'Workflow',
 		'Credentials',
-		WorkflowHistoryRepository,
+		'WorkflowHistory',
 	]);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -398,7 +399,7 @@ describe('DELETE /workflows/:id', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 		// make sure the workflow actually deleted from the db
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOneBy({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
 			workflowId: workflow.id,
 		});
 
@@ -427,7 +428,7 @@ describe('DELETE /workflows/:id', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 		// make sure the workflow actually deleted from the db
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOneBy({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
 			workflowId: workflow.id,
 		});
 
@@ -475,7 +476,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 		// check whether the workflow is on the database
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -510,7 +511,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 		// check whether the workflow is on the database
-		const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: owner.id,
 				workflowId: workflow.id,
@@ -519,7 +520,7 @@ describe('POST /workflows/:id/activate', () => {
 
 		expect(sharedOwnerWorkflow).toBeNull();
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -573,7 +574,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(updatedAt).toBeDefined();
 
 		// get the workflow after it was deactivated
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -610,7 +611,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(updatedAt).toBeDefined();
 
 		// check whether the workflow is deactivated in the database
-		const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: owner.id,
 				workflowId: workflow.id,
@@ -619,7 +620,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedOwnerWorkflow).toBeNull();
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -686,7 +687,7 @@ describe('POST /workflows', () => {
 		expect(updatedAt).toEqual(createdAt);
 
 		// check if created workflow in DB
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: response.body.id,
@@ -925,7 +926,7 @@ describe('PUT /workflows/:id', () => {
 		expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
 
 		// check updated workflow in DB
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: response.body.id,
@@ -1094,7 +1095,7 @@ describe('PUT /workflows/:id', () => {
 		expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
 
 		// check updated workflow in DB
-		const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: owner.id,
 				workflowId: response.body.id,
@@ -1103,7 +1104,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(sharedOwnerWorkflow).toBeNull();
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: response.body.id,

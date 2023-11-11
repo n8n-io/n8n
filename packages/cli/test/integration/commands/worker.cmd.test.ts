@@ -1,4 +1,3 @@
-import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
 import config from '@/config';
@@ -18,6 +17,8 @@ import { RedisService } from '@/services/redis.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+
+import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 

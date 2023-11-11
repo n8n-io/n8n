@@ -18,7 +18,6 @@ import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
@@ -31,6 +30,8 @@ import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -285,7 +286,9 @@ export class Start extends BaseCommand {
 		}
 
 		// Load settings from database and set them to config.
-		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
+		const databaseSettings = await Container.get(SettingsRepository).findBy({
+			loadOnStartup: true,
+		});
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
@@ -303,7 +306,7 @@ export class Start extends BaseCommand {
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				await Db.collections.Execution.query('VACUUM;');
+				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
 		}
 

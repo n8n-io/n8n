@@ -6,9 +6,9 @@ import type { FindOptionsWhere } from 'typeorm';
 
 import { TIME, inTest } from '@/constants';
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
-import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 @Service()
 export class PruningService {

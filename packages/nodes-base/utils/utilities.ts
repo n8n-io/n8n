@@ -84,7 +84,7 @@ export function updateDisplayOptions(
 
 export function processJsonInput<T>(jsonData: T, inputName?: string) {
 	let values;
-	const input = `'${inputName}' ` || '';
+	const input = inputName ? `'${inputName}' ` : '';
 
 	if (typeof jsonData === 'string') {
 		try {

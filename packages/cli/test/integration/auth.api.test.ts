@@ -3,7 +3,6 @@ import { Container } from 'typedi';
 import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
-import * as Db from '@/Db';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -13,6 +12,7 @@ import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser, createUserShell } from './shared/db/users';
+import { UserRepository } from '@db/repositories/user.repository';
 
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
@@ -292,7 +292,7 @@ describe('GET /resolve-signup-token', () => {
 			.query({ inviteeId });
 
 		// cause inconsistent DB state
-		await Db.collections.User.update(owner.id, { email: '' });
+		await Container.get(UserRepository).update(owner.id, { email: '' });
 		const fifth = await authOwnerAgent
 			.get('/resolve-signup-token')
 			.query({ inviterId: owner.id })

@@ -34,6 +34,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
 import { defineComponent } from 'vue';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 
 export const pushConnection = defineComponent({
 	setup() {
@@ -61,6 +62,7 @@ export const pushConnection = defineComponent({
 			useWorkflowsStore,
 			useSettingsStore,
 			useSegment,
+			useOrchestrationStore,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -111,7 +113,10 @@ export const pushConnection = defineComponent({
 			this.connectRetries = 0;
 			this.lostConnection = false;
 			this.rootStore.pushConnectionActive = true;
-			this.clearAllStickyNotifications();
+			try {
+				// in the workers view context this fn is not defined
+				this.clearAllStickyNotifications();
+			} catch {}
 			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
 		},
 
@@ -194,6 +199,12 @@ export const pushConnection = defineComponent({
 				receivedData = JSON.parse(event.data);
 			} catch (error) {
 				return false;
+			}
+
+			if (receivedData.type === 'sendWorkerStatusMessage') {
+				const pushData = receivedData.data;
+				this.orchestrationManagerStore.updateWorkerStatus(pushData.status);
+				return true;
 			}
 
 			if (receivedData.type === 'sendConsoleMessage') {

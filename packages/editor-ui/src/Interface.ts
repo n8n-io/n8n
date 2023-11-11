@@ -45,6 +45,7 @@ import type {
 	BannerName,
 	INodeExecutionData,
 	INodeProperties,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -98,6 +99,8 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		Cypress: unknown;
 	}
 }
 
@@ -416,6 +419,7 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataExecutionRecovered
+	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved;
 
@@ -472,6 +476,11 @@ type PushDataRemoveNodeType = {
 type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
+};
+
+type PushDataWorkerStatusMessage = {
+	data: IPushDataWorkerStatusMessage;
+	type: 'sendWorkerStatusMessage';
 };
 
 export interface IPushDataExecutionStarted {
@@ -537,6 +546,41 @@ export interface IPushDataTestWebhook {
 export interface IPushDataConsoleMessage {
 	source: string;
 	messages: string[];
+}
+
+export interface WorkerJobStatusSummary {
+	jobId: string;
+	executionId: string;
+	retryOf?: string;
+	startedAt: Date;
+	mode: WorkflowExecuteMode;
+	workflowName: string;
+	workflowId: string;
+	status: ExecutionStatus;
+}
+
+export interface IPushDataWorkerStatusPayload {
+	workerId: string;
+	runningJobsSummary: WorkerJobStatusSummary[];
+	freeMem: number;
+	totalMem: number;
+	uptime: number;
+	loadAvg: number[];
+	cpus: string;
+	arch: string;
+	platform: NodeJS.Platform;
+	hostname: string;
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
+	version: string;
+}
+
+export interface IPushDataWorkerStatusMessage {
+	workerId: string;
+	status: IPushDataWorkerStatusPayload;
 }
 
 export type IPersonalizationSurveyAnswersV1 = {

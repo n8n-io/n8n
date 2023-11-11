@@ -79,7 +79,8 @@ export const LICENSE_FEATURES = {
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
-	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances', // @TODO: Rename to multi-main setup
+	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
+	WORKER_VIEW: 'feat:workerView',
 } as const;
 
 export const LICENSE_QUOTAS = {

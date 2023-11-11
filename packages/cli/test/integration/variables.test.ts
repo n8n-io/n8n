@@ -1,10 +1,12 @@
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import type { Variables } from '@db/entities/Variables';
-import { VariablesRepository } from '@db/repositories';
+import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
 import { License } from '@/License';
 import { VariablesService } from '@/environments/variables/variables.service';
+
+import { mockInstance } from '../shared/mocking';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
@@ -47,7 +49,7 @@ async function getVariableById(id: string) {
 }
 
 beforeAll(async () => {
-	utils.mockInstance(License, licenseLike);
+	mockInstance(License, licenseLike);
 
 	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
