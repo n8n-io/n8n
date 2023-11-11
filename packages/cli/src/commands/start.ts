@@ -363,6 +363,8 @@ export class Start extends BaseCommand {
 				multiMainSetup.on('leadershipChange', async () => {
 					if (multiMainSetup.isLeader) {
 						this.pruningService.startPruning();
+					} else {
+						this.pruningService.stopPruning();
 					}
 				});
 			}
