@@ -468,7 +468,19 @@ export type IPushData =
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
 	| PushDataActiveWorkflowUsersChanged
-	| PushDataWorkerStatusMessage;
+	| PushDataWorkerStatusMessage
+	| PushDataWorkflowActivated
+	| PushDataWorkflowDeactivated;
+
+type PushDataWorkflowActivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowActivated';
+};
+
+type PushDataWorkflowDeactivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowDeactivated';
+};
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -549,6 +561,10 @@ type IActiveWorkflowRemoved = IActiveWorkflowAdded;
 export interface IActiveWorkflowUsersChanged {
 	workflowId: Workflow['id'];
 	activeUsers: IActiveWorkflowUser[];
+}
+
+interface IActiveWorkflowChanged {
+	workflowId: Workflow['id'];
 }
 
 export interface IPushDataExecutionRecovered {
