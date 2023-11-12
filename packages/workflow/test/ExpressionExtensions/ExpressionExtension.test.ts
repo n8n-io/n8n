@@ -236,6 +236,10 @@ describe('tmpl Expression Parser', () => {
 			expect(evaluate('={{ $ifEmpty("", "default") }}')).toEqual('default');
 			expect(evaluate('={{ $ifEmpty(null, "default") }}')).toEqual('default');
 			expect(evaluate('={{ $ifEmpty(undefined, "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty([], "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty({}, "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty([1], "default") }}')).toEqual([1]);
+			expect(evaluate('={{ $ifEmpty({a: 1}, "default") }}')).toEqual({ a: 1 });
 		});
 	});
 });

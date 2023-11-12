@@ -46,13 +46,21 @@ function ifEmpty<T, V>(value: V, defaultValue: T) {
 	if (value === undefined || value === null || value === '') {
 		return defaultValue;
 	}
+	if (typeof value === 'object') {
+		if (Array.isArray(value) && !value.length) {
+			return defaultValue;
+		}
+		if (!Object.keys(value).length) {
+			return defaultValue;
+		}
+	}
 	return value;
 }
 
 ifEmpty.doc = {
 	name: 'ifEmpty',
 	description:
-		'Returns the default value if the value is empty. Empty values are undefined, null, and empty strings.',
+		'Returns the default value if the value is empty. Empty values are undefined, null, empty strings, arrays without elements and objects without keys.',
 	returnType: 'any',
 	args: [
 		{ name: 'value', type: 'any' },
