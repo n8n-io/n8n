@@ -30,7 +30,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator, Repository } from 'typeorm';
+import type { FindOperator } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -40,28 +40,13 @@ import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type {
-	AuthIdentityRepository,
-	AuthProviderSyncHistoryRepository,
-	CredentialsRepository,
-	EventDestinationsRepository,
-	ExecutionDataRepository,
-	ExecutionMetadataRepository,
-	ExecutionRepository,
-	InstalledNodesRepository,
-	InstalledPackagesRepository,
-	RoleRepository,
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	UserRepository,
-	VariablesRepository,
-	WorkflowRepository,
-	WorkflowStatisticsRepository,
-	WorkflowTagMappingRepository,
-} from '@db/repositories';
+import type { CredentialsRepository } from '@db/repositories/credentials.repository';
+import type { SettingsRepository } from '@db/repositories/settings.repository';
+import type { UserRepository } from '@db/repositories/user.repository';
+import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
+import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -70,33 +55,6 @@ export interface ICredentialsTypeData {
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
-
-/**
- * @important Do not add to these collections. Inject the repository as a dependency instead.
- */
-
-/* eslint-disable @typescript-eslint/naming-convention */
-export interface IDatabaseCollections extends Record<string, Repository<any>> {
-	AuthIdentity: AuthIdentityRepository;
-	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
-	Credentials: CredentialsRepository;
-	EventDestinations: EventDestinationsRepository;
-	Execution: ExecutionRepository;
-	ExecutionData: ExecutionDataRepository;
-	ExecutionMetadata: ExecutionMetadataRepository;
-	InstalledNodes: InstalledNodesRepository;
-	InstalledPackages: InstalledPackagesRepository;
-	Role: RoleRepository;
-	Settings: SettingsRepository;
-	SharedCredentials: SharedCredentialsRepository;
-	SharedWorkflow: SharedWorkflowRepository;
-	User: UserRepository;
-	Variables: VariablesRepository;
-	Workflow: WorkflowRepository;
-	WorkflowStatistics: WorkflowStatisticsRepository;
-	WorkflowTagMapping: WorkflowTagMappingRepository;
-}
-/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -285,7 +243,14 @@ export interface IExternalHooksFileData {
 }
 
 export interface IExternalHooksFunctions {
-	dbCollections: IDatabaseCollections;
+	dbCollections: {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		User: UserRepository;
+		Settings: SettingsRepository;
+		Credentials: CredentialsRepository;
+		Workflow: WorkflowRepository;
+		/* eslint-enable @typescript-eslint/naming-convention */
+	};
 }
 
 export interface IExternalHooksClass {
@@ -502,7 +467,8 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataActiveWorkflowUsersChanged
+	| PushDataWorkerStatusMessage;
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -539,7 +505,12 @@ export type PushDataConsoleMessage = {
 	type: 'sendConsoleMessage';
 };
 
-export type PushDataReloadNodeType = {
+type PushDataWorkerStatusMessage = {
+	data: IPushDataWorkerStatusMessage;
+	type: 'sendWorkerStatusMessage';
+};
+
+type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
@@ -617,6 +588,30 @@ export interface IPushDataTestWebhook {
 export interface IPushDataConsoleMessage {
 	source: string;
 	message: string;
+}
+
+export interface IPushDataWorkerStatusMessage {
+	workerId: string;
+	status: IPushDataWorkerStatusPayload;
+}
+
+export interface IPushDataWorkerStatusPayload {
+	workerId: string;
+	runningJobsSummary: WorkerJobStatusSummary[];
+	freeMem: number;
+	totalMem: number;
+	uptime: number;
+	loadAvg: number[];
+	cpus: string;
+	arch: string;
+	platform: NodeJS.Platform;
+	hostname: string;
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
+	version: string;
 }
 
 export interface IResponseCallbackData {

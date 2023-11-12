@@ -8,12 +8,10 @@ import { entities } from '@db/entities';
 import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
-import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomString } from './random';
-import type { CollectionName, PostgresSchemaSection } from './types';
-import { separate } from '@/utils';
+import type { PostgresSchemaSection } from './types';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -88,23 +86,40 @@ export async function terminate() {
 	await Db.close();
 }
 
+// Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
+const repositories = [
+	'AuthIdentity',
+	'AuthProviderSyncHistory',
+	'Credentials',
+	'EventDestinations',
+	'ExecutionData',
+	'ExecutionMetadata',
+	'Execution',
+	'InstalledNodes',
+	'InstalledPackages',
+	'Role',
+	'Settings',
+	'SharedCredentials',
+	'SharedWorkflow',
+	'Tag',
+	'User',
+	'Variables',
+	'Webhook',
+	'Workflow',
+	'WorkflowHistory',
+	'WorkflowStatistics',
+	'WorkflowTagMapping',
+] as const;
+
 /**
  * Truncate specific DB tables in a test DB.
  */
-export async function truncate(collections: CollectionName[]) {
-	const [tag, rest] = separate(collections, (c) => c === 'Tag');
-
-	if (tag.length) {
-		await Container.get(TagRepository).delete({});
-		await Container.get(WorkflowTagMappingRepository).delete({});
-	}
-
-	for (const collection of rest) {
-		if (typeof collection === 'string') {
-			await Db.collections[collection].delete({});
-		} else {
-			await Container.get(collection as { new (): Repository<any> }).delete({});
-		}
+export async function truncate(names: Array<(typeof repositories)[number]>) {
+	for (const name of names) {
+		const RepositoryClass: { new (): Repository<any> } = (
+			await import(`@db/repositories/${name.charAt(0).toLowerCase() + name.slice(1)}.repository`)
+		)[`${name}Repository`];
+		await Container.get(RepositoryClass).delete({});
 	}
 }
 

@@ -33,7 +33,6 @@ import {
 
 import type express from 'express';
 
-import * as Db from '@/Db';
 import type {
 	IResponseCallbackData,
 	IWebhookManager,
@@ -63,7 +62,8 @@ import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
-import { WorkflowRepository } from '@/databases/repositories';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import config from '@/config';
 import type { MultiMainInstancePublisher } from './services/orchestration/main/MultiMainInstance.publisher.ee';
 
@@ -104,6 +104,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async init() {
@@ -188,7 +189,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			});
 		}
 
-		const workflowData = await Db.collections.Workflow.findOne({
+		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
@@ -296,7 +297,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		Object.assign(where, { workflowId: In(activeIds) });
 
-		const sharings = await Db.collections.SharedWorkflow.find({
+		const sharings = await this.sharedWorkflowRepository.find({
 			select: ['workflowId'],
 			where,
 		});
@@ -416,7 +417,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Clear workflow-defined webhooks from the `webhook_entity` table.
 	 */
 	async clearWebhooks(workflowId: string) {
-		const workflowData = await Db.collections.Workflow.findOne({
+		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});

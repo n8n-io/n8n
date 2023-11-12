@@ -10,7 +10,8 @@ import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
+import { initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';

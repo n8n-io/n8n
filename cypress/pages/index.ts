@@ -11,3 +11,4 @@ export * from './bannerStack';
 export * from './workflow-executions-tab';
 export * from './signin';
 export * from './workflow-history';
+export * from './workerView';
