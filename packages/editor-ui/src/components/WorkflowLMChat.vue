@@ -64,7 +64,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs-wrapper" v-if="node">
+				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
@@ -82,6 +82,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
+					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
 				<n8n-button
@@ -92,7 +93,7 @@
 					size="large"
 					icon="comment"
 					type="primary"
-					data-test-id="workflow-chat-button"
+					data-test-id="workflow-chat-send-button"
 				/>
 
 				<n8n-info-tip class="mt-s">
@@ -126,7 +127,8 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useUIStore, useWorkflowsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';

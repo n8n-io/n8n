@@ -5,7 +5,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore, useUIStore } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	computed: {

@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { normalizeSupplementalType } from './nodeTypesUtils';
 
 /*

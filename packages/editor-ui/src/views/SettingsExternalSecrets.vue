@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n, useMessage, useToast } from '@/composables';
-import { useExternalSecretsStore } from '@/stores';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
 import type { ExternalSecretsProvider } from '@/Interface';

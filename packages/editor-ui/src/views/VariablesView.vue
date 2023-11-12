@@ -1,12 +1,10 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
-import {
-	useEnvironmentsStore,
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';

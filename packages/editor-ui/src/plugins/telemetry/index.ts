@@ -14,7 +14,8 @@ import {
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
-import { useNDVStore, useUIStore } from '@/stores';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;

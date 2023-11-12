@@ -56,7 +56,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useExternalSecretsStore } from '@/stores';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
