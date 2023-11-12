@@ -10,15 +10,14 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from './mocking';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { mockNodeTypesData } from '../../../unit/Helpers';
+import { mockInstance } from '../../../shared/mocking';
 
-export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
 
 // ----------------------------------
@@ -108,7 +107,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneByOrFail({
+	const { value } = await Container.get(SettingsRepository).findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -118,7 +117,7 @@ export async function isInstanceOwnerSetUp() {
 export const setInstanceOwnerSetUp = async (value: boolean) => {
 	config.set('userManagement.isInstanceOwnerSetUp', value);
 
-	await Db.collections.Settings.update(
+	await Container.get(SettingsRepository).update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(value) },
 	);

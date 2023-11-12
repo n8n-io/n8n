@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@/databases/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import type {
 	ExternalSecretsSettings,
 	SecretsProvider,

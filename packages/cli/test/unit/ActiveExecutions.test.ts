@@ -5,7 +5,7 @@ import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { mock } from 'jest-mock-extended';
 
 const FAKE_EXECUTION_ID = '15';

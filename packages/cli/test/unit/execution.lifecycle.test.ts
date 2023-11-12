@@ -1,6 +1,6 @@
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
-import { mockInstance } from '../integration/shared/utils/mocking';
+import { mockInstance } from '../shared/mocking';
 import { toSaveSettings } from '@/executionLifecycleHooks/toSaveSettings';
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';
@@ -24,7 +24,6 @@ function toIRun(item?: object) {
 }
 
 function getDataId(run: IRun, kind: 'binary' | 'json') {
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore
 	return run.data.resultData.runData.myNode[0].data.main[0][0][kind].data.id;
 }
