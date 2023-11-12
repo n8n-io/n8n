@@ -200,7 +200,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName, normalizeSupplementalType } from '@/utils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -351,7 +351,8 @@ export default defineComponent({
 				);
 				if (otherOutputs.length) {
 					otherOutputs.forEach((outputName) => {
-						classes[`node-wrapper--connection-type-${outputName}`] = true;
+						classes[`node-wrapper--connection-type-${normalizeSupplementalType(outputName)}`] =
+							true;
 					});
 				}
 			}

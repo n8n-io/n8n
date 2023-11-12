@@ -318,7 +318,12 @@ import {
 	useExternalSecretsStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
+import {
+	getAccountAge,
+	getConnectionInfo,
+	getNodeViewTab,
+	normalizeSupplementalType,
+} from '@/utils';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -613,7 +618,11 @@ export default defineComponent({
 
 			if (this.connectionDragScope.type) {
 				returnClasses.push('connection-drag-scope-active');
-				returnClasses.push(`connection-drag-scope-active-type-${this.connectionDragScope.type}`);
+				returnClasses.push(
+					`connection-drag-scope-active-type-${normalizeSupplementalType(
+						this.connectionDragScope.type,
+					)}`,
+				);
 				returnClasses.push(
 					`connection-drag-scope-active-connection-${this.connectionDragScope.connection}`,
 				);

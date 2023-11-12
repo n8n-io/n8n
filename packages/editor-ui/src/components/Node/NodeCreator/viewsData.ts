@@ -35,6 +35,7 @@ import { useNodeTypesStore } from '@/stores';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import { normalizeSupplementalType } from '@/utils';
 
 export interface NodeViewItem {
 	key: string;
@@ -116,9 +117,9 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 		return {
 			connectionType: nodeConnectionType,
 			iconProps: {
-				color: `var(--node-type-${nodeConnectionType}-color)`,
+				color: `var(--node-type-${normalizeSupplementalType(nodeConnectionType)}-color)`,
 			},
-			panelClass: `nodes-list-panel-${nodeConnectionType}`,
+			panelClass: `nodes-list-panel-${normalizeSupplementalType(nodeConnectionType)}`,
 		};
 	}
 

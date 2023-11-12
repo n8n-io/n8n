@@ -1071,7 +1071,7 @@ export class WorkflowExecute {
 									);
 									const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 									const mainOutputTypes = outputTypes.filter(
-										(output) => output === NodeConnectionType.Main,
+										(output) => output === (NodeConnectionType.Main as string),
 									);
 
 									const errorItems: INodeExecutionData[] = [];

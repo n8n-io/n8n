@@ -1512,20 +1512,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes =
-	| 'ai_agent'
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_tool'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore'
-	| 'main';
+export type ConnectionTypes = string;
 
 export const enum NodeConnectionType {
 	// eslint-disable-next-line @typescript-eslint/naming-convention

@@ -314,7 +314,7 @@ export const nodeHelpers = defineComponent({
 
 				if (parentNodes.length === 0) {
 					// We want to show different error for missing AI subnodes
-					if (input.type.startsWith('ai_')) {
+					if (input.type !== NodeConnectionType.Main.toString()) {
 						foundIssues[input.type] = [
 							this.$locale.baseText('nodeIssues.input.missingSubNode', {
 								interpolate: {

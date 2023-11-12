@@ -27,6 +27,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
+import { normalizeSupplementalType } from '@/utils';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -530,7 +531,7 @@ export const nodeBase = defineComponent({
 			this.__addOutputEndpoints(node, nodeTypeData);
 		},
 		__getEndpointColor(connectionType: ConnectionTypes) {
-			return `--node-type-${connectionType}-color`;
+			return `--node-type-${normalizeSupplementalType(connectionType)}-color`;
 		},
 		__getInputConnectionStyle(
 			connectionType: ConnectionTypes,
@@ -544,10 +545,6 @@ export const nodeBase = defineComponent({
 						connectionType,
 					),
 				};
-			}
-
-			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
-				return {};
 			}
 
 			const createSupplementalConnectionType = (
@@ -604,9 +601,9 @@ export const nodeBase = defineComponent({
 				};
 			}
 
-			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
-				return {};
-			}
+			// if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
+			// 	return {};
+			// }
 
 			return createSupplementalConnectionType(connectionType);
 		},

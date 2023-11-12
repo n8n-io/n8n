@@ -16,6 +16,7 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
+import { normalizeSupplementalType } from './nodeTypesUtils';
 
 /*
 	Canvas constants and functions.
@@ -236,11 +237,7 @@ export const getScope = (type?: string) => {
 };
 
 export const getEndpointScope = (endpointType: ConnectionTypes): string | undefined => {
-	if (Object.values(NodeConnectionType).includes(endpointType)) {
-		return getScope(endpointType);
-	}
-
-	return undefined;
+	return getScope(endpointType);
 };
 
 export const getInputEndpointStyle = (
@@ -285,7 +282,7 @@ export const getInputNameOverlay = (
 			label.classList.add('node-input-endpoint-label');
 			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
-				label.classList.add(`node-connection-type-${inputName}`);
+				label.classList.add(`node-connection-type-${normalizeSupplementalType(inputName)}`);
 			}
 			return label;
 		},
@@ -318,9 +315,10 @@ export const getOutputNameOverlay = (
 			if (ep?.__meta?.endpointLabelLength) {
 				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
 			}
-			if (outputName !== NodeConnectionType.Main) {
+			const scope = getScope(outputName);
+			if (scope) {
 				label.classList.add('node-output-endpoint-label--data');
-				label.classList.add(`node-connection-type-${getScope(outputName)}`);
+				label.classList.add(`node-connection-type-${normalizeSupplementalType(scope)}`);
 			}
 			if (category) {
 				label.classList.add(`node-connection-category-${category}`);

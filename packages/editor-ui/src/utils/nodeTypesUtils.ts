@@ -1,13 +1,14 @@
-import type {
-	INodeCredentialDescription,
-	IDataObject,
-	INodeExecutionData,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValueType,
-	INodePropertyOptions,
-	INodePropertyCollection,
-	ResourceMapperField,
+import {
+	type INodeCredentialDescription,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type INodePropertyOptions,
+	type INodePropertyCollection,
+	type ResourceMapperField,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	MAIN_AUTH_FIELD_NAME,
@@ -424,4 +425,12 @@ export const isMatchingField = (
 		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
 	}
 	return false;
+};
+
+export const normalizeSupplementalType = (t: string): string => {
+	if (Object.values(NodeConnectionType).includes(t)) {
+		return t;
+	} else {
+		return 'supplemental';
+	}
 };

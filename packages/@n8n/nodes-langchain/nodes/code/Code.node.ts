@@ -295,7 +295,7 @@ export class Code implements INodeType {
 
 		const outputs = this.getNodeOutputs();
 		const mainOutputs: INodeOutputConfiguration[] = outputs.filter(
-			(output) => output.type === NodeConnectionType.Main,
+			(output) => output.type === (NodeConnectionType.Main as string),
 		);
 
 		const options = { multiOutput: mainOutputs.length !== 1 };

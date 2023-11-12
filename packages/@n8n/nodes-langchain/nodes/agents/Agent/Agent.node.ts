@@ -42,7 +42,7 @@ function getInputs(
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
-				required: type === NodeConnectionType.AiLanguageModel,
+				required: type === (NodeConnectionType.AiLanguageModel as string),
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
 					type as NodeConnectionType,
 				)

@@ -690,11 +690,9 @@ export class Workflow {
 
 		let types: ConnectionTypes[];
 		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+			types = Object.keys(connections[nodeName]);
 		} else if (connectionType === 'ALL_NON_MAIN') {
-			types = Object.keys(connections[nodeName]).filter(
-				(type) => type !== 'main',
-			) as ConnectionTypes[];
+			types = Object.keys(connections[nodeName]).filter((type) => type !== 'main');
 		} else {
 			types = [connectionType];
 		}
