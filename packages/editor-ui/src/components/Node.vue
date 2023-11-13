@@ -72,6 +72,7 @@
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip
 						placement="top"
+						:show-after="500"
 						:visible="showTriggerNodeTooltip"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>

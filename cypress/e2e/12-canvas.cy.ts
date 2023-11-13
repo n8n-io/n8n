@@ -322,7 +322,6 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 
 		// Context menu
-
 		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);

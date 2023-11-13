@@ -88,7 +88,7 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
-	it.only('Should be able to pin data from canvas (context menu or shortcut)', () => {
+	it('Should be able to pin data from canvas (context menu or shortcut)', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, 'overflow-button');
