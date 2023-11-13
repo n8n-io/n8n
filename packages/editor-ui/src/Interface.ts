@@ -7,7 +7,6 @@ import type {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 } from './constants';
-
 import type { IMenuItem } from 'n8n-design-system';
 import type {
 	GenericValue,
@@ -50,6 +49,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
+import type { runExternalHook } from '@/utils';
 
 export * from 'n8n-design-system/types';
 
@@ -92,7 +92,9 @@ declare global {
 			debug?(): void;
 		};
 		analytics?: {
-			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+			identify(userId: string): void;
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+			page(category: string, name: string, properties?: ITelemetryTrackProperties): void;
 		};
 		featureFlags?: {
 			getAll: () => FeatureFlags;
@@ -158,7 +160,7 @@ export interface INodeTypesMaxCount {
 }
 
 export interface IExternalHooks {
-	run(eventName: string, metadata?: IDataObject): Promise<void>;
+	run: typeof runExternalHook;
 }
 
 export interface INodeTranslationHeaders {
@@ -809,6 +811,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
