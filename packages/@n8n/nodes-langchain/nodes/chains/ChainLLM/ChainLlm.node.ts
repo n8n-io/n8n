@@ -21,6 +21,7 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { getWorkflowRunningAbortSignal } from '../../../utils/helpers';
 
 interface MessagesTemplate {
 	type: string;
@@ -65,12 +66,13 @@ async function createSimpleLLMChain(
 	llm: BaseLanguageModel,
 	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
+	signal?: AbortSignal,
 ): Promise<string[]> {
 	const chain = new LLMChain({
 		llm,
 		prompt,
 	});
-	const response = (await chain.call({ query })) as string[];
+	const response = (await chain.call({ query, signal })) as string[];
 
 	return Array.isArray(response) ? response : [response];
 }
@@ -80,12 +82,13 @@ async function getChain(
 	llm: BaseLanguageModel,
 	outputParsers: BaseOutputParser[],
 	messages?: MessagesTemplate[],
+	signal?: AbortSignal,
 ): Promise<unknown[]> {
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = getChainPromptTemplate(llm, messages);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return createSimpleLLMChain(llm, query, chatTemplate);
+		return createSimpleLLMChain(llm, query, chatTemplate, signal);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser
@@ -219,6 +222,9 @@ export class ChainLlm implements INodeType {
 			0,
 		)) as BaseOutputParser[];
 
+		const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
+		llm.callbacks = callbacks;
+
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
 			const messages = this.getNodeParameter('messages.messageValues', i, []) as MessagesTemplate[];
@@ -227,7 +233,7 @@ export class ChainLlm implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const responses = await getChain(prompt, llm, outputParsers, messages);
+			const responses = await getChain(prompt, llm, outputParsers, messages, signal);
 
 			responses.forEach((response) => {
 				let data: IDataObject;

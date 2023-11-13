@@ -51,6 +51,8 @@ export async function reActAgentAgentExecute(
 		});
 	}
 
+	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
+	model.callbacks = callbacks;
 	const agentExecutor = AgentExecutor.fromAgentAndTools({ agent, tools });
 
 	const returnData: INodeExecutionData[] = [];
@@ -82,23 +84,12 @@ export async function reActAgentAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
-		model.callbacks = callbacks;
-
-		try {
-			let response = await agentExecutor.call({ input, outputParsers, signal });
-			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
-			}
-
-			returnData.push({ json: response });
-		} catch (error) {
-			if (error.message === 'AbortError') {
-				// returnData.push({ json: { output: '' } });
-			} else {
-				throw new NodeOperationError(this.getNode(), error.message);
-			}
+		let response = await agentExecutor.call({ input, outputParsers, signal });
+		if (outputParser) {
+			response = { output: await outputParser.parse(response.output as string) };
 		}
+
+		returnData.push({ json: response });
 	}
 
 	return this.prepareOutputData(returnData);

@@ -232,16 +232,24 @@ export function logWrapper(
 							[{ json: { messages, options } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [messages, options, runManager],
-						})) as ChatResult;
-
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-						return response;
+						const abortSignal = new AbortController();
+						if (!executeFunctions.isRunning()) {
+							abortSignal.abort();
+						}
+						try {
+							const response = (await callMethodAsync.call(target, {
+								executeFunctions,
+								connectionType,
+								currentNodeRunIndex: index,
+								method: target[prop],
+								arguments: [messages, { ...options, signal: abortSignal.signal }, runManager],
+							})) as ChatResult;
+							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+							return response;
+						} catch (error) {
+							if (error?.name === 'AbortError') return { generations: [] };
+							throw error;
+						}
 					};
 				}
 			}

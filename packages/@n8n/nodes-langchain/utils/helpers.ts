@@ -19,9 +19,6 @@ export function getMetadataFiltersValues(
 export function getWorkflowRunningAbortSignal(context: IExecuteFunctions, triggerCallback: string) {
 	const abortController = new AbortController();
 	const callbacks = CallbackManager.fromHandlers({
-		handleAgentAction: () => {
-			console.log('Agent action');
-		},
 		[triggerCallback]: () => {
 			console.log(triggerCallback, 'triggered');
 			const isRunning = context.isRunning();

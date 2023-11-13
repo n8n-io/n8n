@@ -35,6 +35,8 @@ export async function sqlAgentAgentExecute(
 	const items = this.getInputData();
 
 	const returnData: INodeExecutionData[] = [];
+	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
+	model.callbacks = callbacks;
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const input = this.getNodeParameter('input', i) as string;
@@ -96,9 +98,7 @@ export async function sqlAgentAgentExecute(
 		const toolkit = new SqlToolkit(dbInstance, model);
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-		const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleAgentAction');
-
-		const response = await agentExecutor.call({ input, signal }, { callbacks });
+		const response = await agentExecutor.call({ input, signal });
 
 		returnData.push({ json: response });
 	}

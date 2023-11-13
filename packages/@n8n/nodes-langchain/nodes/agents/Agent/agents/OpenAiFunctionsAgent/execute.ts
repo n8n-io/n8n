@@ -13,6 +13,7 @@ import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
@@ -58,7 +59,8 @@ export async function openAiFunctionsAgentExecute(
 				outputKey: 'output',
 			}),
 	};
-
+	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
+	model.callbacks = callbacks;
 	const agentExecutor = AgentExecutor.fromAgentAndTools(agentConfig);
 
 	const returnData: INodeExecutionData[] = [];
@@ -90,7 +92,7 @@ export async function openAiFunctionsAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers });
+		let response = await agentExecutor.call({ input, outputParsers, signal });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

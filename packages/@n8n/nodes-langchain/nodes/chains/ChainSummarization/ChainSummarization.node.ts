@@ -14,6 +14,7 @@ import { PromptTemplate } from 'langchain/prompts';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { getWorkflowRunningAbortSignal } from '../../../utils/helpers';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from './prompt';
 
 export class ChainSummarization implements INodeType {
@@ -256,6 +257,9 @@ export class ChainSummarization implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
+		model.callbacks = callbacks;
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			let processedDocuments: Document[];
 			if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
@@ -266,6 +270,7 @@ export class ChainSummarization implements INodeType {
 
 			const response = await chain.call({
 				input_documents: processedDocuments,
+				signal,
 			});
 
 			returnData.push({ json: { response } });
