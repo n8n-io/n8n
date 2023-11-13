@@ -8,6 +8,11 @@ import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from './stores/settings.store';
 
+/**
+ * Old permissions implementation
+ * @deprecated
+ */
+
 export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
 	ResourceOwner = 'isOwner',

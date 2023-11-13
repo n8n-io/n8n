@@ -133,18 +133,13 @@ export const PERMISSIONS: IUserPermissions = {
 
 /**
  * To be authorized, user must pass all deny rules and pass any of the allow rules.
- *
+ * @deprecated
  */
 export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
-	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
 	// big AND block
 	// if any of these are false, block user
 	if (permissions.deny) {
 		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
-			return false;
-		}
-
-		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
 			return false;
 		}
 
@@ -162,10 +157,6 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 	// if any of these are true, allow user
 	if (permissions.allow) {
 		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
-			return true;
-		}
-
-		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
 			return true;
 		}
 
