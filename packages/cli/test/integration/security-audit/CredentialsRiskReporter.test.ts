@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import { audit } from '@/audit';
-import { CREDENTIALS_REPORT } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/testDb';
 import { generateNanoId } from '@db/utils/generators';
@@ -11,8 +11,12 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
 
+let securityAuditService: SecurityAuditService;
+
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -54,7 +58,7 @@ test('should report credentials not in any use', async () => {
 		Container.get(WorkflowRepository).save(workflowDetails),
 	]);
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -99,7 +103,7 @@ test('should report credentials not in active use', async () => {
 
 	await Container.get(WorkflowRepository).save(workflowDetails);
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -167,7 +171,7 @@ test('should report credential in not recently executed workflow', async () => {
 		workflowData: workflow,
 	});
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -236,7 +240,7 @@ test('should not report credentials in recently executed workflow', async () => 
 		workflowData: workflow,
 	});
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	expect(testAudit).toBeEmptyArray();
 });

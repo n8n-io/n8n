@@ -84,3 +84,7 @@ export namespace n8n {
 		securityIssueFixVersion: string;
 	};
 }
+
+export interface RiskReporter {
+	report(workflows: Workflow[]): Promise<Risk.Report | null>;
+}
