@@ -23,6 +23,7 @@ import type {
 	IWorkflowSettings,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	ExecutionError,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -68,6 +69,7 @@ import { Logger } from './Logger';
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
+	console.error(errorObject);
 	// TODO: Expand with other error types
 	if (errorObject instanceof Error) {
 		// If it's already an Error instance, return it as is.
@@ -902,10 +904,11 @@ async function executeWorkflow(
 		}
 		data = await workflowExecute.processRunExecutionData(workflow);
 	} catch (error) {
+		const executionError = error ? (error as ExecutionError) : undefined;
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
-					error,
+					error: executionError,
 					runData: {},
 				},
 			},
@@ -941,9 +944,9 @@ async function executeWorkflow(
 		);
 		throw objectToError(
 			{
-				...error,
-				stack: error.stack,
-				message: error.message,
+				...executionError,
+				stack: executionError?.stack,
+				message: executionError?.message,
 			},
 			workflow,
 		);
@@ -953,7 +956,8 @@ async function executeWorkflow(
 
 	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 
-	if (data.finished === true) {
+	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
 		activeExecutions.remove(executionId, data);
@@ -961,13 +965,14 @@ async function executeWorkflow(
 		return returnData!.data!.main;
 	}
 	activeExecutions.remove(executionId, data);
+
 	// Workflow did fail
 	const { error } = data.data.resultData;
 
 	throw objectToError(
 		{
 			...error,
-			stack: error!.stack,
+			stack: error?.stack,
 		},
 		workflow,
 	);
