@@ -69,7 +69,6 @@ import { Logger } from './Logger';
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
-	console.error(errorObject);
 	// TODO: Expand with other error types
 	if (errorObject instanceof Error) {
 		// If it's already an Error instance, return it as is.
