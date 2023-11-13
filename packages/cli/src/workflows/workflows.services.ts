@@ -263,7 +263,7 @@ export class WorkflowsService {
 		 * active workflows in memory, and re-add it after the update.
 		 *
 		 * If a trigger or poller in the workflow was updated, the new value
-		 * will take effect only on removing and readding.
+		 * will take effect only on removing and re-adding.
 		 */
 		if (shared.workflow.active) {
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
