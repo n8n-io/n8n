@@ -422,8 +422,6 @@ export class MoveBinaryData implements INodeType {
 
 						if (nodeVersion > 1) {
 							mimeType = 'application/json';
-						} else if (!mimeType) {
-							mimeType = 'application/json';
 						}
 					}
 
