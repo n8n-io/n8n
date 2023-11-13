@@ -1,24 +1,16 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import prettyBytes from 'pretty-bytes';
 
 import type {
 	IExecuteFunctions,
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	BINARY_ENCODING,
-	deepCopy,
-	jsonParse,
-	NodeOperationError,
-	fileTypeFromMimeType,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
 
@@ -47,22 +39,6 @@ encodeDecodeOptions.sort((a, b) => {
 	}
 	return 0;
 });
-
-const detectMimeType = (base64String: string) => {
-	if (base64String.startsWith('JVBERi0')) {
-		return 'application/pdf';
-	} else if (base64String.startsWith('R0lGODdh') || base64String.startsWith('R0lGODlh')) {
-		return 'image/gif';
-	} else if (base64String.startsWith('iVBORw0KGgo')) {
-		return 'image/png';
-	} else if (base64String.startsWith('/9j/')) {
-		return 'image/jpg';
-	} else if (base64String.startsWith('{')) {
-		return 'application/json';
-	}
-
-	return 'text/plain';
-};
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
@@ -437,13 +413,10 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				let data;
-				let fileSize;
 				if (options.dataIsBase64 !== true) {
 					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
-
-					fileSize = prettyBytes(value.length);
 
 					data = iconv
 						.encode(value, encoding, { addBOM: options.addBOM as boolean })
@@ -452,26 +425,24 @@ export class MoveBinaryData implements INodeType {
 					data = value as unknown as string;
 				}
 
-				let mimeType = options.mimeType as string;
+				const nodeVersion = this.getNode().typeVersion;
 
-				if (!mimeType) {
-					const nodeType = this.getNode().typeVersion;
-					if (nodeType > 1) {
-						mimeType = detectMimeType(data);
-					} else {
-						mimeType = 'application/json';
-					}
+				let mimeType = options.mimeType as string;
+				if (!mimeType && nodeVersion === 1) {
+					mimeType = 'application/json';
 				}
 
-				const convertedValue: IBinaryData = {
-					data,
+				const convertedValue = await this.helpers.prepareBinaryData(
+					Buffer.from(data, BINARY_ENCODING),
+					options.fileName as string,
 					mimeType,
-					fileType: fileTypeFromMimeType(mimeType),
-					fileSize,
-				};
+				);
 
-				if (options.fileName) {
-					convertedValue.fileName = options.fileName as string;
+				if (!convertedValue.fileName && nodeVersion > 1) {
+					const fileExtension = convertedValue.fileExtension
+						? `.${convertedValue.fileExtension}`
+						: '';
+					convertedValue.fileName = `file${fileExtension}`;
 				}
 
 				set(newItem.binary, destinationKey, convertedValue);
