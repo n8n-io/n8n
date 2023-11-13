@@ -15,12 +15,7 @@ import type {
 	WorkBook,
 	WritingOptions,
 } from 'xlsx';
-import {
-	read as xlsxRead,
-	readFile as xlsxReadFile,
-	utils as xlsxUtils,
-	write as xlsxWrite,
-} from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
 import {
 	operationProperties,
@@ -76,8 +71,8 @@ export class SpreadsheetFileV1 implements INodeType {
 					if (options.readAsString) xlsxOptions.type = 'string';
 
 					if (binaryData.id) {
-						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-						workbook = xlsxReadFile(binaryPath, xlsxOptions);
+						const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						workbook = xlsxRead(buffer.toString('utf8'), xlsxOptions);
 					} else {
 						const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 						workbook = xlsxRead(
