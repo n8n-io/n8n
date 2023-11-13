@@ -814,6 +814,7 @@
 	"ndv.pinData.error.tooLarge.description": "Workflow has reached the maximum allowed pinned data size",
 	"ndv.pinData.error.tooLargeWorkflow.title": "Pinned data too big",
 	"ndv.pinData.error.tooLargeWorkflow.description": "Workflow has reached the maximum allowed size",
+	"ndv.httpRequest.credentialOnly.docsNotice": "Use the <a target=\"_blank\" href=\"{docsUrl}\">{nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a {nodeName} credential below.",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
 	"node.thisIsATriggerNode": "This is a Trigger node. <a target=\"_blank\" href=\"https://docs.n8n.io/workflows/components/nodes/\">Learn more</a>",

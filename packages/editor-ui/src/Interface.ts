@@ -809,6 +809,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'
 	| 'outputs'

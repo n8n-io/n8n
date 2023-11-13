@@ -14,6 +14,12 @@ export class ShufflerApi implements ICredentialType {
 
 	documentationUrl = 'shuffler';
 
+	httpRequestNode = {
+		name: 'Shuffler',
+		docsUrl: 'https://shuffler.io/docs/API',
+		apiBaseUrl: 'https://shuffler.io/api/v1/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

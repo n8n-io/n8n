@@ -478,11 +478,9 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wa');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wait');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('spreadsheet');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Spreadsheet File');

@@ -5,7 +5,7 @@
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		:class="$style.nodeItem"
-		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
+		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
@@ -44,6 +44,7 @@ import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
@@ -78,6 +79,13 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (
+		props.subcategory === DEFAULT_SUBCATEGORY &&
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+	) {
+		return '';
+	}
+
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
