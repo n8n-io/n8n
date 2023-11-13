@@ -206,7 +206,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			this.setAllowedModules(settings.allowedModules as { builtIn?: string; external?: string });
+			this.setAllowedModules(
+				settings.allowedModules as { builtIn?: string | string[]; external?: string },
+			);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
@@ -235,9 +237,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		setPromptsData(promptsData: IN8nPrompts): void {
 			Vue.set(this, 'promptsData', promptsData);
 		},
-		setAllowedModules(allowedModules: { builtIn?: string; external?: string }): void {
+		setAllowedModules(allowedModules: { builtIn?: string | string[]; external?: string }): void {
 			this.settings.allowedModules = {
-				...(allowedModules.builtIn && { builtIn: allowedModules.builtIn.split(',') }),
+				...(allowedModules.builtIn && {
+					builtIn: Array.isArray(allowedModules.builtIn)
+						? allowedModules.builtIn
+						: allowedModules.builtIn.split(','),
+				}),
 				...(allowedModules.external && { external: allowedModules.external.split(',') }),
 			};
 		},
