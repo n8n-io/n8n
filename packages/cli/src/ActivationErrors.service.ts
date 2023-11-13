@@ -34,15 +34,6 @@ export class ActivationErrorsService {
 		return this.cacheService.get<ActivationError>(key);
 	}
 
-	create(error: Error): ActivationError {
-		return {
-			time: new Date().getTime(),
-			error: {
-				message: error.message,
-			},
-		};
-	}
-
 	private toCacheKey(workflowId: string) {
 		return `workflow-activation-error:${workflowId}`;
 	}
