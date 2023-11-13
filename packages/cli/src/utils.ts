@@ -101,3 +101,12 @@ export const isIntegerString = (value: string) => /^\d+$/.test(value);
 export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
+
+/**
+ * Filter an array with an asynchronous callback.
+ */
+export async function asyncFilter<T>(array: T[], cbFn: (item: T) => Promise<boolean>) {
+	const resolvedArray = await Promise.all(array.map(cbFn));
+
+	return array.filter((_, index) => resolvedArray[index]);
+}

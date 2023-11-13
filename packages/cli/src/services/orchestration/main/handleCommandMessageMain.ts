@@ -5,7 +5,6 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import type { ActivationError } from '@/ActiveWorkflowRunner';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
 
@@ -95,23 +94,7 @@ export async function handleCommandMessageMain(messageString: string) {
 					await activeWorkflowRunner.add(workflowId, 'update');
 				}
 
-				activeWorkflowRunner.unsetActivationError(workflowId);
-			}
-
-			case 'workflowActivationErrorOccurred': {
-				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
-				}
-
-				const { workflowId, workflowActivationError } = message.payload ?? {};
-
-				if (typeof workflowId !== 'string' || typeof workflowActivationError !== 'object') break;
-
-				activeWorkflowRunner.setActivationError(
-					workflowId,
-					workflowActivationError as ActivationError,
-				);
+				await activeWorkflowRunner.removeActivationError(workflowId);
 			}
 
 			default:

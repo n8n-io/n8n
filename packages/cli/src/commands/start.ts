@@ -115,12 +115,7 @@ export class Start extends BaseCommand {
 			await Container.get(License).shutdown();
 
 			if (this.pruningService.isPruningEnabled()) {
-				if (
-					!config.getEnv('multiMainSetup.enabled') ||
-					config.getEnv('multiMainSetup.instanceType') === 'leader'
-				) {
-					this.pruningService.stopPruning();
-				}
+				this.pruningService.stopPruning();
 			}
 
 			if (config.getEnv('multiMainSetup.enabled')) {
@@ -261,7 +256,6 @@ export class Start extends BaseCommand {
 			if (multiMainSetup.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
-				// only in case of leadership change without shutdown
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});
@@ -347,28 +341,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		this.pruningService = Container.get(PruningService);
-
-		const multiMainSetup = Container.get(MultiMainSetup);
-
-		if (this.pruningService.isPruningEnabled()) {
-			if (
-				!config.getEnv('multiMainSetup.enabled') ||
-				config.getEnv('multiMainSetup.instanceType') === 'leader'
-			) {
-				this.pruningService.startPruning();
-			}
-
-			if (config.getEnv('multiMainSetup.enabled')) {
-				multiMainSetup.on('leadershipChange', async () => {
-					if (multiMainSetup.isLeader) {
-						this.pruningService.startPruning();
-					} else {
-						this.pruningService.stopPruning();
-					}
-				});
-			}
-		}
+		await this.initPruning();
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
@@ -405,6 +378,32 @@ export class Start extends BaseCommand {
 				}
 			});
 		}
+	}
+
+	async initPruning() {
+		this.pruningService = Container.get(PruningService);
+
+		if (this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
+
+		if (!config.getEnv('multiMainSetup.enabled')) return;
+
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		multiMainSetup.on('leadershipChange', async () => {
+			if (multiMainSetup.isLeader) {
+				if (this.pruningService.isPruningEnabled()) {
+					this.pruningService.startPruning();
+				}
+			} else {
+				if (this.pruningService.isPruningEnabled()) {
+					this.pruningService.stopPruning();
+				}
+			}
+		});
 	}
 
 	async catch(error: Error) {

@@ -25,7 +25,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 
-import type { ActivationError, ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import type { WorkflowExecute } from 'n8n-core';
 
@@ -47,6 +47,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { WorkflowActivationError } from './ActivationErrors';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -548,7 +549,7 @@ export interface IActiveWorkflowUser {
 }
 
 export interface IWorkflowActivationErrorOccurred {
-	activationError: ActivationError;
+	activationError: WorkflowActivationError;
 	workflowId: string;
 }
 

@@ -626,7 +626,7 @@ export class Server extends AbstractServer {
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({

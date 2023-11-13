@@ -38,23 +38,26 @@ export class PruningService {
 			return false;
 		}
 
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('multiMainSetup.instanceType') === 'follower'
+		) {
+			return false;
+		}
+
 		return true;
 	}
 
 	/**
-	 * @important Call only after DB connection is established and migrations
-	 * have completed. In multi-main scenario, only if instance is leader.
+	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
-		this.logger.debug('[Pruning] Starting soft-deletion interval and hard-deletion timeout');
+		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
 
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
 	}
 
-	/**
-	 * @important In multi-main scenario, only if instance is leader.
-	 */
 	stopPruning() {
 		this.logger.debug('[Pruning] Removing soft-deletion interval and hard-deletion timeout');
 
@@ -63,25 +66,25 @@ export class PruningService {
 	}
 
 	private setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
-		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
-
-		this.logger.debug(`[Pruning] Setting soft-deletion interval at every ${when}`);
+		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
 		this.softDeletionInterval = setInterval(
 			async () => this.softDeleteOnPruningCycle(),
 			this.rates.softDeletion,
 		);
+
+		this.logger.debug(`[Pruning] Soft-deletion scheduled every ${when}`);
 	}
 
 	private scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
-		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
-
-		this.logger.debug(`[Pruning] Scheduling hard-deletion for next ${when}`);
+		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
 		this.hardDeletionTimeout = setTimeout(
 			async () => this.hardDeleteOnPruningCycle(),
 			this.rates.hardDeletion,
 		);
+
+		this.logger.debug(`[Pruning] Hard-deletion scheduled for next ${when}`);
 	}
 
 	/**
@@ -136,8 +139,11 @@ export class PruningService {
 			.execute();
 
 		if (result.affected === 0) {
-			this.logger.debug('Found no executions to soft-delete (pruning cycle)');
+			this.logger.debug('[Pruning] Found no executions to soft-delete');
+			return;
 		}
+
+		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
 	}
 
 	/**
@@ -166,21 +172,23 @@ export class PruningService {
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
-			this.logger.debug('Found no executions to hard-delete (pruning cycle)');
+			this.logger.debug('[Pruning] Found no executions to hard-delete');
 			this.scheduleHardDeletion();
 			return;
 		}
 
 		try {
-			this.logger.debug('Starting hard-deletion of executions (pruning cycle)', {
+			this.logger.debug('[Pruning] Starting hard-deletion of executions', {
 				executionIds,
 			});
 
 			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 			await this.executionRepository.delete({ id: In(executionIds) });
+
+			this.logger.debug('[Pruning] Hard-deleted executions', { executionIds });
 		} catch (error) {
-			this.logger.error('Failed to hard-delete executions (pruning cycle)', {
+			this.logger.error('[Pruning] Failed to hard-delete executions', {
 				executionIds,
 				error: error instanceof Error ? error.message : `${error}`,
 			});

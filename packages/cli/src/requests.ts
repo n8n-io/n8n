@@ -114,7 +114,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActive = AuthenticatedRequest;
 
-	type GetAllActivationErrors = Get;
+	type GetActivationError = Get;
 
 	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 

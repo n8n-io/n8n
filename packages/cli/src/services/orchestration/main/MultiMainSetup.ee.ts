@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
-import type { ActivationError } from '@/ActiveWorkflowRunner';
+import type { WorkflowActivationError } from '@/ActivationErrors';
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
@@ -99,11 +99,11 @@ export class MultiMainSetup extends SingleMainSetup {
 		if (keySetSuccessfully) {
 			this.logger.debug(`Leader is now this instance "${this.id}"`);
 
-			this.emit('leadershipChange', this.id);
-
 			config.set('multiMainSetup.instanceType', 'leader');
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
+
+			this.emit('leadershipChange', this.id);
 		} else {
 			config.set('multiMainSetup.instanceType', 'follower');
 		}
@@ -124,7 +124,7 @@ export class MultiMainSetup extends SingleMainSetup {
 
 	async broadcastWorkflowActivationError(payload: {
 		workflowId: string;
-		activationError: ActivationError;
+		activationError: WorkflowActivationError;
 	}) {
 		if (!this.sanityCheck()) return;
 

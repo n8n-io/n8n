@@ -233,7 +233,7 @@ describe('executeErrorWorkflow()', () => {
 
 describe('add()', () => {
 	describe('in single-main scenario', () => {
-		test('leader should add webhooks, triggers and pollers', async () => {
+		test('should add webhooks, triggers and pollers', async () => {
 			const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
 			const workflow = await createWorkflow({ active: true }, owner);
@@ -255,7 +255,7 @@ describe('add()', () => {
 
 	describe('in multi-main scenario', () => {
 		describe('leader', () => {
-			describe('on regular (non-leadership-change) activation mode', () => {
+			describe('on non-leadership-change activation mode', () => {
 				test('should add webhooks only', async () => {
 					const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
@@ -281,7 +281,7 @@ describe('add()', () => {
 				});
 			});
 
-			describe('on leadership change', () => {
+			describe('on leadership change activation mode', () => {
 				test('should add triggers and pollers only', async () => {
 					const mode = 'leadershipChange';
 
