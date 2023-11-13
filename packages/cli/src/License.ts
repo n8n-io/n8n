@@ -51,7 +51,9 @@ export class License {
 			return;
 		}
 
-		await this.multiMainSetup.init();
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			await this.multiMainSetup.init();
+		}
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -118,23 +120,25 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
-			| boolean
-			| undefined;
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
+				| boolean
+				| undefined;
 
-		this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
 
-		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
-			this.logger.debug(
-				'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
-			);
-			return;
-		}
+			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+				this.logger.debug(
+					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
+				);
+				return;
+			}
 
-		if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
-			this.logger.debug(
-				'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
-			);
+			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+				this.logger.debug(
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+				);
+			}
 		}
 
 		if (config.getEnv('executions.mode') === 'queue') {
