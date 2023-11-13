@@ -809,11 +809,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			await this.workflowActivationErrors.set(workflowId, activationError);
 
-			// @TODO: Is this still needed?
-			if (config.getEnv('multiMainSetup.enabled')) {
-				await this.multiMainSetup.broadcastWorkflowActivationError({ workflowId, activationError });
-			}
-
 			throw error;
 		}
 
