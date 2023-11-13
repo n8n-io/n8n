@@ -1,13 +1,17 @@
 import { v4 as uuid } from 'uuid';
-import { audit } from '@/audit';
-import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
 
+let securityAuditService: SecurityAuditService;
+
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -48,7 +52,7 @@ test('should report filesystem interaction nodes', async () => {
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['filesystem']);
+	const testAudit = await securityAuditService.run(['filesystem']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -68,7 +72,7 @@ test('should report filesystem interaction nodes', async () => {
 test('should not report non-filesystem-interaction node', async () => {
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['filesystem']);
+	const testAudit = await securityAuditService.run(['filesystem']);
 
 	expect(testAudit).toBeEmptyArray();
 });
