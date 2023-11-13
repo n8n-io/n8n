@@ -1,17 +1,22 @@
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
-import { audit } from '@/audit';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
 import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
-} from '@/audit/constants';
+} from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { generateNanoId } from '@db/utils/generators';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
+
+let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -50,12 +55,12 @@ test('should report expressions in queries', async () => {
 			],
 		};
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['database']);
+	const testAudit = await securityAuditService.run(['database']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -105,12 +110,12 @@ test('should report expressions in query params', async () => {
 			],
 		};
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['database']);
+	const testAudit = await securityAuditService.run(['database']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -157,12 +162,12 @@ test('should report unused query params', async () => {
 			],
 		};
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['database']);
+	const testAudit = await securityAuditService.run(['database']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -182,7 +187,7 @@ test('should report unused query params', async () => {
 test('should not report non-database node', async () => {
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['database']);
+	const testAudit = await securityAuditService.run(['database']);
 
 	expect(testAudit).toBeEmptyArray();
 });

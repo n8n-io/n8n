@@ -1,12 +1,17 @@
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
-import { audit } from '@/audit';
-import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
+
+let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -26,7 +31,7 @@ test('should report filesystem interaction nodes', async () => {
 	);
 
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
-		const details = Db.collections.Workflow.create({
+		const details = Container.get(WorkflowRepository).create({
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
@@ -42,12 +47,12 @@ test('should report filesystem interaction nodes', async () => {
 			],
 		});
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['filesystem']);
+	const testAudit = await securityAuditService.run(['filesystem']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -67,7 +72,7 @@ test('should report filesystem interaction nodes', async () => {
 test('should not report non-filesystem-interaction node', async () => {
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['filesystem']);
+	const testAudit = await securityAuditService.run(['filesystem']);
 
 	expect(testAudit).toBeEmptyArray();
 });

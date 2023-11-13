@@ -1,5 +1,5 @@
 import type { WorkflowEntity as Workflow } from '@db/entities/WorkflowEntity';
-import type { Risk } from '@/audit/types';
+import type { Risk } from '@/security-audit/types';
 
 type Node = Workflow['nodes'][number];
 

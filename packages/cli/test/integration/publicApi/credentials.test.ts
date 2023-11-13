@@ -1,5 +1,4 @@
 import type { SuperAgentTest } from 'supertest';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
@@ -10,6 +9,9 @@ import * as testDb from '../shared/testDb';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
 import { getAllRoles } from '../shared/db/roles';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import Container from 'typedi';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -64,13 +66,13 @@ describe('POST /credentials', () => {
 		expect(name).toBe(payload.name);
 		expect(type).toBe(payload.type);
 
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
 		expect(credential.data).not.toBe(payload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['user', 'credentials', 'role'],
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
@@ -100,13 +102,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -118,13 +120,13 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -141,13 +143,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -173,13 +175,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOne({
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			where: {
 				credentialsId: savedCredential.id,
 			},
@@ -189,13 +191,13 @@ describe('DELETE /credentials/:id', () => {
 
 		await Promise.all(
 			[notToBeChangedCredential, notToBeChangedCredential2].map(async (credential) => {
-				const untouchedCredential = await Db.collections.Credentials.findOneBy({
+				const untouchedCredential = await Container.get(CredentialsRepository).findOneBy({
 					id: credential.id,
 				});
 
 				expect(untouchedCredential).toEqual(credential); // not deleted
 
-				const untouchedSharedCredential = await Db.collections.SharedCredentials.findOne({
+				const untouchedSharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 					where: {
 						credentialsId: credential.id,
 					},
@@ -213,13 +215,13 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 
-		const shellCredential = await Db.collections.Credentials.findOneBy({
+		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(shellCredential).toBeDefined(); // not deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeDefined(); // not deleted
 	});

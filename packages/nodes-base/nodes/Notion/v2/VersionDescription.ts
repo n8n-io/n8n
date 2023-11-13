@@ -73,6 +73,12 @@ export const versionDescription: INodeTypeDescription = {
 			default: '',
 		},
 		{
+			displayName: '',
+			name: 'Credentials',
+			type: 'credentials',
+			default: '',
+		},
+		{
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',

@@ -2641,6 +2641,7 @@ export default defineComponent({
 				}
 
 				if (
+					// eslint-disable-next-line no-constant-binary-expression
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					this.enterTimer ??
@@ -2674,6 +2675,7 @@ export default defineComponent({
 				}
 
 				if (
+					// eslint-disable-next-line no-constant-binary-expression
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					!connection ??

@@ -424,7 +424,7 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
 				url: listPath,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				method: 'LIST' as any,
 			});
 		} catch {

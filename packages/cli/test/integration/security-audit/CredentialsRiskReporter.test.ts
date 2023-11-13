@@ -1,14 +1,22 @@
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
 import config from '@/config';
-import { audit } from '@/audit';
-import { CREDENTIALS_REPORT } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/testDb';
 import { generateNanoId } from '@db/utils/generators';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
+
+let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -46,11 +54,11 @@ test('should report credentials not in any use', async () => {
 	};
 
 	await Promise.all([
-		Db.collections.Credentials.save(credentialDetails),
-		Db.collections.Workflow.save(workflowDetails),
+		Container.get(CredentialsRepository).save(credentialDetails),
+		Container.get(WorkflowRepository).save(workflowDetails),
 	]);
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -74,7 +82,7 @@ test('should report credentials not in active use', async () => {
 		nodesAccess: [{ nodeType: 'n8n-nodes-base.slack', date: '2022-12-21T11:23:00.561Z' }],
 	};
 
-	const credential = await Db.collections.Credentials.save(credentialDetails);
+	const credential = await Container.get(CredentialsRepository).save(credentialDetails);
 
 	const workflowDetails = {
 		id: generateNanoId(),
@@ -93,9 +101,9 @@ test('should report credentials not in active use', async () => {
 		],
 	};
 
-	await Db.collections.Workflow.save(workflowDetails);
+	await Container.get(WorkflowRepository).save(workflowDetails);
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -119,7 +127,7 @@ test('should report credential in not recently executed workflow', async () => {
 		nodesAccess: [{ nodeType: 'n8n-nodes-base.slack', date: '2022-12-21T11:23:00.561Z' }],
 	};
 
-	const credential = await Db.collections.Credentials.save(credentialDetails);
+	const credential = await Container.get(CredentialsRepository).save(credentialDetails);
 
 	const workflowDetails = {
 		id: generateNanoId(),
@@ -144,12 +152,12 @@ test('should report credential in not recently executed workflow', async () => {
 		],
 	};
 
-	const workflow = await Db.collections.Workflow.save(workflowDetails);
+	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
 	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') - 1);
 
-	const savedExecution = await Db.collections.Execution.save({
+	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
 		startedAt: date,
@@ -157,13 +165,13 @@ test('should report credential in not recently executed workflow', async () => {
 		workflowId: workflow.id,
 		waitTill: null,
 	});
-	await Db.collections.ExecutionData.save({
+	await Container.get(ExecutionDataRepository).save({
 		execution: savedExecution,
 		data: '[]',
 		workflowData: workflow,
 	});
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -187,7 +195,7 @@ test('should not report credentials in recently executed workflow', async () => 
 		nodesAccess: [{ nodeType: 'n8n-nodes-base.slack', date: '2022-12-21T11:23:00.561Z' }],
 	};
 
-	const credential = await Db.collections.Credentials.save(credentialDetails);
+	const credential = await Container.get(CredentialsRepository).save(credentialDetails);
 
 	const workflowDetails = {
 		id: generateNanoId(),
@@ -212,12 +220,12 @@ test('should not report credentials in recently executed workflow', async () => 
 		],
 	};
 
-	const workflow = await Db.collections.Workflow.save(workflowDetails);
+	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
 	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') + 1);
 
-	const savedExecution = await Db.collections.Execution.save({
+	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
 		startedAt: date,
@@ -226,13 +234,13 @@ test('should not report credentials in recently executed workflow', async () => 
 		waitTill: null,
 	});
 
-	await Db.collections.ExecutionData.save({
+	await Container.get(ExecutionDataRepository).save({
 		execution: savedExecution,
 		data: '[]',
 		workflowData: workflow,
 	});
 
-	const testAudit = await audit(['credentials']);
+	const testAudit = await securityAuditService.run(['credentials']);
 
 	expect(testAudit).toBeEmptyArray();
 });
