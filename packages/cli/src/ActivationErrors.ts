@@ -19,11 +19,11 @@ export class ActivationErrors {
 	}
 
 	async unset(workflowId: string) {
-		const key = this.toCacheKey(workflowId);
-
 		const exists = await this.get(workflowId);
 
 		if (!exists) return;
+
+		const key = this.toCacheKey(workflowId);
 
 		await this.cacheService.delete(key);
 	}
