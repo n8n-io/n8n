@@ -1326,9 +1326,9 @@ export const schema = {
 
 	multiMainSetup: {
 		instanceType: {
-			doc: 'Type of instance in multi-main setup', // non user facing
+			doc: 'Type of instance in multi-main setup',
 			format: ['unset', 'leader', 'follower'] as const,
-			default: 'unset',
+			default: 'unset', // only until first leader key check
 		},
 		enabled: {
 			doc: 'Whether to enable multi-main setup for queue mode (license required)',
