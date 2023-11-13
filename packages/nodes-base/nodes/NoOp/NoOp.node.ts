@@ -25,15 +25,6 @@ export class NoOp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		for (let i = 0; i < 10; i++) {
-			console.log('run', i);
-			await new Promise((r) => setTimeout(r, 1000));
-			if (!this.isRunning()) {
-				console.log('stopped in node');
-				break;
-			}
-		}
-
 		return [items];
 	}
 }

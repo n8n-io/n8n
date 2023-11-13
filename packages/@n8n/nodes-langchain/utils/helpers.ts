@@ -20,14 +20,10 @@ export function getWorkflowRunningAbortSignal(context: IExecuteFunctions, trigge
 	const abortController = new AbortController();
 	const callbacks = CallbackManager.fromHandlers({
 		[triggerCallback]: () => {
-			console.log(triggerCallback, 'triggered');
 			const isRunning = context.isRunning();
 
 			if (!isRunning) {
-				console.log('Is not running');
 				abortController.abort();
-			} else {
-				console.log('Is running');
 			}
 		},
 	});

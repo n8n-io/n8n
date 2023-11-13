@@ -242,11 +242,16 @@ export function logWrapper(
 								connectionType,
 								currentNodeRunIndex: index,
 								method: target[prop],
-								arguments: [messages, { ...options, signal: abortSignal.signal }, runManager],
+								arguments: [
+									messages,
+									{ ...options, signal: options?.signal ?? abortSignal.signal },
+									runManager,
+								],
 							})) as ChatResult;
 							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 							return response;
 						} catch (error) {
+							// Mute AbortError as they are expected
 							if (error?.name === 'AbortError') return { generations: [] };
 							throw error;
 						}
