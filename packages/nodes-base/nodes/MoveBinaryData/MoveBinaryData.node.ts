@@ -70,7 +70,7 @@ export class MoveBinaryData implements INodeType {
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
 		description: 'Move data between binary and JSON properties',
 		defaults: {
@@ -343,9 +343,7 @@ export class MoveBinaryData implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 		const mode = this.getNodeParameter('mode', 0) as string;
-
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
@@ -457,7 +455,12 @@ export class MoveBinaryData implements INodeType {
 				let mimeType = options.mimeType as string;
 
 				if (!mimeType) {
-					mimeType = detectMimeType(data);
+					const nodeType = this.getNode().typeVersion;
+					if (nodeType > 1) {
+						mimeType = detectMimeType(data);
+					} else {
+						mimeType = 'application/json';
+					}
 				}
 
 				const convertedValue: IBinaryData = {
