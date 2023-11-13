@@ -128,7 +128,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
@@ -248,7 +248,7 @@ export default defineComponent({
 				// When active node parameters change, check if authentication type has been changed
 				// and set `subscribedToCredentialType` to corresponding credential type
 				const isActive = this.node.name === this.ndvStore.activeNode?.name;
-				const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+				const nodeType = this.nodeType;
 				// Only do this for active node and if it's listening for auth change
 				if (isActive && nodeType && this.listeningForAuthChange) {
 					if (this.mainNodeAuthField && oldValue && newValue) {
@@ -297,7 +297,7 @@ export default defineComponent({
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			const activeNodeType = this.nodeType;
 			if (activeNodeType?.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -548,19 +548,24 @@ export default defineComponent({
 			this.subscribedToCredentialType = credentialType;
 		},
 		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			const nodeType = this.nodeType;
 			const isRequired = isRequiredCredential(nodeType, credentialType);
 
 			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+			const isCredentialOnlyNode = this.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
+
+			if (isCredentialOnlyNode) {
+				return this.$locale.baseText('nodeCredentials.credentialFor', {
+					interpolate: { credentialType: this.nodeType?.displayName ?? credentialTypeName },
+				});
+			}
 
 			if (!this.showMixedCredentials(credentialType)) {
 				return this.$locale.baseText('nodeCredentials.credentialFor', {
-					interpolate: {
-						credentialType: credentialTypeName,
-					},
+					interpolate: { credentialType: credentialTypeName },
 				});
 			}
 			return this.$locale.baseText('nodeCredentials.credentialsLabel');

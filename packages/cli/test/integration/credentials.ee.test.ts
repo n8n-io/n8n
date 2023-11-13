@@ -2,7 +2,6 @@ import type { SuperAgentTest } from 'supertest';
 import { In } from 'typeorm';
 import type { IUser } from 'n8n-workflow';
 
-import * as Db from '@/Db';
 import type { Credentials } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
@@ -15,6 +14,8 @@ import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createManyUsers, createUser, createUserShell } from './shared/db/users';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import Container from 'typedi';
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
@@ -340,7 +341,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toBeUndefined();
 
-		const sharedCredentials = await Db.collections.SharedCredentials.find({
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			relations: ['role'],
 			where: { credentialsId: savedCredential.id },
 		});
@@ -375,7 +376,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(response.body.data).toBeUndefined();
 
 		// check that sharings got correctly set in DB
-		const sharedCredentials = await Db.collections.SharedCredentials.find({
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
 		});
@@ -388,7 +389,7 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		// check that owner still exists
-		const ownerSharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const ownerSharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: owner.id },
 		});
@@ -425,7 +426,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedCredentials = await Db.collections.SharedCredentials.find({
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			where: { credentialsId: savedCredential.id },
 		});
 
@@ -442,7 +443,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedCredentials = await Db.collections.SharedCredentials.find({
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			where: { credentialsId: savedCredential.id },
 		});
 
@@ -475,7 +476,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedCredentials = await Db.collections.SharedCredentials.find({
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			where: { credentialsId: savedCredential.id },
 		});
 

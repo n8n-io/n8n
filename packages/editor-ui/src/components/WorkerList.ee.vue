@@ -1,0 +1,130 @@
+<template>
+	<div>
+		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<div :class="$style.workerListHeader">
+			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+		</div>
+		<div v-if="isMounting">
+			<n8n-loading :class="$style.tableLoader" variant="custom" />
+		</div>
+		<div v-else>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { externalHooks } from '@/mixins/externalHooks';
+import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
+import { useI18n, useToast } from '@/composables';
+import type { IPushDataWorkerStatusPayload } from '@/Interface';
+import type { ExecutionStatus } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useOrchestrationStore } from '../stores/orchestration.store';
+import { setPageTitle } from '@/utils';
+import { pushConnection } from '../mixins/pushConnection';
+import WorkerCard from './Workers/WorkerCard.ee.vue';
+
+// eslint-disable-next-line import/no-default-export
+export default defineComponent({
+	name: 'WorkerList',
+	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
+	components: { PushConnectionTracker, WorkerCard },
+	props: {
+		autoRefreshEnabled: {
+			type: Boolean,
+			default: true,
+		},
+	},
+	setup() {
+		const i18n = useI18n();
+		return {
+			i18n,
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			isMounting: true,
+		};
+	},
+	mounted() {
+		setPageTitle(`n8n - ${this.pageTitle}`);
+		this.isMounting = false;
+	},
+	beforeMount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
+		this.pushConnect();
+		this.orchestrationManagerStore.startWorkerStatusPolling();
+	},
+	beforeUnmount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
+		this.orchestrationManagerStore.stopWorkerStatusPolling();
+		this.pushDisconnect();
+	},
+	computed: {
+		...mapStores(useUIStore, useOrchestrationStore),
+		combinedWorkers(): IPushDataWorkerStatusPayload[] {
+			const returnData: IPushDataWorkerStatusPayload[] = [];
+			for (const workerId in this.orchestrationManagerStore.workers) {
+				returnData.push(this.orchestrationManagerStore.workers[workerId]);
+			}
+			return returnData;
+		},
+		workerIds(): string[] {
+			return Object.keys(this.orchestrationManagerStore.workers);
+		},
+		pageTitle() {
+			return this.i18n.baseText('workerList.pageTitle');
+		},
+	},
+	methods: {
+		averageLoadAvg(loads: number[]) {
+			return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
+		},
+		getStatus(payload: IPushDataWorkerStatusPayload): ExecutionStatus {
+			if (payload.runningJobsSummary.length > 0) {
+				return 'running';
+			} else {
+				return 'success';
+			}
+		},
+		getRowClass(payload: IPushDataWorkerStatusPayload): string {
+			return [this.$style.execRow, this.$style[this.getStatus(payload)]].join(' ');
+		},
+	},
+});
+</script>
+
+<style module lang="scss">
+.workerListHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.card {
+	margin-bottom: var(--spacing-s);
+}
+
+.tableLoader {
+	width: 100%;
+	height: 48px;
+	margin-bottom: var(--spacing-2xs);
+}
+</style>

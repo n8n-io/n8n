@@ -96,7 +96,7 @@ jobs:
         if: failure()
         with:
           status: ${{ job.status }}
-          channel: '#updates-build-alerts'
+          channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             🛑 Workflow test failed 🛑:

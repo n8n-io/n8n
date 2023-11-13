@@ -2,7 +2,7 @@ import type WebSocket from 'ws';
 import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;

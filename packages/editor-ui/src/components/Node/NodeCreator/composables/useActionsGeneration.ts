@@ -1,14 +1,17 @@
+import type { ActionTypeDescription, ActionsRecord, SimplifiedNodeType } from '@/Interface';
+import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
+	ICredentialType,
+	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
-import type { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 
 import { i18n } from '@/plugins/i18n';
+
+import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -241,7 +244,18 @@ export function useActionsGenerator() {
 	}
 
 	function getSimplifiedNodeType(node: INodeTypeDescription): SimplifiedNodeType {
-		const { displayName, defaults, description, name, group, icon, iconUrl, outputs, codex } = node;
+		const {
+			displayName,
+			defaults,
+			description,
+			name,
+			group,
+			icon,
+			iconUrl,
+			badgeIconUrl,
+			outputs,
+			codex,
+		} = node;
 
 		return {
 			displayName,
@@ -251,12 +265,16 @@ export function useActionsGenerator() {
 			group,
 			icon,
 			iconUrl,
+			badgeIconUrl,
 			outputs,
 			codex,
 		};
 	}
 
-	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
+	function generateMergedNodesAndActions(
+		nodeTypes: INodeTypeDescription[],
+		httpOnlyCredentials: ICredentialType[],
+	) {
 		const visibleNodeTypes = [...nodeTypes];
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
@@ -266,6 +284,13 @@ export function useActionsGenerator() {
 			.forEach((app) => {
 				const appActions = generateNodeActions(app);
 				actions[app.name] = appActions;
+
+				if (app.name === HTTP_REQUEST_NODE_TYPE) {
+					const credentialOnlyNodes = httpOnlyCredentials.map((credentialType) =>
+						getSimplifiedNodeType(getCredentialOnlyNodeType(app, credentialType)),
+					);
+					mergedNodes.push(...credentialOnlyNodes);
+				}
 
 				mergedNodes.push(getSimplifiedNodeType(app));
 			});

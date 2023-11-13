@@ -114,7 +114,6 @@ test('should have logwriter log messages', async () => {
 	});
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		eventBus.logWriter.worker?.once('message', async (msg: { command: string; data: any }) => {
 			expect(msg.command).toBe('appendMessageToLog');
 			expect(msg.data).toBe(true);

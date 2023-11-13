@@ -4,13 +4,13 @@ import { SingleMainInstancePublisher } from '@/services/orchestration/main/Singl
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
-import { mockInstance } from '../../integration/shared/utils';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { Logger } from '@/Logger';
+import { mockInstance } from '../../shared/mocking';
 
 const os = Container.get(SingleMainInstancePublisher);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -46,7 +46,6 @@ describe('Orchestration Service', () => {
 				};
 			}
 			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return function (...args: any) {
 				return new Redis(args);
 			};

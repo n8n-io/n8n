@@ -13,7 +13,7 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';

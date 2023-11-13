@@ -2,7 +2,8 @@ import Container from 'typedi';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionDataRepository, ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
 
 export async function createManyExecutions(
 	amount: number,
