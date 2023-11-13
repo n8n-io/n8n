@@ -103,10 +103,10 @@ export function isObjectLiteral(item: unknown): item is { [key: string]: string 
 }
 
 /**
- * Filter an array with an asynchronous callback.
+ * Filter an array with an async callback.
  */
-export async function asyncFilter<T>(array: T[], cbFn: (item: T) => Promise<boolean>) {
-	const resolvedArray = await Promise.all(array.map(cbFn));
+export async function asyncFilter<T>(array: T[], asyncCb: (item: T) => Promise<boolean>) {
+	const resolvedArray = await Promise.all(array.map(asyncCb));
 
 	return array.filter((_, index) => resolvedArray[index]);
 }
