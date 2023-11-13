@@ -49,6 +49,7 @@ export async function callMethodAsync<T>(
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
 		const connectedNode = parameters.executeFunctions.getNode();
+
 		const error = new NodeOperationError(connectedNode, e, {
 			functionality: 'configuration-node',
 		});
@@ -232,10 +233,6 @@ export function logWrapper(
 							[{ json: { messages, options } }],
 						]);
 
-						const abortSignal = new AbortController();
-						if (!executeFunctions.isRunning()) {
-							abortSignal.abort();
-						}
 						try {
 							const response = (await callMethodAsync.call(target, {
 								executeFunctions,
@@ -244,7 +241,7 @@ export function logWrapper(
 								method: target[prop],
 								arguments: [
 									messages,
-									{ ...options, signal: options?.signal ?? abortSignal.signal },
+									{ ...options, signal: executeFunctions.getExecutionCancelSignal() },
 									runManager,
 								],
 							})) as ChatResult;

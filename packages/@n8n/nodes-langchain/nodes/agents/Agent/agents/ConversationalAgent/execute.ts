@@ -12,7 +12,6 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -43,9 +42,7 @@ export async function conversationalAgentExecute(
 		humanMessage?: string;
 		maxIterations?: number;
 	};
-	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
 
-	model.callbacks = callbacks;
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 		// Passing "chat-conversational-react-description" as the agent type
 		// automatically creates and uses BufferMemory with the executor.
@@ -94,7 +91,7 @@ export async function conversationalAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers, signal });
+		let response = await agentExecutor.call({ input, outputParsers });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

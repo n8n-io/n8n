@@ -11,7 +11,6 @@ import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatModel } from 'langchain/chat_models/base';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
-import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
@@ -32,8 +31,7 @@ export async function planAndExecuteAgentExecute(
 	const options = this.getNodeParameter('options', 0, {}) as {
 		humanMessageTemplate?: string;
 	};
-	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
-	model.callbacks = callbacks;
+
 	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
 		llm: model,
 		tools,
@@ -69,7 +67,7 @@ export async function planAndExecuteAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers, signal });
+		let response = await agentExecutor.call({ input, outputParsers });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

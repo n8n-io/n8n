@@ -1,4 +1,3 @@
-import { CallbackManager } from 'langchain/callbacks';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 export function getMetadataFiltersValues(
@@ -14,22 +13,4 @@ export function getMetadataFiltersValues(
 	}
 
 	return undefined;
-}
-
-export function getWorkflowRunningAbortSignal(context: IExecuteFunctions, triggerCallback: string) {
-	const abortController = new AbortController();
-	const callbacks = CallbackManager.fromHandlers({
-		[triggerCallback]: () => {
-			const isRunning = context.isRunning();
-
-			if (!isRunning) {
-				abortController.abort();
-			}
-		},
-	});
-
-	return {
-		signal: abortController.signal,
-		callbacks,
-	};
 }

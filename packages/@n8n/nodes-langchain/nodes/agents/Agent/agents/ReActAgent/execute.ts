@@ -12,7 +12,6 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -51,8 +50,6 @@ export async function reActAgentAgentExecute(
 		});
 	}
 
-	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
-	model.callbacks = callbacks;
 	const agentExecutor = AgentExecutor.fromAgentAndTools({ agent, tools });
 
 	const returnData: INodeExecutionData[] = [];
@@ -84,7 +81,7 @@ export async function reActAgentAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers, signal });
+		let response = await agentExecutor.call({ input, outputParsers });
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };
 		}

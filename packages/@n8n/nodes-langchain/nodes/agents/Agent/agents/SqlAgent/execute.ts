@@ -11,7 +11,6 @@ import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { DataSource } from 'typeorm';
 
-import { getWorkflowRunningAbortSignal } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -35,8 +34,7 @@ export async function sqlAgentAgentExecute(
 	const items = this.getInputData();
 
 	const returnData: INodeExecutionData[] = [];
-	const { signal, callbacks } = getWorkflowRunningAbortSignal(this, 'handleLLMStart');
-	model.callbacks = callbacks;
+
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const input = this.getNodeParameter('input', i) as string;
@@ -98,7 +96,7 @@ export async function sqlAgentAgentExecute(
 		const toolkit = new SqlToolkit(dbInstance, model);
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-		const response = await agentExecutor.call({ input, signal });
+		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal() });
 
 		returnData.push({ json: response });
 	}
