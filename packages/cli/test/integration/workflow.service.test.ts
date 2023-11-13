@@ -1,7 +1,7 @@
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as testDb from './shared/testDb';
 import { WorkflowsService } from '@/workflows/workflows.services';
-import { mockInstance } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 import { Telemetry } from '@/telemetry';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
