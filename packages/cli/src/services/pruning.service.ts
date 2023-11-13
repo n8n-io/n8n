@@ -59,7 +59,7 @@ export class PruningService {
 	}
 
 	stopPruning() {
-		this.logger.debug('[Pruning] Removing soft-deletion interval and hard-deletion timeout');
+		this.logger.debug('[Pruning] Removing soft-deletion and hard-deletion timers');
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);

@@ -43,7 +43,7 @@ export class MultiMainSetup extends SingleMainSetup {
 
 		this.isInitialized = true;
 
-		await this.tryBecomeLeader(); // prevent 10 sec wait
+		await this.tryBecomeLeader(); // prevent initial wait
 
 		this.leaderCheckInterval = setInterval(
 			async () => {
