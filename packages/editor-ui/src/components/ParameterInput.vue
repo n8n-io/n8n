@@ -1254,7 +1254,7 @@ export default defineComponent({
 
 		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
-			inputFieldRef: this.$refs.inputField,
+			inputFieldRef: this.$refs.inputField as InstanceType<typeof N8nInput>,
 		});
 	},
 	beforeUnmount() {
