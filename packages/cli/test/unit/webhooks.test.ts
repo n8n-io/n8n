@@ -11,7 +11,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import type { IResponseCallbackData } from '@/Interfaces';
 
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 let agent: SuperAgentTest;
 

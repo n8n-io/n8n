@@ -3,9 +3,9 @@ import { EventEmitter } from 'events';
 import type WebSocket from 'ws';
 import { WebSocketPush } from '@/push/websocket.push';
 import { Logger } from '@/Logger';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { PushDataExecutionRecovered } from '@/Interfaces';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 jest.useFakeTimers();
 

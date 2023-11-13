@@ -416,6 +416,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteFunctions;
 }
 
@@ -431,6 +432,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteSingleFunctions;
 }
 
@@ -770,6 +772,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	onExecutionCancellation(cleanup: () => Promise<void>, reject: (reason: Error) => void): void;
 };
 
 // TODO: Create later own type only for Config-Nodes

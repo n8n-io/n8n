@@ -13,7 +13,7 @@ import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 

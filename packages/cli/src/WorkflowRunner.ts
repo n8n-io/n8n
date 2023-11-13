@@ -40,19 +40,15 @@ import type { Job, JobData, JobResponse } from '@/Queue';
 
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { eventBus } from './eventbus';
-import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from './Logger';
 
 export class WorkflowRunner {
@@ -131,9 +127,13 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
+			const { eventBus } = await import('./eventbus');
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
+				const { recoverExecutionDataFromEventLogMessages } = await import(
+					'./eventbus/MessageEventBus/recoverEvents'
+				);
 				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
 					executionId,
 					eventLogMessages,
@@ -347,6 +347,7 @@ export class WorkflowRunner {
 				sessionId: data.sessionId,
 			});
 
+			const abortController = new AbortController();
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -355,6 +356,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					abortController,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
@@ -370,7 +372,12 @@ export class WorkflowRunner {
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
 
 				// Can execute without webhook so go on
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				const workflowExecute = new WorkflowExecute(
+					additionalData,
+					data.executionMode,
+					undefined,
+					abortController,
+				);
 				workflowExecution = workflowExecute.run(
 					workflow,
 					startNode,
@@ -380,7 +387,12 @@ export class WorkflowRunner {
 			} else {
 				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				const workflowExecute = new WorkflowExecute(
+					additionalData,
+					data.executionMode,
+					undefined,
+					abortController,
+				);
 				workflowExecution = workflowExecute.runPartialWorkflow(
 					workflow,
 					data.runData,
@@ -390,6 +402,7 @@ export class WorkflowRunner {
 				);
 			}
 
+			this.activeExecutions.attachAbortController(executionId, abortController);
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
@@ -667,6 +680,7 @@ export class WorkflowRunner {
 			// So we're just preventing crashes here.
 		});
 
+		// TODO: setup AbortController
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 		return executionId;
 	}

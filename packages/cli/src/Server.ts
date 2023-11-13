@@ -66,29 +66,25 @@ import type {
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MeController,
-	MFAController,
-	NodeTypesController,
-	OAuth1CredentialController,
-	OAuth2CredentialController,
-	OwnerController,
-	PasswordResetController,
-	TagsController,
-	TranslationController,
-	UsersController,
-	WorkflowStatisticsController,
-} from '@/controllers';
-
-import { BinaryDataController } from './controllers/binaryData.controller';
+import { AuthController } from '@/controllers/auth.controller';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { LdapController } from '@/controllers/ldap.controller';
+import { MeController } from '@/controllers/me.controller';
+import { MFAController } from '@/controllers/mfa.controller';
+import { NodeTypesController } from '@/controllers/nodeTypes.controller';
+import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
+import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
+import { OwnerController } from '@/controllers/owner.controller';
+import { PasswordResetController } from '@/controllers/passwordReset.controller';
+import { TagsController } from '@/controllers/tags.controller';
+import { TranslationController } from '@/controllers/translation.controller';
+import { UsersController } from '@/controllers/users.controller';
+import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
-import * as Db from '@/Db';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -122,8 +118,14 @@ import {
 } from './sso/ssoHelpers';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository, SettingsRepository } from '@db/repositories';
+
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -239,18 +241,19 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Db.collections.Workflow.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		}).then(async (workflow) =>
-			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-		);
+		void Container.get(WorkflowRepository)
+			.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+				where: {},
+			})
+			.then(async (workflow) =>
+				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes, logger } = this;
-		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const internalHooks = Container.get(InternalHooks);
@@ -284,8 +287,8 @@ export class Server extends AbstractServer {
 				logger,
 				externalHooks,
 				internalHooks,
-				repositories.SharedCredentials,
-				repositories.SharedWorkflow,
+				Container.get(SharedCredentialsRepository),
+				Container.get(SharedWorkflowRepository),
 				activeWorkflowRunner,
 				mailer,
 				jwtService,
@@ -626,7 +629,7 @@ export class Server extends AbstractServer {
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
 				const { id: workflowId } = req.params;
 
-				const shared = await Db.collections.SharedWorkflow.findOne({
+				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,

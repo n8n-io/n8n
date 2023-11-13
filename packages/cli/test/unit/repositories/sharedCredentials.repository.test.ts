@@ -5,7 +5,7 @@ import type { User } from '@db/entities/User';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { mockInstance } from '../../integration/shared/utils/';
+import { mockInstance } from '../../shared/mocking';
 
 describe('SharedCredentialsRepository', () => {
 	const entityManager = mockInstance(EntityManager);
