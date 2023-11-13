@@ -40,8 +40,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'NodeTitle',
