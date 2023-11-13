@@ -19,6 +19,7 @@
 			<div
 				class="sticky-box"
 				@click.left="mouseLeftClick"
+				@contextmenu="onContextMenu"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
 			>
@@ -120,11 +121,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useContextMenu } from '@/composables';
 
 export default defineComponent({
 	name: 'Sticky',
 	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
-
+	setup() {
+		const contextMenu = useContextMenu();
+		return { contextMenu };
+	},
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -308,6 +313,11 @@ export default defineComponent({
 				setTimeout(() => {
 					this.isTouchActive = false;
 				}, 2000);
+			}
+		},
+		onContextMenu(e: MouseEvent): void {
+			if (this.node) {
+				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
 			}
 		},
 	},

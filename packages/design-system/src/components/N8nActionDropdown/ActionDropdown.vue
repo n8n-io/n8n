@@ -169,6 +169,8 @@ export default defineComponent({
 }
 
 .hideArrow {
+	display: block;
+
 	:global(.el-popper__arrow) {
 		display: none;
 	}
@@ -187,7 +189,7 @@ export default defineComponent({
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-s);
 	justify-content: space-between;
 	font-size: var(--font-size-2xs);
 	line-height: 18px;

@@ -1,5 +1,9 @@
 import type { XYPosition } from '@/Interface';
-import { NOT_DUPLICATABE_NODE_TYPES, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
+import {
+	NOT_DUPLICATABE_NODE_TYPES,
+	PIN_DATA_NODE_TYPES_DENYLIST,
+	STICKY_NODE_TYPE,
+} from '@/constants';
 import { useNodeTypesStore, useSourceControlStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -73,7 +77,9 @@ export const useContextMenu = () => {
 	};
 
 	const targetNodes = computed(() => {
-		const selectedNodes = uiStore.selectedNodes;
+		const selectedNodes = uiStore.selectedNodes.map((node) =>
+			workflowsStore.getNodeByName(node.name),
+		) as INode[];
 		const currentTarget = target.value;
 		if (currentTarget.source === 'canvas') {
 			return selectedNodes;
@@ -114,12 +120,22 @@ export const useContextMenu = () => {
 			isOpen.value = true;
 
 			const nodes = targetNodes.value;
+			const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+			const i18nOptions = {
+				adjustToNumber: nodes.length,
+				interpolate: {
+					subject: onlyStickies
+						? i18n.baseText('contextMenu.sticky', { adjustToNumber: nodes.length })
+						: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
+				},
+			};
 
 			const selectionActions = [
 				{
 					id: 'select_all',
 					divided: true,
-					label: i18n.baseText('contextMenu.selectAll'),
+					// always plural
+					label: i18n.baseText('contextMenu.selectAll', { adjustToNumber: 2 }),
 					shortcut: { metaKey: true, keys: ['A'] },
 					disabled: nodes.length === workflowsStore.allNodes.length,
 				},
@@ -148,31 +164,30 @@ export const useContextMenu = () => {
 				];
 			} else {
 				const menuActions: IActionDropdownItem[] = [
-					{
+					!onlyStickies && {
 						id: 'toggle_activation',
 						label: nodes.every((node) => node.disabled)
-							? i18n.baseText('contextMenu.activate', { adjustToNumber: nodes.length })
-							: i18n.baseText('contextMenu.deactivate', { adjustToNumber: nodes.length }),
+							? i18n.baseText('contextMenu.activate', i18nOptions)
+							: i18n.baseText('contextMenu.deactivate', i18nOptions),
 						shortcut: { keys: ['D'] },
 						disabled: isReadOnly.value,
 					},
-
-					{
+					!onlyStickies && {
 						id: 'toggle_pin',
 						label: nodes.every((node) => hasPinData(node))
-							? i18n.baseText('contextMenu.unpin', { adjustToNumber: nodes.length })
-							: i18n.baseText('contextMenu.pin', { adjustToNumber: nodes.length }),
+							? i18n.baseText('contextMenu.unpin', i18nOptions)
+							: i18n.baseText('contextMenu.pin', i18nOptions),
 						shortcut: { keys: ['p'] },
 						disabled: isReadOnly.value || !nodes.every(canPinNode),
 					},
 					{
 						id: 'copy',
-						label: i18n.baseText('contextMenu.copy', { adjustToNumber: nodes.length }),
+						label: i18n.baseText('contextMenu.copy', i18nOptions),
 						shortcut: { metaKey: true, keys: ['C'] },
 					},
 					{
 						id: 'duplicate',
-						label: i18n.baseText('contextMenu.duplicate', { adjustToNumber: nodes.length }),
+						label: i18n.baseText('contextMenu.duplicate', i18nOptions),
 						shortcut: { metaKey: true, keys: ['D'] },
 						disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 					},
@@ -180,31 +195,40 @@ export const useContextMenu = () => {
 					{
 						id: 'delete',
 						divided: true,
-						label: i18n.baseText('contextMenu.delete', { adjustToNumber: nodes.length }),
+						label: i18n.baseText('contextMenu.delete', i18nOptions),
 						shortcut: { keys: ['Del'] },
 						disabled: isReadOnly.value,
 					},
-				];
+				].filter(Boolean) as IActionDropdownItem[];
 
 				if (nodes.length === 1) {
+					const singleNodeActions = onlyStickies
+						? [
+								{
+									id: 'open',
+									label: i18n.baseText('contextMenu.editSticky'),
+									shortcut: { keys: ['↵'] },
+								},
+						  ]
+						: [
+								{
+									id: 'open',
+									label: i18n.baseText('contextMenu.open'),
+									shortcut: { keys: ['↵'] },
+								},
+								{
+									id: 'execute',
+									label: i18n.baseText('contextMenu.execute'),
+								},
+								{
+									id: 'rename',
+									label: i18n.baseText('contextMenu.rename'),
+									shortcut: { keys: ['F2'] },
+									disabled: isReadOnly.value,
+								},
+						  ];
 					// Add actions only available for a single node
-					menuActions.unshift(
-						{
-							id: 'open',
-							label: i18n.baseText('contextMenu.open'),
-							shortcut: { keys: ['↵'] },
-						},
-						{
-							id: 'execute',
-							label: i18n.baseText('contextMenu.execute'),
-						},
-						{
-							id: 'rename',
-							label: i18n.baseText('contextMenu.rename'),
-							shortcut: { keys: ['F2'] },
-							disabled: isReadOnly.value,
-						},
-					);
+					menuActions.unshift(...singleNodeActions);
 				}
 
 				actions.value = menuActions;
