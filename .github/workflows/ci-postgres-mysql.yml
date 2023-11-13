@@ -110,6 +110,6 @@ jobs:
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
-          channel: '#updates-build-alerts'
+          channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Postgres or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
