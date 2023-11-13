@@ -557,8 +557,6 @@ export interface IActiveWorkflowAdded {
 	workflowId: Workflow['id'];
 }
 
-type IActiveWorkflowRemoved = IActiveWorkflowAdded;
-
 export interface IActiveWorkflowUsersChanged {
 	workflowId: Workflow['id'];
 	activeUsers: IActiveWorkflowUser[];

@@ -18,7 +18,6 @@ import { getAllRoles } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
-import { mockInstance } from '../shared/utils/';
 
 let workflowOwnerRole: Role;
 let owner: User;
