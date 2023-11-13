@@ -27,7 +27,6 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { runExternalHook } from '@/utils';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 
@@ -256,7 +255,7 @@ export const useActions = () => {
 			source_mode: rootView.toLowerCase(),
 			resource: (action.value as INodeParameters).resource || '',
 		};
-		void runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
+		void runExternalHook('nodeCreateList.addAction', payload);
 		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 	}
 

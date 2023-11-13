@@ -3,7 +3,7 @@ import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 const trialDaysLeft = computed(() => {
 	const { trialDaysLeft } = useCloudPlanStore();

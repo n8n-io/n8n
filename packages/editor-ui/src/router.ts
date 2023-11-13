@@ -9,7 +9,6 @@ import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 
@@ -963,7 +962,7 @@ router.afterEach((to, from) => {
 	 * Run external hooks
 	 */
 
-	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	void runExternalHook('main.routeChange', { from, to });
 
 	/**
 	 * Track current view for telemetry
