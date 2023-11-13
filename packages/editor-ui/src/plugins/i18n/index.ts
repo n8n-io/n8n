@@ -328,6 +328,7 @@ export class I18nClass {
 	rootVars: Record<string, string | undefined> = {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),
+		$ifEmpty: this.baseText('codeNodeEditor.completer.$ifEmpty'),
 		$input: this.baseText('codeNodeEditor.completer.$input'),
 		$jmespath: this.baseText('codeNodeEditor.completer.$jmespath'),
 		$json: this.baseText('codeNodeEditor.completer.json'),
