@@ -419,7 +419,9 @@ export const pushConnection = defineComponent({
 								}
 							}
 
-							this.$telemetry.track('Instance FE emitted paired item error', eventData);
+							this.$telemetry.track('Instance FE emitted paired item error', eventData, {
+								withPostHog: true,
+							});
 						});
 					}
 
