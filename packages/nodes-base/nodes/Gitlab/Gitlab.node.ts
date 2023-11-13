@@ -940,8 +940,7 @@ export class Gitlab implements INodeType {
 						name: 'search',
 						type: 'string',
 						default: '',
-						description:
-							'Search issues against their title and description',
+						description: 'Search issues against their title and description',
 					},
 					{
 						displayName: 'Labels',
