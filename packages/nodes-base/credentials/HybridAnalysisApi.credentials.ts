@@ -9,6 +9,12 @@ export class HybridAnalysisApi implements ICredentialType {
 
 	icon = 'file:icons/Hybrid.png';
 
+	httpRequestNode = {
+		name: 'Hybrid Analysis',
+		docsUrl: 'https://www.hybrid-analysis.com/docs/api/v2',
+		apiBaseUrl: 'https://www.hybrid-analysis.com/api/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

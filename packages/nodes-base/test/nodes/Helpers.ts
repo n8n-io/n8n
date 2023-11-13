@@ -82,8 +82,8 @@ class CredentialType implements ICredentialTypes {
 		return this.credentialTypes[credentialType].type;
 	}
 
-	getNodeTypesToTestWith(type: string): string[] {
-		return knownCredentials[type]?.nodesToTestWith ?? [];
+	getSupportedNodes(type: string): string[] {
+		return knownCredentials[type]?.supportedNodes ?? [];
 	}
 
 	getParentTypes(typeName: string): string[] {
