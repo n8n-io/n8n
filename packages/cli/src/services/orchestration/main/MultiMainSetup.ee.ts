@@ -3,7 +3,6 @@ import { Service } from 'typedi';
 import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
-import type { WorkflowActivationError } from '@/ActivationErrors';
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {

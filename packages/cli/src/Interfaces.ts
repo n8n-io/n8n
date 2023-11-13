@@ -47,7 +47,6 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
-import type { WorkflowActivationError } from './ActivationErrors';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
