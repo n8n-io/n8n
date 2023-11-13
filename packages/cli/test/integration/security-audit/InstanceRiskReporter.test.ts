@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import { audit } from '@/audit';
-import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
 import {
 	getRiskSection,
 	saveManualTriggerWorkflow,
@@ -9,14 +9,18 @@ import {
 	simulateUpToDateInstance,
 } from './utils';
 import * as testDb from '../shared/testDb';
-import { toReportTitle } from '@/audit/utils';
+import { toReportTitle } from '@/security-audit/utils';
 import config from '@/config';
 import { generateNanoId } from '@db/utils/generators';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
 
+let securityAuditService: SecurityAuditService;
+
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 
 	simulateUpToDateInstance();
 });
@@ -56,7 +60,7 @@ test('should report webhook lacking authentication', async () => {
 
 	await Container.get(WorkflowRepository).save(details);
 
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -103,10 +107,12 @@ test('should not report webhooks having basic or header auth', async () => {
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['instance']);
-	if (Array.isArray(testAudit)) fail('audit is empty');
+	const testAudit = await securityAuditService.run(['instance']);
+
+	if (Array.isArray(testAudit)) fail('Audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
+
 	if (!report) {
 		fail('Expected test audit to have instance risk report');
 	}
@@ -164,7 +170,7 @@ test('should not report webhooks validated by direct children', async () => {
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 	if (Array.isArray(testAudit)) fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
@@ -180,7 +186,7 @@ test('should not report webhooks validated by direct children', async () => {
 test('should not report non-webhook node', async () => {
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 	if (Array.isArray(testAudit)) fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
@@ -197,7 +203,7 @@ test('should not report non-webhook node', async () => {
 test('should report outdated instance when outdated', async () => {
 	simulateOutdatedInstanceOnce();
 
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -215,7 +221,7 @@ test('should report outdated instance when outdated', async () => {
 });
 
 test('should not report outdated instance when up to date', async () => {
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 	if (Array.isArray(testAudit)) fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
@@ -231,7 +237,7 @@ test('should not report outdated instance when up to date', async () => {
 test('should report security settings', async () => {
 	config.set('diagnostics.enabled', true);
 
-	const testAudit = await audit(['instance']);
+	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(
 		testAudit,

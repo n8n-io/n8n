@@ -1,4 +1,4 @@
-import type { Risk } from '@/audit/types';
+import type { Risk } from '@/security-audit/types';
 
 /**
  * Risk categories
