@@ -1,4 +1,4 @@
-import type { WorkflowActivationError } from '@/ActivationErrors';
+import type { ActivationError } from '@/ActivationErrors';
 import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
 
 export type RedisServiceCommand =
@@ -20,14 +20,7 @@ type RedisServiceBaseCommand = {
 	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
-		[key: string]:
-			| string
-			| number
-			| boolean
-			| string[]
-			| number[]
-			| boolean[]
-			| WorkflowActivationError;
+		[key: string]: string | number | boolean | string[] | number[] | boolean[] | ActivationError;
 	};
 };
 

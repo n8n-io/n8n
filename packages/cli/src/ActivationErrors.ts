@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { CacheService } from './services/cache.service';
 
-export type WorkflowActivationError = {
+export type ActivationError = {
 	time: number; // ms
 	error: {
 		message: string;
@@ -9,10 +9,10 @@ export type WorkflowActivationError = {
 };
 
 @Service()
-export class ActivationErrors {
+export class ActivationErrorsService {
 	constructor(private readonly cacheService: CacheService) {}
 
-	async set(workflowId: string, error: WorkflowActivationError) {
+	async set(workflowId: string, error: ActivationError) {
 		const key = this.toCacheKey(workflowId);
 
 		await this.cacheService.set(key, error);
@@ -31,10 +31,10 @@ export class ActivationErrors {
 	async get(workflowId: string) {
 		const key = this.toCacheKey(workflowId);
 
-		return this.cacheService.get<WorkflowActivationError>(key);
+		return this.cacheService.get<ActivationError>(key);
 	}
 
-	create(error: Error): WorkflowActivationError {
+	create(error: Error): ActivationError {
 		return {
 			time: new Date().getTime(),
 			error: {
