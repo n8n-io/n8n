@@ -17,8 +17,6 @@ export async function runExternalHook<T extends ExternalHooksKey>(
 
 	const store = useWebhooksStore();
 
-	console.log(store);
-
 	const [resource, operator] = eventName.split('.') as [
 		keyof ExternalHooks,
 		keyof ExternalHooks[keyof ExternalHooks],
