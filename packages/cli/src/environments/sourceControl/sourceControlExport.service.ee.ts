@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -6,7 +6,6 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import * as Db from '@/Db';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
@@ -25,8 +24,12 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 
 @Service()
 export class SourceControlExportService {
@@ -102,7 +105,7 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+			const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 				relations: ['role', 'user'],
 				where: {
 					role: {
@@ -112,7 +115,7 @@ export class SourceControlExportService {
 					workflowId: In(workflowIds),
 				},
 			});
-			const workflows = await Db.collections.Workflow.find({
+			const workflows = await Container.get(WorkflowRepository).find({
 				where: {
 					id: In(workflowIds),
 				},
@@ -181,7 +184,7 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const mappings = await Db.collections.WorkflowTagMapping.find();
+			const mappings = await Container.get(WorkflowTagMappingRepository).find();
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			await fsWriteFile(
 				fileName,
@@ -236,7 +239,7 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await Db.collections.SharedCredentials.find({
+			const credentialsToBeExported = await Container.get(SharedCredentialsRepository).find({
 				relations: ['credentials', 'role', 'user'],
 				where: {
 					credentialsId: In(credentialIds),

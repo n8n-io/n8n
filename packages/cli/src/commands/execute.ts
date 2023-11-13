@@ -5,13 +5,13 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { ExecutionBaseError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -81,7 +81,7 @@ export class Execute extends BaseCommand {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
+			workflowData = await Container.get(WorkflowRepository).findOneBy({ id: workflowId });
 			if (workflowData === null) {
 				this.logger.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);

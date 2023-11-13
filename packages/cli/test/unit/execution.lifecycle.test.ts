@@ -1,6 +1,6 @@
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
-import { mockInstance } from '../integration/shared/utils/mocking';
+import { mockInstance } from '../shared/mocking';
 import { toSaveSettings } from '@/executionLifecycleHooks/toSaveSettings';
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';
@@ -24,7 +24,6 @@ function toIRun(item?: object) {
 }
 
 function getDataId(run: IRun, kind: 'binary' | 'json') {
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore
 	return run.data.resultData.runData.myNode[0].data.main[0][0][kind].data.id;
 }
@@ -145,43 +144,96 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 describe('toSaveSettings()', () => {
 	afterEach(() => {
 		jest.restoreAllMocks();
+		config.load(config.default);
 	});
 
-	it('should set `error` based on workflow settings', () => {
-		const saveSettings = toSaveSettings({ saveDataErrorExecution: 'all' });
+	describe('when setting `error`', () => {
+		it('should favor workflow settings over defaults', () => {
+			config.set('executions.saveDataOnError', 'none');
 
-		expect(saveSettings.error).toBe(true);
+			const saveSettings = toSaveSettings({ saveDataErrorExecution: 'all' });
 
-		const _saveSettings = toSaveSettings({ saveDataErrorExecution: 'none' });
+			expect(saveSettings.error).toBe(true);
 
-		expect(_saveSettings.error).toBe(false);
+			config.set('executions.saveDataOnError', 'all');
+
+			const _saveSettings = toSaveSettings({ saveDataErrorExecution: 'none' });
+
+			expect(_saveSettings.error).toBe(false);
+		});
+
+		it('should fall back to default if no workflow setting', () => {
+			config.set('executions.saveDataOnError', 'all');
+
+			const saveSettings = toSaveSettings();
+
+			expect(saveSettings.error).toBe(true);
+
+			config.set('executions.saveDataOnError', 'none');
+
+			const _saveSettings = toSaveSettings();
+
+			expect(_saveSettings.error).toBe(false);
+		});
 	});
 
-	it('should set `success` based on workflow settings', () => {
-		const saveSettings = toSaveSettings({ saveDataSuccessExecution: 'all' });
+	describe('when setting `success`', () => {
+		it('should favor workflow settings over defaults', () => {
+			config.set('executions.saveDataOnSuccess', 'none');
 
-		expect(saveSettings.success).toBe(true);
+			const saveSettings = toSaveSettings({ saveDataSuccessExecution: 'all' });
 
-		const _saveSettings = toSaveSettings({ saveDataSuccessExecution: 'none' });
+			expect(saveSettings.success).toBe(true);
 
-		expect(_saveSettings.success).toBe(false);
+			config.set('executions.saveDataOnSuccess', 'all');
+
+			const _saveSettings = toSaveSettings({ saveDataSuccessExecution: 'none' });
+
+			expect(_saveSettings.success).toBe(false);
+		});
+
+		it('should fall back to default if no workflow setting', () => {
+			config.set('executions.saveDataOnSuccess', 'all');
+
+			const saveSettings = toSaveSettings();
+
+			expect(saveSettings.success).toBe(true);
+
+			config.set('executions.saveDataOnSuccess', 'none');
+
+			const _saveSettings = toSaveSettings();
+
+			expect(_saveSettings.success).toBe(false);
+		});
 	});
 
-	it('should set `manual` based on workflow settings', () => {
-		const saveSettings = toSaveSettings({ saveManualExecutions: true });
+	describe('when setting `manual`', () => {
+		it('should favor workflow settings over defaults', () => {
+			config.set('executions.saveDataManualExecutions', false);
 
-		expect(saveSettings.manual).toBe(true);
+			const saveSettings = toSaveSettings({ saveManualExecutions: true });
 
-		const _saveSettings = toSaveSettings({ saveManualExecutions: false });
+			expect(saveSettings.manual).toBe(true);
 
-		expect(_saveSettings.manual).toBe(false);
-	});
+			config.set('executions.saveDataManualExecutions', true);
 
-	it('should return defaults if no workflow settings', async () => {
-		const saveSettings = toSaveSettings();
+			const _saveSettings = toSaveSettings({ saveManualExecutions: false });
 
-		expect(saveSettings.error).toBe(true);
-		expect(saveSettings.success).toBe(true);
-		expect(saveSettings.manual).toBe(true);
+			expect(_saveSettings.manual).toBe(false);
+		});
+
+		it('should fall back to default if no workflow setting', () => {
+			config.set('executions.saveDataManualExecutions', true);
+
+			const saveSettings = toSaveSettings();
+
+			expect(saveSettings.manual).toBe(true);
+
+			config.set('executions.saveDataManualExecutions', false);
+
+			const _saveSettings = toSaveSettings();
+
+			expect(_saveSettings.manual).toBe(false);
+		});
 	});
 });

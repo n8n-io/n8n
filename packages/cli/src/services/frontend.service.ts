@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
-import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import { LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -175,6 +175,7 @@ export class FrontendService {
 				debugInEditor: false,
 				binaryDataS3: false,
 				workflowHistory: false,
+				workerView: false,
 			},
 			mfa: {
 				enabled: false,
@@ -205,8 +206,9 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
+		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
@@ -262,6 +264,7 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
+			workerView: this.license.isWorkerViewLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -295,6 +298,8 @@ export class FrontendService {
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
+		this.settings.executionMode = config.getEnv('executions.mode');
+
 		return this.settings;
 	}
 
@@ -303,7 +308,8 @@ export class FrontendService {
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
-		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
+		const { staticCacheDir } = this.instanceSettings;
+		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
 		data.forEach((entry, index) => {

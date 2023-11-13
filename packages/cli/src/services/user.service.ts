@@ -3,14 +3,22 @@ import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere }
 import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
+import { type JwtPayload, JwtService } from './jwt.service';
+import { TokenExpiredError } from 'jsonwebtoken';
+import { Logger } from '@/Logger';
+import { createPasswordSha } from '@/auth/jwt';
 
 @Service()
 export class UserService {
-	constructor(private readonly userRepository: UserRepository) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly userRepository: UserRepository,
+		private readonly jwtService: JwtService,
+	) {}
 
 	async findOne(options: FindOneOptions<User>) {
 		return this.userRepository.findOne({ relations: ['globalRole'], ...options });
@@ -54,13 +62,55 @@ export class UserService {
 		return this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
 	}
 
-	generatePasswordResetUrl(instanceBaseUrl: string, token: string, mfaEnabled: boolean) {
+	generatePasswordResetToken(user: User, expiresIn = '20m') {
+		return this.jwtService.signData(
+			{ sub: user.id, passwordSha: createPasswordSha(user) },
+			{ expiresIn },
+		);
+	}
+
+	generatePasswordResetUrl(user: User) {
+		const instanceBaseUrl = getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
-		url.searchParams.append('token', token);
-		url.searchParams.append('mfaEnabled', mfaEnabled.toString());
+		url.searchParams.append('token', this.generatePasswordResetToken(user));
+		url.searchParams.append('mfaEnabled', user.mfaEnabled.toString());
 
 		return url.toString();
+	}
+
+	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
+		let decodedToken: JwtPayload & { passwordSha: string };
+		try {
+			decodedToken = this.jwtService.verifyToken(token);
+		} catch (e) {
+			if (e instanceof TokenExpiredError) {
+				this.logger.debug('Reset password token expired', { token });
+			} else {
+				this.logger.debug('Error verifying token', { token });
+			}
+			return;
+		}
+
+		const user = await this.userRepository.findOne({
+			where: { id: decodedToken.sub },
+			relations: ['authIdentities', 'globalRole'],
+		});
+
+		if (!user) {
+			this.logger.debug(
+				'Request to resolve password token failed because no user was found for the provided user ID',
+				{ userId: decodedToken.sub, token },
+			);
+			return;
+		}
+
+		if (createPasswordSha(user) !== decodedToken.passwordSha) {
+			this.logger.debug('Password updated since this token was generated');
+			return;
+		}
+
+		return user;
 	}
 
 	async toPublic(user: User, options?: { withInviteUrl?: boolean; posthog?: PostHogClient }) {

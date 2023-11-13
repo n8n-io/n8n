@@ -1,16 +1,16 @@
-import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import * as ResponseHelper from '@/ResponseHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { isLdapLoginEnabled } from '@/Ldap/helpers';
+import { UserRepository } from '@db/repositories/user.repository';
 
 export const handleEmailLogin = async (
 	email: string,
 	password: string,
 ): Promise<User | undefined> => {
-	const user = await Db.collections.User.findOne({
+	const user = await Container.get(UserRepository).findOne({
 		where: { email },
 		relations: ['globalRole', 'authIdentities'],
 	});

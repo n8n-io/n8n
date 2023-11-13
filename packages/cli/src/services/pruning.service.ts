@@ -6,9 +6,9 @@ import type { FindOptionsWhere } from 'typeorm';
 
 import { TIME, inTest } from '@/constants';
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
-import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 @Service()
 export class PruningService {
@@ -46,12 +46,19 @@ export class PruningService {
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
 
-			return Container.get(MultiMainInstancePublisher).isLeader;
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			return multiMainInstancePublisher.isLeader;
 		}
 
 		return true;
 	}
 
+	/**
+	 * @important Call only after DB connection is established and migrations have completed.
+	 */
 	startPruning() {
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
@@ -63,7 +70,11 @@ export class PruningService {
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
 
-			if (Container.get(MultiMainInstancePublisher).isFollower) return;
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			if (multiMainInstancePublisher.isFollower) return;
 		}
 
 		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');

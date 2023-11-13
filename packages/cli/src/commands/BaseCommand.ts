@@ -20,7 +20,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { generateHostInstanceId } from '../databases/utils/generators';
+import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
@@ -248,7 +248,11 @@ export abstract class BaseCommand extends Command {
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
 
-			if (Container.get(MultiMainInstancePublisher).isFollower) {
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			if (multiMainInstancePublisher.isFollower) {
 				this.logger.debug('Instance is follower, skipping license initialization...');
 				return;
 			}
@@ -269,6 +273,7 @@ export abstract class BaseCommand extends Command {
 			try {
 				this.logger.debug('Attempting license activation');
 				await license.activate(activationKey);
+				this.logger.debug('License init complete');
 			} catch (e) {
 				this.logger.error('Could not activate license', e as Error);
 			}

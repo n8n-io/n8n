@@ -23,11 +23,7 @@
 			</div>
 
 			<import-parameter
-				v-else-if="
-					parameter.type === 'curlImport' &&
-					nodeTypeName === 'n8n-nodes-base.httpRequest' &&
-					nodeTypeVersion >= 3
-				"
+				v-else-if="parameter.type === 'curlImport'"
 				:isReadOnly="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
@@ -102,7 +98,10 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
-			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
+			<div
+				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
+				class="parameter-item"
+			>
 				<div
 					class="delete-option clickable"
 					:title="$locale.baseText('parameterInputList.delete')"
@@ -137,9 +136,6 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import type {
 	INodeParameters,
 	INodeProperties,
@@ -147,19 +143,22 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import MultipleParameter from '@/components/MultipleParameter.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
+import MultipleParameter from '@/components/MultipleParameter.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import { get, set } from 'lodash-es';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
+import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 
 const FixedCollectionParameter = defineAsyncComponent(
@@ -242,7 +241,16 @@ export default defineComponent({
 		nodeAuthFields(): INodeProperties[] {
 			return getNodeAuthFields(this.nodeType);
 		},
+		credentialsParameterIndex(): number {
+			return this.filteredParameters.findIndex((parameter) => parameter.type === 'credentials');
+		},
 		indexToShowSlotAt(): number {
+			const credentialsParameterIndex = this.credentialsParameterIndex;
+
+			if (credentialsParameterIndex !== -1) {
+				return credentialsParameterIndex;
+			}
+
 			let index = 0;
 			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
@@ -255,7 +263,7 @@ export default defineComponent({
 				}
 			});
 
-			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
+			return Math.min(index, this.filteredParameters.length - 1);
 		},
 		mainNodeAuthField(): INodeProperties | null {
 			return getMainAuthField(this.nodeType || null);

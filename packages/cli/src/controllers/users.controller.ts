@@ -29,7 +29,8 @@ import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
@@ -411,23 +412,8 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: user.id },
-			{
-				expiresIn: '1d',
-			},
-		);
-
-		const baseUrl = getInstanceBaseUrl();
-
-		const link = this.userService.generatePasswordResetUrl(
-			baseUrl,
-			resetPasswordToken,
-			user.mfaEnabled,
-		);
-		return {
-			link,
-		};
+		const link = this.userService.generatePasswordResetUrl(user);
+		return { link };
 	}
 
 	@Authorized(['global', 'owner'])

@@ -141,7 +141,8 @@ export default defineComponent({
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
+							const attributeValue = friendlyAttrValue(imageUrls[id]);
+							return attributeValue ? `src=${attributeValue}` : '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;

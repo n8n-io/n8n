@@ -84,7 +84,7 @@ export function updateDisplayOptions(
 
 export function processJsonInput<T>(jsonData: T, inputName?: string) {
 	let values;
-	const input = `'${inputName}' ` || '';
+	const input = inputName ? `'${inputName}' ` : '';
 
 	if (typeof jsonData === 'string') {
 		try {
@@ -294,10 +294,19 @@ export function flattenObject(data: IDataObject) {
 }
 
 /**
- * Generate Paired Item Data by length of input array
+ * Capitalizes the first letter of a string
  *
- * @param {number} length
+ * @param {string} string The string to capitalize
  */
+export function capitalize(str: string): string {
+	if (!str) return str;
+
+	const chars = str.split('');
+	chars[0] = chars[0].toUpperCase();
+
+	return chars.join('');
+}
+
 export function generatePairedItemData(length: number): IPairedItemData[] {
 	return Array.from({ length }, (_, item) => ({
 		item,
