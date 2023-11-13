@@ -6,6 +6,7 @@
 		data-test-id="canvas-node"
 		:ref="data.name"
 		:data-name="data.name"
+		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
@@ -19,7 +20,6 @@
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
-				@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 				@click.left="onClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"

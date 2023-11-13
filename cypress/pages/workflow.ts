@@ -195,7 +195,7 @@ export class WorkflowPage extends BasePage {
 				: this.getters.nodeViewBackground();
 
 			if (method === 'right-click') {
-				target.rightclick('topLeft', { force: true });
+				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
 			} else {
 				target.realHover();
 				target.find('[data-test-id="overflow-node-button"]').click();
