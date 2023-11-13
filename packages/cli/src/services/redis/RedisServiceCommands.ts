@@ -8,8 +8,7 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowActiveStateChanged' // multi-main only
-	| 'workflowActivationErrorOccurred'; // multi-main only
+	| 'workflowActiveStateChanged'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -65,14 +64,6 @@ export type RedisServiceWorkerResponseObject = {
 			payload: {
 				oldState: boolean;
 				newState: boolean;
-				workflowId: string;
-			};
-	  }
-	| {
-			// @TODO: Is this still needed?
-			command: 'workflowActivationErrorOccurred';
-			payload: {
-				activationError: WorkflowActivationError;
 				workflowId: string;
 			};
 	  }

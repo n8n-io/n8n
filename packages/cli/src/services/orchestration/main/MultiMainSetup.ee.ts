@@ -121,16 +121,4 @@ export class MultiMainSetup extends SingleMainSetup {
 			payload,
 		});
 	}
-
-	async broadcastWorkflowActivationError(payload: {
-		workflowId: string;
-		activationError: WorkflowActivationError;
-	}) {
-		if (!this.sanityCheck()) return;
-
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowActivationErrorOccurred',
-			payload,
-		});
-	}
 }

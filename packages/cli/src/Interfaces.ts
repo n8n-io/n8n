@@ -548,11 +548,6 @@ export interface IActiveWorkflowUser {
 	lastSeen: Date;
 }
 
-export interface IWorkflowActivationErrorOccurred {
-	activationError: WorkflowActivationError;
-	workflowId: string;
-}
-
 export interface IActiveWorkflowAdded {
 	workflowId: Workflow['id'];
 }
