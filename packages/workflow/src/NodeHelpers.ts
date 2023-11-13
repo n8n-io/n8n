@@ -538,7 +538,7 @@ export function getParameterResolveOrder(
  */
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | null,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
 	node: INode | null,
@@ -588,16 +588,17 @@ export function getNodeParameters(
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
 
 	// Go through the parameters in order of their dependencies
-	const parameterItterationOrderIndex = getParameterResolveOrder(
+	const parameterIterationOrderIndex = getParameterResolveOrder(
 		nodePropertiesArray,
 		parameterDependencies,
 	);
 
-	for (const parameterIndex of parameterItterationOrderIndex) {
+	for (const parameterIndex of parameterIterationOrderIndex) {
 		const nodeProperties = nodePropertiesArray[parameterIndex];
 		if (
-			nodeValues[nodeProperties.name] === undefined &&
-			(!returnDefaults || parentType === 'collection')
+			!nodeValues ||
+			(nodeValues[nodeProperties.name] === undefined &&
+				(!returnDefaults || parentType === 'collection'))
 		) {
 			// The value is not defined so go to the next
 			continue;
