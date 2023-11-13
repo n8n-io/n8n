@@ -1,4 +1,4 @@
-import type { ActivationError } from '@/ActivationErrors';
+import type { ActivationError } from '@/ActivationErrors.service';
 import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
 
 export type RedisServiceCommand =
