@@ -21,6 +21,7 @@ import {
 } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
+
 iconv.encodingExists('utf8');
 
 // Create options for bomAware and encoding
@@ -46,6 +47,22 @@ encodeDecodeOptions.sort((a, b) => {
 	}
 	return 0;
 });
+
+const detectMimeType = (base64String: string) => {
+	if (base64String.startsWith('JVBERi0')) {
+		return 'application/pdf';
+	} else if (base64String.startsWith('R0lGODdh') || base64String.startsWith('R0lGODlh')) {
+		return 'image/gif';
+	} else if (base64String.startsWith('iVBORw0KGgo')) {
+		return 'image/png';
+	} else if (base64String.startsWith('/9j/')) {
+		return 'image/jpg';
+	} else if (base64String.startsWith('{')) {
+		return 'application/json';
+	}
+
+	return 'text/plain';
+};
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
@@ -421,26 +438,34 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
-				const mimeType = (options.mimeType as string) || 'application/json';
-				const convertedValue: IBinaryData = {
-					data: '',
-					mimeType,
-					fileType: fileTypeFromMimeType(mimeType),
-				};
-
+				let data;
+				let fileSize;
 				if (options.dataIsBase64 !== true) {
 					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
 
-					convertedValue.fileSize = prettyBytes(value.length);
+					fileSize = prettyBytes(value.length);
 
-					convertedValue.data = iconv
+					data = iconv
 						.encode(value, encoding, { addBOM: options.addBOM as boolean })
 						.toString(BINARY_ENCODING);
 				} else {
-					convertedValue.data = value as unknown as string;
+					data = value as unknown as string;
 				}
+
+				let mimeType = options.mimeType as string;
+
+				if (!mimeType) {
+					mimeType = detectMimeType(data);
+				}
+
+				const convertedValue: IBinaryData = {
+					data,
+					mimeType,
+					fileType: fileTypeFromMimeType(mimeType),
+					fileSize,
+				};
 
 				if (options.fileName) {
 					convertedValue.fileName = options.fileName as string;
