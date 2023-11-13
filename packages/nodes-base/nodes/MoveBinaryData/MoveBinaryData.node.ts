@@ -420,7 +420,7 @@ export class MoveBinaryData implements INodeType {
 					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 
-						if (nodeVersion > 1) {
+						if (!mimeType) {
 							mimeType = 'application/json';
 						}
 					}
