@@ -412,10 +412,13 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
+				let mimeType = options.mimeType as string;
+
 				let data: Buffer;
 				if (options.dataIsBase64 !== true) {
 					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
+						mimeType = 'application/json';
 					}
 
 					data = iconv.encode(value, encoding, { addBOM: options.addBOM as boolean });
@@ -424,8 +427,6 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const nodeVersion = this.getNode().typeVersion;
-
-				let mimeType = options.mimeType as string;
 				if (!mimeType && nodeVersion === 1) {
 					mimeType = 'application/json';
 				}
