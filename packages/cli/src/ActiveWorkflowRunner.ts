@@ -4,6 +4,7 @@
 
 import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
+import config from '@/config';
 
 import type {
 	ExecutionError,
@@ -96,7 +97,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async init() {
-		await this.multiMainSetup.init();
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			await this.multiMainSetup.init();
+		}
+
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
