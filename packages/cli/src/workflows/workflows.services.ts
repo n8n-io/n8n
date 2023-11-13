@@ -374,6 +374,8 @@ export class WorkflowsService {
 
 		const multiMainSetup = Container.get(MultiMainSetup);
 
+		await multiMainSetup.init();
+
 		if (multiMainSetup.isEnabled) {
 			await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
 				workflowId,
