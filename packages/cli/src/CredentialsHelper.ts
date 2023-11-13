@@ -490,8 +490,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			};
 		}
 
-		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
-		for (const nodeName of nodeTypesToTestWith) {
+		const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+		for (const nodeName of supportedNodes) {
 			const node = this.nodeTypes.getByName(nodeName);
 
 			// Always set to an array even if node is not versioned to not having
