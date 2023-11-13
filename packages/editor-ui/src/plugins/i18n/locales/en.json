@@ -168,6 +168,7 @@
 	"codeNodeEditor.completer.$execution.customData.get()": "Get custom data set in the current execution. <a href=\"https://docs.n8n.io/workflows/executions/custom-executions-data/\" target=\"_blank\">Learn More</a>",
 	"codeNodeEditor.completer.$execution.customData.setAll()": "Set multiple custom data key/value pairs with an object for the current execution. <a href=\"https://docs.n8n.io/workflows/executions/custom-executions-data/\" target=\"_blank\">Learn More</a>",
 	"codeNodeEditor.completer.$execution.customData.getAll()": "Get all custom data for the current execution. <a href=\"https://docs.n8n.io/workflows/executions/custom-executions-data/\" target=\"_blank\">Learn More</a>",
+	"codeNodeEditor.completer.$ifEmpty": "Checks whether the first parameter is empty, and if so returns the second parameter. Otherwise returns the first parameter. The following count as empty: null/undefined values, empty strings, empty arrays, objects with no keys.",
 	"codeNodeEditor.completer.$input": "This node’s input data",
 	"codeNodeEditor.completer.$input.all": "@:_reusableBaseText.codeNodeEditor.completer.all",
 	"codeNodeEditor.completer.$input.first": "@:_reusableBaseText.codeNodeEditor.completer.first",
