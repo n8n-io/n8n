@@ -193,6 +193,11 @@ export class Html implements INodeType {
 										description: 'Get the HTML the element contains',
 									},
 									{
+										name: 'HTML (Outer)',
+										value: 'htmlOuter',
+										description: 'Get the HTML the element contains, including the element itself',
+									},
+									{
 										name: 'Text',
 										value: 'text',
 										description: 'Get only the text content of the element',
