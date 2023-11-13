@@ -2510,7 +2510,10 @@ const getCommonWorkflowFunctions = (
 
 const executionCancellationFunctions = (
 	abortController?: AbortController,
-): Pick<IExecuteFunctions, 'onExecutionCancellation'> => ({
+): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
+	getExecutionCancelSignal: () => {
+		return abortController?.signal;
+	},
 	onExecutionCancellation: (cleanup, reject) => {
 		const handler = async () => {
 			abortController?.signal?.removeEventListener('abort', handler);
