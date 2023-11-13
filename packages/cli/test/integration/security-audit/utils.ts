@@ -1,9 +1,9 @@
 import nock from 'nock';
 import config from '@/config';
 import { v4 as uuid } from 'uuid';
-import { toReportTitle } from '@/audit/utils';
+import { toReportTitle } from '@/security-audit/utils';
 import * as constants from '@/constants';
-import type { Risk } from '@/audit/types';
+import type { Risk } from '@/security-audit/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
