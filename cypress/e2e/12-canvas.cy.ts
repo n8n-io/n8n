@@ -22,6 +22,7 @@ const ZOOM_OUT_X2_FACTOR = 0.64;
 const PINCH_ZOOM_IN_FACTOR = 1.05702;
 const PINCH_ZOOM_OUT_FACTOR = 0.946058;
 const RENAME_NODE_NAME = 'Something else';
+const RENAME_NODE_NAME2 = 'Something different';
 
 describe('Canvas Node Manipulation and Navigation', () => {
 	beforeEach(() => {
@@ -159,12 +160,37 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
-	it('should delete multiple nodes', () => {
+	it('should delete multiple nodes (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		WorkflowPage.actions.selectAll();
 		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.length', 0);
+
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		WorkflowPage.actions.selectAllFromContextMenu();
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('delete');
+		WorkflowPage.getters.canvasNodes().should('have.length', 0);
+	});
+
+	it('should delete multiple nodes (context menu or shortcut)', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		WorkflowPage.actions.selectAll();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.length', 0);
+
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		WorkflowPage.actions.selectAllFromContextMenu();
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('delete');
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 	});
 
@@ -269,35 +295,43 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().last().should('be.visible');
 	});
 
-	it('should disable node by pressing disable in the context menu', () => {
-		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
-		WorkflowPage.getters.disabledNodes().should('have.length', 1);
-	});
-
-	it('should disable node using keyboard shortcut', () => {
+	it('should disable node (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+
+		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 	});
 
-	it('should disable multiple nodes', () => {
+	it('should disable multiple nodes (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.selectAll();
+
+		// Keyboard shortcut
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+		WorkflowPage.actions.hitDisableNodeShortcut();
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+
+		// Context menu
+
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('toggle_activation');
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('toggle_activation');
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 	});
 
-	it('should rename node using keyboard shortcut', () => {
+	it('should rename node (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
@@ -306,15 +340,25 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.get('body').type(RENAME_NODE_NAME);
 		cy.get('body').type('{enter}');
 		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME).should('exist');
+
+		WorkflowPage.actions.renameNode(RENAME_NODE_NAME);
+		cy.get('.rename-prompt').should('be.visible');
+		cy.get('body').type(RENAME_NODE_NAME2);
+		cy.get('body').type('{enter}');
+		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME2).should('exist');
 	});
 
-	it('should duplicate node', () => {
+	it('should duplicate nodes (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitDuplicateNodeShortcut();
+		WorkflowPage.getters.canvasNodes().should('have.length', 5);
 	});
 
 	// ADO-1240: Connections would get deleted after activating and deactivating NodeView
@@ -354,7 +398,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 
-			WorkflowPage.actions.openNode('n8n');
+			WorkflowPage.actions.openNodeFromContextMenu('n8n');
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 			NDVDialog.actions.close();
 		});
