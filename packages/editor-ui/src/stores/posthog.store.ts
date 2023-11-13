@@ -184,6 +184,7 @@ export const usePostHog = defineStore('posthog', () => {
 		isVariantEnabled,
 		getVariant,
 		reset,
+		identify,
 		capture,
 		setMetadata,
 	};
