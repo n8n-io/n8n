@@ -9,7 +9,7 @@ export type WorkflowActivationError = {
 };
 
 @Service()
-export class WorkflowActivationErrors {
+export class ActivationErrors {
 	constructor(private readonly cacheService: CacheService) {}
 
 	async set(workflowId: string, error: WorkflowActivationError) {

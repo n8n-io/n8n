@@ -26,7 +26,7 @@ import type {
 import {
 	NodeHelpers,
 	Workflow,
-	WorkflowActivationError as WorkflowFailedToActivateError,
+	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
 	WebhookPathAlreadyTakenError,
 } from 'n8n-workflow';
@@ -65,8 +65,7 @@ import { Logger } from './Logger';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
-import config from '@/config';
-import { WorkflowActivationErrors } from '@/ActivationErrors';
+import { ActivationErrors } from '@/ActivationErrors';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -93,7 +92,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
-		private readonly workflowActivationErrors: WorkflowActivationErrors,
+		private readonly activationErrors: ActivationErrors,
 	) {}
 
 	async init() {
@@ -253,7 +252,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const isFullAccess = !user || user.globalRole.name === 'owner';
 
 		const activatedSuccessfully = async (workflowId: string) => {
-			return (await this.workflowActivationErrors.get(workflowId)) === undefined;
+			return (await this.activationErrors.get(workflowId)) === undefined;
 		};
 
 		if (isFullAccess) {
@@ -310,7 +309,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Return error if there was a problem activating the workflow
 	 */
 	async getActivationError(workflowId: string) {
-		return this.workflowActivationErrors.get(workflowId);
+		return this.activationErrors.get(workflowId);
 	}
 
 	/**
@@ -597,7 +596,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 				void this.activeWorkflows.remove(workflowData.id);
 
-				void this.workflowActivationErrors.set(workflowData.id, {
+				void this.activationErrors.set(workflowData.id, {
 					time: new Date().getTime(),
 					error: {
 						message: error.message,
@@ -605,7 +604,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				});
 
 				// Run Error Workflow if defined
-				const activationError = new WorkflowFailedToActivateError(
+				const activationError = new WorkflowActivationError(
 					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
 					{ cause: error, node },
 				);
@@ -749,7 +748,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
 
 			if (!dbWorkflow) {
-				throw new WorkflowFailedToActivateError(`Failed to find workflow with ID "${workflowId}"`);
+				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
 			}
 
 			workflow = new Workflow({
@@ -766,7 +765,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES);
 
 			if (!canBeActivated) {
-				throw new WorkflowFailedToActivateError(
+				throw new WorkflowActivationError(
 					`Workflow ${dbWorkflow.display()} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
 				);
 			}
@@ -774,7 +773,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const sharing = dbWorkflow.shared.find((shared) => shared.role.name === 'owner');
 
 			if (!sharing) {
-				throw new WorkflowFailedToActivateError(`Workflow ${dbWorkflow.display()} has no owner`);
+				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
 			}
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
@@ -798,16 +797,16 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			// Workflow got now successfully activated so make sure nothing is left in the queue
 			this.removeQueuedWorkflowActivation(workflowId);
 
-			await this.workflowActivationErrors.unset(workflowId);
+			await this.activationErrors.unset(workflowId);
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await WorkflowsService.updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 
-			const activationError = this.workflowActivationErrors.create(error);
+			const activationError = this.activationErrors.create(error);
 
-			await this.workflowActivationErrors.set(workflowId, activationError);
+			await this.activationErrors.set(workflowId, activationError);
 
 			throw error;
 		}
@@ -928,7 +927,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			);
 		}
 
-		await this.workflowActivationErrors.unset(workflowId);
+		await this.activationErrors.unset(workflowId);
 
 		if (this.queuedActivations[workflowId] !== undefined) {
 			this.removeQueuedWorkflowActivation(workflowId);
@@ -993,6 +992,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	async removeActivationError(workflowId: string) {
-		await this.workflowActivationErrors.unset(workflowId);
+		await this.activationErrors.unset(workflowId);
 	}
 }
