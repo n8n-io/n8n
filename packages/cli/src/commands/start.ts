@@ -118,7 +118,7 @@ export class Start extends BaseCommand {
 				this.pruningService.stopPruning();
 			}
 
-			if (config.getEnv('multiMainSetup.enabled')) {
+			if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
 				await Container.get(MultiMainSetup).shutdown();
@@ -240,9 +240,7 @@ export class Start extends BaseCommand {
 
 		// queue mode in multi-main scenario
 
-		const isMultiMainLicensed = Container.get(License).isMultipleMainInstancesLicensed();
-
-		if (!isMultiMainLicensed) {
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
