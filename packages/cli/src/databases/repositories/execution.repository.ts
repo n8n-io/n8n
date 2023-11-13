@@ -20,7 +20,7 @@ import type {
 import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
-import type { ExecutionData } from '../entities/ExecutionData';
+import { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
@@ -208,17 +208,32 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: ExecutionPayload) {
+	async createNewExecution(execution: ExecutionPayload): Promise<ExecutionEntity> {
 		const { data, workflowData, ...rest } = execution;
 
-		const newExecution = await this.save(rest);
-		await this.executionDataRepository.save({
-			execution: newExecution,
-			workflowData,
-			data: stringify(data),
-		});
-
-		return newExecution;
+		if (config.getEnv('database.type') === 'sqlite') {
+			// Running these inside transactions led to `database is locked` errors
+			const newExecution = await this.save(rest);
+			await this.executionDataRepository.save({
+				execution: newExecution,
+				workflowData,
+				data: stringify(data),
+			});
+			return newExecution;
+		} else {
+			return this.manager.transaction(async (manager) => {
+				const newExecution = (await manager.save(
+					manager.create(ExecutionEntity, rest),
+				)) as ExecutionEntity;
+				const executionData = manager.create(ExecutionData, {
+					execution: newExecution,
+					workflowData,
+					data: stringify(data),
+				});
+				await manager.save(executionData);
+				return newExecution;
+			});
+		}
 	}
 
 	async markAsCrashed(executionIds: string[]) {
