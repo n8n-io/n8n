@@ -385,23 +385,23 @@ export class Start extends BaseCommand {
 			this.pruningService.startPruning();
 		}
 
-		if (!config.getEnv('multiMainSetup.enabled')) return;
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const multiMainSetup = Container.get(MultiMainSetup);
 
-		const multiMainSetup = Container.get(MultiMainSetup);
+			await multiMainSetup.init();
 
-		await multiMainSetup.init();
-
-		multiMainSetup.on('leadershipChange', async () => {
-			if (multiMainSetup.isLeader) {
-				if (this.pruningService.isPruningEnabled()) {
-					this.pruningService.startPruning();
+			multiMainSetup.on('leadershipChange', async () => {
+				if (multiMainSetup.isLeader) {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.startPruning();
+					}
+				} else {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.stopPruning();
+					}
 				}
-			} else {
-				if (this.pruningService.isPruningEnabled()) {
-					this.pruningService.stopPruning();
-				}
-			}
-		});
+			});
+		}
 	}
 
 	async catch(error: Error) {
