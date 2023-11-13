@@ -1,11 +1,11 @@
 import type { IDataObject } from 'n8n-workflow';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import type {
 	ExternalHooks,
 	ExternalHooksKey,
 	ExternalHooksGenericContext,
 	ExtractExternalHooksMethodPayloadFromKey,
 } from '@/types/externalHooks';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 
 export async function runExternalHook<T extends ExternalHooksKey>(
 	eventName: T,
@@ -16,6 +16,8 @@ export async function runExternalHook<T extends ExternalHooksKey>(
 	}
 
 	const store = useWebhooksStore();
+
+	console.log(store);
 
 	const [resource, operator] = eventName.split('.') as [
 		keyof ExternalHooks,
