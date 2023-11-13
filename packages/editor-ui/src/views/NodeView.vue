@@ -244,14 +244,14 @@ import {
 	useTitleChange,
 	useExecutionDebugging,
 	useContextMenu,
-	ContextMenuAction,
+	type ContextMenuAction,
 	useDataSchema,
 } from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
-import { PinDataSource, pinData } from '@/mixins/pinData';
+import { type PinDataSource, pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';

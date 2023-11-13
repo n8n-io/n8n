@@ -184,7 +184,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { ContextMenuTarget, useContextMenu } from '@/composables';
+import { type ContextMenuTarget, useContextMenu } from '@/composables';
 
 export default defineComponent({
 	name: 'Node',
