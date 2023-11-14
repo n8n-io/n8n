@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -9,6 +8,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
+import { JwtService } from '@/services/jwt.service';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -34,7 +34,7 @@ export function issueJWT(user: User): JwtToken {
 			.digest('hex');
 	}
 
-	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
+	const signedToken = Container.get(JwtService).sign(payload, {
 		expiresIn: expiresIn / 1000 /* in seconds */,
 	});
 
@@ -75,9 +75,9 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+	const jwtPayload: JwtPayload = Container.get(JwtService).verify(token, {
 		algorithms: ['HS256'],
-	}) as JwtPayload;
+	});
 	return resolveJwtContent(jwtPayload);
 }
 

@@ -15,7 +15,7 @@ describe('JwtService', () => {
 	test('Should sign input with user management secret', async () => {
 		const userId = 1;
 
-		const token = jwtService.signData({ sub: userId });
+		const token = jwtService.sign({ sub: userId });
 		expect(typeof token).toBe('string');
 
 		const secret = config.get('userManagement.jwtSecret');
