@@ -795,7 +795,7 @@ $main-panel-width: 360px;
 	position: absolute;
 	bottom: var(--spacing-4xs);
 	left: calc(100% + var(--spacing-s));
-	color: var(--color-text-xlight);
+	color: var(--color-feature-request-font);
 	font-size: var(--font-size-2xs);
 	white-space: nowrap;
 

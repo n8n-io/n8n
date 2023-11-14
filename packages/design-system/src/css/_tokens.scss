@@ -67,7 +67,7 @@
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
 	--color-canvas-dot: var(--prim-gray-120);
-	--color-canvas-read-only-line: var(--prim-gray-40);
+	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-node-background: var(--prim-gray-0);
 	--color-canvas-node-pinned-border: var(--color-secondary);
 	--color-canvas-selected: var(--prim-gray-70);
@@ -216,9 +216,10 @@
 	--color-callout-secondary-font: var(--color-secondary);
 	--color-callout-secondary-icon: var(--color-secondary);
 
-	// Dialog
+	// Dialogs and overlays
 	--color-dialog-overlay-background: var(--prim-gray-0-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
+	--color-block-ui-overlay: var(--prim-gray-820);
 
 	// Avatar
 	--color-avatar-font: var(--color-text-xlight);
@@ -226,6 +227,14 @@
 	// Value Survey
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
+
+	// Switch (Activation, boolean)
+	--color-switch-background: var(--prim-gray-420);
+	--color-switch-active-background: var(--prim-color-alt-i);
+	--color-switch-toggle: var(--prim-gray-0);
+
+	// Feature Request
+	--color-feature-request-font: var(--prim-gray-0);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);
@@ -236,8 +245,9 @@
 	--color-grey: var(--prim-gray-200);
 	--color-light-grey: var(--prim-gray-120);
 	--color-neutral: var(--prim-gray-490);
-	--color-switch: var(--prim-color-alt-i);
 	--color-configurable-node-name: var(--color-text-dark);
+	--color-secondary-link: var(--color-secondary);
+	--color-secondary-link-hover: var(--color-secondary-shade-1);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
