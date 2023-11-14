@@ -392,6 +392,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 			columnNamesList,
+			useAppend ? null : '',
 		);
 		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
@@ -699,6 +700,7 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 		columnNamesList?: string[][],
+		emptyValue: string | null = '',
 	): Promise<string[][]> {
 		const decodedRange = this.getDecodedSheetRange(range);
 
@@ -729,7 +731,7 @@ export class GoogleSheet {
 					value = item[key] as string;
 				}
 				if (value === undefined || value === null) {
-					rowData.push('');
+					rowData.push(emptyValue as string);
 					return;
 				}
 				if (typeof value === 'object') {
