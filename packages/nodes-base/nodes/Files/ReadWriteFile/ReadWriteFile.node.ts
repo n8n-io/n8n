@@ -21,10 +21,10 @@ const displayOnWrite = {
 	},
 };
 
-export class FilesReadWrite implements INodeType {
+export class ReadWriteFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read/Write Files from Disk',
-		name: 'filesReadWrite',
+		name: 'readWriteFile',
 		icon: 'fa:file',
 		group: ['input'],
 		version: 1,
@@ -103,7 +103,7 @@ export class FilesReadWrite implements INodeType {
 				displayOptions: displayOnRead,
 				options: [
 					{
-						displayName: 'Property Name',
+						displayName: 'File Property',
 						name: 'dataPropertyName',
 						type: 'string',
 						default: 'data',
@@ -122,7 +122,7 @@ export class FilesReadWrite implements INodeType {
 				displayOptions: displayOnWrite,
 			},
 			{
-				displayName: 'Property Name',
+				displayName: 'File Property',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
