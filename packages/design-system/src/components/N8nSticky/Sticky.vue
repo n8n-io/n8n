@@ -272,14 +272,6 @@ export default defineComponent({
 	--color-sticky-background: var(--color-sticky-background-7);
 	--color-sticky-border: var(--color-sticky-border-7);
 }
-
-.color-8 {
-	--color-sticky-background: var(--color-sticky-background-8);
-	--color-sticky-border: var(--color-sticky-border-8);
-	--color-sticky-font: var(--color-sticky-dark-font);
-	--color-sticky-code-font: var(--color-sticky-dark-code-font);
-	--color-sticky-code-background: var(--color-sticky-dark-code-background);
-}
 </style>
 
 <style lang="scss">

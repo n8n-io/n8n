@@ -56,7 +56,7 @@
 				</div>
 				<n8n-popover
 					effect="dark"
-					:popper-style="{ width: '238px' }"
+					:popper-style="{ width: '208px' }"
 					trigger="click"
 					placement="top"
 					@show="onShowPopover"
@@ -75,7 +75,7 @@
 						<div
 							class="color"
 							data-test-id="color"
-							v-for="(_, index) in Array.from({ length: 8 })"
+							v-for="(_, index) in Array.from({ length: 7 })"
 							:key="index"
 							v-on:click="changeColor(index + 1)"
 							:class="`sticky-color-${index + 1}`"
