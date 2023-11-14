@@ -1,6 +1,6 @@
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Logger } from '@/Logger';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { UserService } from '@/services/user.service';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import type { Push } from '@/push';

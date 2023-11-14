@@ -309,9 +309,7 @@ class WorkflowRunnerProcess {
 
 	/**
 	 * Sends hook data to the parent process that it executes them
-	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
 		try {
 			await sendToParentProcess('processHook', {
@@ -384,7 +382,6 @@ class WorkflowRunnerProcess {
  * @param {string} type The type of data to send
  * @param {*} data The data
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
 	return new Promise((resolve, reject) => {
 		process.send!(

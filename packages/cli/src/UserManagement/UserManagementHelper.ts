@@ -2,7 +2,6 @@ import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
-import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
@@ -11,6 +10,7 @@ import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { RoleService } from '@/services/role.service';
+import { UserRepository } from '@db/repositories/user.repository';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
@@ -19,7 +19,7 @@ export function isSharingEnabled(): boolean {
 export async function getInstanceOwner() {
 	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
-	return Db.collections.User.findOneOrFail({
+	return Container.get(UserRepository).findOneOrFail({
 		relations: ['globalRole'],
 		where: {
 			globalRoleId: globalOwnerRole.id,
@@ -77,7 +77,7 @@ export function validatePassword(password?: string): string {
 }
 
 export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User.findOneOrFail({
+	const user = await Container.get(UserRepository).findOneOrFail({
 		where: { id: userId },
 		relations: ['globalRole'],
 	});

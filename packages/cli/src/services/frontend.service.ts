@@ -175,6 +175,7 @@ export class FrontendService {
 				debugInEditor: false,
 				binaryDataS3: false,
 				workflowHistory: false,
+				workerView: false,
 			},
 			mfa: {
 				enabled: false,
@@ -263,6 +264,7 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
+			workerView: this.license.isWorkerViewLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -295,6 +297,8 @@ export class FrontendService {
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
+
+		this.settings.executionMode = config.getEnv('executions.mode');
 
 		return this.settings;
 	}

@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-import { WorkflowHistoryRepository } from '@db/repositories';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 
 export async function createWorkflowHistoryItem(
 	workflowId: string,

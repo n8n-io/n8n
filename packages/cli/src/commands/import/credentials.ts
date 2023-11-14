@@ -15,6 +15,7 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { UserRepository } from '@db/repositories/user.repository';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
@@ -175,7 +176,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		const owner =
 			ownerGlobalRole &&
-			(await Db.collections.User.findOneBy({ globalRoleId: ownerGlobalRole.id }));
+			(await Container.get(UserRepository).findOneBy({ globalRoleId: ownerGlobalRole.id }));
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
@@ -185,7 +186,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User.findOneBy({ id: userId });
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

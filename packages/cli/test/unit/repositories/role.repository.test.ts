@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories/role.repository';
-import { mockInstance } from '../../integration/shared/utils/';
+import { mockInstance } from '../../shared/mocking';
 import { randomInteger } from '../../integration/shared/random';
 
 describe('RoleRepository', () => {

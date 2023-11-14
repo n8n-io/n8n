@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<el-row>
+		<el-row v-if="nodesWithAccess.length > 0">
 			<el-col :span="8" :class="$style.accessLabel">
 				<n8n-text :compact="true" :bold="true">
 					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}

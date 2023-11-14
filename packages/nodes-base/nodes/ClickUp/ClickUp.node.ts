@@ -743,7 +743,7 @@ export class ClickUp implements INodeType {
 						) {
 							if (
 								additionalFields.stepsStart === undefined ||
-								!additionalFields.stepsEnd === undefined
+								additionalFields.stepsEnd === undefined
 							) {
 								throw new NodeOperationError(
 									this.getNode(),

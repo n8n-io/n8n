@@ -1,3 +1,4 @@
+import Container from 'typedi';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -11,10 +12,13 @@ import { Workflow } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
-import Container from 'typedi';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { mockInstance } from '../shared/mocking';
 
 describe('CredentialsHelper', () => {
+	mockInstance(CredentialsRepository);
+	mockInstance(SharedCredentialsRepository);
 	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
 		loadedNodes: {
 			'test.set': {

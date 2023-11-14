@@ -14,6 +14,12 @@ export class OktaApi implements ICredentialType {
 
 	icon = 'file:icons/Okta.svg';
 
+	httpRequestNode = {
+		name: 'Okta',
+		docsUrl: 'https://developer.okta.com/docs/reference/',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

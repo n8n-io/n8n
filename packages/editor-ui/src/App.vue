@@ -35,6 +35,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { extendExternalHooks } from '@/mixins/externalHooks';
+import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -57,8 +59,10 @@ import {
 	useUsageStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
+import type { ExternalHooks } from '@/types';
+import type { PartialDeep } from 'type-fest';
+import { runExternalHook } from '@/utils';
 
 export default defineComponent({
 	name: 'App',
@@ -131,6 +135,21 @@ export default defineComponent({
 				await this.nodeTypesStore.getNodeTranslationHeaders();
 			}
 		},
+		async initializeHooks(): Promise<void> {
+			const hooksImports = [];
+
+			if (this.settingsStore.isCloudDeployment) {
+				hooksImports.push(
+					import('./hooks/cloud').then(
+						({ n8nCloudHooks }: { n8nCloudHooks: PartialDeep<ExternalHooks> }) => {
+							extendExternalHooks(n8nCloudHooks);
+						},
+					),
+				);
+			}
+
+			await Promise.allSettled(hooksImports);
+		},
 		async onAfterAuthenticate() {
 			if (this.onAfterAuthenticateInitialized) {
 				return;
@@ -153,10 +172,12 @@ export default defineComponent({
 	async mounted() {
 		this.logHiringBanner();
 
+		await this.initializeHooks();
+
 		void this.checkForNewVersions();
 		void this.onAfterAuthenticate();
 
-		void this.externalHooks.run('app.mount');
+		void runExternalHook('app.mount');
 		this.loading = false;
 	},
 	watch: {
