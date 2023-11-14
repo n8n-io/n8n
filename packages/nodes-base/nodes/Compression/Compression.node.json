@@ -11,7 +11,17 @@
 			}
 		]
 	},
-	"alias": ["Zip", "Gzip", "uncompress"],
+	"alias": [
+		"Zip",
+		"Gzip",
+		"uncompress",
+		"compress",
+		"archive",
+		"unarchive",
+		"Binary",
+		"Files",
+		"File"
+	],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

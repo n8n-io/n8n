@@ -380,7 +380,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'ID of the parent folder that will contain the file',
 	},
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,

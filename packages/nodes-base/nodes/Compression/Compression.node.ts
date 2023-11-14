@@ -68,10 +68,14 @@ export class Compression implements INodeType {
 					{
 						name: 'Compress',
 						value: 'compress',
+						action: 'Compress file',
+						description: 'Compress one or more files to zip or gzip',
 					},
 					{
 						name: 'Decompress',
 						value: 'decompress',
+						action: 'Decompress zip or gzip archives',
+						description: 'Decompress zip or gzip archives',
 					},
 				],
 				default: 'decompress',

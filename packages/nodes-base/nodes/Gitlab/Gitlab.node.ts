@@ -1177,7 +1177,7 @@ export class Gitlab implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,

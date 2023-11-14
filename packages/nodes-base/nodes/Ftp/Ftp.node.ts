@@ -120,7 +120,7 @@ export class Ftp implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
-		description: 'Transfers files via FTP or SFTP',
+		description: 'Transfer files via FTP or SFTP',
 		defaults: {
 			name: 'FTP',
 			color: '#303050',
@@ -358,7 +358,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				displayOptions: {
 					show: {
 						operation: ['upload'],

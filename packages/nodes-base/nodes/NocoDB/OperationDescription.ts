@@ -495,7 +495,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Is Binary Data',
+						displayName: 'Is Binary File',
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,

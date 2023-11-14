@@ -373,7 +373,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'If not set the binary data filename will be used',
 	},
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: true,

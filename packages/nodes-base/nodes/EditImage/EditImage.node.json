@@ -11,6 +11,7 @@
 			}
 		]
 	},
+	"aliases": ["File", "Binary"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

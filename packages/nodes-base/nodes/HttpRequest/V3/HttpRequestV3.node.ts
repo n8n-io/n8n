@@ -372,7 +372,7 @@ export class HttpRequestV3 implements INodeType {
 						},
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-							name: 'n8n Binary Data',
+							name: 'n8n Binary File',
 							value: 'binaryData',
 						},
 						{
@@ -502,7 +502,7 @@ export class HttpRequestV3 implements INodeType {
 									options: [
 										{
 											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-											name: 'n8n Binary Data',
+											name: 'n8n Binary File',
 											value: 'formBinaryData',
 										},
 										{

@@ -184,7 +184,7 @@ export class FacebookGraphApi implements INodeType {
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Send Binary Data',
+				displayName: 'Send Binary File',
 				name: 'sendBinaryData',
 				type: 'boolean',
 				displayOptions: {

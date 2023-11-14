@@ -384,7 +384,7 @@ export class NextCloud implements INodeType {
 					'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryDataUpload',
 				type: 'boolean',
 				default: false,

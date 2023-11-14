@@ -671,7 +671,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The name the file should be saved as',
 	},
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,

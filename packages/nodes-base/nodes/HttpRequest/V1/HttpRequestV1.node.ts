@@ -397,7 +397,7 @@ export class HttpRequestV1 implements INodeType {
 
 				// Body Parameter
 				{
-					displayName: 'Send Binary Data',
+					displayName: 'Send Binary File',
 					name: 'sendBinaryData',
 					type: 'boolean',
 					displayOptions: {

@@ -196,7 +196,7 @@ export const optionsProperty: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Binary Data',
+			displayName: 'Binary File',
 			name: 'binaryData',
 			type: 'boolean',
 			displayOptions: {

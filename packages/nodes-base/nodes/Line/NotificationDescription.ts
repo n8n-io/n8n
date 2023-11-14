@@ -68,7 +68,7 @@ export const notificationFields: INodeProperties[] = [
 						displayName: 'Image',
 						values: [
 							{
-								displayName: 'Binary Data',
+								displayName: 'Binary File',
 								name: 'binaryData',
 								type: 'boolean',
 								default: false,
