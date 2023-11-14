@@ -36,6 +36,7 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
+	CloseFunction,
 	ConnectionTypes,
 	ContextType,
 	FieldType,
@@ -3100,6 +3101,7 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
 	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -3276,7 +3278,11 @@ export function getExecuteFunctions(
 						};
 
 						try {
-							return await nodeType.supplyData.call(context, itemIndex);
+							const response = await nodeType.supplyData.call(context, itemIndex);
+							if (response.closeFunction) {
+								closeFunctions.push(response.closeFunction);
+							}
+							return response;
 						} catch (error) {
 							// Propagate errors from sub-nodes
 							if (error.functionality === 'configuration-node') throw error;
