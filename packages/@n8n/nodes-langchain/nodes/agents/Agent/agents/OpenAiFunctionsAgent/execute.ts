@@ -13,6 +13,7 @@ import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
@@ -99,5 +100,8 @@ export async function openAiFunctionsAgentExecute(
 		returnData.push({ json: response });
 	}
 
+	if (memory?.chatHistory instanceof RedisChatMessageHistory) {
+		void memory.chatHistory.client.disconnect();
+	}
 	return this.prepareOutputData(returnData);
 }

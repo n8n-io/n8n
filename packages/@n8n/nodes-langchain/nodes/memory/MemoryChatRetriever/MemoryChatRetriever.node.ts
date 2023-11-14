@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseMessage } from 'langchain/schema';
+import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
 
 function simplifyMessages(messages: BaseMessage[]) {
 	const chunkedMessages = [];
@@ -99,6 +100,9 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
+		if (memory?.chatHistory instanceof RedisChatMessageHistory) {
+			void memory.chatHistory.client.disconnect();
+		}
 		return this.prepareOutputData(serializedMessages);
 	}
 }

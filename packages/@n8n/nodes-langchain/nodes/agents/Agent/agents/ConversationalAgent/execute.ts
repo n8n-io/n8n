@@ -12,6 +12,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -100,5 +101,8 @@ export async function conversationalAgentExecute(
 		returnData.push({ json: response });
 	}
 
+	if (memory?.chatHistory instanceof RedisChatMessageHistory) {
+		void memory.chatHistory.client.disconnect();
+	}
 	return this.prepareOutputData(returnData);
 }
