@@ -62,7 +62,7 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'filter',
 								properties: {
-									pass: "={{ $responseItem.id.startsWith('gpt-') }}",
+									pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('gpt-4-vision') }}",
 								},
 							},
 							{
