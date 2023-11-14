@@ -121,7 +121,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -173,7 +173,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Thumbnail Binary Property',
+				displayName: 'Thumbnail File Property',
 				name: 'thumbnailBinaryPropertyName',
 				type: 'string',
 				default: 'data',

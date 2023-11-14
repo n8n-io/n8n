@@ -42,7 +42,7 @@ export const mediaFields: INodeProperties[] = [
 		description: 'Name of the media that is being downloaded',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

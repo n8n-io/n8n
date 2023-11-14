@@ -208,7 +208,7 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether the webhook will receive binary data',
 		},
 		{
-			displayName: 'Binary Property',
+			displayName: 'File Property',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',

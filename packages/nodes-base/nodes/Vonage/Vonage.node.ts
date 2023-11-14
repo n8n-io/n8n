@@ -133,7 +133,7 @@ export class Vonage implements INodeType {
 			// 	description: 'The format of the message body',
 			// },
 			// {
-			// 	displayName: 'Binary Property',
+			// 	displayName: 'File Property',
 			// 	name: 'binaryPropertyName',
 			// 	displayOptions: {
 			// 		show: {

@@ -86,7 +86,7 @@ export const attachmentFields: INodeProperties[] = [
 			'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -173,7 +173,7 @@ export const attachmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

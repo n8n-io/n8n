@@ -98,7 +98,7 @@ export const notificationFields: INodeProperties[] = [
 								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG.',
 							},
 							{
-								displayName: 'Binary Property',
+								displayName: 'File Property',
 								name: 'binaryProperty',
 								type: 'string',
 								displayOptions: {

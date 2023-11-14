@@ -233,7 +233,7 @@ export const responderFields: INodeProperties[] = [
 								name: 'artifactValues',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'File Property',
 										name: 'binaryProperty',
 										type: 'string',
 										displayOptions: {
@@ -490,7 +490,7 @@ export const responderFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Property',
+						displayName: 'File Property',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',

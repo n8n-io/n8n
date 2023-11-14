@@ -196,7 +196,7 @@ export class Pushover implements INodeType {
 								displayName: 'Attachment Property',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'File Property',
 										name: 'binaryPropertyName',
 										type: 'string',
 										default: '',

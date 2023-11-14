@@ -26,7 +26,7 @@ export const operationProperties: INodeProperties[] = [
 
 export const fromFileProperties: INodeProperties[] = [
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -139,7 +139,7 @@ export const toFileProperties: INodeProperties[] = [
 		description: 'The format of the file to save the data as',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

@@ -156,7 +156,7 @@ export class Pushbullet implements INodeType {
 				description: 'URL of the push',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

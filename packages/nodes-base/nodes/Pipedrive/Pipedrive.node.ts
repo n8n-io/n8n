@@ -1890,7 +1890,7 @@ export class Pipedrive implements INodeType {
 			//         file:create
 			// ----------------------------------
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1996,7 +1996,7 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to download',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,

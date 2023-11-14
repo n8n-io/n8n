@@ -350,7 +350,7 @@ export class NextCloud implements INodeType {
 					'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -412,7 +412,7 @@ export class NextCloud implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

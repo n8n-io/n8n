@@ -249,7 +249,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:updateFile                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'dataBinaryProperty',
 		type: 'string',
 		required: true,

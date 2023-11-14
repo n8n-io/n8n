@@ -112,7 +112,7 @@ export class Html implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'dataPropertyName',
 				type: 'string',
 				requiresDataPath: 'single',

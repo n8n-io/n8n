@@ -497,7 +497,7 @@ export const objectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Use Binary Property',
+		displayName: 'Use File Property',
 		name: 'createFromBinary',
 		type: 'boolean',
 		displayOptions: {
@@ -511,7 +511,7 @@ export const objectFields: INodeProperties[] = [
 		description: 'Whether the data for creating a file should come from a binary field',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'createBinaryPropertyName',
 		type: 'string',
 		displayOptions: {
@@ -538,7 +538,7 @@ export const objectFields: INodeProperties[] = [
 		description: 'Content of the file to be uploaded',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		displayOptions: {

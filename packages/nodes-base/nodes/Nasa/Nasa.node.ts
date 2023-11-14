@@ -570,7 +570,7 @@ export class Nasa implements INodeType {
 					'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -766,7 +766,7 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,

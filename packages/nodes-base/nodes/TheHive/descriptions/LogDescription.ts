@@ -206,7 +206,7 @@ export const logFields: INodeProperties[] = [
 						name: 'attachmentValues',
 						values: [
 							{
-								displayName: 'Binary Property',
+								displayName: 'File Property',
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',

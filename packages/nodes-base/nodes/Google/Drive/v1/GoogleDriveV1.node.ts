@@ -355,7 +355,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:download
 		// ----------------------------------
 		{
-			displayName: 'Binary Property',
+			displayName: 'File Property',
 			name: 'binaryPropertyName',
 			type: 'string',
 			required: true,
@@ -861,7 +861,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The text content of the file to upload',
 		},
 		{
-			displayName: 'Binary Property',
+			displayName: 'File Property',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',

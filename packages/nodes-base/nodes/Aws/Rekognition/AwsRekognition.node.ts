@@ -104,7 +104,7 @@ export class AwsRekognition implements INodeType {
 				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				displayOptions: {
 					show: {
 						operation: ['analyze'],

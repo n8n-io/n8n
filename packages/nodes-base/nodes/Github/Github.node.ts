@@ -580,7 +580,7 @@ export class Github implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -685,7 +685,7 @@ export class Github implements INodeType {
 			//         file:get
 			// ----------------------------------
 			{
-				displayName: 'As Binary Property',
+				displayName: 'As File Property',
 				name: 'asBinaryProperty',
 				type: 'boolean',
 				default: true,
@@ -699,7 +699,7 @@ export class Github implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

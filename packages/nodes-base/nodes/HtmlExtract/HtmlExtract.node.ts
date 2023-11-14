@@ -78,7 +78,7 @@ export class HtmlExtract implements INodeType {
 				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {

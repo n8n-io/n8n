@@ -191,7 +191,7 @@ export class Ssh implements INodeType {
 				default: 'upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -239,7 +239,7 @@ export class Ssh implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				displayOptions: {
 					show: {
 						resource: ['file'],

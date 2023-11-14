@@ -46,7 +46,7 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

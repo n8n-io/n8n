@@ -341,7 +341,7 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,

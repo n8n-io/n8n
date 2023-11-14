@@ -107,7 +107,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,

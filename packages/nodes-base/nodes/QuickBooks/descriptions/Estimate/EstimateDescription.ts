@@ -210,7 +210,7 @@ export const estimateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,

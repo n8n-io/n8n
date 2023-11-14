@@ -312,7 +312,7 @@ export class Dropbox implements INodeType {
 				description: 'The file path of the file to download. Has to contain the full path.',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -374,7 +374,7 @@ export class Dropbox implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

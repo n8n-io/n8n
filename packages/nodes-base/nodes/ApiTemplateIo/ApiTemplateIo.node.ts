@@ -181,7 +181,7 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,

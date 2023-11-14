@@ -59,7 +59,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		displayOptions: {
 			show: {
 				resource: ['issueAttachment'],
@@ -104,7 +104,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',
@@ -179,7 +179,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',

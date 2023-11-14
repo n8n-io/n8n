@@ -90,7 +90,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The file attachment version number',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		displayOptions: {
 			show: {
 				resource: ['file'],

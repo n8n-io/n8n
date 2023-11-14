@@ -89,7 +89,7 @@ export const analyzerFields: INodeProperties[] = [
 		description: 'Enter the observable value',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

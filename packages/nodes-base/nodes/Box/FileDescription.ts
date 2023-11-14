@@ -161,7 +161,7 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -700,7 +700,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

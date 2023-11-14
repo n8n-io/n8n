@@ -76,7 +76,7 @@ export class ICalendar implements INodeType {
 				description: 'Whether the event lasts all day or not',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

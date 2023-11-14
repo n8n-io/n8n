@@ -559,7 +559,7 @@ export const messageFields: INodeProperties[] = [
 
 	// File operations
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		description: 'Name of the binary property to which to write the data of the read file',
 		type: 'string',

@@ -339,7 +339,7 @@ export const alertFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Binary Property',
+						displayName: 'File Property',
 						name: 'binaryProperty',
 						type: 'string',
 						displayOptions: {
@@ -553,7 +553,7 @@ export const alertFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Binary Property',
+								displayName: 'File Property',
 								name: 'binaryProperty',
 								type: 'string',
 								displayOptions: {

@@ -401,7 +401,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file to upload',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -698,7 +698,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

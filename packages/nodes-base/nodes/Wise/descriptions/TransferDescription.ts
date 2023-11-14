@@ -207,7 +207,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,

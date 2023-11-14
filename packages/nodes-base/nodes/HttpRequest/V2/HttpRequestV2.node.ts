@@ -247,7 +247,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Name of the property to which to write the response data',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'File Property',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -429,7 +429,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Whether binary data should be send as body',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'File Property',
 					name: 'binaryPropertyName',
 					type: 'string',
 					required: true,

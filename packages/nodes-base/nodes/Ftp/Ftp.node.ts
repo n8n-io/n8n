@@ -278,7 +278,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				displayOptions: {
 					show: {
 						operation: ['download'],
@@ -371,7 +371,7 @@ export class Ftp implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
