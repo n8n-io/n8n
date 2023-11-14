@@ -250,30 +250,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		if (isFullAccess) {
 			return activeWorkflowIds.filter((workflowId) => !this.activationErrors[workflowId]);
-			// if (isFullAccess) {
-			// 	const activeWorkflows = await this.workflowRepository.find({
-			// 		select: ['id'],
-			// 		where: { active: true },
-			// 	});
-
-			// 	return activeWorkflows
-			// 		.map((workflow) => workflow.id)
-			// 		.filter((workflowId) => !this.activationErrors[workflowId]);
 		}
 
 		const where = whereClause({
 			user,
 			entityType: 'workflow',
 		});
-
-		// const activeWorkflows = await this.workflowRepository.find({
-		// 	select: ['id'],
-		// 	where: { active: true },
-		// });
-
-		// const activeIds = activeWorkflows.map((workflow) => workflow.id);
-
-		// Object.assign(where, { workflowId: In(activeIds) });
 
 		Object.assign(where, { workflowId: In(activeWorkflowIds) });
 
@@ -655,7 +637,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			try {
 				await this.add(dbWorkflow.id, activationMode, dbWorkflow);
-				// this.webhookService.registerWebhook(webhook, { node, workflow, webhookData });
 				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,

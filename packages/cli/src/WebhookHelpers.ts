@@ -219,10 +219,6 @@ export async function executeWebhook(
 		throw new ResponseHelper.InternalServerError(errorMessage);
 	}
 
-	// const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-	// 	$executionId: executionId,
-	// };
-
 	let user: User;
 	if (
 		(workflowData as WorkflowEntity).shared?.length &&
@@ -242,54 +238,9 @@ export async function executeWebhook(
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-	// // Get the responseMode
-	// const responseMode = workflow.expression.getSimpleParameterValue(
-	// 	workflowStartNode,
-	// 	webhookData.webhookDescription.responseMode,
-	// 	executionMode,
-	// 	additionalKeys,
-	// 	undefined,
-	// 	'onReceived',
-	// );
-	// const responseCode = workflow.expression.getSimpleParameterValue(
-	// 	workflowStartNode,
-	// 	webhookData.webhookDescription.responseCode,
-	// 	executionMode,
-	// 	additionalKeys,
-	// 	undefined,
-	// 	200,
-	// ) as number;
-
-	// const responseData = workflow.expression.getSimpleParameterValue(
-	// 	workflowStartNode,
-	// 	webhookData.webhookDescription.responseData,
-	// 	executionMode,
-	// 	additionalKeys,
-	// 	undefined,
-	// 	'firstEntryJson',
-	// );
-
-	// if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
-	// 	// If the mode is not known we error. Is probably best like that instead of using
-	// 	// the default that people know as early as possible (probably already testing phase)
-	// 	// that something does not resolve properly.
-	// 	const errorMessage = `The response mode '${responseMode}' is not valid!`;
-	// 	responseCallback(new Error(errorMessage), {});
-	// 	throw new ResponseHelper.InternalServerError(errorMessage);
-	// }
-
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
-
-	// const binaryData = workflow.expression.getSimpleParameterValue(
-	// 	workflowStartNode,
-	// 	'={{$parameter["options"]["binaryData"]}}',
-	// 	executionMode,
-	// 	additionalKeys,
-	// 	undefined,
-	// 	false,
-	// );
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
