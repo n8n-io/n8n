@@ -53,5 +53,10 @@ describe('JwtService', () => {
 			expect(decodedToken.sub).toEqual(1);
 			expect(decodedToken.iat).toEqual(iat);
 		});
+
+		it('should throw an error on verify if the token is expired', () => {
+			const expiredToken = jwt.sign(payload, jwtSecret, { expiresIn: -10 });
+			expect(() => jwtService.verify(expiredToken)).toThrow(jwt.TokenExpiredError);
+		});
 	});
 });
