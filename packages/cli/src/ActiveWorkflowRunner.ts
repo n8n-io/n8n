@@ -120,7 +120,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
-		await this.webhookService.populateCache();
 	}
 
 	/**
@@ -198,35 +197,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				`Could not find workflow with id "${webhook.workflow.id}"`,
 			);
 		}
-
-		// const workflow = new Workflow({
-		// 	id: webhook.workflowId,
-		// 	name: workflowData.name,
-		// 	nodes: workflowData.nodes,
-		// 	connections: workflowData.connections,
-		// 	active: workflowData.active,
-		// 	nodeTypes: this.nodeTypes,
-		// 	staticData: workflowData.staticData,
-		// 	settings: workflowData.settings,
-		// });
-
-		// const additionalData = await WorkflowExecuteAdditionalData.getBase(
-		// 	workflowData.shared[0].user.id,
-		// );
-
-		// const webhookData = NodeHelpers.getNodeWebhooks(
-		// 	workflow,
-		// 	workflow.getNode(webhook.node) as INode,
-		// 	additionalData,
-		// ).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
-
-		// // Get the node which has the webhook defined to know where to start from and to
-		// // get additional data
-		// const workflowStartNode = workflow.getNode(webhookData.node);
-
-		// if (workflowStartNode === null) {
-		// 	throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
-		// }
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
