@@ -3,9 +3,9 @@ import jwt from 'jsonwebtoken';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 describe('UserService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');

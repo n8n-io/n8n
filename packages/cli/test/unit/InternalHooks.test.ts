@@ -1,6 +1,6 @@
 import { Telemetry } from '@/telemetry';
 import { InternalHooks } from '@/InternalHooks';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 import type { IDiagnosticInfo } from '@/Interfaces';
 import { mock } from 'jest-mock-extended';
 

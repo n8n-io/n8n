@@ -3,8 +3,9 @@ import * as Config from '@oclif/config';
 import { InternalHooks } from '@/InternalHooks';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+
+import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils';
 import { getAllCredentials } from '../shared/db/credentials';
 
 beforeAll(async () => {

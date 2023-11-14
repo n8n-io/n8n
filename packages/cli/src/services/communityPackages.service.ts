@@ -10,8 +10,8 @@ import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
 import { toError } from '@/utils';
-import { InstalledPackagesRepository } from '@/databases/repositories/installedPackages.repository';
-import type { InstalledPackages } from '@/databases/entities/InstalledPackages';
+import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,

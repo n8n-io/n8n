@@ -21,7 +21,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import * as Db from '@/Db';
+import omit from 'lodash/omit';
 import type {
 	ExecutionPayload,
 	IWorkflowErrorData,
@@ -32,15 +32,18 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
-import omit from 'lodash/omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { UserService } from './services/user.service';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { RoleRepository } from '@db/repositories/role.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { RoleService } from './services/role.service';
-import { ExecutionRepository, RoleRepository } from './databases/repositories';
 import { VariablesService } from './environments/variables/variables.service';
-import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import { Logger } from './Logger';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -144,7 +147,7 @@ export async function executeErrorWorkflow(
 	const logger = Container.get(Logger);
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
+		const workflowData = await Container.get(WorkflowRepository).findOneBy({ id: workflowId });
 
 		if (workflowData === null) {
 			// The error workflow could not be found
@@ -282,7 +285,7 @@ export async function executeErrorWorkflow(
  * Returns the static data of workflow
  */
 export async function getStaticDataById(workflowId: string) {
-	const workflowData = await Db.collections.Workflow.findOne({
+	const workflowData = await Container.get(WorkflowRepository).findOne({
 		select: ['staticData'],
 		where: { id: workflowId },
 	});
@@ -330,7 +333,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials.findBy({
+					const credentials = await Container.get(CredentialsRepository).findBy({
 						name,
 						type: nodeCredentialType,
 					});
@@ -366,7 +369,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials.findOneBy({
+				const credentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
@@ -380,7 +383,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials.findBy({
+				const credsByName = await Container.get(CredentialsRepository).findBy({
 					name: nodeCredentials.name,
 					type: nodeCredentialType,
 				});
@@ -429,7 +432,7 @@ export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Pro
 
 		where.roleId = In(roleIds);
 	}
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 		where,
 		select: ['workflowId'],
 	});
@@ -444,19 +447,21 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
 	const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
-		where: {
-			userId: user.id,
-			roleId: workflowOwnerRole?.id,
-		},
-		select: ['workflowId'],
-	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
+	const ownedWorkflowsIds = await Container.get(SharedWorkflowRepository)
+		.find({
+			where: {
+				userId: user.id,
+				roleId: workflowOwnerRole?.id,
+			},
+			select: ['workflowId'],
+		})
+		.then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
 
 	if (ownedWorkflowsIds.length > 15) {
 		belowThreshold = false;
 	} else {
 		// just fetch workflows' nodes to keep memory footprint low
-		const workflows = await Db.collections.Workflow.find({
+		const workflows = await Container.get(WorkflowRepository).find({
 			where: { id: In(ownedWorkflowsIds) },
 			select: ['nodes'],
 		});

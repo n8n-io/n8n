@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import { mockInstance } from '../../integration/shared/utils/';
-import { WebhookRepository } from '@/databases/repositories';
+import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { CacheService } from '@/services/cache.service';
 import { WebhookService } from '@/services/webhook.service';
-import { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import { WebhookEntity } from '@db/entities/WebhookEntity';
+import { mockInstance } from '../../shared/mocking';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {

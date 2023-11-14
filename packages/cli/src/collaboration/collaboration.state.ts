@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
