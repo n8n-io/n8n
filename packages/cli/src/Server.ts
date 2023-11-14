@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
+import { createHash } from 'crypto';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
 import { join as pathJoin } from 'path';
@@ -165,6 +166,23 @@ export class Server extends AbstractServer {
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
+	}
+
+	async init(): Promise<void> {
+		if (!config.getEnv('userManagement.jwtSecret')) {
+			// If we don't have a JWT secret set, generate
+			// one based and save to config.
+			const { encryptionKey } = Container.get(InstanceSettings);
+
+			// For a key off every other letter from encryption key
+			// CAREFUL: do not change this or it breaks all existing tokens.
+			let baseKey = '';
+			for (let i = 0; i < encryptionKey.length; i += 2) {
+				baseKey += encryptionKey[i];
+			}
+			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
+		}
+		return super.init();
 	}
 
 	async start() {
