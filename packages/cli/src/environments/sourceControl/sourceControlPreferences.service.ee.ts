@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
@@ -11,7 +11,6 @@ import {
 } from './sourceControlHelper.ee';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import * as Db from '@/Db';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -22,6 +21,7 @@ import path from 'path';
 import type { KeyPairType } from './types/keyPairType';
 import config from '@/config';
 import { Logger } from '@/Logger';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 
 @Service()
 export class SourceControlPreferencesService {
@@ -171,7 +171,7 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Db.collections.Settings.save({
+				await Container.get(SettingsRepository).save({
 					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
 					value: settingsValue,
 					loadOnStartup: true,
@@ -186,7 +186,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Db.collections.Settings.findOne({
+		const loadedPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {

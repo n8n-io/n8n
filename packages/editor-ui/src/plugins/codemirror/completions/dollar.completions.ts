@@ -47,7 +47,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 export function dollarOptions() {
 	const rank = setRank(['$json', '$input']);
 	const SKIP = new Set();
-	const DOLLAR_FUNCTIONS = ['$jmespath'];
+	const DOLLAR_FUNCTIONS = ['$jmespath', '$ifEmpty'];
 
 	if (isCredentialsModalOpen()) {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled

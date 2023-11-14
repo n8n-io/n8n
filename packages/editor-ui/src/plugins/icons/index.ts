@@ -94,6 +94,7 @@ import {
 	faMapSigns,
 	faMousePointer,
 	faNetworkWired,
+	faPalette,
 	faPause,
 	faPauseCircle,
 	faPen,
@@ -129,6 +130,7 @@ import {
 	faTerminal,
 	faThLarge,
 	faThumbtack,
+	faTruckMonster,
 	faTimes,
 	faTimesCircle,
 	faToolbox,
@@ -253,6 +255,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faMapSigns);
 		addIcon(faMousePointer);
 		addIcon(faNetworkWired);
+		addIcon(faPalette);
 		addIcon(faPause);
 		addIcon(faPauseCircle);
 		addIcon(faPen);
@@ -313,6 +316,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faGem);
 		addIcon(faXmark);
 		addIcon(faDownload);
+		addIcon(faTruckMonster);
 
 		app.component('font-awesome-icon', FontAwesomeIcon);
 	},

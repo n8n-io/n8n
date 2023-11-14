@@ -66,8 +66,15 @@ const setFeature = (feature: string, enabled: boolean) =>
 		enabled,
 	});
 
+const setQueueMode = (enabled: boolean) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/queue-mode`, {
+		enabled,
+	});
+
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
-Cypress.Commands.add('disableFeature', (feature): string => setFeature(feature, false));
+Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, false));
+Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
+Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {

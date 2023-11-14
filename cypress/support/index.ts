@@ -27,6 +27,8 @@ declare global {
 			interceptREST(method: string, url: string): Chainable<Interception>;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
+			enableQueueMode(): void;
+			disableQueueMode(): void;
 			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;

@@ -219,10 +219,8 @@ export default defineComponent({
 				for (const item of injectedItems) {
 					items.push({
 						id: item.id,
-						// @ts-ignore
-						icon: item.properties ? item.properties.icon : '',
-						// @ts-ignore
-						label: item.properties ? item.properties.title : '',
+						icon: item.icon || '',
+						label: item.label || '',
 						position: item.position,
 						type: item.properties?.href ? 'link' : 'regular',
 						properties: item.properties,
@@ -262,6 +260,15 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
+				},
+				{
+					id: 'workersview',
+					icon: 'truck-monster',
+					label: this.$locale.baseText('mainSidebar.workersView'),
+					position: 'top',
+					available:
+						this.settingsStore.isQueueModeEnabled && this.settingsStore.isWorkerViewAvailable,
+					activateOnRouteNames: [VIEWS.WORKER_VIEW],
 				},
 				{
 					id: 'settings',
@@ -344,7 +351,9 @@ export default defineComponent({
 	mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.$externalHooks().run('mainSidebar.mounted', {
+				userRef: this.$refs.user as Element,
+			});
 		}
 
 		void this.$nextTick(() => {
@@ -428,6 +437,12 @@ export default defineComponent({
 				case 'executions': {
 					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
 						this.goToRoute({ name: VIEWS.EXECUTIONS });
+					}
+					break;
+				}
+				case 'workersview': {
+					if (this.$router.currentRoute.name !== VIEWS.WORKER_VIEW) {
+						this.goToRoute({ name: VIEWS.WORKER_VIEW });
 					}
 					break;
 				}

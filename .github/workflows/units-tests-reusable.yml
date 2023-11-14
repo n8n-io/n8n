@@ -60,6 +60,9 @@ jobs:
       - name: Test Backend
         run: pnpm test:backend
 
+      - name: Test Nodes
+        run: pnpm test:nodes
+
       - name: Test Frontend
         run: pnpm test:frontend
 

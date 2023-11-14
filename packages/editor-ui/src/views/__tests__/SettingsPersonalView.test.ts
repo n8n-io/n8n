@@ -1,6 +1,5 @@
 import { createPinia } from 'pinia';
-import type { IN8nUISettings } from 'n8n-workflow';
-import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
+import { waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -11,8 +10,6 @@ let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let server: ReturnType<typeof setupServer>;
-
-const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
 const renderComponent = createComponentRenderer(SettingsPersonalView);
 
@@ -26,6 +23,8 @@ const currentUser = {
 	isDefaultUser: false,
 	isPendingUser: false,
 	isPending: false,
+	hasRecoveryCodesLeft: false,
+	mfaEnabled: false,
 };
 
 describe('SettingsPersonalView', () => {

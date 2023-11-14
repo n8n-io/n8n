@@ -642,7 +642,10 @@ export default defineComponent({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				await this.$externalHooks().run('personalizationModal.onSubmit', survey);
+				await this.$externalHooks().run(
+					'personalizationModal.onSubmit',
+					survey as IPersonalizationLatestVersion,
+				);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 
