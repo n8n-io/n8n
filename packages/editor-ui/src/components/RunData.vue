@@ -133,37 +133,44 @@
 			v-show="!editMode.enabled"
 			data-test-id="run-selector"
 		>
-			<n8n-select
-				size="small"
-				:modelValue="runIndex"
-				@update:modelValue="onRunIndexChange"
-				@click.stop
-				teleported
-			>
-				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
-				<n8n-option
-					v-for="option in maxRunIndex + 1"
-					:label="getRunLabel(option)"
-					:value="option - 1"
-					:key="option"
-				></n8n-option>
-			</n8n-select>
-
-			<n8n-tooltip placement="right" v-if="canLinkRuns">
-				<template #content>
-					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-				</template>
-				<n8n-icon-button
-					class="linkRun"
-					:icon="linkedRuns ? 'unlink' : 'link'"
-					text
-					type="tertiary"
+			<div :class="$style.runSelectorWrapper">
+				<n8n-select
 					size="small"
-					@click="toggleLinkRuns"
-				/>
-			</n8n-tooltip>
-
-			<slot name="run-info"></slot>
+					:modelValue="runIndex"
+					@update:modelValue="onRunIndexChange"
+					@click.stop
+					teleported
+				>
+					<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
+					<n8n-option
+						v-for="option in maxRunIndex + 1"
+						:label="getRunLabel(option)"
+						:value="option - 1"
+						:key="option"
+					></n8n-option>
+				</n8n-select>
+				<n8n-tooltip placement="right" v-if="canLinkRuns">
+					<template #content>
+						{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+					</template>
+					<n8n-icon-button
+						class="linkRun"
+						:icon="linkedRuns ? 'unlink' : 'link'"
+						text
+						type="tertiary"
+						size="small"
+						@click="toggleLinkRuns"
+					/>
+				</n8n-tooltip>
+				<slot name="run-info"></slot>
+			</div>
+			<run-data-search
+				v-if="showIOSearch"
+				v-model="search"
+				:paneType="paneType"
+				:isAreaActive="isPaneActive"
+				@focus="activatePane"
+			/>
 		</div>
 		<slot name="before-data" />
 
@@ -1255,8 +1262,11 @@ export default defineComponent({
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
 				itemsCount += this.getPinDataOrLiveData(this.getRawInputData(option - 1, i)).length;
 			}
-			const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
-			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
+			const items = this.$locale.baseText('ndv.output.items', {
+				adjustToNumber: itemsCount,
+				interpolate: { count: itemsCount },
+			});
+			const itemsLabel = itemsCount > 0 ? ` (${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
 		getRawInputData(
@@ -1594,15 +1604,17 @@ export default defineComponent({
 }
 
 .runSelector {
-	max-width: 210px;
-	margin-left: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	padding-left: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+	display: flex;
+	width: 100%;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.runSelectorWrapper {
 	display: flex;
 	align-items: center;
-
-	> * {
-		margin-right: var(--spacing-4xs);
-	}
 }
 
 .pagination {
