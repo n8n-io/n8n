@@ -290,15 +290,15 @@ export class LoadNodesAndCredentials {
 				const {
 					className,
 					sourcePath,
-					nodesToTestWith,
+					supportedNodes,
 					extends: extendsArr,
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
-					nodesToTestWith:
+					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 					extends: extendsArr,
 				};
@@ -340,7 +340,7 @@ export class LoadNodesAndCredentials {
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
-				push.send('nodeDescriptionUpdated', undefined);
+				push.broadcast('nodeDescriptionUpdated');
 			}, 100);
 
 			const toWatch = loader.isLazyLoaded

@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -17,7 +17,7 @@
     "clean": "rimraf dist .turbo",
     "build": "vite build",
     "typecheck": "vue-tsc --declaration --emitDeclarationOnly",
-    "test": "vitest run --coverage",
+    "test": "vitest run",
     "test:dev": "vitest",
     "build:storybook": "storybook build",
     "storybook": "storybook dev -p 6006",

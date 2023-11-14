@@ -1,4 +1,5 @@
-import { useStorage } from '@vueuse/core';
+import { useStorage } from '@/composables/useStorage';
+
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IPermissions } from './Interface';
@@ -8,7 +9,6 @@ import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 
@@ -47,6 +47,7 @@ const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
 const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
+const WorkerView = async () => import('./views/WorkerView.vue');
 const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
@@ -206,6 +207,21 @@ export const routes = [
 		name: VIEWS.EXECUTIONS,
 		components: {
 			default: ExecutionsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workers',
+		name: VIEWS.WORKER_VIEW,
+		components: {
+			default: WorkerView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -802,7 +818,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !useStorage('audit-logs', undefined).value,
+							shouldDeny: () => !useStorage('audit-logs').value,
 						},
 					},
 				},
@@ -946,7 +962,7 @@ router.afterEach((to, from) => {
 	 * Run external hooks
 	 */
 
-	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	void runExternalHook('main.routeChange', { from, to });
 
 	/**
 	 * Track current view for telemetry

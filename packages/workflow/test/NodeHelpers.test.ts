@@ -2,12 +2,12 @@ import type { INodeParameters, INodeProperties } from '@/Interfaces';
 import { getNodeParameters } from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
-	describe('getParameterValue', () => {
+	describe('getNodeParameters', () => {
 		const tests: Array<{
 			description: string;
 			input: {
 				nodePropertiesArray: INodeProperties[];
-				nodeValues: INodeParameters;
+				nodeValues: INodeParameters | null;
 			};
 			output: {
 				noneDisplayedFalse: {
@@ -3333,6 +3333,61 @@ describe('NodeHelpers', () => {
 								},
 							},
 						},
+					},
+				},
+			},
+			{
+				description: 'nodeValues is null (for example when resolving expression fails)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Custom Properties',
+							name: 'customPropertiesUi',
+							placeholder: 'Add Custom Property',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'customPropertiesValues',
+									displayName: 'Custom Property',
+									values: [
+										{
+											displayName: 'Property Name or ID',
+											name: 'property',
+											type: 'options',
+											typeOptions: {
+												loadOptionsMethod: 'getDealCustomProperties',
+											},
+											default: '',
+											description:
+												'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										},
+										{
+											displayName: 'Value',
+											name: 'value',
+											type: 'string',
+											default: '',
+											required: true,
+											description: 'Value of the property',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: null,
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {},
 					},
 				},
 			},

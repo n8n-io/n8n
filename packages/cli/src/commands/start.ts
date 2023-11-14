@@ -18,10 +18,9 @@ import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
@@ -30,6 +29,8 @@ import { IConfig } from '@oclif/config';
 import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -64,6 +65,8 @@ export class Start extends BaseCommand {
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected server = new Server();
+
+	private pruningService: PruningService;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
@@ -110,14 +113,16 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			const pruningService = Container.get(PruningService);
-
-			if (await pruningService.isPruningEnabled()) await pruningService.stopPruning();
+			if (await this.pruningService.isPruningEnabled()) {
+				await this.pruningService.stopPruning();
+			}
 
 			if (config.getEnv('leaderSelection.enabled')) {
 				const { MultiMainInstancePublisher } = await import(
 					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 				);
+
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
 				await Container.get(MultiMainInstancePublisher).destroy();
 			}
@@ -165,10 +170,11 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				const destFile = path.join(staticCacheDir, fileName);
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
@@ -251,6 +257,15 @@ export class Start extends BaseCommand {
 		}
 
 		await Container.get(OrchestrationHandlerMainService).init();
+
+		multiMainInstancePublisher.on('leadershipChange', async () => {
+			if (multiMainInstancePublisher.isLeader) {
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+			} else {
+				// only in case of leadership change without shutdown
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			}
+		});
 	}
 
 	async run() {
@@ -272,7 +287,9 @@ export class Start extends BaseCommand {
 		}
 
 		// Load settings from database and set them to config.
-		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
+		const databaseSettings = await Container.get(SettingsRepository).findBy({
+			loadOnStartup: true,
+		});
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
@@ -290,7 +307,7 @@ export class Start extends BaseCommand {
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				await Db.collections.Execution.query('VACUUM;');
+				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
 		}
 
@@ -330,6 +347,11 @@ export class Start extends BaseCommand {
 		}
 
 		await this.server.start();
+
+		this.pruningService = Container.get(PruningService);
+		if (await this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();

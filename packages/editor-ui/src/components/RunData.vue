@@ -496,7 +496,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useStorage } from '@vueuse/core';
+import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -940,10 +940,7 @@ export default defineComponent({
 				return;
 			}
 
-			const pinDataDiscoveryFlag = useStorage(
-				LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
-				undefined,
-			).value;
+			const pinDataDiscoveryFlag = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value;
 
 			if (value && value.length > 0 && !this.isReadOnlyRoute && !pinDataDiscoveryFlag) {
 				this.pinDataDiscoveryComplete();
@@ -963,8 +960,8 @@ export default defineComponent({
 			}
 		},
 		pinDataDiscoveryComplete() {
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value = 'true';
+			useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG).value = 'true';
 		},
 		enterEditMode({ origin }: EnterEditModeArgs) {
 			const inputData = this.pinData
