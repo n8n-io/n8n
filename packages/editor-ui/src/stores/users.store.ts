@@ -8,7 +8,6 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
-	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
