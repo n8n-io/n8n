@@ -76,7 +76,7 @@ export class TestWebhooks implements IWebhookManager {
 			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
-				const methods = await this.getWebhookMethods(path);
+				const methods = this.getWebhookMethods(path);
 				throw new ResponseHelper.NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod, methods),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
@@ -104,7 +104,7 @@ export class TestWebhooks implements IWebhookManager {
 		// TODO: Clean that duplication up one day and improve code generally
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
-			const methods = await this.getWebhookMethods(path);
+			const methods = this.getWebhookMethods(path);
 			throw new ResponseHelper.NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod, methods),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
@@ -164,7 +164,7 @@ export class TestWebhooks implements IWebhookManager {
 	/**
 	 * Gets all request methods associated with a single test webhook
 	 */
-	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
+	getWebhookMethods(path: string): IHttpRequestMethods[] {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
