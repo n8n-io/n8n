@@ -308,6 +308,11 @@ export interface ICredentialTestRequestData {
 	testRequest: ICredentialTestRequest;
 }
 
+type ICredentialHttpRequestNode = {
+	name: string;
+	docsUrl: string;
+} & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
@@ -324,12 +329,13 @@ export interface ICredentialType {
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
+	httpRequestNode?: ICredentialHttpRequestNode;
 }
 
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
-	getNodeTypesToTestWith(type: string): string[];
+	getSupportedNodes(type: string): string[];
 	getParentTypes(typeName: string): string[];
 }
 
@@ -963,6 +969,7 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
+	extendsCredential?: string;
 }
 
 export interface IPinData {
@@ -1063,7 +1070,8 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
-	| 'resourceMapper';
+	| 'resourceMapper'
+	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1404,6 +1412,7 @@ export interface INodeTypeBaseDescription {
 	name: string;
 	icon?: string;
 	iconUrl?: string;
+	badgeIconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1620,6 +1629,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
@@ -1719,7 +1729,7 @@ export type LoadingDetails = {
 };
 
 export type CredentialLoadingDetails = LoadingDetails & {
-	nodesToTestWith?: string[];
+	supportedNodes?: string[];
 	extends?: string[];
 };
 
@@ -2325,6 +2335,7 @@ export interface IN8nUISettings {
 		debugInEditor: boolean;
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
+		workerView: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

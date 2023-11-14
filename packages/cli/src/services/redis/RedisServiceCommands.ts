@@ -1,4 +1,4 @@
-import type { WorkerJobStatusSummary } from '../orchestration/worker/types';
+import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -28,20 +28,7 @@ export type RedisServiceWorkerResponseObject = {
 	| RedisServiceBaseCommand
 	| {
 			command: 'getStatus';
-			payload: {
-				workerId: string;
-				runningJobs: string[];
-				runningJobsSummary: WorkerJobStatusSummary[];
-				freeMem: number;
-				totalMem: number;
-				uptime: number;
-				loadAvg: number[];
-				cpus: string;
-				arch: string;
-				platform: NodeJS.Platform;
-				hostname: string;
-				net: string[];
-			};
+			payload: IPushDataWorkerStatusPayload;
 	  }
 	| {
 			command: 'getId';

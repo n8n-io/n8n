@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import { audit } from '@/audit';
-import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
-import { toReportTitle } from '@/audit/utils';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
+import { toReportTitle } from '@/security-audit/utils';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
@@ -18,8 +18,12 @@ mockInstance(NodeTypes);
 const communityPackagesService = mockInstance(CommunityPackagesService);
 Container.set(CommunityPackagesService, communityPackagesService);
 
+let securityAuditService: SecurityAuditService;
+
 beforeAll(async () => {
 	await testDb.init();
+
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
 });
 
 beforeEach(async () => {
@@ -59,7 +63,7 @@ test('should report risky official nodes', async () => {
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['nodes']);
+	const testAudit = await securityAuditService.run(['nodes']);
 
 	const section = getRiskSection(
 		testAudit,
@@ -80,10 +84,12 @@ test('should not report non-risky official nodes', async () => {
 	communityPackagesService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['nodes']);
+	const testAudit = await securityAuditService.run(['nodes']);
+
 	if (Array.isArray(testAudit)) return;
 
 	const report = testAudit[toReportTitle('nodes')];
+
 	if (!report) return;
 
 	for (const section of report.sections) {
@@ -94,7 +100,7 @@ test('should not report non-risky official nodes', async () => {
 test('should report community nodes', async () => {
 	communityPackagesService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 
-	const testAudit = await audit(['nodes']);
+	const testAudit = await securityAuditService.run(['nodes']);
 
 	const section = getRiskSection(
 		testAudit,

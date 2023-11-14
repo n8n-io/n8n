@@ -20,9 +20,11 @@ const defaultSettings: IN8nUISettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		externalSecrets: false,
-		binaryDataS3: false,
 		workflowHistory: false,
+		debugInEditor: false,
+		binaryDataS3: false,
+		externalSecrets: false,
+		workerView: false,
 	},
 	expressions: {
 		evaluator: 'tournament',

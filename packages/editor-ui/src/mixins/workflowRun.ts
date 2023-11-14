@@ -1,6 +1,6 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 import {
@@ -10,15 +10,15 @@ import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 } from 'n8n-workflow';
 
+import { useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
 
 import { useTitleChange } from '@/composables/useTitleChange';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { FORM_TRIGGER_NODE_TYPE } from '@/constants';
 import { openPopUpWindow } from '@/utils/executionUtils';
 
 export const workflowRun = defineComponent({

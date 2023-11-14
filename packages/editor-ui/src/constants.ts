@@ -158,6 +158,9 @@ export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
 
+export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
+
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -431,6 +434,7 @@ export const enum VIEWS {
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
+	WORKER_VIEW = 'WorkerView',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -458,6 +462,7 @@ export const MAPPING_PARAMS = [
 	'$env',
 	'$evaluateExpression',
 	'$execution',
+	'$ifEmpty',
 	'$input',
 	'$item',
 	'$jmespath',
@@ -503,6 +508,7 @@ export const enum EnterpriseEditionFeature {
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
+	WorkerView = 'workerView',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
