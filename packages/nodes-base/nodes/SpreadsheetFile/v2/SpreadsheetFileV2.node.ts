@@ -20,8 +20,8 @@ import {
 	fromFileV2Properties,
 } from '../description';
 import { generatePairedItemData } from '@utils/utilities';
-import type { JsonToSpreadsheetBinaryFormat, JsonToSpreadsheetBinaryOptions } from './utils';
-import { convertJsonToSpreadsheetBinary } from './utils';
+import type { JsonToSpreadsheetBinaryFormat, JsonToSpreadsheetBinaryOptions } from '@utils/binary';
+import { convertJsonToSpreadsheetBinary } from '@utils/binary';
 
 export class SpreadsheetFileV2 implements INodeType {
 	description: INodeTypeDescription;
