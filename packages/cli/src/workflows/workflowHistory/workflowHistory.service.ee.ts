@@ -68,20 +68,13 @@ export class WorkflowHistoryService {
 
 	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
 		if (isWorkflowHistoryEnabled()) {
-			try {
-				await this.workflowHistoryRepository.insert({
-					authors: user.firstName + ' ' + user.lastName,
-					connections: workflow.connections,
-					nodes: workflow.nodes,
-					versionId: workflow.versionId,
-					workflowId,
-				});
-			} catch (e) {
-				this.logger.error(
-					`Failed to save workflow history version for workflow ${workflowId}`,
-					e as Error,
-				);
-			}
+			await this.workflowHistoryRepository.insert({
+				authors: user.firstName + ' ' + user.lastName,
+				connections: workflow.connections,
+				nodes: workflow.nodes,
+				versionId: workflow.versionId,
+				workflowId,
+			});
 		}
 	}
 }
