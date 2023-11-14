@@ -1,12 +1,10 @@
 import * as Config from '@oclif/config';
-
-import { mockInstance } from '../shared/utils';
+import { DataSource } from 'typeorm';
 
 import { Start } from '@/commands/start';
 import { BaseCommand } from '@/commands/BaseCommand';
 import config from '@/config';
 import { License } from '@/License';
-
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -16,9 +14,12 @@ import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSub
 import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
+import { mockInstance } from '../../shared/mocking';
+
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(() => {
+	mockInstance(DataSource);
 	mockInstance(ExternalSecretsManager);
 	mockInstance(ActiveWorkflowRunner);
 	mockInstance(WorkflowHistoryManager);

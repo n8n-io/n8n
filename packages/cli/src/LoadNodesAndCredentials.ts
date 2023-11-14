@@ -290,15 +290,15 @@ export class LoadNodesAndCredentials {
 				const {
 					className,
 					sourcePath,
-					nodesToTestWith,
+					supportedNodes,
 					extends: extendsArr,
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
-					nodesToTestWith:
+					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 					extends: extendsArr,
 				};

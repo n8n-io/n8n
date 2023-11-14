@@ -19,7 +19,7 @@
 				</span>
 			</div>
 			<div>
-				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
+				<n8n-text data-test-id="user-email" size="small" color="text-light">{{ email }}</n8n-text>
 			</div>
 		</div>
 	</div>

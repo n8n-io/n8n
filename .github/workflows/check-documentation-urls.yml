@@ -37,6 +37,6 @@ jobs:
         if: failure()
         with:
           status: ${{ job.status }}
-          channel: '#updates-build-alerts'
+          channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Documentation URLs check failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

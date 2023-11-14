@@ -1,32 +1,37 @@
 import config from '@/config';
-import * as Db from '@/Db';
+import { BinaryDataService } from 'n8n-core';
+import type { ExecutionStatus } from 'n8n-workflow';
+import Container from 'typedi';
 
 import * as testDb from './shared/testDb';
-import type { ExecutionStatus } from 'n8n-workflow';
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
-import { BinaryDataService } from 'n8n-core';
 import { Logger } from '@/Logger';
-import { mockInstance } from './shared/utils';
+
+import { mockInstance } from '../shared/mocking';
+import { createWorkflow } from './shared/db/workflows';
+import { createExecution, createSuccessfulExecution } from './shared/db/executions';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
-	let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
+	let workflow: WorkflowEntity;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
-			Db.collections.Execution,
+			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 		);
 
-		workflow = await testDb.createWorkflow();
+		workflow = await createWorkflow();
 	});
 
 	beforeEach(async () => {
@@ -42,7 +47,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	async function findAllExecutions() {
-		return Db.collections.Execution.find({
+		return Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
 			withDeleted: true,
 		});
@@ -56,9 +61,9 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
 			const executions = [
-				await testDb.createSuccessfulExecution(workflow),
-				await testDb.createSuccessfulExecution(workflow),
-				await testDb.createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();
@@ -73,11 +78,11 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		test('should not re-mark already marked executions', async () => {
 			const executions = [
-				await testDb.createExecution(
+				await createExecution(
 					{ status: 'success', finished: true, startedAt: now, stoppedAt: now, deletedAt: now },
 					workflow,
 				),
-				await testDb.createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();
@@ -98,8 +103,8 @@ describe('softDeleteOnPruningCycle()', () => {
 			['success', { finished: true, startedAt: now, stoppedAt: now }],
 		])('should prune %s executions', async (status, attributes) => {
 			const executions = [
-				await testDb.createExecution({ status, ...attributes }, workflow),
-				await testDb.createSuccessfulExecution(workflow),
+				await createExecution({ status, ...attributes }, workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();
@@ -117,8 +122,8 @@ describe('softDeleteOnPruningCycle()', () => {
 			['waiting', { startedAt: now, stoppedAt: now, waitTill: now }],
 		])('should not prune %s executions', async (status, attributes) => {
 			const executions = [
-				await testDb.createExecution({ status, ...attributes }, workflow),
-				await testDb.createSuccessfulExecution(workflow),
+				await createExecution({ status, ...attributes }, workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();
@@ -139,11 +144,11 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
 			const executions = [
-				await testDb.createExecution(
+				await createExecution(
 					{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
 					workflow,
 				),
-				await testDb.createExecution(
+				await createExecution(
 					{ finished: true, startedAt: now, stoppedAt: now, status: 'success' },
 					workflow,
 				),
@@ -160,7 +165,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		test('should not re-mark already marked executions', async () => {
 			const executions = [
-				await testDb.createExecution(
+				await createExecution(
 					{
 						status: 'success',
 						finished: true,
@@ -170,7 +175,7 @@ describe('softDeleteOnPruningCycle()', () => {
 					},
 					workflow,
 				),
-				await testDb.createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();
@@ -190,7 +195,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			['failed', { startedAt: yesterday, stoppedAt: yesterday }],
 			['success', { finished: true, startedAt: yesterday, stoppedAt: yesterday }],
 		])('should prune %s executions', async (status, attributes) => {
-			const execution = await testDb.createExecution({ status, ...attributes }, workflow);
+			const execution = await createExecution({ status, ...attributes }, workflow);
 
 			await pruningService.softDeleteOnPruningCycle();
 
@@ -206,8 +211,8 @@ describe('softDeleteOnPruningCycle()', () => {
 			['waiting', { startedAt: yesterday, stoppedAt: yesterday, waitTill: yesterday }],
 		])('should not prune %s executions', async (status, attributes) => {
 			const executions = [
-				await testDb.createExecution({ status, ...attributes }, workflow),
-				await testDb.createSuccessfulExecution(workflow),
+				await createExecution({ status, ...attributes }, workflow),
+				await createSuccessfulExecution(workflow),
 			];
 
 			await pruningService.softDeleteOnPruningCycle();

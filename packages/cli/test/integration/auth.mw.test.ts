@@ -1,6 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
-import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { getGlobalMemberRole } from './shared/db/roles';
+import { createUser } from './shared/db/users';
 
 describe('Auth Middleware', () => {
 	const testServer = utils.setupTestServer({ endpointGroups: ['me', 'auth', 'owner', 'users'] });
@@ -36,8 +37,8 @@ describe('Auth Middleware', () => {
 	describe('Routes requiring Authorization', () => {
 		let authMemberAgent: SuperAgentTest;
 		beforeAll(async () => {
-			const globalMemberRole = await testDb.getGlobalMemberRole();
-			const member = await testDb.createUser({ globalRole: globalMemberRole });
+			const globalMemberRole = await getGlobalMemberRole();
+			const member = await createUser({ globalRole: globalMemberRole });
 			authMemberAgent = testServer.authAgentFor(member);
 		});
 
