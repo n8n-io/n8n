@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 
 type Connection = { req: PushRequest; res: PushResponse };
 

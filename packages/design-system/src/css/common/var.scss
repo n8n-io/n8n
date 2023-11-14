@@ -635,10 +635,11 @@ $cascader-height: 200px;
 
 /* Switch
 -------------------------- */
+$switch-toggle-color: var(--color-switch-toggle);
 /// color||Color|0
-$switch-on-color: var(--color-switch);
+$switch-on-color: var(--color-switch-active-background);
 /// color||Color|0
-$switch-off-color: var(--color-text-light);
+$switch-off-color: var(--color-switch-background);
 /// fontSize||Font|1
 $switch-font-size: $font-size-base;
 $switch-core-border-radius: 10px;

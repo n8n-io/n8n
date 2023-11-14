@@ -9,7 +9,6 @@ import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
@@ -24,6 +23,7 @@ import type {
 	IResult,
 	IWorkflowExecutionProgress,
 } from '../types/commands.types';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 const re = /\d+/;
 
@@ -278,7 +278,7 @@ export class ExecuteBatch extends BaseCommand {
 
 		ExecuteBatch.instanceOwner = await getInstanceOwner();
 
-		const query = Db.collections.Workflow.createQueryBuilder('workflows');
+		const query = Container.get(WorkflowRepository).createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
 			query.andWhere('workflows.id in (:...ids)', { ids });

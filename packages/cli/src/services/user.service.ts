@@ -3,7 +3,7 @@ import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere }
 import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';

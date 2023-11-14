@@ -14,14 +14,15 @@ import { WebhookService } from '@/services/webhook.service';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
 import { WorkflowRunner } from '@/WorkflowRunner';
-
-import { mockInstance, setSchedulerAsLoadedNode } from './shared/utils';
-import * as testDb from './shared/testDb';
-import type { User } from '@/databases/entities/User';
-import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import type { User } from '@db/entities/User';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
-import { chooseRandomly } from './shared/random';
 import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
+
+import { mockInstance } from '../shared/mocking';
+import { chooseRandomly } from './shared/random';
+import { setSchedulerAsLoadedNode } from './shared/utils';
+import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 

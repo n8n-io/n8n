@@ -4,7 +4,6 @@ import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
@@ -21,6 +20,9 @@ import Container from 'typedi';
 import { Cipher } from 'n8n-core';
 import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
+import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 
 jest.mock('@/telemetry');
 
@@ -73,7 +75,7 @@ beforeEach(async () => {
 		'Workflow',
 	]);
 
-	await Db.collections.User.delete({ id: Not(owner.id) });
+	await Container.get(UserRepository).delete({ id: Not(owner.id) });
 
 	jest.mock('@/telemetry');
 
@@ -83,7 +85,7 @@ beforeEach(async () => {
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
-	const { value: ldapConfig } = await Db.collections.Settings.save({
+	const { value: ldapConfig } = await Container.get(SettingsRepository).save({
 		key: LDAP_FEATURE_NAME,
 		value: JSON.stringify({
 			...defaultLdapConfig,
@@ -174,7 +176,7 @@ describe('PUT /ldap/config', () => {
 		// disable the login, so the strategy is applied
 		await authOwnerAgent.put('/ldap/config').send({ ...configuration, loginEnabled: false });
 
-		const emailUser = await Db.collections.User.findOneByOrFail({ id: member.id });
+		const emailUser = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
 		const localLdapIdentities = await getLdapIdentities();
 
 		expect(getCurrentAuthenticationMethod()).toBe('email');
@@ -237,7 +239,9 @@ describe('POST /ldap/sync', () => {
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'dry' }).expect(200);
 
-			const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
+			const synchronization = await Container.get(
+				AuthProviderSyncHistoryRepository,
+			).findOneByOrFail({});
 
 			expect(synchronization.id).toBeDefined();
 			expect(synchronization.startedAt).toBeDefined();
@@ -268,7 +272,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.created).toBe(1);
 
 			// Make sure only the instance owner is on the DB
-			const localDbUsers = await Db.collections.User.find();
+			const localDbUsers = await Container.get(UserRepository).find();
 			expect(localDbUsers.length).toBe(1);
 			expect(localDbUsers[0].id).toBe(owner.id);
 		});
@@ -330,7 +334,9 @@ describe('POST /ldap/sync', () => {
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' }).expect(200);
 
-			const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
+			const synchronization = await Container.get(
+				AuthProviderSyncHistoryRepository,
+			).findOneByOrFail({});
 
 			expect(synchronization.id).toBeDefined();
 			expect(synchronization.startedAt).toBeDefined();

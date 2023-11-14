@@ -48,7 +48,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from './Logger';
 
 export class WorkflowRunner {

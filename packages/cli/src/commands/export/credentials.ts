@@ -3,9 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import type { FindOptionsWhere } from 'typeorm';
 import { Credentials } from 'n8n-core';
-import * as Db from '@/Db';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import Container from 'typedi';
 
 export class ExportCredentialsCommand extends BaseCommand {
 	static description = 'Export credentials';
@@ -110,7 +111,8 @@ export class ExportCredentialsCommand extends BaseCommand {
 			findQuery.id = flags.id;
 		}
 
-		const credentials: ICredentialsDb[] = await Db.collections.Credentials.findBy(findQuery);
+		const credentials: ICredentialsDb[] =
+			await Container.get(CredentialsRepository).findBy(findQuery);
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {
