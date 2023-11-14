@@ -56,7 +56,7 @@
 				</div>
 				<n8n-popover
 					effect="dark"
-					:popper-style="{ width: '208px' }"
+					:popper-style="{ width: '238px' }"
 					trigger="click"
 					placement="top"
 					@show="onShowPopover"
@@ -75,19 +75,19 @@
 						<div
 							class="color"
 							data-test-id="color"
-							v-for="(_, index) in Array.from({ length: 7 })"
+							v-for="(_, index) in Array.from({ length: 8 })"
 							:key="index"
 							v-on:click="changeColor(index + 1)"
 							:class="`sticky-color-${index + 1}`"
 							:style="{
 								'border-width': '1px',
 								'border-style': 'solid',
-								'border-color': 'var(--color-text-dark)',
-								'background-color': `var(--sticky-color-${index + 1})`,
+								'border-color': 'var(--color-foreground-xdark)',
+								'background-color': `var(--color-sticky-background-${index + 1})`,
 								'box-shadow':
 									(index === 0 && node?.parameters.color === '') ||
 									index + 1 === node?.parameters.color
-										? `0 0 0 1px var(--sticky-color-${index + 1})`
+										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
 										: 'none',
 							}"
 						></div>
