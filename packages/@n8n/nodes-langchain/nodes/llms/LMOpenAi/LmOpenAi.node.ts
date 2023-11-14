@@ -164,8 +164,15 @@ export class LmOpenAi implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 0,
-						description: 'Maximum amount of time a request is allowed to take in seconds',
+						default: 10000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{
@@ -193,6 +200,7 @@ export class LmOpenAi implements INodeType {
 			presencePenalty?: number;
 			temperature?: number;
 			timeout?: number;
+			maxRetries?: number;
 			topP?: number;
 		};
 
@@ -206,6 +214,8 @@ export class LmOpenAi implements INodeType {
 			modelName,
 			...options,
 			configuration,
+			timeout: options.timeout ?? 10000,
+			maxRetries: options.maxRetries ?? 2,
 		});
 
 		return {

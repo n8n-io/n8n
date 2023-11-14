@@ -82,7 +82,6 @@ export async function reActAgentAgentExecute(
 		}
 
 		let response = await agentExecutor.call({ input, outputParsers });
-
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };
 		}

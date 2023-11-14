@@ -119,6 +119,17 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].responsePromise = responsePromise;
 	}
 
+	attachAbortController(executionId: string, abortController: AbortController): void {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
+			throw new Error(
+				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
+			);
+		}
+
+		execution.abortController = abortController;
+	}
+
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			return;
@@ -175,6 +186,9 @@ export class ActiveExecutions {
 				}, 1);
 			}
 		} else {
+			// Notify nodes to abort all operations
+			this.activeExecutions[executionId].abortController?.abort();
+
 			// Workflow is running in current process
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}

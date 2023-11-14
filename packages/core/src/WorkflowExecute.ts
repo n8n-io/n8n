@@ -56,6 +56,7 @@ export class WorkflowExecute {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		runExecutionData?: IRunExecutionData,
+		private abortController?: AbortController,
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -834,6 +835,7 @@ export class WorkflowExecute {
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
+				this.additionalData.executionCanceled = true;
 				gotCancel = true;
 			});
 
@@ -1052,6 +1054,7 @@ export class WorkflowExecute {
 									this.additionalData,
 									NodeExecuteFunctions,
 									this.mode,
+									this.abortController,
 								);
 								nodeSuccessData = runNodeData.data;
 

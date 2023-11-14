@@ -422,6 +422,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteFunctions;
 }
 
@@ -437,6 +438,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteSingleFunctions;
 }
 
@@ -776,6 +778,8 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getExecutionCancelSignal(): AbortSignal | undefined;
+	onExecutionCancellation(cleanup: () => Promise<void>, reject: (reason: Error) => void): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -792,6 +796,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getExecutionCancelSignal(): AbortSignal | undefined;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1892,6 +1897,7 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
+	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;

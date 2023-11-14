@@ -467,7 +467,8 @@ export const pushConnection = defineComponent({
 					} else {
 						let title: string;
 						const isManualExecutionCancelled =
-							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
+							runDataExecutedErrorMessage === 'AbortError' ||
+							(runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled');
 
 						// Do not show the error message if the workflow got canceled manually
 						if (!isManualExecutionCancelled) {

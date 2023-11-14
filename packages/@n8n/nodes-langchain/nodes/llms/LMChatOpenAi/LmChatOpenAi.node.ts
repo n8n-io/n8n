@@ -164,8 +164,15 @@ export class LmChatOpenAi implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 0,
-						description: 'Maximum amount of time a request is allowed to take in seconds',
+						default: 10000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{
@@ -190,9 +197,10 @@ export class LmChatOpenAi implements INodeType {
 			baseURL?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
+			maxRetries: number;
+			timeout: number;
 			presencePenalty?: number;
 			temperature?: number;
-			timeout?: number;
 			topP?: number;
 		};
 
@@ -205,6 +213,8 @@ export class LmChatOpenAi implements INodeType {
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			timeout: options.timeout ?? 10000,
+			maxRetries: options.maxRetries ?? 2,
 			configuration,
 		});
 

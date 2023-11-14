@@ -49,6 +49,7 @@ export async function callMethodAsync<T>(
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
 		const connectedNode = parameters.executeFunctions.getNode();
+
 		const error = new NodeOperationError(connectedNode, e, {
 			functionality: 'configuration-node',
 		});
@@ -232,16 +233,25 @@ export function logWrapper(
 							[{ json: { messages, options } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [messages, options, runManager],
-						})) as ChatResult;
-
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-						return response;
+						try {
+							const response = (await callMethodAsync.call(target, {
+								executeFunctions,
+								connectionType,
+								currentNodeRunIndex: index,
+								method: target[prop],
+								arguments: [
+									messages,
+									{ ...options, signal: executeFunctions.getExecutionCancelSignal() },
+									runManager,
+								],
+							})) as ChatResult;
+							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+							return response;
+						} catch (error) {
+							// Mute AbortError as they are expected
+							if (error?.name === 'AbortError') return { generations: [] };
+							throw error;
+						}
 					};
 				}
 			}
