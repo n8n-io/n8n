@@ -831,11 +831,11 @@ export class WorkflowExecute {
 		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, reject, onCancel) => {
-			let gotCancel = false;
+			this.additionalData.executionCanceled = false;
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
-				gotCancel = true;
+				this.additionalData.executionCanceled = true;
 			});
 
 			const returnPromise = (async () => {
@@ -882,10 +882,10 @@ export class WorkflowExecute {
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
 					) {
-						gotCancel = true;
+						this.additionalData.executionCanceled = true;
 					}
 
-					if (gotCancel) {
+					if (this.additionalData.executionCanceled) {
 						return;
 					}
 
@@ -1015,7 +1015,7 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						if (gotCancel) {
+						if (this.additionalData.executionCanceled) {
 							return;
 						}
 						try {
@@ -1646,7 +1646,7 @@ export class WorkflowExecute {
 				return;
 			})()
 				.then(async () => {
-					if (gotCancel && executionError === undefined) {
+					if (this.additionalData.executionCanceled && executionError === undefined) {
 						return this.processSuccessExecution(
 							startedAt,
 							workflow,

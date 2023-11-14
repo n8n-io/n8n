@@ -1892,6 +1892,7 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
+	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
