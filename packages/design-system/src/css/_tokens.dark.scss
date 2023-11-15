@@ -37,7 +37,26 @@
 	--node-type-main-color: var(--prim-gray-420);
 
 	// Sticky
-	--color-sticky-code-background: var(--prim-gray-40);
+	--color-sticky-background: var(--prim-color-alt-d-shade-700);
+	--color-sticky-border: var(--prim-color-alt-d-shade-600);
+	--color-sticky-font: var(--prim-gray-40);
+	--color-sticky-code-font: var(--prim-color-secondary-tint-300);
+	--color-sticky-code-background: var(--prim-gray-70-alpha-01);
+
+	--color-sticky-background-1: var(--prim-color-alt-d-shade-700);
+	--color-sticky-border-1: var(--prim-color-alt-d-shade-600);
+	--color-sticky-background-2: var(--prim-color-alt-b-shade-350);
+	--color-sticky-border-2: var(--prim-color-alt-b-shade-250);
+	--color-sticky-background-3: var(--prim-color-alt-c-shade-250);
+	--color-sticky-border-3: var(--prim-color-alt-c-shade-150);
+	--color-sticky-background-4: var(--prim-color-alt-a-shade-200);
+	--color-sticky-border-4: var(--prim-color-alt-a-shade-100);
+	--color-sticky-background-5: var(--prim-color-alt-e-shade-350);
+	--color-sticky-border-5: var(--prim-color-alt-e-shade-250);
+	--color-sticky-background-6: var(--prim-color-secondary-shade-250);
+	--color-sticky-border-6: var(--prim-color-secondary-shade-100);
+	--color-sticky-background-7: var(--prim-gray-740);
+	--color-sticky-border-7: var(--prim-gray-670);
 
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
