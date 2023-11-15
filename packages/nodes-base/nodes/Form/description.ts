@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	type INodeProperties,
