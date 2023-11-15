@@ -4,7 +4,7 @@ import { Service } from 'typedi';
 import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { License } from '../License';
 
-@Authorized(['global', 'owner'])
+@Authorized('any')
 @RestController('/orchestration')
 @Service()
 export class OrchestrationController {
