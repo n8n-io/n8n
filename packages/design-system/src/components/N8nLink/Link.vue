@@ -81,15 +81,11 @@ export default defineComponent({
 }
 
 .secondary {
-	color: var(--color-secondary);
+	color: var(--color-secondary-link);
 
 	&:active {
-		color: var(--color-secondary-shade-1);
+		color: var(--color-secondary-link-hover);
 	}
-}
-
-.secondary {
-	color: var(--color-secondary);
 }
 
 .primary-underline {

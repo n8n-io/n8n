@@ -320,13 +320,13 @@ export default defineComponent({
 	code {
 		background-color: var(--color-sticky-code-background);
 		padding: 0 var(--spacing-4xs);
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	a {
