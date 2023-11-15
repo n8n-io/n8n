@@ -207,7 +207,7 @@ export class Wait extends Webhook {
 			},
 			{
 				name: 'default',
-				httpMethod: '={{$parameter["resume"] === "form" ? "GET" : ""}}',
+				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: webhookPath,
 				restartWebhook: true,
@@ -216,7 +216,7 @@ export class Wait extends Webhook {
 			},
 			{
 				name: 'default',
-				httpMethod: '={{$parameter["resume"] === "form" ? "POST" : ""}}',
+				httpMethod: 'POST',
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
 				path: webhookPath,

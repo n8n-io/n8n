@@ -934,10 +934,6 @@ export function getNodeWebhooks(
 		);
 
 		if (httpMethod === undefined) {
-			if (node.type === 'n8n-nodes-base.wait') {
-				// Depending of resume parameter some webhooks would have httpMethod undefined
-				continue;
-			}
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
