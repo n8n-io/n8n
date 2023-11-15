@@ -13,12 +13,15 @@
 		:mappingEnabled="isMappingEnabled"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="input"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		@search="$emit('search', $event)"
 		data-test-id="ndv-input-panel"
 	>
 		<template #header>
@@ -206,6 +209,10 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		isPaneActive: {
 			type: Boolean,
 			default: false,
 		},
@@ -454,6 +461,9 @@ export default defineComponent({
 				return `${truncated}...`;
 			}
 			return truncated;
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 	watch: {
