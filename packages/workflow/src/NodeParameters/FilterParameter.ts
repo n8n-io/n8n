@@ -25,16 +25,6 @@ export function executeFilterCondition(
 	let leftValue = parsedLeftValue.newValue;
 	let rightValue = parsedRightValue.newValue;
 
-	if (!options.caseSensitive) {
-		if (typeof leftValue === 'string') {
-			leftValue = leftValue.toLocaleLowerCase();
-		}
-
-		if (typeof rightValue === 'string') {
-			rightValue = rightValue.toLocaleLowerCase();
-		}
-	}
-
 	// Return false when typeChecking=strict and validateFieldType changed the types
 	// DateTime is an exception, strings are allowed to be casted to DateTime
 	if (options.typeValidation !== 'loose') {
@@ -60,6 +50,19 @@ export function executeFilterCondition(
 			break;
 		}
 		case 'string': {
+			if (!options.caseSensitive) {
+				if (typeof leftValue === 'string') {
+					leftValue = leftValue.toLocaleLowerCase();
+				}
+
+				if (
+					typeof rightValue === 'string' &&
+					!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
+				) {
+					rightValue = rightValue.toLocaleLowerCase();
+				}
+			}
+
 			const left = (leftValue ?? '') as string;
 			const right = (rightValue ?? '') as string;
 
@@ -147,35 +150,41 @@ export function executeFilterCondition(
 		}
 		case 'array': {
 			const left = (leftValue ?? []) as unknown[];
-			const rightArray = (rightValue ?? []) as unknown[];
+			const rightNumber = rightValue as number;
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					return left.includes(rightValue as unknown);
+					if (!options.caseSensitive && typeof rightValue === 'string') {
+						rightValue = rightValue.toLocaleLowerCase();
+					}
+					return left.includes(rightValue);
 				case 'notContains':
-					return !left.includes(rightValue as unknown);
+					if (!options.caseSensitive && typeof rightValue === 'string') {
+						rightValue = rightValue.toLocaleLowerCase();
+					}
+					return !left.includes(rightValue);
 				case 'lengthEquals':
-					return left.length === rightArray.length;
+					return left.length === rightNumber;
 				case 'lengthNotEquals':
-					return left.length !== rightArray.length;
+					return left.length !== rightNumber;
 				case 'lengthGt':
-					return left.length > rightArray.length;
+					return left.length > rightNumber;
 				case 'lengthLt':
-					return left.length < rightArray.length;
+					return left.length < rightNumber;
 				case 'lengthGte':
-					return left.length >= rightArray.length;
+					return left.length >= rightNumber;
 				case 'lengthLte':
-					return left.length <= rightArray.length;
+					return left.length <= rightNumber;
 			}
 		}
 		case 'object': {
-			const left = leftValue ?? {};
+			const left = leftValue;
 
 			switch (condition.operator.operation) {
 				case 'empty':
-					return Object.keys(left).length === 0;
+					return !!left && Object.keys(left).length === 0;
 				case 'notEmpty':
-					return Object.keys(left).length !== 0;
+					return !!left && Object.keys(left).length !== 0;
 			}
 		}
 	}

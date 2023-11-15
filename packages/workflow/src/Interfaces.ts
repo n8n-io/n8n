@@ -2232,9 +2232,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: string | number | boolean;
+	leftValue: unknown;
 	operator: FilterOperatorValue;
-	rightValue: string | number | boolean;
+	rightValue: unknown;
 };
 
 export type FilterOptionsValue = {
