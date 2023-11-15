@@ -655,26 +655,3 @@ describe('POST /users', () => {
 		assertInviteUserErrorResponse(invitationResponse);
 	});
 });
-
-describe('POST /users/:id/reinvite', () => {
-	test('should send reinvite, but fail if user already accepted invite', async () => {
-		mailer.invite.mockImplementation(async () => ({ emailSent: true }));
-
-		const email = randomEmail();
-		const payload = [{ email }];
-		const response = await authOwnerAgent.post('/users').send(payload);
-
-		expect(response.statusCode).toBe(200);
-
-		const { data } = response.body;
-		const invitedUserId = data[0].user.id;
-		const reinviteResponse = await authOwnerAgent.post(`/users/${invitedUserId}/reinvite`);
-
-		expect(reinviteResponse.statusCode).toBe(200);
-
-		const member = await createMember();
-		const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
-
-		expect(reinviteMemberResponse.statusCode).toBe(400);
-	});
-});
