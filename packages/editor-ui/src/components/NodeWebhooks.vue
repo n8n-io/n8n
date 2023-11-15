@@ -211,7 +211,7 @@ export default defineComponent({
 }
 .url-field-full-width {
 	display: inline-block;
-	width: 100%;
+	margin: 5px 10px;
 }
 
 .url-selection {
