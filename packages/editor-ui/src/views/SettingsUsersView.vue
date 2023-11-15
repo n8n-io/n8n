@@ -144,15 +144,14 @@ export default defineComponent({
 		},
 		async onReinvite(userId: string) {
 			const user = this.usersStore.getUserById(userId);
-			if (user) {
+			if (user?.email) {
 				try {
-					await this.usersStore.reinviteUser({ id: user.id });
-
+					await this.usersStore.reinviteUser({ email: user.email });
 					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
 						message: this.$locale.baseText('settings.users.emailSentTo', {
-							interpolate: { email: user.email || '' },
+							interpolate: { email: user.email ?? '' },
 						}),
 					});
 				} catch (e) {
