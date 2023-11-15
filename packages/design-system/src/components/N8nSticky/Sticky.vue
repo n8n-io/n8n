@@ -201,6 +201,18 @@ export default defineComponent({
 .sticky {
 	position: absolute;
 	border-radius: var(--border-radius-base);
+
+	background-color: var(--color-sticky-background);
+	border: 1px solid var(--color-sticky-border);
+
+	.wrapper::after {
+		opacity: 0.15;
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-background) 0.01%,
+			var(--color-sticky-border)
+		);
+	}
 }
 
 .clickable {
@@ -231,98 +243,34 @@ export default defineComponent({
 	justify-content: flex-end;
 }
 
-.color-1 {
-	background-color: var(--sticky-color-1);
-	border: 1px solid var(--color-sticky, var(--sticky-color-1));
-
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-1)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-1))
-		);
-	}
-}
-
 .color-2 {
-	background-color: var(--sticky-color-2);
-	border: 1px solid var(--color-sticky, var(--sticky-color-2));
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-2)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-2))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-2);
+	--color-sticky-border: var(--color-sticky-border-2);
 }
 
 .color-3 {
-	background-color: var(--sticky-color-3);
-	border: 1px solid var(--color-sticky, var(--sticky-color-3));
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-3)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-3))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-3);
+	--color-sticky-border: var(--color-sticky-border-3);
 }
 
 .color-4 {
-	background-color: var(--sticky-color-4);
-	border: 1px solid var(--color-sticky, var(--sticky-color-4));
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-4)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-4))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-4);
+	--color-sticky-border: var(--color-sticky-border-4);
 }
 
 .color-5 {
-	background-color: var(--sticky-color-5);
-	border: 1px solid var(--color-sticky, var(--sticky-color-5));
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-5)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-5))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-5);
+	--color-sticky-border: var(--color-sticky-border-5);
 }
 
 .color-6 {
-	background-color: var(--sticky-color-6);
-	border: 1px solid var(--color-sticky, var(--sticky-color-6));
-
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-6)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-6))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-6);
+	--color-sticky-border: var(--color-sticky-border-6);
 }
 
 .color-7 {
-	background-color: var(--sticky-color-7);
-	border: 1px solid var(--color-sticky, var(--sticky-color-7));
-
-	.wrapper::after {
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-7)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-7))
-		);
-	}
+	--color-sticky-background: var(--color-sticky-background-7);
+	--color-sticky-border: var(--color-sticky-border-7);
 }
 </style>
 
