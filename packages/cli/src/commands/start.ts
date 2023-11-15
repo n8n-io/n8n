@@ -13,7 +13,6 @@ import { promisify } from 'util';
 import glob from 'fast-glob';
 
 import { sleep, jsonParse } from 'n8n-workflow';
-import { createHash } from 'crypto';
 import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -271,20 +270,6 @@ export class Start extends BaseCommand {
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
-
-		if (!config.getEnv('userManagement.jwtSecret')) {
-			// If we don't have a JWT secret set, generate
-			// one based and save to config.
-			const { encryptionKey } = this.instanceSettings;
-
-			// For a key off every other letter from encryption key
-			// CAREFUL: do not change this or it breaks all existing tokens.
-			let baseKey = '';
-			for (let i = 0; i < encryptionKey.length; i += 2) {
-				baseKey += encryptionKey[i];
-			}
-			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
-		}
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({

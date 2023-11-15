@@ -6,11 +6,11 @@ import { Strategy } from 'passport-jwt';
 import { sync as globSync } from 'fast-glob';
 import type { JwtPayload } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
-import config from '@/config';
 import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
 import { canSkipAuth } from '@/decorators/registerController';
 import { Logger } from '@/Logger';
+import { JwtService } from '@/services/jwt.service';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -21,7 +21,7 @@ const userManagementJwtAuth = (): RequestHandler => {
 	const jwtStrategy = new Strategy(
 		{
 			jwtFromRequest,
-			secretOrKey: config.getEnv('userManagement.jwtSecret'),
+			secretOrKey: Container.get(JwtService).jwtSecret,
 		},
 		async (jwtPayload: JwtPayload, done) => {
 			try {
