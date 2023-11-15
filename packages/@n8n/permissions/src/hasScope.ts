@@ -1,4 +1,4 @@
-import type { Scope, ScopeLevels, GlobalScopes, ProjectScopes, ResourceScopes } from './types';
+import type { Scope, ScopeLevels, GlobalScopes } from './types';
 
 export type HasScopeMode = 'oneOf' | 'allOf';
 export type HasScopeOptions = {
