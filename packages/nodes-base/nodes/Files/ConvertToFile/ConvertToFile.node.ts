@@ -5,9 +5,26 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { generatePairedItemData } from '@utils/utilities';
-import type { JsonToSpreadsheetBinaryOptions, JsonToSpreadsheetBinaryFormat } from '@utils/binary';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
+import type {
+	JsonToSpreadsheetBinaryOptions,
+	JsonToSpreadsheetBinaryFormat,
+	JsonToBinaryOptions,
+} from '@utils/binary';
+
 import { convertJsonToSpreadsheetBinary, createBinaryFromJson } from '@utils/binary';
+import { encodeDecodeOptions } from '@utils/descriptions';
+
+import * as createEvent from '../../ICalendar/createEvent.operation';
+
+const iCalDescription = updateDisplayOptions(
+	{
+		show: {
+			operation: ['iCal'],
+		},
+	},
+	createEvent.description.filter((property) => property.name !== 'binaryPropertyName'),
+);
 
 export class ConvertToFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +33,6 @@ export class ConvertToFile implements INodeType {
 		icon: 'fa:file-import',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Convert JSON data to binary data',
 		defaults: {
 			name: 'Convert to File',
@@ -47,46 +63,57 @@ export class ConvertToFile implements INodeType {
 						name: 'Convert to CSV',
 						value: 'csv',
 						action: 'Convert to CSV',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Convert to HTML',
 						value: 'html',
 						action: 'Convert to HTML',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Convert to iCal',
 						value: 'iCal',
 						action: 'Convert to iCal',
+						description: 'Converts each item to an iCal event',
 					},
 					{
 						name: 'Convert to JSON',
-						value: 'json',
+						value: 'toJson',
 						action: 'Convert to JSON',
+						description:
+							'Converts all input data to a single file, or each item to a separate file',
 					},
 					{
 						name: 'Convert to ODS',
 						value: 'ods',
 						action: 'Convert to ODS',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Convert to RTF',
 						value: 'rtf',
 						action: 'Convert to RTF',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Convert to XLS',
 						value: 'xls',
 						action: 'Convert to XLS',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Convert to XLSX',
 						value: 'xlsx',
 						action: 'Convert to XLSX',
+						description: 'Converts all input data to a single file, each item will represent a row',
 					},
 					{
 						name: 'Move Base64 String to File',
-						value: 'encodedString',
+						value: 'moveValueToBinary',
 						action: 'Move base64 string to file',
+						description:
+							'Specify a property in the item that contains a base64 string to be converted into a file',
 					},
 				],
 				default: 'csv',
@@ -96,6 +123,11 @@ export class ConvertToFile implements INodeType {
 				name: 'mode',
 				type: 'options',
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						operation: ['toJson'],
+					},
+				},
 				options: [
 					{
 						name: 'All Items to One File',
@@ -115,7 +147,22 @@ export class ConvertToFile implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'e.g data',
-				description: 'Name of the binary property to which to write the data of the files',
+				description: 'Name of the binary property to which to write the data of the file',
+			},
+			{
+				displayName: 'Source Property',
+				name: 'sourceProperty',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['moveValueToBinary'],
+					},
+				},
+				default: '',
+				required: true,
+				placeholder: 'e.g data',
+				description:
+					'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
 				displayName: 'Options',
@@ -123,6 +170,11 @@ export class ConvertToFile implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
+				displayOptions: {
+					hide: {
+						'/operation': ['iCal'],
+					},
+				},
 				options: [
 					{
 						displayName: 'Compression',
@@ -135,6 +187,43 @@ export class ConvertToFile implements INodeType {
 						},
 						default: false,
 						description: 'Whether compression will be applied or not',
+					},
+					{
+						displayName: 'Data Is Base64',
+						name: 'dataIsBase64',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': ['moveValueToBinary'],
+							},
+						},
+						default: true,
+						description: 'Whether the data is already base64 encoded',
+					},
+					{
+						displayName: 'Encoding',
+						name: 'encoding',
+						type: 'options',
+						options: encodeDecodeOptions,
+						displayOptions: {
+							show: {
+								'/operation': ['moveValueToBinary', 'toJson'],
+							},
+						},
+						default: 'utf8',
+						description: 'Set the encoding of the data stream',
+					},
+					{
+						displayName: 'Add BOM',
+						name: 'addBOM',
+						displayOptions: {
+							show: {
+								'/operation': ['moveValueToBinary', 'toJson'],
+								encoding: ['utf8', 'cesu8', 'ucs2'],
+							},
+						},
+						type: 'boolean',
+						default: false,
 					},
 					{
 						displayName: 'File Name',
@@ -156,6 +245,18 @@ export class ConvertToFile implements INodeType {
 						},
 					},
 					{
+						displayName: 'MIME Type',
+						name: 'mimeType',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': ['moveValueToBinary'],
+							},
+						},
+						default: '',
+						placeholder: 'e.g text/plain',
+					},
+					{
 						displayName: 'Sheet Name',
 						name: 'sheetName',
 						type: 'string',
@@ -169,13 +270,14 @@ export class ConvertToFile implements INodeType {
 					},
 				],
 			},
+			...iCalDescription,
 		],
 	};
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
-		const newItems: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		if (['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'].includes(operation)) {
 			const pairedItem = generatePairedItemData(items.length);
@@ -199,10 +301,10 @@ export class ConvertToFile implements INodeType {
 					pairedItem,
 				};
 
-				newItems.push(newItem);
+				returnData = [newItem];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					newItems.push({
+					returnData.push({
 						json: {
 							error: error.message,
 						},
@@ -214,7 +316,7 @@ export class ConvertToFile implements INodeType {
 			}
 		}
 
-		if (operation === 'json') {
+		if (operation === 'toJson') {
 			const mode = this.getNodeParameter('mode', 0, 'once') as string;
 			if (mode === 'once') {
 				const options = this.getNodeParameter('options', 0, {});
@@ -227,6 +329,8 @@ export class ConvertToFile implements INodeType {
 					{
 						fileName: options.fileName as string,
 						mimeType: 'application/json',
+						encoding: options.encoding as string,
+						addBOM: options.addBOM as boolean,
 					},
 				);
 
@@ -238,15 +342,16 @@ export class ConvertToFile implements INodeType {
 					pairedItem,
 				};
 
-				newItems.push(newItem);
+				returnData = [newItem];
 			} else {
 				for (let i = 0; i < items.length; i++) {
 					const options = this.getNodeParameter('options', i, {});
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-					const pairedItem = generatePairedItemData(items.length);
 
 					const binaryData = await createBinaryFromJson.call(this, items[i].json, {
 						fileName: options.fileName as string,
+						encoding: options.encoding as string,
+						addBOM: options.addBOM as boolean,
 						mimeType: 'application/json',
 						itemIndex: i,
 					});
@@ -256,13 +361,52 @@ export class ConvertToFile implements INodeType {
 						binary: {
 							[binaryPropertyName]: binaryData,
 						},
-						pairedItem,
+						pairedItem: { item: i },
 					};
 
-					newItems.push(newItem);
+					returnData.push(newItem);
 				}
 			}
 		}
-		return [newItems];
+
+		if (operation === 'moveValueToBinary') {
+			for (let i = 0; i < items.length; i++) {
+				const options = this.getNodeParameter('options', i, {});
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+				const sourceProperty = this.getNodeParameter('sourceProperty', i) as string;
+
+				const jsonToBinaryOptions: JsonToBinaryOptions = {
+					sourceKey: sourceProperty,
+					fileName: options.fileName as string,
+					mimeType: options.mimeType as string,
+					dataIsBase64: options.dataIsBase64 !== false,
+					encoding: options.encoding as string,
+					addBOM: options.addBOM as boolean,
+					itemIndex: i,
+				};
+
+				const binaryData = await createBinaryFromJson.call(
+					this,
+					items[i].json,
+					jsonToBinaryOptions,
+				);
+
+				const newItem: INodeExecutionData = {
+					json: {},
+					binary: {
+						[binaryPropertyName]: binaryData,
+					},
+					pairedItem: { item: i },
+				};
+
+				returnData.push(newItem);
+			}
+		}
+
+		if (operation === 'iCal') {
+			returnData = await createEvent.execute.call(this, items);
+		}
+
+		return [returnData];
 	}
 }
