@@ -168,9 +168,7 @@ export default defineComponent({
 	}
 }
 
-.hideArrow {
-	display: block;
-
+:global(.el-popper).hideArrow {
 	:global(.el-popper__arrow) {
 		display: none;
 	}
