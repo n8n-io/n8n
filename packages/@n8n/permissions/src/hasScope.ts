@@ -1,21 +1,30 @@
-import type { Scope, ScopeLevelOrder, ScopeLevels } from './types';
+import type { Scope, ScopeLevels, GlobalScopes, ProjectScopes, ResourceScopes } from './types';
 
 export type HasScopeMode = 'oneOf' | 'allOf';
-export interface HasScopeOptions {
+export type HasScopeOptions = {
 	mode: HasScopeMode;
-}
+};
 
 export function hasScope(
 	scope: Scope | Scope[],
-	userScopes: Partial<ScopeLevels>,
+	userScopes: ScopeLevels,
+	options?: HasScopeOptions,
+): boolean;
+export function hasScope(
+	scope: Scope | Scope[],
+	userScopes: GlobalScopes,
+	options?: HasScopeOptions,
+): boolean;
+export function hasScope(
+	scope: Scope | Scope[],
+	userScopes: unknown,
 	options: HasScopeOptions = { mode: 'oneOf' },
 ): boolean {
 	if (!Array.isArray(scope)) {
 		scope = [scope];
 	}
 
-	const scopeLevelOrder: ScopeLevelOrder = ['global', 'project', 'resource'];
-	const userScopeSet = new Set(scopeLevelOrder.flatMap((level) => userScopes[level] ?? []));
+	const userScopeSet = new Set(Object.values(userScopes ?? {}).flat());
 
 	if (options.mode === 'allOf') {
 		return !!scope.length && scope.every((s) => userScopeSet.has(s));
