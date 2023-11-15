@@ -10,6 +10,7 @@ import type {
 } from '@/Interfaces';
 
 import config from '@/config';
+import { LoggerProxy } from 'n8n-workflow';
 
 @Service()
 export class ExternalHooks implements IExternalHooksClass {
@@ -95,10 +96,12 @@ export class ExternalHooks implements IExternalHooksClass {
 			return;
 		}
 
+		LoggerProxy.debug(`Running external hook ${hookName}`);
 		for (const externalHookFunction of this.externalHooks[hookName]) {
 			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
+		LoggerProxy.debug(`Finished running external hook ${hookName}`);
 	}
 
 	exists(hookName: string): boolean {

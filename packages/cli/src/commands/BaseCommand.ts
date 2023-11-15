@@ -55,15 +55,19 @@ export abstract class BaseCommand extends Command {
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
+		this.logger.info('Connecting to DB');
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
+		this.logger.info('DB connected');
 
 		await this.server?.init();
 
+		this.logger.info('Running migrations');
 		await Db.migrate().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error running database migrations', error),
 		);
+		this.logger.info('Finished running migrations');
 
 		if (process.env.WEBHOOK_TUNNEL_URL) {
 			LoggerProxy.warn(
@@ -140,7 +144,9 @@ export abstract class BaseCommand extends Command {
 
 	async initLicense(): Promise<void> {
 		const license = Container.get(License);
+		LoggerProxy.debug('license.init started');
 		await license.init(this.instanceId);
+		LoggerProxy.debug('license.init ended');
 
 		const activationKey = config.getEnv('license.activationKey');
 

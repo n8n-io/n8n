@@ -193,8 +193,11 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
+		this.logger.info('License initialized');
 		await this.initBinaryManager();
+		this.logger.info('Binary manager initialized');
 		await this.initExternalHooks();
+		this.logger.info('External hooks initialized');
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
