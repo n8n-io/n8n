@@ -119,7 +119,7 @@ export default defineComponent({
 				} else {
 					errorMessage = this.$locale.baseText(
 						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-						{ interpolate: { message: errorData.error.message } },
+						{ interpolate: { message: errorData } },
 					);
 				}
 			} catch (error) {

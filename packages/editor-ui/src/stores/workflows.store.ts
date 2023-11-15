@@ -364,7 +364,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 		},
 
-		async getActivationError(id: string): Promise<IActivationError | undefined> {
+		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
 		},

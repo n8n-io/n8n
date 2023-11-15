@@ -600,12 +600,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 				void this.activeWorkflows.remove(workflowData.id);
 
-				void this.activationErrorsService.set(workflowData.id, {
-					time: new Date().getTime(),
-					error: {
-						message: error.message,
-					},
-				});
+				void this.activationErrorsService.set(workflowData.id, error.message);
 
 				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
@@ -805,15 +800,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await WorkflowsService.updateWorkflowTriggerCount(workflow.id, triggerCount);
-		} catch (error) {
-			await this.activationErrorsService.set(workflowId, {
-				time: new Date().getTime(),
-				error: {
-					message: error.message,
-				},
-			});
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			await this.activationErrorsService.set(workflowId, error.message);
 
-			throw error;
+			throw e;
 		}
 
 		// If for example webhooks get created it sometimes has to save the

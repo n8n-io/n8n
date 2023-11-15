@@ -1,4 +1,3 @@
-import type { ActivationError } from '@/ActivationErrors.service';
 import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
 
 export type RedisServiceCommand =
@@ -20,7 +19,7 @@ type RedisServiceBaseCommand = {
 	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
-		[key: string]: string | number | boolean | string[] | number[] | boolean[] | ActivationError;
+		[key: string]: string | number | boolean | string[] | number[] | boolean[];
 	};
 };
 
