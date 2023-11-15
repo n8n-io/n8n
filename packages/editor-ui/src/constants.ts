@@ -566,6 +566,7 @@ export const enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
+	RBAC = 'rbac',
 }
 
 export const enum SignInType {

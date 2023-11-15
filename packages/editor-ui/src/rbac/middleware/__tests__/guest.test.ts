@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
-import { guest } from '@/middleware/guest';
+import { guestMiddleware } from '@/rbac/middleware/guest';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -15,7 +15,7 @@ describe('Middleware', () => {
 			const toMock = { query: { redirect: '/some-path' } };
 			const fromMock = {};
 
-			await guest(toMock, fromMock, nextMock);
+			await guestMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).toHaveBeenCalledWith('/some-path');
 		});
@@ -27,7 +27,7 @@ describe('Middleware', () => {
 			const toMock = { query: {} };
 			const fromMock = {};
 
-			await guest(toMock, fromMock, nextMock);
+			await guestMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
@@ -39,7 +39,7 @@ describe('Middleware', () => {
 			const toMock = { query: {} };
 			const fromMock = {};
 
-			await guest(toMock, fromMock, nextMock);
+			await guestMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).toHaveBeenCalledTimes(0);
 		});

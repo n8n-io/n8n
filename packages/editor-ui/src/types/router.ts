@@ -2,13 +2,33 @@ import type {
 	NavigationGuardNext,
 	NavigationGuardWithThis,
 	RouteLocationNormalized,
+	RouteLocation,
 } from 'vue-router';
-import type { AuthenticatedMiddlewareOptions } from '@/middleware/authenticated';
-import type { EnterpriseMiddlewareOptions } from '@/middleware/enterprise';
-import type { GuestMiddlewareOptions } from '@/middleware/guest';
-import type { RBACMiddlewareOptions } from '@/middleware/rbac';
 import type { IPermissions } from '@/Interface';
-import type { RouteLocation } from 'vue-router';
+import type {
+	AuthenticatedPermissionOptions,
+	CustomPermissionOptions,
+	EnterprisePermissionOptions,
+	GuestPermissionOptions,
+	RBACPermissionOptions,
+	RolePermissionOptions,
+	PermissionType,
+} from '@/types/rbac';
+
+export type RouterMiddlewareType = PermissionType;
+export type CustomMiddlewareOptions = CustomPermissionOptions<{
+	to: RouteLocationNormalized;
+	from: RouteLocationNormalized;
+	next: NavigationGuardNext;
+}>;
+export type MiddlewareOptions = {
+	authenticated: AuthenticatedPermissionOptions;
+	custom: CustomMiddlewareOptions;
+	enterprise: EnterprisePermissionOptions;
+	guest: GuestPermissionOptions;
+	rbac: RBACPermissionOptions;
+	role: RolePermissionOptions;
+};
 
 export interface RouteConfig {
 	meta: {
@@ -27,11 +47,9 @@ export interface RouteConfig {
 	};
 }
 
-export type RouterMiddlewareType = 'authenticated' | 'enterprise' | 'guest';
-
 export type RouterMiddlewareReturnType = ReturnType<NavigationGuardWithThis<undefined>>;
 
-export interface RouterMiddleware<RouterMiddlewareOptions extends Record<string, unknown> = {}> {
+export interface RouterMiddleware<RouterMiddlewareOptions = {}> {
 	(
 		to: RouteLocationNormalized,
 		from: RouteLocationNormalized,
@@ -39,14 +57,3 @@ export interface RouterMiddleware<RouterMiddlewareOptions extends Record<string,
 		options: RouterMiddlewareOptions,
 	): RouterMiddlewareReturnType;
 }
-
-/**
- * Middleware type options
- */
-
-export type MiddlewareOptions = {
-	authenticated: AuthenticatedMiddlewareOptions;
-	enterprise: EnterpriseMiddlewareOptions;
-	guest: GuestMiddlewareOptions;
-	rbac: RBACMiddlewareOptions;
-};

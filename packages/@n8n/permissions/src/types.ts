@@ -1,4 +1,4 @@
-export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
+export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list' | '*';
 export type Resource =
 	| 'workflow'
 	| 'user'
@@ -9,11 +9,20 @@ export type Resource =
 
 export type ResourceScope<
 	R extends Resource,
-	Operations extends string = DefaultOperations,
-> = `${R}:${Operations}`;
-export type WildcardScope = `${Resource}:*` | '*';
+	Operation extends string = DefaultOperations,
+> = `${R}:${Operation}`;
 
-export type WorkflowScope = ResourceScope<'workflow'>;
+export type WorkflowSubresource = 'tag';
+export type Subresource = {
+	[K in Resource]?: K extends 'workflow' ? WorkflowSubresource : string;
+};
+export type SubresourceScope<
+	R extends Resource,
+	S extends Subresource[R],
+	Operation extends string = DefaultOperations,
+> = `${R}:${S}:${Operation}`;
+
+export type WorkflowScope = ResourceScope<'workflow'> | SubresourceScope<'workflow', 'tag'>;
 export type UserScope = ResourceScope<'user'>;
 export type CredentialScope = ResourceScope<'credential'>;
 export type VariableScope = ResourceScope<'variable'>;

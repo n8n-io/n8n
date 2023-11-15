@@ -2,12 +2,21 @@ import { defineStore } from 'pinia';
 import { hasScope as genericHasScope } from '@n8n/permissions';
 import type { HasScopeOptions, Scope, Resource } from '@n8n/permissions';
 import { ref } from 'vue';
+import { STORES } from '@/constants';
+import type { IRole } from '@/Interface';
+import { PermissionType, PermissionTypeOptions, RBACPermissionCheck } from '@/types/rbac';
+import { permissions } from '@/rbac/checks';
 
-export const useRBACStore = defineStore('RBAC', () => {
-	const globalRoles = ref<string[]>([]);
+export const useRBACStore = defineStore(STORES.RBAC, () => {
+	const globalRoles = ref<IRole[]>([]);
 	const rolesByProjectId = ref<Record<string, string[]>>({});
 
-	const globalScopes = ref<Scope[]>(['workflow:list', 'workflow:create', 'credential:list']);
+	const globalScopes = ref<Scope[]>([
+		'workflow:list',
+		'workflow:create',
+		'credential:list',
+		'workflow:tag:delete',
+	]);
 	const scopesByProjectId = ref<Record<string, Scope[]>>({});
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
 		workflow: {},
@@ -17,6 +26,16 @@ export const useRBACStore = defineStore('RBAC', () => {
 		sourceControl: {},
 		externalSecretsStore: {},
 	});
+
+	function addGlobalRole(role: IRole) {
+		if (!globalRoles.value.includes(role)) {
+			globalRoles.value.push(role);
+		}
+	}
+
+	function hasRole(role: IRole) {
+		return globalRoles.value.includes(role);
+	}
 
 	function addGlobalScope(scope: Scope) {
 		if (!globalScopes.value.includes(scope)) {
@@ -57,7 +76,7 @@ export const useRBACStore = defineStore('RBAC', () => {
 
 	function hasScope(
 		scope: Scope | Scope[],
-		context: {
+		context?: {
 			resourceType?: Resource;
 			resourceId?: string;
 			projectId?: string;
@@ -68,9 +87,9 @@ export const useRBACStore = defineStore('RBAC', () => {
 			scope,
 			{
 				global: globalScopes.value,
-				project: context.projectId ? scopesByProjectId.value[context.projectId] : [],
+				project: context?.projectId ? scopesByProjectId.value[context.projectId] : [],
 				resource:
-					context.resourceType && context.resourceId
+					context?.resourceType && context?.resourceId
 						? scopesByResourceId.value[context.resourceType][context.resourceId]
 						: [],
 			},
@@ -84,6 +103,8 @@ export const useRBACStore = defineStore('RBAC', () => {
 		globalScopes,
 		scopesByProjectId,
 		scopesByResourceId,
+		addGlobalRole,
+		hasRole,
 		addGlobalScope,
 		addProjectScope,
 		addResourceScope,

@@ -1,6 +1,6 @@
 import { useSettingsStore } from '@/stores/settings.store';
 import { VIEWS, EnterpriseEditionFeature } from '@/constants';
-import { enterprise } from '@/middleware/enterprise';
+import { enterpriseMiddleware } from '@/rbac/middleware/enterprise';
 
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(),
@@ -19,7 +19,7 @@ describe('Middleware', () => {
 				mode: 'allOf',
 			};
 
-			await enterprise({}, {}, nextMock, options);
+			await enterpriseMiddleware({}, {}, nextMock, options);
 
 			expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
@@ -37,7 +37,7 @@ describe('Middleware', () => {
 				mode: 'allOf',
 			};
 
-			await enterprise({}, {}, nextMock, options);
+			await enterpriseMiddleware({}, {}, nextMock, options);
 
 			expect(nextMock).toHaveBeenCalledTimes(0);
 		});
@@ -50,7 +50,7 @@ describe('Middleware', () => {
 			const nextMock = vi.fn();
 			const options = { features: [EnterpriseEditionFeature.Saml], mode: 'oneOf' };
 
-			await enterprise({}, {}, nextMock, options);
+			await enterpriseMiddleware({}, {}, nextMock, options);
 
 			expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
@@ -66,7 +66,7 @@ describe('Middleware', () => {
 				mode: 'oneOf',
 			};
 
-			await enterprise({}, {}, nextMock, options);
+			await enterpriseMiddleware({}, {}, nextMock, options);
 
 			expect(nextMock).toHaveBeenCalledTimes(0);
 		});

@@ -1,4 +1,4 @@
-import { authenticated } from '@/middleware/authenticated';
+import { authenticatedMiddleware } from '@/rbac/middleware/authenticated';
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
 
@@ -15,7 +15,7 @@ describe('Middleware', () => {
 			const toMock = { query: {} };
 			const fromMock = {};
 
-			await authenticated(toMock, fromMock, nextMock);
+			await authenticatedMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).toHaveBeenCalledWith({
 				name: VIEWS.SIGNIN,
@@ -30,7 +30,7 @@ describe('Middleware', () => {
 			const toMock = { query: { redirect: '/' } };
 			const fromMock = {};
 
-			await authenticated(toMock, fromMock, nextMock);
+			await authenticatedMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).toHaveBeenCalledWith({
 				name: VIEWS.SIGNIN,
@@ -45,7 +45,7 @@ describe('Middleware', () => {
 			const toMock = { query: {} };
 			const fromMock = {};
 
-			await authenticated(toMock, fromMock, nextMock);
+			await authenticatedMiddleware(toMock, fromMock, nextMock);
 
 			expect(nextMock).not.toHaveBeenCalled();
 		});

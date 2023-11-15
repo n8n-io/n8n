@@ -8,8 +8,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import type { IPermissions } from './Interface';
-import { isAuthorized, ROLE, runExternalHook } from '@/utils';
+import { ROLE, runExternalHook } from '@/utils';
 import { useSettingsStore } from './stores/settings.store';
 import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
@@ -18,9 +17,8 @@ import { useSSOStore } from './stores/sso.store';
 import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
-import { middleware } from '@/middleware';
-import type { RouterMiddlewareType } from '@/types/router';
-import type { MiddlewareOptions, RouteConfig } from '@/types/router';
+import { middleware } from '@/rbac/middleware';
+import type { MiddlewareOptions, RouteConfig, RouterMiddleware } from '@/types/router';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -229,7 +227,7 @@ export const routes = [
 			middleware: ['authenticated', 'enterprise'],
 			middlewareOptions: {
 				enterprise: {
-					features: [EnterpriseEditionFeature.DebugInEditor],
+					feature: [EnterpriseEditionFeature.DebugInEditor],
 				},
 			},
 		},
@@ -282,7 +280,7 @@ export const routes = [
 			middleware: ['authenticated', 'enterprise'],
 			middlewareOptions: {
 				enterprise: {
-					features: [EnterpriseEditionFeature.WorkflowHistory],
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
 				},
 			},
 		},
@@ -405,13 +403,12 @@ export const routes = [
 			default: SetupView,
 		},
 		meta: {
+			middleware: ['role'],
+			middlewareOptions: {
+				role: [ROLE.Default],
+			},
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					role: [ROLE.Default],
-				},
 			},
 		},
 	},
@@ -422,10 +419,10 @@ export const routes = [
 			default: ForgotMyPasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			middleware: ['guest'],
 		},
 	},
 	{
@@ -435,10 +432,10 @@ export const routes = [
 			default: ChangePasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			middleware: ['guest'],
 		},
 	},
 	{
@@ -453,24 +450,22 @@ export const routes = [
 					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !(
+								settingsStore.settings.hideUsagePage ||
+								settingsStore.settings.deployment?.type === 'cloud'
+							);
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'usage',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return (
-									settingsStore.settings.hideUsagePage ||
-									settingsStore.settings.deployment?.type === 'cloud'
-								);
-							},
 						},
 					},
 				},
@@ -482,18 +477,16 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner, ROLE.Member],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'personal',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						deny: {
-							role: [ROLE.Default],
 						},
 					},
 				},
@@ -505,6 +498,7 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -513,7 +507,6 @@ export const routes = [
 							};
 						},
 					},
-					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -523,21 +516,19 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isPublicApiEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'api',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return !settingsStore.isPublicApiEnabled;
-							},
 						},
 					},
 				},
@@ -549,18 +540,16 @@ export const routes = [
 					settingsView: SettingsSourceControl,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'environments',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -572,18 +561,16 @@ export const routes = [
 					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'external-secrets',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -595,24 +582,20 @@ export const routes = [
 					settingsView: SettingsSso,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !settingsStore.isDesktopDeployment;
+						},
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'sso',
 							};
-						},
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isDesktopDeployment;
-							},
 						},
 					},
 				},
@@ -624,17 +607,12 @@ export const routes = [
 					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
 					},
 				},
 			},
@@ -645,20 +623,16 @@ export const routes = [
 					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isCommunityNodesFeatureEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return !settingsStore.isCommunityNodesFeatureEnabled;
-							},
-						},
 					},
 				},
 			},
@@ -669,6 +643,7 @@ export const routes = [
 					settingsView: SettingsFakeDoorView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -677,7 +652,6 @@ export const routes = [
 							};
 						},
 					},
-					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -687,14 +661,9 @@ export const routes = [
 					settingsView: SettingsLdapView,
 				},
 				meta: {
-					middleware: ['authenticated'],
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
 					},
 				},
 			},
@@ -705,21 +674,19 @@ export const routes = [
 					settingsView: SettingsAuditLogs,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							return !!useStorage('audit-logs').value;
+						},
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'audit-logs',
 							};
-						},
-					},
-					permissions: {
-						middleware: ['authenticated'],
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => !useStorage('audit-logs').value,
 						},
 					},
 				},
@@ -733,22 +700,20 @@ export const routes = [
 			default: SamlOnboarding,
 		},
 		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					const settingsStore = useSettingsStore();
+					const ssoStore = useSSOStore();
+					return (
+						ssoStore.isEnterpriseSamlEnabled &&
+						!settingsStore.isCloudDeployment &&
+						!settingsStore.isDesktopDeployment
+					);
+				},
+			},
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			middleware: ['authenticated'],
-			permissions: {
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						const ssoStore = useSSOStore();
-						return (
-							!ssoStore.isEnterpriseSamlEnabled ||
-							settingsStore.isCloudDeployment ||
-							settingsStore.isDesktopDeployment
-						);
-					},
-				},
 			},
 		},
 	},
@@ -818,23 +783,13 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 			nextCalled = true;
 		}) as NavigationGuardNext;
 
-		const middlewareOptions = routeMiddlewareOptions[middlewareName] ?? {};
-		await middleware[middlewareName](to, from, middlewareNext, middlewareOptions);
+		const middlewareOptions = routeMiddlewareOptions[middlewareName];
+		const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
+		await middlewareFn(to, from, middlewareNext, middlewareOptions);
 
 		if (nextCalled) {
 			return;
 		}
-	}
-
-	/**
-	 * Old way of authorizing routing, in course of migration. Use middlewares instead.
-	 * @deprecated
-	 */
-	const permissions = to.meta?.permissions as IPermissions;
-	const canUserAccessCurrentRoute =
-		permissions && isAuthorized(permissions, usersStore.currentUser);
-	if (canUserAccessCurrentRoute) {
-		return next();
 	}
 
 	return next();

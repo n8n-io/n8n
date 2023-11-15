@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<div>
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
-			<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
+			<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
 					<template #content>
 						<span> {{ $locale.baseText('settings.users.invite.tooltip') }} </span>
@@ -70,6 +70,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { hasPermission } from '@/rbac/permissions';
+import { ROLE } from '@/utils';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
@@ -80,7 +82,7 @@ export default defineComponent({
 		};
 	},
 	async mounted() {
-		if (!this.usersStore.showUMSetupWarning) {
+		if (!this.showUMSetupWarning) {
 			await this.usersStore.fetchUsers();
 		}
 	},
@@ -88,6 +90,9 @@ export default defineComponent({
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		showUMSetupWarning() {
+			return hasPermission(['role'], { role: [ROLE.Default] });
 		},
 		usersListActions(): IUserListAction[] {
 			return [

@@ -1,5 +1,5 @@
 import { useRBACStore } from '@/stores/rbac.store';
-import { rbac } from '@/middleware/rbac';
+import { rbacMiddleware } from '@/rbac/middleware/rbac';
 import { VIEWS } from '@/constants';
 import {
 	inferProjectIdFromRoute,
@@ -29,7 +29,7 @@ describe('RBAC Middleware', () => {
 		const nextMock = vi.fn();
 		const scope = 'read:workflow';
 
-		await rbac({}, {}, nextMock, { scope });
+		await rbacMiddleware({}, {}, nextMock, { scope });
 
 		expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 	});
@@ -45,7 +45,7 @@ describe('RBAC Middleware', () => {
 		const nextMock = vi.fn();
 		const scope = 'read:workflow';
 
-		await rbac({}, {}, nextMock, { scope });
+		await rbacMiddleware({}, {}, nextMock, { scope });
 
 		expect(nextMock).toHaveBeenCalledTimes(0);
 	});

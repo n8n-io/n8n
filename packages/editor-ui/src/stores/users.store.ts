@@ -32,7 +32,7 @@ import type {
 	IUsersState,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -81,26 +81,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		globalRoleName(): IRole {
 			return this.currentUser?.globalRole?.name ?? 'default';
-		},
-		canUserDeleteTags(): boolean {
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
-		},
-		canUserActivateLicense(): boolean {
-			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
-		},
-		canUserAccessSidebarUserInfo() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, currentUser);
-			}
-			return false;
-		},
-		showUMSetupWarning() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
-			}
-			return false;
 		},
 		personalizedNodeTypes(): string[] {
 			const user = this.currentUser;
