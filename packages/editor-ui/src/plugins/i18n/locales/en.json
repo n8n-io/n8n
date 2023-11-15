@@ -1069,7 +1069,7 @@
 	"nodeView.replaceMe": "Replace Me",
 	"contextMenu.node": "node | nodes",
 	"contextMenu.sticky": "sticky note | sticky notes",
-	"contextMenu.selectAll": "Select all {subject}",
+	"contextMenu.selectAll": "Select all",
 	"contextMenu.deselectAll": "Clear selection",
 	"contextMenu.duplicate": "Duplicate {subject} | Duplicate {count} {subject}",
 	"contextMenu.open": "Open node...",

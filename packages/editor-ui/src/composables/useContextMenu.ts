@@ -74,9 +74,11 @@ export const useContextMenu = () => {
 		target.value = { source: 'canvas' };
 		isOpen.value = false;
 		actions.value = [];
+		position.value = [0, 0];
 	};
 
 	const targetNodes = computed(() => {
+		if (!isOpen.value) return [];
 		const selectedNodes = uiStore.selectedNodes.map((node) =>
 			workflowsStore.getNodeByName(node.name),
 		) as INode[];
@@ -134,8 +136,7 @@ export const useContextMenu = () => {
 				{
 					id: 'select_all',
 					divided: true,
-					// always plural
-					label: i18n.baseText('contextMenu.selectAll', { adjustToNumber: 2 }),
+					label: i18n.baseText('contextMenu.selectAll'),
 					shortcut: { metaKey: true, keys: ['A'] },
 					disabled: nodes.length === workflowsStore.allNodes.length,
 				},
