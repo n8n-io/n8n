@@ -31,5 +31,6 @@ export type Scope =
 	| SourceControlScope
 	| ExternalSecretStoreScope;
 
-export type ScopeLevel = 'global' | 'project' | 'resource';
+export type ScopeLevelOrder = ['global', 'project', 'resource'];
+export type ScopeLevel = ScopeLevelOrder[number];
 export type ScopeLevels = Record<ScopeLevel, Scope[]>;
