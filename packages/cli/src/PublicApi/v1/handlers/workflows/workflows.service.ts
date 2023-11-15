@@ -10,6 +10,8 @@ import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { TagService } from '@/services/tag.service';
 import Container from 'typedi';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -17,7 +19,7 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 		where,
 		select: ['workflowId'],
 	});
@@ -28,7 +30,7 @@ export async function getSharedWorkflow(
 	user: User,
 	workflowId?: string | undefined,
 ): Promise<SharedWorkflow | null> {
-	return Db.collections.SharedWorkflow.findOne({
+	return Container.get(SharedWorkflowRepository).findOne({
 		where: {
 			...(!user.isOwner && { userId: user.id }),
 			...(workflowId && { workflowId }),
@@ -44,7 +46,7 @@ export async function getSharedWorkflows(
 		workflowIds?: string[];
 	},
 ): Promise<SharedWorkflow[]> {
-	return Db.collections.SharedWorkflow.find({
+	return Container.get(SharedWorkflowRepository).find({
 		where: {
 			...(!user.isOwner && { userId: user.id }),
 			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
@@ -54,7 +56,7 @@ export async function getSharedWorkflows(
 }
 
 export async function getWorkflowById(id: string): Promise<WorkflowEntity | null> {
-	return Db.collections.Workflow.findOne({
+	return Container.get(WorkflowRepository).findOne({
 		where: { id },
 	});
 }
@@ -97,28 +99,34 @@ export async function createWorkflow(
 }
 
 export async function setWorkflowAsActive(workflow: WorkflowEntity): Promise<UpdateResult> {
-	return Db.collections.Workflow.update(workflow.id, { active: true, updatedAt: new Date() });
+	return Container.get(WorkflowRepository).update(workflow.id, {
+		active: true,
+		updatedAt: new Date(),
+	});
 }
 
 export async function setWorkflowAsInactive(workflow: WorkflowEntity): Promise<UpdateResult> {
-	return Db.collections.Workflow.update(workflow.id, { active: false, updatedAt: new Date() });
+	return Container.get(WorkflowRepository).update(workflow.id, {
+		active: false,
+		updatedAt: new Date(),
+	});
 }
 
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
-	return Db.collections.Workflow.remove(workflow);
+	return Container.get(WorkflowRepository).remove(workflow);
 }
 
 export async function getWorkflowsAndCount(
 	options: FindManyOptions<WorkflowEntity>,
 ): Promise<[WorkflowEntity[], number]> {
-	return Db.collections.Workflow.findAndCount(options);
+	return Container.get(WorkflowRepository).findAndCount(options);
 }
 
 export async function updateWorkflow(
 	workflowId: string,
 	updateData: WorkflowEntity,
 ): Promise<UpdateResult> {
-	return Db.collections.Workflow.update(workflowId, updateData);
+	return Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

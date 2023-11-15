@@ -3,8 +3,9 @@ import * as Config from '@oclif/config';
 import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+
+import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils/';
 import { getAllWorkflows } from '../shared/db/workflows';
 
 beforeAll(async () => {

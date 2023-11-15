@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -16,7 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
-    "typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc",
     "dev": "pnpm serve",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint src --ext .js,.ts,.vue --fix",
@@ -50,6 +50,7 @@
     "@vueuse/components": "^10.5.0",
     "@vueuse/core": "^10.5.0",
     "axios": "^0.21.1",
+    "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
     "copy-to-clipboard": "^3.3.3",
@@ -73,6 +74,7 @@
     "v3-infinite-loading": "^1.2.2",
     "vue": "^3.3.4",
     "vue-agile": "^2.0.0",
+    "vue-chartjs": "^5.2.0",
     "vue-i18n": "^9.2.2",
     "vue-json-pretty": "2.2.4",
     "vue-markdown-render": "^2.0.1",

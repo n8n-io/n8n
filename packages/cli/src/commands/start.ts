@@ -13,12 +13,10 @@ import { promisify } from 'util';
 import glob from 'fast-glob';
 
 import { sleep, jsonParse } from 'n8n-workflow';
-import { createHash } from 'crypto';
 import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
@@ -30,6 +28,8 @@ import { IConfig } from '@oclif/config';
 import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -271,22 +271,10 @@ export class Start extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
 
-		if (!config.getEnv('userManagement.jwtSecret')) {
-			// If we don't have a JWT secret set, generate
-			// one based and save to config.
-			const { encryptionKey } = this.instanceSettings;
-
-			// For a key off every other letter from encryption key
-			// CAREFUL: do not change this or it breaks all existing tokens.
-			let baseKey = '';
-			for (let i = 0; i < encryptionKey.length; i += 2) {
-				baseKey += encryptionKey[i];
-			}
-			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
-		}
-
 		// Load settings from database and set them to config.
-		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
+		const databaseSettings = await Container.get(SettingsRepository).findBy({
+			loadOnStartup: true,
+		});
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
@@ -304,7 +292,7 @@ export class Start extends BaseCommand {
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				await Db.collections.Execution.query('VACUUM;');
+				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
 		}
 

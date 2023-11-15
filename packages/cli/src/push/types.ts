@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { Request, Response } from 'express';
 import type { WebSocket } from 'ws';
 

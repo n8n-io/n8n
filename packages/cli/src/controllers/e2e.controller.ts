@@ -3,7 +3,9 @@ import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
-import { RoleRepository, SettingsRepository, UserRepository } from '@db/repositories';
+import { RoleRepository } from '@db/repositories/role.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -68,6 +70,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
+		[LICENSE_FEATURES.WORKER_VIEW]: false,
 	};
 
 	constructor(
@@ -95,6 +98,13 @@ export class E2EController {
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
+	}
+
+	@Patch('/queue-mode')
+	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
+		const { enabled } = req.body;
+		config.set('executions.mode', enabled ? 'queue' : 'regular');
+		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
 	}
 
 	private resetFeatures() {
