@@ -243,18 +243,6 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('multiMainSetup.instanceType') === 'follower'
-		) {
-			this.logger.debug(
-				'[Multi-main setup] Instance is follower, skipping license initialization...',
-			);
-
-			return;
-		}
-
 		const license = Container.get(License);
 		await license.init(this.instanceType ?? 'main');
 
