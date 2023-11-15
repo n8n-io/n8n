@@ -1,6 +1,7 @@
-export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list' | '*';
+export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
 export type Resource =
 	| 'workflow'
+	| 'tag'
 	| 'user'
 	| 'credential'
 	| 'variable'
@@ -12,17 +13,10 @@ export type ResourceScope<
 	Operation extends string = DefaultOperations,
 > = `${R}:${Operation}`;
 
-export type WorkflowSubresource = 'tag';
-export type Subresource = {
-	[K in Resource]?: K extends 'workflow' ? WorkflowSubresource : string;
-};
-export type SubresourceScope<
-	R extends Resource,
-	S extends Subresource[R],
-	Operation extends string = DefaultOperations,
-> = `${R}:${S}:${Operation}`;
+export type WildcardScope = `${Resource}:*` | '*';
 
-export type WorkflowScope = ResourceScope<'workflow'> | SubresourceScope<'workflow', 'tag'>;
+export type WorkflowScope = ResourceScope<'workflow'>;
+export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user'>;
 export type CredentialScope = ResourceScope<'credential'>;
 export type VariableScope = ResourceScope<'variable'>;
@@ -34,6 +28,7 @@ export type ExternalSecretStoreScope = ResourceScope<
 
 export type Scope =
 	| WorkflowScope
+	| TagScope
 	| UserScope
 	| CredentialScope
 	| VariableScope

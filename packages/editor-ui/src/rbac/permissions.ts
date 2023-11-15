@@ -1,9 +1,11 @@
-import { hasRole } from '@/rbac/checks/hasRole';
-import { hasScope } from '@/rbac/checks/hasScope';
-import { isGuest } from '@/rbac/checks/isGuest';
-import { isAuthenticated } from '@/rbac/checks/isAuthenticated';
-import { isEnterpriseFeatureEnabled } from '@/rbac/checks/isEnterpriseFeatureEnabled';
-import { isValid } from '@/rbac/checks/isValid';
+import {
+	hasRole,
+	hasScope,
+	isAuthenticated,
+	isEnterpriseFeatureEnabled,
+	isGuest,
+	isValid,
+} from '@/rbac/checks';
 import type { PermissionType, PermissionTypeOptions, RBACPermissionCheck } from '@/types/rbac';
 
 type Permissions = {

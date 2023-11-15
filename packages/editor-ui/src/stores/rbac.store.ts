@@ -4,22 +4,16 @@ import type { HasScopeOptions, Scope, Resource } from '@n8n/permissions';
 import { ref } from 'vue';
 import { STORES } from '@/constants';
 import type { IRole } from '@/Interface';
-import { PermissionType, PermissionTypeOptions, RBACPermissionCheck } from '@/types/rbac';
-import { permissions } from '@/rbac/checks';
 
 export const useRBACStore = defineStore(STORES.RBAC, () => {
 	const globalRoles = ref<IRole[]>([]);
 	const rolesByProjectId = ref<Record<string, string[]>>({});
 
-	const globalScopes = ref<Scope[]>([
-		'workflow:list',
-		'workflow:create',
-		'credential:list',
-		'workflow:tag:delete',
-	]);
+	const globalScopes = ref<Scope[]>([]);
 	const scopesByProjectId = ref<Record<string, Scope[]>>({});
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
 		workflow: {},
+		tag: {},
 		user: {},
 		credential: {},
 		variable: {},
@@ -41,6 +35,10 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		if (!globalScopes.value.includes(scope)) {
 			globalScopes.value.push(scope);
 		}
+	}
+
+	function setGlobalScopes(scopes: Scope[]) {
+		globalScopes.value = scopes;
 	}
 
 	function addProjectScope(
@@ -106,6 +104,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		addGlobalRole,
 		hasRole,
 		addGlobalScope,
+		setGlobalScopes,
 		addProjectScope,
 		addResourceScope,
 		hasScope,

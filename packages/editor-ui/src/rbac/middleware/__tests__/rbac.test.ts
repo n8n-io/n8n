@@ -6,6 +6,7 @@ import {
 	inferResourceIdFromRoute,
 	inferResourceTypeFromRoute,
 } from '@/utils/rbacUtils';
+import type { RouteLocationNormalized } from 'vue-router';
 
 vi.mock('@/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(),
@@ -17,36 +18,42 @@ vi.mock('@/utils/rbacUtils', () => ({
 	inferResourceTypeFromRoute: vi.fn(),
 }));
 
-describe('RBAC Middleware', () => {
-	it('should redirect to homepage if the user does not have the required scope', async () => {
-		vi.mocked(useRBACStore).mockReturnValue({
-			hasScope: vi.fn().mockReturnValue(false),
+describe('Middleware', () => {
+	describe('rbac', () => {
+		it('should redirect to homepage if the user does not have the required scope', async () => {
+			vi.mocked(useRBACStore).mockReturnValue({
+				hasScope: vi.fn().mockReturnValue(false),
+			} as ReturnType<typeof useRBACStore>);
+			vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
+			vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
+			vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
+
+			const nextMock = vi.fn();
+			const scope = 'read:workflow';
+
+			await rbacMiddleware({} as RouteLocationNormalized, {} as RouteLocationNormalized, nextMock, {
+				scope,
+			});
+
+			expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
-		vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
-		vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
-		vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
 
-		const nextMock = vi.fn();
-		const scope = 'read:workflow';
+		it('should allow navigation if the user has the required scope', async () => {
+			vi.mocked(useRBACStore).mockReturnValue({
+				hasScope: vi.fn().mockReturnValue(true),
+			} as ReturnType<typeof useRBACStore>);
+			vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
+			vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
+			vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
 
-		await rbacMiddleware({}, {}, nextMock, { scope });
+			const nextMock = vi.fn();
+			const scope = 'read:workflow';
 
-		expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
-	});
+			await rbacMiddleware({} as RouteLocationNormalized, {} as RouteLocationNormalized, nextMock, {
+				scope,
+			});
 
-	it('should allow navigation if the user has the required scope', async () => {
-		vi.mocked(useRBACStore).mockReturnValue({
-			hasScope: vi.fn().mockReturnValue(true),
+			expect(nextMock).toHaveBeenCalledTimes(0);
 		});
-		vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
-		vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
-		vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
-
-		const nextMock = vi.fn();
-		const scope = 'read:workflow';
-
-		await rbacMiddleware({}, {}, nextMock, { scope });
-
-		expect(nextMock).toHaveBeenCalledTimes(0);
 	});
 });

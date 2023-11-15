@@ -50,6 +50,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
+import { Scope } from '@n8n/permissions';
 
 export * from 'n8n-design-system/types';
 
@@ -638,6 +639,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
+	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;

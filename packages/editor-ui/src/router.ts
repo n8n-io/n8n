@@ -18,7 +18,7 @@ import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 import { middleware } from '@/rbac/middleware';
-import type { MiddlewareOptions, RouteConfig, RouterMiddleware } from '@/types/router';
+import type { RouteConfig, RouterMiddleware } from '@/types/router';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -158,12 +158,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'rbac'],
-			middlewareOptions: {
-				rbac: {
-					scope: 'credential:list',
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -205,12 +200,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'rbac'],
-			middlewareOptions: {
-				rbac: {
-					scope: 'workflow:list',
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
