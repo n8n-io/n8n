@@ -202,6 +202,14 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
+			{
+				displayName: 'Use Append',
+				name: 'useAppend',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
+			},
 		],
 	},
 ];
@@ -394,17 +402,30 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
-		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 		const lastRow = sheetData.length + 1;
-		await sheet.appendSheetData(
-			appendData,
-			range,
-			headerRow + 1,
-			valueInputMode,
-			false,
-			[columnNames.concat([...newColumns])],
-			lastRow,
-		);
+		if (options.useAppend) {
+			await sheet.appendSheetData(
+				appendData,
+				range,
+				headerRow + 1,
+				valueInputMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				lastRow,
+				options.useAppend as boolean,
+			);
+		} else {
+			await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
+			await sheet.appendSheetData(
+				appendData,
+				range,
+				headerRow + 1,
+				valueInputMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				lastRow,
+			);
+		}
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
