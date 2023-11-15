@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IActivationError,
 	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
