@@ -18,6 +18,7 @@
 	--prim-gray-200: hsl(var(--prim-gray-h), 18%, 80%);
 	--prim-gray-120: hsl(var(--prim-gray-h), 25%, 88%);
 	--prim-gray-70: hsl(var(--prim-gray-h), 32%, 93%);
+	--prim-gray-70-alpha-01: hsla(var(--prim-gray-h), 32%, 93%, 0.1);
 	--prim-gray-40: hsl(var(--prim-gray-h), 40%, 96%);
 	--prim-gray-30: hsl(var(--prim-gray-h), 40%, 97%);
 	--prim-gray-10: hsl(var(--prim-gray-h), 47%, 99%);
@@ -71,6 +72,11 @@
 	--prim-color-secondary-s: 49%;
 	--prim-color-secondary-l: 53%;
 
+	--prim-color-secondary-shade-250: hsl(
+		var(--prim-color-secondary-h),
+		calc(var(--prim-color-secondary-s) - 25%),
+		calc(var(--prim-color-secondary-l) - 25%)
+	);
 	--prim-color-secondary-shade-100: hsl(
 		var(--prim-color-secondary-h),
 		var(--prim-color-secondary-s),
@@ -113,9 +119,14 @@
 	--prim-color-alt-a-s: 60%;
 	--prim-color-alt-a-l: 40%;
 
+	--prim-color-alt-a-shade-200: hsl(
+		var(--prim-color-alt-a-h),
+		calc(var(--prim-color-alt-a-s) - 15%),
+		calc(var(--prim-color-alt-a-l) - 20%)
+	);
 	--prim-color-alt-a-shade-100: hsl(
 		var(--prim-color-alt-a-h),
-		var(--prim-color-alt-a-s),
+		calc(var(--prim-color-alt-a-s) - 15%),
 		calc(var(--prim-color-alt-a-l) - 10%)
 	);
 	--prim-color-alt-a: hsl(
@@ -155,6 +166,16 @@
 	--prim-color-alt-b-s: 77%;
 	--prim-color-alt-b-l: 57%;
 
+	--prim-color-alt-b-shade-350: hsl(
+		var(--prim-color-alt-b-h),
+		calc(var(--prim-color-alt-b-s) - 35%),
+		calc(var(--prim-color-alt-b-l) - 35%)
+	);
+	--prim-color-alt-b-shade-250: hsl(
+		var(--prim-color-alt-b-h),
+		calc(var(--prim-color-alt-b-s) - 35%),
+		calc(var(--prim-color-alt-b-l) - 25%)
+	);
 	--prim-color-alt-b-shade-100: hsl(
 		var(--prim-color-alt-b-h),
 		var(--prim-color-alt-b-s),
@@ -171,10 +192,20 @@
 		var(--prim-color-alt-b-l),
 		0.2
 	);
+	--prim-color-alt-b-tint-150: hsl(
+		var(--prim-color-alt-b-h),
+		var(--prim-color-alt-b-s),
+		calc(var(--prim-color-alt-b-l) + 15%)
+	);
 	--prim-color-alt-b-tint-250: hsl(
 		var(--prim-color-alt-b-h),
 		var(--prim-color-alt-b-s),
 		calc(var(--prim-color-alt-b-l) + 25%)
+	);
+	--prim-color-alt-b-tint-300: hsl(
+		var(--prim-color-alt-b-h),
+		var(--prim-color-alt-b-s),
+		calc(var(--prim-color-alt-b-l) + 30%)
 	);
 	--prim-color-alt-b-tint-400: hsl(
 		var(--prim-color-alt-b-h),
@@ -187,6 +218,16 @@
 	--prim-color-alt-c-s: 83%;
 	--prim-color-alt-c-l: 52%;
 
+	--prim-color-alt-c-shade-250: hsl(
+		var(--prim-color-alt-c-h),
+		calc(var(--prim-color-alt-c-s) - 40%),
+		calc(var(--prim-color-alt-c-l) - 25%)
+	);
+	--prim-color-alt-c-shade-150: hsl(
+		var(--prim-color-alt-c-h),
+		calc(var(--prim-color-alt-c-s) - 40%),
+		calc(var(--prim-color-alt-c-l) - 15%)
+	);
 	--prim-color-alt-c-shade-100: hsl(
 		var(--prim-color-alt-c-h),
 		var(--prim-color-alt-c-s),
@@ -213,6 +254,11 @@
 		var(--prim-color-alt-c-s),
 		calc(var(--prim-color-alt-c-l) + 25%)
 	);
+	--prim-color-alt-c-tint-300: hsl(
+		var(--prim-color-alt-c-h),
+		var(--prim-color-alt-c-s),
+		calc(var(--prim-color-alt-c-l) + 30%)
+	);
 	--prim-color-alt-c-tint-400: hsl(
 		var(--prim-color-alt-c-h),
 		var(--prim-color-alt-c-s),
@@ -229,6 +275,16 @@
 	--prim-color-alt-d-s: 100%;
 	--prim-color-alt-d-l: 92%;
 
+	--prim-color-alt-d-shade-700: hsl(
+		var(--prim-color-alt-d-h),
+		calc(var(--prim-color-alt-d-s) - 55%),
+		calc(var(--prim-color-alt-d-l) - 70%)
+	);
+	--prim-color-alt-d-shade-600: hsl(
+		var(--prim-color-alt-d-h),
+		calc(var(--prim-color-alt-d-s) - 55%),
+		calc(var(--prim-color-alt-d-l) - 60%)
+	);
 	--prim-color-alt-d-shade-150: hsl(
 		var(--prim-color-alt-d-h),
 		var(--prim-color-alt-d-s),
@@ -245,6 +301,16 @@
 	--prim-color-alt-e-s: 67%;
 	--prim-color-alt-e-l: 57%;
 
+	--prim-color-alt-e-shade-350: hsl(
+		var(--prim-color-alt-e-h),
+		calc(var(--prim-color-alt-e-s) - 20%),
+		calc(var(--prim-color-alt-e-l) - 35%)
+	);
+	--prim-color-alt-e-shade-250: hsl(
+		var(--prim-color-alt-e-h),
+		calc(var(--prim-color-alt-e-s) - 20%),
+		calc(var(--prim-color-alt-e-l) - 25%)
+	);
 	--prim-color-alt-e-shade-150: hsl(
 		var(--prim-color-alt-e-h),
 		var(--prim-color-alt-e-s),
@@ -265,6 +331,16 @@
 		var(--prim-color-alt-e-s),
 		var(--prim-color-alt-e-l),
 		0.4
+	);
+	--prim-color-alt-e-tint-250: hsl(
+		var(--prim-color-alt-e-h),
+		var(--prim-color-alt-e-s),
+		calc(var(--prim-color-alt-e-l) + 25%)
+	);
+	--prim-color-alt-e-tint-350: hsl(
+		var(--prim-color-alt-e-h),
+		var(--prim-color-alt-e-s),
+		calc(var(--prim-color-alt-e-l) + 35%)
 	);
 
 	// Color Alternate F
