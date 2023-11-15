@@ -36,3 +36,6 @@ export type GlobalScopes = ScopeLevel<'global'>;
 export type ProjectScopes = ScopeLevel<'project'>;
 export type ResourceScopes = ScopeLevel<'resource'>;
 export type ScopeLevels = GlobalScopes & (ProjectScopes | (ProjectScopes & ResourceScopes));
+
+export type ScopeMode = 'oneOf' | 'allOf';
+export type ScopeOptions = { mode: ScopeMode };

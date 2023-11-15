@@ -1,24 +1,19 @@
-import type { Scope, ScopeLevels, GlobalScopes } from './types';
+import type { Scope, ScopeLevels, GlobalScopes, ScopeOptions } from './types';
 
-export type HasScopeMode = 'oneOf' | 'allOf';
-export type HasScopeOptions = {
-	mode: HasScopeMode;
-};
-
-export function hasScope(
-	scope: Scope | Scope[],
-	userScopes: ScopeLevels,
-	options?: HasScopeOptions,
-): boolean;
 export function hasScope(
 	scope: Scope | Scope[],
 	userScopes: GlobalScopes,
-	options?: HasScopeOptions,
+	options?: ScopeOptions,
+): boolean;
+export function hasScope(
+	scope: Scope | Scope[],
+	userScopes: ScopeLevels,
+	options?: ScopeOptions,
 ): boolean;
 export function hasScope(
 	scope: Scope | Scope[],
 	userScopes: unknown,
-	options: HasScopeOptions = { mode: 'oneOf' },
+	options: ScopeOptions = { mode: 'oneOf' },
 ): boolean {
 	if (!Array.isArray(scope)) {
 		scope = [scope];
