@@ -1,6 +1,10 @@
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	FORM_TRIGGER_PATH_IDENTIFIER,
+	type INodeProperties,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
-export const webhookPath: INodeProperties = {
+const webhookPath: INodeProperties = {
 	displayName: 'Path',
 	name: 'path',
 	type: 'string',
@@ -229,7 +233,7 @@ export const formOptions: INodeProperties = {
 	],
 };
 
-export const formTriggerPanel = {
+const formTriggerPanel = {
 	header: 'Pull in a test form submission',
 	executionsHelp: {
 		inactive:
@@ -243,4 +247,41 @@ export const formTriggerPanel = {
 		inactive:
 			'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new form submissions created via the Production URL.',
 	},
+};
+
+export const formTriggerDescription: INodeTypeDescription = {
+	displayName: 'n8n Form Trigger',
+	name: 'formTrigger',
+	icon: 'file:form.svg',
+	group: ['trigger'],
+	version: 1,
+	description: 'Runs the flow when an n8n generated webform is submitted',
+	defaults: {
+		name: 'n8n Form Trigger',
+	},
+	inputs: [],
+	outputs: ['main'],
+	webhooks: [
+		{
+			name: 'setup',
+			httpMethod: 'GET',
+			responseMode: 'onReceived',
+			isFullPath: true,
+			path: `={{$parameter["path"]}}/${FORM_TRIGGER_PATH_IDENTIFIER}`,
+			ndvHideUrl: true,
+		},
+		{
+			name: 'default',
+			httpMethod: 'POST',
+			responseMode: '={{$parameter["responseMode"]}}',
+			responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
+			isFullPath: true,
+			path: `={{$parameter["path"]}}/${FORM_TRIGGER_PATH_IDENTIFIER}`,
+			ndvHideMethod: true,
+		},
+	],
+	eventTriggerDescription: 'Waiting for you to submit the form',
+	activationMessage: 'You can now make calls to your production Form URL.',
+	triggerPanel: formTriggerPanel,
+	properties: [webhookPath, formTitle, formDescription, formFields, formRespondMode, formOptions],
 };
