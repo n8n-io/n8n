@@ -1,30 +1,21 @@
-import validator from 'validator';
 import { In } from 'typeorm';
 import Container, { Service } from 'typedi';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Authorized, NoAuthRequired, Post, RestController } from '@/decorators';
-import { BadRequestError, InternalServerError, UnauthorizedError } from '@/ResponseHelper';
+import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Response } from 'express';
-import { User } from '@db/entities/User';
 import { UserRequest } from '@/requests';
 import { Config } from '@/config';
-
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
-import {
-	generateUserInviteUrl,
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
-import { RoleService } from '@/services/role.service';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { PostHogClient } from '@/posthog';
+import type { User } from '@/databases/entities/User';
+import validator from 'validator';
 
 @Service()
 @RestController('/invitations')
@@ -35,8 +26,6 @@ export class InvitationController {
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly userService: UserService,
-		private readonly roleService: RoleService,
-		private readonly mailer: UserManagementMailer,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -84,8 +73,6 @@ export class InvitationController {
 
 		if (!req.body.length) return [];
 
-		const createUsers: { [key: string]: string | null } = {};
-		// Validate payload
 		req.body.forEach((invite) => {
 			if (typeof invite !== 'object' || !invite.email) {
 				throw new BadRequestError(
@@ -99,137 +86,15 @@ export class InvitationController {
 					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
 				);
 			}
-			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleService.findGlobalMemberRole();
+		const emails = req.body.map((e) => e.email);
 
-		if (!role) {
-			this.logger.error(
-				'Request to send email invite(s) to user(s) failed because no global member role was found in database',
-			);
-			throw new InternalServerError('Members role not found in database - inconsistent state');
-		}
+		const { usersInvited, usersCreated } = await this.userService.inviteMembers(req.user, emails);
 
-		// remove/exclude existing users from creation
-		const existingUsers = await this.userService.findMany({
-			where: { email: In(Object.keys(createUsers)) },
-			relations: ['globalRole'],
-		});
-		existingUsers.forEach((user) => {
-			if (user.password) {
-				delete createUsers[user.email];
-				return;
-			}
-			createUsers[user.email] = user.id;
-		});
+		await this.externalHooks.run('user.invited', [usersCreated]);
 
-		const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
-		const total = usersToSetUp.length;
-
-		this.logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
-
-		try {
-			await this.userService.getManager().transaction(async (transactionManager) =>
-				Promise.all(
-					usersToSetUp.map(async (email) => {
-						const newUser = Object.assign(new User(), {
-							email,
-							globalRole: role,
-						});
-						const savedUser = await transactionManager.save<User>(newUser);
-						createUsers[savedUser.email] = savedUser.id;
-						return savedUser;
-					}),
-				),
-			);
-		} catch (error) {
-			ErrorReporter.error(error);
-			this.logger.error('Failed to create user shells', { userShells: createUsers });
-			throw new InternalServerError('An error occurred during user creation');
-		}
-
-		this.logger.debug('Created user shell(s) successfully', { userId: req.user.id });
-		this.logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
-			userShells: createUsers,
-		});
-
-		const baseUrl = getInstanceBaseUrl();
-
-		const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
-
-		// send invite email to new or not yet setup users
-
-		const emailingResults = await Promise.all(
-			usersPendingSetup.map(async ([email, id]) => {
-				if (!id) {
-					// This should never happen since those are removed from the list before reaching this point
-					throw new InternalServerError('User ID is missing for user with email address');
-				}
-				const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
-				const resp: {
-					user: { id: string | null; email: string; inviteAcceptUrl?: string; emailSent: boolean };
-					error?: string;
-				} = {
-					user: {
-						id,
-						email,
-						inviteAcceptUrl,
-						emailSent: false,
-					},
-				};
-				try {
-					const result = await this.mailer.invite({
-						email,
-						inviteAcceptUrl,
-						domain: baseUrl,
-					});
-					if (result.emailSent) {
-						resp.user.emailSent = true;
-						delete resp.user.inviteAcceptUrl;
-						void this.internalHooks.onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-					}
-
-					void this.internalHooks.onUserInvite({
-						user: req.user,
-						target_user_id: Object.values(createUsers) as string[],
-						public_api: false,
-						email_sent: result.emailSent,
-					});
-				} catch (error) {
-					if (error instanceof Error) {
-						void this.internalHooks.onEmailFailed({
-							user: req.user,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-						this.logger.error('Failed to send email', {
-							userId: req.user.id,
-							inviteAcceptUrl,
-							domain: baseUrl,
-							email,
-						});
-						resp.error = error.message;
-					}
-				}
-				return resp;
-			}),
-		);
-
-		await this.externalHooks.run('user.invited', [usersToSetUp]);
-
-		this.logger.debug(
-			usersPendingSetup.length > 1
-				? `Sent ${usersPendingSetup.length} invite emails successfully`
-				: 'Sent 1 invite email successfully',
-			{ userShells: createUsers },
-		);
-
-		return emailingResults;
+		return usersInvited;
 	}
 
 	/**

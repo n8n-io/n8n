@@ -255,12 +255,8 @@ export const setupTestServer = ({
 						break;
 
 					case 'invitations':
-						const { UserManagementMailer } = await import(
-							'@/UserManagement/email/UserManagementMailer'
-						);
 						const { InvitationController } = await import('@/controllers/invitation.controller');
 						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
-						const { RoleService: RSE } = await import('@/services/role.service');
 						const { UserService: USE } = await import('@/services/user.service');
 
 						registerController(
@@ -272,8 +268,6 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(EHS),
 								Container.get(USE),
-								Container.get(RSE),
-								Container.get(UserManagementMailer),
 							),
 						);
 						break;

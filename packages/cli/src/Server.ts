@@ -304,8 +304,6 @@ export class Server extends AbstractServer {
 				internalHooks,
 				externalHooks,
 				Container.get(UserService),
-				Container.get(RoleService),
-				mailer,
 				postHog,
 			),
 		];
