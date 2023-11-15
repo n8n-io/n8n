@@ -1,40 +1,52 @@
 import { Service } from 'typedi';
 import { CacheService } from './services/cache.service';
+import { jsonParse } from 'n8n-workflow';
 
-export type ActivationError = {
-	time: number; // ms
-	error: {
-		message: string;
-	};
+type ActivationErrors = {
+	[workflowId: string]: string; // error message
 };
 
 @Service()
 export class ActivationErrorsService {
+	private readonly cacheKey = 'workflow-activation-errors';
+
 	constructor(private readonly cacheService: CacheService) {}
 
 	async set(workflowId: string, errorMessage: string) {
-		const key = this.toCacheKey(workflowId);
+		const errors = await this.getAll();
 
-		await this.cacheService.set(key, errorMessage);
+		errors[workflowId] = errorMessage;
+
+		await this.cacheService.set(this.cacheKey, JSON.stringify(errors));
 	}
 
 	async unset(workflowId: string) {
-		const exists = await this.get(workflowId);
+		const errors = await this.getAll();
 
-		if (!exists) return;
+		if (Object.keys(errors).length === 0) return;
 
-		const key = this.toCacheKey(workflowId);
+		delete errors[workflowId];
 
-		await this.cacheService.delete(key);
+		await this.cacheService.set(this.cacheKey, JSON.stringify(errors));
 	}
 
 	async get(workflowId: string) {
-		const key = this.toCacheKey(workflowId);
+		const errors = await this.getAll();
 
-		return this.cacheService.get<string>(key);
+		if (Object.keys(errors).length === 0) return null;
+
+		return errors[workflowId];
 	}
 
-	private toCacheKey(workflowId: string) {
-		return `workflow-activation-error:${workflowId}`;
+	async getAll() {
+		const errors = await this.cacheService.get<string>(this.cacheKey);
+
+		if (!errors) return {};
+
+		return jsonParse<ActivationErrors>(errors);
+	}
+
+	async clearAll() {
+		await this.cacheService.delete(this.cacheKey);
 	}
 }

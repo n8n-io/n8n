@@ -252,8 +252,18 @@ export class Start extends BaseCommand {
 
 		multiMainSetup.on('leadershipChange', async () => {
 			if (multiMainSetup.isLeader) {
+				this.logger.debug('[Leadership change] Clearing all activation errors...');
+
+				await this.activeWorkflowRunner.clearAllActivationErrors();
+
+				this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
+
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
+				this.logger.debug(
+					'[Leadership change] Removing all trigger- and poller-based workflows...',
+				);
+
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});

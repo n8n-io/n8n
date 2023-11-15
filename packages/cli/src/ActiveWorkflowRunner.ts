@@ -59,7 +59,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
-import { asyncFilter, webhookNotFoundErrorMessage } from './utils';
+import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
@@ -255,9 +255,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	async allActiveInStorage(user?: User) {
 		const isFullAccess = !user || user.globalRole.name === 'owner';
 
-		const activatedSuccessfully = async (workflowId: string) => {
-			return (await this.activationErrorsService.get(workflowId)) === undefined;
-		};
+		const activationErrors = await this.activationErrorsService.getAll();
 
 		if (isFullAccess) {
 			const activeWorkflows = await this.workflowRepository.find({
@@ -265,9 +263,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				where: { active: true },
 			});
 
-			const workflowIds = activeWorkflows.map((workflow) => workflow.id);
-
-			return asyncFilter(workflowIds, activatedSuccessfully);
+			return activeWorkflows
+				.map((workflow) => workflow.id)
+				.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
 		const where = whereClause({
@@ -289,9 +287,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			where,
 		});
 
-		const workflowIds = sharings.map((sharing) => sharing.workflowId);
-
-		return asyncFilter(workflowIds, activatedSuccessfully);
+		return sharings
+			.map((sharing) => sharing.workflowId)
+			.filter((workflowId) => !activationErrors[workflowId]);
 	}
 
 	/**
@@ -692,15 +690,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		this.logger.verbose('Finished activating workflows (startup)');
 	}
 
-	async addAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
+	async clearAllActivationErrors() {
+		await this.activationErrorsService.clearAll();
+	}
 
+	async addAllTriggerAndPollerBasedWorkflows() {
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('[Leadership change] Removing all trigger- and poller-based workflows...');
-
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 
