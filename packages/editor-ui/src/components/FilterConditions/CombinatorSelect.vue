@@ -42,7 +42,7 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 .combinatorSelect {
 	max-width: 80px;
 	line-height: var(--font-line-height-xloose);
-	font-size: var(--font-size-s);
-	font-style: italic;
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
 }
 </style>

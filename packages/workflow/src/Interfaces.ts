@@ -1137,12 +1137,13 @@ type NonEmptyArray<T> = [T, ...T[]];
 
 export type FilterTypeCombinator = 'and' | 'or';
 
-export interface FilterTypeOptions {
-	caseSensitive?: boolean | string; // default = true
-	leftValue?: string; // when set, user can't edit left side of condition
-	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
-	maxConditions?: number; // default = 5
-}
+export type FilterTypeOptions = Partial<{
+	caseSensitive: boolean | string; // default = false
+	leftValue: string; // when set, user can't edit left side of condition
+	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions: number; // default = 10
+	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
 
 export interface IDisplayOptions {
 	hide?: {
@@ -2230,14 +2231,16 @@ export interface FilterOperatorValue {
 }
 
 export type FilterConditionValue = {
-	leftValue: string;
+	id: string;
+	leftValue: string | number | boolean;
 	operator: FilterOperatorValue;
-	rightValue: string;
+	rightValue: string | number | boolean;
 };
 
 export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
+	typeValidation: 'strict' | 'loose';
 };
 
 export type FilterValue = {

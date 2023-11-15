@@ -19,7 +19,7 @@ export class IfV2 implements INodeType {
 			},
 			inputs: ['main'],
 			outputs: ['main', 'main'],
-			outputNames: ['then', 'else'],
+			outputNames: ['true', 'false'],
 			properties: [
 				{
 					displayName: 'Conditions',
@@ -30,6 +30,7 @@ export class IfV2 implements INodeType {
 					typeOptions: {
 						filter: {
 							caseSensitive: '={{$parameter.options.caseSensitive}}',
+							typeValidation: '={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
 						},
 					},
 				},
@@ -37,12 +38,18 @@ export class IfV2 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{
 							displayName: 'Case Sensitive',
 							name: 'caseSensitive',
+							type: 'boolean',
+							default: true,
+						},
+						{
+							displayName: 'Less Strict Type Validation',
+							name: 'looseTypeValidation',
 							type: 'boolean',
 							default: true,
 						},
@@ -53,8 +60,8 @@ export class IfV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const thenItems: INodeExecutionData[] = [];
-		const elseItems: INodeExecutionData[] = [];
+		const trueItems: INodeExecutionData[] = [];
+		const falseItems: INodeExecutionData[] = [];
 
 		this.getInputData().forEach((item, itemIndex) => {
 			try {
@@ -67,19 +74,19 @@ export class IfV2 implements INodeType {
 				}
 
 				if (pass) {
-					thenItems.push(item);
+					trueItems.push(item);
 				} else {
-					elseItems.push(item);
+					falseItems.push(item);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					elseItems.push(item);
+					falseItems.push(item);
 				} else {
 					throw error;
 				}
 			}
 		});
 
-		return [thenItems, elseItems];
+		return [trueItems, falseItems];
 	}
 }

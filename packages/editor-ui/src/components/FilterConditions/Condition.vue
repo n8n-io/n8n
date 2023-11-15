@@ -3,7 +3,12 @@ import type { IUpdateInformation } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables';
-import type { FilterConditionValue, INodeProperties } from 'n8n-workflow';
+import type {
+	FilterConditionValue,
+	FilterOperatorType,
+	INodeProperties,
+	NodePropertyTypes,
+} from 'n8n-workflow';
 import { computed } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
@@ -30,14 +35,69 @@ const emit = defineEmits<{
 	(event: 'remove'): void;
 }>();
 
-const operator = computed<FilterOperator>(() => {
-	const { type, operation } = props.condition.operator;
-	return OPERATORS_BY_ID[`${type}:${operation}` as FilterOperatorId];
-});
+function isExpression(value: unknown): boolean {
+	return typeof value === 'string' && value.startsWith('=');
+}
 
-const parameter: INodeProperties = { name: '', displayName: '', default: '', type: 'string' };
+const operatorId = computed<FilterOperatorId>(() => {
+	const { type, operation } = props.condition.operator;
+	return `${type}:${operation}` as FilterOperatorId;
+});
+const operator = computed<FilterOperator>(() => OPERATORS_BY_ID[operatorId.value]);
+const isLeftExpression = computed(() => isExpression(props.condition.leftValue));
+const isRightExpression = computed(() => isExpression(props.condition.rightValue));
+
+const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePropertyTypes => {
+	switch (operatorType) {
+		case 'array':
+		case 'object':
+		case 'boolean':
+		case 'any':
+			return 'string';
+		default:
+			return operatorType;
+	}
+};
+
+const leftParameter = computed<INodeProperties>(() => ({
+	name: '',
+	displayName: '',
+	default: '',
+	placeholder: i18n.baseText(
+		operator.value.type === 'dateTime'
+			? 'filter.condition.placeholderDate'
+			: 'filter.condition.placeholderLeft',
+	),
+	type: operatorTypeToNodePropType(operator.value.type),
+}));
+
+const rightParameter = computed<INodeProperties>(() => ({
+	name: '',
+	displayName: '',
+	default: '',
+	placeholder: i18n.baseText(
+		operator.value.type === 'dateTime'
+			? 'filter.condition.placeholderDate'
+			: 'filter.condition.placeholderRight',
+	),
+	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
+}));
 
 const onOperatorChange = (value: string): void => {
+	const { operator } = props.condition;
+	const newOperator: FilterOperator = OPERATORS_BY_ID[value as FilterOperatorId];
+	const typeChanged = operator.type !== newOperator.type;
+
+	if (typeChanged && !isLeftExpression.value) {
+		emit('leftValueChange', '');
+	}
+
+	const rightTypeChanged =
+		(operator.rightType ?? operator.type) !== (newOperator.rightType ?? newOperator.type);
+	if ((rightTypeChanged && !isRightExpression.value) || newOperator.singleValue) {
+		emit('rightValueChange', '');
+	}
+
 	emit('operatorChange', value);
 };
 
@@ -79,7 +139,7 @@ const i18n = useI18n();
 			:class="$style.observer"
 			:breakpoints="[
 				{ bp: 'stacked', width: 340 },
-				{ bp: 'medium', width: 480 },
+				{ bp: 'medium', width: 520 },
 			]"
 		>
 			<template #default="{ bp }">
@@ -97,7 +157,7 @@ const i18n = useI18n();
 						hideLabel
 						hideHint
 						isSingleLine
-						:parameter="parameter"
+						:parameter="leftParameter"
 						:value="condition.leftValue"
 						:path="`${path}.left`"
 						:class="[$style.input, $style.inputLeft]"
@@ -116,7 +176,7 @@ const i18n = useI18n();
 						hideHint
 						isSingleLine
 						:optionsPosition="bp === 'default' ? 'top' : 'bottom'"
-						:parameter="parameter"
+						:parameter="rightParameter"
 						:value="condition.rightValue"
 						:path="`${path}.right`"
 						:class="[$style.input, $style.inputRight]"
@@ -137,13 +197,10 @@ const i18n = useI18n();
 	display: flex;
 	align-items: flex-end;
 	gap: var(--spacing-4xs);
+	padding-left: var(--spacing-l);
 
 	&.hasIssues {
 		--input-border-color: var(--color-danger);
-
-		input:focus {
-			border-color: var(--color-danger);
-		}
 	}
 
 	&:hover {
@@ -203,7 +260,7 @@ const i18n = useI18n();
 
 .remove {
 	position: absolute;
-	left: calc(var(--spacing-l) * -1);
+	left: 0;
 	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;

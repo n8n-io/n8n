@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { isEqual } from 'lodash-es';
 
-import type {
-	FilterConditionValue,
-	FilterValue,
-	INodeProperties,
-	FilterTypeCombinator,
-	INode,
-	NodeParameterValue,
-	FilterOptionsValue,
+import {
+	type FilterConditionValue,
+	type FilterValue,
+	type INodeProperties,
+	type FilterTypeCombinator,
+	type INode,
+	type NodeParameterValue,
+	type FilterOptionsValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -24,6 +24,7 @@ import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import type { FilterOperator } from './types';
+import { v4 as uuid } from 'uuid';
 
 interface Props {
 	parameter: INodeProperties;
@@ -43,7 +44,7 @@ const ndvStore = useNDVStore();
 const { callDebounced } = useDebounceHelper();
 
 function createCondition(): FilterConditionValue {
-	return { leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
+	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
 }
 
 const allowedCombinators = computed<FilterTypeCombinator[]>(
@@ -152,7 +153,7 @@ function getIssues(index: number): string[] {
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
-				<div v-for="(condition, index) of state.paramValue.conditions" :key="index">
+				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
 					<combinator-select
 						v-if="index !== 0"
 						:readOnly="index !== 1"
@@ -175,16 +176,18 @@ function getIssues(index: number): string[] {
 					></condition>
 				</div>
 			</div>
-			<n8n-button
-				type="secondary"
-				block
-				@click="addCondition"
-				:class="$style.addCondition"
-				:label="i18n.baseText('filter.addCondition')"
-				:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
-				:disabled="maxConditionsReached"
-				data-test-id="filter-add-condition"
-			/>
+			<div :class="$style.addConditionWrapper">
+				<n8n-button
+					type="tertiary"
+					block
+					@click="addCondition"
+					:class="$style.addCondition"
+					:label="i18n.baseText('filter.addCondition')"
+					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
+					:disabled="maxConditionsReached"
+					data-test-id="filter-add-condition"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -201,17 +204,42 @@ function getIssues(index: number): string[] {
 	flex-direction: column;
 	gap: var(--spacing-4xs);
 }
-.content {
-	padding-left: var(--spacing-l);
-}
 .combinator {
 	position: relative;
 	z-index: 1;
 	margin-top: var(--spacing-2xs);
 	margin-bottom: calc(var(--spacing-2xs) * -1);
+	margin-left: var(--spacing-l);
+}
+
+.addConditionWrapper {
+	margin-top: var(--spacing-l);
+	margin-left: var(--spacing-l);
 }
 
 .addCondition {
-	margin-top: var(--spacing-l);
+	// Styling to match collection button (should move to standard button in future)
+	color: var(--color-text-dark);
+	font-weight: var(--font-weight-normal);
+	--button-border-color: var(--color-foreground-base);
+	--button-background-color: var(--color-background-base);
+
+	&:hover,
+	&:focus,
+	&:active {
+		--button-hover-font-color: var(--color-button-primary-font);
+		--button-hover-border-color: var(--color-foreground-base);
+		--button-hover-background-color: var(--color-background-base);
+
+		--button-active-font-color: var(--color-button-primary-font);
+		--button-active-border-color: var(--color-foreground-base);
+		--button-active-background-color: var(--color-background-base);
+
+		--button-focus-font-color: var(--color-button-primary-font);
+		--button-focus-border-color: var(--color-foreground-base);
+		--button-focus-background-color: var(--color-background-base);
+
+		outline: none;
+	}
 }
 </style>

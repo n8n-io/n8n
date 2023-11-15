@@ -1175,6 +1175,13 @@ export const validateFieldType = (
 	if (value === null || value === undefined) return { valid: true };
 	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
+		case 'string': {
+			try {
+				return { valid: true, newValue: tryToParseString(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
 		case 'number': {
 			try {
 				return { valid: true, newValue: tryToParseNumber(value) };
@@ -1250,6 +1257,21 @@ export const tryToParseNumber = (value: unknown): number => {
 		throw new Error(`Could not parse '${String(value)}' to number.`);
 	}
 	return Number(value);
+};
+
+export const tryToParseString = (value: unknown): string => {
+	if (typeof value === 'object') return JSON.stringify(value);
+	if (typeof value === 'undefined') return '';
+	if (
+		typeof value === 'string' ||
+		typeof value === 'bigint' ||
+		typeof value === 'boolean' ||
+		typeof value === 'number'
+	) {
+		return value.toString();
+	}
+
+	return String(value);
 };
 
 export const tryToParseBoolean = (value: unknown): value is boolean => {
@@ -1428,18 +1450,31 @@ export const validateFilterParameter = (
 			const { type, rightType, singleValue } = condition.operator;
 			const key = `${nodeProperties.name}.${index}`;
 
-			if (type === 'any') {
-				return issues;
-			}
+			const isLeftValueExpression =
+				typeof condition.leftValue === 'string' && condition.leftValue.startsWith('=');
+			const hasLeftValue =
+				condition.leftValue !== undefined &&
+				condition.leftValue !== null &&
+				condition.leftValue !== '';
+			const checkLeftValue = hasLeftValue && !isLeftValueExpression && type !== 'any';
 
-			const validationResultLeft = condition.leftValue.startsWith('=')
-				? { valid: true }
-				: validateFieldType(nodeProperties.displayName, condition.leftValue, type);
+			const validationResultLeft = checkLeftValue
+				? validateFieldType(nodeProperties.displayName, condition.leftValue, type)
+				: { valid: true };
 
-			const validationResultRight =
-				condition.rightValue.startsWith('=') || singleValue || rightType === 'any'
-					? { valid: true }
-					: validateFieldType(nodeProperties.displayName, condition.rightValue, rightType ?? type);
+			const isRightValueExpression =
+				typeof condition.rightValue === 'string' && condition.rightValue.startsWith('=');
+			const hasRightValue =
+				condition.rightValue !== undefined &&
+				condition.rightValue !== null &&
+				condition.rightValue !== '';
+			const safeRightType = rightType ?? type;
+			const checkRightValue =
+				hasRightValue && !isRightValueExpression && !singleValue && safeRightType !== 'any';
+
+			const validationResultRight = checkRightValue
+				? validateFieldType(nodeProperties.displayName, condition.rightValue, safeRightType)
+				: { valid: true };
 
 			if (!validationResultLeft.valid || !validationResultRight.valid) {
 				issues[key] = [];

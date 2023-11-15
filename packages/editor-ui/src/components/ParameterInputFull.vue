@@ -386,7 +386,7 @@ export default defineComponent({
 }
 .options {
 	position: absolute;
-	bottom: -24px;
+	bottom: -22px;
 	right: 0;
 	opacity: 0;
 	transition: opacity 100ms ease-in;

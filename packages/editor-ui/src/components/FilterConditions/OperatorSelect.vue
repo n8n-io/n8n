@@ -53,6 +53,7 @@ function onGroupSelect(group: string) {
 		<n8n-select
 			data-test-id="filter-operator-select"
 			size="small"
+			:key="selectedGroupIcon"
 			:modelValue="selected"
 			@update:modelValue="onOperatorChange"
 			@visible-change="onSelectVisibleChange"

@@ -4,7 +4,11 @@ import type { FilterOperator, FilterOperatorGroup } from './types';
 
 export const DEFAULT_MAX_CONDITIONS = 10;
 
-export const DEFAULT_FILTER_OPTIONS: FilterOptionsValue = { caseSensitive: true, leftValue: '' };
+export const DEFAULT_FILTER_OPTIONS: FilterOptionsValue = {
+	caseSensitive: true,
+	leftValue: '',
+	typeValidation: 'strict',
+};
 
 export const OPERATORS_BY_ID = {
 	'any:exists': {
@@ -153,11 +157,8 @@ export const OPERATORS = Object.values(OPERATORS_BY_ID);
 
 export type FilterOperatorId = keyof typeof OPERATORS_BY_ID;
 
-export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] = {
-	type: 'any',
-	operation: 'exists',
-	singleValue: true,
-};
+export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
+	OPERATORS_BY_ID['string:equals'];
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{

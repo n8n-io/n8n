@@ -35,6 +35,17 @@ export function executeFilterCondition(
 		}
 	}
 
+	// Return false when typeChecking=strict and validateFieldType changed the types
+	// DateTime is an exception, strings are allowed to be casted to DateTime
+	if (options.typeValidation !== 'loose') {
+		if (condition.leftValue !== leftValue && operator.type !== 'dateTime') {
+			return false;
+		}
+		if (condition.rightValue !== rightValue && rightType !== 'dateTime') {
+			return false;
+		}
+	}
+
 	switch (operator.type) {
 		case 'any': {
 			const exists = leftValue !== undefined && leftValue !== null;
