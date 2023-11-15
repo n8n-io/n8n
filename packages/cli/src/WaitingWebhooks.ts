@@ -22,7 +22,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	protected includeForms = false;
 
 	constructor(
-		private readonly logger: Logger,
+		protected readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
@@ -30,8 +30,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
-	protected logReceivedWebhook(logger: Logger, method: string, executionId: string) {
-		logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
+	protected logReceivedWebhook(method: string, executionId: string) {
+		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
 	}
 
 	protected disableNode(execution: IExecutionResponse, _method?: string) {
@@ -44,7 +44,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	): Promise<IResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
 
-		this.logReceivedWebhook(this.logger, req.method, executionId);
+		this.logReceivedWebhook(req.method, executionId);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
