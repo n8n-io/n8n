@@ -71,7 +71,7 @@ export default defineComponent({
 						disable: disabled && tag.id !== this.deleteId && tag.id !== this.updateId,
 						update: disabled && tag.id === this.updateId,
 						delete: disabled && tag.id === this.deleteId,
-						canDelete: this.rbacStore.hasScope('workflow:tag:delete'),
+						canDelete: this.rbacStore.hasScope('tag:delete'),
 					}),
 				);
 
