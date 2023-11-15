@@ -19,7 +19,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 
 @Service()

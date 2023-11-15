@@ -1,7 +1,8 @@
 import Container from 'typedi';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { TagRepository, WorkflowTagMappingRepository } from '@db/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { generateNanoId } from '@db/utils/generators';
 
 import { randomName } from '../random';

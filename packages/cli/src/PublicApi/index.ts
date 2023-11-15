@@ -11,11 +11,11 @@ import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { UserRepository } from '@db/repositories/user.repository';
 
 async function createApiRouter(
 	version: string,
@@ -95,7 +95,7 @@ async function createApiRouter(
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
-						const user = await Db.collections.User.findOne({
+						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
 							relations: ['globalRole'],
 						});

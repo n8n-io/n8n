@@ -66,6 +66,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
+import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -683,11 +684,18 @@ export const workflowHelpers = defineComponent({
 			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 			if (nodeType !== null) {
+				const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
+
+				if (isCredentialOnly) {
+					nodeData.type = HTTP_REQUEST_NODE_TYPE;
+					nodeData.extendsCredential = getCredentialTypeName(nodeType.name);
+				}
+
 				// Node-Type is known so we can save the parameters correctly
 				const nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
 					node.parameters,
-					false,
+					isCredentialOnly,
 					false,
 					node,
 				);

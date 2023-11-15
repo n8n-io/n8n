@@ -1,8 +1,8 @@
-import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import type { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
-import { SharedWorkflowRepository } from '@/databases/repositories';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { Service } from 'typedi';
 import { isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';

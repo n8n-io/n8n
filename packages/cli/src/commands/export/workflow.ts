@@ -2,9 +2,10 @@ import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
 import type { FindOptionsWhere } from 'typeorm';
-import * as Db from '@/Db';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';
@@ -104,7 +105,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			findQuery.id = flags.id;
 		}
 
-		const workflows = await Db.collections.Workflow.find({
+		const workflows = await Container.get(WorkflowRepository).find({
 			where: findQuery,
 			relations: ['tags'],
 		});
