@@ -1,18 +1,33 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { Store } from 'pinia';
+import type {
+	ExternalHooks,
+	ExternalHooksKey,
+	ExternalHooksGenericContext,
+	ExtractExternalHooksMethodPayloadFromKey,
+} from '@/types/externalHooks';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 
-export async function runExternalHook(eventName: string, store: Store, metadata?: IDataObject) {
+export async function runExternalHook<T extends ExternalHooksKey>(
+	eventName: T,
+	metadata?: ExtractExternalHooksMethodPayloadFromKey<T>,
+) {
 	if (!window.n8nExternalHooks) {
 		return;
 	}
 
-	const [resource, operator] = eventName.split('.');
+	const store = useWebhooksStore();
 
-	if (window.n8nExternalHooks[resource]?.[operator]) {
-		const hookMethods = window.n8nExternalHooks[resource][operator];
+	const [resource, operator] = eventName.split('.') as [
+		keyof ExternalHooks,
+		keyof ExternalHooks[keyof ExternalHooks],
+	];
+
+	const context = window.n8nExternalHooks[resource] as ExternalHooksGenericContext;
+	if (context?.[operator]) {
+		const hookMethods = context[operator];
 
 		for (const hookMethod of hookMethods) {
-			await hookMethod(store, metadata);
+			await hookMethod(store, metadata as IDataObject);
 		}
 	}
 }

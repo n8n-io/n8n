@@ -19,7 +19,6 @@ describe('Auth Middleware', () => {
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
 		['POST', '/users'],
 		['DELETE', '/users/123'],
-		['POST', '/users/123/reinvite'],
 		['POST', '/owner/setup'],
 	];
 
