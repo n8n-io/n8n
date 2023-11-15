@@ -518,7 +518,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owmer Name or ID',
+				displayName: 'Company Owner Name or ID',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
