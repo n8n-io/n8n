@@ -1,6 +1,7 @@
 import { flags } from '@oclif/command';
 import { sleep } from 'n8n-workflow';
 import config from '@/config';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
@@ -20,6 +21,8 @@ export class Webhook extends BaseCommand {
 	};
 
 	protected server = new WebhookServer();
+
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
@@ -93,6 +96,7 @@ export class Webhook extends BaseCommand {
 		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 
 		await super.init();
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
@@ -109,6 +113,7 @@ export class Webhook extends BaseCommand {
 	async run() {
 		await Container.get(Queue).init();
 		await this.server.start();
+		await this.activeWorkflowRunner.initWebhooks();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 

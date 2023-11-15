@@ -25,7 +25,7 @@ import type {
 import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
-import type { ExecutionData } from '../entities/ExecutionData';
+import { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';

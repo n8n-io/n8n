@@ -4,7 +4,7 @@ import type { IHttpRequestMethods, INode, INodeType, IWebhookData, Workflow } fr
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { NodeTypes } from '@/NodeTypes';
-import { InternalServerError } from '@/ResponseHelper';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 type Method = NonNullable<IHttpRequestMethods>;
 
@@ -28,6 +28,10 @@ export class WebhookService {
 		private readonly webhookRepository: WebhookRepository,
 		private readonly nodeTypes: NodeTypes,
 	) {}
+
+	async findAll() {
+		return this.webhookRepository.find();
+	}
 
 	findWebhook(method: Method, path: string) {
 		const webhookGroup = this.getWebhookGroup(path);

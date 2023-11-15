@@ -279,7 +279,7 @@ export interface IWebhookManager {
 	findAccessControlOptions?: (
 		path: string,
 		httpMethod: IHttpRequestMethods,
-	) => Promise<WebhookAccessControlOptions | undefined>;
+	) => WebhookAccessControlOptions | undefined;
 
 	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }

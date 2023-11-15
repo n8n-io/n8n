@@ -107,7 +107,7 @@ export const webhookRequestHandler =
 					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
 					: method;
 			if (webhookManager.findAccessControlOptions && requestedMethod) {
-				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
+				const options = webhookManager.findAccessControlOptions(path, requestedMethod);
 				const { allowedOrigins } = options ?? {};
 
 				res.header(

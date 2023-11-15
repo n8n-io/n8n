@@ -74,6 +74,8 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
+	private webhookWorkflows = new Map<string, WorkflowEntity>();
+
 	activeWorkflows = new ActiveWorkflows();
 
 	private queuedActivations: {
@@ -107,6 +109,47 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 	async getAllWorkflowActivationErrors() {
 		return this.activationErrorsService.getAll();
+	}
+
+	async initWebhooks() {
+		const webhooks = await this.webhookService.findAll();
+		for (const webhook of webhooks) {
+			const { workflowId } = webhook;
+			try {
+				const dbWorkflow = await this.workflowRepository.findById(workflowId);
+				if (!dbWorkflow) {
+					throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
+				}
+				const workflow = new Workflow({
+					id: dbWorkflow.id,
+					name: dbWorkflow.name,
+					nodes: dbWorkflow.nodes,
+					connections: dbWorkflow.connections,
+					active: dbWorkflow.active,
+					nodeTypes: this.nodeTypes,
+					staticData: dbWorkflow.staticData,
+					settings: dbWorkflow.settings,
+				});
+
+				const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES);
+				if (!canBeActivated) {
+					throw new WorkflowActivationError(
+						`Workflow ${dbWorkflow.display()} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					);
+				}
+
+				const sharing = dbWorkflow.shared.find((shared) => shared.role.name === 'owner');
+				if (!sharing) {
+					throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
+				}
+
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
+				await this.addWebhooks(workflow, additionalData, 'trigger', 'init');
+				this.webhookWorkflows.set(dbWorkflow.id, dbWorkflow);
+			} catch (error) {
+				this.logger.error('Failed to activate workflow', { workflowId });
+			}
+		}
 	}
 
 	/**
@@ -148,6 +191,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const webhook = this.findWebhook(path, httpMethod);
 
+		const workflowId = webhook.workflow.id;
+		const workflowData = this.webhookWorkflows.get(workflowId);
+		if (!workflowData) {
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
+
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
 
@@ -160,15 +209,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
-		}
-
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflow.id },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
-		});
-
-		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflow.id}"`);
 		}
 
 		return new Promise((resolve, reject) => {
@@ -198,13 +238,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		return this.webhookService.getWebhookMethods(path);
 	}
 
-	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+	findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhook = this.findWebhook(path, httpMethod);
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflow.id },
-			select: ['nodes'],
-		});
+		const workflowId = webhook.workflow.id;
+		const workflowData = this.webhookWorkflows.get(workflowId);
+		if (!workflowData) {
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
 
 		const nodes = workflowData?.nodes;
 		const webhookNode = nodes?.find(
@@ -385,6 +426,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Clear workflow-defined webhooks from the `webhook_entity` table.
 	 */
 	async clearWebhooks(workflowId: string) {
+		this.webhookWorkflows.delete(workflowId);
+
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
@@ -761,6 +804,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				this.logger.debug(`Adding webhooks for workflow ${dbWorkflow.display()}`);
 
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
+				this.webhookWorkflows.set(dbWorkflow.id, dbWorkflow);
 			}
 
 			if (shouldAddTriggersAndPollers) {

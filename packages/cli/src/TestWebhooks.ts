@@ -175,7 +175,7 @@ export class TestWebhooks implements IWebhookManager {
 		return webhookMethods;
 	}
 
-	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+	findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhookKey = Object.keys(this.testWebhookData).find(
 			(key) => key.includes(path) && key.startsWith(httpMethod),
 		);

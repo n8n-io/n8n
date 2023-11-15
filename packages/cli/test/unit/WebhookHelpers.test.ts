@@ -42,7 +42,7 @@ describe('WebhookHelpers', () => {
 				const res = mock<Response>();
 				res.status.mockReturnValue(res);
 
-				webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+				webhookManager.getWebhookMethods.mockReturnValue(['GET', 'PATCH']);
 
 				await handler(req, res);
 
@@ -65,7 +65,7 @@ describe('WebhookHelpers', () => {
 				const res = mock<Response>();
 				res.status.mockReturnValue(res);
 
-				webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+				webhookManager.getWebhookMethods.mockReturnValue(['GET', 'PATCH']);
 
 				await handler(req, res);
 
@@ -94,8 +94,8 @@ describe('WebhookHelpers', () => {
 				const res = mock<Response>();
 				res.status.mockReturnValue(res);
 
-				webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
-				webhookManager.findAccessControlOptions.mockResolvedValue({
+				webhookManager.getWebhookMethods.mockReturnValue(['GET', 'PATCH']);
+				webhookManager.findAccessControlOptions.mockReturnValue({
 					allowedOrigins: '*',
 				});
 
@@ -121,8 +121,8 @@ describe('WebhookHelpers', () => {
 				const res = mock<Response>();
 				res.status.mockReturnValue(res);
 
-				webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
-				webhookManager.findAccessControlOptions.mockResolvedValue({
+				webhookManager.getWebhookMethods.mockReturnValue(['GET', 'PATCH']);
+				webhookManager.findAccessControlOptions.mockReturnValue({
 					allowedOrigins: 'https://test.com',
 				});
 
