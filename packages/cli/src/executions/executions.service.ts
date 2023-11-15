@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { jsonParse, Workflow } from 'n8n-workflow';
+import { jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -18,11 +18,11 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 
 export interface IGetExecutionsQueryFilter {
@@ -33,7 +33,6 @@ export interface IGetExecutionsQueryFilter {
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
 	workflowId?: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
@@ -275,7 +274,7 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOneBy({
+			const workflowData = (await Container.get(WorkflowRepository).findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;
 
@@ -311,7 +310,7 @@ export class ExecutionsService {
 							nodeName: stack.node.name,
 						},
 					);
-					throw new Error(
+					throw new WorkflowOperationError(
 						`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
 					);
 				}

@@ -1,5 +1,6 @@
+import Container from 'typedi';
 import type { INode, IWorkflowCredentials } from 'n8n-workflow';
-import * as Db from '@/Db';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCredentials> {
@@ -29,7 +30,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 			}
 
 			if (!returnCredentials[type][nodeCredentials.id]) {
-				foundCredentials = await Db.collections.Credentials.findOneBy({
+				foundCredentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type,
 				});

@@ -10,7 +10,6 @@ import { validate } from 'class-validator';
 import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
-import * as Db from '@/Db';
 import type { ExecutionPayload, ICredentialsDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -18,7 +17,9 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
-import { ExecutionRepository } from '@db/repositories';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -64,8 +65,8 @@ export async function generateUniqueName(
 
 	const found: Array<WorkflowEntity | ICredentialsDb> =
 		entityType === 'workflow'
-			? await Db.collections.Workflow.find(findConditions)
-			: await Db.collections.Credentials.find(findConditions);
+			? await Container.get(WorkflowRepository).find(findConditions)
+			: await Container.get(CredentialsRepository).find(findConditions);
 
 	// name is unique
 	if (found.length === 0) {

@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';

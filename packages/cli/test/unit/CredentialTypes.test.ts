@@ -1,7 +1,7 @@
 import { CredentialTypes } from '@/CredentialTypes';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 describe('CredentialTypes', () => {
 	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {

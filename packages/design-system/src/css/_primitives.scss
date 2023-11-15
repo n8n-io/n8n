@@ -6,7 +6,6 @@
 @mixin primitives {
 	// Gray
 	--prim-gray-h: 220;
-	--prim-gray-s: 30%;
 
 	--prim-gray-820: hsl(var(--prim-gray-h), 1%, 18%);
 	--prim-gray-800: hsl(var(--prim-gray-h), 1%, 20%);
@@ -20,6 +19,7 @@
 	--prim-gray-120: hsl(var(--prim-gray-h), 25%, 88%);
 	--prim-gray-70: hsl(var(--prim-gray-h), 32%, 93%);
 	--prim-gray-40: hsl(var(--prim-gray-h), 40%, 96%);
+	--prim-gray-30: hsl(var(--prim-gray-h), 40%, 97%);
 	--prim-gray-10: hsl(var(--prim-gray-h), 47%, 99%);
 	--prim-gray-0-alpha-075: hsla(var(--prim-gray-h), 50%, 100%, 0.75);
 	--prim-gray-0-alpha-025: hsla(var(--prim-gray-h), 50%, 100%, 0.25);

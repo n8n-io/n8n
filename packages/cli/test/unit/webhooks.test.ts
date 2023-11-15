@@ -12,7 +12,7 @@ import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WaitingForms } from '@/WaitingForms';
 import type { IResponseCallbackData } from '@/Interfaces';
 
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 let agent: SuperAgentTest;
 

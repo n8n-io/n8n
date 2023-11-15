@@ -14,6 +14,9 @@ export class BrevoTrigger implements INodeType {
 			{
 				name: 'sendInBlueApi',
 				required: true,
+				displayOptions: {
+					show: {},
+				},
 			},
 		],
 		displayName: 'Brevo Trigger',

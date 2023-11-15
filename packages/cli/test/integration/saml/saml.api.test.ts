@@ -10,9 +10,9 @@ import { SamlService } from '@/sso/saml/saml.service.ee';
 import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
 
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
-import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import { sampleConfig } from './sampleMetadata';
+import { createOwner, createUser } from '../shared/db/users';
 
 let someUser: User;
 let owner: User;
@@ -29,8 +29,8 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await testDb.createOwner();
-	someUser = await testDb.createUser();
+	owner = await createOwner();
+	someUser = await createUser();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
 });

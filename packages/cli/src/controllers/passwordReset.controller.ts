@@ -1,5 +1,9 @@
+import { Response } from 'express';
+import { rateLimit } from 'express-rate-limit';
+import { Service } from 'typedi';
 import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
+
 import { Get, Post, RestController } from '@/decorators';
 import {
 	BadRequestError,
@@ -14,39 +18,35 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
-
-import { Response } from 'express';
 import { PasswordResetRequest } from '@/requests';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES, inTest } from '@/constants';
-import { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtPayload } from '@/services/jwt.service';
-import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
-import { rateLimit } from 'express-rate-limit';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
 	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
+	message: { message: 'Too many requests' },
 });
 
+@Service()
 @RestController()
 export class PasswordResetController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly externalHooks: IExternalHooksClass,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly mailer: UserManagementMailer,
 		private readonly userService: UserService,
-		private readonly jwtService: JwtService,
 		private readonly mfaService: MfaService,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -91,7 +91,7 @@ export class PasswordResetController {
 			relations: ['authIdentities', 'globalRole'],
 		});
 
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
@@ -122,29 +122,16 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		const baseUrl = getInstanceBaseUrl();
+		const url = this.userService.generatePasswordResetUrl(user);
+
 		const { id, firstName, lastName } = user;
-
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: id },
-			{
-				expiresIn: '20m',
-			},
-		);
-
-		const url = this.userService.generatePasswordResetUrl(
-			baseUrl,
-			resetPasswordToken,
-			user.mfaEnabled,
-		);
-
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: baseUrl,
+				domain: getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
@@ -172,9 +159,9 @@ export class PasswordResetController {
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token: resetPasswordToken } = req.query;
+		const { token } = req.query;
 
-		if (!resetPasswordToken) {
+		if (!token) {
 			this.logger.debug(
 				'Request to resolve password token failed because of missing password reset token',
 				{
@@ -184,30 +171,15 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
+		const user = await this.userService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
-		const user = await this.userService.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['globalRole'],
-		});
-
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: decodedToken.sub },
+				{ userId: user.id },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID',
-				{
-					userId: decodedToken.sub,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
@@ -219,9 +191,9 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password, mfaToken } = req.body;
+		const { token, password, mfaToken } = req.body;
 
-		if (!resetPasswordToken || !password) {
+		if (!token || !password) {
 			this.logger.debug(
 				'Request to change password failed because of missing user ID or password or reset password token in payload',
 				{
@@ -233,22 +205,8 @@ export class PasswordResetController {
 
 		const validPassword = validatePassword(password);
 
-		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
-
-		const user = await this.userService.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities', 'globalRole'],
-		});
-
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID',
-				{
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
-		}
+		const user = await this.userService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
 			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
@@ -283,24 +241,5 @@ export class PasswordResetController {
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
-	}
-
-	private verifyResetPasswordToken(resetPasswordToken: string) {
-		let decodedToken: JwtPayload;
-		try {
-			decodedToken = this.jwtService.verifyToken(resetPasswordToken);
-			return decodedToken;
-		} catch (e) {
-			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', {
-					resetPasswordToken,
-				});
-				throw new NotFoundError('');
-			}
-			this.logger.debug('Error verifying token', {
-				resetPasswordToken,
-			});
-			throw new BadRequestError('');
-		}
 	}
 }

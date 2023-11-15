@@ -419,6 +419,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables';
 import type { N8nInput } from 'n8n-design-system';
+import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -961,7 +962,7 @@ export default defineComponent({
 				return;
 			}
 
-			if (this.node.type.startsWith('n8n-nodes-base')) {
+			if (this.node.type.startsWith('n8n-nodes-base') || isCredentialOnlyNodeType(this.node.type)) {
 				this.$telemetry.track('User opened Expression Editor', {
 					node_type: this.node.type,
 					parameter_name: this.parameter.displayName,
@@ -1253,7 +1254,7 @@ export default defineComponent({
 
 		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
-			inputFieldRef: this.$refs.inputField,
+			inputFieldRef: this.$refs.inputField as InstanceType<typeof N8nInput>,
 		});
 	},
 	beforeUnmount() {
