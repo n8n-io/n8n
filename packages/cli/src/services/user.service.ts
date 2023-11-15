@@ -120,6 +120,7 @@ export class UserService {
 
 		let publicUser: PublicUser = {
 			...rest,
+			globalScopes: user.globalScopes,
 			signInType: ldapIdentity ? 'ldap' : 'email',
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
