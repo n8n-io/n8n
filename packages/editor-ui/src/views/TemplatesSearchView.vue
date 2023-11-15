@@ -10,7 +10,8 @@
 				<div :class="$style.button">
 					<n8n-button
 						size="large"
-						:label="$locale.baseText('templates.newButton')"
+						type="secondary"
+						:label="$locale.baseText('templates.shareWorkflow')"
 						@click="openNewWorkflow"
 					/>
 				</div>
@@ -90,7 +91,7 @@ import type {
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
+import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -225,8 +226,7 @@ export default defineComponent({
 			}
 		},
 		openNewWorkflow() {
-			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			window.open(CREATOR_HUB_URL, '_blank');
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
