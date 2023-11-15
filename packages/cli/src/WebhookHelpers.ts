@@ -108,7 +108,7 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error, req.originalUrl);
+			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
 
 		// Don't respond, if already responded

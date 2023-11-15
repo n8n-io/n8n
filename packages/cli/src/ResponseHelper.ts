@@ -127,7 +127,7 @@ interface ErrorResponse {
 	stacktrace?: string;
 }
 
-export function sendErrorResponse(res: Response, error: Error, originalUrl?: string) {
+export function sendErrorResponse(res: Response, error: Error) {
 	let httpStatusCode = 500;
 
 	const response: ErrorResponse = {
@@ -141,6 +141,7 @@ export function sendErrorResponse(res: Response, error: Error, originalUrl?: str
 		}
 
 		//render custom 404 page for form triggers
+		const { originalUrl } = res.req;
 		if (error.errorCode === 404 && originalUrl) {
 			const basePath = originalUrl.split('/')[1];
 			const isLegacyFormTrigger = originalUrl.includes(FORM_TRIGGER_PATH_IDENTIFIER);
