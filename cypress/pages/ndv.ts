@@ -78,6 +78,8 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		searchInput: () => cy.getByTestId('ndv-search'),
+		pagination: () => cy.getByTestId('ndv-data-pagination'),
 	};
 
 	actions = {
