@@ -49,4 +49,15 @@ describe('hasPermission()', () => {
 
 		expect(hasPermission(['guest'])).toBe(false);
 	});
+
+	it('should call permission function with given permission options', () => {
+		const customFn = () => true;
+		vi.mocked(checks.isValid).mockReturnValue(true);
+
+		hasPermission(['custom'], {
+			custom: customFn,
+		});
+
+		expect(checks.isValid).toHaveBeenCalledWith(customFn);
+	});
 });

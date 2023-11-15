@@ -7,6 +7,7 @@ import {
 	inferResourceTypeFromRoute,
 } from '@/utils/rbacUtils';
 import type { RouteLocationNormalized } from 'vue-router';
+import type { Scope } from '@n8n/permissions';
 
 vi.mock('@/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(),
@@ -23,13 +24,13 @@ describe('Middleware', () => {
 		it('should redirect to homepage if the user does not have the required scope', async () => {
 			vi.mocked(useRBACStore).mockReturnValue({
 				hasScope: vi.fn().mockReturnValue(false),
-			} as ReturnType<typeof useRBACStore>);
+			} as unknown as ReturnType<typeof useRBACStore>);
 			vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
 			vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
 			vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
 
 			const nextMock = vi.fn();
-			const scope = 'read:workflow';
+			const scope: Scope = 'workflow:read';
 
 			await rbacMiddleware({} as RouteLocationNormalized, {} as RouteLocationNormalized, nextMock, {
 				scope,
@@ -41,13 +42,13 @@ describe('Middleware', () => {
 		it('should allow navigation if the user has the required scope', async () => {
 			vi.mocked(useRBACStore).mockReturnValue({
 				hasScope: vi.fn().mockReturnValue(true),
-			} as ReturnType<typeof useRBACStore>);
+			} as unknown as ReturnType<typeof useRBACStore>);
 			vi.mocked(inferProjectIdFromRoute).mockReturnValue('123');
-			vi.mocked(inferResourceTypeFromRoute).mockReturnValue('workflow');
-			vi.mocked(inferResourceIdFromRoute).mockReturnValue('456');
+			vi.mocked(inferResourceTypeFromRoute).mockReturnValue(undefined);
+			vi.mocked(inferResourceIdFromRoute).mockReturnValue(undefined);
 
 			const nextMock = vi.fn();
-			const scope = 'read:workflow';
+			const scope: Scope = 'workflow:read';
 
 			await rbacMiddleware({} as RouteLocationNormalized, {} as RouteLocationNormalized, nextMock, {
 				scope,
