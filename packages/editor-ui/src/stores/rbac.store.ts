@@ -63,12 +63,13 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 			resourceId: string;
 		},
 	) {
-		if (!scopesByResourceId.value[context.resourceType][context.resourceId]) {
-			scopesByResourceId.value[context.resourceType][context.resourceId] = [];
+		const scopesByResourceType = scopesByResourceId.value[context.resourceType];
+		if (!scopesByResourceType[context.resourceId]) {
+			scopesByResourceType[context.resourceId] = [];
 		}
 
-		if (!scopesByResourceId.value[context.resourceType][context.resourceId].includes(scope)) {
-			scopesByResourceId.value[context.resourceType][context.resourceId].push(scope);
+		if (!scopesByResourceType[context.resourceId].includes(scope)) {
+			scopesByResourceType[context.resourceId].push(scope);
 		}
 	}
 
