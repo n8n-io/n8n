@@ -487,7 +487,10 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
