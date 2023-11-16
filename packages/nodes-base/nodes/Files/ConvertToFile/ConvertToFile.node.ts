@@ -26,6 +26,8 @@ const iCalDescription = updateDisplayOptions(
 	createEvent.description.filter((property) => property.name !== 'binaryPropertyName'),
 );
 
+const spreadsheetOperations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
+
 export class ConvertToFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Convert to File',
@@ -240,7 +242,7 @@ export class ConvertToFile implements INodeType {
 						description: 'Whether the first row of the file contains the header names',
 						displayOptions: {
 							show: {
-								'/operation': ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'],
+								'/operation': spreadsheetOperations,
 							},
 						},
 					},
@@ -279,7 +281,7 @@ export class ConvertToFile implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
-		if (['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'].includes(operation)) {
+		if (spreadsheetOperations.includes(operation)) {
 			const pairedItem = generatePairedItemData(items.length);
 			try {
 				const options = this.getNodeParameter('options', 0, {}) as JsonToSpreadsheetBinaryOptions;
