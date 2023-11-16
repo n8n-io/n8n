@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-
+import { setMaxListeners } from 'events';
 import { Container, Service } from 'typedi';
 import type {
 	IDeferredPromise,
@@ -126,6 +126,9 @@ export class ActiveExecutions {
 				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
 			);
 		}
+
+		// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
+		setMaxListeners(Infinity, abortController.signal);
 
 		execution.abortController = abortController;
 	}
