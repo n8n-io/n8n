@@ -22,7 +22,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:pen',
 	group: ['input'],
 	version: [3, 3.1, 3.2],
-	description: 'Change the structure of your items',
+	description: 'Change fields of items, or create new fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
