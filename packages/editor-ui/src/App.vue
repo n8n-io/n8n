@@ -149,7 +149,6 @@ export default defineComponent({
 			}
 
 			await Promise.all([
-				this.initializeCloudData(),
 				this.initializeSourceControl(),
 				this.initializeTemplates(),
 				this.initializeNodeTranslationHeaders(),
@@ -163,6 +162,7 @@ export default defineComponent({
 
 		await this.settingsStore.initialize();
 		await this.initializeHooks();
+		await this.initializeCloudData();
 
 		void this.checkForNewVersions();
 		void this.onAfterAuthenticate();
