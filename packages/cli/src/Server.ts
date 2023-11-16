@@ -233,6 +233,7 @@ export class Server extends AbstractServer {
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};

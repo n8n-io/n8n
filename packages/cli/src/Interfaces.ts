@@ -297,6 +297,7 @@ export interface IDiagnosticInfo {
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
 	binary_data_s3: boolean;
+	multi_main_setup_enabled: boolean;
 	licensePlanName?: string;
 	licenseTenantId?: number;
 }
