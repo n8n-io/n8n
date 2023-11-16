@@ -5,7 +5,12 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return [];
+
+	const { mode, value } = documentId;
+
 	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
@@ -33,7 +38,12 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return [];
+
+	const { mode, value } = documentId;
+
 	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
