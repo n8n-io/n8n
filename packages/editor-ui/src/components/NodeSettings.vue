@@ -152,6 +152,24 @@
 					@valueChanged="valueChanged"
 					@parameterBlur="onParameterBlur"
 				/>
+				<div class="node-meta">
+					{{
+						$locale.baseText('nodeSettings.nodeVersion', {
+							interpolate: {
+								node: nodeType?.displayName as string,
+								version: node.typeVersion.toString(),
+							},
+						})
+					}}
+					<span v-if="isLatestNodeVersion">({{ $locale.baseText('nodeSettings.latest') }})</span>
+					<span v-else>
+						({{
+							$locale.baseText('nodeSettings.latestVersion', {
+								interpolate: { version: latestVersion.toString() },
+							})
+						}})
+					</span>
+				</div>
 			</div>
 		</div>
 		<n8n-block-ui :show="blockUI" />
@@ -257,6 +275,16 @@ export default defineComponent({
 			}
 
 			return '';
+		},
+		nodeTypeVersions(): number[] {
+			if (!this.nodeType) return [];
+			return Array.isArray(this.nodeType.version) ? this.nodeType.version : [this.nodeType.version];
+		},
+		latestVersion(): number {
+			return Math.max(...this.nodeTypeVersions);
+		},
+		isLatestNodeVersion(): boolean {
+			return this.latestVersion === this.node.typeVersion;
 		},
 		nodeTypeDescription(): string {
 			if (this.nodeType?.description) {
@@ -1124,6 +1152,13 @@ export default defineComponent({
 	position: absolute;
 	right: 7px;
 	top: -25px;
+}
+
+.node-meta {
+	border-top: var(--border-base);
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-xs) var(--spacing-2xs);
+	color: var(--color-text-light);
 }
 
 .parameter-value {
