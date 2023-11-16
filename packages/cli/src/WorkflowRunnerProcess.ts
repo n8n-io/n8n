@@ -53,6 +53,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { WorkflowExecutionLogger } from './WorkflowExecutionLogger';
 
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	setDefaultResultOrder('ipv4first');
@@ -270,12 +271,15 @@ class WorkflowRunnerProcess {
 			return returnData!.data!.main;
 		};
 		const abortController = new AbortController();
+		const executionLogsController = new WorkflowExecutionLogger();
+
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
 				this.data.executionMode,
 				this.data.executionData,
 				abortController,
+				executionLogsController,
 			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
 		}
@@ -294,6 +298,7 @@ class WorkflowRunnerProcess {
 				this.data.executionMode,
 				undefined,
 				abortController,
+				executionLogsController,
 			);
 			return this.workflowExecute.run(
 				this.workflow,
@@ -308,6 +313,7 @@ class WorkflowRunnerProcess {
 			this.data.executionMode,
 			undefined,
 			abortController,
+			executionLogsController,
 		);
 		return this.workflowExecute.runPartialWorkflow(
 			this.workflow,

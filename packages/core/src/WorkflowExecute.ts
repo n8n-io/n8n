@@ -39,6 +39,7 @@ import {
 	WorkflowExecuteMode,
 	NodeHelpers,
 	NodeConnectionType,
+	ExecutionLogsController,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -57,6 +58,7 @@ export class WorkflowExecute {
 		mode: WorkflowExecuteMode,
 		runExecutionData?: IRunExecutionData,
 		private abortController?: AbortController,
+		private executionLogsController?: ExecutionLogsController,
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -1047,6 +1049,7 @@ export class WorkflowExecute {
 									workflowId: workflow.id,
 								});
 
+								console.log('Before run node');
 								const runNodeData = await workflow.runNode(
 									executionData,
 									this.runExecutionData,
@@ -1055,9 +1058,10 @@ export class WorkflowExecute {
 									NodeExecuteFunctions,
 									this.mode,
 									this.abortController,
+									this.executionLogsController,
 								);
 								nodeSuccessData = runNodeData.data;
-
+								console.log('After run node');
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
 									// If errorOutput is activated check all the output items for error data.
 									// If any is found, route them to the last output as that will be the
@@ -1082,6 +1086,7 @@ export class WorkflowExecute {
 
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
+									console.log('WF EXecute before get');
 									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
 										workflow,
 										this.runExecutionData,
@@ -1281,12 +1286,13 @@ export class WorkflowExecute {
 					if (!this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
-
+					console.log('Before init task data');
 					taskData = {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
 						executionStatus: 'success',
+						executionLogs: this.executionLogsController?.getLogs() ?? [],
 					};
 
 					if (executionError !== undefined) {

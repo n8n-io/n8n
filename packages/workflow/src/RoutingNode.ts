@@ -36,6 +36,7 @@ import type {
 	NodeParameterValueType,
 	PostReceiveAction,
 	JsonObject,
+	ExecutionLogsController,
 } from './Interfaces';
 import type { NodeError } from './NodeErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
@@ -80,6 +81,7 @@ export class RoutingNode {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
 		abortController?: AbortController,
+		executionLogsController?: ExecutionLogsController,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
@@ -101,6 +103,7 @@ export class RoutingNode {
 			executeData,
 			this.mode,
 			abortController,
+			executionLogsController,
 		);
 
 		let credentials: ICredentialDataDecryptedObject | undefined;

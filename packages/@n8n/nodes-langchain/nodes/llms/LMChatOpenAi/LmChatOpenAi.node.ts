@@ -9,6 +9,7 @@ import {
 
 import type { ClientOptions } from 'openai';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { CallbackManager } from 'langchain/callbacks';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -216,6 +217,16 @@ export class LmChatOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
+			callbacks: CallbackManager.fromHandlers({
+				handleLLMEnd: async (...args) => {
+					console.log('LLM End');
+					this.addNodeExecutionLog('LLM End');
+				},
+				handleLLMStart: async (...args) => {
+					console.log('LLM Start:');
+					this.addNodeExecutionLog('LLM End');
+				},
+			}),
 		});
 
 		return {

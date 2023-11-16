@@ -187,6 +187,21 @@ export interface IRequestOptionsSimplifiedAuth {
 export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
+
+export interface ExecutionLogRecord {
+	log: unknown;
+	nodeName: string;
+	uuid: string;
+	time: Date;
+}
+
+export abstract class ExecutionLogsController {
+	// private executionLogs: ExecutionLogRecord[];
+	abstract getLogs(): ExecutionLogRecord[];
+
+	abstract addLog: (nodeName: string, log: unknown) => void;
+}
+
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
@@ -423,6 +438,7 @@ export interface IGetExecuteFunctions {
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 		abortController?: AbortController,
+		executionLogsController?: ExecutionLogsController,
 	): IExecuteFunctions;
 }
 
@@ -439,6 +455,7 @@ export interface IGetExecuteSingleFunctions {
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 		abortController?: AbortController,
+		executionLogsController?: ExecutionLogsController,
 	): IExecuteSingleFunctions;
 }
 
@@ -812,6 +829,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
+		addNodeExecutionLog(message: string): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1811,6 +1829,7 @@ export interface ITaskData {
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
+	executionLogs?: ExecutionLogRecord[];
 }
 
 export interface ISourceData {

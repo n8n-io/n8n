@@ -39,6 +39,7 @@ import type {
 	ConnectionTypes,
 	ContextType,
 	ExecutionError,
+	ExecutionLogsController,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -2524,6 +2525,21 @@ const executionCancellationFunctions = (
 	},
 });
 
+const executionLoggingFunctions = (
+	workflow: Workflow,
+	node: INode,
+	executionLogsController?: ExecutionLogsController,
+): Pick<IExecuteFunctions, 'addNodeExecutionLog'> => ({
+	addNodeExecutionLog: (message: string) => {
+		console.log('Add Node Execution Log', message);
+		if (!executionLogsController) {
+			console.log('Execution Logs Controller not available');
+			return;
+		}
+		executionLogsController.addLog(node.name, { message });
+	},
+});
+
 const getRequestHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
@@ -3104,11 +3120,13 @@ export function getExecuteFunctions(
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 	abortController?: AbortController,
+	executionLogController?: ExecutionLogsController,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			...executionCancellationFunctions(abortController),
+			...executionLoggingFunctions(workflow, node, executionLogController),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
 				getCredentials(

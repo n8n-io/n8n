@@ -50,6 +50,7 @@ import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from './Logger';
+import { WorkflowExecutionLogger } from './WorkflowExecutionLogger';
 
 export class WorkflowRunner {
 	logger: Logger;
@@ -348,6 +349,7 @@ export class WorkflowRunner {
 			});
 
 			const abortController = new AbortController();
+			const executionLogController = new WorkflowExecutionLogger();
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -357,6 +359,7 @@ export class WorkflowRunner {
 					data.executionMode,
 					data.executionData,
 					abortController,
+					executionLogController,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
@@ -377,6 +380,7 @@ export class WorkflowRunner {
 					data.executionMode,
 					undefined,
 					abortController,
+					executionLogController,
 				);
 				workflowExecution = workflowExecute.run(
 					workflow,
@@ -392,6 +396,7 @@ export class WorkflowRunner {
 					data.executionMode,
 					undefined,
 					abortController,
+					executionLogController,
 				);
 				workflowExecution = workflowExecute.runPartialWorkflow(
 					workflow,
