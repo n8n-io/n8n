@@ -112,11 +112,21 @@ export class MultiMainSetup extends SingleMainSetup {
 		workflowId: string;
 		oldState: boolean;
 		newState: boolean;
+		versionId: string;
 	}) {
 		if (!this.sanityCheck()) return;
 
 		await this.redisPublisher.publishToCommandChannel({
 			command: 'workflowActiveStateChanged',
+			payload,
+		});
+	}
+
+	async broadcastWorkflowFailedToActivate(payload: { workflowId: string; errorMessage: string }) {
+		if (!this.sanityCheck()) return;
+
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowFailedToActivate',
 			payload,
 		});
 	}

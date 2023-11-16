@@ -7,7 +7,8 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowActiveStateChanged'; // multi-main only
+	| 'workflowActiveStateChanged' // multi-main only
+	| 'workflowFailedToActivate'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.

@@ -382,6 +382,7 @@ export class WorkflowsService {
 					workflowId,
 					oldState,
 					newState: updatedWorkflow.active,
+					versionId: shared.workflow.versionId,
 				});
 			}
 		}
