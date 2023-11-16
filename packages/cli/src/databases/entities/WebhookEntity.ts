@@ -34,10 +34,6 @@ export class WebhookEntity {
 			: this.webhookPath;
 	}
 
-	get cacheKey() {
-		return `webhook:${this.method}-${this.uniquePath}`;
-	}
-
 	get staticSegments() {
 		return this.webhookPath.split('/').filter((s) => !s.startsWith(':'));
 	}
