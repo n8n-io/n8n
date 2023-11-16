@@ -1,9 +1,11 @@
 <template>
-	<button
+	<component
+		:is="element"
 		:class="classes"
 		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
+		:href="href"
 		aria-live="polite"
 		v-bind="$attrs"
 	>
@@ -14,7 +16,7 @@
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
 		</span>
-	</button>
+	</component>
 </template>
 
 <script setup lang="ts">
@@ -72,11 +74,20 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	link: {
+		type: Boolean,
+		default: false,
+	},
+	href: {
+		type: String,
+		default: '#',
+	},
 });
 
 const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
+const element = computed(() => (props.link ? 'a' : 'button'));
 
 const classes = computed(() => {
 	return (

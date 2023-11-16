@@ -11,8 +11,10 @@
 					<n8n-button
 						size="large"
 						type="secondary"
+						:link="true"
+						:href="creatorHubUrl"
 						:label="$locale.baseText('templates.shareWorkflow')"
-						@click="openNewWorkflow"
+						target="_blank"
 					/>
 				</div>
 			</div>
@@ -133,6 +135,7 @@ export default defineComponent({
 			search: '',
 			searchEventToTrack: null as null | ISearchEvent,
 			errorLoadingWorkflows: false,
+			creatorHubUrl: CREATOR_HUB_URL as string,
 		};
 	},
 	computed: {
@@ -224,9 +227,6 @@ export default defineComponent({
 				);
 				this.searchEventToTrack = null;
 			}
-		},
-		openNewWorkflow() {
-			window.open(CREATOR_HUB_URL, '_blank');
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
