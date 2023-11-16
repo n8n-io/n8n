@@ -54,7 +54,6 @@ async function getImageMessage(
 				},
 			],
 		});
-		// return new HumanMessage();
 	}
 
 	const binaryDataKey = message.binaryImageDataKey ?? 'data';
@@ -65,7 +64,6 @@ async function getImageMessage(
 		throw new NodeOperationError(context.getNode(), 'No binary data set.');
 	}
 
-	// TODO: Check for image mime-type?
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
 	return new HumanMessage({
 		content: [
@@ -135,7 +133,6 @@ async function createSimpleLLMChain(
 	const response = (await chain.call({
 		query,
 		signal: context.getExecutionCancelSignal(),
-		// response_format: { type: 'json_object' },
 	})) as string[];
 
 	return Array.isArray(response) ? response : [response];
