@@ -206,9 +206,7 @@ export default defineComponent({
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
 			if (loadWorkflow) {
-				if (this.nodeTypesStore.allNodeTypes.length === 0) {
-					await this.nodeTypesStore.getNodeTypes();
-				}
+				await this.nodeTypesStore.loadNodeTypesIfNotLoaded();
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
