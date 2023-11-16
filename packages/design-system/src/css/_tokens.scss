@@ -67,25 +67,33 @@
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
 	--color-canvas-dot: var(--prim-gray-120);
-	--color-canvas-read-only-line: var(--prim-gray-40);
+	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-node-background: var(--prim-gray-0);
 	--color-canvas-node-pinned-border: var(--color-secondary);
 	--color-canvas-selected: var(--prim-gray-70);
 	--node-type-main-color: var(--prim-gray-490);
 
 	// Sticky
-	--color-sticky-default-background: var(--prim-color-alt-d);
-	--color-sticky-default-border: var(--prim-color-alt-d-shade-150);
+	--color-sticky-background: var(--prim-color-alt-d);
+	--color-sticky-border: var(--prim-color-alt-d-shade-150);
 	--color-sticky-font: var(--prim-gray-740);
+	--color-sticky-code-font: var(--color-secondary);
 	--color-sticky-code-background: var(--color-background-base);
 
-	--sticky-color-7: #f0f3f9;
-	--sticky-color-6: #e7d6ff;
-	--sticky-color-5: #d6ebff;
-	--sticky-color-4: #dcf9eb;
-	--sticky-color-3: #fbdadd;
-	--sticky-color-2: #fde9d8;
-	--sticky-color-1: #fff5d6;
+	--color-sticky-background-1: var(--color-sticky-background);
+	--color-sticky-border-1: var(--color-sticky-border);
+	--color-sticky-background-2: var(--prim-color-alt-b-tint-300);
+	--color-sticky-border-2: var(--prim-color-alt-b-tint-150);
+	--color-sticky-background-3: var(--prim-color-alt-c-tint-400);
+	--color-sticky-border-3: var(--prim-color-alt-c-tint-300);
+	--color-sticky-background-4: var(--prim-color-alt-a-tint-500);
+	--color-sticky-border-4: var(--prim-color-alt-a-tint-300);
+	--color-sticky-background-5: var(--prim-color-alt-e-tint-350);
+	--color-sticky-border-5: var(--prim-color-alt-e-tint-250);
+	--color-sticky-background-6: var(--prim-color-secondary-tint-400);
+	--color-sticky-border-6: var(--prim-color-secondary-tint-300);
+	--color-sticky-background-7: var(--prim-gray-10);
+	--color-sticky-border-7: var(--prim-gray-120);
 
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
@@ -216,9 +224,10 @@
 	--color-callout-secondary-font: var(--color-secondary);
 	--color-callout-secondary-icon: var(--color-secondary);
 
-	// Dialog
+	// Dialogs and overlays
 	--color-dialog-overlay-background: var(--prim-gray-0-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
+	--color-block-ui-overlay: var(--prim-gray-820);
 
 	// Avatar
 	--color-avatar-font: var(--color-text-xlight);
@@ -226,6 +235,14 @@
 	// Value Survey
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
+
+	// Switch (Activation, boolean)
+	--color-switch-background: var(--prim-gray-420);
+	--color-switch-active-background: var(--prim-color-alt-i);
+	--color-switch-toggle: var(--prim-gray-0);
+
+	// Feature Request
+	--color-feature-request-font: var(--prim-gray-0);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);
@@ -236,8 +253,9 @@
 	--color-grey: var(--prim-gray-200);
 	--color-light-grey: var(--prim-gray-120);
 	--color-neutral: var(--prim-gray-490);
-	--color-switch: var(--prim-color-alt-i);
 	--color-configurable-node-name: var(--color-text-dark);
+	--color-secondary-link: var(--color-secondary);
+	--color-secondary-link-hover: var(--color-secondary-shade-1);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system

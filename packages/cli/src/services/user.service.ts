@@ -63,7 +63,7 @@ export class UserService {
 	}
 
 	generatePasswordResetToken(user: User, expiresIn = '20m') {
-		return this.jwtService.signData(
+		return this.jwtService.sign(
 			{ sub: user.id, passwordSha: createPasswordSha(user) },
 			{ expiresIn },
 		);
@@ -82,7 +82,7 @@ export class UserService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: JwtPayload & { passwordSha: string };
 		try {
-			decodedToken = this.jwtService.verifyToken(token);
+			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired', { token });

@@ -18,6 +18,7 @@ type Props = {
 	totalRuns: number;
 	paneType: 'input' | 'output';
 	node: INodeUi | null;
+	search: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -91,6 +92,7 @@ const onDragEnd = (el: HTMLElement) => {
 					:draggingPath="draggingPath"
 					:distanceFromActive="distanceFromActive"
 					:node="node"
+					:search="search"
 				/>
 			</div>
 		</draggable>
