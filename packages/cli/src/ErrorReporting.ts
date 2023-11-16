@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import config from '@/config';
 import { ErrorReporterProxy, ExecutionBaseError } from 'n8n-workflow';
+import { BaseReportedError } from 'n8n-workflow/src/ErrorReporterProxy';
 
 let initialized = false;
 
@@ -45,6 +46,26 @@ export const initErrorHandling = async () => {
 		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
+
+		if (originalException instanceof BaseReportedError) {
+			const options = originalException.reportingOptions;
+			event.level = options.level ?? event.level;
+
+			if (options.tags) {
+				event.tags = {
+					...(event.tags ?? {}),
+					...options.tags,
+				};
+			}
+
+			if (options.extra) {
+				event.extra = {
+					...(event.extra ?? {}),
+					...options.extra,
+				};
+			}
+		}
+
 		return event;
 	});
 

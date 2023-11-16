@@ -11,6 +11,7 @@ import { ErrorReporterProxy } from 'n8n-workflow';
 
 export class SharedWorkflowNotFoundError extends Error {}
 export class HistoryVersionNotFoundError extends Error {}
+class FailedToSaveVersionError extends ErrorReporterProxy.BaseReportedError {}
 
 @Service()
 export class WorkflowHistoryService {
@@ -84,7 +85,19 @@ export class WorkflowHistoryService {
 					}`,
 					e as Error,
 				);
-				ErrorReporterProxy.error(e);
+				ErrorReporterProxy.error(
+					new FailedToSaveVersionError(
+						`Failed to save workflow history version for workflow ${workflowId}.`,
+						{
+							cause: e,
+							reporting: {
+								tags: {
+									feature: 'workflow-history',
+								},
+							},
+						},
+					),
+				);
 			}
 		}
 	}
