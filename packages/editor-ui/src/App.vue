@@ -60,8 +60,6 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import type { ExternalHooks } from '@/types';
-import type { PartialDeep } from 'type-fest';
 import { runExternalHook } from '@/utils';
 
 export default defineComponent({
@@ -136,19 +134,10 @@ export default defineComponent({
 			}
 		},
 		async initializeHooks(): Promise<void> {
-			const hooksImports = [];
-
 			if (this.settingsStore.isCloudDeployment) {
-				hooksImports.push(
-					import('./hooks/cloud').then(
-						({ n8nCloudHooks }: { n8nCloudHooks: PartialDeep<ExternalHooks> }) => {
-							extendExternalHooks(n8nCloudHooks);
-						},
-					),
-				);
+				const { n8nCloudHooks } = await import('@/hooks/cloud');
+				extendExternalHooks(n8nCloudHooks);
 			}
-
-			await Promise.allSettled(hooksImports);
 		},
 		async onAfterAuthenticate() {
 			if (this.onAfterAuthenticateInitialized) {
@@ -172,6 +161,7 @@ export default defineComponent({
 	async mounted() {
 		this.logHiringBanner();
 
+		await this.settingsStore.initialize();
 		await this.initializeHooks();
 
 		void this.checkForNewVersions();
