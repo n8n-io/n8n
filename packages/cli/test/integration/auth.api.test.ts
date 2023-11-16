@@ -49,8 +49,17 @@ describe('POST /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -63,6 +72,7 @@ describe('POST /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
@@ -135,8 +145,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -149,6 +168,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -161,8 +182,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -175,6 +205,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -187,8 +219,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -201,6 +242,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -213,8 +256,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(member.email);
@@ -227,6 +279,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
