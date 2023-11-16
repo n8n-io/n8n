@@ -282,14 +282,17 @@ export class ChainLlm implements INodeType {
 									{
 										name: 'Text',
 										value: 'text',
+										description: 'Simple text message',
 									},
 									{
 										name: 'Image (Binary)',
 										value: 'imageBinary',
+										description: 'Process the binary input from the previous node',
 									},
 									{
 										name: 'Image (URL)',
 										value: 'imageUrl',
+										description: 'Process the image from the specified URL',
 									},
 								],
 								default: 'text',
