@@ -39,7 +39,9 @@
     "test:e2e:all": "scripts/run-e2e.js all"
   },
   "dependencies": {
-    "n8n": "workspace:*"
+    "dom-parser": "^1.1.5",
+    "n8n": "workspace:*",
+    "node-html-parser": "^6.1.11"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
