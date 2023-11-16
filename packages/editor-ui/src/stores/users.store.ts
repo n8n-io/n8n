@@ -8,7 +8,6 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
-	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
@@ -328,9 +327,14 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
 			return users;
 		},
-		async reinviteUser(params: { id: string }): Promise<void> {
+		async reinviteUser(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await reinvite(rootStore.getRestApiContext, params);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
+				{ email: params.email },
+			]);
+			if (!invitationResponse[0].user.emailSent) {
+				throw Error(invitationResponse[0].error);
+			}
 		},
 		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();

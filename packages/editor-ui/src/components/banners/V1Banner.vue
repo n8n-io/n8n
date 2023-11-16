@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUsersStore } from '@/stores';
+import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 
 const uiStore = useUIStore();

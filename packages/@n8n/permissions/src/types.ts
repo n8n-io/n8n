@@ -1,6 +1,7 @@
 export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
 export type Resource =
 	| 'workflow'
+	| 'tag'
 	| 'user'
 	| 'credential'
 	| 'variable'
@@ -13,7 +14,8 @@ export type ResourceScope<
 > = `${R}:${Operations}`;
 export type WildcardScope = `${Resource}:*` | '*';
 
-export type WorkflowScope = ResourceScope<'workflow'>;
+export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;
+export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user'>;
 export type CredentialScope = ResourceScope<'credential'>;
 export type VariableScope = ResourceScope<'variable'>;
@@ -25,6 +27,7 @@ export type ExternalSecretStoreScope = ResourceScope<
 
 export type Scope =
 	| WorkflowScope
+	| TagScope
 	| UserScope
 	| CredentialScope
 	| VariableScope

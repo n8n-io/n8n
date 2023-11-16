@@ -47,6 +47,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -772,6 +773,7 @@ export interface PublicUser {
 	isPending: boolean;
 	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
+	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;
