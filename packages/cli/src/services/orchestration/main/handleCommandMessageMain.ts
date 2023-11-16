@@ -7,6 +7,8 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
+import { MultiMainSetup } from './MultiMainSetup.ee';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -71,12 +73,13 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				const { workflowId, oldState, newState } = message.payload ?? {};
+				const { workflowId, oldState, newState, versionId } = message.payload ?? {};
 
 				if (
 					typeof workflowId !== 'string' ||
 					typeof oldState !== 'boolean' ||
-					typeof newState !== 'boolean'
+					typeof newState !== 'boolean' ||
+					typeof versionId !== 'string'
 				) {
 					break;
 				}
@@ -84,8 +87,22 @@ export async function handleCommandMessageMain(messageString: string) {
 				const push = Container.get(Push);
 
 				if (!oldState && newState) {
-					await activeWorkflowRunner.add(workflowId, 'activate');
-					push.broadcast('workflowActivated', { workflowId });
+					try {
+						await activeWorkflowRunner.add(workflowId, 'activate');
+						push.broadcast('workflowActivated', { workflowId });
+					} catch (e) {
+						const error = e instanceof Error ? e : new Error(`${e}`);
+
+						await Container.get(WorkflowRepository).update(workflowId, {
+							active: false,
+							versionId,
+						});
+
+						await Container.get(MultiMainSetup).broadcastWorkflowFailedToActivate({
+							workflowId,
+							errorMessage: error.message,
+						});
+					}
 				} else if (oldState && !newState) {
 					await activeWorkflowRunner.remove(workflowId);
 					push.broadcast('workflowDeactivated', { workflowId });
@@ -95,6 +112,19 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 
 				await activeWorkflowRunner.removeActivationError(workflowId);
+			}
+
+			case 'workflowFailedToActivate': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId, errorMessage } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string' || typeof errorMessage !== 'string') break;
+
+				Container.get(Push).broadcast('workflowFailedToActivate', { workflowId, errorMessage });
 			}
 
 			default:

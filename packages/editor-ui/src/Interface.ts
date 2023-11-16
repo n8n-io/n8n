@@ -421,7 +421,8 @@ export type IPushData =
 	| PushDataExecutionRecovered
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
-	| PushDataActiveWorkflowRemoved;
+	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowFailedToActivate;
 
 type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
@@ -431,6 +432,11 @@ type PushDataActiveWorkflowAdded = {
 type PushDataActiveWorkflowRemoved = {
 	data: IActiveWorkflowRemoved;
 	type: 'workflowDeactivated';
+};
+
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
 };
 
 type PushDataExecutionRecovered = {
@@ -507,6 +513,11 @@ export interface IActiveWorkflowAdded {
 
 export interface IActiveWorkflowRemoved {
 	workflowId: string;
+}
+
+export interface IWorkflowFailedToActivate {
+	workflowId: string;
+	errorMessage: string;
 }
 
 export interface IPushDataUnsavedExecutionFinished {
