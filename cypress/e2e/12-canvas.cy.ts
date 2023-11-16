@@ -390,20 +390,20 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		);
 
 		WorkflowPage.actions.executeWorkflow();
-		cy.contains('Node not found').should('be.visible');
+		cy.contains('Unrecognized node type').should('be.visible');
 
 		WorkflowPage.getters
 			.canvasNodeByName(`${unknownNodeName} 1`)
 			.find('[data-test-id=delete-node-button]')
 			.click({ force: true });
 
-			WorkflowPage.getters
+		WorkflowPage.getters
 			.canvasNodeByName(`${unknownNodeName} 2`)
 			.find('[data-test-id=delete-node-button]')
 			.click({ force: true });
 
 		WorkflowPage.actions.executeWorkflow();
 
-		cy.contains('Node not found').should('not.exist');
+		cy.contains('Unrecognized node type').should('not.exist');
 	});
 });

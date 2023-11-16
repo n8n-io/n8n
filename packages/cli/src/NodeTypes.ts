@@ -17,7 +17,7 @@ class UnrecognizedNodeError extends Error {
 	severity = 'warning';
 
 	constructor(nodeType: string) {
-		super(`Node not recognized: ${nodeType}".`);
+		super(`Unrecognized node type: ${nodeType}".`);
 	}
 }
 
