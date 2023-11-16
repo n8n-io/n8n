@@ -15,7 +15,7 @@ export type ResourceScope<
 
 export type WildcardScope = `${Resource}:*` | '*';
 
-export type WorkflowScope = ResourceScope<'workflow'>;
+export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;
 export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user'>;
 export type CredentialScope = ResourceScope<'credential'>;

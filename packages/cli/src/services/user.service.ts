@@ -113,7 +113,10 @@ export class UserService {
 		return user;
 	}
 
-	async toPublic(user: User, options?: { withInviteUrl?: boolean; posthog?: PostHogClient }) {
+	async toPublic(
+		user: User,
+		options?: { withInviteUrl?: boolean; posthog?: PostHogClient; withScopes?: boolean },
+	) {
 		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
@@ -123,6 +126,10 @@ export class UserService {
 			signInType: ldapIdentity ? 'ldap' : 'email',
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
+
+		if (options?.withScopes) {
+			publicUser.globalScopes = user.globalScopes;
+		}
 
 		if (options?.withInviteUrl && publicUser.isPending) {
 			publicUser = this.addInviteUrl(publicUser, user.id);
