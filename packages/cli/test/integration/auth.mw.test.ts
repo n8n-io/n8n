@@ -4,7 +4,9 @@ import { getGlobalMemberRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 
 describe('Auth Middleware', () => {
-	const testServer = utils.setupTestServer({ endpointGroups: ['me', 'auth', 'owner', 'users'] });
+	const testServer = utils.setupTestServer({
+		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
+	});
 
 	/** Routes requiring a valid `n8n-auth` cookie for a user, either owner or member. */
 	const ROUTES_REQUIRING_AUTHENTICATION: Readonly<Array<[string, string]>> = [
@@ -17,7 +19,7 @@ describe('Auth Middleware', () => {
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
-		['POST', '/users'],
+		['POST', '/invitations'],
 		['DELETE', '/users/123'],
 		['POST', '/owner/setup'],
 	];
