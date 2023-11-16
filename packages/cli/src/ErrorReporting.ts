@@ -1,7 +1,6 @@
 import { createHash } from 'crypto';
 import config from '@/config';
 import { ErrorReporterProxy, ExecutionBaseError } from 'n8n-workflow';
-import { BaseReportedError } from 'n8n-workflow/src/ErrorReporterProxy';
 
 let initialized = false;
 
@@ -47,7 +46,7 @@ export const initErrorHandling = async () => {
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
 
-		if (originalException instanceof BaseReportedError) {
+		if (originalException instanceof ErrorReporterProxy.BaseReportedError) {
 			const options = originalException.reportingOptions;
 			event.level = options.level ?? event.level;
 
