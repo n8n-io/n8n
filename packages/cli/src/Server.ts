@@ -129,11 +129,11 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
-import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
+import { InvitationController } from './controllers/invitation.controller';
 
 const exec = promisify(callbackExec);
 
@@ -259,7 +259,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
-		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MfaService);
 
@@ -283,18 +282,14 @@ export class Server extends AbstractServer {
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
 				Container.get(SharedCredentialsRepository),
 				Container.get(SharedWorkflowRepository),
 				activeWorkflowRunner,
-				mailer,
-				jwtService,
 				Container.get(RoleService),
 				userService,
-				postHog,
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -303,6 +298,14 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			new InvitationController(
+				config,
+				logger,
+				internalHooks,
+				externalHooks,
+				Container.get(UserService),
+				postHog,
+			),
 		];
 
 		if (isLdapEnabled()) {

@@ -295,6 +295,11 @@ export declare namespace PasswordResetRequest {
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
+	export type InviteResponse = {
+		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		error?: string;
+	};
+
 	export type ResolveSignUp = AuthlessRequest<
 		{},
 		{},
