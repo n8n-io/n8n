@@ -52,7 +52,7 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || '&nbsp;' }}</span>
+										<span v-html="highlightSearchTerm(column || '')" />
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
@@ -120,8 +120,8 @@
 						<span
 							v-if="isSimple(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							>{{ getValueToRender(data) }}</span
-						>
+							v-html="highlightSearchTerm(data)"
+						/>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
 								<span
@@ -141,9 +141,10 @@
 								>
 							</template>
 							<template #value="{ value }">
-								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
-									{{ getValueToRender(value) }}
-								</span>
+								<span
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+									v-html="highlightSearchTerm(value)"
+								/>
 							</template>
 						</n8n-tree>
 					</td>
@@ -160,7 +161,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId, shorten } from '@/utils';
+import { getPairedItemId, highlightText, sanitizeHtml, shorten } from '@/utils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -204,6 +205,9 @@ export default defineComponent({
 		},
 		hasDefaultHoverState: {
 			type: Boolean,
+		},
+		search: {
+			type: String,
 		},
 	},
 	data() {
@@ -360,7 +364,7 @@ export default defineComponent({
 				value === undefined
 			);
 		},
-		getValueToRender(value: unknown) {
+		getValueToRender(value: unknown): string {
 			if (value === '') {
 				return this.$locale.baseText('runData.emptyString');
 			}
@@ -376,7 +380,13 @@ export default defineComponent({
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
+			if (value === true || value === false || typeof value === 'number') {
+				return value.toString();
+			}
 			return value;
+		},
+		highlightSearchTerm(value: string): string {
+			return sanitizeHtml(highlightText(this.getValueToRender(value), this.search));
 		},
 		onDragStart() {
 			this.draggedColumn = true;
