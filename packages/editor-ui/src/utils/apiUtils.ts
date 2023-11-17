@@ -98,11 +98,11 @@ async function request(config: {
 	}
 }
 
-export async function makeRestApiRequest(
+export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: any,
 ) {
 	const response = await request({
 		method,
@@ -113,7 +113,7 @@ export async function makeRestApiRequest(
 	});
 
 	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
-	return response.data;
+	return response.data as T;
 }
 
 export async function get(

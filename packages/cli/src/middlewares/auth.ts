@@ -60,10 +60,10 @@ const staticAssets = globSync(['**/*.html', '**/*.svg', '**/*.png', '**/*.ico'],
 });
 
 // TODO: delete this
-const isPostUsersId = (req: Request, restEndpoint: string): boolean =>
+const isPostInvitationAccept = (req: Request, restEndpoint: string): boolean =>
 	req.method === 'POST' &&
-	new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-	!req.url.includes('reinvite');
+	new RegExp(`/${restEndpoint}/invitations/[\\w\\d-]*`).test(req.url) &&
+	req.url.includes('accept');
 
 const isAuthExcluded = (url: string, ignoredEndpoints: Readonly<string[]>): boolean =>
 	!!ignoredEndpoints
@@ -89,7 +89,7 @@ export const setupAuthMiddlewares = (
 			canSkipAuth(req.method, req.path) ||
 			isAuthExcluded(req.url, ignoredEndpoints) ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
-			isPostUsersId(req, restEndpoint)
+			isPostInvitationAccept(req, restEndpoint)
 		) {
 			return next();
 		}
