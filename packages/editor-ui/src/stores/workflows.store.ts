@@ -745,7 +745,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			// Check if the same connection exists already
-			const checkProperties = ['index', 'node', 'type'] as (keyof IConnection)[];
+			const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
 			let propertyName: keyof IConnection;
 			let connectionExists = false;
 			connectionLoop: for (const existingConnection of this.workflow.connections[sourceData.node][
