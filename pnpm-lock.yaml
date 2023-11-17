@@ -127,7 +127,7 @@ importers:
         version: 5.2.2
       vite:
         specifier: ^4.4.7
-        version: 4.4.7(sass@1.64.1)
+        version: 4.4.7(@types/node@18.16.16)
       vitest:
         specifier: ^0.33.0
         version: 0.33.0
@@ -851,7 +851,7 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@n8n/permissions':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/permissions
       '@vueuse/components':
         specifier: ^10.5.0
@@ -9663,7 +9663,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9692,12 +9692,11 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
-    dev: true
 
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -13250,7 +13249,6 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
-    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -18447,7 +18445,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@3.2.7)
+      axios: 0.27.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
