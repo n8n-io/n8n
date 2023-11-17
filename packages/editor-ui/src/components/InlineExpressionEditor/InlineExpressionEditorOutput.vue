@@ -38,7 +38,7 @@ import type { PropType } from 'vue';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { outputTheme } from './theme';
 
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
+import type { Plaintext, Resolved, Segment, Resolvable } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import { useI18n } from '@/composables';
 
@@ -119,7 +119,7 @@ export default defineComponent({
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
 							: segment.resolved
-							? (segment.resolved as any).toString().length
+							? segment.resolved.toString().length
 							: 0;
 					segment.to = cursor;
 					return segment;

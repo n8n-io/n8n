@@ -399,7 +399,7 @@ export default defineComponent({
 
 				try {
 					parameters = JSON.parse(parameters) as {
-						[key: string]: any;
+						[key: string]: unknown;
 					};
 
 					//@ts-ignore

@@ -114,7 +114,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
-const displayName = computed<any>(() => {
+const displayName = computed<string>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
 	return i18n.headerText({

@@ -346,10 +346,13 @@ export default defineComponent({
 			let options: CredentialDropdownOption[] = [];
 			types.forEach((type) => {
 				options = options.concat(
-					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
-						...option,
-						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
-					})),
+					this.credentialsStore.allUsableCredentialsByType[type].map(
+						(option: ICredentialsResponse) =>
+							({
+								...option,
+								typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
+							}) as CredentialDropdownOption,
+					),
 				);
 			});
 			return options;
