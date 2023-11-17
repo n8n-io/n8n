@@ -8,11 +8,18 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
 import type { Dirent } from 'fs';
+
+class UnrecognizedNodeError extends Error {
+	severity = 'warning';
+
+	constructor(nodeType: string) {
+		super(`Unrecognized node type: ${nodeType}".`);
+	}
+}
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -67,7 +74,8 @@ export class NodeTypes implements INodeTypes {
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
 		}
-		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
+
+		throw new UnrecognizedNodeError(type);
 	}
 
 	async getNodeTranslationPath({

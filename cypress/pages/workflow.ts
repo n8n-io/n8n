@@ -198,7 +198,7 @@ export class WorkflowPage extends BasePage {
 				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
 			} else {
 				target.realHover();
-				target.find('[data-test-id="overflow-node-button"]').click();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
 			}
 		},
 		openNode: (nodeTypeName: string) => {
@@ -208,7 +208,7 @@ export class WorkflowPage extends BasePage {
 			this.actions.openContextMenu(nodeTypeName);
 			this.actions.contextMenuAction('duplicate');
 		},
-		deleteNode: (nodeTypeName: string) => {
+		deleteNodeFromContextMenu: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
 			this.actions.contextMenuAction('delete');
 		},

@@ -133,7 +133,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	it('should delete node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.deleteNode(CODE_NODE_NAME);
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
@@ -422,13 +422,13 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		);
 
 		WorkflowPage.actions.executeWorkflow();
-		cy.contains('Node not found').should('be.visible');
+		cy.contains('Unrecognized node type').should('be.visible');
 
-		WorkflowPage.actions.deleteNode(`${unknownNodeName} 1`);
-		WorkflowPage.actions.deleteNode(`${unknownNodeName} 2`);
+		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 1`);
+		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 2`);
 
 		WorkflowPage.actions.executeWorkflow();
 
-		cy.contains('Node not found').should('not.exist');
+		cy.contains('Unrecognized node type').should('not.exist');
 	});
 });
