@@ -1,16 +1,13 @@
 import {
 	changePassword,
 	deleteUser,
-	getInviteLink,
 	getPasswordResetLink,
 	getUsers,
-	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
 	sendForgotPasswordEmail,
 	setupOwner,
-	signup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -43,6 +40,7 @@ import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
+import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -224,7 +222,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return validateSignupToken(rootStore.getRestApiContext, params);
 		},
-		async signup(params: {
+		async acceptInvitation(params: {
 			inviteeId: string;
 			inviterId: string;
 			firstName: string;
@@ -232,7 +230,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await signup(rootStore.getRestApiContext, params);
+			const user = await acceptInvitation(rootStore.getRestApiContext, params);
 			if (user) {
 				this.setCurrentUser(user);
 			}
@@ -324,10 +322,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}
-		},
-		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
-			const rootStore = useRootStore();
-			return getInviteLink(rootStore.getRestApiContext, params);
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
