@@ -897,7 +897,6 @@ router.beforeEach(async (to, from, next) => {
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	await settingsStore.initialize();
 	await usersStore.initialize();
 
 	/**
