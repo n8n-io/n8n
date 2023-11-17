@@ -7,6 +7,8 @@ import { flattenObject } from '@utils/utilities';
 import get from 'lodash/get';
 import iconv from 'iconv-lite';
 
+import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
+
 export type JsonToSpreadsheetBinaryFormat = 'csv' | 'html' | 'rtf' | 'ods' | 'xls' | 'xlsx';
 
 export type JsonToSpreadsheetBinaryOptions = {
@@ -25,6 +27,10 @@ export type JsonToBinaryOptions = {
 	dataIsBase64?: boolean;
 	itemIndex?: number;
 };
+
+type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
+type PdfPage = Awaited<ReturnType<Awaited<PdfDocument['getPage']>>>;
+type PdfTextContent = Awaited<ReturnType<PdfPage['getTextContent']>>;
 
 export async function convertJsonToSpreadsheetBinary(
 	this: IExecuteFunctions,
@@ -118,4 +124,71 @@ export async function createBinaryFromJson(
 	}
 
 	return binaryData;
+}
+
+const parseText = (textContent: PdfTextContent) => {
+	let lastY = undefined;
+	const text = [];
+	for (const item of textContent.items) {
+		if ('str' in item) {
+			if (lastY == item.transform[5] || !lastY) {
+				text.push(item.str);
+			} else {
+				text.push(`\n${item.str}`);
+			}
+			lastY = item.transform[5];
+		}
+	}
+	return text.join('');
+};
+
+export async function extractDataFromPDF(
+	this: IExecuteFunctions,
+	binaryPropertyName: string,
+	password?: string,
+	maxPages?: number,
+	joinPages = true,
+	itemIndex = 0,
+) {
+	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+
+	const params: { password?: string; url?: URL; data?: ArrayBuffer } = { password };
+
+	if (binaryData.id) {
+		const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+		params.url = new URL(`file://${binaryPath}`);
+	} else {
+		params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
+	}
+
+	const document = await readPDF(params).promise;
+	const { info, metadata } = await document
+		.getMetadata()
+		.catch(() => ({ info: null, metadata: null }));
+
+	const pages = [];
+	if (maxPages !== 0) {
+		let pagesToRead = document.numPages;
+		if (maxPages && maxPages < document.numPages) {
+			pagesToRead = maxPages;
+		}
+		for (let i = 1; i <= pagesToRead; i++) {
+			const page = await document.getPage(i);
+			const text = await page.getTextContent().then(parseText);
+			pages.push(text);
+		}
+	}
+
+	const text = joinPages ? pages.join('\n\n') : pages;
+
+	const returnData = {
+		numpages: document.numPages,
+		numrender: document.numPages,
+		info,
+		metadata: metadata?.getAll(),
+		text,
+		version: pdfJsVersion,
+	};
+
+	return returnData;
 }

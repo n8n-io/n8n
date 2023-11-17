@@ -1,4 +1,4 @@
-import { BINARY_ENCODING, deepCopy, jsonParse } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -16,6 +16,7 @@ import iconv from 'iconv-lite';
 
 import * as fromFile from '../../SpreadsheetFile/v2/fromFile.operation';
 import { encodeDecodeOptions } from '../../../utils/descriptions';
+import { extractDataFromPDF } from '../../../utils/binary';
 
 const spreadsheetOperations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
 
@@ -117,9 +118,14 @@ export class ExtractFromFile implements INodeType {
 						action: 'Extract from XLSX',
 					},
 					{
-						name: 'Convert Binary File to Encoded Data',
+						name: 'Extract From Text File',
+						value: 'text',
+						action: 'Extract from Text File',
+					},
+					{
+						name: 'Move File to Base64 String',
 						value: 'binaryToPropery',
-						action: 'Convert binary file to encoded data',
+						action: 'Move file to base64 string',
 					},
 				],
 				default: 'csv',
@@ -135,7 +141,7 @@ export class ExtractFromFile implements INodeType {
 				description: 'Name of the binary property from which to extract the data',
 				displayOptions: {
 					show: {
-						operation: ['binaryToPropery', 'fromJson'],
+						operation: ['binaryToPropery', 'fromJson', 'pdf', 'text'],
 					},
 				},
 			},
@@ -149,7 +155,7 @@ export class ExtractFromFile implements INodeType {
 				description: 'The name of the JSON key to which extracted data would be written',
 				displayOptions: {
 					show: {
-						operation: ['binaryToPropery', 'fromJson'],
+						operation: ['binaryToPropery', 'fromJson', 'text'],
 					},
 				},
 			},
@@ -161,7 +167,7 @@ export class ExtractFromFile implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: ['binaryToPropery', 'fromJson'],
+						operation: ['binaryToPropery', 'fromJson', 'text'],
 					},
 				},
 				options: [
@@ -204,17 +210,62 @@ export class ExtractFromFile implements INodeType {
 							},
 						],
 					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['pdf'],
+					},
+				},
+				options: [
 					{
-						displayName: 'Keep As Base64',
-						name: 'keepAsBase64',
+						displayName: 'Password',
+						name: 'password',
+						type: 'string',
+						typeOptions: { password: true },
+						default: '',
+						description: 'Prowide password, if the PDF is encrypted',
+					},
+					{
+						displayName: 'Join Pages',
+						name: 'joinPages',
 						type: 'boolean',
-						default: false,
-						description: 'Whether to keep the binary data as base64 string',
-						displayOptions: {
-							show: {
-								'/operation': ['binaryToPropery'],
+						default: true,
+						description:
+							'Whether to join the text from all pages or return an array of text from each page',
+					},
+					{
+						displayName: 'Max Pages',
+						name: 'maxPages',
+						type: 'number',
+						default: 0,
+						description: 'Maximum number of pages to include',
+					},
+					{
+						displayName: 'Keep Source',
+						name: 'keepSource',
+						type: 'options',
+						default: 'json',
+						options: [
+							{
+								name: 'JSON',
+								value: 'json',
 							},
-						},
+							{
+								name: 'Binary',
+								value: 'binary',
+							},
+							{
+								name: 'Both',
+								value: 'both',
+							},
+						],
 					},
 				],
 			},
@@ -230,7 +281,7 @@ export class ExtractFromFile implements INodeType {
 			returnData = await fromFile.execute.call(this, items, operation);
 		}
 
-		if (operation === 'binaryToPropery' || operation === 'fromJson') {
+		if (['binaryToPropery', 'fromJson', 'text'].includes(operation)) {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				const item = items[itemIndex];
 				const options = this.getNodeParameter('options', itemIndex);
@@ -253,7 +304,7 @@ export class ExtractFromFile implements INodeType {
 				}
 
 				let convertedValue: string | IDataObject;
-				if (options.keepAsBase64 !== true) {
+				if (operation !== 'binaryToPropery') {
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
 					});
@@ -278,6 +329,60 @@ export class ExtractFromFile implements INodeType {
 				}
 
 				returnData.push(newItem);
+			}
+		}
+
+		if (operation === 'pdf') {
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const item = items[itemIndex];
+					const options = this.getNodeParameter('options', itemIndex);
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
+
+					const json = await extractDataFromPDF.call(
+						this,
+						binaryPropertyName,
+						options.password as string,
+						options.maxPages as number,
+						options.joinPages as boolean,
+						itemIndex,
+					);
+
+					const newItem: INodeExecutionData = {
+						json: {},
+						pairedItem: { item: itemIndex },
+					};
+
+					if (options.keepSource && options.keepSource !== 'binary') {
+						newItem.json = { ...deepCopy(item.json), ...json };
+					} else {
+						newItem.json = json;
+					}
+
+					if (options.keepSource === 'binary' || options.keepSource === 'both') {
+						newItem.binary = item.binary;
+					} else {
+						// this binary data would not be included, but there also might be other binary data
+						// which should be included, copy it over and unset current binary data
+						newItem.binary = deepCopy(item.binary);
+						unset(newItem.binary, binaryPropertyName);
+					}
+
+					returnData.push(newItem);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+						continue;
+					}
+					throw new NodeOperationError(this.getNode(), error, { itemIndex });
+				}
 			}
 		}
 
