@@ -7,9 +7,11 @@ import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repo
 import { Service } from 'typedi';
 import { isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';
 import { Logger } from '@/Logger';
+import { ErrorReporterProxy } from 'n8n-workflow';
 
 export class SharedWorkflowNotFoundError extends Error {}
 export class HistoryVersionNotFoundError extends Error {}
+class FailedToSaveVersionError extends ErrorReporterProxy.BaseReportedError {}
 
 @Service()
 export class WorkflowHistoryService {
@@ -78,8 +80,23 @@ export class WorkflowHistoryService {
 				});
 			} catch (e) {
 				this.logger.error(
-					`Failed to save workflow history version for workflow ${workflowId}`,
+					`Failed to save workflow history version for workflow ${workflowId}. Error: ${
+						e instanceof Error ? e.message : e
+					}`,
 					e as Error,
+				);
+				ErrorReporterProxy.error(
+					new FailedToSaveVersionError(
+						`Failed to save workflow history version for workflow ${workflowId}.`,
+						{
+							cause: e,
+							reporting: {
+								tags: {
+									feature: 'workflow-history',
+								},
+							},
+						},
+					),
 				);
 			}
 		}

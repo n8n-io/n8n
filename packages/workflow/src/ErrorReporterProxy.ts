@@ -11,6 +11,15 @@ interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
+export class BaseReportedError extends Error {
+	reportingOptions: ReportingOptions;
+
+	constructor(message: string, options: Partial<ErrorOptions> & { reporting: ReportingOptions }) {
+		super(message, options);
+		this.reportingOptions = options.reporting;
+	}
+}
+
 const instance: ErrorReporter = {
 	report: (error) => {
 		if (error instanceof Error) {
