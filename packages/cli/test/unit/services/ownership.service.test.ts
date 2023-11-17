@@ -6,40 +6,9 @@ import { CacheService } from '@/services/cache.service';
 import { User } from '@db/entities/User';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { mockInstance } from '../../shared/mocking';
-import {
-	randomCredentialPayload,
-	randomEmail,
-	randomInteger,
-	randomName,
-} from '../../integration/shared/random';
-
-const wfOwnerRole = () =>
-	Object.assign(new Role(), {
-		scope: 'workflow',
-		name: 'owner',
-		id: randomInteger(),
-	});
-
-const mockCredRole = (name: 'owner' | 'editor'): Role =>
-	Object.assign(new Role(), {
-		scope: 'credentials',
-		name,
-		id: randomInteger(),
-	});
-
-const mockCredential = (): CredentialsEntity =>
-	Object.assign(new CredentialsEntity(), randomCredentialPayload());
-
-const mockUser = (): User =>
-	Object.assign(new User(), {
-		id: randomInteger(),
-		email: randomEmail(),
-		firstName: randomName(),
-		lastName: randomName(),
-	});
+import { mockCredRole, mockCredential, mockUser, wfOwnerRole } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const cacheService = mockInstance(CacheService);
