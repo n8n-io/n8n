@@ -196,6 +196,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../@n8n/permissions
       '@n8n_io/license-sdk':
         specifier: ~2.7.1
         version: 2.7.2
