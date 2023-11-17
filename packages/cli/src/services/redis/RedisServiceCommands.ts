@@ -6,7 +6,9 @@ export type RedisServiceCommand =
 	| 'restartEventBus'
 	| 'stopWorker'
 	| 'reloadLicense'
-	| 'reloadExternalSecretsProviders';
+	| 'reloadExternalSecretsProviders'
+	| 'workflowActiveStateChanged' // multi-main only
+	| 'workflowFailedToActivate'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -49,6 +51,14 @@ export type RedisServiceWorkerResponseObject = {
 	  }
 	| {
 			command: 'stopWorker';
+	  }
+	| {
+			command: 'workflowActiveStateChanged';
+			payload: {
+				oldState: boolean;
+				newState: boolean;
+				workflowId: string;
+			};
 	  }
 );
 

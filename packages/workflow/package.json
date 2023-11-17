@@ -48,20 +48,20 @@
     "@types/xml2js": "^0.4.11"
   },
   "dependencies": {
-    "@n8n/tournament": "^1.0.2",
-    "@n8n_io/riot-tmpl": "^4.0.0",
+    "@n8n/tournament": "1.0.2",
+    "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
-    "crypto-js": "^4.2.0",
-    "deep-equal": "^2.2.0",
+    "crypto-js": "4.2.0",
+    "deep-equal": "2.2.0",
     "esprima-next": "5.8.4",
-    "form-data": "^4.0.0",
-    "jmespath": "^0.16.0",
-    "js-base64": "^3.7.2",
-    "lodash": "^4.17.21",
-    "luxon": "^3.3.0",
-    "recast": "^0.21.5",
-    "title-case": "^3.0.3",
-    "transliteration": "^2.3.5",
-    "xml2js": "^0.5.0"
+    "form-data": "4.0.0",
+    "jmespath": "0.16.0",
+    "js-base64": "3.7.2",
+    "lodash": "4.17.21",
+    "luxon": "3.3.0",
+    "recast": "0.21.5",
+    "title-case": "3.0.3",
+    "transliteration": "2.3.5",
+    "xml2js": "0.5.0"
   }
 }

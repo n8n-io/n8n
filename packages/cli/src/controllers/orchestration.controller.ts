@@ -1,7 +1,7 @@
 import { Authorized, Post, RestController } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { Service } from 'typedi';
-import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { License } from '../License';
 
 @Authorized('any')
@@ -9,7 +9,7 @@ import { License } from '../License';
 @Service()
 export class OrchestrationController {
 	constructor(
-		private readonly orchestrationService: SingleMainInstancePublisher,
+		private readonly singleMainSetup: SingleMainSetup,
 		private readonly licenseService: License,
 	) {}
 
@@ -21,18 +21,18 @@ export class OrchestrationController {
 	async getWorkersStatus(req: OrchestrationRequest.Get) {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 		const id = req.params.id;
-		return this.orchestrationService.getWorkerStatus(id);
+		return this.singleMainSetup.getWorkerStatus(id);
 	}
 
 	@Post('/worker/status')
 	async getWorkersStatusAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return this.orchestrationService.getWorkerStatus();
+		return this.singleMainSetup.getWorkerStatus();
 	}
 
 	@Post('/worker/ids')
 	async getWorkerIdsAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return this.orchestrationService.getWorkerIds();
+		return this.singleMainSetup.getWorkerIds();
 	}
 }

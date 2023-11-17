@@ -146,6 +146,7 @@ export class PermissionChecker {
 					if (!cred.id) {
 						throw new NodeOperationError(node, 'Node uses invalid credential', {
 							description: 'Please recreate the credential.',
+							severity: 'warning',
 						});
 					}
 
