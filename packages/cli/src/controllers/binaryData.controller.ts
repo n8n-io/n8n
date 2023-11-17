@@ -41,8 +41,9 @@ export class BinaryDataController {
 
 			if (mimeType) res.setHeader('Content-Type', mimeType);
 
-			if (action === 'download') {
-				res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+			if (action === 'download' && fileName) {
+				const encodedFilename = encodeURIComponent(fileName);
+				res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
 			}
 
 			return await this.binaryDataService.getAsStream(binaryDataId);
