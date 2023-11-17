@@ -6,13 +6,13 @@ import { OrchestrationService } from '@/services/orchestration.base.service';
  * For use in main instance, in single main instance scenario.
  */
 @Service()
-export class SingleMainInstancePublisher extends OrchestrationService {
+export class SingleMainSetup extends OrchestrationService {
 	constructor(protected readonly logger: Logger) {
 		super();
 	}
 
 	sanityCheck() {
-		return this.initialized && this.isQueueMode && this.isMainInstance;
+		return this.isInitialized && this.isQueueMode && this.isMainInstance;
 	}
 
 	async getWorkerStatus(id?: string) {
