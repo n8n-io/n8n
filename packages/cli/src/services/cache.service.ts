@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { caching } from 'cache-manager';
 import type { MemoryCache } from 'cache-manager';
-import type { RedisCache } from 'cache-manager-ioredis-yet';
+import type { RedisCache, RedisStore } from './cache/cacheManagerRedis';
 import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
@@ -44,7 +44,7 @@ export class CacheService extends EventEmitter {
 			backend === 'redis' ||
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
-			const { redisInsStore } = await import('cache-manager-ioredis-yet');
+			const { redisInsStore } = await import('./cache/cacheManagerRedis');
 			const redisPrefix = getRedisPrefix(config.getEnv('redis.prefix'));
 			const cachePrefix = config.getEnv('cache.redis.prefix');
 			const keyPrefix = `${redisPrefix}:${cachePrefix}:`;
@@ -102,6 +102,74 @@ export class CacheService extends EventEmitter {
 			const refreshValue = await options.refreshFunction(key);
 			await this.set(key, refreshValue, options.refreshTtl);
 			return refreshValue;
+		}
+		return options.fallbackValue ?? undefined;
+	}
+
+	/**
+	 * Get a single value from a hash in the cache by key and field.
+	 *
+	 * If the cache is disabled, refreshFunction's result or fallbackValue is returned.
+	 *
+	 * If cache is not hit, and neither refreshFunction nor fallbackValue are provided, `undefined` is returned.
+	 * @param key The key to fetch from the cache
+	 * @param field Specific field to fetch from the hash
+	 * @returns value of the field in the hash
+	 */
+	async getHashField(key: string, field: string): Promise<unknown> {
+		return this.getHash(key, { fieldName: field });
+	}
+
+	/**
+	 * Get a hashed object from the cache by its key.
+	 *
+	 * If the cache is disabled, refreshFunction's result or fallbackValue is returned.
+	 *
+	 * If cache is not hit, and neither refreshFunction nor fallbackValue are provided, `undefined` is returned.
+	 * @param key The key to fetch from the cache
+	 * @param options.fieldName Optional specific field to fetch from the hash
+	 * @param options.refreshFunction Optional function to call to set the cache if the key is not found
+	 * @param options.fallbackValue Optional value returned is cache is not hit and refreshFunction is not provided
+	 * @returns an object with the key/value pairs of the hash or a single value if fieldName is provided
+	 */
+	async getHash<T>(
+		key: string,
+		options: {
+			fieldName?: string;
+			fallbackValue?: T | Record<string, unknown>;
+			refreshFunction?: (key: string) => Promise<unknown>;
+		} = {},
+	): Promise<Record<string, unknown> | T | undefined> {
+		if (!key || key.length === 0) {
+			return;
+		}
+		let value = undefined;
+		if (this.isRedisCache()) {
+			if (options.fieldName) {
+				value = (await (this.cache?.store as RedisStore).hget(key, options.fieldName)) as T;
+			} else {
+				value = await (this.cache?.store as RedisStore).hgetall(key);
+			}
+		} else {
+			const obj = (await this.cache?.store.get(key)) as Record<string, unknown>;
+			value = options.fieldName ? (obj?.[options.fieldName] as T) : obj;
+		}
+		if (value !== undefined) {
+			this.emit(this.metricsCounterEvents.cacheHit);
+			return value;
+		}
+		this.emit(this.metricsCounterEvents.cacheMiss);
+		if (options.refreshFunction) {
+			this.emit(this.metricsCounterEvents.cacheUpdate);
+			if (options.fieldName) {
+				const refreshValue = (await options.refreshFunction(key)) as T;
+				await this.setHash(key, options.fieldName, refreshValue);
+				return refreshValue;
+			} else {
+				const refreshValue = (await options.refreshFunction(key)) as Record<string, unknown>;
+				await this.setHash(key, refreshValue);
+				return refreshValue;
+			}
 		}
 		return options.fallbackValue ?? undefined;
 	}
@@ -198,6 +266,58 @@ export class CacheService extends EventEmitter {
 	}
 
 	/**
+	 * Set a hash with multiple values
+	 * @param key The hash key to set
+	 * @param values The values as a Record<string, unknown> or object
+	 */
+	async setHash(key: string, values: Record<string, unknown>): Promise<void>;
+	/**
+	 * Set a hash value in the cache by key.
+	 * @param key The hash key to set
+	 * @param field The field name to set
+	 * @param value The value to set
+	 */
+	async setHash(key: string, field: string, value: unknown): Promise<void>;
+	async setHash(
+		key: string,
+		fieldOrFieldValueRecord: Record<string, unknown> | string,
+		value?: unknown,
+	): Promise<void> {
+		if (!this.cache) {
+			await this.init();
+		}
+		if (!key || key.length === 0) {
+			return;
+		}
+		if (typeof fieldOrFieldValueRecord === 'string') {
+			if (value === undefined || value === null) {
+				return;
+			}
+			if (this.isRedisCache()) {
+				await (this.cache?.store as RedisStore).hset(key, { [fieldOrFieldValueRecord]: value });
+			} else {
+				const obj = (await this.cache?.store.get(key)) ?? {};
+				Object.assign(obj, { [fieldOrFieldValueRecord]: value });
+				await this.cache?.store.set(key, obj);
+			}
+		} else {
+			for (const field in fieldOrFieldValueRecord) {
+				const fieldValue = fieldOrFieldValueRecord[field];
+				if (fieldValue === undefined || fieldValue === null) {
+					return;
+				}
+			}
+			if (this.isRedisCache()) {
+				await (this.cache?.store as RedisStore).hset(key, fieldOrFieldValueRecord);
+			} else {
+				const obj = (await this.cache?.store.get(key)) ?? {};
+				Object.assign(obj, fieldOrFieldValueRecord);
+				await this.cache?.store.set(key, obj);
+			}
+		}
+	}
+
+	/**
 	 * Set a multiple values in the cache at once.
 	 * @param values An array of [key, value] tuples to set
 	 * @param ttl Optional time to live in ms
@@ -231,6 +351,26 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 		await this.cache?.store.del(key);
+	}
+
+	/**
+	 * Delete a value from a cached hash by key and field name.
+	 * @param key The key of the hash
+	 * @param key The field to delete
+	 */
+	async deleteFromHash(key: string, field: string): Promise<void> {
+		if (!key || key.length === 0 || !field || field.length === 0) {
+			return;
+		}
+		if (this.isRedisCache()) {
+			await (this.cache?.store as RedisStore).hdel(key, field);
+		} else {
+			const obj = (await this.cache?.store.get(key)) as Record<string, unknown>;
+			if (obj && Object.keys(obj).includes(field)) {
+				delete obj[field];
+				await this.cache?.store.set(key, obj);
+			}
+		}
 	}
 
 	/**
@@ -304,5 +444,41 @@ export class CacheService extends EventEmitter {
 		throw new Error(
 			'Keys and values do not match, this should not happen and appears to result from some cache corruption.',
 		);
+	}
+
+	/**
+	 * Return all keys in a cached hash.
+	 */
+	async hashKeys(key: string): Promise<string[]> {
+		if (this.isRedisCache()) {
+			return (this.cache?.store as RedisStore).hkeys(key);
+		} else {
+			const obj = (await this.cache?.store.get(key)) ?? {};
+			return Object.keys(obj);
+		}
+	}
+
+	/**
+	 * Return all keys in a cached hash.
+	 */
+	async hashValues<T>(key: string): Promise<T[]> {
+		if (this.isRedisCache()) {
+			return (this.cache?.store as RedisStore).hvals<T>(key);
+		} else {
+			const obj = (await this.cache?.store.get(key)) ?? {};
+			return Object.values(obj) as T[];
+		}
+	}
+
+	/**
+	 * Returns whether a field exists in a cached hash.
+	 */
+	async hashFieldExists(key: string, field: string): Promise<boolean> {
+		if (this.isRedisCache()) {
+			return (this.cache?.store as RedisStore).hexists(key, field);
+		} else {
+			const obj = (await this.cache?.store.get(key)) ?? {};
+			return Object.keys(obj).includes(field);
+		}
 	}
 }

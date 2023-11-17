@@ -225,7 +225,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -238,9 +238,6 @@ importers:
       cache-manager:
         specifier: ^5.2.3
         version: 5.2.3
-      cache-manager-ioredis-yet:
-        specifier: ^1.2.2
-        version: 1.2.2
       callsites:
         specifier: ^3.1.0
         version: 3.1.0
@@ -5538,7 +5535,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4
+      axios: 0.21.4(debug@4.3.2)
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -9072,7 +9069,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -9659,7 +9656,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.2)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9668,6 +9665,15 @@ packages:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.2)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@0.27.2:
+    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@4.3.2)
+      form-data: 4.0.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9693,7 +9699,7 @@ packages:
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.2)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -10216,16 +10222,6 @@ packages:
       union-value: 1.0.1
       unset-value: 1.0.0
     dev: true
-
-  /cache-manager-ioredis-yet@1.2.2:
-    resolution: {integrity: sha512-o03N/tQxfFONZ1XLGgIxOFHuQQpjpRdnSAL1THG1YWZIVp1JMUfjU3ElSAjFN1LjbJXa55IpC8waG+VEoLUCUw==}
-    engines: {node: '>= 16.17.0'}
-    dependencies:
-      cache-manager: 5.2.3
-      ioredis: 5.3.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
 
   /cache-manager@5.2.3:
     resolution: {integrity: sha512-9OErI8fksFkxAMJ8Mco0aiZSdphyd90HcKiOMJQncSlU1yq/9lHHxrT8PDayxrmr9IIIZPOAEfXuGSD7g29uog==}
@@ -14219,7 +14215,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -14503,6 +14499,7 @@ packages:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
+    dev: true
 
   /ip@1.1.8:
     resolution: {integrity: sha512-PuExPYUiu6qMBQb4l06ecm6T6ujzhmh+MeJcW9wa89PoAz5pvd4zPgN5WJV104mb6S2T1AwNIAaB70JNrLQWhg==}
@@ -18512,7 +18509,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@3.2.7)
+      axios: 0.27.2
     transitivePeerDependencies:
       - debug
     dev: false

@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import { CacheService } from '@/services/cache.service';
+import type { RedisCache } from '@/services/cache/cacheManagerRedis';
 import type { MemoryCache } from 'cache-manager';
-import type { RedisCache } from 'cache-manager-ioredis-yet';
 import config from '@/config';
 
 const cacheService = Container.get(CacheService);
@@ -351,5 +351,51 @@ describe('cacheService', () => {
 		await expect(cacheService.getMany([''])).resolves.toStrictEqual([undefined]);
 		await cacheService.setMany([]);
 		await expect(cacheService.getMany([])).resolves.toStrictEqual([]);
+	});
+
+	test('should set a hash in redis', async () => {
+		config.set('cache.backend', 'redis');
+		config.set('executions.mode', 'queue');
+		await cacheService.destroy();
+		await cacheService.init();
+		const key = 'hashedKey';
+
+		expect(((await cacheService.getCache()) as RedisCache).store.client).toBeDefined();
+
+		await cacheService.setHash(key, { myField: 'myvalue', myField2: 'myvalue2' });
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
+			myField: 'myvalue',
+			myField2: 'myvalue2',
+		});
+		await expect(cacheService.getHashField(key, 'myField')).resolves.toBe('myvalue');
+		await cacheService.deleteFromHash(key, 'myField');
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
+			myField2: 'myvalue2',
+		});
+		await cacheService.delete(key);
+		await expect(cacheService.get(key)).resolves.toBeUndefined();
+	});
+
+	test('should set a hash in memory', async () => {
+		config.set('cache.backend', 'memory');
+		config.set('executions.mode', 'main');
+		await cacheService.destroy();
+		await cacheService.init();
+		const key = 'hashedKey';
+
+		expect(((await cacheService.getCache()) as MemoryCache).store.size).toBeDefined();
+
+		await cacheService.setHash(key, { myField: 'myvalue', myField2: 'myvalue2' });
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
+			myField: 'myvalue',
+			myField2: 'myvalue2',
+		});
+		await expect(cacheService.getHashField(key, 'myField')).resolves.toBe('myvalue');
+		await cacheService.deleteFromHash(key, 'myField');
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
+			myField2: 'myvalue2',
+		});
+		await cacheService.delete(key);
+		await expect(cacheService.get(key)).resolves.toBeUndefined();
 	});
 });
