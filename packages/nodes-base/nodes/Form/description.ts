@@ -6,13 +6,13 @@ import {
 } from 'n8n-workflow';
 
 const webhookPath: INodeProperties = {
-	displayName: 'Path',
+	displayName: 'Form Path',
 	name: 'path',
 	type: 'string',
 	default: '',
 	placeholder: 'webhook',
 	required: true,
-	description: 'The path to listen to',
+	description: "The final segment of the form's URL, both for test and production",
 };
 
 export const formTitle: INodeProperties = {
@@ -169,7 +169,7 @@ export const formRespondMode: INodeProperties = {
 		{
 			name: "Using 'Respond to Webhook' Node",
 			value: 'responseNode',
-			description: 'Response defined in that node',
+			description: "When the 'Respond to Webhook' node is executed",
 		},
 	],
 	default: 'onReceived',
