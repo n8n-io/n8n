@@ -389,8 +389,8 @@ importers:
         specifier: 1.0.9
         version: 1.0.9
       passport-jwt:
-        specifier: 4.0.0
-        version: 4.0.0
+        specifier: 4.0.1
+        version: 4.0.1
       pg:
         specifier: 8.8.0
         version: 8.8.0
@@ -17951,8 +17951,8 @@ packages:
       passport-strategy: 1.0.0
     dev: false
 
-  /passport-jwt@4.0.0:
-    resolution: {integrity: sha512-BwC0n2GP/1hMVjR4QpnvqA61TxenUMlmfNjYNgK0ZAs0HK4SOQkHcSv4L328blNTLtHq7DbmvyNJiH+bn6C5Mg==}
+  /passport-jwt@4.0.1:
+    resolution: {integrity: sha512-UCKMDYhNuGOBE9/9Ycuoyh7vP6jpeTp/+sfMJl7nLff/t6dps+iaeE0hhNkKN8/HZHcJ7lCdOyDxHdDoxoSvdQ==}
     dependencies:
       jsonwebtoken: 9.0.0
       passport-strategy: 1.0.0

@@ -163,7 +163,7 @@
     "p-lazy": "3.1.0",
     "passport": "0.6.0",
     "passport-cookie": "1.0.9",
-    "passport-jwt": "4.0.0",
+    "passport-jwt": "4.0.1",
     "pg": "8.8.0",
     "picocolors": "1.0.0",
     "pkce-challenge": "3.0.0",
