@@ -138,8 +138,8 @@ importers:
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
-        specifier: 0.22.0
-        version: 0.22.0
+        specifier: 0.21.4
+        version: 0.21.4
 
   packages/@n8n/permissions: {}
 
@@ -224,8 +224,8 @@ importers:
         specifier: 7.28.1
         version: 7.28.1
       axios:
-        specifier: 0.22.0
-        version: 0.22.0
+        specifier: 0.21.4
+        version: 0.21.4
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -582,8 +582,8 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       axios:
-        specifier: 0.22.0
-        version: 0.22.0
+        specifier: 0.21.4
+        version: 0.21.4
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -9669,14 +9669,6 @@ packages:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.2)
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
-  /axios@0.22.0:
-    resolution: {integrity: sha512-Z0U3uhqQeg1oNcihswf4ZD57O3NrR1+ZXhxaROaWpDmsDTx7T2HNBV2ulBtie2hwJptu8UvgnJoK+BIqdzh/1w==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
