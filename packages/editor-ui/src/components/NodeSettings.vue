@@ -1157,7 +1157,8 @@ export default defineComponent({
 .node-meta {
 	border-top: var(--border-base);
 	font-size: var(--font-size-xs);
-	padding: var(--spacing-xs) var(--spacing-2xs);
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
 	color: var(--color-text-light);
 }
 
