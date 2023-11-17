@@ -291,14 +291,17 @@ export const pushConnection = defineComponent({
 				}
 			}
 
-			if (receivedData.type === 'workflowFailedToActivate') {
+			if (
+				receivedData.type === 'workflowFailedToActivate' &&
+				this.workflowsStore.workflowId === receivedData.data.workflowId
+			) {
 				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
 				this.workflowsStore.setActive(false);
 
 				this.showError(
 					new Error(receivedData.data.errorMessage),
 					this.$locale.baseText('workflowActivator.showError.title', {
-						interpolate: { newStateName: 'deactivated' },
+						interpolate: { newStateName: 'activated' },
 					}) + ':',
 				);
 
