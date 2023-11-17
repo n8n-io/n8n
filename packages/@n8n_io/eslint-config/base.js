@@ -322,11 +322,6 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
 
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/naming-convention.md
-		 */
-		'@typescript-eslint/naming-convention': 'off',
-
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
@@ -469,6 +464,7 @@ const config = (module.exports = {
 				// TODO: Remove these
 				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
+				'@typescript-eslint/naming-convention': 'off',
 				'import/no-duplicates': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
