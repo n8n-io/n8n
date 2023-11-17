@@ -138,8 +138,8 @@ importers:
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
-        specifier: ^0.21.1
-        version: 0.21.4
+        specifier: 0.22.0
+        version: 0.22.0
 
   packages/@n8n/permissions: {}
 
@@ -224,8 +224,8 @@ importers:
         specifier: ^7.28.1
         version: 7.28.1
       axios:
-        specifier: ^0.21.1
-        version: 0.21.4
+        specifier: 0.22.0
+        version: 0.22.0
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -579,34 +579,34 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       aws4:
-        specifier: ^1.8.0
+        specifier: 1.11.0
         version: 1.11.0
       axios:
-        specifier: ^0.21.1
-        version: 0.21.4
+        specifier: 0.22.0
+        version: 0.22.0
       concat-stream:
-        specifier: ^2.0.0
+        specifier: 2.0.0
         version: 2.0.0
       cron:
-        specifier: ~1.7.2
+        specifier: 1.7.2
         version: 1.7.2
       fast-glob:
-        specifier: ^3.2.5
+        specifier: 3.2.12
         version: 3.2.12
       file-type:
-        specifier: ^16.5.4
+        specifier: 16.5.4
         version: 16.5.4
       flatted:
-        specifier: ^3.2.4
+        specifier: 3.2.7
         version: 3.2.7
       form-data:
-        specifier: ^4.0.0
+        specifier: 4.0.0
         version: 4.0.0
       lodash:
-        specifier: ^4.17.21
+        specifier: 4.17.21
         version: 4.17.21
       mime-types:
-        specifier: ^2.1.27
+        specifier: 2.1.35
         version: 2.1.35
       n8n-nodes-base:
         specifier: workspace:*
@@ -615,22 +615,22 @@ importers:
         specifier: workspace:*
         version: link:../workflow
       oauth-1.0a:
-        specifier: ^2.2.6
+        specifier: 2.2.6
         version: 2.2.6
       p-cancelable:
-        specifier: ^2.0.0
+        specifier: 2.1.1
         version: 2.1.1
       pretty-bytes:
-        specifier: ^5.6.0
+        specifier: 5.6.0
         version: 5.6.0
       qs:
-        specifier: ^6.10.1
+        specifier: 6.11.0
         version: 6.11.0
       typedi:
-        specifier: ^0.10.0
+        specifier: 0.10.0
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
-        specifier: ^8.3.2
+        specifier: 8.3.2
         version: 8.3.2
       xml2js:
         specifier: ^0.5.0
@@ -857,8 +857,8 @@ importers:
         specifier: ^10.5.0
         version: 10.5.0(vue@3.3.4)
       axios:
-        specifier: ^0.21.1
-        version: 0.21.4
+        specifier: 0.22.0
+        version: 0.22.0
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -9669,6 +9669,14 @@ packages:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.2)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@0.22.0:
+    resolution: {integrity: sha512-Z0U3uhqQeg1oNcihswf4ZD57O3NrR1+ZXhxaROaWpDmsDTx7T2HNBV2ulBtie2hwJptu8UvgnJoK+BIqdzh/1w==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
