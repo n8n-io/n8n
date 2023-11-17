@@ -421,7 +421,25 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataExecutionRecovered
-	| PushDataWorkerStatusMessage;
+	| PushDataWorkerStatusMessage
+	| PushDataActiveWorkflowAdded
+	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowFailedToActivate;
+
+type PushDataActiveWorkflowAdded = {
+	data: IActiveWorkflowAdded;
+	type: 'workflowActivated';
+};
+
+type PushDataActiveWorkflowRemoved = {
+	data: IActiveWorkflowRemoved;
+	type: 'workflowDeactivated';
+};
+
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
+};
 
 type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
@@ -489,6 +507,19 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionId: string;
 	retryOf?: string;
+}
+
+export interface IActiveWorkflowAdded {
+	workflowId: string;
+}
+
+export interface IActiveWorkflowRemoved {
+	workflowId: string;
+}
+
+export interface IWorkflowFailedToActivate {
+	workflowId: string;
+	errorMessage: string;
 }
 
 export interface IPushDataUnsavedExecutionFinished {

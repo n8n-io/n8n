@@ -80,21 +80,21 @@ export class CacheService extends EventEmitter {
 	 * @param options.refreshTtl Optional ttl for the refreshFunction's set call
 	 * @param options.fallbackValue Optional value returned is cache is not hit and refreshFunction is not provided
 	 */
-	async get(
+	async get<T = unknown>(
 		key: string,
 		options: {
-			fallbackValue?: unknown;
-			refreshFunction?: (key: string) => Promise<unknown>;
+			fallbackValue?: T;
+			refreshFunction?: (key: string) => Promise<T>;
 			refreshTtl?: number;
 		} = {},
-	): Promise<unknown> {
+	): Promise<T | undefined> {
 		if (!key || key.length === 0) {
 			return;
 		}
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
 			this.emit(this.metricsCounterEvents.cacheHit);
-			return value;
+			return value as T;
 		}
 		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunction) {
