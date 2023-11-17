@@ -424,6 +424,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.executeWorkflow();
 		cy.contains('Unrecognized node type').should('be.visible');
 
+		WorkflowPage.actions.deselectAll();
 		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 1`);
 		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 2`);
 
