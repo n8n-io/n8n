@@ -44,28 +44,10 @@ export class ReadWriteFile implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'hidden',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'File',
-						value: 'file',
-					},
-				],
-				default: 'file',
-			},
-			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['file'],
-					},
-				},
 				options: [
 					{
 						name: 'Read File(s) From Disk',

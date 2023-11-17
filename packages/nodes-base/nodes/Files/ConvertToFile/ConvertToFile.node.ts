@@ -44,22 +44,10 @@ export class ConvertToFile implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'hidden',
-				noDataExpression: true,
-				default: 'file',
-			},
-			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['file'],
-					},
-				},
 				options: [
 					{
 						name: 'Convert to CSV',

@@ -59,22 +59,10 @@ export class ExtractFromFile implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'hidden',
-				noDataExpression: true,
-				default: 'file',
-			},
-			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['file'],
-					},
-				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
