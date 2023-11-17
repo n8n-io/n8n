@@ -1,3 +1,16 @@
+## [1.17.1](https://github.com/n8n-io/n8n/compare/n8n@1.17.0...n8n@1.17.1) (2023-11-17)
+
+
+### Bug Fixes
+
+* **core:** Correct permissions for getstatus ([#7724](https://github.com/n8n-io/n8n/issues/7724)) ([422af2e](https://github.com/n8n-io/n8n/commit/422af2ef425a89c1ab9937e8c8440bf993b0b361))
+* **editor:** Make sure LineController is registered with chart.js ([#7730](https://github.com/n8n-io/n8n/issues/7730)) ([7d4f0cc](https://github.com/n8n-io/n8n/commit/7d4f0ccf175dcbd9f01ce66caa3aea6474991a5c))
+* **editor:** Show v1 banner dismiss button if owner ([#7722](https://github.com/n8n-io/n8n/issues/7722)) ([1f6ee4d](https://github.com/n8n-io/n8n/commit/1f6ee4d2a94ba726efa9eea5c8e4a8d1ee1dc675))
+* **GitHub Node:** Fix issue preventing file edits on branches ([#7734](https://github.com/n8n-io/n8n/issues/7734)) ([340fe29](https://github.com/n8n-io/n8n/commit/340fe29267539bf552f0db0f597b3be2e4612a79))
+* **Google Sheets Node:** Check for `null` before destructuring ([#7729](https://github.com/n8n-io/n8n/issues/7729)) ([2507c31](https://github.com/n8n-io/n8n/commit/2507c31d5a0bd98e283ce571c23b476d38a879c3))
+
+
+
 # [1.17.0](https://github.com/n8n-io/n8n/compare/n8n@1.16.0...n8n@1.17.0) (2023-11-15)
 
 
