@@ -1033,19 +1033,19 @@ importers:
         specifier: 1.0.6
         version: 1.0.6
       '@n8n/vm2':
-        specifier: ^3.9.20
+        specifier: 3.9.20
         version: 3.9.20
       amqplib:
-        specifier: ^0.10.3
+        specifier: 0.10.3
         version: 0.10.3
       aws4:
-        specifier: ^1.8.0
+        specifier: 1.11.0
         version: 1.11.0
       basic-auth:
-        specifier: ^2.0.1
+        specifier: 2.0.1
         version: 2.0.1
       change-case:
-        specifier: ^4.1.1
+        specifier: 4.1.2
         version: 4.1.2
       cheerio:
         specifier: 1.0.0-rc.6
@@ -1054,160 +1054,160 @@ importers:
         specifier: 3.5.2
         version: 3.5.2
       cron:
-        specifier: ~1.7.2
+        specifier: 1.7.2
         version: 1.7.2
       csv-parse:
-        specifier: ^5.5.0
+        specifier: 5.5.0
         version: 5.5.0
       currency-codes:
-        specifier: ^2.1.0
+        specifier: 2.1.0
         version: 2.1.0
       eventsource:
-        specifier: ^2.0.2
+        specifier: 2.0.2
         version: 2.0.2
       fast-glob:
-        specifier: ^3.2.5
+        specifier: 3.2.12
         version: 3.2.12
       fflate:
-        specifier: ^0.7.0
+        specifier: 0.7.4
         version: 0.7.4
       get-system-fonts:
-        specifier: ^2.0.2
+        specifier: 2.0.2
         version: 2.0.2
       gm:
-        specifier: ^1.25.0
+        specifier: 1.25.0
         version: 1.25.0
       iconv-lite:
-        specifier: ^0.6.2
+        specifier: 0.6.3
         version: 0.6.3
       ics:
-        specifier: ^2.27.0
+        specifier: 2.40.0
         version: 2.40.0
       imap-simple:
-        specifier: ^4.3.0
+        specifier: 4.3.0
         version: 4.3.0
       isbot:
-        specifier: ^3.6.13
+        specifier: 3.6.13
         version: 3.6.13
       iso-639-1:
-        specifier: ^2.1.3
+        specifier: 2.1.15
         version: 2.1.15
       js-nacl:
-        specifier: ^1.4.0
+        specifier: 1.4.0
         version: 1.4.0
       jsonwebtoken:
         specifier: 9.0.0
         version: 9.0.0
       kafkajs:
-        specifier: ^1.14.0
+        specifier: 1.16.0
         version: 1.16.0
       ldapts:
-        specifier: ^4.2.6
+        specifier: 4.2.6
         version: 4.2.6
       lodash:
-        specifier: ^4.17.21
+        specifier: 4.17.21
         version: 4.17.21
       lossless-json:
-        specifier: ^1.0.4
+        specifier: 1.0.5
         version: 1.0.5
       luxon:
-        specifier: ^3.3.0
+        specifier: 3.3.0
         version: 3.3.0
       mailparser:
-        specifier: ^3.2.0
+        specifier: 3.5.0
         version: 3.5.0
       minifaker:
-        specifier: ^1.34.1
+        specifier: 1.34.1
         version: 1.34.1
       moment:
-        specifier: ~2.29.2
+        specifier: 2.29.4
         version: 2.29.4
       moment-timezone:
-        specifier: ^0.5.28
+        specifier: 0.5.37
         version: 0.5.37
       mongodb:
-        specifier: ^4.17.1
+        specifier: 4.17.1
         version: 4.17.1
       mqtt:
-        specifier: ^5.0.2
+        specifier: 5.0.2
         version: 5.0.2
       mssql:
-        specifier: ^8.1.2
+        specifier: 8.1.4
         version: 8.1.4
       mysql2:
-        specifier: ~2.3.0
+        specifier: 2.3.3
         version: 2.3.3
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
       nanoid:
-        specifier: ^3.3.6
+        specifier: 3.3.6
         version: 3.3.6
       node-html-markdown:
-        specifier: ^1.1.3
+        specifier: 1.2.0
         version: 1.2.0
       node-ssh:
-        specifier: ^12.0.0
+        specifier: 12.0.5
         version: 12.0.5
       nodemailer:
-        specifier: ^6.7.1
+        specifier: 6.8.0
         version: 6.8.0
       otpauth:
-        specifier: ^9.1.1
+        specifier: 9.1.1
         version: 9.1.1
       pdfjs-dist:
-        specifier: ^2.16.105
+        specifier: 2.16.105
         version: 2.16.105
       pg:
-        specifier: ^8.3.0
+        specifier: 8.8.0
         version: 8.8.0
       pg-promise:
-        specifier: ^10.5.8
+        specifier: 10.12.0
         version: 10.12.0
       pretty-bytes:
-        specifier: ^5.6.0
+        specifier: 5.6.0
         version: 5.6.0
       promise-ftp:
-        specifier: ^1.3.5
+        specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
-        specifier: ^0.23.4
+        specifier: 0.23.4
         version: 0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)
       redis:
-        specifier: ^3.1.1
+        specifier: 3.1.2
         version: 3.1.2
       rfc2047:
-        specifier: ^4.0.1
+        specifier: 4.0.1
         version: 4.0.1
       rhea:
-        specifier: ^1.0.11
+        specifier: 1.0.24
         version: 1.0.24
       rss-parser:
-        specifier: ^3.7.0
+        specifier: 3.12.0
         version: 3.12.0
       semver:
         specifier: ^7.5.4
         version: 7.5.4
       showdown:
-        specifier: ^2.0.3
+        specifier: 2.1.0
         version: 2.1.0
       simple-git:
-        specifier: ^3.17.0
+        specifier: 3.17.0
         version: 3.17.0
       snowflake-sdk:
-        specifier: ^1.8.0
+        specifier: 1.8.0
         version: 1.8.0(asn1.js@5.4.1)
       ssh2-sftp-client:
-        specifier: ^7.0.0
+        specifier: 7.2.3
         version: 7.2.3
       tmp-promise:
-        specifier: ^3.0.2
+        specifier: 3.0.3
         version: 3.0.3
       typedi:
-        specifier: ^0.10.0
+        specifier: 0.10.0
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
-        specifier: ^8.3.2
+        specifier: 8.3.2
         version: 8.3.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz
@@ -2136,6 +2136,7 @@ packages:
   /@azure/msal-browser@2.30.0:
     resolution: {integrity: sha512-4Y9+rjJiTFP7KEmuq1btmIrBgk0ImNyKsXj6A6NHZALd1X0M6W7L7kxpH6F+d1tEkMv8bYnZdn7IcauXbL8Llw==}
     engines: {node: '>=0.8.0'}
+    deprecated: A newer major version of this library is available. Please upgrade to the latest available version.
     dependencies:
       '@azure/msal-common': 7.6.0
     dev: false
@@ -2148,6 +2149,7 @@ packages:
   /@azure/msal-node@1.14.2:
     resolution: {integrity: sha512-t3whVhhLdZVVeDEtUPD2Wqfa8BDi3EDMnpWp8dbuRW0GhUpikBfs4AQU0Fe6P9zS87n9LpmUTLrIcPEEuzkvfA==}
     engines: {node: 10 || 12 || 14 || 16 || 18}
+    deprecated: A newer major version of this library is available. Please upgrade to the latest available version.
     dependencies:
       '@azure/msal-common': 7.6.0
       jsonwebtoken: 9.0.0
@@ -18796,7 +18798,7 @@ packages:
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8
-      ws: 8.12.0
+      ws: 8.13.0
     transitivePeerDependencies:
       - bufferutil
       - encoding
