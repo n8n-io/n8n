@@ -40,7 +40,6 @@ module.exports = {
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
 		'@typescript-eslint/no-base-to-string': 'warn',
-		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 	},
 };
