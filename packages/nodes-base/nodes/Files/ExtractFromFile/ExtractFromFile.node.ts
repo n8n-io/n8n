@@ -1,46 +1,13 @@
-import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
-import iconv from 'iconv-lite';
-
-import * as fromFile from '../../SpreadsheetFile/v2/fromFile.operation';
-import { encodeDecodeOptions } from '../../../utils/descriptions';
-import { extractDataFromPDF } from '../../../utils/binary';
-
-const spreadsheetOperations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
-
-const spreadsheetOperationsDescription = fromFile.description
-	.filter((property) => property.name !== 'fileFormat')
-	.map((property) => {
-		const newProperty = { ...property };
-		newProperty.displayOptions = {
-			show: {
-				operation: spreadsheetOperations,
-			},
-		};
-
-		if (newProperty.name === 'options') {
-			newProperty.options = (newProperty.options as INodeProperties[]).map((option) => {
-				let newOption = option;
-				if (['delimiter', 'fromLine', 'maxRowCount', 'enableBOM'].includes(option.name)) {
-					newOption = { ...option, displayOptions: { show: { '/operation': ['csv'] } } };
-				}
-				return newOption;
-			});
-		}
-		return newProperty;
-	});
+import * as spreadsheet from './actions/spreadsheet.operation';
+import * as moveTo from './actions/moveTo.operation';
+import * as pdf from './actions/pdf.operation';
 
 export class ExtractFromFile implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
@@ -118,147 +85,9 @@ export class ExtractFromFile implements INodeType {
 				],
 				default: 'csv',
 			},
-			...spreadsheetOperationsDescription,
-			{
-				displayName: 'File Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				placeholder: 'e.g data',
-				description: 'Name of the binary property from which to extract the data',
-				displayOptions: {
-					show: {
-						operation: ['binaryToPropery', 'fromJson', 'pdf', 'text'],
-					},
-				},
-			},
-			{
-				displayName: 'Destination Key',
-				name: 'destinationKey',
-				type: 'string',
-				default: 'data',
-				required: true,
-				placeholder: 'e.g data',
-				description: 'The name of the JSON key to which extracted data would be written',
-				displayOptions: {
-					show: {
-						operation: ['binaryToPropery', 'fromJson', 'text'],
-					},
-				},
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
-				displayOptions: {
-					show: {
-						operation: ['binaryToPropery', 'fromJson', 'text'],
-					},
-				},
-				options: [
-					{
-						displayName: 'File Encoding',
-						name: 'encoding',
-						type: 'options',
-						options: encodeDecodeOptions,
-						default: 'utf8',
-						description: 'Specify the encoding of the file, defaults to UTF-8',
-					},
-					{
-						displayName: 'Strip BOM',
-						name: 'stripBOM',
-						displayOptions: {
-							show: {
-								encoding: ['utf8', 'cesu8', 'ucs2'],
-							},
-						},
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to strip the BOM from the file,this could help in an environment where the presence of the BOM is causing issues or inconsistencies',
-					},
-					{
-						displayName: 'Keep Source',
-						name: 'keepSource',
-						type: 'options',
-						default: 'json',
-						options: [
-							{
-								name: 'JSON',
-								value: 'json',
-							},
-							{
-								name: 'Binary',
-								value: 'binary',
-							},
-							{
-								name: 'Both',
-								value: 'both',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
-				displayOptions: {
-					show: {
-						operation: ['pdf'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Password',
-						name: 'password',
-						type: 'string',
-						typeOptions: { password: true },
-						default: '',
-						description: 'Prowide password, if the PDF is encrypted',
-					},
-					{
-						displayName: 'Join Pages',
-						name: 'joinPages',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to join the text from all pages or return an array of text from each page',
-					},
-					{
-						displayName: 'Max Pages',
-						name: 'maxPages',
-						type: 'number',
-						default: 0,
-						description: 'Maximum number of pages to include',
-					},
-					{
-						displayName: 'Keep Source',
-						name: 'keepSource',
-						type: 'options',
-						default: 'json',
-						options: [
-							{
-								name: 'JSON',
-								value: 'json',
-							},
-							{
-								name: 'Binary',
-								value: 'binary',
-							},
-							{
-								name: 'Both',
-								value: 'both',
-							},
-						],
-					},
-				],
-			},
+			...spreadsheet.description,
+			...moveTo.description,
+			...pdf.description,
 		],
 	};
 
@@ -267,128 +96,16 @@ export class ExtractFromFile implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
-		if (spreadsheetOperations.includes(operation)) {
-			returnData = await fromFile.execute.call(this, items, operation);
+		if (spreadsheet.operations.includes(operation)) {
+			returnData = await spreadsheet.execute.call(this, items, operation);
 		}
 
 		if (['binaryToPropery', 'fromJson', 'text'].includes(operation)) {
-			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-				try {
-					const item = items[itemIndex];
-					const options = this.getNodeParameter('options', itemIndex);
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						pairedItem: { item: itemIndex },
-					};
-
-					const value = get(item.binary, binaryPropertyName);
-
-					if (!value) continue;
-
-					const encoding = (options.encoding as string) || 'utf8';
-					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
-
-					if (options.keepSource && options.keepSource !== 'binary') {
-						newItem.json = deepCopy(item.json);
-					}
-
-					let convertedValue: string | IDataObject;
-					if (operation !== 'binaryToPropery') {
-						convertedValue = iconv.decode(buffer, encoding, {
-							stripBOM: options.stripBOM as boolean,
-						});
-					} else {
-						convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
-					}
-
-					if (operation === 'fromJson') {
-						convertedValue = jsonParse(convertedValue);
-					}
-
-					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
-					set(newItem.json, destinationKey, convertedValue);
-
-					if (options.keepSource === 'binary' || options.keepSource === 'both') {
-						newItem.binary = item.binary;
-					} else {
-						// this binary data would not be included, but there also might be other binary data
-						// which should be included, copy it over and unset current binary data
-						newItem.binary = deepCopy(item.binary);
-						unset(newItem.binary, binaryPropertyName);
-					}
-
-					returnData.push(newItem);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: error.message,
-							},
-							pairedItem: {
-								item: itemIndex,
-							},
-						});
-						continue;
-					}
-					throw new NodeOperationError(this.getNode(), error, { itemIndex });
-				}
-			}
+			returnData = await moveTo.execute.call(this, items, operation);
 		}
 
 		if (operation === 'pdf') {
-			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-				try {
-					const item = items[itemIndex];
-					const options = this.getNodeParameter('options', itemIndex);
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
-
-					const json = await extractDataFromPDF.call(
-						this,
-						binaryPropertyName,
-						options.password as string,
-						options.maxPages as number,
-						options.joinPages as boolean,
-						itemIndex,
-					);
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						pairedItem: { item: itemIndex },
-					};
-
-					if (options.keepSource && options.keepSource !== 'binary') {
-						newItem.json = { ...deepCopy(item.json), ...json };
-					} else {
-						newItem.json = json;
-					}
-
-					if (options.keepSource === 'binary' || options.keepSource === 'both') {
-						newItem.binary = item.binary;
-					} else {
-						// this binary data would not be included, but there also might be other binary data
-						// which should be included, copy it over and unset current binary data
-						newItem.binary = deepCopy(item.binary);
-						unset(newItem.binary, binaryPropertyName);
-					}
-
-					returnData.push(newItem);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: error.message,
-							},
-							pairedItem: {
-								item: itemIndex,
-							},
-						});
-						continue;
-					}
-					throw new NodeOperationError(this.getNode(), error, { itemIndex });
-				}
-			}
+			returnData = await pdf.execute.call(this, items);
 		}
 
 		return [returnData];
