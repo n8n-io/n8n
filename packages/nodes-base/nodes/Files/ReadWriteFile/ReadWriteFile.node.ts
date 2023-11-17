@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type { Readable } from 'stream';
 import glob from 'fast-glob';
@@ -177,7 +177,7 @@ export class ReadWriteFile implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: {
-								error: (error as Error).message,
+								error: error.message,
 							},
 							pairedItem: {
 								item: itemIndex,
@@ -185,7 +185,7 @@ export class ReadWriteFile implements INodeType {
 						});
 						continue;
 					}
-					throw error;
+					throw new NodeOperationError(this.getNode(), error, { itemIndex });
 				}
 			}
 		}
@@ -237,7 +237,7 @@ export class ReadWriteFile implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: {
-								error: (error as Error).message,
+								error: error.message,
 							},
 							pairedItem: {
 								item: itemIndex,
@@ -245,7 +245,7 @@ export class ReadWriteFile implements INodeType {
 						});
 						continue;
 					}
-					throw error;
+					throw new NodeOperationError(this.getNode(), error, { itemIndex });
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 import {
+	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -301,7 +302,7 @@ export class ConvertToFile implements INodeType {
 						pairedItem,
 					});
 				} else {
-					throw error;
+					throw new NodeOperationError(this.getNode(), error);
 				}
 			}
 		}
@@ -309,42 +310,105 @@ export class ConvertToFile implements INodeType {
 		if (operation === 'toJson') {
 			const mode = this.getNodeParameter('mode', 0, 'once') as string;
 			if (mode === 'once') {
-				const options = this.getNodeParameter('options', 0, {});
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
 				const pairedItem = generatePairedItemData(items.length);
+				try {
+					const options = this.getNodeParameter('options', 0, {});
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
 
-				const binaryData = await createBinaryFromJson.call(
-					this,
-					items.map((item) => item.json),
-					{
-						fileName: options.fileName as string,
-						mimeType: 'application/json',
-						encoding: options.encoding as string,
-						addBOM: options.addBOM as boolean,
-					},
-				);
+					const binaryData = await createBinaryFromJson.call(
+						this,
+						items.map((item) => item.json),
+						{
+							fileName: options.fileName as string,
+							mimeType: 'application/json',
+							encoding: options.encoding as string,
+							addBOM: options.addBOM as boolean,
+						},
+					);
 
-				const newItem: INodeExecutionData = {
-					json: {},
-					binary: {
-						[binaryPropertyName]: binaryData,
-					},
-					pairedItem,
-				};
+					const newItem: INodeExecutionData = {
+						json: {},
+						binary: {
+							[binaryPropertyName]: binaryData,
+						},
+						pairedItem,
+					};
 
-				returnData = [newItem];
+					returnData = [newItem];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem,
+						});
+					}
+					throw new NodeOperationError(this.getNode(), error);
+				}
 			} else {
 				for (let i = 0; i < items.length; i++) {
+					try {
+						const options = this.getNodeParameter('options', i, {});
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+
+						const binaryData = await createBinaryFromJson.call(this, items[i].json, {
+							fileName: options.fileName as string,
+							encoding: options.encoding as string,
+							addBOM: options.addBOM as boolean,
+							mimeType: 'application/json',
+							itemIndex: i,
+						});
+
+						const newItem: INodeExecutionData = {
+							json: {},
+							binary: {
+								[binaryPropertyName]: binaryData,
+							},
+							pairedItem: { item: i },
+						};
+
+						returnData.push(newItem);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									error: error.message,
+								},
+								pairedItem: {
+									item: i,
+								},
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+					}
+				}
+			}
+		}
+
+		if (operation === 'moveValueToBinary') {
+			for (let i = 0; i < items.length; i++) {
+				try {
 					const options = this.getNodeParameter('options', i, {});
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+					const sourceProperty = this.getNodeParameter('sourceProperty', i) as string;
 
-					const binaryData = await createBinaryFromJson.call(this, items[i].json, {
+					const jsonToBinaryOptions: JsonToBinaryOptions = {
+						sourceKey: sourceProperty,
 						fileName: options.fileName as string,
+						mimeType: options.mimeType as string,
+						dataIsBase64: options.dataIsBase64 !== false,
 						encoding: options.encoding as string,
 						addBOM: options.addBOM as boolean,
-						mimeType: 'application/json',
 						itemIndex: i,
-					});
+					};
+
+					const binaryData = await createBinaryFromJson.call(
+						this,
+						items[i].json,
+						jsonToBinaryOptions,
+					);
 
 					const newItem: INodeExecutionData = {
 						json: {},
@@ -355,41 +419,20 @@ export class ConvertToFile implements INodeType {
 					};
 
 					returnData.push(newItem);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+						continue;
+					}
+					throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 				}
-			}
-		}
-
-		if (operation === 'moveValueToBinary') {
-			for (let i = 0; i < items.length; i++) {
-				const options = this.getNodeParameter('options', i, {});
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-				const sourceProperty = this.getNodeParameter('sourceProperty', i) as string;
-
-				const jsonToBinaryOptions: JsonToBinaryOptions = {
-					sourceKey: sourceProperty,
-					fileName: options.fileName as string,
-					mimeType: options.mimeType as string,
-					dataIsBase64: options.dataIsBase64 !== false,
-					encoding: options.encoding as string,
-					addBOM: options.addBOM as boolean,
-					itemIndex: i,
-				};
-
-				const binaryData = await createBinaryFromJson.call(
-					this,
-					items[i].json,
-					jsonToBinaryOptions,
-				);
-
-				const newItem: INodeExecutionData = {
-					json: {},
-					binary: {
-						[binaryPropertyName]: binaryData,
-					},
-					pairedItem: { item: i },
-				};
-
-				returnData.push(newItem);
 			}
 		}
 

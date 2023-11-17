@@ -160,12 +160,12 @@ export class ExtractFromFile implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Encoding',
+						displayName: 'File Encoding',
 						name: 'encoding',
 						type: 'options',
 						options: encodeDecodeOptions,
 						default: 'utf8',
-						description: 'Set the encoding of the data stream',
+						description: 'Specify the encoding of the file, defaults to UTF-8',
 					},
 					{
 						displayName: 'Strip BOM',
@@ -177,6 +177,8 @@ export class ExtractFromFile implements INodeType {
 						},
 						type: 'boolean',
 						default: true,
+						description:
+							'Whether to strip the BOM from the file,this could help in an environment where the presence of the BOM is causing issues or inconsistencies',
 					},
 					{
 						displayName: 'Keep Source',
@@ -271,52 +273,67 @@ export class ExtractFromFile implements INodeType {
 
 		if (['binaryToPropery', 'fromJson', 'text'].includes(operation)) {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-				const item = items[itemIndex];
-				const options = this.getNodeParameter('options', itemIndex);
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
+				try {
+					const item = items[itemIndex];
+					const options = this.getNodeParameter('options', itemIndex);
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 
-				const newItem: INodeExecutionData = {
-					json: {},
-					pairedItem: { item: itemIndex },
-				};
+					const newItem: INodeExecutionData = {
+						json: {},
+						pairedItem: { item: itemIndex },
+					};
 
-				const value = get(item.binary, binaryPropertyName);
+					const value = get(item.binary, binaryPropertyName);
 
-				if (!value) continue;
+					if (!value) continue;
 
-				const encoding = (options.encoding as string) || 'utf8';
-				const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+					const encoding = (options.encoding as string) || 'utf8';
+					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
-				if (options.keepSource && options.keepSource !== 'binary') {
-					newItem.json = deepCopy(item.json);
+					if (options.keepSource && options.keepSource !== 'binary') {
+						newItem.json = deepCopy(item.json);
+					}
+
+					let convertedValue: string | IDataObject;
+					if (operation !== 'binaryToPropery') {
+						convertedValue = iconv.decode(buffer, encoding, {
+							stripBOM: options.stripBOM as boolean,
+						});
+					} else {
+						convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
+					}
+
+					if (operation === 'fromJson') {
+						convertedValue = jsonParse(convertedValue);
+					}
+
+					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
+					set(newItem.json, destinationKey, convertedValue);
+
+					if (options.keepSource === 'binary' || options.keepSource === 'both') {
+						newItem.binary = item.binary;
+					} else {
+						// this binary data would not be included, but there also might be other binary data
+						// which should be included, copy it over and unset current binary data
+						newItem.binary = deepCopy(item.binary);
+						unset(newItem.binary, binaryPropertyName);
+					}
+
+					returnData.push(newItem);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+						continue;
+					}
+					throw new NodeOperationError(this.getNode(), error, { itemIndex });
 				}
-
-				let convertedValue: string | IDataObject;
-				if (operation !== 'binaryToPropery') {
-					convertedValue = iconv.decode(buffer, encoding, {
-						stripBOM: options.stripBOM as boolean,
-					});
-				} else {
-					convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
-				}
-
-				if (operation === 'fromJson') {
-					convertedValue = jsonParse(convertedValue);
-				}
-
-				const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
-				set(newItem.json, destinationKey, convertedValue);
-
-				if (options.keepSource === 'binary' || options.keepSource === 'both') {
-					newItem.binary = item.binary;
-				} else {
-					// this binary data would not be included, but there also might be other binary data
-					// which should be included, copy it over and unset current binary data
-					newItem.binary = deepCopy(item.binary);
-					unset(newItem.binary, binaryPropertyName);
-				}
-
-				returnData.push(newItem);
 			}
 		}
 

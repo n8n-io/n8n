@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeProperties,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -265,69 +266,85 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const title = this.getNodeParameter('title', i) as string;
-		const allDay = this.getNodeParameter('allDay', i) as boolean;
+		try {
+			const title = this.getNodeParameter('title', i) as string;
+			const allDay = this.getNodeParameter('allDay', i) as boolean;
 
-		const start = this.getNodeParameter('start', i) as string;
-		let end = this.getNodeParameter('end', i) as string;
-		end = allDay ? moment(end).utc().add(1, 'day').format() : end;
+			const start = this.getNodeParameter('start', i) as string;
+			let end = this.getNodeParameter('end', i) as string;
+			end = allDay ? moment(end).utc().add(1, 'day').format() : end;
 
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-		const additionalFields = this.getNodeParameter('additionalFields', i);
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+			const additionalFields = this.getNodeParameter('additionalFields', i);
 
-		let fileName = 'event.ics';
+			let fileName = 'event.ics';
 
-		const eventStart = moment(start)
-			.toArray()
-			.splice(0, allDay ? 3 : 6) as ics.DateArray;
-		eventStart[1]++;
+			const eventStart = moment(start)
+				.toArray()
+				.splice(0, allDay ? 3 : 6) as ics.DateArray;
+			eventStart[1]++;
 
-		const eventEnd = moment(end)
-			.toArray()
-			.splice(0, allDay ? 3 : 6) as ics.DateArray;
-		eventEnd[1]++;
+			const eventEnd = moment(end)
+				.toArray()
+				.splice(0, allDay ? 3 : 6) as ics.DateArray;
+			eventEnd[1]++;
 
-		if (additionalFields.fileName) {
-			fileName = additionalFields.fileName as string;
+			if (additionalFields.fileName) {
+				fileName = additionalFields.fileName as string;
+			}
+
+			const data: ics.EventAttributes = {
+				title,
+				start: eventStart,
+				end: eventEnd,
+				startInputType: 'utc',
+				endInputType: 'utc',
+			};
+
+			if (additionalFields.geolocationUi) {
+				data.geo = (additionalFields.geolocationUi as IDataObject)
+					.geolocationValues as ics.GeoCoordinates;
+				delete additionalFields.geolocationUi;
+			}
+
+			if (additionalFields.organizerUi) {
+				data.organizer = (additionalFields.organizerUi as IDataObject)
+					.organizerValues as ics.Person;
+				delete additionalFields.organizerUi;
+			}
+
+			if (additionalFields.attendeesUi) {
+				data.attendees = (additionalFields.attendeesUi as IDataObject)
+					.attendeeValues as ics.Attendee[];
+				delete additionalFields.attendeesUi;
+			}
+
+			Object.assign(data, additionalFields);
+			const buffer = Buffer.from((await createEvent(data)) as string);
+			const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, 'text/calendar');
+			returnData.push({
+				json: {},
+				binary: {
+					[binaryPropertyName]: binaryData,
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({
+					json: {
+						error: error.message,
+					},
+					pairedItem: {
+						item: i,
+					},
+				});
+				continue;
+			}
+			throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 		}
-
-		const data: ics.EventAttributes = {
-			title,
-			start: eventStart,
-			end: eventEnd,
-			startInputType: 'utc',
-			endInputType: 'utc',
-		};
-
-		if (additionalFields.geolocationUi) {
-			data.geo = (additionalFields.geolocationUi as IDataObject)
-				.geolocationValues as ics.GeoCoordinates;
-			delete additionalFields.geolocationUi;
-		}
-
-		if (additionalFields.organizerUi) {
-			data.organizer = (additionalFields.organizerUi as IDataObject).organizerValues as ics.Person;
-			delete additionalFields.organizerUi;
-		}
-
-		if (additionalFields.attendeesUi) {
-			data.attendees = (additionalFields.attendeesUi as IDataObject)
-				.attendeeValues as ics.Attendee[];
-			delete additionalFields.attendeesUi;
-		}
-
-		Object.assign(data, additionalFields);
-		const buffer = Buffer.from((await createEvent(data)) as string);
-		const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, 'text/calendar');
-		returnData.push({
-			json: {},
-			binary: {
-				[binaryPropertyName]: binaryData,
-			},
-			pairedItem: {
-				item: i,
-			},
-		});
 	}
 
 	return returnData;
