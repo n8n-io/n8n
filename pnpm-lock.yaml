@@ -200,151 +200,151 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n_io/license-sdk':
-        specifier: ~2.7.1
+        specifier: 2.7.2
         version: 2.7.2
       '@oclif/command':
-        specifier: ^1.8.16
+        specifier: 1.8.18
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
       '@oclif/config':
-        specifier: ^1.18.17
+        specifier: 1.18.17
         version: 1.18.17
       '@oclif/core':
-        specifier: ^1.16.4
+        specifier: 1.16.6
         version: 1.16.6
       '@oclif/errors':
-        specifier: ^1.3.6
+        specifier: 1.3.6
         version: 1.3.6
       '@rudderstack/rudder-sdk-node':
         specifier: 1.0.6
         version: 1.0.6
       '@sentry/integrations':
-        specifier: ^7.28.1
+        specifier: 7.28.1
         version: 7.28.1
       '@sentry/node':
-        specifier: ^7.28.1
+        specifier: 7.28.1
         version: 7.28.1
       axios:
         specifier: 0.22.0
         version: 0.22.0
       basic-auth:
-        specifier: ^2.0.1
+        specifier: 2.0.1
         version: 2.0.1
       bcryptjs:
-        specifier: ^2.4.3
+        specifier: 2.4.3
         version: 2.4.3
       bull:
-        specifier: ^4.10.2
+        specifier: 4.10.2
         version: 4.10.2
       cache-manager:
-        specifier: ^5.2.3
+        specifier: 5.2.3
         version: 5.2.3
       cache-manager-ioredis-yet:
-        specifier: ^1.2.2
+        specifier: 1.2.2
         version: 1.2.2
       callsites:
-        specifier: ^3.1.0
+        specifier: 3.1.0
         version: 3.1.0
       change-case:
-        specifier: ^4.1.1
+        specifier: 4.1.2
         version: 4.1.2
       class-transformer:
-        specifier: ^0.5.1
+        specifier: 0.5.1
         version: 0.5.1
       class-validator:
-        specifier: ^0.14.0
+        specifier: 0.14.0
         version: 0.14.0
       compression:
-        specifier: ^1.7.4
+        specifier: 1.7.4
         version: 1.7.4
       connect-history-api-fallback:
-        specifier: ^1.6.0
+        specifier: 1.6.0
         version: 1.6.0
       convict:
-        specifier: ^6.2.4
+        specifier: 6.2.4
         version: 6.2.4
       cookie-parser:
-        specifier: ^1.4.6
+        specifier: 1.4.6
         version: 1.4.6
       csrf:
-        specifier: ^3.1.0
+        specifier: 3.1.0
         version: 3.1.0
       curlconverter:
         specifier: 3.21.0
         version: 3.21.0(chokidar@3.5.2)
       dotenv:
-        specifier: ^8.0.0
+        specifier: 8.6.0
         version: 8.6.0
       express:
-        specifier: ^4.18.2
+        specifier: 4.18.2
         version: 4.18.2
       express-async-errors:
-        specifier: ^3.1.1
+        specifier: 3.1.1
         version: 3.1.1(express@4.18.2)
       express-handlebars:
-        specifier: ^7.0.2
+        specifier: 7.0.2
         version: 7.0.2
       express-openapi-validator:
-        specifier: ^4.13.6
+        specifier: 4.13.8
         version: 4.13.8
       express-prom-bundle:
-        specifier: ^6.6.0
+        specifier: 6.6.0
         version: 6.6.0(prom-client@13.2.0)
       express-rate-limit:
-        specifier: ^7.1.3
+        specifier: 7.1.3
         version: 7.1.3(express@4.18.2)
       fast-glob:
-        specifier: ^3.2.5
+        specifier: 3.2.12
         version: 3.2.12
       flatted:
-        specifier: ^3.2.4
+        specifier: 3.2.7
         version: 3.2.7
       formidable:
-        specifier: ^3.5.0
+        specifier: 3.5.0
         version: 3.5.0
       google-timezones-json:
-        specifier: ^1.1.0
+        specifier: 1.1.0
         version: 1.1.0
       handlebars:
         specifier: 4.7.7
         version: 4.7.7
       infisical-node:
-        specifier: ^1.3.0
+        specifier: 1.3.0
         version: 1.3.0
       inquirer:
-        specifier: ^7.0.1
+        specifier: 7.3.3
         version: 7.3.3
       ioredis:
-        specifier: ^5.2.4
+        specifier: 5.2.4
         version: 5.2.4
       isbot:
-        specifier: ^3.6.13
+        specifier: 3.6.13
         version: 3.6.13
       json-diff:
-        specifier: ^1.0.6
+        specifier: 1.0.6
         version: 1.0.6
       jsonschema:
-        specifier: ^1.4.1
+        specifier: 1.4.1
         version: 1.4.1
       jsonwebtoken:
         specifier: 9.0.0
         version: 9.0.0
       jwks-rsa:
-        specifier: ^3.0.1
+        specifier: 3.0.1
         version: 3.0.1
       ldapts:
-        specifier: ^4.2.6
+        specifier: 4.2.6
         version: 4.2.6
       localtunnel:
-        specifier: ^2.0.0
+        specifier: 2.0.2
         version: 2.0.2
       lodash:
-        specifier: ^4.17.21
+        specifier: 4.17.21
         version: 4.17.21
       luxon:
-        specifier: ^3.3.0
+        specifier: 3.3.0
         version: 3.3.0
       mysql2:
-        specifier: ~2.3.3
+        specifier: 2.3.3
         version: 2.3.3
       n8n-core:
         specifier: workspace:*
@@ -359,121 +359,121 @@ importers:
         specifier: workspace:*
         version: link:../workflow
       nanoid:
-        specifier: ^3.3.6
+        specifier: 3.3.6
         version: 3.3.6
       nodemailer:
-        specifier: ^6.7.1
+        specifier: 6.8.0
         version: 6.8.0
       oauth-1.0a:
-        specifier: ^2.2.6
+        specifier: 2.2.6
         version: 2.2.6
       open:
-        specifier: ^7.0.0
+        specifier: 7.4.2
         version: 7.4.2
       openapi-types:
-        specifier: ^10.0.0
+        specifier: 10.0.0
         version: 10.0.0
       otpauth:
-        specifier: ^9.1.1
+        specifier: 9.1.1
         version: 9.1.1
       p-cancelable:
-        specifier: ^2.0.0
+        specifier: 2.1.1
         version: 2.1.1
       p-lazy:
-        specifier: ^3.1.0
+        specifier: 3.1.0
         version: 3.1.0
       passport:
-        specifier: ^0.6.0
+        specifier: 0.6.0
         version: 0.6.0
       passport-cookie:
-        specifier: ^1.0.9
+        specifier: 1.0.9
         version: 1.0.9
       passport-jwt:
-        specifier: ^4.0.0
+        specifier: 4.0.0
         version: 4.0.0
       pg:
-        specifier: ^8.8.0
+        specifier: 8.8.0
         version: 8.8.0
       picocolors:
-        specifier: ^1.0.0
+        specifier: 1.0.0
         version: 1.0.0
       pkce-challenge:
-        specifier: ^3.0.0
+        specifier: 3.0.0
         version: 3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki)
       posthog-node:
-        specifier: ^2.2.2
+        specifier: 2.2.2
         version: 2.2.2
       prom-client:
-        specifier: ^13.1.0
+        specifier: 13.2.0
         version: 13.2.0
       psl:
-        specifier: ^1.8.0
+        specifier: 1.9.0
         version: 1.9.0
       raw-body:
-        specifier: ^2.5.1
+        specifier: 2.5.1
         version: 2.5.1
       reflect-metadata:
-        specifier: ^0.1.13
+        specifier: 0.1.13
         version: 0.1.13
       replacestream:
-        specifier: ^4.0.3
+        specifier: 4.0.3
         version: 4.0.3
       samlify:
-        specifier: ^2.8.9
+        specifier: 2.8.9
         version: 2.8.9
       semver:
         specifier: ^7.5.4
         version: 7.5.4
       shelljs:
-        specifier: ^0.8.5
+        specifier: 0.8.5
         version: 0.8.5
       simple-git:
-        specifier: ^3.17.0
+        specifier: 3.17.0
         version: 3.17.0
       source-map-support:
-        specifier: ^0.5.21
+        specifier: 0.5.21
         version: 0.5.21
       sqlite3:
-        specifier: ^5.1.6
+        specifier: 5.1.6
         version: 5.1.6
       sse-channel:
-        specifier: ^4.0.0
+        specifier: 4.0.0
         version: 4.0.0
       sshpk:
-        specifier: ^1.17.0
+        specifier: 1.17.0
         version: 1.17.0
       swagger-ui-express:
-        specifier: ^4.3.0
+        specifier: 4.5.0
         version: 4.5.0(express@4.18.2)
       syslog-client:
-        specifier: ^1.1.1
+        specifier: 1.1.1
         version: 1.1.1
       typedi:
-        specifier: ^0.10.0
+        specifier: 0.10.0
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
-        specifier: ^0.3.17
+        specifier: 0.3.17
         version: 0.3.17(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
       uuid:
-        specifier: ^8.3.2
+        specifier: 8.3.2
         version: 8.3.2
       validator:
         specifier: 13.7.0
         version: 13.7.0
       winston:
-        specifier: ^3.3.3
+        specifier: 3.8.2
         version: 3.8.2
       ws:
-        specifier: ^8.12.0
+        specifier: 8.12.0
         version: 8.12.0
       xml2js:
         specifier: ^0.5.0
         version: 0.5.0
       xmllint-wasm:
-        specifier: ^3.0.1
+        specifier: 3.0.1
         version: 3.0.1
       yamljs:
-        specifier: ^0.3.0
+        specifier: 0.3.0
         version: 0.3.0
     devDependencies:
       '@apidevtools/swagger-cli':
@@ -857,8 +857,8 @@ importers:
         specifier: ^10.5.0
         version: 10.5.0(vue@3.3.4)
       axios:
-        specifier: 0.22.0
-        version: 0.22.0
+        specifier: ^0.21.1
+        version: 0.21.4
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -4712,13 +4712,14 @@ packages:
   /@oclif/command@1.8.18(@oclif/config@1.18.17):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@oclif/config': ^1
     dependencies:
       '@oclif/config': 1.18.17
       '@oclif/errors': 1.3.6
       '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
       semver: 7.5.4
     transitivePeerDependencies:
@@ -4728,13 +4729,14 @@ packages:
   /@oclif/command@1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@oclif/config': ^1
     dependencies:
       '@oclif/config': 1.18.17
       '@oclif/errors': 1.3.6
       '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
       semver: 7.5.4
     transitivePeerDependencies:
@@ -4743,13 +4745,14 @@ packages:
   /@oclif/command@1.8.18(@oclif/config@1.18.2):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@oclif/config': ^1
     dependencies:
       '@oclif/config': 1.18.2
       '@oclif/errors': 1.3.6
       '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
       semver: 7.5.4
     transitivePeerDependencies:
@@ -4776,7 +4779,7 @@ packages:
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       '@oclif/errors': 1.3.6
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
       globby: 11.1.0
       is-wsl: 2.2.0
@@ -4791,7 +4794,7 @@ packages:
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       '@oclif/errors': 1.3.6
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
       globby: 11.1.0
       is-wsl: 2.2.0
@@ -4858,6 +4861,7 @@ packages:
   /@oclif/errors@1.3.5:
     resolution: {integrity: sha512-OivucXPH/eLLlOT7FkCMoZXiaVYf8I/w1eTAM1+gKzfhALwWTusxEx7wBmW0uzvkSg/9ovWLycPaBgJbM3LOCQ==}
     engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       clean-stack: 3.0.1
       fs-extra: 8.1.0
@@ -4869,6 +4873,7 @@ packages:
   /@oclif/errors@1.3.6:
     resolution: {integrity: sha512-fYaU4aDceETd89KXP+3cLyg9EHZsLD3RxF2IU9yxahhBpspWjkWi3Dy3bTgcwZ3V47BgxQaGapzJWDM33XIVDQ==}
     engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       clean-stack: 3.0.1
       fs-extra: 8.1.0
@@ -4879,6 +4884,7 @@ packages:
   /@oclif/help@1.0.3(supports-color@8.1.1):
     resolution: {integrity: sha512-AjjhSWFQkRb9rChEH+IRUmp0CxEacYpUbh+kQqtdCR9CDSsj2a3ibWjtMtJb4lFGAle6kVKfaal/juYe+6P5TQ==}
     engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       '@oclif/config': 1.18.5(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
@@ -4899,15 +4905,6 @@ packages:
     resolution: {integrity: sha512-l04iSd0xoh/16TGVpXb81Gg3z7tlQGrEup16BrVLsZBK6SEYpYHRJZnM32BwZrHI97ZSFfuSwVlzoo6HdsaK8A==}
     engines: {node: '>=8.0.0'}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
-    dependencies:
-      '@oclif/errors': 1.3.6
-      '@oclif/linewrap': 1.0.0
-      chalk: 4.1.2
-      tslib: 2.6.1
-
-  /@oclif/parser@3.8.8:
-    resolution: {integrity: sha512-OgqQAtpyq1XFJG3dvLl9aqiO+F5pubkzt7AivUDkNoa6/hNgVZ79vvTO8sqo5XAAhOm/fcTSerZ35OTnTJb1ng==}
-    engines: {node: '>=8.0.0'}
     dependencies:
       '@oclif/errors': 1.3.6
       '@oclif/linewrap': 1.0.0
@@ -4941,6 +4938,7 @@ packages:
   /@oclif/screen@3.0.2:
     resolution: {integrity: sha512-S/SF/XYJeevwIgHFmVDAFRUvM3m+OjhvCAYMk78ZJQCYCQ5wS7j+LTt1ZEv2jpEEGg2tx/F6TYYWxddNAYHrFQ==}
     engines: {node: '>=12.0.0'}
+    deprecated: Deprecated in favor of @oclif/core
     dev: false
 
   /@one-ini/wasm@0.1.1:
@@ -6938,7 +6936,7 @@ packages:
       util: 0.12.5
       util-deprecate: 1.0.2
       watchpack: 2.4.0
-      ws: 8.13.0
+      ws: 8.12.0
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -7743,7 +7741,7 @@ packages:
   /@types/ioredis-mock@8.2.2:
     resolution: {integrity: sha512-bnbPHOjxy4TUDjRh61MMoK2QvDNZqrMDXJYrEDZP/HPFvBubR24CQ0DBi5lgWhLxG4lvVsXPRDXtZ03+JgonoQ==}
     dependencies:
-      ioredis: 5.3.2
+      ioredis: 5.2.4
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -11077,10 +11075,6 @@ packages:
     resolution: {integrity: sha512-mCxBlsHFYh9C+HVpiEacem8FEBnMXgU9gy4zmNC+SXAZNB/1idgp/aulFJ4FgCi7GPEVbfyng092GqL2k2rmow==}
     dev: false
 
-  /crypto-js@4.1.1:
-    resolution: {integrity: sha512-o2JlM7ydqd3Qk9CA0L4NL6mTzU2sdx96a+oOfPu8Mkl/PK51vSyoi8/rQ8NknZtk44vq15lmhAj9CIAGwgeWKw==}
-    dev: false
-
   /crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
     dev: false
@@ -11356,6 +11350,7 @@ packages:
 
   /debuglog@1.0.1:
     resolution: {integrity: sha512-syBZ+rnAK3EgMsH2aYEOLUW7mZSY9Gb+0wUMCFsZvcmiz+HigA0LOcq/HoQqVuGG+EKykunc7QG2bzrponfaSw==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dev: false
 
   /decamelize@1.2.0:
@@ -11704,11 +11699,6 @@ packages:
     resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
     engines: {node: '>=12'}
     dev: true
-
-  /dotenv@16.0.3:
-    resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
-    engines: {node: '>=12'}
-    dev: false
 
   /dotenv@16.3.1:
     resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
@@ -12750,7 +12740,7 @@ packages:
     resolution: {integrity: sha512-W7QuI8i4jjxGNqZJebXzugHuJV32uGTMWqSzqTKsgBTPVsWR3oYR2b9VNQ53vmWbUH1G8r/9GIO3WCqa1Myf1w==}
     engines: {node: '>=v16'}
     dependencies:
-      glob: 9.3.1
+      glob: 9.3.2
       graceful-fs: 4.2.10
       handlebars: 4.7.7
     dev: false
@@ -13717,16 +13707,6 @@ packages:
       minimatch: 5.1.5
       once: 1.4.0
 
-  /glob@9.3.1:
-    resolution: {integrity: sha512-qERvJb7IGsnkx6YYmaaGvDpf77c951hICMdWaFXyH3PlVob8sbPJJyJX0kWkiCWyXUzoy9UOTNjGg0RbD8bYIw==}
-    engines: {node: '>=16 || 14 >=14.17'}
-    dependencies:
-      fs.realpath: 1.0.0
-      minimatch: 7.4.2
-      minipass: 4.2.5
-      path-scurry: 1.6.2
-    dev: false
-
   /glob@9.3.2:
     resolution: {integrity: sha512-BTv/JhKXFEHsErMte/AnfiSv8yYOLLiyH2lTg8vn02O21zWFgHPTfxtgn1QRe7NRgggUhC8hacR2Re94svHqeA==}
     engines: {node: '>=16 || 14 >=14.17'}
@@ -13735,7 +13715,6 @@ packages:
       minimatch: 7.4.2
       minipass: 4.2.5
       path-scurry: 1.10.1
-    dev: true
 
   /global-dirs@3.0.0:
     resolution: {integrity: sha512-v8ho2DS5RiCjftj1nD9NmnfaOzTdud7RRnVd9kFNOjqZbISlx5DQ+OrTkywgd0dIt7oFCvKetZSHoHcP3sDdiA==}
@@ -14344,7 +14323,7 @@ packages:
     resolution: {integrity: sha512-tTnnExRAO/ZyqiRdnSlBisErNToYWgtunMWh+8opClEt5qjX7l6HC/b4oGo2AuR2Pf41IR+oqo+dzkM1TCvlUA==}
     dependencies:
       axios: 1.4.0
-      dotenv: 16.0.3
+      dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
     transitivePeerDependencies:
@@ -14481,6 +14460,7 @@ packages:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
+    dev: false
 
   /ip@1.1.8:
     resolution: {integrity: sha512-PuExPYUiu6qMBQb4l06ecm6T6ujzhmh+MeJcW9wa89PoAz5pvd4zPgN5WJV104mb6S2T1AwNIAaB70JNrLQWhg==}
@@ -15673,7 +15653,7 @@ packages:
       whatwg-encoding: 2.0.0
       whatwg-mimetype: 3.0.0
       whatwg-url: 11.0.0
-      ws: 8.13.0
+      ws: 8.12.0
       xml-name-validator: 4.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -15764,6 +15744,7 @@ packages:
   /json-schema-ref-parser@9.0.9:
     resolution: {integrity: sha512-qcP2lmGy+JUoQJ4DOQeLaZDqH9qSkeGCK3suKWxJXS82dg728Mn3j97azDMaOUmJAN4uCq91LdPx4K7E8F1a7Q==}
     engines: {node: '>=10'}
+    deprecated: Please switch to @apidevtools/json-schema-ref-parser
     dependencies:
       '@apidevtools/json-schema-ref-parser': 9.0.9
     dev: false
@@ -16855,7 +16836,6 @@ packages:
   /minipass@7.0.2:
     resolution: {integrity: sha512-eL79dXrE1q9dBbDCLg7xfn/vl7MS4F1gvJAgjJrQli/jbQWdUttuVawphqpffoIYfRdq78LHx6GP4bU/EQ2ATA==}
     engines: {node: '>=16 || 14 >=14.17'}
-    dev: true
 
   /minizlib@2.1.2:
     resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
@@ -18068,15 +18048,6 @@ packages:
     dependencies:
       lru-cache: 9.1.2
       minipass: 7.0.2
-    dev: true
-
-  /path-scurry@1.6.2:
-    resolution: {integrity: sha512-J6MQNh56h6eHFY3vsQ+Lq+zKPwn71POieutmVt2leU8W+zz8HVIdJyn3I3Zs6IKbIQtuKXirVjTBFNBcbFO44Q==}
-    engines: {node: '>=16 || 14 >=14.17'}
-    dependencies:
-      lru-cache: 7.18.3
-      minipass: 4.2.5
-    dev: false
 
   /path-to-regexp@0.1.7:
     resolution: {integrity: sha512-5DFkuoqlv1uYQKxy8omFBeJPQcdoE07Kv2sferDCrAq1ohOU+MSDswDIbnx3YAM60qIOnYa53wBhXW0EbMonrQ==}
@@ -18279,7 +18250,7 @@ packages:
   /pkce-challenge@3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki):
     resolution: {integrity: sha512-sQ8sJJJuLhA5pFnoxayMCrFnBMNj7DDpa+TWxOXl4B24oXHlVSADi/3Bowm66QuzWkBuF6DhmaelCdlC2JKwsg==}
     dependencies:
-      crypto-js: 4.1.1
+      crypto-js: 4.2.0
     dev: false
     patched: true
 
@@ -18798,7 +18769,7 @@ packages:
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8
-      ws: 8.13.0
+      ws: 8.12.0
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -22704,6 +22675,7 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+    dev: false
 
   /xml-crypto@3.0.1:
     resolution: {integrity: sha512-7XrwB3ujd95KCO6+u9fidb8ajvRJvIfGNWD0XLJoTWlBKz+tFpUzEYxsN+Il/6/gHtEs1RgRh2RH+TzhcWBZUw==}
