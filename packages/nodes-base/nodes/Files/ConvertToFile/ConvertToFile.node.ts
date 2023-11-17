@@ -1,35 +1,17 @@
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
-import type {
-	JsonToSpreadsheetBinaryOptions,
-	JsonToSpreadsheetBinaryFormat,
-	JsonToBinaryOptions,
-} from '@utils/binary';
-
-import { convertJsonToSpreadsheetBinary, createBinaryFromJson } from '@utils/binary';
-import { encodeDecodeOptions } from '@utils/descriptions';
-
-import * as createEvent from '../../ICalendar/createEvent.operation';
-
-const iCalDescription = updateDisplayOptions(
-	{
-		show: {
-			operation: ['iCal'],
-		},
-	},
-	createEvent.description.filter((property) => property.name !== 'binaryPropertyName'),
-);
-
-const spreadsheetOperations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
+import * as spreadsheet from './actions/spreadsheet.operation';
+import * as toBinary from './actions/toBinary.operation';
+import * as toJson from './actions/toJson.operation';
+import * as iCall from './actions/iCall.operation';
 
 export class ConvertToFile implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Convert to File',
 		name: 'convertToFile',
@@ -101,7 +83,7 @@ export class ConvertToFile implements INodeType {
 					},
 					{
 						name: 'Move Base64 String to File',
-						value: 'moveValueToBinary',
+						value: 'toBinary',
 						action: 'Move base64 string to file',
 						description:
 							'Specify a property in the item that contains a base64 string to be converted into a file',
@@ -109,159 +91,10 @@ export class ConvertToFile implements INodeType {
 				],
 				default: 'csv',
 			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						operation: ['toJson'],
-					},
-				},
-				options: [
-					{
-						name: 'All Items to One File',
-						value: 'once',
-					},
-					{
-						name: 'Each Item to Separate File',
-						value: 'each',
-					},
-				],
-				default: 'once',
-			},
-			{
-				displayName: 'File Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				placeholder: 'e.g data',
-				description: 'Name of the binary property to which to write the data of the file',
-			},
-			{
-				displayName: 'Source Property',
-				name: 'sourceProperty',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['moveValueToBinary'],
-					},
-				},
-				default: '',
-				required: true,
-				placeholder: 'e.g data',
-				description:
-					'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
-				displayOptions: {
-					hide: {
-						'/operation': ['iCal'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Compression',
-						name: 'compression',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': ['xlsx', 'ods'],
-							},
-						},
-						default: false,
-						description: 'Whether compression will be applied or not',
-					},
-					{
-						displayName: 'Data Is Base64',
-						name: 'dataIsBase64',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': ['moveValueToBinary'],
-							},
-						},
-						default: true,
-						description: 'Whether the data is already base64 encoded',
-					},
-					{
-						displayName: 'Encoding',
-						name: 'encoding',
-						type: 'options',
-						options: encodeDecodeOptions,
-						displayOptions: {
-							show: {
-								'/operation': ['moveValueToBinary', 'toJson'],
-							},
-						},
-						default: 'utf8',
-						description: 'Set the encoding of the data stream',
-					},
-					{
-						displayName: 'Add BOM',
-						name: 'addBOM',
-						displayOptions: {
-							show: {
-								'/operation': ['moveValueToBinary', 'toJson'],
-								encoding: ['utf8', 'cesu8', 'ucs2'],
-							},
-						},
-						type: 'boolean',
-						default: false,
-					},
-					{
-						displayName: 'File Name',
-						name: 'fileName',
-						type: 'string',
-						default: '',
-						description: 'File name to set in binary data',
-					},
-					{
-						displayName: 'Header Row',
-						name: 'headerRow',
-						type: 'boolean',
-						default: true,
-						description: 'Whether the first row of the file contains the header names',
-						displayOptions: {
-							show: {
-								'/operation': spreadsheetOperations,
-							},
-						},
-					},
-					{
-						displayName: 'MIME Type',
-						name: 'mimeType',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': ['moveValueToBinary'],
-							},
-						},
-						default: '',
-						placeholder: 'e.g text/plain',
-					},
-					{
-						displayName: 'Sheet Name',
-						name: 'sheetName',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': ['ods', 'xls', 'xlsx'],
-							},
-						},
-						default: 'Sheet',
-						description: 'Name of the sheet to create in the spreadsheet',
-					},
-				],
-			},
-			...iCalDescription,
+			...spreadsheet.description,
+			...toBinary.description,
+			...toJson.description,
+			...iCall.description,
 		],
 	};
 
@@ -270,174 +103,20 @@ export class ConvertToFile implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
-		if (spreadsheetOperations.includes(operation)) {
-			const pairedItem = generatePairedItemData(items.length);
-			try {
-				const options = this.getNodeParameter('options', 0, {}) as JsonToSpreadsheetBinaryOptions;
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
-
-				const binaryData = await convertJsonToSpreadsheetBinary.call(
-					this,
-					items,
-					operation as JsonToSpreadsheetBinaryFormat,
-					options,
-					'File',
-				);
-
-				const newItem: INodeExecutionData = {
-					json: {},
-					binary: {
-						[binaryPropertyName]: binaryData,
-					},
-					pairedItem,
-				};
-
-				returnData = [newItem];
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({
-						json: {
-							error: error.message,
-						},
-						pairedItem,
-					});
-				} else {
-					throw new NodeOperationError(this.getNode(), error);
-				}
-			}
+		if (spreadsheet.operations.includes(operation)) {
+			returnData = await spreadsheet.execute.call(this, items, operation);
 		}
 
 		if (operation === 'toJson') {
-			const mode = this.getNodeParameter('mode', 0, 'once') as string;
-			if (mode === 'once') {
-				const pairedItem = generatePairedItemData(items.length);
-				try {
-					const options = this.getNodeParameter('options', 0, {});
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
-
-					const binaryData = await createBinaryFromJson.call(
-						this,
-						items.map((item) => item.json),
-						{
-							fileName: options.fileName as string,
-							mimeType: 'application/json',
-							encoding: options.encoding as string,
-							addBOM: options.addBOM as boolean,
-						},
-					);
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						binary: {
-							[binaryPropertyName]: binaryData,
-						},
-						pairedItem,
-					};
-
-					returnData = [newItem];
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: error.message,
-							},
-							pairedItem,
-						});
-					}
-					throw new NodeOperationError(this.getNode(), error);
-				}
-			} else {
-				for (let i = 0; i < items.length; i++) {
-					try {
-						const options = this.getNodeParameter('options', i, {});
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-
-						const binaryData = await createBinaryFromJson.call(this, items[i].json, {
-							fileName: options.fileName as string,
-							encoding: options.encoding as string,
-							addBOM: options.addBOM as boolean,
-							mimeType: 'application/json',
-							itemIndex: i,
-						});
-
-						const newItem: INodeExecutionData = {
-							json: {},
-							binary: {
-								[binaryPropertyName]: binaryData,
-							},
-							pairedItem: { item: i },
-						};
-
-						returnData.push(newItem);
-					} catch (error) {
-						if (this.continueOnFail()) {
-							returnData.push({
-								json: {
-									error: error.message,
-								},
-								pairedItem: {
-									item: i,
-								},
-							});
-							continue;
-						}
-						throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
-					}
-				}
-			}
+			returnData = await toJson.execute.call(this, items);
 		}
 
-		if (operation === 'moveValueToBinary') {
-			for (let i = 0; i < items.length; i++) {
-				try {
-					const options = this.getNodeParameter('options', i, {});
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-					const sourceProperty = this.getNodeParameter('sourceProperty', i) as string;
-
-					const jsonToBinaryOptions: JsonToBinaryOptions = {
-						sourceKey: sourceProperty,
-						fileName: options.fileName as string,
-						mimeType: options.mimeType as string,
-						dataIsBase64: options.dataIsBase64 !== false,
-						encoding: options.encoding as string,
-						addBOM: options.addBOM as boolean,
-						itemIndex: i,
-					};
-
-					const binaryData = await createBinaryFromJson.call(
-						this,
-						items[i].json,
-						jsonToBinaryOptions,
-					);
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						binary: {
-							[binaryPropertyName]: binaryData,
-						},
-						pairedItem: { item: i },
-					};
-
-					returnData.push(newItem);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: error.message,
-							},
-							pairedItem: {
-								item: i,
-							},
-						});
-						continue;
-					}
-					throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
-				}
-			}
+		if (operation === 'toBinary') {
+			returnData = await toBinary.execute.call(this, items);
 		}
 
 		if (operation === 'iCal') {
-			returnData = await createEvent.execute.call(this, items);
+			returnData = await iCall.execute.call(this, items);
 		}
 
 		return [returnData];
