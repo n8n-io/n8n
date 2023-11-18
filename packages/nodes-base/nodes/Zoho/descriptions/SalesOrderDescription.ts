@@ -72,7 +72,7 @@ export const salesOrderFields: INodeProperties[] = [
 		required: true,
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getAccounts',
@@ -179,7 +179,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -199,7 +199,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'dealId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -275,7 +275,7 @@ export const salesOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
 				description:
-					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -387,7 +387,7 @@ export const salesOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccounts',
 				},
 				description:
-					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -412,7 +412,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -432,7 +432,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'dealId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -507,7 +507,7 @@ export const salesOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
 				description:
-					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',

@@ -44,7 +44,7 @@ export const stateFields: INodeProperties[] = [
 		name: 'entityId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAllEntities',
 		},
@@ -112,7 +112,7 @@ export const stateFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		description:
-			'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'State',

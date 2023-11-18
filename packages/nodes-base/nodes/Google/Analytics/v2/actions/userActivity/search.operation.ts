@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 		},
 		placeholder: '123456',
 		description:
-			'The view from Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The view from Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		hint: "If there's nothing here, try changing the 'Property type' field above",
 	},
 	{

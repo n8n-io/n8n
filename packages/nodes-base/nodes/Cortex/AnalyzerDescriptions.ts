@@ -43,7 +43,7 @@ export const analyzerFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 	},
 	{
@@ -66,7 +66,7 @@ export const analyzerFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 
 	// Observable type != file

@@ -68,7 +68,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'team',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -86,7 +86,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'space',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -118,7 +118,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'folder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -138,7 +138,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'list',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -158,7 +158,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'list',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -205,7 +205,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'assignees',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 					loadOptionsDependsOn: ['list'],
@@ -288,7 +288,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 					loadOptionsDependsOn: ['list'],
@@ -305,7 +305,7 @@ export const taskFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Time Estimate',
@@ -466,7 +466,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'team',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -484,7 +484,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'space',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -516,7 +516,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'folder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -536,7 +536,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'list',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -556,7 +556,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'list',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -626,7 +626,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'assignees',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 					loadOptionsDependsOn: ['list'],
@@ -658,7 +658,7 @@ export const taskFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Operator',
@@ -797,7 +797,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'statuses',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 					loadOptionsDependsOn: ['list'],
@@ -821,7 +821,7 @@ export const taskFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

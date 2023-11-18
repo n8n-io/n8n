@@ -54,7 +54,7 @@ export class WufooTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				description:
-					'The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Only Answers',

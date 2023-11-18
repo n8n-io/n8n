@@ -8,7 +8,7 @@ export const alertOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		typeOptions: {
@@ -325,7 +325,7 @@ export const alertFields: INodeProperties[] = [
 							loadOptionsMethod: 'loadObservableTypes',
 						},
 						description:
-							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Data',
@@ -372,7 +372,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'responder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -447,7 +447,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -539,7 +539,7 @@ export const alertFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadObservableTypes',
 								},
 								description:
-									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Data',
@@ -603,7 +603,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -816,7 +816,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},

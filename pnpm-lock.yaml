@@ -1301,8 +1301,8 @@ importers:
         specifier: ^0.4.11
         version: 0.4.11
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.0
-        version: 1.16.0(eslint@8.45.0)(typescript@5.2.2)
+        specifier: ^1.16.1
+        version: 1.16.1(eslint@8.45.0)(typescript@5.2.2)
       gulp:
         specifier: ^4.0.0
         version: 4.0.2
@@ -12344,8 +12344,8 @@ packages:
     resolution: {integrity: sha512-qe6sVFDP1Vj5eXlqZxYZpIjwYvhuqXlI0P8OfPyhiPOhMkFtr0TpFphD8/6WCzkm7LJCvG1eJEzURCtMIsFTAg==}
     dev: true
 
-  /eslint-plugin-n8n-nodes-base@1.16.0(eslint@8.45.0)(typescript@5.2.2):
-    resolution: {integrity: sha512-OEztJRuT/jv/WvwRXbXNirdYYddpAo2KZEJeOsVniK1ZCChuG4rrZJU3sgMRZMK6W9Pr613uWabW2q8tU2eKJg==}
+  /eslint-plugin-n8n-nodes-base@1.16.1(eslint@8.45.0)(typescript@5.2.2):
+    resolution: {integrity: sha512-TMlOiDj67tjv8eodnM6tsB0GeBwVpRbUN8/AQ/MRc7weP/rgLxfhUhzWkeiJMxYUJC3NLjemJbw7QDafKG9Kog==}
     engines: {node: '>=18.10', pnpm: '>=8.6'}
     dependencies:
       '@typescript-eslint/utils': 6.3.0(eslint@8.45.0)(typescript@5.2.2)

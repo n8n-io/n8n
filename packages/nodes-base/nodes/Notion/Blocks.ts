@@ -181,7 +181,7 @@ const typeMention: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Page ID',
@@ -576,7 +576,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 						name: 'type',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getBlockTypes',
 						},

@@ -103,7 +103,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								description:
-									'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -162,7 +162,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Mailing Country',

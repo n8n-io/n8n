@@ -228,7 +228,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						name: 'columnsToWatch',
 						type: 'multiOptions',
 						description:
-							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',

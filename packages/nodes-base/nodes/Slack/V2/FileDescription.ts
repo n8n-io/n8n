@@ -104,7 +104,7 @@ export const fileFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Name',
@@ -192,7 +192,7 @@ export const fileFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				description:
-					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
@@ -263,7 +263,7 @@ export const fileFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

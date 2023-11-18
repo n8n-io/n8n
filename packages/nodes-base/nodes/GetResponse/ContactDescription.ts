@@ -79,7 +79,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -116,7 +116,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								description:
-									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -172,7 +172,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -514,7 +514,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'campaignId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
@@ -542,7 +542,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								description:
-									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -605,7 +605,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

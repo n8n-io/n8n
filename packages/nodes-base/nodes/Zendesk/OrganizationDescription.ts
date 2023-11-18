@@ -129,7 +129,7 @@ export const organizationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -154,7 +154,7 @@ export const organizationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -233,7 +233,7 @@ export const organizationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -258,7 +258,7 @@ export const organizationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
