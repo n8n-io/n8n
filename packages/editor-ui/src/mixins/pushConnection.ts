@@ -291,6 +291,33 @@ export const pushConnection = defineComponent({
 				}
 			}
 
+			if (
+				receivedData.type === 'workflowFailedToActivate' &&
+				this.workflowsStore.workflowId === receivedData.data.workflowId
+			) {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				this.workflowsStore.setActive(false);
+
+				this.showError(
+					new Error(receivedData.data.errorMessage),
+					this.$locale.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'activated' },
+					}) + ':',
+				);
+
+				return true;
+			}
+
+			if (receivedData.type === 'workflowActivated') {
+				this.workflowsStore.setWorkflowActive(receivedData.data.workflowId);
+				return true;
+			}
+
+			if (receivedData.type === 'workflowDeactivated') {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				return true;
+			}
+
 			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;

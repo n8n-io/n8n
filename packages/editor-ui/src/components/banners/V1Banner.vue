@@ -5,8 +5,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 
 const uiStore = useUIStore();
-
-const { isInstanceOwner } = useUsersStore();
+const usersStore = useUsersStore();
 
 async function dismissPermanently() {
 	await uiStore.dismissBanner('V1', 'permanent');
@@ -18,7 +17,7 @@ async function dismissPermanently() {
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a
-				v-if="isInstanceOwner"
+				v-if="usersStore.isInstanceOwner"
 				:class="$style.link"
 				@click="dismissPermanently"
 				data-test-id="banner-confirm-v1"
