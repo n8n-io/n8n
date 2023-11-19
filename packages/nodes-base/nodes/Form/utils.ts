@@ -31,6 +31,9 @@ export const prepareFormData = (
 	};
 
 	if (redirectUrl) {
+		if (!redirectUrl.includes('://')) {
+			redirectUrl = `http://${redirectUrl}`;
+		}
 		formData.redirectUrl = redirectUrl;
 	}
 
@@ -83,18 +86,30 @@ export async function formWebhook(context: IWebhookFunctions) {
 		const formDescription = context.getNodeParameter('formDescription', '') as string;
 		const instanceId = context.getInstanceId();
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
-		const { formSubmittedText, redirectUrl } = context.getNodeParameter(
-			'options',
-			{},
-		) as IDataObject;
+		const options = context.getNodeParameter('options', {}) as IDataObject;
+
+		let formSubmittedText;
+		let redirectUrl;
+
+		if (options.respondWithOptions) {
+			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
+			if (values.respondWith === 'text') {
+				formSubmittedText = values.formSubmittedText as string;
+			}
+			if (values.respondWith === 'redirect') {
+				redirectUrl = values.redirectUrl as string;
+			}
+		} else {
+			formSubmittedText = options.formSubmittedText as string;
+		}
 
 		const preventDefault = responseMode !== 'responseNode';
 
 		const data = prepareFormData(
 			formTitle,
 			formDescription,
-			formSubmittedText as string,
-			redirectUrl as string,
+			formSubmittedText,
+			redirectUrl,
 			formFields,
 			mode === 'test',
 			instanceId,

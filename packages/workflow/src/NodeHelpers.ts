@@ -1348,6 +1348,9 @@ export const tryToParseObject = (value: unknown): object => {
 };
 
 export const tryToParseUrl = (value: unknown): string => {
+	if (typeof value === 'string' && !value.includes('://')) {
+		value = `http://${value}`;
+	}
 	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
 	if (!urlPattern.test(String(value))) {
 		throw new Error(`The value "${String(value)}" is not a valid url.`);

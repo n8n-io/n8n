@@ -23,10 +23,10 @@ import {
 import {
 	formDescription,
 	formFields,
-	formOptions,
+	respondWithOptions,
 	formRespondMode,
 	formTitle,
-} from '../Form/description';
+} from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
 
@@ -356,7 +356,11 @@ export class Wait extends Webhook {
 				options: [...(optionsProperty.options as INodeProperties[]), webhookSuffix],
 			},
 			{
-				...formOptions,
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
 				displayOptions: {
 					show: {
 						resume: ['form'],
@@ -365,7 +369,7 @@ export class Wait extends Webhook {
 						responseMode: ['responseNode'],
 					},
 				},
-				options: [...(formOptions.options as INodeProperties[]), webhookSuffix],
+				options: [respondWithOptions, webhookSuffix],
 			},
 			{
 				displayName: 'Options',

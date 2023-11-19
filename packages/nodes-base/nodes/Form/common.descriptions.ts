@@ -1,11 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	FORM_TRIGGER_PATH_IDENTIFIER,
-	type INodeProperties,
-	type INodeTypeDescription,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-const webhookPath: INodeProperties = {
+export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
 	name: 'path',
 	type: 'string',
@@ -176,65 +172,7 @@ export const formRespondMode: INodeProperties = {
 	description: 'When to respond to the form submission',
 };
 
-export const formOptions: INodeProperties = {
-	displayName: 'Options',
-	name: 'options',
-	type: 'collection',
-	placeholder: 'Add Option',
-	default: {},
-	displayOptions: {
-		hide: {
-			responseMode: ['responseNode'],
-		},
-	},
-	options: [
-		{
-			displayName: 'Respond With',
-			name: 'respondWith',
-			type: 'options',
-			default: 'text',
-			options: [
-				{
-					name: 'Form Submitted Text',
-					value: 'text',
-					description: 'Show a text to the user after form submission',
-				},
-				{
-					name: 'Redirect URL',
-					value: 'redirect',
-					description: 'Redirect the user to a URL after form submission',
-				},
-			],
-		},
-		{
-			displayName: 'Form Submitted Text',
-			name: 'formSubmittedText',
-			description: 'The text displayed to users after they filled the form',
-			type: 'string',
-			default: 'Your response has been recorded',
-			displayOptions: {
-				hide: {
-					respondWith: ['redirect'],
-				},
-			},
-		},
-		{
-			displayName: 'Redirect URL',
-			name: 'redirectUrl',
-			description: 'The URL to redirect to after the user submits the form',
-			type: 'string',
-			default: '',
-			validateType: 'url',
-			displayOptions: {
-				show: {
-					respondWith: ['redirect'],
-				},
-			},
-		},
-	],
-};
-
-const formTriggerPanel = {
+export const formTriggerPanel = {
 	header: 'Pull in a test form submission',
 	executionsHelp: {
 		inactive:
@@ -250,39 +188,65 @@ const formTriggerPanel = {
 	},
 };
 
-export const formTriggerDescription: INodeTypeDescription = {
-	displayName: 'n8n Form Trigger',
-	name: 'formTrigger',
-	icon: 'file:form.svg',
-	group: ['trigger'],
-	version: 1,
-	description: 'Runs the flow when an n8n generated webform is submitted',
-	defaults: {
-		name: 'n8n Form Trigger',
-	},
-	inputs: [],
-	outputs: ['main'],
-	webhooks: [
+export const respondWithOptions: INodeProperties = {
+	displayName: 'Respond With',
+	name: 'respondWithOptions',
+	type: 'fixedCollection',
+	placeholder: 'Add Option',
+	default: { values: { respondWith: 'text' } },
+	options: [
 		{
-			name: 'setup',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			isFullPath: true,
-			path: `={{$parameter["path"]}}/${FORM_TRIGGER_PATH_IDENTIFIER}`,
-			ndvHideUrl: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: '={{$parameter["responseMode"]}}',
-			responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
-			isFullPath: true,
-			path: `={{$parameter["path"]}}/${FORM_TRIGGER_PATH_IDENTIFIER}`,
-			ndvHideMethod: true,
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Respond With',
+					name: 'respondWith',
+					type: 'options',
+					default: 'text',
+					options: [
+						{
+							name: 'Form Submitted Text',
+							value: 'text',
+							description: 'Show a response text to the user',
+						},
+						{
+							name: 'Redirect URL',
+							value: 'redirect',
+							description: 'Redirect the user to a URL',
+						},
+					],
+				},
+				{
+					displayName: 'Text to Show',
+					name: 'formSubmittedText',
+					description:
+						"The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text.",
+					type: 'string',
+					default: 'Your response has been recorded',
+					displayOptions: {
+						show: {
+							respondWith: ['text'],
+						},
+					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					displayName: 'URL to Redirect to',
+					name: 'redirectUrl',
+					description:
+						'The URL to redirect users to after they fill the form. Must be a valid URL.',
+					type: 'string',
+					default: '',
+					validateType: 'url',
+					placeholder: 'e.g. http://www.n8n.io',
+					displayOptions: {
+						show: {
+							respondWith: ['redirect'],
+						},
+					},
+				},
+			],
 		},
 	],
-	eventTriggerDescription: 'Waiting for you to submit the form',
-	activationMessage: 'You can now make calls to your production Form URL.',
-	triggerPanel: formTriggerPanel,
-	properties: [webhookPath, formTitle, formDescription, formFields, formRespondMode, formOptions],
 };

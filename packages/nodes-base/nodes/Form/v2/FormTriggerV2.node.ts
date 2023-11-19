@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	type INodeType,
 	type INodeTypeBaseDescription,
@@ -5,12 +6,30 @@ import {
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { formTriggerDescription } from '../description';
 import { formWebhook } from '../utils';
+import {
+	formDescription,
+	formFields,
+	formRespondMode,
+	formTitle,
+	formTriggerPanel,
+	respondWithOptions,
+	webhookPath,
+} from '../common.descriptions';
 
 const descriptionV2: INodeTypeDescription = {
-	...formTriggerDescription,
+	displayName: 'n8n Form Trigger',
+	name: 'formTrigger',
+	icon: 'file:form.svg',
+	group: ['trigger'],
 	version: 2,
+	description: 'Runs the flow when an n8n generated webform is submitted',
+	defaults: {
+		name: 'n8n Form Trigger',
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+	inputs: [],
+	outputs: ['main'],
 	webhooks: [
 		{
 			name: 'setup',
@@ -30,6 +49,29 @@ const descriptionV2: INodeTypeDescription = {
 			path: '={{$parameter["path"]}}',
 			ndvHideMethod: true,
 			isForm: true,
+		},
+	],
+	eventTriggerDescription: 'Waiting for you to submit the form',
+	activationMessage: 'You can now make calls to your production Form URL.',
+	triggerPanel: formTriggerPanel,
+	properties: [
+		webhookPath,
+		formTitle,
+		formDescription,
+		formFields,
+		formRespondMode,
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add Option',
+			default: {},
+			displayOptions: {
+				hide: {
+					responseMode: ['responseNode'],
+				},
+			},
+			options: [respondWithOptions],
 		},
 	],
 };

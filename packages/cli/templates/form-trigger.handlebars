@@ -500,9 +500,10 @@
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
 									window.location.replace(redirectUrl.href);
+								} else {
+									form.style.display = 'none';
+									document.querySelector('#submitted-form').style.display = 'block';
 								}
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
 							} else {
 								form.style.display = 'none';
 								document.querySelector('#submitted-form').style.display = 'block';
