@@ -14,7 +14,7 @@ import { prepareFieldsArray } from '../utils/utils';
 
 export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'SplitOut',
+		displayName: 'Split Out',
 		name: 'splitOut',
 		icon: 'file:splitOut.svg',
 		group: ['transform'],
