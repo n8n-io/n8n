@@ -6,7 +6,8 @@
 
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRBACStore } from '@/stores/rbac.store';
 
 /**
  * Old permissions implementation
@@ -126,20 +127,12 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 };
 
 export const getVariablesPermissions = (user: IUser | null) => {
+	const rbacStore = useRBACStore();
 	const table: IPermissionsTable = [
-		{
-			name: 'create',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'edit',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'delete',
-			test: [UserRole.InstanceOwner],
-		},
-		{ name: 'use', test: () => true },
+		{ name: 'create', test: () => rbacStore.hasScope('variable:create') },
+		{ name: 'edit', test: () => rbacStore.hasScope('variable:update') },
+		{ name: 'delete', test: () => rbacStore.hasScope('variable:delete') },
+		{ name: 'use', test: () => rbacStore.hasScope('variable:read') },
 	];
 
 	return parsePermissionsTable(user, table);
