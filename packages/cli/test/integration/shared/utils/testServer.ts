@@ -11,7 +11,6 @@ import type { User } from '@db/entities/User';
 import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
 import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
-import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
@@ -20,6 +19,7 @@ import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
+import { InternalHooks } from '@/InternalHooks';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -234,29 +234,40 @@ export const setupTestServer = ({
 							'@db/repositories/sharedWorkflow.repository'
 						);
 						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-						const { ExternalHooks } = await import('@/ExternalHooks');
-						const { JwtService } = await import('@/services/jwt.service');
-						const { RoleService } = await import('@/services/role.service');
 						const { UserService: US } = await import('@/services/user.service');
-						const { UserManagementMailer } = await import(
-							'@/UserManagement/email/UserManagementMailer'
-						);
+						const { ExternalHooks: EH } = await import('@/ExternalHooks');
+						const { RoleService: RS } = await import('@/services/role.service');
 						const { UsersController } = await import('@/controllers/users.controller');
 						registerController(
 							app,
 							config,
 							new UsersController(
-								config,
 								logger,
-								Container.get(ExternalHooks),
+								Container.get(EH),
 								Container.get(InternalHooks),
 								Container.get(SharedCredentialsRepository),
 								Container.get(SharedWorkflowRepository),
 								Container.get(ActiveWorkflowRunner),
-								Container.get(UserManagementMailer),
-								Container.get(JwtService),
-								Container.get(RoleService),
+								Container.get(RS),
 								Container.get(US),
+							),
+						);
+						break;
+
+					case 'invitations':
+						const { InvitationController } = await import('@/controllers/invitation.controller');
+						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
+						const { UserService: USE } = await import('@/services/user.service');
+
+						registerController(
+							app,
+							config,
+							new InvitationController(
+								config,
+								logger,
+								Container.get(InternalHooks),
+								Container.get(EHS),
+								Container.get(USE),
 							),
 						);
 						break;

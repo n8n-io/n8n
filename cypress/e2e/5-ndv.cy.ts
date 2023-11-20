@@ -361,7 +361,7 @@ describe('NDV', () => {
 	});
 
 	it('should not retrieve remote options when a parameter value changes', () => {
-		cy.intercept('/rest/node-parameter-options?**', cy.spy().as('fetchParameterOptions'));
+		cy.intercept('/rest/dynamic-node-parameters/options?**', cy.spy().as('fetchParameterOptions'));
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
 		// Type something into the field
 		ndv.actions.typeIntoParameterInput('otherField', 'test');
