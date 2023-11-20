@@ -98,29 +98,29 @@ export const webhookRequestHandler =
 					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			}
-			res.header('Access-Control-Allow-Origin', req.headers.origin);
+
+			const requestedMethod =
+				method === 'OPTIONS'
+					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+					: method;
+			if (webhookManager.findAccessControlOptions && requestedMethod) {
+				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
+				const { allowedOrigins, preflightMaxAge } = options ?? {};
+
+				res.header(
+					'Access-Control-Allow-Origin',
+					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
+				);
+
+				if (method === 'OPTIONS') {
+					res.header('Access-Control-Max-Age', String((preflightMaxAge ?? 60) * 1000));
+
+					res.header('Access-Control-Allow-Headers', req.headers['access-control-request-headers']);
+				}
+			}
 		}
 
 		if (method === 'OPTIONS') {
-			const controlRequestMethod = req.headers['access-control-request-method'];
-
-			if (webhookManager.getAccessControlOptions && controlRequestMethod) {
-				try {
-					const accessControlOptions = await webhookManager.getAccessControlOptions(
-						path,
-						controlRequestMethod as IHttpRequestMethods,
-					);
-
-					if (accessControlOptions) {
-						const { allowMethods, allowOrigin, maxAge } = accessControlOptions;
-
-						res.header('Access-Control-Allow-Methods', (allowMethods as string) || '*');
-						res.header('Access-Control-Allow-Origin', (allowOrigin as string) || '*');
-						res.header('Access-Control-Max-Age', String((maxAge as number) * 1000) || '60000');
-					}
-				} catch (error) {}
-			}
-
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		}
 

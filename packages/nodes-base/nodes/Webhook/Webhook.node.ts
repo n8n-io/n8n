@@ -99,7 +99,6 @@ export class Webhook extends Node {
 			ignoreBots: boolean;
 			rawBody: Buffer;
 			responseData?: string;
-			accessControl: IDataObject;
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();

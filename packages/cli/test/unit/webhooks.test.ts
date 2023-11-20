@@ -46,7 +46,10 @@ describe('WebhookServer', () => {
 					const pathPrefix = config.getEnv(`endpoints.${key}`);
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 
-					const response = await agent.options(`/${pathPrefix}/abcd`).set('origin', corsOrigin);
+					const response = await agent
+						.options(`/${pathPrefix}/abcd`)
+						.set('origin', corsOrigin)
+						.set('access-control-request-method', 'GET');
 					expect(response.statusCode).toEqual(204);
 					expect(response.body).toEqual({});
 					expect(response.headers['access-control-allow-origin']).toEqual(corsOrigin);
@@ -60,7 +63,10 @@ describe('WebhookServer', () => {
 						mockResponse({ test: true }, { key: 'value ' }),
 					);
 
-					const response = await agent.get(`/${pathPrefix}/abcd`).set('origin', corsOrigin);
+					const response = await agent
+						.get(`/${pathPrefix}/abcd`)
+						.set('origin', corsOrigin)
+						.set('access-control-request-method', 'GET');
 					expect(response.statusCode).toEqual(200);
 					expect(response.body).toEqual({ test: true });
 					expect(response.headers['access-control-allow-origin']).toEqual(corsOrigin);

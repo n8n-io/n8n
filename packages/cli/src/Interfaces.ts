@@ -267,12 +267,21 @@ export type WaitingWebhookRequest = WebhookRequest & {
 	params: WebhookRequest['path'] & { suffix?: string };
 };
 
+export interface WebhookAccessControlOptions {
+	allowedOrigins?: string;
+	preflightMaxAge?: number;
+}
+
 export interface IWebhookManager {
+	/** Gets all request methods associated with a webhook path*/
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
-	getAccessControlOptions?: (
+
+	/** Find the CORS options matching a path and method */
+	findAccessControlOptions?: (
 		path: string,
 		httpMethod: IHttpRequestMethods,
-	) => Promise<IDataObject | null>;
+	) => Promise<WebhookAccessControlOptions | undefined>;
+
 	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }
 
