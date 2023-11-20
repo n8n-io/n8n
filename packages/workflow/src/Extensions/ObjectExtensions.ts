@@ -84,8 +84,7 @@ isEmpty.doc = {
 	name: 'isEmpty',
 	description: 'Checks if the Object has no key-value pairs.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isEmpty',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isEmpty',
 };
 
 isNotEmpty.doc = {
@@ -100,8 +99,7 @@ compact.doc = {
 	name: 'compact',
 	description: 'Removes empty values from an Object.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
 };
 
 urlEncode.doc = {
@@ -117,8 +115,7 @@ hasField.doc = {
 	description: 'Checks if the Object has a given field. Only top-level keys are supported.',
 	returnType: 'boolean',
 	args: [{ name: 'fieldName', type: 'string' }],
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-hasField',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-hasField',
 };
 
 removeField.doc = {

@@ -370,8 +370,7 @@ toDate.doc = {
 	name: 'toDate',
 	description: 'Converts a string to a date.',
 	returnType: 'Date',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
 };
 
 toFloat.doc = {
@@ -389,8 +388,7 @@ toInt.doc = {
 	returnType: 'number',
 	args: [{ name: 'radix?', type: 'number' }],
 	aliases: ['toWholeNumber'],
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toInt',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toInt',
 };
 
 toSentenceCase.doc = {
@@ -454,16 +452,14 @@ isDomain.doc = {
 	name: 'isDomain',
 	description: 'Checks if a string is a domain.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isDomain',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isDomain',
 };
 
 isEmail.doc = {
 	name: 'isEmail',
 	description: 'Checks if a string is an email.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmail',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmail',
 };
 
 isNumeric.doc = {
@@ -478,16 +474,14 @@ isUrl.doc = {
 	name: 'isUrl',
 	description: 'Checks if a string is a valid URL.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isUrl',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isUrl',
 };
 
 isEmpty.doc = {
 	name: 'isEmpty',
 	description: 'Checks if a string is empty.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',
 };
 
 isNotEmpty.doc = {
@@ -528,8 +522,7 @@ hash.doc = {
 	description: 'Returns a string hashed with the given algorithm. Default algorithm is `md5`.',
 	returnType: 'string',
 	args: [{ name: 'algo?', type: 'Algorithm' }],
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-hash',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-hash',
 };
 
 quote.doc = {
@@ -537,8 +530,7 @@ quote.doc = {
 	description: 'Returns a string wrapped in the quotation marks. Default quotation is `"`.',
 	returnType: 'string',
 	args: [{ name: 'mark?', type: 'string' }],
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
 };
 
 export const stringExtensions: ExtensionMap = {
