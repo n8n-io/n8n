@@ -29,5 +29,5 @@ export type FormTriggerData = {
 	redirectUrl?: string;
 	n8nWebsiteLink: string;
 	formFields: FormTriggerInput[];
-	preventDefault?: boolean;
+	useResponseData?: boolean;
 };

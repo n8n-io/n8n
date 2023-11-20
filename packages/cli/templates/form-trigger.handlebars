@@ -388,7 +388,7 @@
 				{{#if redirectUrl}}
 					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 				{{/if}}
-				<input id="preventDefault" style="display: none;" value={{preventDefault}} />
+				<input id="useResponseData" style="display: none;" value={{useResponseData}} />
 			</section>
 		</div>
 		<script>
@@ -463,11 +463,7 @@
 
 			form.addEventListener('submit', (e) => {
 				const valid = [];
-				const preventDefault = document.getElementById("preventDefault").value;
-
-				if (preventDefault === 'true') {
-					e.preventDefault();
-				}
+				e.preventDefault();
 
 				requiredInputs.forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
@@ -496,6 +492,28 @@
 						body: formData,
 					})
 						.then(async function (response) {
+							const useResponseData = document.getElementById("useResponseData").value;
+
+							if (useResponseData === "true") {
+								const text = await response.text();
+								let json;
+
+								try{
+									json = JSON.parse(text);
+								} catch (e) {}
+
+								if (json?.redirectUrl) {
+									window.location.replace(json.redirectUrl);
+								} else if (json?.formSubmittedText) {
+									form.style.display = 'none';
+									document.querySelector('#submitted-form').style.display = 'block';
+									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
+								} else {
+									document.body.innerHTML = text;
+								}
+								return;
+							}
+
 							if (response.status === 200) {
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {

@@ -61,6 +61,16 @@ const descriptionV2: INodeTypeDescription = {
 		formFields,
 		formRespondMode,
 		{
+			displayName:
+				"In 'Respond to Webhook' node choose to respond with JSON and set <strong>redirectURL</strong> key to redirect user to an URL, or <strong>formSubmittedText</strong> key to show a custom response text to the user",
+			name: 'formNotice',
+			type: 'notice',
+			displayOptions: {
+				show: { responseMode: ['responseNode'] },
+			},
+			default: '',
+		},
+		{
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',

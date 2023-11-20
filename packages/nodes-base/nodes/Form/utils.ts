@@ -9,7 +9,7 @@ export const prepareFormData = (
 	formFields: FormField[],
 	testRun: boolean,
 	instanceId?: string,
-	preventDefault?: boolean,
+	useResponseData?: boolean,
 ) => {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -27,7 +27,7 @@ export const prepareFormData = (
 		formSubmittedText,
 		n8nWebsiteLink,
 		formFields: [],
-		preventDefault,
+		useResponseData,
 	};
 
 	if (redirectUrl) {
@@ -103,7 +103,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			formSubmittedText = options.formSubmittedText as string;
 		}
 
-		const preventDefault = responseMode !== 'responseNode';
+		const useResponseData = responseMode === 'responseNode';
 
 		const data = prepareFormData(
 			formTitle,
@@ -113,7 +113,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			formFields,
 			mode === 'test',
 			instanceId,
-			preventDefault,
+			useResponseData,
 		);
 
 		const res = context.getResponseObject();
