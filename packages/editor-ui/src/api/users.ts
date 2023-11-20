@@ -1,6 +1,5 @@
 import type {
 	CurrentUserResponse,
-	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
 	IUserResponse,
@@ -122,17 +121,6 @@ export async function deleteUser(
 
 export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
 	return makeRestApiRequest(context, 'GET', '/users');
-}
-
-export async function inviteUsers(
-	context: IRestApiContext,
-	params: Array<{ email: string }>,
-): Promise<IInviteResponse[]> {
-	return makeRestApiRequest(context, 'POST', '/users', params as unknown as IDataObject);
-}
-
-export async function reinvite(context: IRestApiContext, { id }: { id: string }): Promise<void> {
-	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
 }
 
 export async function getInviteLink(

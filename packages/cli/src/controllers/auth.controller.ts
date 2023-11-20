@@ -104,7 +104,7 @@ export class AuthController {
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return this.userService.toPublic(user, { posthog: this.postHog });
+			return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
 		void this.internalHooks.onUserLoginFailed({
 			user: email,
@@ -129,7 +129,7 @@ export class AuthController {
 			try {
 				user = await resolveJwt(cookieContents);
 
-				return await this.userService.toPublic(user, { posthog: this.postHog });
+				return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -152,7 +152,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return this.userService.toPublic(user, { posthog: this.postHog });
+		return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 	}
 
 	/**
