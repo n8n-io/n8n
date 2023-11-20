@@ -106,7 +106,7 @@ EEWorkflowController.get(
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
+		if (!userSharing && (await req.user.hasGlobalScope('workflow:read'))) {
 			throw new ResponseHelper.UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);

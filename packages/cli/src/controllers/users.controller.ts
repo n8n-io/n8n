@@ -5,7 +5,7 @@ import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
+import { NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
@@ -40,8 +40,8 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { RequireGlobalScope } from '@/decorators/Scopes';
 
-@Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -63,6 +63,7 @@ export class UsersController {
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 	@Post('/')
+	@RequireGlobalScope('user:create')
 	async sendEmailInvites(req: UserRequest.Invite) {
 		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
@@ -384,8 +385,8 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
+	@RequireGlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -402,8 +403,8 @@ export class UsersController {
 			: publicUsers;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
+	@RequireGlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userService.findOneOrFail({
 			where: { id: req.params.id },
@@ -416,8 +417,8 @@ export class UsersController {
 		return { link };
 	}
 
-	@Authorized(['global', 'owner'])
 	@Patch('/:id/settings')
+	@RequireGlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -437,6 +438,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
+	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 

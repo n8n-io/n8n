@@ -2,23 +2,22 @@ import { Container, Service } from 'typedi';
 
 import * as ResponseHelper from '@/ResponseHelper';
 import { VariablesRequest } from '@/requests';
-import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Licensed,
+	Patch,
+	Post,
+	RequireGlobalScope,
+	RestController,
+} from '@/decorators';
 import {
 	VariablesService,
 	VariablesLicenseError,
 	VariablesValidationError,
 } from './variables.service.ee';
-import { isVariablesEnabled } from './enviromentHelpers';
 import { Logger } from '@/Logger';
-import type { RequestHandler } from 'express';
-
-const variablesLicensedMiddleware: RequestHandler = (req, res, next) => {
-	if (isVariablesEnabled()) {
-		next();
-	} else {
-		res.status(403).json({ status: 'error', message: 'Unauthorized' });
-	}
-};
 
 @Service()
 @Authorized()
@@ -30,22 +29,19 @@ export class VariablesController {
 	) {}
 
 	@Get('/')
+	@RequireGlobalScope('variable:list')
 	async getVariables() {
-		return Container.get(VariablesService).getAllCached();
+		return this.variablesService.getAllCached();
 	}
 
-	@Post('/', { middlewares: [variablesLicensedMiddleware] })
+	@Post('/')
+	@Licensed('feat:variables')
+	@RequireGlobalScope('variable:create')
 	async createVariable(req: VariablesRequest.Create) {
-		if (req.user.globalRole.name !== 'owner') {
-			this.logger.info('Attempt to update a variable blocked due to lack of permissions', {
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
-		}
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await Container.get(VariablesService).create(variable);
+			return await this.variablesService.create(variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
 				throw new ResponseHelper.BadRequestError(error.message);
@@ -57,6 +53,7 @@ export class VariablesController {
 	}
 
 	@Get('/:id(\\w+)')
+	@RequireGlobalScope('variable:read')
 	async getVariable(req: VariablesRequest.Get) {
 		const id = req.params.id;
 		const variable = await Container.get(VariablesService).getCached(id);
@@ -66,16 +63,11 @@ export class VariablesController {
 		return variable;
 	}
 
-	@Patch('/:id(\\w+)', { middlewares: [variablesLicensedMiddleware] })
+	@Patch('/:id(\\w+)')
+	@Licensed('feat:variables')
+	@RequireGlobalScope('variable:update')
 	async updateVariable(req: VariablesRequest.Update) {
 		const id = req.params.id;
-		if (req.user.globalRole.name !== 'owner') {
-			this.logger.info('Attempt to update a variable blocked due to lack of permissions', {
-				id,
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
-		}
 		const variable = req.body;
 		delete variable.id;
 		try {
@@ -91,15 +83,9 @@ export class VariablesController {
 	}
 
 	@Delete('/:id(\\w+)')
+	@RequireGlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
-		if (req.user.globalRole.name !== 'owner') {
-			this.logger.info('Attempt to delete a variable blocked due to lack of permissions', {
-				id,
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
-		}
 		await this.variablesService.delete(id);
 
 		return true;

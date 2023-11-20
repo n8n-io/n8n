@@ -4,19 +4,22 @@ import { NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import { Service } from 'typedi';
 import { ProviderNotFoundError, ExternalSecretsService } from './ExternalSecrets.service.ee';
+import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Service()
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/external-secrets')
 export class ExternalSecretsController {
 	constructor(private readonly secretsService: ExternalSecretsService) {}
 
 	@Get('/providers')
+	@RequireGlobalScope('externalSecretsStore:list')
 	async getProviders() {
 		return this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')
+	@RequireGlobalScope('externalSecretsStore:read')
 	async getProvider(req: ExternalSecretsRequest.GetProvider) {
 		const providerName = req.params.provider;
 		try {
@@ -30,6 +33,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/test')
+	@RequireGlobalScope('externalSecretsStore:read')
 	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
 		try {
@@ -49,6 +53,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider')
+	@RequireGlobalScope('externalSecretsStore:create')
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;
 		try {
@@ -63,6 +68,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/connect')
+	@RequireGlobalScope('externalSecretsStore:update')
 	async setProviderConnected(req: ExternalSecretsRequest.SetProviderConnected) {
 		const providerName = req.params.provider;
 		try {
@@ -77,6 +83,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/update')
+	@RequireGlobalScope('externalSecretsStore:update')
 	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
 		try {
@@ -96,6 +103,7 @@ export class ExternalSecretsController {
 	}
 
 	@Get('/secrets')
+	@RequireGlobalScope('externalSecret:list')
 	getSecretNames() {
 		return this.secretsService.getAllSecrets();
 	}

@@ -16,6 +16,7 @@ import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessage
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 import { RestController, Get, Post, Authorized } from '@/decorators';
+import { RequireGlobalScope } from '@/decorators/Scopes';
 
 // ----------------------------------------
 // TypeGuards
@@ -37,8 +38,8 @@ export class EventBusController {
 	// ----------------------------------------
 	// Events
 	// ----------------------------------------
-	@Authorized(['global', 'owner'])
 	@Get('/event')
+	@RequireGlobalScope('eventBusEvent:query')
 	async getEvents(
 		req: express.Request,
 	): Promise<EventMessageTypes[] | Record<string, EventMessageTypes[]>> {
@@ -60,12 +61,14 @@ export class EventBusController {
 	}
 
 	@Get('/failed')
+	@RequireGlobalScope('eventBusEvent:list')
 	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
 		const amount = parseInt(req.query?.amount as string) ?? 5;
 		return eventBus.getEventsFailed(amount);
 	}
 
 	@Get('/execution/:id')
+	@RequireGlobalScope('eventBusEvent:read')
 	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[] | undefined> {
 		if (req.params?.id) {
 			let logHistory;
@@ -78,6 +81,7 @@ export class EventBusController {
 	}
 
 	@Get('/execution-recover/:id')
+	@RequireGlobalScope('eventBusEvent:read')
 	async getRecoveryForExecutionId(req: express.Request): Promise<IRunExecutionData | undefined> {
 		const { id } = req.params;
 		if (req.params?.id) {
@@ -91,8 +95,8 @@ export class EventBusController {
 		return;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/event')
+	@RequireGlobalScope('eventBusEvent:create')
 	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
 		let msg: EventMessageTypes | undefined;
 		if (isEventMessageOptions(req.body)) {

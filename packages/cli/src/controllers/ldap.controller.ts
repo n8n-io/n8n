@@ -7,8 +7,9 @@ import { LdapConfiguration } from '@/Ldap/types';
 import { BadRequestError } from '@/ResponseHelper';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
+import { RequireGlobalScope } from '@/decorators/Scopes';
 
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/ldap')
 export class LdapController {
 	constructor(
@@ -18,11 +19,13 @@ export class LdapController {
 	) {}
 
 	@Get('/config')
+	@RequireGlobalScope('ldap:manage')
 	async getConfig() {
 		return getLdapConfig();
 	}
 
 	@Post('/test-connection')
+	@RequireGlobalScope('ldap:manage')
 	async testConnection() {
 		try {
 			await this.ldapService.testConnection();
@@ -32,6 +35,7 @@ export class LdapController {
 	}
 
 	@Put('/config')
+	@RequireGlobalScope('ldap:manage')
 	async updateConfig(req: LdapConfiguration.Update) {
 		try {
 			await updateLdapConfig(req.body);
@@ -50,12 +54,14 @@ export class LdapController {
 	}
 
 	@Get('/sync')
+	@RequireGlobalScope('ldap:sync')
 	async getLdapSync(req: LdapConfiguration.GetSync) {
 		const { page = '0', perPage = '20' } = req.query;
 		return getLdapSynchronizations(parseInt(page, 10), parseInt(perPage, 10));
 	}
 
 	@Post('/sync')
+	@RequireGlobalScope('ldap:sync')
 	async syncLdap(req: LdapConfiguration.Sync) {
 		try {
 			await this.ldapSync.run(req.body.type);

@@ -1,6 +1,7 @@
 import type { Request, Response, RequestHandler } from 'express';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { HasScopeOptions, Scope } from '@n8n/permissions';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
@@ -8,6 +9,12 @@ export type AuthRole = [RoleScopes, RoleNames] | 'any' | 'none';
 export type AuthRoleMetadata = Record<string, AuthRole>;
 
 export type LicenseMetadata = Record<string, BooleanLicenseFeature[]>;
+
+export interface ScopeWithOptions {
+	scopes: Scope[];
+	options?: HasScopeOptions;
+}
+export type ScopeMetadata = Record<string, ScopeWithOptions>;
 
 export interface MiddlewareMetadata {
 	handlerName: string;
