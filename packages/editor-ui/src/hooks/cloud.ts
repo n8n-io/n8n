@@ -1,4 +1,4 @@
-import { hooksAddAdminIcon, hooksAddFakeDoorFeatures } from '@/hooks/utils';
+import { hooksAddFakeDoorFeatures } from '@/hooks/utils';
 import {
 	getAuthenticationModalEventData,
 	getExpressionEditorEventsData,
@@ -30,9 +30,6 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	app: {
 		mount: [
 			() => {
-				hooksAddAdminIcon();
-			},
-			() => {
 				hooksAddFakeDoorFeatures();
 			},
 		],
@@ -42,9 +39,6 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			() => {
 				const segmentStore = useSegment();
 				segmentStore.identify();
-			},
-			() => {
-				hooksAddAdminIcon();
 			},
 		],
 		createNodeActiveChanged: [
