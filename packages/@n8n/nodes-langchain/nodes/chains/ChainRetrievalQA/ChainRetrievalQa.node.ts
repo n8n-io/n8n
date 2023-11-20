@@ -10,6 +10,7 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
+import { ConsoleCallbackHandler } from 'langchain/callbacks';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 export class ChainRetrievalQa implements INodeType {
@@ -82,7 +83,10 @@ export class ChainRetrievalQa implements INodeType {
 		)) as BaseRetriever;
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, retriever);
+		console.log('Wat?');
+		const chain = RetrievalQAChain.fromLLM(model, retriever, {
+			callbacks: [new ConsoleCallbackHandler()],
+		});
 
 		const returnData: INodeExecutionData[] = [];
 

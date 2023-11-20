@@ -10,7 +10,6 @@ import {
 import type { ClientOptions } from 'openai';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { CallbackManager } from 'langchain/callbacks';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatOpenAi implements INodeType {
@@ -250,13 +249,35 @@ export class LmChatOpenAi implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: CallbackManager.fromHandlers({
-				handleLLMEnd: async (...args) => {
-					console.log('LLM End');
-					this.addNodeExecutionLog('LLM End');
+				handleLLMEnd: (output, runId) => {
+					this.addOutputData(NodeConnectionType.AiLanguageModel, itemIndex, [
+						[{ json: { response: output } }],
+					]);
+					// console.log('LLM End', output, runId);
+					// this.addNodeExecutionLog({
+					// 	content: { output, runId },
+					// 	type: 'output',
+					// 	node: { name: this.getNode().name, type: this.getNode().type },
+					// });
 				},
-				handleLLMStart: async (...args) => {
-					console.log('LLM Start:');
-					this.addNodeExecutionLog('LLM End');
+				handleLLMStart: (llm, prompts, runId) => {
+					this.addInputData(NodeConnectionType.AiLanguageModel, [
+						[{ json: { response: prompts } }],
+					]);
+					// console.log('LLM Start:', llm, prompts, runId);
+					// this.addNodeExecutionLog({
+					// 	content: { prompts, runId },
+					// 	type: 'input',
+					// 	node: { name: this.getNode().name, type: this.getNode().type },
+					// });
+				},
+				handleLLMError: (error, runId, parentRunId, tags) => {
+					// console.log('LLM Error:', error, runId, parentRunId, tags);
+					// this.addNodeExecutionLog({
+					// 	content: { error, runId },
+					// 	type: 'error',
+					// 	node: { name: this.getNode().name, type: this.getNode().type },
+					// });
 				},
 			}),
 			modelKwargs: options.responseFormat
@@ -267,7 +288,7 @@ export class LmChatOpenAi implements INodeType {
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

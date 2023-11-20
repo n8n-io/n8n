@@ -196,7 +196,6 @@ export interface ExecutionLogRecord {
 }
 
 export abstract class ExecutionLogsController {
-	// private executionLogs: ExecutionLogRecord[];
 	abstract getLogs(): ExecutionLogRecord[];
 
 	abstract addLog: (nodeName: string, log: unknown) => void;
@@ -829,7 +828,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
-		addNodeExecutionLog(message: string): void;
+		addNodeExecutionLog(log: ExecutionLog): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1028,6 +1027,15 @@ export interface INodeExecutionData {
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	index?: number;
+}
+
+export interface ExecutionLog {
+	type: 'input' | 'output' | 'error' | 'info';
+	node?: {
+		name: string;
+		type: string;
+	};
+	content: unknown;
 }
 
 export interface INodeExecuteFunctions {

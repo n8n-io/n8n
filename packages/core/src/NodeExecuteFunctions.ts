@@ -39,6 +39,7 @@ import type {
 	ConnectionTypes,
 	ContextType,
 	ExecutionError,
+	ExecutionLog,
 	ExecutionLogsController,
 	FieldType,
 	FileSystemHelperFunctions,
@@ -2530,13 +2531,13 @@ const executionLoggingFunctions = (
 	node: INode,
 	executionLogsController?: ExecutionLogsController,
 ): Pick<IExecuteFunctions, 'addNodeExecutionLog'> => ({
-	addNodeExecutionLog: (message: string) => {
+	addNodeExecutionLog: (message: ExecutionLog) => {
 		console.log('Add Node Execution Log', message);
 		if (!executionLogsController) {
 			console.log('Execution Logs Controller not available');
 			return;
 		}
-		executionLogsController.addLog(node.name, { message });
+		executionLogsController.addLog(node.name, message);
 	},
 });
 

@@ -108,6 +108,7 @@ function getReferencedData(
 	withOutput: boolean,
 ): IAiDataContent[] {
 	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
+	console.log('🚀 ~ file: RunDataAi.vue:111 ~ resultData:', workflowsStore);
 
 	if (!resultData?.[reference.runIndex]) {
 		return [];

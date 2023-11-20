@@ -220,11 +220,11 @@ export class LmOpenAi implements INodeType {
 			callbacks: CallbackManager.fromHandlers({
 				handleLLMEnd: async (...args) => {
 					console.log('LLM End', JSON.stringify(args, null, 2));
-					this.addNodeExecutionLog('LLM End');
+					// this.addNodeExecutionLog('LLM End');
 				},
 				handleLLMStart: async (...args) => {
 					console.log('LLM Start:', JSON.stringify(args, null, 2));
-					this.addNodeExecutionLog('LLM End');
+					// this.addNodeExecutionLog('LLM End');
 				},
 			}),
 		});
