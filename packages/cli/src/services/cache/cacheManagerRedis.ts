@@ -147,7 +147,7 @@ function builder(
 	} as RedisStore;
 }
 
-export function redisInsStore(redisCache: Redis | Cluster, options?: Config) {
+export function redisStoreUsingClient(redisCache: Redis | Cluster, options?: Config) {
 	const reset = async () => {
 		await redisCache.flushdb();
 	};
@@ -165,5 +165,5 @@ export async function redisStore(
 			? new Redis.Cluster(options.clusterConfig.nodes, options.clusterConfig.options)
 			: new Redis(options);
 
-	return redisInsStore(redisCache, options);
+	return redisStoreUsingClient(redisCache, options);
 }

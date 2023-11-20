@@ -15,6 +15,10 @@ export class CacheService extends EventEmitter {
 	 */
 	private cache: RedisCache | MemoryCache | undefined;
 
+	get isEnabled(): boolean {
+		return config.getEnv('cache.enabled');
+	}
+
 	metricsCounterEvents = {
 		cacheHit: 'metrics.cache.hit',
 
@@ -44,7 +48,9 @@ export class CacheService extends EventEmitter {
 			backend === 'redis' ||
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
-			const { redisInsStore } = await import('./cache/cacheManagerRedis');
+			const { redisStoreUsingClient: redisInsStore } = await import(
+				'@/services/cache/cacheManagerRedis'
+			);
 			const redisPrefix = getRedisPrefix(config.getEnv('redis.prefix'));
 			const cachePrefix = config.getEnv('cache.redis.prefix');
 			const keyPrefix = `${redisPrefix}:${cachePrefix}:`;
@@ -88,10 +94,22 @@ export class CacheService extends EventEmitter {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown> {
-		if (!key || key.length === 0) {
+		if (!this.isEnabled) {
+			if (options.refreshFunction) {
+				return options.refreshFunction(key);
+			}
+			if (options.fallbackValue) {
+				return options.fallbackValue;
+			}
 			return;
 		}
-		const value = await this.cache?.store.get(key);
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		const value = await this.cache.store.get(key);
 		if (value !== undefined) {
 			this.emit(this.metricsCounterEvents.cacheHit);
 			return value;
@@ -137,21 +155,33 @@ export class CacheService extends EventEmitter {
 		options: {
 			fieldName?: string;
 			fallbackValue?: T | Record<string, unknown>;
-			refreshFunction?: (key: string) => Promise<unknown>;
+			refreshFunction?: (key: string) => Promise<T>;
 		} = {},
 	): Promise<Record<string, unknown> | T | undefined> {
-		if (!key || key.length === 0) {
+		if (!this.isEnabled) {
+			if (options.refreshFunction) {
+				return options.refreshFunction(key);
+			}
+			if (options.fallbackValue) {
+				return options.fallbackValue;
+			}
 			return;
+		}
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
 		}
 		let value = undefined;
 		if (this.isRedisCache()) {
 			if (options.fieldName) {
-				value = (await (this.cache?.store as RedisStore).hget(key, options.fieldName)) as T;
+				value = (await (this.cache.store as RedisStore).hget(key, options.fieldName)) as T;
 			} else {
-				value = await (this.cache?.store as RedisStore).hgetall(key);
+				value = await (this.cache.store as RedisStore).hgetall(key);
 			}
 		} else {
-			const obj = (await this.cache?.store.get(key)) as Record<string, unknown>;
+			const obj = (await this.cache.store.get(key)) as Record<string, unknown>;
 			value = options.fieldName ? (obj?.[options.fieldName] as T) : obj;
 		}
 		if (value !== undefined) {
@@ -162,7 +192,7 @@ export class CacheService extends EventEmitter {
 		if (options.refreshFunction) {
 			this.emit(this.metricsCounterEvents.cacheUpdate);
 			if (options.fieldName) {
-				const refreshValue = (await options.refreshFunction(key)) as T;
+				const refreshValue = await options.refreshFunction(key);
 				await this.setHash(key, options.fieldName, refreshValue);
 				return refreshValue;
 			} else {
@@ -195,10 +225,28 @@ export class CacheService extends EventEmitter {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown[]> {
-		if (keys.length === 0) {
-			return [];
+		if (!this.isEnabled) {
+			if (options.refreshFunctionMany) {
+				return options.refreshFunctionMany(keys);
+			}
+			if (options.refreshFunctionEach) {
+				const values = await Promise.all(
+					keys.map(async (key) => options.refreshFunctionEach!(key)),
+				);
+				return values;
+			}
+			if (options.fallbackValues) {
+				return options.fallbackValues;
+			}
+			return keys.map(() => undefined);
 		}
-		let values = await this.cache?.store.mget(...keys);
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		let values = await this.cache.store.mget(...keys);
 		if (values === undefined) {
 			values = keys.map(() => undefined);
 		}
@@ -248,13 +296,16 @@ export class CacheService extends EventEmitter {
 	 * @param ttl Optional time to live in ms
 	 */
 	async set(key: string, value: unknown, ttl?: number): Promise<void> {
-		if (!this.cache) {
-			await this.init();
-		}
-		if (!key || key.length === 0) {
+		if (!this.isEnabled) {
 			return;
 		}
-		if (value === undefined || value === null) {
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		if (!key || !value) {
 			return;
 		}
 		if (this.isRedisCache()) {
@@ -262,7 +313,7 @@ export class CacheService extends EventEmitter {
 				throw new Error('Value is not cacheable');
 			}
 		}
-		await this.cache?.store.set(key, value, ttl);
+		await this.cache.store.set(key, value, ttl);
 	}
 
 	/**
@@ -283,10 +334,16 @@ export class CacheService extends EventEmitter {
 		fieldOrFieldValueRecord: Record<string, unknown> | string,
 		value?: unknown,
 	): Promise<void> {
+		if (!this.isEnabled) {
+			return;
+		}
 		if (!this.cache) {
 			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
 		}
-		if (!key || key.length === 0) {
+		if (!key) {
 			return;
 		}
 		if (typeof fieldOrFieldValueRecord === 'string') {
@@ -294,11 +351,11 @@ export class CacheService extends EventEmitter {
 				return;
 			}
 			if (this.isRedisCache()) {
-				await (this.cache?.store as RedisStore).hset(key, { [fieldOrFieldValueRecord]: value });
+				await (this.cache.store as RedisStore).hset(key, { [fieldOrFieldValueRecord]: value });
 			} else {
-				const obj = (await this.cache?.store.get(key)) ?? {};
+				const obj = (await this.cache.store.get(key)) ?? {};
 				Object.assign(obj, { [fieldOrFieldValueRecord]: value });
-				await this.cache?.store.set(key, obj);
+				await this.cache.store.set(key, obj);
 			}
 		} else {
 			for (const field in fieldOrFieldValueRecord) {
@@ -308,11 +365,11 @@ export class CacheService extends EventEmitter {
 				}
 			}
 			if (this.isRedisCache()) {
-				await (this.cache?.store as RedisStore).hset(key, fieldOrFieldValueRecord);
+				await (this.cache.store as RedisStore).hset(key, fieldOrFieldValueRecord);
 			} else {
-				const obj = (await this.cache?.store.get(key)) ?? {};
+				const obj = (await this.cache.store.get(key)) ?? {};
 				Object.assign(obj, fieldOrFieldValueRecord);
-				await this.cache?.store.set(key, obj);
+				await this.cache.store.set(key, obj);
 			}
 		}
 	}
@@ -323,10 +380,16 @@ export class CacheService extends EventEmitter {
 	 * @param ttl Optional time to live in ms
 	 */
 	async setMany(values: Array<[string, unknown]>, ttl?: number): Promise<void> {
+		if (!this.isEnabled) {
+			return;
+		}
 		if (!this.cache) {
 			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
 		}
-		if (values.length === 0) {
+		if (values.length === 0 || !this.cache) {
 			return;
 		}
 		const nonNullValues = values.filter(
@@ -339,7 +402,7 @@ export class CacheService extends EventEmitter {
 				}
 			});
 		}
-		await this.cache?.store.mset(nonNullValues, ttl);
+		await this.cache.store.mset(nonNullValues, ttl);
 	}
 
 	/**
@@ -347,28 +410,44 @@ export class CacheService extends EventEmitter {
 	 * @param key The key to delete
 	 */
 	async delete(key: string): Promise<void> {
-		if (!key || key.length === 0) {
+		if (!this.isEnabled) {
 			return;
 		}
-		await this.cache?.store.del(key);
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		if (!key) {
+			return;
+		}
+		await this.cache.store.del(key);
 	}
 
 	/**
 	 * Delete a value from a cached hash by key and field name.
-	 * @param key The key of the hash
-	 * @param key The field to delete
 	 */
 	async deleteFromHash(key: string, field: string): Promise<void> {
-		if (!key || key.length === 0 || !field || field.length === 0) {
+		if (!this.isEnabled) {
+			return;
+		}
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		if (!key || !field) {
 			return;
 		}
 		if (this.isRedisCache()) {
-			await (this.cache?.store as RedisStore).hdel(key, field);
+			await (this.cache.store as RedisStore).hdel(key, field);
 		} else {
-			const obj = (await this.cache?.store.get(key)) as Record<string, unknown>;
-			if (obj && Object.keys(obj).includes(field)) {
+			const obj = (await this.cache.store.get(key)) as Record<string, unknown>;
+			if (obj) {
 				delete obj[field];
-				await this.cache?.store.set(key, obj);
+				await this.cache.store.set(key, obj);
 			}
 		}
 	}
@@ -378,10 +457,19 @@ export class CacheService extends EventEmitter {
 	 * @param keys List of keys to delete
 	 */
 	async deleteMany(keys: string[]): Promise<void> {
+		if (!this.isEnabled) {
+			return;
+		}
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
 		if (keys.length === 0) {
 			return;
 		}
-		return this.cache?.store.mdel(...keys);
+		return this.cache.store.mdel(...keys);
 	}
 
 	/**
@@ -413,6 +501,9 @@ export class CacheService extends EventEmitter {
 	async getCache(): Promise<RedisCache | MemoryCache | undefined> {
 		if (!this.cache) {
 			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
 		}
 		return this.cache;
 	}
@@ -450,22 +541,33 @@ export class CacheService extends EventEmitter {
 	 * Return all keys in a cached hash.
 	 */
 	async hashKeys(key: string): Promise<string[]> {
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
 		if (this.isRedisCache()) {
-			return (this.cache?.store as RedisStore).hkeys(key);
+			return (this.cache.store as RedisStore).hkeys(key);
 		} else {
-			const obj = (await this.cache?.store.get(key)) ?? {};
-			return Object.keys(obj);
+			return this.keys();
 		}
 	}
 
 	/**
-	 * Return all keys in a cached hash.
+	 * Return all values in a cached hash.
 	 */
 	async hashValues<T>(key: string): Promise<T[]> {
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
 		if (this.isRedisCache()) {
-			return (this.cache?.store as RedisStore).hvals<T>(key);
+			return (this.cache.store as RedisStore).hvals<T>(key);
 		} else {
-			const obj = (await this.cache?.store.get(key)) ?? {};
+			const obj = (await this.cache.store.get(key)) ?? {};
 			return Object.values(obj) as T[];
 		}
 	}
@@ -474,11 +576,21 @@ export class CacheService extends EventEmitter {
 	 * Returns whether a field exists in a cached hash.
 	 */
 	async hashFieldExists(key: string, field: string): Promise<boolean> {
+		if (!this.cache) {
+			await this.init();
+			if (!this.cache) {
+				throw new Error('Cache could not be initialized');
+			}
+		}
+		if (!key || !field) {
+			return false;
+		}
 		if (this.isRedisCache()) {
-			return (this.cache?.store as RedisStore).hexists(key, field);
+			return (this.cache.store as RedisStore).hexists(key, field);
 		} else {
-			const obj = (await this.cache?.store.get(key)) ?? {};
-			return Object.keys(obj).includes(field);
+			const obj = await this.cache.store.get(key);
+			if (obj === undefined || obj === null) return false;
+			return (obj as Record<string, unknown>)[field] !== undefined;
 		}
 	}
 }
