@@ -1,14 +1,21 @@
-import type { Primitives } from './utils';
 import * as Logger from './LoggerProxy';
+import type { Event } from '@sentry/node';
 
-export interface ReportingOptions {
+export type ReportableErrorOptions = {
 	level?: 'warning' | 'error' | 'fatal';
-	tags?: Record<string, Primitives>;
-	extra?: Record<string, unknown>;
-}
+} & Pick<Event, 'extra'>;
 
 interface ErrorReporter {
-	report: (error: Error | string, options?: ReportingOptions) => void;
+	report: (error: Error | string, options?: ReportableErrorOptions) => void;
+}
+
+export class ReportableError extends Error {
+	constructor(
+		message: string,
+		public options: Partial<ErrorOptions> & ReportableErrorOptions,
+	) {
+		super(message, options);
+	}
 }
 
 const instance: ErrorReporter = {
@@ -33,10 +40,10 @@ const wrap = (e: unknown) => {
 	return;
 };
 
-export const error = (e: unknown, options?: ReportingOptions) => {
+export const error = (e: unknown, options?: ReportableErrorOptions) => {
 	const toReport = wrap(e);
 	if (toReport) instance.report(toReport, options);
 };
 
-export const warn = (warning: Error | string, options?: ReportingOptions) =>
+export const warn = (warning: Error | string, options?: ReportableErrorOptions) =>
 	error(warning, { level: 'warning', ...options });

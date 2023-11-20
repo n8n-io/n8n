@@ -1,13 +1,15 @@
-export class FileNotFoundError extends Error {
+import { ErrorReporterProxy } from 'n8n-workflow';
+
+export class FileNotFoundError extends ErrorReporterProxy.ReportableError {
 	constructor(readonly filePath: string) {
-		super('File not found', { cause: { filePath } });
+		super('File not found', { extra: { filePath } });
 	}
 }
 
 export class BinaryFileNotFoundError extends FileNotFoundError {}
 
-export class InvalidPathError extends Error {
+export class InvalidPathError extends ErrorReporterProxy.ReportableError {
 	constructor(readonly filePath: string) {
-		super('Invalid path detected', { cause: { filePath } });
+		super('Invalid path detected', { extra: { filePath } });
 	}
 }

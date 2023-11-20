@@ -45,6 +45,15 @@ export const initErrorHandling = async () => {
 		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
+
+		if (originalException instanceof ErrorReporterProxy.ReportableError) {
+			const { options } = originalException;
+
+			event.level = options.level ?? event.level;
+
+			if (options.extra) event.extra = { ...event.extra, ...options.extra };
+		}
+
 		return event;
 	});
 
