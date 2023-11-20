@@ -88,6 +88,7 @@
 				:renaming="renamingActive"
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@redrawNode="redrawNode"
+				@switchSelectedNode="onSwitchSelectedNode"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
@@ -3647,6 +3648,9 @@ export default defineComponent({
 					this.historyStore.stopRecordingUndo();
 				}, recordingTimeout);
 			}
+		},
+		async onSwitchSelectedNode(nodeName: string) {
+			this.nodeSelectedByName(nodeName, true);
 		},
 		async redrawNode(nodeName: string) {
 			// TODO: Improve later

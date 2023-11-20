@@ -43,6 +43,7 @@
 				:isDraggable="!isTriggerNode"
 				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
+				@switchSelectedNode="onSwitchSelectedNode"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -637,6 +638,9 @@ export default defineComponent({
 		},
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+		async onSwitchSelectedNode(nodeTypeName: string) {
+			this.$emit('switchSelectedNode', nodeTypeName);
 		},
 		async close() {
 			if (this.isDragging) {

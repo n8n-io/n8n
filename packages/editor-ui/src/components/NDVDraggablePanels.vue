@@ -1,5 +1,11 @@
 <template>
 	<div>
+		<NDVFloatingNodes
+			v-if="activeNode"
+			@switchSelectedNode="$emit('switchSelectedNode', $event)"
+			:root-node="activeNode"
+			type="input"
+		/>
 		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
@@ -50,6 +56,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -70,6 +77,7 @@ export default defineComponent({
 	mixins: [debounceHelper],
 	components: {
 		PanelDragButton,
+		NDVFloatingNodes,
 	},
 	props: {
 		isDraggable: {
@@ -135,6 +143,9 @@ export default defineComponent({
 			relativeRight: number;
 		} {
 			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType);
+		},
+		activeNode() {
+			return this.ndvStore.activeNode;
 		},
 		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
