@@ -502,8 +502,8 @@
 									json = JSON.parse(text);
 								} catch (e) {}
 
-								if (json?.redirectUrl) {
-									window.location.replace(json.redirectUrl);
+								if (json?.redirectURL) {
+									window.location.replace(json.redirectURL);
 								} else if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
