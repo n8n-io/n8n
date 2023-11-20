@@ -11,7 +11,7 @@
 					v-if="node && nodeType"
 					:teleported="false"
 					:key="node.name"
-					:offset="connectionGroup.includes('Main') ? 140 : 80"
+					:offset="60"
 				>
 					<template #content>{{ node.name }}</template>
 
@@ -155,16 +155,16 @@ const tooltipPositionMapper = {
 	}
 
 	&.outputMain {
-		transform: translateX(70%);
+		transform: translateX(50%);
 	}
 	&.outputSub {
-		transform: translateY(-80%);
+		transform: translateY(-50%);
 	}
 	&.inputMain {
-		transform: translateX(-70%);
+		transform: translateX(-50%);
 	}
 	&.inputSub {
-		transform: translateY(60%);
+		transform: translateY(50%);
 	}
 }
 .connectedNode {
@@ -177,6 +177,9 @@ const tooltipPositionMapper = {
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
 	position: relative;
 	transform: scale(0.8);
+	display: flex;
+	justify-self: center;
+	align-self: center;
 
 	&::after {
 		content: '';
@@ -185,14 +188,10 @@ const tooltipPositionMapper = {
 		right: -30%;
 		bottom: -35%;
 		left: -30%;
-		outline: 1px solid red;
 		z-index: -1;
 	}
 	.outputMain &,
 	.inputMain & {
-		width: 120px;
-		height: 60px;
-		padding: 0;
 		border-radius: var(--border-radius-large);
 		display: flex;
 		align-items: center;
@@ -200,22 +199,22 @@ const tooltipPositionMapper = {
 	}
 	.outputMain & {
 		&:hover {
-			transform: scale(1.2) translateX(-70%);
+			transform: scale(1.2) translateX(-50%);
 		}
 	}
 	.outputSub & {
 		&:hover {
-			transform: scale(1.2) translateY(80%);
+			transform: scale(1.2) translateY(50%);
 		}
 	}
 	.inputMain & {
 		&:hover {
-			transform: scale(1.2) translateX(70%);
+			transform: scale(1.2) translateX(50%);
 		}
 	}
 	.inputSub & {
 		&:hover {
-			transform: scale(1.2) translateY(-60%);
+			transform: scale(1.2) translateY(-50%);
 		}
 	}
 }
