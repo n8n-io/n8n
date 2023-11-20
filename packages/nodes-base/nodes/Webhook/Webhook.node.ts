@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import { verifyCrmToken, verifyPortalToken } from './authentication';
+import { verifyCrmToken, verifyOauth2Token, verifyPortalToken } from './authentication';
 import fs from 'fs';
 import stream from 'stream';
 import { promisify } from 'util';
@@ -131,6 +131,10 @@ export class Webhook implements INodeType {
 						value: 'none',
 					},
 					{
+						name: 'Oauth2 Token Auth',
+						value: 'oauth2TokenAuth',
+					},
+					{
 						name: 'Zoho CRM Auth',
 						value: 'zohoCRMAuth',
 					},
@@ -145,6 +149,24 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'Authorized roles (comma seperated values)',
 				description: 'Specifies the roles within which the bearer must belong',
+				displayOptions: {
+					hide: {
+						authentication: ['oauth2TokenAuth'],
+					},
+				},
+			},
+			{
+				displayName: 'Scopes (Optional)',
+				name: 'scopes',
+				type: 'string',
+				default: '',
+				placeholder: 'Authorized scopes (comma separated values)',
+				description: 'Specifies the scopes within which the bearer must belong',
+				displayOptions: {
+					show: {
+						authentication: ['oauth2TokenAuth'],
+					},
+				},
 			},
 			{
 				displayName: 'HTTP Method',
@@ -529,6 +551,26 @@ export class Webhook implements INodeType {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
 				) {
+					return authorizationError(resp, realm, 403, 'User role is not authorized');
+				}
+
+				requestAuthData.tokenData = authData;
+			} catch (error) {
+				return authorizationError(
+					resp,
+					realm,
+					401,
+					(error?.message || error?.toString()) as string,
+				);
+			}
+		} else if (authentication === 'oauth2TokenAuth') {
+			try {
+				const authData = await verifyOauth2Token(token, this.helpers.httpRequest);
+				const scopes = (this.getNodeParameter('scopes', '') as string)
+					?.trim()
+					?.split(',')
+					.filter((fragment) => !!fragment);
+				if (scopes?.length && scopes.every((s) => authData?.user?.scopes.includes(s))) {
 					return authorizationError(resp, realm, 403, 'User role is not authorized');
 				}
 
