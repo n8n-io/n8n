@@ -23,7 +23,7 @@ import {
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { VariablesService } from '../variables/variables.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';

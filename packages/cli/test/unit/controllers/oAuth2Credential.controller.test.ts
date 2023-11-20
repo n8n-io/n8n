@@ -14,7 +14,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Logger } from '@/Logger';
-import { VariablesService } from '@/environments/variables/variables.service';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { CredentialsHelper } from '@/CredentialsHelper';
 

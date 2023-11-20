@@ -110,7 +110,7 @@ import { License } from './License';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { variablesController } from './environments/variables/variables.controller';
+import { VariablesController } from './environments/variables/variables.controller.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import {
 	isLdapCurrentAuthenticationMethod,
@@ -303,6 +303,7 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
 		];
 
 		if (isLdapEnabled()) {
@@ -431,12 +432,6 @@ export class Server extends AbstractServer {
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-		// Variables
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
 
 		// ----------------------------------------
 		// Source Control

@@ -129,10 +129,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						const { variablesController } = await import(
-							'@/environments/variables/variables.controller'
+						const { VariablesController } = await import(
+							'@/environments/variables/variables.controller.ee'
 						);
-						app.use(`/${REST_PATH_SEGMENT}/variables`, variablesController);
+						registerController(app, config, Container.get(VariablesController));
 						break;
 
 					case 'license':
