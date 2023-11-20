@@ -364,9 +364,6 @@ export class NodeApiError extends NodeError {
 	) {
 		super(node, error);
 
-		if (severity) this.severity = severity;
-		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
-
 		// only for request library error
 		if (error.error) {
 			removeCircularRefs(error.error as JsonObject);
@@ -406,6 +403,12 @@ export class NodeApiError extends NodeError {
 		} else {
 			this.httpCode =
 				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
+		}
+
+		if (severity) {
+			this.severity = severity;
+		} else if (this.httpCode?.charAt(0) !== '5') {
+			this.severity = 'warning';
 		}
 
 		// set description of this error

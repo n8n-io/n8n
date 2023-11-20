@@ -57,6 +57,18 @@ export class LmChatOpenAi implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
+				displayName:
+					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.responseFormat': ['json_object'],
+					},
+				},
+			},
+			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
@@ -145,6 +157,25 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
+						displayName: 'Response Format',
+						name: 'responseFormat',
+						default: 'text',
+						type: 'options',
+						options: [
+							{
+								name: 'Text',
+								value: 'text',
+								description: 'Regular text response',
+							},
+							{
+								name: 'JSON',
+								value: 'json_object',
+								description:
+									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
+							},
+						],
+					},
+					{
 						displayName: 'Presence Penalty',
 						name: 'presencePenalty',
 						default: 0,
@@ -203,6 +234,7 @@ export class LmChatOpenAi implements INodeType {
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
+			responseFormat?: 'text' | 'json_object';
 		};
 
 		const configuration: ClientOptions = {};
@@ -227,6 +259,11 @@ export class LmChatOpenAi implements INodeType {
 					this.addNodeExecutionLog('LLM End');
 				},
 			}),
+			modelKwargs: options.responseFormat
+				? {
+						response_format: { type: options.responseFormat },
+				  }
+				: undefined,
 		});
 
 		return {

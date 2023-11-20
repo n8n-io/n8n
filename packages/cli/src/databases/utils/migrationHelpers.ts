@@ -110,16 +110,12 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 		indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
 	},
-	runQuery: async <T>(
-		sql: string,
-		unsafeParameters?: ObjectLiteral,
-		safeParameters?: ObjectLiteral,
-	) => {
-		if (unsafeParameters) {
+	runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
+		if (namedParameters) {
 			const [query, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
 				sql,
-				unsafeParameters,
-				safeParameters ?? {},
+				namedParameters,
+				{},
 			);
 			return queryRunner.query(query, parameters) as Promise<T>;
 		} else {
