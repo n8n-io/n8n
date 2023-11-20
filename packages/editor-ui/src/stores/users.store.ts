@@ -118,10 +118,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = user.id;
 
 			const defaultScopes: Scope[] = [];
-			if (isInstanceOwner(user)) {
-				defaultScopes.push('tag:delete');
-			}
-
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
 		},
