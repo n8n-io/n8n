@@ -31,6 +31,11 @@ describe('Canvas Actions', () => {
 		workflowPage.getters.addStickyButton().should('not.be.visible');
 
 		addDefaultSticky();
+		workflowPage.actions.deselectAll();
+		workflowPage.actions.addStickyFromContextMenu();
+		workflowPage.actions.hitAddStickyShortcut();
+
+		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters
 			.stickies()
 			.eq(0)
