@@ -215,6 +215,7 @@ export class Server extends AbstractServer {
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
@@ -448,7 +449,7 @@ export class Server extends AbstractServer {
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
