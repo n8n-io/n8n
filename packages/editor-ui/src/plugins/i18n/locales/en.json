@@ -998,6 +998,7 @@
 	"nodeSettings.waitBetweenTries.displayName": "Wait Between Tries (ms)",
 	"nodeSettings.hasForeignCredential": "To edit this node, either:<br/>a) Ask {owner} to share the credential with you, or<br/>b) Duplicate the node and add your own credential",
 	"nodeSettings.latest": "Latest",
+	"nodeSettings.deprecated": "Deprecated",
 	"nodeSettings.latestVersion": "Latest version {version}",
 	"nodeSettings.nodeVersion": "{node} node: version {version}",
 	"nodeView.addNode": "Add node",

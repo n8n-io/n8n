@@ -161,14 +161,7 @@
 							},
 						})
 					}}
-					<span v-if="isLatestNodeVersion">({{ $locale.baseText('nodeSettings.latest') }})</span>
-					<span v-else>
-						({{
-							$locale.baseText('nodeSettings.latestVersion', {
-								interpolate: { version: latestVersion.toString() },
-							})
-						}})
-					</span>
+					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
 		</div>
@@ -277,14 +270,29 @@ export default defineComponent({
 			return '';
 		},
 		nodeTypeVersions(): number[] {
-			if (!this.nodeType) return [];
-			return Array.isArray(this.nodeType.version) ? this.nodeType.version : [this.nodeType.version];
+			if (!this.node) return [];
+			return this.nodeTypesStore.getNodeVersions(this.node.type);
 		},
 		latestVersion(): number {
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			return this.latestVersion === this.node.typeVersion;
+			console.log(this.nodeType, this.nodeTypeVersions, this.latestVersion, this.node?.typeVersion);
+			return this.latestVersion === this.node?.typeVersion;
+		},
+		nodeVersionTag(): string {
+			console.log(this.nodeType);
+			if (!this.nodeType || this.nodeType.hidden) {
+				return this.$locale.baseText('nodeSettings.deprecated');
+			}
+
+			if (this.isLatestNodeVersion) {
+				return this.$locale.baseText('nodeSettings.latest');
+			}
+
+			return this.$locale.baseText('nodeSettings.latestVersion', {
+				interpolate: { version: this.latestVersion.toString() },
+			});
 		},
 		nodeTypeDescription(): string {
 			if (this.nodeType?.description) {
