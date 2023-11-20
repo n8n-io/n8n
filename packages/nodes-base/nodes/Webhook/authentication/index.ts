@@ -48,6 +48,49 @@ export const verifyCrmToken = async (
 	};
 };
 
+export const verifyOauth2Token = async (
+	token: string,
+	requestHandler: (opt: IHttpRequestOptions) => Promise<any>,
+) => {
+	if (!token) throw new Error('Token is missing');
+	const signatureWithData = Buffer.from(token, 'base64').toString('utf8');
+
+	const tokenSeparator = '|';
+
+	const [signature, timestamp, userIdentificationComponent] =
+		signatureWithData.split(tokenSeparator);
+	const signatureString = `${timestamp}${tokenSeparator}${userIdentificationComponent}`;
+
+	const createdSignature = crypto
+		.createHmac('sha1', process.env.OAUTH2_SECRET!)
+		.update(signatureString)
+		.digest('base64');
+
+	if (createdSignature !== signature) throw new Error('Token is invalid');
+	if (moment(Number(timestamp)).add(1, 'hour').isBefore(moment()))
+		throw new Error('Token has expired');
+
+	const blockedTokenUrl = process.env.BLOCKED_TOKEN_TABLE_LIST_URL;
+	if (blockedTokenUrl) {
+		const response = await requestHandler({
+			url: `${blockedTokenUrl}?where=(Token,eq,${token})`,
+			method: 'GET',
+			headers: {
+				'xc-token': process.env.DCS_NOCODB_API_TOKEN,
+			},
+		});
+		if (response?.list?.length) throw new Error('Token is invalid');
+	}
+	return {
+		tokenDetails: {
+			token,
+			generatedAt: Number(timestamp),
+		},
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+		user: JSON.parse(userIdentificationComponent),
+	};
+};
+
 export const verifyPortalToken = async (
 	token: string,
 	requestHandler: (opt: IHttpRequestOptions) => Promise<any>,
