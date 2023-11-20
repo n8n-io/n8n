@@ -277,11 +277,9 @@ export default defineComponent({
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			console.log(this.nodeType, this.nodeTypeVersions, this.latestVersion, this.node?.typeVersion);
 			return this.latestVersion === this.node?.typeVersion;
 		},
 		nodeVersionTag(): string {
-			console.log(this.nodeType);
 			if (!this.nodeType || this.nodeType.hidden) {
 				return this.$locale.baseText('nodeSettings.deprecated');
 			}
