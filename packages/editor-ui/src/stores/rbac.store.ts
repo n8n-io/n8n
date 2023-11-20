@@ -81,7 +81,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 			projectId?: string;
 		},
 		options?: HasScopeOptions,
-	) {
+	): boolean {
 		return genericHasScope(
 			scope,
 			{
