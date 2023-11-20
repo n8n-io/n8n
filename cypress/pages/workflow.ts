@@ -127,6 +127,7 @@ export class WorkflowPage extends BasePage {
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 		colors: () => cy.getByTestId('color'),
+		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
 	actions = {
 		visit: (preventNodeViewUnload = true) => {
@@ -185,11 +186,70 @@ export class WorkflowPage extends BasePage {
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
+		openContextMenu: (
+			nodeTypeName?: string,
+			method: 'right-click' | 'overflow-button' = 'right-click',
+		) => {
+			const target = nodeTypeName
+				? this.getters.canvasNodeByName(nodeTypeName)
+				: this.getters.nodeViewBackground();
+
+			if (method === 'right-click') {
+				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
+			} else {
+				target.realHover();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+			}
+		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
-		duplicateNode: (node: Chainable<JQuery<HTMLElement>>) => {
-			node.find('[data-test-id="duplicate-node-button"]').click({ force: true });
+		duplicateNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('duplicate');
+		},
+		deleteNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('delete');
+		},
+		executeNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('execute');
+		},
+		addStickyFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('add_sticky');
+		},
+		renameNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('rename');
+		},
+		copyNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('copy');
+		},
+		contextMenuAction: (action: string) => {
+			this.getters.contextMenuAction(action).click();
+		},
+		disableNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_activation');
+		},
+		pinNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_pin');
+		},
+		openNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName, 'overflow-button');
+			this.actions.contextMenuAction('open');
+		},
+		selectAllFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('select_all');
+		},
+		deselectAll: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('deselect_all');
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -284,13 +344,25 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+			cy.get('body').type('d');
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		},
 		hitPaste: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
+		},
+		hitPinNodeShortcut: () => {
+			cy.get('body').type('p');
+		},
+		hitExecuteWorkflowShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		},
+		hitDuplicateNodeShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		},
+		hitAddStickyShortcut: () => {
+			cy.get('body').type('{shift}', { delay: 500, release: false }).type('S');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();

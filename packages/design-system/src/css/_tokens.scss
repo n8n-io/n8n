@@ -236,6 +236,8 @@
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
 
+	// Action Dropdown
+	--color-action-dropdown-item-active-background: var(--color-background-base);
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-420);
 	--color-switch-active-background: var(--prim-color-alt-i);
@@ -291,6 +293,10 @@
 			);
 		}
 	}
+
+	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
+	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.07);
 
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
