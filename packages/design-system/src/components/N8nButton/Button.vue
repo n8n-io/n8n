@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import { useCssModule, computed, useAttrs } from 'vue';
+import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 
 const $style = useCssModule();
 const $attrs = useAttrs();
@@ -74,20 +74,26 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
-	link: {
-		type: Boolean,
-		default: false,
+	element: {
+		type: String,
+		default: 'button',
+		validator: (value: string) => ['button', 'a'].includes(value),
 	},
 	href: {
 		type: String,
-		default: '#',
+		required: false,
 	},
+});
+
+watchEffect(() => {
+	if (props.element === 'a' && !props.href) {
+		console.error('n8n-button:href is required for link buttons');
+	}
 });
 
 const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
-const element = computed(() => (props.link ? 'a' : 'button'));
 
 const classes = computed(() => {
 	return (

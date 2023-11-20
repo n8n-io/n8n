@@ -11,7 +11,7 @@
 					<n8n-button
 						size="large"
 						type="secondary"
-						:link="true"
+						element="a"
 						:href="creatorHubUrl"
 						:label="$locale.baseText('templates.shareWorkflow')"
 						target="_blank"
