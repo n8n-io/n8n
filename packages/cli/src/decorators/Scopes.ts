@@ -1,9 +1,9 @@
-import type { Scope, HasScopeOptions } from '@n8n/permissions';
+import type { Scope, ScopeOptions } from '@n8n/permissions';
 import type { ScopeMetadata } from './types';
 import { CONTROLLER_REQUIRED_SCOPES } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const RequireGlobalScope = (scope: Scope | Scope[], hasScopeOptions?: HasScopeOptions) => {
+export const RequireGlobalScope = (scope: Scope | Scope[], scopeOptions?: ScopeOptions) => {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	return (target: Function | Object, handlerName?: string) => {
 		const controllerClass = handlerName ? target.constructor : target;
@@ -11,7 +11,7 @@ export const RequireGlobalScope = (scope: Scope | Scope[], hasScopeOptions?: Has
 			{}) as ScopeMetadata;
 		scopes[handlerName ?? '*'] = {
 			scopes: Array.isArray(scope) ? scope : [scope],
-			options: hasScopeOptions,
+			options: scopeOptions,
 		};
 		Reflect.defineMetadata(CONTROLLER_REQUIRED_SCOPES, scopes, controllerClass);
 	};

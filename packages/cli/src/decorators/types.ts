@@ -1,7 +1,7 @@
 import type { Request, Response, RequestHandler } from 'express';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import type { BooleanLicenseFeature } from '@/Interfaces';
-import type { HasScopeOptions, Scope } from '@n8n/permissions';
+import type { ScopeOptions, Scope } from '@n8n/permissions';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
@@ -12,7 +12,7 @@ export type LicenseMetadata = Record<string, BooleanLicenseFeature[]>;
 
 export interface ScopeWithOptions {
 	scopes: Scope[];
-	options?: HasScopeOptions;
+	options?: ScopeOptions;
 }
 export type ScopeMetadata = Record<string, ScopeWithOptions>;
 
