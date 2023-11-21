@@ -10,7 +10,6 @@ import type {
 import { createRouter, createWebHistory } from 'vue-router';
 import { ROLE, runExternalHook } from '@/utils';
 import { useSettingsStore } from './stores/settings.store';
-import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
@@ -18,6 +17,7 @@ import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
+import { initializeCore } from '@/init';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -741,17 +741,17 @@ const router = createRouter({
 
 router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {
 	/**
-	 * Initialize stores before routing
+	 * Initialize application core
+	 * This step executes before first route is loaded and is required for permission checks
 	 */
 
-	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
-	await usersStore.initialize();
+	await initializeCore();
 
 	/**
 	 * Redirect to setup page. User should be redirected to this only once
 	 */
 
+	const settingsStore = useSettingsStore();
 	if (settingsStore.showSetupPage) {
 		if (to.name === VIEWS.SETUP) {
 			return next();
