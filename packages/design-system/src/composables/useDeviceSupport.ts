@@ -7,7 +7,7 @@ interface DeviceSupportHelpers {
 	isCtrlKeyPressed: (e: MouseEvent | KeyboardEvent) => boolean;
 }
 
-export default function useDeviceSupportHelpers(): DeviceSupportHelpers {
+export function useDeviceSupport(): DeviceSupportHelpers {
 	const isTouchDevice = ref('ontouchstart' in window || navigator.maxTouchPoints > 0);
 	const userAgent = ref(navigator.userAgent.toLowerCase());
 	const isMacOs = ref(

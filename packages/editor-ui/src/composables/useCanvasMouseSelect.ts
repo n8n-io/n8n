@@ -1,11 +1,12 @@
 import type { INodeUi, XYPosition } from '@/Interface';
 
-import useDeviceSupport from './useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';
 import { ref, onMounted, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useContextMenu } from './useContextMenu';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
 	x: number;
@@ -20,6 +21,7 @@ export default function useCanvasMouseSelect() {
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
 	const workflowsStore = useWorkflowsStore();
+	const { isOpen: isContextMenuOpen } = useContextMenu();
 
 	function _setSelectBoxStyle(styles: Record<string, string>) {
 		Object.assign(selectBox.value.style, styles);
@@ -127,6 +129,9 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function mouseUpMouseSelect(e: MouseEvent) {
+		// Ignore right-click
+		if (e.button === 2 || isContextMenuOpen.value) return;
+
 		if (!selectActive.value) {
 			if (isTouchDevice && e.target instanceof HTMLElement) {
 				if (e.target && e.target.id.includes('node-view')) {
@@ -156,7 +161,7 @@ export default function useCanvasMouseSelect() {
 		_hideSelectBox();
 	}
 	function mouseDownMouseSelect(e: MouseEvent, moveButtonPressed: boolean) {
-		if (isCtrlKeyPressed(e) || moveButtonPressed) {
+		if (isCtrlKeyPressed(e) || moveButtonPressed || e.button === 2) {
 			// We only care about it when the ctrl key is not pressed at the same time.
 			// So we exit when it is pressed.
 			return;
