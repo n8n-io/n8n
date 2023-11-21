@@ -40,12 +40,12 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<Array<EnvironmentVariable | TemporaryEnvironmentVariable>>([]);
 const editMode = ref<Record<string, boolean>>({});
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
+const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
 );
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
