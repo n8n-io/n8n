@@ -169,6 +169,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+						{ severity: 'warning' },
 					);
 				}
 
