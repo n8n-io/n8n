@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ActiveUsersForWorkflows, PushDataUsersForWorkflow } from '@/Interface';
+import type { ActiveUsersForWorkflows } from '@/Interface';
 import { usePushConnectionStore, useWorkflowsStore } from '@/stores';
 import { STORES } from '@/constants';
 
@@ -12,7 +12,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	pushStore.addEventListener((event) => {
 		if (event.type === 'activeWorkflowUsersChanged') {
-			console.log('activeWorkflowUsersChanged', event.data);
 			const activeWorkflowId = workflowStore.workflowId;
 			if (event.data.workflowId === activeWorkflowId) {
 				usersForWorkflows.value[activeWorkflowId] = event.data.activeUsers;

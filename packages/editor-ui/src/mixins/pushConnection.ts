@@ -527,7 +527,7 @@ export const pushConnection = defineComponent({
 					this.workflowsStore.activeExecutionId = pushData.executionId;
 				}
 
-				this.processWaitingPushMessages();
+				void this.processWaitingPushMessages();
 			} else if (receivedData.type === 'reloadNodeType') {
 				await this.nodeTypesStore.getNodeTypes();
 				await this.nodeTypesStore.getFullNodesProperties([receivedData.data]);

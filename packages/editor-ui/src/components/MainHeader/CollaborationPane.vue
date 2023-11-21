@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { useCollaborationStore, useUsersStore } from '@/stores';
-import { computed } from 'vue';
+import { useCollaborationStore, useUsersStore, useWorkflowsStore } from '@/stores';
+import { onBeforeUnmount } from 'vue';
+import { onMounted } from 'vue';
+import { computed, ref } from 'vue';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
+
+const heartbeatInterval = 300000;
+const heartbeatTimer = ref(null as null | NodeJS.Timeout);
+
+onMounted(() => {
+	heartbeatTimer.value = setInterval(() => {
+		collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
+	}, heartbeatInterval);
+});
+
+onBeforeUnmount(() => {
+	if (heartbeatTimer.value !== null) {
+		clearInterval(heartbeatTimer.value);
+	}
+});
 
 const activeUsers = computed(() => {
 	return {
