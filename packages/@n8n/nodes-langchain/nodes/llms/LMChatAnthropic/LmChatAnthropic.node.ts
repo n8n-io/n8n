@@ -10,6 +10,7 @@ import {
 import { ChatAnthropic } from 'langchain/chat_models/anthropic';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmChatAnthropic implements INodeType {
 	description: INodeTypeDescription = {
@@ -124,6 +125,7 @@ export class LmChatAnthropic implements INodeType {
 			anthropicApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

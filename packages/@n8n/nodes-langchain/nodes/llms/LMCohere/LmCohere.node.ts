@@ -10,6 +10,7 @@ import {
 import { Cohere } from 'langchain/llms/cohere';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -97,6 +98,7 @@ export class LmCohere implements INodeType {
 		const model = new Cohere({
 			apiKey: credentials.apiKey as string,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

@@ -9,9 +9,9 @@ import {
 
 import type { ClientOptions } from 'openai';
 import { OpenAI } from 'langchain/llms/openai';
-import { CallbackManager } from 'langchain/callbacks';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -217,16 +217,7 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
-			callbacks: CallbackManager.fromHandlers({
-				handleLLMEnd: async (...args) => {
-					console.log('LLM End', JSON.stringify(args, null, 2));
-					// this.addNodeExecutionLog('LLM End');
-				},
-				handleLLMStart: async (...args) => {
-					console.log('LLM Start:', JSON.stringify(args, null, 2));
-					// this.addNodeExecutionLog('LLM End');
-				},
-			}),
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

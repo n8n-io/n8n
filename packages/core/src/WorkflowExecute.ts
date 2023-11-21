@@ -39,7 +39,7 @@ import {
 	WorkflowExecuteMode,
 	NodeHelpers,
 	NodeConnectionType,
-	ExecutionLogsController,
+	ExecutionTracesController,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -58,7 +58,7 @@ export class WorkflowExecute {
 		mode: WorkflowExecuteMode,
 		runExecutionData?: IRunExecutionData,
 		private abortController?: AbortController,
-		private executionLogsController?: ExecutionLogsController,
+		private executionTracesController?: ExecutionTracesController,
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -1058,7 +1058,7 @@ export class WorkflowExecute {
 									NodeExecuteFunctions,
 									this.mode,
 									this.abortController,
-									this.executionLogsController,
+									this.executionTracesController,
 								);
 								nodeSuccessData = runNodeData.data;
 								console.log('After run node');
@@ -1292,7 +1292,7 @@ export class WorkflowExecute {
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
 						executionStatus: 'success',
-						executionLogs: this.executionLogsController?.getLogs() ?? [],
+						executionTraces: this.executionTracesController?.getTraces() ?? [],
 					};
 
 					if (executionError !== undefined) {

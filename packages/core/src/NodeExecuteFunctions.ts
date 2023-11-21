@@ -39,8 +39,8 @@ import type {
 	ConnectionTypes,
 	ContextType,
 	ExecutionError,
-	ExecutionLog,
-	ExecutionLogsController,
+	ExecutionTrace,
+	ExecutionTracesController,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -2529,15 +2529,15 @@ const executionCancellationFunctions = (
 const executionLoggingFunctions = (
 	workflow: Workflow,
 	node: INode,
-	executionLogsController?: ExecutionLogsController,
-): Pick<IExecuteFunctions, 'addNodeExecutionLog'> => ({
-	addNodeExecutionLog: (message: ExecutionLog) => {
+	executionTracesController?: ExecutionTracesController,
+): Pick<IExecuteFunctions, 'addNodeExecutionTrace'> => ({
+	addNodeExecutionTrace: (message: ExecutionTrace) => {
 		console.log('Add Node Execution Log', message);
-		if (!executionLogsController) {
+		if (!executionTracesController) {
 			console.log('Execution Logs Controller not available');
 			return;
 		}
-		executionLogsController.addLog(node.name, message);
+		executionTracesController.addTrace(node.name, message);
 	},
 });
 
@@ -3121,7 +3121,7 @@ export function getExecuteFunctions(
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 	abortController?: AbortController,
-	executionLogController?: ExecutionLogsController,
+	executionLogController?: ExecutionTracesController,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {

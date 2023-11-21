@@ -10,6 +10,7 @@ import {
 import { Ollama } from 'langchain/llms/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -151,6 +152,7 @@ export class LmOllama implements INodeType {
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

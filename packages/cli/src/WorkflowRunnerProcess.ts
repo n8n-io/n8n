@@ -53,7 +53,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
-import { WorkflowExecutionLogger } from './WorkflowExecutionLogger';
+import { WorkflowExecutionTracer } from './WorkflowExecutionTracer';
 
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	setDefaultResultOrder('ipv4first');
@@ -271,7 +271,7 @@ class WorkflowRunnerProcess {
 			return returnData!.data!.main;
 		};
 		const abortController = new AbortController();
-		const executionLogsController = new WorkflowExecutionLogger();
+		const executionLogsController = new WorkflowExecutionTracer();
 
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(

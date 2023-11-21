@@ -9,6 +9,7 @@ import {
 import { ChatGooglePaLM } from 'langchain/chat_models/googlepalm';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmChatGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
@@ -156,6 +157,7 @@ export class LmChatGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

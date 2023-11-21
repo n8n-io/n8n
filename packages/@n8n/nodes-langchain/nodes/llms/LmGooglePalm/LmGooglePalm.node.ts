@@ -9,6 +9,7 @@ import {
 import { GooglePaLM } from 'langchain/llms/googlepalm';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
@@ -163,6 +164,7 @@ export class LmGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

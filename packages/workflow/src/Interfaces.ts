@@ -188,17 +188,17 @@ export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
 
-export interface ExecutionLogRecord {
+export interface ExecutionTraceRecord {
 	log: unknown;
 	nodeName: string;
 	uuid: string;
 	time: Date;
 }
 
-export abstract class ExecutionLogsController {
-	abstract getLogs(): ExecutionLogRecord[];
+export abstract class ExecutionTracesController {
+	abstract getTraces(): ExecutionTraceRecord[];
 
-	abstract addLog: (nodeName: string, log: unknown) => void;
+	abstract addTrace: (nodeName: string, log: unknown) => void;
 }
 
 export abstract class ICredentialsHelper {
@@ -437,7 +437,7 @@ export interface IGetExecuteFunctions {
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 		abortController?: AbortController,
-		executionLogsController?: ExecutionLogsController,
+		executionLogsController?: ExecutionTracesController,
 	): IExecuteFunctions;
 }
 
@@ -454,7 +454,7 @@ export interface IGetExecuteSingleFunctions {
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 		abortController?: AbortController,
-		executionLogsController?: ExecutionLogsController,
+		executionLogsController?: ExecutionTracesController,
 	): IExecuteSingleFunctions;
 }
 
@@ -828,7 +828,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
-		addNodeExecutionLog(log: ExecutionLog): void;
+		addNodeExecutionTrace(log: ExecutionTrace): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1029,7 +1029,7 @@ export interface INodeExecutionData {
 	index?: number;
 }
 
-export interface ExecutionLog {
+export interface ExecutionTrace {
 	type: 'input' | 'output' | 'error' | 'info';
 	node?: {
 		name: string;
@@ -1837,7 +1837,7 @@ export interface ITaskData {
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
-	executionLogs?: ExecutionLogRecord[];
+	executionTraces?: ExecutionTraceRecord[];
 }
 
 export interface ISourceData {

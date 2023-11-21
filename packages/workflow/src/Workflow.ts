@@ -42,7 +42,7 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 	ConnectionTypes,
-	ExecutionLogsController,
+	ExecutionTracesController,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -1223,7 +1223,7 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		abortController?: AbortController,
-		executionLogsController?: ExecutionLogsController,
+		executionLogsController?: ExecutionTracesController,
 	): Promise<IRunNodeResponse> {
 		const { node } = executionData;
 		let inputData = executionData.data;

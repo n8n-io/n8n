@@ -10,6 +10,7 @@ import {
 import { HuggingFaceInference } from 'langchain/llms/hf';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -141,6 +142,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 			model: modelName,
 			apiKey: credentials.apiKey as string,
 			...options,
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

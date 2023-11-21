@@ -9,6 +9,7 @@ import {
 import { ChatBedrock } from 'langchain/chat_models/bedrock';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getLlmInputOutputCallbacks } from '../../../utils/callbacks';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -155,6 +156,7 @@ export class LmChatAwsBedrock implements INodeType {
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
 		});
 
 		return {

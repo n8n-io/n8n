@@ -50,7 +50,7 @@ import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from './Logger';
-import { WorkflowExecutionLogger } from './WorkflowExecutionLogger';
+import { WorkflowExecutionTracer } from './WorkflowExecutionTracer';
 
 export class WorkflowRunner {
 	logger: Logger;
@@ -349,7 +349,7 @@ export class WorkflowRunner {
 			});
 
 			const abortController = new AbortController();
-			const executionLogController = new WorkflowExecutionLogger();
+			const executionLogController = new WorkflowExecutionTracer();
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
