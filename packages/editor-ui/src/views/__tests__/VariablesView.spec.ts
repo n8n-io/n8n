@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
-import { useSettingsStore, useRBACStore } from '@/stores';
+import { useSettingsStore, useUsersStore, useRBACStore } from '@/stores';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 
@@ -11,6 +11,7 @@ describe('VariablesView', () => {
 	let server: ReturnType<typeof setupServer>;
 	let pinia: ReturnType<typeof createPinia>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let usersStore: ReturnType<typeof useUsersStore>;
 	let rbacStore: ReturnType<typeof useRBACStore>;
 
 	const renderComponent = createComponentRenderer(VariablesView);
@@ -24,8 +25,11 @@ describe('VariablesView', () => {
 		setActivePinia(pinia);
 
 		settingsStore = useSettingsStore();
+		usersStore = useUsersStore();
 		rbacStore = useRBACStore();
 		await settingsStore.getSettings();
+		await usersStore.fetchUsers();
+		await usersStore.loginWithCookie();
 	});
 
 	afterAll(() => {
