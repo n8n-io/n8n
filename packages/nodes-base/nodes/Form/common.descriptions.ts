@@ -189,7 +189,7 @@ export const formTriggerPanel = {
 };
 
 export const respondWithOptions: INodeProperties = {
-	displayName: 'Respond With',
+	displayName: 'Form Response',
 	name: 'respondWithOptions',
 	type: 'fixedCollection',
 	placeholder: 'Add Option',
