@@ -56,6 +56,13 @@ export class OutputParserAutofixing implements INodeType {
 		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
+			{
+				displayName:
+					'This node wraps another output parser. If the first one fails it calls an LLM to fix the format',
+				name: 'info',
+				type: 'notice',
+				default: '',
+			},
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 		],
 	};

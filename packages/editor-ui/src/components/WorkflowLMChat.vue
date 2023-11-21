@@ -286,8 +286,8 @@ export default defineComponent({
 
 			if (!chatNode) {
 				this.showError(
-					new Error('Chat viable node(Agent or Chain) could not be found!'),
-					'Chat node not found',
+					new Error('Missing AI node'),
+					'Chat only works when an AI agent or chain is connected to the chat trigger node',
 				);
 				return;
 			}

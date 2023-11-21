@@ -103,11 +103,11 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Top K',
+				displayName: 'Limit',
 				name: 'topK',
 				type: 'number',
 				default: 10,
-				description: 'Number of top results agent should return',
+				description: 'The maximum number of results to return',
 			},
 		],
 	},
