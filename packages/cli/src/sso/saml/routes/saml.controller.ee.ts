@@ -1,6 +1,5 @@
 import express from 'express';
 import { Container, Service } from 'typedi';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
@@ -27,11 +26,15 @@ import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFail
 import { InternalHooks } from '@/InternalHooks';
 import url from 'url';
 import querystring from 'querystring';
+import { InstanceService } from '@/services/instance.service';
 
 @Service()
 @RestController('/sso/saml')
 export class SamlController {
-	constructor(private samlService: SamlService) {}
+	constructor(
+		private samlService: SamlService,
+		private instanceService: InstanceService,
+	) {}
 
 	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
@@ -51,8 +54,8 @@ export class SamlController {
 		const prefs = this.samlService.samlPreferences;
 		return {
 			...prefs,
-			entityID: getServiceProviderEntityId(),
-			returnUrl: getServiceProviderReturnUrl(),
+			entityID: getServiceProviderEntityId(this.instanceService.getInstanceBaseUrl()),
+			returnUrl: getServiceProviderReturnUrl(this.instanceService.getInstanceBaseUrl()),
 		};
 	}
 
@@ -119,6 +122,8 @@ export class SamlController {
 		res: express.Response,
 		binding: SamlLoginBinding,
 	) {
+		const instanceBaseUrl = this.instanceService.getInstanceBaseUrl();
+
 		try {
 			const loginResult = await this.samlService.handleSamlLogin(req, binding);
 			// if RelayState is set to the test connection Url, this is a test connection
@@ -138,10 +143,10 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
+						return res.redirect(instanceBaseUrl + SamlUrls.samlOnboarding);
 					} else {
 						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
-						return res.redirect(getInstanceBaseUrl() + redirectUrl);
+						return res.redirect(instanceBaseUrl + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
@@ -198,7 +203,10 @@ export class SamlController {
 	@Authorized(['global', 'owner'])
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
-		return this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
+		return this.handleInitSSO(
+			res,
+			getServiceProviderConfigTestReturnUrl(this.instanceService.getInstanceBaseUrl()),
+		);
 	}
 
 	private async handleInitSSO(res: express.Response, relayState?: string) {

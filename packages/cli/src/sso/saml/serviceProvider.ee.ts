@@ -1,21 +1,22 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { ServiceProviderInstance } from 'samlify';
 import { SamlUrls } from './constants';
 import type { SamlPreferences } from './types/samlPreferences';
+import { InstanceService } from '@/services/instance.service';
+import Container from 'typedi';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 
-export function getServiceProviderEntityId(): string {
-	return getInstanceBaseUrl() + SamlUrls.restMetadata;
+export function getServiceProviderEntityId(baseUrl: string): string {
+	return baseUrl + SamlUrls.restMetadata;
 }
 
-export function getServiceProviderReturnUrl(): string {
-	return getInstanceBaseUrl() + SamlUrls.restAcs;
+export function getServiceProviderReturnUrl(baseUrl: string): string {
+	return baseUrl + SamlUrls.restAcs;
 }
 
-export function getServiceProviderConfigTestReturnUrl(): string {
-	return getInstanceBaseUrl() + SamlUrls.configTestReturn;
+export function getServiceProviderConfigTestReturnUrl(baseUrl: string): string {
+	return baseUrl + SamlUrls.configTestReturn;
 }
 
 // TODO:SAML: make these configurable for the end user
@@ -24,9 +25,11 @@ export function getServiceProviderInstance(
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	samlify: typeof import('samlify'),
 ): ServiceProviderInstance {
+	const baseUrl = Container.get(InstanceService).getInstanceBaseUrl();
+
 	if (serviceProviderInstance === undefined) {
 		serviceProviderInstance = samlify.ServiceProvider({
-			entityID: getServiceProviderEntityId(),
+			entityID: getServiceProviderEntityId(baseUrl),
 			authnRequestsSigned: prefs.authnRequestsSigned,
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
@@ -37,12 +40,12 @@ export function getServiceProviderInstance(
 				{
 					isDefault: prefs.acsBinding === 'post',
 					Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-					Location: getServiceProviderReturnUrl(),
+					Location: getServiceProviderReturnUrl(baseUrl),
 				},
 				{
 					isDefault: prefs.acsBinding === 'redirect',
 					Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-REDIRECT',
-					Location: getServiceProviderReturnUrl(),
+					Location: getServiceProviderReturnUrl(baseUrl),
 				},
 			],
 		});

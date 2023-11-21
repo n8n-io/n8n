@@ -12,11 +12,7 @@ import {
 	UnauthorizedError,
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '@/auth/jwt';
@@ -29,6 +25,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { InstanceService } from '@/services/instance.service';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -47,6 +44,7 @@ export class PasswordResetController {
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
 		private readonly license: License,
+		private readonly instanceService: InstanceService,
 	) {}
 
 	/**
@@ -131,7 +129,7 @@ export class PasswordResetController {
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: getInstanceBaseUrl(),
+				domain: this.instanceService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({

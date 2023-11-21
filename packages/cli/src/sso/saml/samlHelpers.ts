@@ -21,6 +21,7 @@ import type { SamlConfiguration } from './types/requests';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { InstanceService } from '@/services/instance.service';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -178,5 +179,8 @@ export function getMappedSamlAttributesFromFlowResult(
 }
 
 export function isConnectionTestRequest(req: SamlConfiguration.AcsRequest): boolean {
-	return req.body.RelayState === getServiceProviderConfigTestReturnUrl();
+	return (
+		req.body.RelayState ===
+		getServiceProviderConfigTestReturnUrl(Container.get(InstanceService).getInstanceBaseUrl())
+	);
 }

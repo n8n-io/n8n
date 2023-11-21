@@ -4,7 +4,6 @@ import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
-import { generateUserInviteUrl, getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { type JwtPayload, JwtService } from './jwt.service';
@@ -17,6 +16,7 @@ import { RoleService } from '@/services/role.service';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { InternalServerError } from '@/ResponseHelper';
 import type { UserRequest } from '@/requests';
+import { InstanceService } from '@/services/instance.service';
 
 @Service()
 export class UserService {
@@ -26,6 +26,7 @@ export class UserService {
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly roleService: RoleService,
+		private readonly instanceService: InstanceService,
 	) {}
 
 	async findOne(options: FindOneOptions<User>) {
@@ -78,7 +79,7 @@ export class UserService {
 	}
 
 	generatePasswordResetUrl(user: User) {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.instanceService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
@@ -151,7 +152,7 @@ export class UserService {
 	}
 
 	private addInviteUrl(user: PublicUser, inviterId: string) {
-		const url = new URL(getInstanceBaseUrl());
+		const url = new URL(this.instanceService.getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
 		url.searchParams.set('inviteeId', user.id);
@@ -179,11 +180,11 @@ export class UserService {
 	}
 
 	private async sendEmails(owner: User, toInviteUsers: { [key: string]: string }) {
-		const domain = getInstanceBaseUrl();
+		const domain = this.instanceService.getInstanceBaseUrl();
 
 		return Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = generateUserInviteUrl(owner.id, id);
+				const inviteAcceptUrl = this.generateUserInviteUrl(owner.id, id);
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -286,5 +287,9 @@ export class UserService {
 		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
 
 		return { usersInvited, usersCreated: toCreateUsers };
+	}
+
+	private generateUserInviteUrl(inviterId: string, inviteeId: string): string {
+		return `${this.instanceService.getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 	}
 }

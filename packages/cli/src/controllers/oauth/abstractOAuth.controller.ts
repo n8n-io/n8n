@@ -7,7 +7,6 @@ import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import type { ICredentialsDb } from '@/Interfaces';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { OAuthRequest } from '@/requests';
 import { BadRequestError, NotFoundError } from '@/ResponseHelper';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -15,6 +14,7 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
+import { InstanceService } from '@/services/instance.service';
 
 @Service()
 export abstract class AbstractOAuthController {
@@ -26,10 +26,13 @@ export abstract class AbstractOAuthController {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly instanceService: InstanceService,
 	) {}
 
 	get baseUrl() {
-		const restUrl = `${getInstanceBaseUrl()}/${config.getEnv('endpoints.rest')}`;
+		const restUrl = `${this.instanceService.getInstanceBaseUrl()}/${config.getEnv(
+			'endpoints.rest',
+		)}`;
 		return `${restUrl}/oauth${this.oauthVersion}-credential`;
 	}
 

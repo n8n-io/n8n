@@ -17,7 +17,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
@@ -31,6 +30,7 @@ import {
 import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
+import { InstanceService } from '@/services/instance.service';
 
 @Service()
 export class FrontendService {
@@ -46,6 +46,7 @@ export class FrontendService {
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceService: InstanceService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
 		void this.generateTypes();
@@ -61,7 +62,7 @@ export class FrontendService {
 	}
 
 	private initSettings() {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.instanceService.getInstanceBaseUrl();
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		const telemetrySettings: ITelemetrySettings = {
@@ -218,7 +219,7 @@ export class FrontendService {
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.instanceService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
 		this.settings.oauthCallbackUrls = {
