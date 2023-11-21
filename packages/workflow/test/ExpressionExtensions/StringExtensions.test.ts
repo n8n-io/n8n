@@ -51,6 +51,40 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.b64Encode should work correctly on a string', () => {
+			expect(evaluate('={{ "A".b64Encode() }}')).toEqual('QQ==');
+			expect(evaluate('={{ "�ø®".b64Encode(false) }}')).toEqual('77+9w7jCrg==');
+			expect(evaluate('={{ "�ø®".b64Encode(true) }}')).toEqual('77-9w7jCrg');
+		});
+
+		test('.b64Decode should work correctly on a string', () => {
+			expect(evaluate('={{ "QQ==".b64Decode() }}')).toEqual('A');
+			expect(evaluate('={{ "QQ".b64Decode() }}')).toEqual('A');
+			expect(evaluate('={{ "QQ".b64Decode(true) }}')).toEqual('A');
+			expect(evaluate('={{ "QQ==".b64Decode(true) }}')).toEqual('A');
+			expect(evaluate('={{ "77+9w7jCrg==".b64Decode(false) }}')).toEqual('�ø®');
+			expect(evaluate('={{ "77-9w7jCrg".b64Decode(true) }}')).toEqual('�ø®');
+		});
+
+		test('.htmlEncode should work correctly on special chars', () => {
+			expect(evaluate('={{ "&\\"\'<>".htmlEncode(false) }}')).toEqual('&amp;&quot;&apos;&lt;&gt;');
+		});
+
+		test('.htmlEncode NonAscii output should work correctly', () => {
+			expect(evaluate('={{ "!@#$%^&*()".htmlEncode(false) }}')).toEqual('!@#&dollar;%^&amp;*()');
+		});
+		test('.htmlEncode should work correctly', () => {
+			expect(evaluate('={{ "!@#$%^&*()".htmlEncode(true) }}')).toEqual(
+				'&excl;&commat;&num;&dollar;&percnt;&Hat;&amp;&ast;&lpar;&rpar;',
+			);
+		});
+
+		test('.htmlDecode should work correctly on all chars', () => {
+			expect(
+				evaluate('={{ "&amp;&quot;&#039;&lt;&gt;&#65533;&#248;&#174;".htmlDecode(true) }}'),
+			).toEqual('&"\'<>�ø®');
+		});
+
 		test('.removeTags should work correctly on a string', () => {
 			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
 		});

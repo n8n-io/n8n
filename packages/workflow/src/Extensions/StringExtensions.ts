@@ -3,8 +3,9 @@ import { titleCase } from 'title-case';
 import * as ExpressionError from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
-import { encode } from 'js-base64';
+import { toBase64, fromBase64 } from 'js-base64';
 import { transliterate } from 'transliteration';
+import { encodeHTML, encodeNonAsciiHTML, decodeHTMLStrict } from 'entities';
 
 const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 	md5: CryptoJS.MD5,
@@ -118,7 +119,7 @@ function hash(value: string, extraArgs?: unknown): string {
 	if (algorithm.toLowerCase() === 'base64') {
 		// We're using a library instead of btoa because btoa only
 		// works on ASCII
-		return encode(value);
+		return toBase64(value);
 	}
 	const hashFunction = hashFunctions[algorithm.toLowerCase()];
 	if (!hashFunction) {
@@ -217,6 +218,29 @@ function urlEncode(value: string, extraArgs: boolean[]): string {
 		return encodeURI(value.toString());
 	}
 	return encodeURIComponent(value.toString());
+}
+
+function b64Encode(value: string, extraArgs: boolean[]): string {
+	const [urlMode = false] = extraArgs;
+	return toBase64(value, urlMode);
+}
+
+function b64Decode(value: string): string {
+	return fromBase64(value);
+}
+
+function htmlEncode(value: string, extraArgs: boolean[]): string {
+	const [allChars = false] = extraArgs;
+
+	if (allChars) {
+		return encodeHTML(value);
+	}
+
+	return encodeNonAsciiHTML(value);
+}
+
+function htmlDecode(value: string): string {
+	return decodeHTMLStrict(value);
 }
 
 function toInt(value: string, extraArgs: Array<number | undefined>) {
@@ -433,6 +457,41 @@ urlDecode.doc = {
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-urlDecode',
 };
 
+b64Encode.doc = {
+	name: 'b64Encode',
+	description: 'Encodes a string in base64 format.',
+	args: [{ name: 'urlMode?', type: 'boolean' }],
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-b64Encode',
+};
+
+b64Decode.doc = {
+	name: 'b64Decode',
+	description: 'Decodes a base64-encoded string.',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-b64Decode',
+};
+
+htmlEncode.doc = {
+	name: 'htmlEncode',
+	description:
+		'Encodes text replacing characters that are not valid in HTML. If allChars is true, all non-ASCII characters are replaced.',
+	args: [{ name: 'allChars?', type: 'boolean' }],
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-htmlEncode',
+};
+
+htmlDecode.doc = {
+	name: 'htmlDecode',
+	description: 'Decodes text replacing HTML entities with their respective characters.',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-htmlDecode',
+};
+
 replaceSpecialChars.doc = {
 	name: 'replaceSpecialChars',
 	description: 'Replaces non-ASCII characters in a string with an ASCII representation.',
@@ -561,5 +620,9 @@ export const stringExtensions: ExtensionMap = {
 		extractEmail,
 		extractDomain,
 		extractUrl,
+		b64Encode,
+		b64Decode,
+		htmlEncode,
+		htmlDecode,
 	},
 };

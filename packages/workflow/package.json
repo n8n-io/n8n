@@ -53,6 +53,7 @@
     "ast-types": "0.15.2",
     "crypto-js": "4.2.0",
     "deep-equal": "2.2.0",
+    "entities": "^4.5.0",
     "esprima-next": "5.8.4",
     "form-data": "4.0.0",
     "jmespath": "0.16.0",
