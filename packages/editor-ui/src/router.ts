@@ -218,21 +218,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workers',
-		name: VIEWS.WORKER_VIEW,
-		components: {
-			default: WorkerView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
-	},
-	{
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
@@ -732,6 +717,20 @@ export const routes = [
 						},
 						deny: {
 							role: [ROLE.Member],
+						},
+					},
+				},
+			},
+			{
+				path: 'workers',
+				name: VIEWS.WORKER_VIEW,
+				components: {
+					settingsView: WorkerView,
+				},
+				meta: {
+					permissions: {
+						allow: {
+							loginStatus: [LOGIN_STATUS.LoggedIn],
 						},
 					},
 				},
