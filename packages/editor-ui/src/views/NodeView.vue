@@ -504,15 +504,18 @@ export default defineComponent({
 						},
 					);
 				} else {
+					this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 					next();
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
+				this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
 			}
 		} else {
+			this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 			next();
 		}
 	},
@@ -2984,10 +2987,12 @@ export default defineComponent({
 				const confirmationMessage = this.$locale.baseText(
 					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
 				);
+				// TODO: Notify to collaboration store that the user is leaving the node view
 				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
 				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
 		},

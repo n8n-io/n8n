@@ -20,7 +20,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	});
 
-	const workflowUsersUpdated = (data: PushDataUsersForWorkflow) => {
+	const workflowUsersUpdated = (data: ActiveUsersForWorkflows) => {
 		usersForWorkflows.value = data;
 	};
 

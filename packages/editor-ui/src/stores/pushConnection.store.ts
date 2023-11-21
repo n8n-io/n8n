@@ -140,8 +140,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		} catch (error) {
 			return;
 		}
-
-		console.log('Received', receivedData);
+		//  TODO: Why is this received multiple times?
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
