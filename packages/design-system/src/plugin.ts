@@ -51,6 +51,7 @@ import {
 	N8nUserInfo,
 	N8nUserSelect,
 	N8nUsersList,
+	N8nKeyboardShortcut,
 	N8nUserStack,
 } from './components';
 
@@ -108,5 +109,6 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-user-info', N8nUserInfo);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
+		app.component('n8n-keyboard-shortcut', N8nKeyboardShortcut);
 	},
 };

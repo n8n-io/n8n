@@ -548,7 +548,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		addSelectedNode(node: INodeUi): void {
-			this.selectedNodes.push(node);
+			const isAlreadySelected = this.selectedNodes.some((n) => n.name === node.name);
+			if (!isAlreadySelected) {
+				this.selectedNodes.push(node);
+			}
 		},
 		removeNodeFromSelection(node: INodeUi): void {
 			let index;
