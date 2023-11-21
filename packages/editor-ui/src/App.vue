@@ -35,7 +35,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { extendExternalHooks } from '@/mixins/externalHooks';
 import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
