@@ -115,6 +115,7 @@
 					text
 				/>
 			</router-link>
+			<collaboration-pane />
 			<div :class="$style.workflowMenuContainer">
 				<input
 					:class="$style.hiddenInput"
@@ -159,6 +160,7 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
@@ -201,6 +203,7 @@ export default defineComponent({
 		TagsDropdown,
 		InlineTextEdit,
 		BreakpointsObserver,
+		CollaborationPane,
 	},
 	props: {
 		readOnly: {

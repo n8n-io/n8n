@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { ActiveUsersForWorkflows, PushDataUsersForWorkflow } from '@/Interface';
 import { usePushConnectionStore, useWorkflowsStore } from '@/stores';
 import { STORES } from '@/constants';
@@ -35,10 +35,15 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		pushStore.send({ type: 'workflowClosed', workflowId });
 	};
 
+	const getUsersForCurrentWorkflow = computed(() => {
+		return usersForWorkflows.value[workflowStore.workflowId];
+	});
+
 	return {
 		usersForWorkflows,
 		notifyWorkflowOpened,
 		notifyWorkflowClosed,
 		workflowUsersUpdated,
+		getUsersForCurrentWorkflow,
 	};
 });
