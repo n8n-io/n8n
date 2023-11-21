@@ -503,7 +503,8 @@
 								} catch (e) {}
 
 								if (json?.redirectURL) {
-									window.location.replace(json.redirectURL);
+									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
+									window.location.replace(url);
 								} else if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
