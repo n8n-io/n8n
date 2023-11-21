@@ -56,18 +56,20 @@
 		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
-			<span class="activator">
+			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 			</span>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-				<n8n-button
-					type="secondary"
-					class="mr-2xs"
-					@click="onShareButtonClick"
-					data-test-id="workflow-share-button"
-				>
-					{{ $locale.baseText('workflowDetails.share') }}
-				</n8n-button>
+				<div :class="$style.group">
+					<collaboration-pane />
+					<n8n-button
+						type="secondary"
+						@click="onShareButtonClick"
+						data-test-id="workflow-share-button"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</div>
 				<template #fallback>
 					<n8n-tooltip>
 						<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
@@ -94,29 +96,30 @@
 					</n8n-tooltip>
 				</template>
 			</enterprise-edition>
-			<SaveButton
-				type="primary"
-				:saved="!this.isDirty && !this.isNewWorkflow"
-				:disabled="isWorkflowSaving || readOnly"
-				data-test-id="workflow-save-button"
-				@click="onSaveButtonClick"
-			/>
-			<router-link
-				v-if="isWorkflowHistoryFeatureEnabled"
-				:to="workflowHistoryRoute"
-				:class="$style.workflowHistoryButton"
-			>
-				<n8n-icon-button
-					:disabled="isWorkflowHistoryButtonDisabled"
-					data-test-id="workflow-history-button"
-					type="tertiary"
-					icon="history"
-					size="medium"
-					text
+			<div :class="$style.group">
+				<SaveButton
+					type="primary"
+					:saved="!this.isDirty && !this.isNewWorkflow"
+					:disabled="isWorkflowSaving || readOnly"
+					data-test-id="workflow-save-button"
+					@click="onSaveButtonClick"
 				/>
-			</router-link>
-			<collaboration-pane />
-			<div :class="$style.workflowMenuContainer">
+				<router-link
+					v-if="isWorkflowHistoryFeatureEnabled"
+					:to="workflowHistoryRoute"
+					:class="$style.workflowHistoryButton"
+				>
+					<n8n-icon-button
+						:disabled="isWorkflowHistoryButtonDisabled"
+						data-test-id="workflow-history-button"
+						type="tertiary"
+						icon="history"
+						size="medium"
+						text
+					/>
+				</router-link>
+			</div>
+			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
 					:class="$style.hiddenInput"
 					type="file"
@@ -678,7 +681,6 @@ $--header-spacing: 20px;
 	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
-	margin-right: 30px;
 
 	> span {
 		margin-right: 5px;
@@ -714,14 +716,15 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-s);
 }
 </style>
 
 <style module lang="scss">
-.workflowMenuContainer {
-	margin-left: var(--spacing-2xs);
+.group {
+	display: flex;
+	gap: var(--spacing-2xs);
 }
-
 .hiddenInput {
 	display: none;
 }
@@ -737,8 +740,6 @@ $--header-spacing: 20px;
 .workflowHistoryButton {
 	width: 30px;
 	height: 30px;
-	margin-left: var(--spacing-m);
-	margin-right: var(--spacing-4xs);
 	color: var(--color-text-dark);
 	border-radius: var(--border-radius-base);
 

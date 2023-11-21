@@ -160,7 +160,8 @@ const menuHeight = computed(() => {
 	border: none;
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: var(--spacing-s);
+	padding-bottom: var(--spacing-2xs);
 
 	.el-dropdown-menu__item {
 		line-height: var(--font-line-height-regular);
