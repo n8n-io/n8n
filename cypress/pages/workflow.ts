@@ -71,6 +71,7 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
 		workflowSettingsErrorWorkflowSelect: () => cy.getByTestId('workflow-settings-error-workflow'),
