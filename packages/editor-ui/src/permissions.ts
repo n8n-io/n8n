@@ -23,7 +23,7 @@ export const enum UserRole {
 
 export type IPermissions = Record<string, boolean>;
 
-type IPermissionsTableRowTestFn = (permissions: IPermissions) => boolean;
+type IPermissionsTableRowTestFn = (permissions?: IPermissions) => boolean;
 
 export interface IPermissionsTableRow {
 	name: string;
@@ -42,15 +42,20 @@ export const parsePermissionsTable = (
 	user: IUser | null,
 	table: IPermissionsTable,
 ): IPermissions => {
-	const genericTable = [{ name: UserRole.InstanceOwner, test: () => user?.isOwner }];
+	const genericTable: IPermissionsTable = [
+		{ name: UserRole.InstanceOwner, test: () => !!user?.isOwner },
+	];
 
-	return [...genericTable, ...table].reduce((permissions: IPermissions, row) => {
-		permissions[row.name] = Array.isArray(row.test)
-			? row.test.some((ability) => permissions[ability])
-			: (row.test as IPermissionsTableRowTestFn)(permissions);
+	return [...genericTable, ...table].reduce(
+		(permissions: IPermissions, row: IPermissionsTableRow) => {
+			permissions[row.name] = Array.isArray(row.test)
+				? row.test.some((ability) => permissions[ability])
+				: row.test(permissions);
 
-		return permissions;
-	}, {});
+			return permissions;
+		},
+		{},
+	);
 };
 
 /**
@@ -97,8 +102,14 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 			name: UserRole.ResourceOwner,
 			test: () => !!(isNewWorkflow || workflow?.ownedBy?.id === user?.id) || !isSharingEnabled,
 		},
-		{ name: 'updateSharing', test: () => rbacStore.hasScope('workflow:update') },
-		{ name: 'delete', test: () => rbacStore.hasScope('workflow:delete') },
+		{
+			name: 'updateSharing',
+			test: (permissions) => rbacStore.hasScope('workflow:update') || !!permissions?.isOwner,
+		},
+		{
+			name: 'delete',
+			test: (permissions) => rbacStore.hasScope('workflow:delete') || !!permissions?.isOwner,
+		},
 	];
 
 	return parsePermissionsTable(user, table);
