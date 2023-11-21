@@ -298,6 +298,7 @@ export interface IDiagnosticInfo {
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
 	binary_data_s3: boolean;
+	multi_main_setup_enabled: boolean;
 	licensePlanName?: string;
 	licenseTenantId?: number;
 }
@@ -469,7 +470,25 @@ export type IPushData =
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
 	| PushDataActiveWorkflowUsersChanged
-	| PushDataWorkerStatusMessage;
+	| PushDataWorkerStatusMessage
+	| PushDataWorkflowActivated
+	| PushDataWorkflowDeactivated
+	| PushDataWorkflowFailedToActivate;
+
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
+};
+
+type PushDataWorkflowActivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowActivated';
+};
+
+type PushDataWorkflowDeactivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowDeactivated';
+};
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -536,9 +555,22 @@ export interface IActiveWorkflowUser {
 	lastSeen: Date;
 }
 
+export interface IActiveWorkflowAdded {
+	workflowId: Workflow['id'];
+}
+
 export interface IActiveWorkflowUsersChanged {
 	workflowId: Workflow['id'];
 	activeUsers: IActiveWorkflowUser[];
+}
+
+interface IActiveWorkflowChanged {
+	workflowId: Workflow['id'];
+}
+
+interface IWorkflowFailedToActivate {
+	workflowId: Workflow['id'];
+	errorMessage: string;
 }
 
 export interface IPushDataExecutionRecovered {

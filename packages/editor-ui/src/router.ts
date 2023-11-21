@@ -181,17 +181,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workers',
-		name: VIEWS.WORKER_VIEW,
-		components: {
-			default: WorkerView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
@@ -609,6 +598,16 @@ export const routes = [
 				},
 			},
 			{
+				path: 'workers',
+				name: VIEWS.WORKER_VIEW,
+				components: {
+					settingsView: WorkerView,
+				},
+				meta: {
+					middleware: ['authenticated'],
+				},
+			},
+			{
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
 				components: {
@@ -747,7 +746,6 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	await settingsStore.initialize();
 	await usersStore.initialize();
 
 	/**

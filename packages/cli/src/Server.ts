@@ -19,23 +19,12 @@ import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 
-import {
-	LoadMappingOptions,
-	LoadNodeParameterOptions,
-	LoadNodeListSearch,
-	InstanceSettings,
-} from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import type {
-	INodeCredentials,
-	INodeListSearchResult,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeNameVersion,
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
-	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -57,17 +46,11 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type {
-	CurlHelper,
-	ExecutionRequest,
-	NodeListSearchRequest,
-	NodeParameterOptionsRequest,
-	ResourceMapperRequest,
-	WorkflowRequest,
-} from '@/requests';
+import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
 import { LdapController } from '@/controllers/ldap.controller';
 import { MeController } from '@/controllers/me.controller';
 import { MFAController } from '@/controllers/mfa.controller';
@@ -93,7 +76,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WaitTracker } from '@/WaitTracker';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
@@ -233,6 +215,7 @@ export class Server extends AbstractServer {
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
@@ -277,6 +260,7 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(MeController),
+			Container.get(DynamicNodeParametersController),
 			new NodeTypesController(config, nodeTypes),
 			Container.get(PasswordResetController),
 			Container.get(TagsController),
@@ -451,170 +435,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/node-parameter-options`,
-			ResponseHelper.send(
-				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
-					}
-					// @ts-ignore
-					if (req.query.loadOptions) {
-						return loadDataInstance.getOptionsViaRequestProperty(
-							// @ts-ignore
-							jsonParse(req.query.loadOptions as string),
-							additionalData,
-						);
-					}
-
-					return [];
-				},
-			),
-		);
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/nodes-list-search`,
-			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const listSearchInstance = new LoadNodeListSearch(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return listSearchInstance.getOptionsViaMethodName(
-							methodName,
-							additionalData,
-							req.query.filter,
-							req.query.paginationToken,
-						);
-					}
-
-					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/get-mapping-fields`,
-			ResponseHelper.send(
-				async (
-					req: ResourceMapperRequest,
-					res: express.Response,
-				): Promise<ResourceMapperFields | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadMappingOptionsInstance = new LoadMappingOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
-						methodName,
-						additionalData,
-					);
-
-					return fields;
-				},
-			),
-		);
-
-		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
 
@@ -629,7 +449,7 @@ export class Server extends AbstractServer {
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({

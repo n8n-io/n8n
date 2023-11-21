@@ -7,6 +7,9 @@ import type {
 	IDataObject,
 	INode,
 	INodeCredentialTestRequest,
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeNameVersion,
 	IPinData,
 	IRunData,
 	IUser,
@@ -114,7 +117,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActive = AuthenticatedRequest;
 
-	type GetAllActivationErrors = Get;
+	type GetActivationError = Get;
 
 	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 
@@ -403,57 +406,43 @@ export declare namespace OAuthRequest {
 }
 
 // ----------------------------------
-//      /node-parameter-options
+//      /dynamic-node-parameters
 // ----------------------------------
+export declare namespace DynamicNodeParametersRequest {
+	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
+		{
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
+			credentials?: INodeCredentials;
+		},
+		{},
+		{},
+		{
+			path: string;
+			nodeTypeAndVersion: string;
+			currentNodeParameters: string;
+			methodName?: string;
+			credentials?: string;
+		} & QueryParams
+	>;
 
-export type NodeParameterOptionsRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET /dynamic-node-parameters/options */
+	type Options = BaseRequest<{
+		loadOptions?: string;
+	}>;
+
+	/** GET /dynamic-node-parameters/resource-locator-results */
+	type ResourceLocatorResults = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
-
-// ----------------------------------
-//        /node-list-search
-// ----------------------------------
-
-export type NodeListSearchRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
-		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
 		filter?: string;
 		paginationToken?: string;
-	}
->;
+	}>;
 
-// ----------------------------------
-//        /get-mapping-fields
-// ----------------------------------
-
-export type ResourceMapperRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET dynamic-node-parameters/resource-mapper-fields */
+	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
+	}>;
+}
 
 // ----------------------------------
 //             /tags

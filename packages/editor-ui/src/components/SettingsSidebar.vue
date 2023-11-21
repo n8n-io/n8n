@@ -117,6 +117,15 @@ export default defineComponent({
 					available: this.canAccessLdapSettings(),
 					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
 				},
+				{
+					id: 'settings-workersview',
+					icon: 'truck-monster',
+					label: this.$locale.baseText('mainSidebar.workersView'),
+					position: 'top',
+					available:
+						this.settingsStore.isQueueModeEnabled && this.settingsStore.isWorkerViewAvailable,
+					activateOnRouteNames: [VIEWS.WORKER_VIEW],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -241,6 +250,10 @@ export default defineComponent({
 						void this.$router.push({ name: VIEWS.AUDIT_LOGS });
 					}
 					break;
+				case 'settings-workersview': {
+					await this.navigateTo(VIEWS.WORKER_VIEW);
+					break;
+				}
 				default:
 					break;
 			}

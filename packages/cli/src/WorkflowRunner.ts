@@ -559,11 +559,8 @@ export class WorkflowRunner {
 					};
 				}
 
-				let racingPromisesResult: JobResponse = {
-					success: false,
-				};
 				try {
-					racingPromisesResult = await Promise.race(racingPromises);
+					await Promise.race(racingPromises);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
@@ -617,6 +614,7 @@ export class WorkflowRunner {
 					mode: fullExecutionData.mode,
 					startedAt: fullExecutionData.startedAt,
 					stoppedAt: fullExecutionData.stoppedAt,
+					status: fullExecutionData.status,
 				} as IRun;
 
 				if (executionHasPostExecutionPromises) {
@@ -631,31 +629,6 @@ export class WorkflowRunner {
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
 				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
-				try {
-					// Check if this execution data has to be removed from database
-					// based on workflow settings.
-					const workflowSettings = data.workflowData.settings ?? {};
-					const saveDataErrorExecution =
-						workflowSettings.saveDataErrorExecution ?? config.getEnv('executions.saveDataOnError');
-					const saveDataSuccessExecution =
-						workflowSettings.saveDataSuccessExecution ??
-						config.getEnv('executions.saveDataOnSuccess');
-
-					const workflowDidSucceed = !racingPromisesResult.error;
-					if (
-						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
-						(!workflowDidSucceed && saveDataErrorExecution === 'none')
-					) {
-						await Container.get(ExecutionRepository).hardDelete({
-							workflowId: data.workflowData.id as string,
-							executionId,
-						});
-					}
-					// eslint-disable-next-line id-denylist
-				} catch (err) {
-					// We don't want errors here to crash n8n. Just log and proceed.
-					console.log('Error removing saved execution from database. More details: ', err);
-				}
 
 				resolve(runData);
 			},
