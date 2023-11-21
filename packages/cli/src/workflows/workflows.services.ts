@@ -30,6 +30,7 @@ import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 import { Logger } from '@/Logger';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -212,6 +213,8 @@ export class WorkflowsService {
 			);
 		}
 
+		const oldState = shared.workflow.active;
+
 		if (
 			!forceSave &&
 			workflow.versionId !== '' &&
@@ -255,9 +258,14 @@ export class WorkflowsService {
 
 		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
+		/**
+		 * If the workflow being updated is stored as `active`, remove it from
+		 * active workflows in memory, and re-add it after the update.
+		 *
+		 * If a trigger or poller in the workflow was updated, the new value
+		 * will take effect only on removing and re-adding.
+		 */
 		if (shared.workflow.active) {
-			// When workflow gets saved always remove it as the triggers could have been
-			// changed and so the changes would not take effect
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
@@ -361,6 +369,21 @@ export class WorkflowsService {
 
 				// Now return the original error for UI to display
 				throw new ResponseHelper.BadRequestError(message);
+			}
+		}
+
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const multiMainSetup = Container.get(MultiMainSetup);
+
+			await multiMainSetup.init();
+
+			if (multiMainSetup.isEnabled) {
+				await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
+					workflowId,
+					oldState,
+					newState: updatedWorkflow.active,
+					versionId: shared.workflow.versionId,
+				});
 			}
 		}
 

@@ -66,7 +66,7 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/#if-empty',
+	docURL: 'https://docs.n8n.io/code/builtin/convenience',
 };
 
 export const extendedFunctions = {

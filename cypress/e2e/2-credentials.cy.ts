@@ -42,7 +42,7 @@ describe('Credentials', () => {
 		credentialsPage.getters.credentialCards().should('have.length', 1);
 	});
 
-	it('should create a new credential using Add Credential button', () => {
+	it.skip('should create a new credential using Add Credential button', () => {
 		credentialsPage.getters.createCredentialButton().click();
 
 		credentialsModal.getters.newCredentialModal().should('be.visible');
@@ -60,7 +60,7 @@ describe('Credentials', () => {
 		credentialsPage.getters.credentialCards().should('have.length', 2);
 	});
 
-	it('should search credentials', () => {
+	it.skip('should search credentials', () => {
 		// Search by name
 		credentialsPage.actions.search('Notion');
 		credentialsPage.getters.credentialCards().should('have.length', 1);

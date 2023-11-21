@@ -24,6 +24,7 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
@@ -78,6 +79,8 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		searchInput: () => cy.getByTestId('ndv-search'),
+		pagination: () => cy.getByTestId('ndv-data-pagination'),
 	};
 
 	actions = {

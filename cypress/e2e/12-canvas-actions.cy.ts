@@ -134,7 +134,7 @@ describe('Canvas Actions', () => {
 			.canvasNodes()
 			.last()
 			.should('have.css', 'left', '860px')
-			.should('have.css', 'top', '220px')
+			.should('have.css', 'top', '220px');
 	});
 
 	it('should delete connections by pressing the delete button', () => {
@@ -163,21 +163,29 @@ describe('Canvas Actions', () => {
 			.find('[data-test-id="execute-node-button"]')
 			.click({ force: true });
 		WorkflowPage.getters.successToast().should('contain', 'Node executed successfully');
+		WorkflowPage.actions.executeNode(CODE_NODE_NAME);
+		WorkflowPage.getters.successToast().should('contain', 'Node executed successfully');
 	});
 
 	it('should copy selected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.selectAll();
+
 		WorkflowPage.actions.hitCopy();
+		WorkflowPage.getters.successToast().should('contain', 'Copied!');
+
+		WorkflowPage.actions.copyNode(CODE_NODE_NAME);
 		WorkflowPage.getters.successToast().should('contain', 'Copied!');
 	});
 
-	it('should select all nodes', () => {
+	it('should select/deselect all nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.selectAll();
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
+		WorkflowPage.actions.deselectAll();
+		WorkflowPage.getters.selectedNodes().should('have.length', 0);
 	});
 
 	it('should select nodes using arrow keys', () => {
@@ -205,22 +213,21 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.findChildByTestId('disable-node-button').as('disableNodeButton');
-		cy.drag('@disableNodeButton', [200, 200]);
+			.findChildByTestId('execute-node-button')
+			.as('executeNodeButton');
+		cy.drag('@executeNodeButton', [200, 200]);
 		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
 	});
 
 	it('should not break lasso selection with multiple clicks on node action buttons', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last().as('lastNode');
-		cy.get('@lastNode').findChildByTestId('disable-node-button').as('disableNodeButton');
+		WorkflowPage.getters.canvasNodes().last().as('lastNode');
+		cy.get('@lastNode').findChildByTestId('execute-node-button').as('executeNodeButton');
 		for (let i = 0; i < 20; i++) {
 			cy.get('@lastNode').realHover();
-			cy.get('@disableNodeButton').should('be.visible');
-			cy.get('@disableNodeButton').realTouch();
+			cy.get('@executeNodeButton').should('be.visible');
+			cy.get('@executeNodeButton').realTouch();
 			cy.getByTestId('execute-workflow-button').realHover();
 			WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
 		}
