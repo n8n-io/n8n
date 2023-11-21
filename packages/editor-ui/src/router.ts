@@ -35,6 +35,8 @@ const SigninView = async () => import('./views/SigninView.vue');
 const SignupView = async () => import('./views/SignupView.vue');
 const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
 const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+const SetupWorkflowFromTemplateView = async () =>
+	import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
 const CredentialsView = async () => import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
@@ -121,6 +123,32 @@ export const routes = [
 		name: VIEWS.TEMPLATE,
 		components: {
 			default: TemplatesWorkflowView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			telemetry: {
+				getProperties(route: RouteLocation) {
+					const templatesStore = useTemplatesStore();
+					return {
+						template_id: route.params.id,
+						wf_template_repo_session_id: templatesStore.currentSessionId,
+					};
+				},
+			},
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/templates/:id/setup',
+		name: VIEWS.TEMPLATE_SETUP,
+		components: {
+			default: SetupWorkflowFromTemplateView,
 			sidebar: MainSidebar,
 		},
 		meta: {

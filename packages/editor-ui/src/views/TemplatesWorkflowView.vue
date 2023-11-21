@@ -106,11 +106,11 @@ export default defineComponent({
 				withPostHog: true,
 			});
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				void this.$router.push({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
 			}
 		},
 		onHidePreview() {

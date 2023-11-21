@@ -336,7 +336,7 @@ export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => 
 	});
 };
 
-export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
+export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
 	return nodes.reduce((leftmostTop, node) => {
 		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
 			return leftmostTop;
@@ -963,7 +963,7 @@ export const getInputEndpointUUID = (
 	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
 };
 
-export const getFixedNodesList = (workflowNodes: INode[]) => {
+export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
 	const nodes = [...workflowNodes];
 
 	if (nodes.length) {
