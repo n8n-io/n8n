@@ -11,18 +11,6 @@ const workflowsStore = useWorkflowsStore();
 const heartbeatInterval = 300000;
 const heartbeatTimer = ref(null as null | NodeJS.Timeout);
 
-onMounted(() => {
-	heartbeatTimer.value = setInterval(() => {
-		collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
-	}, heartbeatInterval);
-});
-
-onBeforeUnmount(() => {
-	if (heartbeatTimer.value !== null) {
-		clearInterval(heartbeatTimer.value);
-	}
-});
-
 const activeUsers = computed(() => {
 	return {
 		default: (collaborationStore.getUsersForCurrentWorkflow || []).map((userInfo) => userInfo.user),
@@ -32,15 +20,43 @@ const activeUsers = computed(() => {
 const currentUserEmail = computed(() => {
 	return usersStore.currentUser?.email;
 });
+
+const startHeartbeat = () => {
+	if (heartbeatTimer.value !== null) {
+		clearInterval(heartbeatTimer.value);
+	}
+	heartbeatTimer.value = setInterval(() => {
+		collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
+	}, heartbeatInterval);
+};
+
+const stopHeartbeat = () => {
+	if (heartbeatTimer.value !== null) {
+		clearInterval(heartbeatTimer.value);
+	}
+};
+
+const onDocumentVisibilityChange = () => {
+	if (document.visibilityState === 'hidden') {
+		stopHeartbeat();
+	} else {
+		startHeartbeat();
+	}
+};
+
+onMounted(() => {
+	startHeartbeat();
+	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
+});
 </script>
 
 <template>
 	<div :class="`collaboration-pane-container ${$style.container}`">
-		<n8n-user-stack
-			v-if="activeUsers.default.length > 1"
-			:users="activeUsers"
-			:currentUserEmail="currentUserEmail"
-		/>
+		<n8n-user-stack :users="activeUsers" :currentUserEmail="currentUserEmail" />
 	</div>
 </template>
 
