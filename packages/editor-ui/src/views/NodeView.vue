@@ -316,6 +316,7 @@ import {
 	useUIStore,
 	useHistoryStore,
 	useExternalSecretsStore,
+	useCollaborationStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -534,6 +535,7 @@ export default defineComponent({
 			useWorkflowsEEStore,
 			useHistoryStore,
 			useExternalSecretsStore,
+			useCollaborationStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1044,6 +1046,7 @@ export default defineComponent({
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
 			this.stopLoading();
+			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
 			if (this.isTouchDevice) {

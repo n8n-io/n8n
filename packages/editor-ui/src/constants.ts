@@ -566,6 +566,8 @@ export const enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
+	COLLABORATION = 'collaboration',
+	PUSH = 'push',
 }
 
 export const enum SignInType {
