@@ -507,10 +507,27 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
+						const headers = response.headers;
+						let responseCode = response.statusCode;
+						let data = response.body as IDataObject;
+
+						// for formTrigger node redirection has to be handled by sending redirectURL in response body
+						if (
+							nodeType.description.name === 'formTrigger' &&
+							headers.location &&
+							responseCode === 301
+						) {
+							responseCode = 200;
+							data = {
+								redirectURL: headers.location,
+							};
+							headers.location = undefined;
+						}
+
 						responseCallback(null, {
-							data: response.body as IDataObject,
-							headers: response.headers,
-							responseCode: response.statusCode,
+							data,
+							headers,
+							responseCode,
 						});
 					}
 

@@ -487,7 +487,7 @@
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
-					fetch('#', {
+					fetch('', {
 						method: 'POST',
 						body: formData,
 					})
