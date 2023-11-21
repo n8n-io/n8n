@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
-import { computed } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -41,24 +41,46 @@ interface Props {
 	rootNode: INodeUi;
 	type: 'input' | 'sub-input' | 'sub-output' | 'output';
 }
-
+const enum FloatingNodePosition {
+	top = 'outputSub',
+	right = 'outputMain',
+	bottom = 'inputSub',
+	left = 'inputMain',
+}
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-
-const enum FloatingPosition {
-	Top = 'outputSub',
-	Right = 'outputMain',
-	Bottom = 'inputSub',
-	Left = 'inputMain',
-}
+const emit = defineEmits(['switchSelectedNode']);
 
 interface NodeConfig {
 	node: INodeUi;
 	nodeType: INodeTypeDescription;
 }
+function moveNodeDirection(direction: FloatingNodePosition) {
+	const matchedDirectionNode = connectedNodes.value[direction][0];
+	if (matchedDirectionNode) {
+		emit('switchSelectedNode', matchedDirectionNode.node.name);
+	}
+}
 
+function onKeyDown(e: KeyboardEvent) {
+	if (e.shiftKey && e.altKey && (e.ctrlKey || e.metaKey)) {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		const mapper = {
+			ArrowUp: FloatingNodePosition.top,
+			ArrowRight: FloatingNodePosition.right,
+			ArrowDown: FloatingNodePosition.bottom,
+			ArrowLeft: FloatingNodePosition.left,
+		};
+		/* eslint-enable @typescript-eslint/naming-convention */
+
+		const matchingDirection = mapper[e.key as keyof typeof mapper] || null;
+		if (matchingDirection) {
+			moveNodeDirection(matchingDirection);
+		}
+	}
+}
 function getINodesFromNames(names: string[]): NodeConfig[] {
 	return names
 		.map((name) => {
@@ -73,33 +95,45 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 		})
 		.filter((n): n is NodeConfig => n !== null);
 }
-
 const connectedNodes = computed<
-	Record<FloatingPosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
+	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
 	const rootName = props.rootNode.name;
 	return {
-		[FloatingPosition.Top]: getINodesFromNames(workflow.getChildNodes(rootName, 'ALL_NON_MAIN')),
-		[FloatingPosition.Right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingPosition.Bottom]: getINodesFromNames(
+		[FloatingNodePosition.top]: getINodesFromNames(
+			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
+		),
+		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
+		[FloatingNodePosition.bottom]: getINodesFromNames(
 			workflow.getParentNodes(rootName, 'ALL_NON_MAIN'),
 		),
-		[FloatingPosition.Left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
+		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
 	};
 });
 
 const connectionGroups = [
-	FloatingPosition.Top,
-	FloatingPosition.Right,
-	FloatingPosition.Bottom,
-	FloatingPosition.Left,
+	FloatingNodePosition.top,
+	FloatingNodePosition.right,
+	FloatingNodePosition.bottom,
+	FloatingNodePosition.left,
 ];
 const tooltipPositionMapper = {
-	[FloatingPosition.Top]: 'bottom',
-	[FloatingPosition.Right]: 'left',
-	[FloatingPosition.Bottom]: 'top',
-	[FloatingPosition.Left]: 'right',
+	[FloatingNodePosition.top]: 'bottom',
+	[FloatingNodePosition.right]: 'left',
+	[FloatingNodePosition.bottom]: 'top',
+	[FloatingNodePosition.left]: 'right',
 };
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown, true);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeyDown, true);
+});
+defineExpose({
+	moveNodeDirection,
+});
 </script>
 
 <style lang="scss" module>

@@ -43,6 +43,7 @@
 				:isDraggable="!isTriggerNode"
 				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
+				:key="activeNode.name"
 				@switchSelectedNode="onSwitchSelectedNode"
 				@close="close"
 				@init="onPanelsInit"

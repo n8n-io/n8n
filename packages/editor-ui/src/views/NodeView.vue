@@ -3650,7 +3650,7 @@ export default defineComponent({
 			}
 		},
 		async onSwitchSelectedNode(nodeName: string) {
-			this.nodeSelectedByName(nodeName, true);
+			this.nodeSelectedByName(nodeName, true, true);
 		},
 		async redrawNode(nodeName: string) {
 			// TODO: Improve later

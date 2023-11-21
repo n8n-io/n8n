@@ -2,7 +2,7 @@
 	<div>
 		<NDVFloatingNodes
 			v-if="activeNode"
-			@switchSelectedNode="$emit('switchSelectedNode', $event)"
+			@switchSelectedNode="onSwitchSelectedNode"
 			:root-node="activeNode"
 			type="input"
 		/>
@@ -260,6 +260,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
 		getInitialLeftPosition(width: number) {
 			if (this.currentNodePaneType === 'dragless')
 				return this.pxToRelativeWidth(SIDE_MARGIN + 1 + this.fixedPanelWidth);
