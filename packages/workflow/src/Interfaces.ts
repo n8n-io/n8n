@@ -778,8 +778,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
-	getExecutionCancelSignal(): AbortSignal | undefined;
-	onExecutionCancellation(cleanup: () => Promise<void>, reject: (reason: Error) => void): void;
+	onExecutionCancellation(handler: () => unknown): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1892,7 +1891,6 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
-	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;

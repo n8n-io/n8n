@@ -820,7 +820,7 @@ export class WorkflowExecute {
 		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, reject, onCancel) => {
-			this.additionalData.executionCanceled = false;
+			let gotCancel = false;
 
 			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
 			setMaxListeners(Infinity, this.abortController.signal);
@@ -828,7 +828,7 @@ export class WorkflowExecute {
 			onCancel.shouldReject = false;
 			onCancel(() => {
 				this.abortController.abort();
-				this.additionalData.executionCanceled = true;
+				gotCancel = true;
 			});
 
 			const returnPromise = (async () => {
@@ -875,10 +875,10 @@ export class WorkflowExecute {
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
 					) {
-						this.additionalData.executionCanceled = true;
+						gotCancel = true;
 					}
 
-					if (this.additionalData.executionCanceled) {
+					if (gotCancel) {
 						return;
 					}
 
@@ -1008,7 +1008,7 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						if (this.additionalData.executionCanceled) {
+						if (gotCancel) {
 							return;
 						}
 						try {
@@ -1640,7 +1640,7 @@ export class WorkflowExecute {
 				return;
 			})()
 				.then(async () => {
-					if (this.additionalData.executionCanceled && executionError === undefined) {
+					if (gotCancel && executionError === undefined) {
 						return this.processSuccessExecution(
 							startedAt,
 							workflow,

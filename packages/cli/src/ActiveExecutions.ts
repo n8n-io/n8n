@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+
 import { Container, Service } from 'typedi';
 import type {
 	IDeferredPromise,
@@ -212,10 +214,10 @@ export class ActiveExecutions {
 			data = this.activeExecutions[id];
 			returnData.push({
 				id,
-				retryOf: data.executionData.retryOf,
+				retryOf: data.executionData.retryOf as string | undefined,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
-				workflowId: data.executionData.workflowData.id!,
+				workflowId: data.executionData.workflowData.id! as string,
 				status: data.status,
 			});
 		}

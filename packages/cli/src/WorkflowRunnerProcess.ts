@@ -269,6 +269,7 @@ class WorkflowRunnerProcess {
 
 			return returnData!.data!.main;
 		};
+
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
