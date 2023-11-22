@@ -15,7 +15,13 @@
 				>
 					<template #content>{{ node.name }}</template>
 
-					<li :class="$style.connectedNode" @click="$emit('switchSelectedNode', node.name)">
+					<li
+						:class="$style.connectedNode"
+						@click="$emit('switchSelectedNode', node.name)"
+						data-test-id="floating-node"
+						:data-node-name="node.name"
+						:data-node-placement="connectionGroup"
+					>
 						<node-icon
 							:nodeType="nodeType"
 							:nodeName="node.name"
@@ -202,7 +208,7 @@ defineExpose({
 	}
 }
 .connectedNode {
-	border: 3px solid var(--color-background-xlight);
+	border: var(--border-base);
 	background-color: var(--color-canvas-node-background);
 	border-radius: 100%;
 	padding: var(--spacing-s);
