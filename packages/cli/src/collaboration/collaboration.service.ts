@@ -1,5 +1,6 @@
 import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
+import config from '@/config';
 import { Push } from '../push';
 import { Logger } from '@/Logger';
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
@@ -25,6 +26,14 @@ export class CollaborationService {
 			logger.warn(
 				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',
 			);
+			return;
+		}
+
+		const isMultiMainSetup = config.get('multiMainSetup.enabled');
+		if (isMultiMainSetup) {
+			// TODO: We should support collaboration in multi-main setup as well
+			// This requires using redis as the state store instead of in-memory
+			logger.warn('Collaboration features are disabled because multi-main setup is enabled.');
 			return;
 		}
 
