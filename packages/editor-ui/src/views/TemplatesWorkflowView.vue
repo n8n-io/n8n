@@ -16,7 +16,7 @@
 						v-if="template"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openWorkflow(template.id, $event)"
+						@click="openTemplateSetup(template.id, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
@@ -94,7 +94,7 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		openWorkflow(id: string, e: PointerEvent) {
+		openTemplateSetup(id: string, e: PointerEvent) {
 			const telemetryPayload = {
 				source: 'workflow',
 				template_id: id,
