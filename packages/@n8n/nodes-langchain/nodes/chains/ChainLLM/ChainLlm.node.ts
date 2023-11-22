@@ -230,7 +230,7 @@ export class ChainLlm implements INodeType {
 				name: 'prompt',
 				type: 'string',
 				required: true,
-				default: '={{ $json.input }}',
+				default: '={{ $json.chat_input }}',
 			},
 			{
 				displayName: 'Chat Messages (if Using a Chat Model)',

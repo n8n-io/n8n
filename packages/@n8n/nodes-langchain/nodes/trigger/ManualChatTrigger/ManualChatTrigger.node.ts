@@ -12,7 +12,7 @@ export class ManualChatTrigger implements INodeType {
 		name: 'manualChatTrigger',
 		icon: 'fa:comments',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Runs the flow on new manual chat message',
 		eventTriggerDescription: '',
 		maxNodes: 1,

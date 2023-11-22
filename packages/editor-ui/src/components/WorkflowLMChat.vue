@@ -286,8 +286,10 @@ export default defineComponent({
 
 			if (!chatNode) {
 				this.showError(
-					new Error('Missing AI node'),
-					'Chat only works when an AI agent or chain is connected to the chat trigger node',
+					new Error(
+						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+					),
+					'Missing AI node',
 				);
 				return;
 			}
@@ -391,6 +393,8 @@ export default defineComponent({
 				return;
 			}
 
+			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
 				executionTime: 0,
@@ -400,7 +404,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									input: message,
+									[inputKey]: message,
 								},
 							},
 						],
