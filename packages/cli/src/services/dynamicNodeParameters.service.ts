@@ -107,6 +107,7 @@ export class DynamicNodeParametersService {
 			tempNode,
 			{ node, source: null, data: {} },
 			NodeExecuteFunctions,
+			new AbortController().signal,
 		);
 
 		if (optionsData?.length === 0) {

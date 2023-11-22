@@ -2509,18 +2509,16 @@ const getCommonWorkflowFunctions = (
 });
 
 const executionCancellationFunctions = (
-	abortController?: AbortController,
+	abortSignal: AbortSignal,
 ): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
-	getExecutionCancelSignal: () => {
-		return abortController?.signal;
-	},
+	getExecutionCancelSignal: () => abortSignal,
 	onExecutionCancellation: (cleanup, reject) => {
 		const handler = async () => {
-			abortController?.signal?.removeEventListener('abort', handler);
+			abortSignal.removeEventListener('abort', handler);
 			await cleanup();
 			reject?.(new Error('Execution cancelled'));
 		};
-		abortController?.signal?.addEventListener('abort', handler);
+		abortSignal.addEventListener('abort', handler);
 	},
 });
 
@@ -3103,12 +3101,12 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortController?: AbortController,
+	abortSignal: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			...executionCancellationFunctions(abortController),
+			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
 				getCredentials(
@@ -3530,12 +3528,12 @@ export function getExecuteSingleFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortController?: AbortController,
+	abortSignal: AbortSignal,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			...executionCancellationFunctions(abortController),
+			...executionCancellationFunctions(abortSignal),
 			continueOnFail: () => continueOnFail(node),
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;

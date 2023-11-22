@@ -701,6 +701,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				nodeTypeCopy,
 				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
+				new AbortController().signal,
 				credentialsDecrypted,
 			);
 		} catch (error) {

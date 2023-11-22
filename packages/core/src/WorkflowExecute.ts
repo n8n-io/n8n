@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { setMaxListeners } from 'events';
 import PCancelable from 'p-cancelable';
 
 import type {
@@ -44,24 +43,14 @@ import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
-	runExecutionData: IRunExecutionData;
+	private status: ExecutionStatus = 'new';
 
-	private additionalData: IWorkflowExecuteAdditionalData;
-
-	private mode: WorkflowExecuteMode;
-
-	private status: ExecutionStatus;
+	private readonly abortController = new AbortController();
 
 	constructor(
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		runExecutionData?: IRunExecutionData,
-		private abortController?: AbortController,
-	) {
-		this.additionalData = additionalData;
-		this.mode = mode;
-		this.status = 'new';
-		this.runExecutionData = runExecutionData || {
+		private readonly additionalData: IWorkflowExecuteAdditionalData,
+		private readonly mode: WorkflowExecuteMode,
+		private runExecutionData: IRunExecutionData = {
 			startData: {},
 			resultData: {
 				runData: {},
@@ -74,8 +63,8 @@ export class WorkflowExecute {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		};
-	}
+		},
+	) {}
 
 	/**
 	 * Executes the given workflow.
@@ -833,8 +822,12 @@ export class WorkflowExecute {
 		return new PCancelable(async (resolve, reject, onCancel) => {
 			this.additionalData.executionCanceled = false;
 
+			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
+			setMaxListeners(Infinity, this.abortController.signal);
+
 			onCancel.shouldReject = false;
 			onCancel(() => {
+				this.abortController.abort();
 				this.additionalData.executionCanceled = true;
 			});
 
@@ -1053,7 +1046,7 @@ export class WorkflowExecute {
 									this.additionalData,
 									NodeExecuteFunctions,
 									this.mode,
-									this.abortController,
+									this.abortController.signal,
 								);
 								nodeSuccessData = runNodeData.data;
 
@@ -1091,6 +1084,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										executionData,
 										this.mode,
+										this.abortController.signal,
 									);
 									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
 

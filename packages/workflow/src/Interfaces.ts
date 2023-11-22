@@ -422,7 +422,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
-		abortController?: AbortController,
+		abortSignal: AbortSignal,
 	): IExecuteFunctions;
 }
 
@@ -438,7 +438,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
-		abortController?: AbortController,
+		abortSignal: AbortSignal,
 	): IExecuteSingleFunctions;
 }
 
