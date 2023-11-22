@@ -122,15 +122,8 @@ export const pushConnection = defineComponent({
 		/**
 		 * Process a newly received message
 		 */
-		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
+		async pushMessageReceived(receivedData: IPushData, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
-			let receivedData: IPushData;
-			try {
-				// @ts-ignore
-				receivedData = JSON.parse(event.data);
-			} catch (error) {
-				return false;
-			}
 
 			if (receivedData.type === 'sendWorkerStatusMessage') {
 				const pushData = receivedData.data;

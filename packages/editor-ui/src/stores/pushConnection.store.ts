@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './n8nRoot.store';
 import type { IPushData } from '../Interface';
@@ -26,7 +26,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const sessionId = ref(Math.random().toString(36).substring(2, 15));
+	const sessionId = computed(() => rootStore.sessionId);
 	const pushSource = ref<WebSocket | EventSource | null>(null);
 	const reconnectTimeout = ref<NodeJS.Timeout | null>(null);
 	const connectRetries = ref(0);
