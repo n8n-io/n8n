@@ -335,22 +335,5 @@ export const optionsProperty: INodeProperties = {
 			default: 'data',
 			description: 'Name of the property to return the data of instead of the whole JSON',
 		},
-		{
-			displayName: 'Allowed Origin(s)',
-			name: 'allowedOrigins',
-			type: 'string',
-			default: '*',
-			description: 'The origin(s) to allow non-preflight requests from',
-		},
-		{
-			displayName: 'Pre-Flight Cache Max Age',
-			name: 'preflightMaxAge',
-			type: 'number',
-			typeOptions: {
-				minValue: 0,
-			},
-			default: 60,
-			description: 'How long the results of a preflight request are cached (in seconds)',
-		},
 	],
 };

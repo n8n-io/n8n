@@ -114,7 +114,10 @@ export const webhookRequestHandler =
 
 				if (method === 'OPTIONS') {
 					res.header('Access-Control-Max-Age', '300');
-					res.header('Access-Control-Allow-Headers', req.headers['access-control-request-headers']);
+					const requestedHeaders = req.headers['access-control-request-headers'];
+					if (requestedHeaders?.length) {
+						res.header('Access-Control-Allow-Headers', requestedHeaders);
+					}
 				}
 			}
 		}
