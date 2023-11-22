@@ -147,8 +147,10 @@ export const getAppsRequiringCredentials = (
  * Store for managing the state of the SetupWorkflowFromTemplateView
  */
 export const useSetupTemplateStore = defineStore('setupTemplate', () => {
+	//#region State
 	const templateId = ref<string>('');
-	const isLoading = ref(false);
+	const isLoading = ref(true);
+
 	/**
 	 * Credentials user has selected from the UI. Map from credential
 	 * name in the template to the credential ID.
@@ -156,6 +158,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	const selectedCredentialIdByName = reactive<
 		Record<CredentialUsages['credentialName'], ICredentialsResponse['id']>
 	>({});
+
+	//#endregion State
 
 	const templatesStore = useTemplatesStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -221,6 +225,10 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 
 	//#region Actions
 
+	const setTemplateId = (id: string) => {
+		templateId.value = id;
+	};
+
 	/**
 	 * Loads the template if it hasn't been loaded yet.
 	 */
@@ -235,8 +243,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Initializes the store for a specific template.
 	 */
-	const init = async (_templateId: string) => {
-		templateId.value = _templateId;
+	const init = async () => {
 		isLoading.value = true;
 		try {
 			await Promise.all([
@@ -254,19 +261,26 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	 * Skips the setup and goes directly to the workflow view.
 	 */
 	const skipSetup = async (opts: {
-		$externalHooks: () => IExternalHooks;
+		$externalHooks: IExternalHooks;
 		$telemetry: Telemetry;
+		$router: Router;
 	}) => {
-		const { $externalHooks, $telemetry } = opts;
+		const { $externalHooks, $telemetry, $router } = opts;
 		const telemetryPayload = {
 			source: 'workflow',
 			template_id: templateId.value,
 			wf_template_repo_session_id: templatesStore.currentSessionId,
 		};
 
-		await $externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+		await $externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 		$telemetry.track('User inserted workflow template', telemetryPayload, {
 			withPostHog: true,
+		});
+
+		// Replace the URL so back button doesn't come back to this setup view
+		await $router.replace({
+			name: VIEWS.TEMPLATE_IMPORT,
+			params: { id: templateId.value },
 		});
 	};
 
@@ -285,7 +299,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			workflowsStore,
 		);
 
-		await $router.push({
+		// Replace the URL so back button doesn't come back to this setup view
+		await $router.replace({
 			name: VIEWS.WORKFLOW,
 			params: { name: createdWorkflow.id },
 		});
@@ -313,6 +328,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		skipSetup,
 		init,
 		loadTemplateIfNeeded,
+		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
 	};

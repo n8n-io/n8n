@@ -25,10 +25,7 @@
 			</div>
 
 			<div class="actions">
-				<n8n-link
-					:href="skipSetupUrl"
-					:newWindow="false"
-					@click="setupTemplateStore.skipSetup({ $externalHooks, $telemetry })"
+				<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)"
 					>Skip</n8n-link
 				>
 
@@ -81,11 +78,41 @@ export default defineComponent({
 	},
 	watch: {
 		templateId(newTemplateId) {
-			void this.setupTemplateStore.init(newTemplateId);
+			this.setupTemplateStore.setTemplateId(newTemplateId);
+			void this.setupTemplateStore.loadTemplateIfNeeded();
 		},
 	},
+	methods: {
+		async onSkipSetup(event: MouseEvent) {
+			event.preventDefault();
+
+			await this.setupTemplateStore.skipSetup({
+				$externalHooks: this.$externalHooks(),
+				$telemetry: this.$telemetry,
+				$router: this.$router,
+			});
+		},
+		async skipIfTemplateHasNoCreds() {
+			const isTemplateLoaded = !!this.setupTemplateStore.template;
+			if (!isTemplateLoaded) {
+				return;
+			}
+
+			if (this.setupTemplateStore.credentialUsages.length === 0) {
+				await this.setupTemplateStore.skipSetup({
+					$externalHooks: this.$externalHooks(),
+					$telemetry: this.$telemetry,
+					$router: this.$router,
+				});
+			}
+		},
+	},
+	async created() {
+		this.setupTemplateStore.setTemplateId(this.templateId);
+	},
 	async mounted() {
-		await this.setupTemplateStore.init(this.templateId);
+		await this.setupTemplateStore.init();
+		await this.skipIfTemplateHasNoCreds();
 	},
 });
 </script>
