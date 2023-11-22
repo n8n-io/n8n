@@ -239,10 +239,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const nodes = workflowData?.nodes;
 		const webhookNode = nodes?.find(
-			({ type, parameters }) =>
-				type === 'n8n-nodes-base.webhook' &&
+			({ type, parameters, typeVersion }) =>
 				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod,
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
 		);
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}

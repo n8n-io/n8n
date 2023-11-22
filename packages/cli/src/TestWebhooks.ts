@@ -19,6 +19,7 @@ import type {
 	WebhookRequest,
 } from '@/Interfaces';
 import { Push } from '@/push';
+import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { webhookNotFoundErrorMessage } from './utils';
@@ -39,8 +40,9 @@ export class TestWebhooks implements IWebhookManager {
 	} = {};
 
 	constructor(
-		private activeWebhooks: ActiveWebhooks,
-		private push: Push,
+		private readonly activeWebhooks: ActiveWebhooks,
+		private readonly push: Push,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		activeWebhooks.testWebhooks = true;
 	}
@@ -179,13 +181,14 @@ export class TestWebhooks implements IWebhookManager {
 		const webhookKey = Object.keys(this.testWebhookData).find(
 			(key) => key.includes(path) && key.startsWith(httpMethod),
 		);
+		if (!webhookKey) return;
 
-		const nodes = webhookKey ? this.testWebhookData[webhookKey].workflow.nodes : {};
-		const webhookNode = Object.values(nodes).find(
-			({ type, parameters }) =>
-				type === 'n8n-nodes-base.webhook' &&
+		const { workflow } = this.testWebhookData[webhookKey];
+		const webhookNode = Object.values(workflow.nodes).find(
+			({ type, parameters, typeVersion }) =>
 				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod,
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
 		);
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
