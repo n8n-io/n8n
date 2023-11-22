@@ -14,11 +14,15 @@ const workflowsStore = useWorkflowsStore();
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const heartbeatTimer = ref(null as null | number);
 
-const activeUsers = computed(() => {
+const activeUsersSorted = computed(() => {
+	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
+		(userInfo) => userInfo.user,
+	);
+	const owner = currentWorkflowUsers.find((user) => user.globalRoleId === 1);
 	return {
-		defaultGroup: (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
-			(userInfo) => userInfo.user,
-		),
+		defaultGroup: owner
+			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner?.id)]
+			: currentWorkflowUsers,
 	};
 });
 
@@ -66,7 +70,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack :users="activeUsers" :currentUserEmail="currentUserEmail" />
+		<n8n-user-stack :users="activeUsersSorted" :currentUserEmail="currentUserEmail" />
 	</div>
 </template>
 

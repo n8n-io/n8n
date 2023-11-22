@@ -701,6 +701,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	globalRoleId?: number;
 }
 
 export interface IVersionNotificationSettings {

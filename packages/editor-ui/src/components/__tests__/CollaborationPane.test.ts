@@ -31,7 +31,7 @@ const MEMBER_USER = {
 	email: 'member@user.com',
 	firstName: 'Member',
 	lastName: 'User',
-	globalRoleId: 1,
+	globalRoleId: 2,
 	disabled: false,
 	globalRole: {
 		id: '2',
@@ -39,7 +39,7 @@ const MEMBER_USER = {
 		scope: 'global',
 	},
 	isPending: false,
-	isOwner: true,
+	isOwner: false,
 	fullName: 'Member User',
 };
 
@@ -49,7 +49,7 @@ const MEMBER_USER_2 = {
 	email: 'member2@user.com',
 	firstName: 'Another Member',
 	lastName: 'User',
-	globalRoleId: 1,
+	globalRoleId: 2,
 	disabled: false,
 	globalRole: {
 		id: '2',
@@ -57,7 +57,7 @@ const MEMBER_USER_2 = {
 		scope: 'global',
 	},
 	isPending: false,
-	isOwner: true,
+	isOwner: false,
 	fullName: 'Another Member User',
 };
 
@@ -77,13 +77,14 @@ const initialState = {
 		users: {
 			aaaaaa: OWNER_USER,
 			aaabbb: MEMBER_USER,
+			aaaccc: MEMBER_USER_2,
 		},
 	},
 	[STORES.COLLABORATION]: {
 		usersForWorkflows: {
 			w1: [
-				{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER },
 				{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER },
+				{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER },
 			],
 			w2: [{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER_2 }],
 		},
@@ -122,5 +123,13 @@ describe('CollaborationPane', () => {
 		expect(getByText(`${OWNER_USER.fullName} (you)`)).toBeInTheDocument();
 		expect(queryByText(`${MEMBER_USER.fullName} (you)`)).toBeNull();
 		expect(queryByText(`${MEMBER_USER.fullName}`)).toBeInTheDocument();
+	});
+
+	it('should always render owner first in the list', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
+		// Owner is second in the store bur shourld be rendered first
+		expect(firstAvatar).toHaveAttribute('data-test-id', `user-stack-avatar-${OWNER_USER.id}`);
 	});
 });
