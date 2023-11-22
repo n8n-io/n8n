@@ -1,22 +1,24 @@
 <script setup lang="ts">
-import { COLLABORATION_HEARTBEAT_INTERVAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { onBeforeUnmount } from 'vue';
 import { onMounted } from 'vue';
 import { computed, ref } from 'vue';
+import { TIME } from '@/constants';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 
-const heartbeatInterval = COLLABORATION_HEARTBEAT_INTERVAL;
-const heartbeatTimer = ref(null as null | NodeJS.Timeout);
+const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
+const heartbeatTimer = ref(null as null | number);
 
 const activeUsers = computed(() => {
 	return {
-		default: (collaborationStore.getUsersForCurrentWorkflow || []).map((userInfo) => userInfo.user),
+		defaultGroup: (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
+			(userInfo) => userInfo.user,
+		),
 	};
 });
 
@@ -27,10 +29,11 @@ const currentUserEmail = computed(() => {
 const startHeartbeat = () => {
 	if (heartbeatTimer.value !== null) {
 		clearInterval(heartbeatTimer.value);
+		heartbeatTimer.value = null;
 	}
-	heartbeatTimer.value = setInterval(() => {
+	heartbeatTimer.value = window.setInterval(() => {
 		collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
-	}, heartbeatInterval);
+	}, HEARTBEAT_INTERVAL);
 };
 
 const stopHeartbeat = () => {
@@ -54,6 +57,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
+	stopHeartbeat();
 });
 </script>
 

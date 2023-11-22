@@ -411,10 +411,6 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export type ActiveUsersForWorkflows = {
-	[workflowId: string]: Array<{ user: IUser; lastSeen: string }>;
-};
-
 export type PushDataUsersForWorkflow = {
 	workflowId: string;
 	activeUsers: Array<{ user: IUser; lastSeen: string }>;

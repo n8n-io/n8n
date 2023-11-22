@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES, TIME } from '@/constants';
 import { ref, computed } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './n8nRoot.store';
@@ -44,7 +44,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		connectRetries.value++;
 		reconnectTimeout.value = setTimeout(
 			attemptReconnect,
-			Math.min(connectRetries.value * 2000, 8000), // maximum 8 seconds backoff
+			Math.min(connectRetries.value * 2000, 8 * TIME.SECOND), // maximum 8 seconds backoff
 		);
 	}
 
@@ -110,7 +110,6 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		connectRetries.value = 0;
 		lostConnection.value = false;
 		rootStore.pushConnectionActive = true;
-		// clearAllStickyNotifications();
 		pushSource.value?.removeEventListener('open', onConnectionSuccess);
 
 		if (outgoingQueue.value.length) {

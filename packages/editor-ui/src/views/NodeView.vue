@@ -3058,7 +3058,7 @@ export default defineComponent({
 			if (this.isDemo || window.preventNodeViewBeforeUnload) {
 				return;
 			} else if (this.uiStore.stateIsDirty) {
-				// A bit hacky solution to detecting users leaving the page:
+				// A bit hacky solution to detecting users leaving the page after prompt:
 				// 1. Notify that workflow is closed straight away
 				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				// 2. If user decided to stay on the page we notify that the workflow is opened again

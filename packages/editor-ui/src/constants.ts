@@ -654,14 +654,10 @@ export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
 
-/**
- * Units of time in milliseconds
- */
+// Units of time in milliseconds
 export const TIME = {
 	SECOND: 1000,
 	MINUTE: 60 * 1000,
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
-
-export const COLLABORATION_HEARTBEAT_INTERVAL = 1 * TIME.MINUTE;

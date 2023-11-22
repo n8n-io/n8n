@@ -1,9 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ActiveUsersForWorkflows } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { STORES } from '@/constants';
+import type { IUser } from '@/Interface';
+
+type ActiveUsersForWorkflows = {
+	[workflowId: string]: Array<{ user: IUser; lastSeen: string }>;
+};
 
 export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const pushStore = usePushConnectionStore();
