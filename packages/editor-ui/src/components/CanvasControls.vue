@@ -6,45 +6,62 @@
 			[$style.demoZoomMenu]: isDemo,
 		}"
 	>
-		<n8n-icon-button
-			@click="zoomToFit"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomToFit')"
-			icon="expand"
-			data-test-id="zoom-to-fit"
-		/>
-		<n8n-icon-button
-			@click="zoomIn"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomIn')"
-			icon="search-plus"
-			data-test-id="zoom-in-button"
-		/>
-		<n8n-icon-button
-			@click="zoomOut"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomOut')"
-			icon="search-minus"
-			data-test-id="zoom-out-button"
-		/>
-		<n8n-icon-button
-			v-if="nodeViewScale !== 1 && !isDemo"
-			@click="resetZoom"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.resetZoom')"
-			icon="undo"
-			data-test-id="reset-zoom-button"
-		/>
+		<keyboard-shortcut-tooltip
+			:label="$locale.baseText('nodeView.zoomToFit')"
+			:shortcut="{ keys: ['1'] }"
+		>
+			<n8n-icon-button
+				@click="zoomToFit"
+				type="tertiary"
+				size="large"
+				icon="expand"
+				data-test-id="zoom-to-fit"
+			/>
+		</keyboard-shortcut-tooltip>
+		<keyboard-shortcut-tooltip
+			:label="$locale.baseText('nodeView.zoomIn')"
+			:shortcut="{ keys: ['+'] }"
+		>
+			<n8n-icon-button
+				@click="zoomIn"
+				type="tertiary"
+				size="large"
+				icon="search-plus"
+				data-test-id="zoom-in-button"
+			/>
+		</keyboard-shortcut-tooltip>
+		<keyboard-shortcut-tooltip
+			:label="$locale.baseText('nodeView.zoomOut')"
+			:shortcut="{ keys: ['-'] }"
+		>
+			<n8n-icon-button
+				@click="zoomOut"
+				type="tertiary"
+				size="large"
+				icon="search-minus"
+				data-test-id="zoom-out-button"
+			/>
+		</keyboard-shortcut-tooltip>
+		<keyboard-shortcut-tooltip
+			:label="$locale.baseText('nodeView.resetZoom')"
+			:shortcut="{ keys: ['0'] }"
+		>
+			<n8n-icon-button
+				v-if="nodeViewScale !== 1 && !isDemo"
+				@click="resetZoom"
+				type="tertiary"
+				size="large"
+				icon="undo"
+				data-test-id="reset-zoom-button"
+			/>
+		</keyboard-shortcut-tooltip>
 	</div>
 </template>
 <script lang="ts" setup>
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;

@@ -358,18 +358,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				data: ITaskData,
 				executionData: IRunExecutionData,
 			): Promise<void> {
-				const saveExecutionProgress = config.getEnv('executions.saveExecutionProgress');
-				const workflowSettings = this.workflowData.settings;
-				if (workflowSettings !== undefined) {
-					if (workflowSettings.saveExecutionProgress === false) {
-						return;
-					}
-					if (workflowSettings.saveExecutionProgress !== true && !saveExecutionProgress) {
-						return;
-					}
-				} else if (!saveExecutionProgress) {
-					return;
-				}
+				const saveSettings = toSaveSettings(this.workflowData.settings);
+
+				if (!saveSettings.progress) return;
 
 				try {
 					logger.debug(
