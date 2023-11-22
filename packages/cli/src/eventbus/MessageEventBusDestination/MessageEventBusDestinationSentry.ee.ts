@@ -2,15 +2,16 @@
 
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import type {
-	MessageEventBusDestinationOptions,
+import {
+	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
-import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
+import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,

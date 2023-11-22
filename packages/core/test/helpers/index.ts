@@ -21,10 +21,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
 	WorkflowTestData,
-	INodeTypeData,
 } from 'n8n-workflow';
 
-import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks, INodeTypeData } from 'n8n-workflow';
 import { Credentials } from '@/Credentials';
 
 import { predefinedNodesTypes } from './constants';
