@@ -161,7 +161,7 @@ const menuHeight = computed(() => {
 </style>
 
 <style lang="scss">
-.user-stack-list {
+ul.user-stack-list {
 	border: none;
 	display: flex;
 	flex-direction: column;
