@@ -38,11 +38,17 @@
 					>Skip</n8n-link
 				>
 
-				<n8n-button
+				<n8n-tooltip
 					v-if="isReady"
-					label="Continue"
-					@click="setupTemplateStore.createWorkflow($router)"
-				/>
+					:content="buttonTooltip"
+					:disabled="setupTemplateStore.numCredentialsLeft === 0"
+				>
+					<n8n-button
+						label="Continue"
+						:disabled="setupTemplateStore.numCredentialsLeft > 0"
+						@click="setupTemplateStore.createWorkflow($router)"
+					/>
+				</n8n-tooltip>
 				<div v-else>
 					<n8n-loading variant="button" />
 				</div>
@@ -93,6 +99,13 @@ export default defineComponent({
 			});
 
 			return route.fullPath;
+		},
+		buttonTooltip() {
+			const numLeft = this.setupTemplateStore.numCredentialsLeft;
+
+			return numLeft > 0
+				? `Connect to ${numLeft} more app${numLeft > 1 ? 's' : ''} to continue`
+				: undefined;
 		},
 	},
 	watch: {
