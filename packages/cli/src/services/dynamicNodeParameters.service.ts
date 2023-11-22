@@ -67,7 +67,7 @@ export class DynamicNodeParametersService {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
-		const node = workflow.nodes[0];
+		const node = workflow.nodes['Temp-Node'];
 
 		const routingNode = new RoutingNode(
 			workflow,
@@ -224,7 +224,7 @@ export class DynamicNodeParametersService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		workflow: Workflow,
 	) {
-		const node = Object.values(workflow.nodes)[0];
+		const node = workflow.nodes['Temp-Node'];
 		return NodeExecuteFunctions.getLoadOptionsFunctions(workflow, node, path, additionalData);
 	}
 }
