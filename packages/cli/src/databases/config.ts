@@ -61,6 +61,7 @@ export const getPostgresConnectionOptions = (): PostgresConnectionOptions => ({
 	type: 'postgres',
 	...getDBConnectionOptions('postgresdb'),
 	schema: config.getEnv('database.postgresdb.schema'),
+	poolSize: config.getEnv('database.postgresdb.poolSize'),
 	migrations: postgresMigrations,
 });
 
