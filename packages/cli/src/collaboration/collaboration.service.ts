@@ -9,6 +9,17 @@ import { UserService } from '../services/user.service';
 import type { IActiveWorkflowUsersChanged } from '../Interfaces';
 import type { OnPushMessageEvent } from '@/push/types';
 import { CollaborationState } from '@/collaboration/collaboration.state';
+import { TIME } from '@/constants';
+
+/**
+ * After how many minutes of inactivity a user should be removed
+ * as being an active user of a workflow.
+ */
+const INACTIVITY_CLEAN_TIMEOUT = 15 * TIME.MINUTE;
+/**
+ * How often to check for inactive users.
+ */
+const INACTIVITY_CHECK_INTERVAL = 1 * TIME.MINUTE;
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -16,6 +27,11 @@ import { CollaborationState } from '@/collaboration/collaboration.state';
  */
 @Service()
 export class CollaborationService {
+	/**
+	 * Timer to mark users as inactive after a certain time of inactivity.
+	 */
+	private inactivityTimer?: NodeJS.Timeout;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly push: Push,
@@ -48,6 +64,15 @@ export class CollaborationService {
 				});
 			}
 		});
+
+		this.inactivityTimer = setInterval(() => this.handleInactiveUsers(), INACTIVITY_CHECK_INTERVAL);
+	}
+
+	cleanup() {
+		if (this.inactivityTimer) {
+			clearInterval(this.inactivityTimer);
+			this.inactivityTimer = undefined;
+		}
 	}
 
 	async handleUserMessage(userId: string, msg: unknown) {
@@ -92,5 +117,13 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers('activeWorkflowUsersChanged', msgData, workflowUserIds);
+	}
+
+	private handleInactiveUsers(): void {
+		const updatedWorkflowIds = this.state.cleanInactiveUsers(INACTIVITY_CLEAN_TIMEOUT);
+
+		updatedWorkflowIds.forEach((workflowId) => {
+			void this.sendWorkflowUsersChangedMessage(workflowId);
+		});
 	}
 }
