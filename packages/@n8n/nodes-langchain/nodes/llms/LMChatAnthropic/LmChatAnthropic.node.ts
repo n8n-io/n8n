@@ -56,11 +56,19 @@ export class LmChatAnthropic implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Claude',
+						name: 'Claude 2',
 						value: 'claude-2',
 					},
 					{
-						name: 'Claude Instant',
+						name: 'Claude 2.1',
+						value: 'claude-2.1',
+					},
+					{
+						name: 'Claude Instant 1.2',
+						value: 'claude-instant-1.2',
+					},
+					{
+						name: 'Claude Instant 1',
 						value: 'claude-instant-1',
 					},
 				],
