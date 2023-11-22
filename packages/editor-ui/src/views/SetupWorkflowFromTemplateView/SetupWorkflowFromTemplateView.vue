@@ -16,9 +16,8 @@
 			</div>
 
 			<div>
-				<ol>
+				<ol v-if="isReady">
 					<SetupTemplateFormStep
-						v-if="isReady"
 						class="appCredential appCredentialBorder"
 						v-bind:key="credentials.credentialName"
 						v-for="(credentials, index) in setupTemplateStore.credentialUsages"
@@ -26,11 +25,11 @@
 						:credentials="credentials"
 						:credentialName="credentials.credentialName"
 					/>
-					<div v-else>
-						<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
-						<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
-					</div>
 				</ol>
+				<div v-else>
+					<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+					<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+				</div>
 			</div>
 
 			<div class="actions">
@@ -45,7 +44,7 @@
 				>
 					<n8n-button
 						label="Continue"
-						:disabled="setupTemplateStore.numCredentialsLeft > 0"
+						:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 						@click="setupTemplateStore.createWorkflow($router)"
 					/>
 				</n8n-tooltip>

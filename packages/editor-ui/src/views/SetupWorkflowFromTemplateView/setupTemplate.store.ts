@@ -1,6 +1,6 @@
 import sortBy from 'lodash-es/sortBy';
 import { defineStore } from 'pinia';
-import { computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
 import {
 	useCredentialsStore,
@@ -150,12 +150,13 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	//#region State
 	const templateId = ref<string>('');
 	const isLoading = ref(true);
+	const isSaving = ref(false);
 
 	/**
 	 * Credentials user has selected from the UI. Map from credential
 	 * name in the template to the credential ID.
 	 */
-	const selectedCredentialIdByName = reactive<
+	const selectedCredentialIdByName = ref<
 		Record<CredentialUsages['credentialName'], ICredentialsResponse['id']>
 	>({});
 
@@ -201,8 +202,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	const credentialOverrides = computed(() => {
 		const overrides: Record<string, INodeCredentialsDetails> = {};
 
-		for (const credentialNameInTemplate of Object.keys(selectedCredentialIdByName)) {
-			const credentialId = selectedCredentialIdByName[credentialNameInTemplate];
+		for (const credentialNameInTemplate of Object.keys(selectedCredentialIdByName.value)) {
+			const credentialId = selectedCredentialIdByName.value[credentialNameInTemplate];
 			if (!credentialId) {
 				continue;
 			}
@@ -222,7 +223,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	});
 
 	const numCredentialsLeft = computed(() => {
-		return credentialUsages.value.length - Object.keys(selectedCredentialIdByName).length;
+		return credentialUsages.value.length - Object.keys(selectedCredentialIdByName.value).length;
 	});
 
 	//#endregion Getters
@@ -250,6 +251,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	const init = async () => {
 		isLoading.value = true;
 		try {
+			selectedCredentialIdByName.value = {};
+
 			await Promise.all([
 				credentialsStore.fetchAllCredentials(),
 				credentialsStore.fetchCredentialTypes(false),
@@ -296,26 +299,32 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			return;
 		}
 
-		const createdWorkflow = await createWorkflowFromTemplate(
-			template.value,
-			credentialOverrides.value,
-			rootStore,
-			workflowsStore,
-		);
+		try {
+			isSaving.value = true;
 
-		// Replace the URL so back button doesn't come back to this setup view
-		await $router.replace({
-			name: VIEWS.WORKFLOW,
-			params: { name: createdWorkflow.id },
-		});
+			const createdWorkflow = await createWorkflowFromTemplate(
+				template.value,
+				credentialOverrides.value,
+				rootStore,
+				workflowsStore,
+			);
+
+			// Replace the URL so back button doesn't come back to this setup view
+			await $router.replace({
+				name: VIEWS.WORKFLOW,
+				params: { name: createdWorkflow.id },
+			});
+		} finally {
+			isSaving.value = false;
+		}
 	};
 
 	const setSelectedCredentialId = (credentialName: string, credentialId: string) => {
-		selectedCredentialIdByName[credentialName] = credentialId;
+		selectedCredentialIdByName.value[credentialName] = credentialId;
 	};
 
 	const unsetSelectedCredential = (credentialName: string) => {
-		delete selectedCredentialIdByName[credentialName];
+		delete selectedCredentialIdByName.value[credentialName];
 	};
 
 	//#endregion Actions
@@ -323,6 +332,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	return {
 		credentialsByName,
 		isLoading,
+		isSaving,
 		appCredentials,
 		nodesRequiringCredentialsSorted,
 		template,
