@@ -21,7 +21,6 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { isValidName } from 'n8n-workflow';
 
 @Service()
 @Authorized()
@@ -42,7 +41,7 @@ export class MeController {
 		const { id: userId, email: currentEmail } = req.user;
 		const payload = plainToInstance(UserUpdatePayload, req.body);
 
-		const { email, firstName, lastName } = payload;
+		const { email } = payload;
 		if (!email) {
 			this.logger.debug('Request to update user email failed because of missing email in payload', {
 				userId,
@@ -57,15 +56,6 @@ export class MeController {
 				invalidEmail: email,
 			});
 			throw new BadRequestError('Invalid email address');
-		}
-
-		if (!isValidName(firstName) || !isValidName(lastName)) {
-			this.logger.debug('Request to update user name failed because of invalid name in payload', {
-				userId,
-				firstName,
-				lastName,
-			});
-			throw new BadRequestError('Invalid name');
 		}
 
 		await validateEntity(payload);

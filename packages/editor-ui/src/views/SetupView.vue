@@ -12,13 +12,12 @@ import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
 
 import { useToast } from '@/composables';
-import type { IFormBoxConfig, IValidator } from '@/Interface';
+import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { isValidName } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'SetupView',
@@ -52,12 +51,6 @@ export default defineComponent({
 						required: true,
 						autocomplete: 'given-name',
 						capitalize: true,
-						validators: {
-							IS_VALID_FIRST_NAME: {
-								validate: this.isValidFirstName as IValidator['validate'],
-							},
-						},
-						validationRules: [{ name: 'IS_VALID_FIRST_NAME' }],
 					},
 				},
 				{
@@ -68,12 +61,6 @@ export default defineComponent({
 						required: true,
 						autocomplete: 'family-name',
 						capitalize: true,
-						validators: {
-							IS_VALID_LAST_NAME: {
-								validate: this.isValidLastName as IValidator['validate'],
-							},
-						},
-						validationRules: [{ name: 'IS_VALID_LAST_NAME' }],
 					},
 				},
 				{
@@ -130,24 +117,6 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
-		},
-		isValidFirstName(value: string | number | boolean | null | undefined) {
-			if (!isValidName(String(value))) {
-				return {
-					messageKey: 'settings.personal.invalid.field',
-					options: { interpolate: { fieldName: this.$locale.baseText('auth.firstName') } },
-				};
-			}
-			return false;
-		},
-		isValidLastName(value: string | number | boolean | null | undefined) {
-			if (!isValidName(String(value))) {
-				return {
-					messageKey: 'settings.personal.invalid.field',
-					options: { interpolate: { fieldName: this.$locale.baseText('auth.lastName') } },
-				};
-			}
-			return false;
 		},
 	},
 });

@@ -164,8 +164,3 @@ export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
 		}
 	});
 };
-
-export const isValidName = (name: string): boolean => {
-	const NAME_REGEX = /^[a-zA-Z\xC0-\uFFFF]+([ \-']{0,1}[a-zA-Z\xC0-\uFFFF]+){0,2}[.]{0,1}$/;
-	return NAME_REGEX.test(name);
-};

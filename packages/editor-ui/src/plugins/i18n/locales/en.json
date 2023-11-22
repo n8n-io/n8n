@@ -1385,7 +1385,6 @@
 	"settings.personal.personalSettingsUpdatedError": "Problem updating your details",
 	"settings.personal.save": "Save",
 	"settings.personal.security": "Security",
-	"settings.personal.invalid.field": "Invalid {fieldName}",
 	"settings.signup.signUpInviterInfo": "{firstName} {lastName} has invited you to n8n",
 	"settings.users": "Users",
 	"settings.users.confirmDataHandlingAfterDeletion": "What should we do with their data?",

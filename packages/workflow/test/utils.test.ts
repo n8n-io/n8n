@@ -1,11 +1,4 @@
-import {
-	jsonParse,
-	jsonStringify,
-	deepCopy,
-	isObjectEmpty,
-	fileTypeFromMimeType,
-	isValidName,
-} from '@/utils';
+import { jsonParse, jsonStringify, deepCopy, isObjectEmpty, fileTypeFromMimeType } from '@/utils';
 
 describe('isObjectEmpty', () => {
 	it('should handle null and undefined', () => {
@@ -237,31 +230,5 @@ describe('fileTypeFromMimeType', () => {
 
 	it('should recognize pdf', () => {
 		expect(fileTypeFromMimeType('application/pdf')).toEqual('pdf');
-	});
-});
-
-describe('Name validation tests', () => {
-	it('should validate names', () => {
-		expect(isValidName('a')).toBe(true);
-		expect(isValidName('alice')).toBe(true);
-		expect(isValidName('Robert Downey Jr.')).toBe(true);
-		expect(isValidName('Mia-Downey')).toBe(true);
-		expect(isValidName("Mark O'neil")).toBe(true);
-		expect(isValidName('Thomas Müler')).toBe(true);
-		expect(isValidName('ßáçøñ')).toBe(true);
-		expect(isValidName('أحمد')).toBe(true);
-		expect(isValidName('فلسطين')).toBe(true);
-		expect(isValidName('فيليپا')).toBe(true);
-		expect(isValidName('Владимир')).toBe(true);
-		expect(isValidName('a ')).toBe(false);
-		expect(isValidName('a-')).toBe(false);
-		expect(isValidName("Mark O'")).toBe(false);
-		expect(isValidName('a_a')).toBe(false);
-		expect(isValidName('lara1')).toBe(false);
-		expect(isValidName('mila.eddison')).toBe(false);
-		expect(isValidName('https://www.google.com')).toBe(false);
-		expect(isValidName('www.google.com')).toBe(false);
-		expect(isValidName('<a href="https://www.google.com">Mike</a>')).toBe(false);
-		expect(isValidName('')).toBe(false);
 	});
 });

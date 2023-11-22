@@ -34,7 +34,6 @@ export {
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,
-	isValidName,
 } from './utils';
 export {
 	isINodeProperties,
