@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COLLABORATION_HEARTBEAT_INTERVAL } from '@/constants';
 import { useCollaborationStore, useUsersStore, useWorkflowsStore } from '@/stores';
 import { onBeforeUnmount } from 'vue';
 import { onMounted } from 'vue';
@@ -8,7 +9,7 @@ const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 
-const heartbeatInterval = 300000;
+const heartbeatInterval = COLLABORATION_HEARTBEAT_INTERVAL;
 const heartbeatTimer = ref(null as null | NodeJS.Timeout);
 
 const activeUsers = computed(() => {

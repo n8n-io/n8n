@@ -716,14 +716,14 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing-m);
 }
 </style>
 
 <style module lang="scss">
 .group {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-xs);
 }
 .hiddenInput {
 	display: none;

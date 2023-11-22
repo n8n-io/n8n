@@ -224,6 +224,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
+	TIME,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -702,6 +703,7 @@ export default defineComponent({
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
+			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 		};
 	},
 	methods: {
@@ -2980,21 +2982,29 @@ export default defineComponent({
 
 			this.eventsAttached = false;
 		},
-		onBeforeUnload(e) {
+		onBeforeUnload(e: BeforeUnloadEvent) {
 			if (this.isDemo || window.preventNodeViewBeforeUnload) {
 				return;
 			} else if (this.uiStore.stateIsDirty) {
-				const confirmationMessage = this.$locale.baseText(
-					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-				);
-				// TODO: Notify to collaboration store that the user is leaving the node view
-				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+				// A bit hacky solution to detecting users leaving the page:
+				// 1. Notify that workflow is closed straight away
+				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
+				// 2. If user decided to stay on the page we notify that the workflow is opened again
+				this.unloadTimeout = setTimeout(() => {
+					this.collaborationStore.notifyWorkflowOpened(this.workflowsStore.workflowId);
+				}, 5 * TIME.SECOND);
+				e.returnValue = true; //Gecko + IE
+				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
 				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
 				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
+		},
+		onUnload() {
+			// This will fire if users decides to leave the page after prompted
+			// Clear the interval to prevent the notification from being sent
+			clearTimeout(this.unloadTimeout);
 		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
@@ -3094,6 +3104,7 @@ export default defineComponent({
 			document.addEventListener('keyup', this.keyUp);
 
 			window.addEventListener('beforeunload', this.onBeforeUnload);
+			window.addEventListener('unload', this.onUnload);
 		},
 		getOutputEndpointUUID(
 			nodeName: string,
