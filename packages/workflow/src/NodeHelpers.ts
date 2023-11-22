@@ -236,7 +236,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const specialNodeParameters: INodeProperties[] = [
+const commonPollingParameters: INodeProperties[] = [
 	{
 		displayName: 'Poll Times',
 		name: 'pollTimes',
@@ -252,12 +252,28 @@ const specialNodeParameters: INodeProperties[] = [
 	},
 ];
 
+const commonCORSParameters: INodeProperties[] = [
+	{
+		displayName: 'Allowed Origins (CORS)',
+		name: 'allowedOrigins',
+		type: 'string',
+		default: '*',
+		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+	},
+];
+
 /**
  * Apply special parameters which should be added to nodeTypes depending on their type or configuration
  */
 export function applySpecialNodeParameters(nodeType: INodeType): void {
-	if (nodeType.description.polling === true) {
-		nodeType.description.properties.unshift(...specialNodeParameters);
+	const { properties, polling, supportsCORS } = nodeType.description;
+	if (polling) {
+		properties.unshift(...commonPollingParameters);
+	}
+	if (nodeType.webhook && supportsCORS) {
+		const optionsProperty = properties.find(({ name }) => name === 'options');
+		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		else properties.push(...commonCORSParameters);
 	}
 }
 

@@ -15,9 +15,11 @@ import type {
 	IResponseCallbackData,
 	IWebhookManager,
 	IWorkflowDb,
+	WebhookAccessControlOptions,
 	WebhookRequest,
 } from '@/Interfaces';
 import { Push } from '@/push';
+import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { webhookNotFoundErrorMessage } from './utils';
@@ -38,8 +40,9 @@ export class TestWebhooks implements IWebhookManager {
 	} = {};
 
 	constructor(
-		private activeWebhooks: ActiveWebhooks,
-		private push: Push,
+		private readonly activeWebhooks: ActiveWebhooks,
+		private readonly push: Push,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		activeWebhooks.testWebhooks = true;
 	}
@@ -161,9 +164,6 @@ export class TestWebhooks implements IWebhookManager {
 		});
 	}
 
-	/**
-	 * Gets all request methods associated with a single test webhook
-	 */
 	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
@@ -175,6 +175,22 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return webhookMethods;
+	}
+
+	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		const webhookKey = Object.keys(this.testWebhookData).find(
+			(key) => key.includes(path) && key.startsWith(httpMethod),
+		);
+		if (!webhookKey) return;
+
+		const { workflow } = this.testWebhookData[webhookKey];
+		const webhookNode = Object.values(workflow.nodes).find(
+			({ type, parameters, typeVersion }) =>
+				parameters?.path === path &&
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
+		);
+		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
 
 	/**
