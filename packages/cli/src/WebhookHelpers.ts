@@ -98,7 +98,28 @@ export const webhookRequestHandler =
 					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			}
-			res.header('Access-Control-Allow-Origin', req.headers.origin);
+
+			const requestedMethod =
+				method === 'OPTIONS'
+					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+					: method;
+			if (webhookManager.findAccessControlOptions && requestedMethod) {
+				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
+				const { allowedOrigins } = options ?? {};
+
+				res.header(
+					'Access-Control-Allow-Origin',
+					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
+				);
+
+				if (method === 'OPTIONS') {
+					res.header('Access-Control-Max-Age', '300');
+					const requestedHeaders = req.headers['access-control-request-headers'];
+					if (requestedHeaders?.length) {
+						res.header('Access-Control-Allow-Headers', requestedHeaders);
+					}
+				}
+			}
 		}
 
 		if (method === 'OPTIONS') {
