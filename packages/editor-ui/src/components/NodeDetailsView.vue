@@ -68,6 +68,8 @@
 						:sessionId="sessionId"
 						:readOnly="readOnly || hasForeignCredential"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:isPaneActive="isInputPaneActive"
+						@activatePane="activateInputPane"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -76,6 +78,7 @@
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #output>
@@ -88,12 +91,15 @@
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:isPaneActive="isOutputPaneActive"
+						@activatePane="activateOutputPane"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
 						@tableMounted="onOutputTableMounted"
 						@itemHover="onOutputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #main>
@@ -214,6 +220,9 @@ export default defineComponent({
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
+			isInputPaneActive: false,
+			isOutputPaneActive: false,
+			isPairedItemHoveringEnabled: true,
 		};
 	},
 	mounted() {
@@ -528,10 +537,7 @@ export default defineComponent({
 			}
 		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (!this.inputNodeName) {
-				return;
-			}
-			if (e === null) {
+			if (e === null || !this.inputNodeName || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -545,7 +551,7 @@ export default defineComponent({
 			this.ndvStore.setHoveringItem(item);
 		},
 		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (e === null || !this.activeNode) {
+			if (e === null || !this.activeNode || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -732,6 +738,17 @@ export default defineComponent({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		activateInputPane() {
+			this.isInputPaneActive = true;
+			this.isOutputPaneActive = false;
+		},
+		activateOutputPane() {
+			this.isInputPaneActive = false;
+			this.isOutputPaneActive = true;
+		},
+		onSearch(search: string) {
+			this.isPairedItemHoveringEnabled = !search;
+		},
 	},
 });
 </script>
@@ -814,7 +831,7 @@ $main-panel-width: 360px;
 	position: absolute;
 	bottom: var(--spacing-4xs);
 	left: calc(100% + var(--spacing-s));
-	color: var(--color-text-xlight);
+	color: var(--color-feature-request-font);
 	font-size: var(--font-size-2xs);
 	white-space: nowrap;
 

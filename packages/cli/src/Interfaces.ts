@@ -47,6 +47,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -298,6 +299,7 @@ export interface IDiagnosticInfo {
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
 	binary_data_s3: boolean;
+	multi_main_setup_enabled: boolean;
 	licensePlanName?: string;
 	licenseTenantId?: number;
 }
@@ -469,7 +471,25 @@ export type IPushData =
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
 	| PushDataActiveWorkflowUsersChanged
-	| PushDataWorkerStatusMessage;
+	| PushDataWorkerStatusMessage
+	| PushDataWorkflowActivated
+	| PushDataWorkflowDeactivated
+	| PushDataWorkflowFailedToActivate;
+
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
+};
+
+type PushDataWorkflowActivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowActivated';
+};
+
+type PushDataWorkflowDeactivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowDeactivated';
+};
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -536,9 +556,22 @@ export interface IActiveWorkflowUser {
 	lastSeen: Date;
 }
 
+export interface IActiveWorkflowAdded {
+	workflowId: Workflow['id'];
+}
+
 export interface IActiveWorkflowUsersChanged {
 	workflowId: Workflow['id'];
 	activeUsers: IActiveWorkflowUser[];
+}
+
+interface IActiveWorkflowChanged {
+	workflowId: Workflow['id'];
+}
+
+interface IWorkflowFailedToActivate {
+	workflowId: Workflow['id'];
+	errorMessage: string;
 }
 
 export interface IPushDataExecutionRecovered {
@@ -773,6 +806,7 @@ export interface PublicUser {
 	isPending: boolean;
 	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
+	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;

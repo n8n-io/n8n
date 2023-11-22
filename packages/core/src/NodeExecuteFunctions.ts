@@ -1695,10 +1695,10 @@ export async function requestWithAuthentication(
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
-		if (parentTypes.includes('oAuth1Api')) {
+		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
 		}
-		if (parentTypes.includes('oAuth2Api')) {
+		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
