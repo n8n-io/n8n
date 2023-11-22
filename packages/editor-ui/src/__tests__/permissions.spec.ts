@@ -47,8 +47,8 @@ describe('parsePermissionsTable()', () => {
 
 	it('should pass permission to test functions', () => {
 		const permissions = parsePermissionsTable(user, [
-			{ name: 'canRead', test: (p) => !!p?.isInstanceOwner },
-			{ name: 'canUpdate', test: (p) => !!p?.canRead },
+			{ name: 'canRead', test: (p) => !!p.isInstanceOwner },
+			{ name: 'canUpdate', test: (p) => !!p.canRead },
 		]);
 
 		expect(permissions.canRead).toBe(true);

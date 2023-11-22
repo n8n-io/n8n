@@ -23,7 +23,7 @@ export const enum UserRole {
 
 export type IPermissions = Record<string, boolean>;
 
-type IPermissionsTableRowTestFn = (permissions?: IPermissions) => boolean;
+type IPermissionsTableRowTestFn = (permissions: IPermissions) => boolean;
 
 export interface IPermissionsTableRow {
 	name: string;
@@ -104,11 +104,11 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		},
 		{
 			name: 'updateSharing',
-			test: (permissions) => rbacStore.hasScope('workflow:update') || !!permissions?.isOwner,
+			test: (permissions) => rbacStore.hasScope('workflow:update') || !!permissions.isOwner,
 		},
 		{
 			name: 'delete',
-			test: (permissions) => rbacStore.hasScope('workflow:delete') || !!permissions?.isOwner,
+			test: (permissions) => rbacStore.hasScope('workflow:delete') || !!permissions.isOwner,
 		},
 	];
 
