@@ -183,7 +183,6 @@ export default defineComponent({
 					autocomplete: 'family-name',
 					capitalize: true,
 					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
-					validationRules: [{ name: 'IS_VALID_LAST_NAME' }],
 				},
 			},
 			{

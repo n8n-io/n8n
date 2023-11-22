@@ -5,7 +5,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import userEvent from '@testing-library/user-event';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
