@@ -5,15 +5,20 @@
 				<GoBackButton />
 			</div>
 
-			<n8n-heading class="title" v-if="setupTemplateStore.template" tag="h1" size="2xlarge"
+			<n8n-heading v-if="isReady" class="title" tag="h1" size="2xlarge"
 				>Setup '{{ title }}' template</n8n-heading
 			>
+			<n8n-loading v-else variant="h1" />
 
-			<AppsRequiringCredsNotice class="notice" />
+			<div class="notice">
+				<AppsRequiringCredsNotice v-if="isReady" />
+				<n8n-loading v-else variant="p" />
+			</div>
 
 			<div>
 				<ol>
 					<SetupTemplateFormStep
+						v-if="isReady"
 						class="appCredential appCredentialBorder"
 						v-bind:key="credentials.credentialName"
 						v-for="(credentials, index) in setupTemplateStore.credentialUsages"
@@ -21,6 +26,10 @@
 						:credentials="credentials"
 						:credentialName="credentials.credentialName"
 					/>
+					<div v-else>
+						<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+						<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+					</div>
 				</ol>
 			</div>
 
@@ -29,7 +38,14 @@
 					>Skip</n8n-link
 				>
 
-				<n8n-button label="Continue" @click="setupTemplateStore.createWorkflow($router)" />
+				<n8n-button
+					v-if="isReady"
+					label="Continue"
+					@click="setupTemplateStore.createWorkflow($router)"
+				/>
+				<div v-else>
+					<n8n-loading variant="button" />
+				</div>
 			</div>
 		</div>
 	</div>
@@ -66,6 +82,9 @@ export default defineComponent({
 		},
 		title() {
 			return this.setupTemplateStore.template?.name ?? 'unknown';
+		},
+		isReady() {
+			return !this.setupTemplateStore.isLoading;
 		},
 		skipSetupUrl() {
 			const route = this.$router.resolve({
