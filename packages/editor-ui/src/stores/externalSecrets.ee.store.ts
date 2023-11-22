@@ -37,17 +37,18 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 							secretAcc[secret] = '*********';
 							return secretAcc;
 						}
-						const obj = (secretAcc[splitSecret[0]] ?? {}) as object;
-						let acc: any = obj;
+						const obj = secretAcc[splitSecret[0]] ?? {};
+						let acc = obj;
 						for (let i = 1; i < splitSecret.length; i++) {
-							const key = splitSecret[i];
+							const key = splitSecret[i] as keyof typeof acc;
 							// Actual value key
 							if (i === splitSecret.length - 1) {
-								acc[key] = '*********';
+								const key = splitSecret[i] as keyof typeof acc;
+								acc[key] = '*********' as (typeof acc)[typeof key];
 								continue;
 							}
-							if (!(key in acc)) {
-								acc[key] = {};
+							if (Object.keys(acc) && !acc[key]) {
+								acc[key] = {} as (typeof acc)[typeof key];
 							}
 							acc = acc[key];
 						}
