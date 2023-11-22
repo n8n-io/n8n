@@ -464,6 +464,7 @@ const config = (module.exports = {
 				// TODO: Remove these
 				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
+				'@typescript-eslint/naming-convention': 'off',
 				'import/no-duplicates': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
