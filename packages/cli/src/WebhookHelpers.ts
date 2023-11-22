@@ -105,7 +105,7 @@ export const webhookRequestHandler =
 					: method;
 			if (webhookManager.findAccessControlOptions && requestedMethod) {
 				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
-				const { allowedOrigins, preflightMaxAge } = options ?? {};
+				const { allowedOrigins } = options ?? {};
 
 				res.header(
 					'Access-Control-Allow-Origin',
@@ -113,8 +113,7 @@ export const webhookRequestHandler =
 				);
 
 				if (method === 'OPTIONS') {
-					res.header('Access-Control-Max-Age', String((preflightMaxAge ?? 60) * 1000));
-
+					res.header('Access-Control-Max-Age', '300');
 					res.header('Access-Control-Allow-Headers', req.headers['access-control-request-headers']);
 				}
 			}

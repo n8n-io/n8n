@@ -269,7 +269,6 @@ export type WaitingWebhookRequest = WebhookRequest & {
 
 export interface WebhookAccessControlOptions {
 	allowedOrigins?: string;
-	preflightMaxAge?: number;
 }
 
 export interface IWebhookManager {

@@ -78,7 +78,7 @@ describe('WebhookHelpers', () => {
 					'Access-Control-Allow-Origin',
 					'https://example.com',
 				);
-				expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '60000');
+				expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '300');
 			});
 
 			it('should handle wildcard origin', async () => {
@@ -109,7 +109,7 @@ describe('WebhookHelpers', () => {
 				expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', randomOrigin);
 			});
 
-			it('should handle custom origin and max-age', async () => {
+			it('should handle custom origin', async () => {
 				const req = mock<WebhookRequest | WebhookCORSRequest>({
 					method: 'OPTIONS',
 					headers: {
@@ -124,7 +124,6 @@ describe('WebhookHelpers', () => {
 				webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
 				webhookManager.findAccessControlOptions.mockResolvedValue({
 					allowedOrigins: 'https://test.com',
-					preflightMaxAge: 360,
 				});
 
 				await handler(req, res);
@@ -135,7 +134,6 @@ describe('WebhookHelpers', () => {
 					'OPTIONS, GET, PATCH',
 				);
 				expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://test.com');
-				expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '360000');
 			});
 		});
 	});
