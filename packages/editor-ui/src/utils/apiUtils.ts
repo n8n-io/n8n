@@ -102,7 +102,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: any,
+	data?: IDataObject,
 ) {
 	const response = await request({
 		method,
