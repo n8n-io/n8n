@@ -12,7 +12,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
-const heartbeatTimer = ref(null as null | number);
+const heartbeatTimer = ref<number | null>(null);
 
 const activeUsersSorted = computed(() => {
 	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
@@ -21,7 +21,7 @@ const activeUsersSorted = computed(() => {
 	const owner = currentWorkflowUsers.find((user) => user.globalRoleId === 1);
 	return {
 		defaultGroup: owner
-			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner?.id)]
+			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]
 			: currentWorkflowUsers,
 	};
 });
