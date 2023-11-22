@@ -4,25 +4,27 @@ import { defineComponent } from 'vue';
 export const debounceHelper = defineComponent({
 	data() {
 		return {
-			debouncedFunctions: [] as any[],
+			debouncedFunctions: {} as Record<string, (...args: unknown[]) => Promise<void> | void>,
 		};
 	},
 	methods: {
-		async callDebounced(...inputParameters: any[]): Promise<void> {
-			const functionName = inputParameters.shift() as string;
-			const { trailing, debounceTime } = inputParameters.shift();
-
-			// @ts-ignore
+		async callDebounced(
+			functionName: string,
+			options: { debounceTime: number; trailing?: boolean },
+			...inputParameters: unknown[]
+		): Promise<void> {
+			const { trailing, debounceTime } = options;
 			if (this.debouncedFunctions[functionName] === undefined) {
-				// @ts-ignore
 				this.debouncedFunctions[functionName] = debounce(
-					this[functionName],
+					async (...args: unknown[]) => {
+						// @ts-ignore
+						await this[functionName](...args);
+					},
 					debounceTime,
 					trailing ? { trailing } : { leading: true },
 				);
 			}
-			// @ts-ignore
-			await this.debouncedFunctions[functionName].apply(this, inputParameters);
+			await this.debouncedFunctions[functionName](...inputParameters);
 		},
 	},
 });
