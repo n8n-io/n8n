@@ -1,19 +1,22 @@
+import type { User } from '@db/entities/User';
+import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
+import { createOwner } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
-import type { User } from '@/databases/entities/User';
 
 let testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;
 
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
-	const workflow = await testDb.createWorkflow({}, belongingTo);
-	return testDb.createSuccessfulExecution(workflow);
+	const workflow = await createWorkflow({}, belongingTo);
+	return createSuccessfulExecution(workflow);
 };
 
 beforeEach(async () => {
 	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
-	owner = await testDb.createOwner();
+	owner = await createOwner();
 });
 
 describe('POST /executions/delete', () => {
@@ -32,7 +35,7 @@ describe('POST /executions/delete', () => {
 			.send({ ids: [execution.id] })
 			.expect(200);
 
-		const executions = await testDb.getAllExecutions();
+		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
 	});

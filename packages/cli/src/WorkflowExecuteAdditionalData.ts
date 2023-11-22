@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -24,6 +23,7 @@ import type {
 	IWorkflowSettings,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	ExecutionError,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -53,7 +53,7 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { EventsService } from '@/services/events.service';
 import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';
@@ -358,18 +358,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				data: ITaskData,
 				executionData: IRunExecutionData,
 			): Promise<void> {
-				const saveExecutionProgress = config.getEnv('executions.saveExecutionProgress');
-				const workflowSettings = this.workflowData.settings;
-				if (workflowSettings !== undefined) {
-					if (workflowSettings.saveExecutionProgress === false) {
-						return;
-					}
-					if (workflowSettings.saveExecutionProgress !== true && !saveExecutionProgress) {
-						return;
-					}
-				} else if (!saveExecutionProgress) {
-					return;
-				}
+				const saveSettings = toSaveSettings(this.workflowData.settings);
+
+				if (!saveSettings.progress) return;
 
 				try {
 					logger.debug(
@@ -903,10 +894,11 @@ async function executeWorkflow(
 		}
 		data = await workflowExecute.processRunExecutionData(workflow);
 	} catch (error) {
+		const executionError = error ? (error as ExecutionError) : undefined;
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
-					error,
+					error: executionError,
 					runData: {},
 				},
 			},
@@ -942,9 +934,9 @@ async function executeWorkflow(
 		);
 		throw objectToError(
 			{
-				...error,
-				stack: error.stack,
-				message: error.message,
+				...executionError,
+				stack: executionError?.stack,
+				message: executionError?.message,
 			},
 			workflow,
 		);
@@ -954,7 +946,8 @@ async function executeWorkflow(
 
 	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 
-	if (data.finished === true) {
+	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
 		activeExecutions.remove(executionId, data);
@@ -962,13 +955,14 @@ async function executeWorkflow(
 		return returnData!.data!.main;
 	}
 	activeExecutions.remove(executionId, data);
+
 	// Workflow did fail
 	const { error } = data.data.resultData;
 
 	throw objectToError(
 		{
 			...error,
-			stack: error!.stack,
+			stack: error?.stack,
 		},
 		workflow,
 	);

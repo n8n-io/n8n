@@ -1,43 +1,36 @@
-import { mocked } from 'jest-mock';
-import type { INode, IWorkflowCredentials } from 'n8n-workflow';
-import * as Db from '@/Db';
+import type { FindOptionsWhere } from 'typeorm';
+import type { INode } from 'n8n-workflow';
 import { WorkflowCredentials } from '@/WorkflowCredentials';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { mockInstance } from '../shared/mocking';
 
-// Define a function used to mock the findOneBy function
-async function mockFind({
-	id,
-	type,
-}: {
-	id: string;
-	type: string;
-}): Promise<IWorkflowCredentials | null> {
-	// Simple statement that maps a return value based on the `id` parameter
-	if (id === notFoundNode.credentials!.test.id) {
-		return null;
-	}
-	// Otherwise just build some kind of credential object and return it
-	return {
-		[type]: {
-			[id]: {
-				id,
-				name: type,
-				type,
-				nodesAccess: [],
-				data: '',
-			},
-		},
-	};
-}
+const credentialsRepository = mockInstance(CredentialsRepository);
+credentialsRepository.findOneBy.mockImplementation(
+	async (where: FindOptionsWhere<CredentialsEntity>) => {
+		const { id, type } = where as {
+			id: string;
+			type: string;
+		};
+		// Simple statement that maps a return value based on the `id` parameter
+		if (id === notFoundNode.credentials!.test.id) {
+			return null;
+		}
 
-jest.mock('@/Db', () => {
-	return {
-		collections: {
-			Credentials: {
-				findOneBy: jest.fn(mockFind),
+		// Otherwise just build some kind of credential object and return it
+		return {
+			[type]: {
+				[id]: {
+					id,
+					name: type,
+					type,
+					nodesAccess: [],
+					data: '',
+				},
 			},
-		},
-	};
-});
+		} as unknown as CredentialsEntity;
+	},
+);
 
 // Create an array of Nodes with info that pass or fail the checks as required.
 // DB returns an object of type { [id: string]: ICredentialsEncrypted } but as it isn't checked
@@ -54,7 +47,7 @@ describe('WorkflowCredentials', () => {
 			`Credentials with name "${credentials.name}" for type "test" miss an ID.`,
 		);
 		await expect(WorkflowCredentials([noIdNode])).rejects.toEqual(expectedError);
-		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(0);
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should return an error if credentials cannot be found in the DB', async () => {
@@ -63,7 +56,7 @@ describe('WorkflowCredentials', () => {
 			`Could not find credentials for type "test" with ID "${credentials.id}".`,
 		);
 		await expect(WorkflowCredentials([notFoundNode])).rejects.toEqual(expectedError);
-		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(1);
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should ignore duplicates', async () => {

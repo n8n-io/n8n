@@ -7,15 +7,10 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 
+import { mockInstance } from '../shared/mocking';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import * as testDb from './shared/testDb';
-import {
-	mockInstance,
-	setupTestServer,
-	mockPackage,
-	mockNode,
-	mockPackageName,
-} from './shared/utils';
+import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
+import { createOwner } from './shared/db/users';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
@@ -40,7 +35,7 @@ const parsedNpmPackageName = {
 let authAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const ownerShell = await testDb.createOwner();
+	const ownerShell = await createOwner();
 	authAgent = testServer.authAgentFor(ownerShell);
 });
 

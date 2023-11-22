@@ -1,6 +1,11 @@
 <template>
 	<div
-		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
 		:style="styles"
 		@keydown.prevent
 	>
@@ -106,6 +111,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		backgroundColor: {
+			value: [Number, String],
+			default: 1,
+		},
 	},
 	components: {
 		N8nInput,
@@ -132,10 +141,12 @@ export default defineComponent({
 			return this.width;
 		},
 		styles(): { height: string; width: string } {
-			return {
+			const styles: { height: string; width: string } = {
 				height: `${this.resHeight}px`,
 				width: `${this.resWidth}px`,
 			};
+
+			return styles;
 		},
 		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
@@ -189,9 +200,19 @@ export default defineComponent({
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	background-color: var(--color-sticky-default-background);
-	border: 1px solid var(--color-sticky-default-border);
 	border-radius: var(--border-radius-base);
+
+	background-color: var(--color-sticky-background);
+	border: 1px solid var(--color-sticky-border);
+
+	.wrapper::after {
+		opacity: 0.15;
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-background) 0.01%,
+			var(--color-sticky-border)
+		);
+	}
 }
 
 .clickable {
@@ -212,12 +233,6 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky-default-background),
-			#fff5d600 0.01%,
-			var(--color-sticky-default-background)
-		);
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -226,6 +241,36 @@ export default defineComponent({
 	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
 	display: flex;
 	justify-content: flex-end;
+}
+
+.color-2 {
+	--color-sticky-background: var(--color-sticky-background-2);
+	--color-sticky-border: var(--color-sticky-border-2);
+}
+
+.color-3 {
+	--color-sticky-background: var(--color-sticky-background-3);
+	--color-sticky-border: var(--color-sticky-border-3);
+}
+
+.color-4 {
+	--color-sticky-background: var(--color-sticky-background-4);
+	--color-sticky-border: var(--color-sticky-border-4);
+}
+
+.color-5 {
+	--color-sticky-background: var(--color-sticky-background-5);
+	--color-sticky-border: var(--color-sticky-border-5);
+}
+
+.color-6 {
+	--color-sticky-background: var(--color-sticky-background-6);
+	--color-sticky-border: var(--color-sticky-border-6);
+}
+
+.color-7 {
+	--color-sticky-background: var(--color-sticky-background-7);
+	--color-sticky-border: var(--color-sticky-border-7);
 }
 </style>
 

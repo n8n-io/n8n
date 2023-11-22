@@ -1203,36 +1203,37 @@ export class HttpRequestV3 implements INodeType {
 		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
-		let nodeCredentialType;
+		let nodeCredentialType: string | undefined;
+		let genericCredentialType: string | undefined;
 
 		if (authentication === 'genericCredentialType') {
-			const genericAuthType = this.getNodeParameter('genericAuthType', 0) as string;
+			genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
-			if (genericAuthType === 'httpBasicAuth') {
+			if (genericCredentialType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
 				} catch {}
-			} else if (genericAuthType === 'httpDigestAuth') {
+			} else if (genericCredentialType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.getCredentials('httpDigestAuth');
 				} catch {}
-			} else if (genericAuthType === 'httpHeaderAuth') {
+			} else if (genericCredentialType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 				} catch {}
-			} else if (genericAuthType === 'httpQueryAuth') {
+			} else if (genericCredentialType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
 				} catch {}
-			} else if (genericAuthType === 'httpCustomAuth') {
+			} else if (genericCredentialType === 'httpCustomAuth') {
 				try {
 					httpCustomAuth = await this.getCredentials('httpCustomAuth');
 				} catch {}
-			} else if (genericAuthType === 'oAuth1Api') {
+			} else if (genericCredentialType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.getCredentials('oAuth1Api');
 				} catch {}
-			} else if (genericAuthType === 'oAuth2Api') {
+			} else if (genericCredentialType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.getCredentials('oAuth2Api');
 				} catch {}
@@ -1682,7 +1683,7 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions,
 					itemIndex,
 					paginationData,
-					nodeCredentialType,
+					nodeCredentialType ?? genericCredentialType,
 				);
 				requestPromises.push(requestPromise);
 			} else if (authentication === 'genericCredentialType' || authentication === 'none') {

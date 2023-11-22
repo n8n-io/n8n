@@ -59,7 +59,7 @@ function wrappedEmit(
 ) {
 	if (props.disabled) return;
 
-	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
+	emit(event, element, $e);
 }
 
 function beforeEnter(el: HTMLElement) {

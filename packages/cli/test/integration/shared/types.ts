@@ -5,14 +5,9 @@ import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
-import type { DataSource, Repository } from 'typeorm';
+import type { BooleanLicenseFeature, ICredentialsDb } from '@/Interfaces';
 
-export type CollectionName =
-	| keyof IDatabaseCollections
-	| { new (dataSource: DataSource): Repository<any> };
-
-export type EndpointGroup =
+type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
@@ -34,7 +29,8 @@ export type EndpointGroup =
 	| 'metrics'
 	| 'executions'
 	| 'workflowHistory'
-	| 'binaryData';
+	| 'binaryData'
+	| 'invitations';
 
 export interface SetupProps {
 	applyAuth?: boolean;

@@ -219,10 +219,8 @@ export default defineComponent({
 				for (const item of injectedItems) {
 					items.push({
 						id: item.id,
-						// @ts-ignore
-						icon: item.properties ? item.properties.icon : '',
-						// @ts-ignore
-						label: item.properties ? item.properties.title : '',
+						icon: item.icon || '',
+						label: item.label || '',
 						position: item.position,
 						type: item.properties?.href ? 'link' : 'regular',
 						properties: item.properties,
@@ -262,6 +260,14 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
+				},
+				{
+					id: 'cloud-admin',
+					type: 'link',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'home',
+					available: this.settingsStore.isCloudDeployment && this.usersStore.isInstanceOwner,
 				},
 				{
 					id: 'settings',
@@ -344,7 +350,9 @@ export default defineComponent({
 	mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.$externalHooks().run('mainSidebar.mounted', {
+				userRef: this.$refs.user as Element,
+			});
 		}
 
 		void this.$nextTick(() => {
@@ -444,6 +452,10 @@ export default defineComponent({
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);
+					break;
+				}
+				case 'cloud-admin': {
+					this.cloudPlanStore.redirectToDashboard();
 					break;
 				}
 				case 'quickstart':

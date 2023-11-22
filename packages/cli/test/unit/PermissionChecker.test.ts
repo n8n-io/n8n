@@ -4,7 +4,6 @@ import type { INodeTypes } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -14,7 +13,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { OwnershipService } from '@/services/ownership.service';
 
-import { mockInstance } from '../integration/shared/utils/';
+import { mockInstance } from '../shared/mocking';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
@@ -22,6 +21,11 @@ import {
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from './Helpers';
+import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
+import { getCredentialOwnerRole, getWorkflowOwnerRole } from '../integration/shared/db/roles';
+import { createOwner, createUser } from '../integration/shared/db/users';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
@@ -37,10 +41,10 @@ beforeAll(async () => {
 
 	mockNodeTypes = Container.get(NodeTypes);
 
-	credentialOwnerRole = await testDb.getCredentialOwnerRole();
-	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
+	credentialOwnerRole = await getCredentialOwnerRole();
+	workflowOwnerRole = await getWorkflowOwnerRole();
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 });
 
 beforeEach(async () => {
@@ -77,7 +81,7 @@ describe('PermissionChecker.check()', () => {
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
-		const owner = await testDb.createOwner();
+		const owner = await createOwner();
 
 		const workflow = new Workflow({
 			id: randomPositiveDigit().toString(),
@@ -107,7 +111,7 @@ describe('PermissionChecker.check()', () => {
 	});
 
 	test('should allow if workflow creds are valid subset', async () => {
-		const [owner, member] = await Promise.all([testDb.createOwner(), testDb.createUser()]);
+		const [owner, member] = await Promise.all([createOwner(), createUser()]);
 
 		const ownerCred = await saveCredential(randomCred(), { user: owner });
 		const memberCred = await saveCredential(randomCred(), { user: member });
@@ -154,7 +158,7 @@ describe('PermissionChecker.check()', () => {
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {
-		const member = await testDb.createUser();
+		const member = await createUser();
 
 		const memberCred = await saveCredential(randomCred(), { user: member });
 
@@ -196,9 +200,9 @@ describe('PermissionChecker.check()', () => {
 			],
 		};
 
-		const workflowEntity = await Db.collections.Workflow.save(workflowDetails);
+		const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
 
-		await Db.collections.SharedWorkflow.save({
+		await Container.get(SharedWorkflowRepository).save({
 			workflow: workflowEntity,
 			user: member,
 			role: workflowOwnerRole,

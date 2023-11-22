@@ -241,6 +241,9 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
+		currentUserIsOwner(): boolean {
+			return this.usersStore.currentUser?.isOwner ?? false;
+		},
 		contextBasedTranslationKeys(): NestedRecord<string> {
 			return this.uiStore.contextBasedTranslationKeys;
 		},
@@ -321,15 +324,18 @@ export default defineComponent({
 				);
 			}
 
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.PUSH,
-				label: this.$locale.baseText('menuActions.push'),
-				disabled:
-					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
-					!this.onWorkflowPage ||
-					this.onExecutionsTab ||
-					this.readOnlyEnv,
-			});
+			if (this.currentUserIsOwner) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.PUSH,
+					label: this.$locale.baseText('menuActions.push'),
+					disabled:
+						!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+						!this.onWorkflowPage ||
+						this.onExecutionsTab ||
+						this.readOnlyEnv ||
+						!this.currentUserIsOwner,
+				});
+			}
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -379,7 +385,17 @@ export default defineComponent({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) await this.settingsStore.fetchPromptsData();
+
+			if (saved) {
+				await this.settingsStore.fetchPromptsData();
+
+				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+					await this.$router.replace({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.currentWorkflowId },
+					});
+				}
+			}
 		},
 		onShareButtonClick() {
 			this.uiStore.openModalWithData({

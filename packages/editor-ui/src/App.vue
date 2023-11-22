@@ -35,6 +35,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { extendExternalHooks } from '@/mixins/externalHooks';
+import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -57,8 +59,8 @@ import {
 	useUsageStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
+import { runExternalHook } from '@/utils';
 
 export default defineComponent({
 	name: 'App',
@@ -131,6 +133,12 @@ export default defineComponent({
 				await this.nodeTypesStore.getNodeTranslationHeaders();
 			}
 		},
+		async initializeHooks(): Promise<void> {
+			if (this.settingsStore.isCloudDeployment) {
+				const { n8nCloudHooks } = await import('@/hooks/cloud');
+				extendExternalHooks(n8nCloudHooks);
+			}
+		},
 		async onAfterAuthenticate() {
 			if (this.onAfterAuthenticateInitialized) {
 				return;
@@ -141,7 +149,6 @@ export default defineComponent({
 			}
 
 			await Promise.all([
-				this.initializeCloudData(),
 				this.initializeSourceControl(),
 				this.initializeTemplates(),
 				this.initializeNodeTranslationHeaders(),
@@ -153,10 +160,14 @@ export default defineComponent({
 	async mounted() {
 		this.logHiringBanner();
 
+		await this.settingsStore.initialize();
+		await this.initializeHooks();
+		await this.initializeCloudData();
+
 		void this.checkForNewVersions();
 		void this.onAfterAuthenticate();
 
-		void this.externalHooks.run('app.mount');
+		void runExternalHook('app.mount');
 		this.loading = false;
 	},
 	watch: {

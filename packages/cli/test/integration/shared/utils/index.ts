@@ -10,16 +10,15 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from './mocking';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { mockNodeTypesData } from '../../../unit/Helpers';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { mockInstance } from '../../../shared/mocking';
 
-export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
 
 // ----------------------------------
@@ -29,7 +28,10 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+export async function initActiveWorkflowRunner() {
+	mockInstance(MultiMainSetup);
+
+	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	await workflowRunner.init();
 	return workflowRunner;
@@ -108,7 +110,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneByOrFail({
+	const { value } = await Container.get(SettingsRepository).findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -118,7 +120,7 @@ export async function isInstanceOwnerSetUp() {
 export const setInstanceOwnerSetUp = async (value: boolean) => {
 	config.set('userManagement.isInstanceOwnerSetUp', value);
 
-	await Db.collections.Settings.update(
+	await Container.get(SettingsRepository).update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(value) },
 	);

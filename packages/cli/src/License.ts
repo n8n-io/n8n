@@ -4,7 +4,6 @@ import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 import Container, { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import config from '@/config';
-import * as Db from '@/Db';
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
@@ -12,10 +11,12 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { WorkflowRepository } from '@/databases/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 type FeatureReturnType = Partial<
 	{
@@ -40,11 +41,18 @@ export class License {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly multiMainSetup: MultiMainSetup,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			return;
+		}
+
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			await this.multiMainSetup.init();
 		}
 
 		const isMainInstance = instanceType === 'main';
@@ -91,7 +99,7 @@ export class License {
 		return [
 			{
 				name: 'activeWorkflows',
-				value: await Container.get(WorkflowRepository).count({ where: { active: true } }),
+				value: await this.workflowRepository.count({ where: { active: true } }),
 			},
 		];
 	}
@@ -102,7 +110,7 @@ export class License {
 		if (ephemeralLicense) {
 			return ephemeralLicense;
 		}
-		const databaseSettings = await Db.collections.Settings.findOne({
+		const databaseSettings = await this.settingsRepository.findOne({
 			where: {
 				key: SETTINGS_LICENSE_CERT_KEY,
 			},
@@ -112,22 +120,28 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (config.getEnv('leaderSelection.enabled')) {
-				const { MultiMainInstancePublisher } = await import(
-					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
+				| boolean
+				| undefined;
+
+			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+
+			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+				this.logger.debug(
+					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
-
-				const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-				await multiMainInstancePublisher.init();
-
-				if (multiMainInstancePublisher.isFollower) {
-					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
-					return;
-				}
+				return;
 			}
 
+			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+				this.logger.debug(
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+				);
+			}
+		}
+
+		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
@@ -153,7 +167,7 @@ export class License {
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
 		if (config.get('license.cert')) return;
-		await Db.collections.Settings.upsert(
+		await this.settingsRepository.upsert(
 			{
 				key: SETTINGS_LICENSE_CERT_KEY,
 				value,
@@ -249,6 +263,10 @@ export class License {
 
 	isAPIDisabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
+	}
+
+	isWorkerViewLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
 	}
 
 	getCurrentEntitlements() {

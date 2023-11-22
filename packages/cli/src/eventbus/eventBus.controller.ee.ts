@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { eventBus } from './MessageEventBus/MessageEventBus';
 import {

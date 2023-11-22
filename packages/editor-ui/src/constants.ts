@@ -155,6 +155,10 @@ export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger'
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
+
+export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
@@ -173,7 +177,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 
 export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
 
-export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
 export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
 
@@ -190,6 +194,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
+	CONTEXT_MENU: 'context_menu',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -428,6 +433,7 @@ export const enum VIEWS {
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
+	WORKER_VIEW = 'WorkerView',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -455,6 +461,7 @@ export const MAPPING_PARAMS = [
 	'$env',
 	'$evaluateExpression',
 	'$execution',
+	'$ifEmpty',
 	'$input',
 	'$item',
 	'$jmespath',
@@ -500,6 +507,7 @@ export const enum EnterpriseEditionFeature {
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
+	WorkerView = 'workerView',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -576,6 +584,7 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WAIT_NODE_TYPE,
+	DISCORD_NODE_TYPE,
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
@@ -613,6 +622,7 @@ export const ALLOWED_HTML_TAGS = [
 	'small',
 	'details',
 	'summary',
+	'mark',
 ];
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
@@ -639,3 +649,5 @@ export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
 export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+
+export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';

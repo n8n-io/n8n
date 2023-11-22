@@ -8,7 +8,7 @@ import { Response } from 'express';
 import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import { IInternalHooksClass } from '@/Interfaces';
-import { SettingsRepository } from '@db/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';

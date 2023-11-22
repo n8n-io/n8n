@@ -9,7 +9,6 @@ import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 
@@ -48,6 +47,7 @@ const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
 const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
+const WorkerView = async () => import('./views/WorkerView.vue');
 const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
@@ -722,6 +722,20 @@ export const routes = [
 				},
 			},
 			{
+				path: 'workers',
+				name: VIEWS.WORKER_VIEW,
+				components: {
+					settingsView: WorkerView,
+				},
+				meta: {
+					permissions: {
+						allow: {
+							loginStatus: [LOGIN_STATUS.LoggedIn],
+						},
+					},
+				},
+			},
+			{
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
 				components: {
@@ -882,7 +896,6 @@ router.beforeEach(async (to, from, next) => {
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	await settingsStore.initialize();
 	await usersStore.initialize();
 
 	/**
@@ -947,7 +960,7 @@ router.afterEach((to, from) => {
 	 * Run external hooks
 	 */
 
-	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	void runExternalHook('main.routeChange', { from, to });
 
 	/**
 	 * Track current view for telemetry

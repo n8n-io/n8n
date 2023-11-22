@@ -19,7 +19,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 
 @Service()
@@ -170,7 +170,6 @@ export class ActiveExecutions {
 				setTimeout(() => {
 					// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
-						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 						type: timeout || 'stopExecution',
 					});
 				}, 1);

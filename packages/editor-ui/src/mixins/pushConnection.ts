@@ -34,6 +34,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
 import { defineComponent } from 'vue';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 
 export const pushConnection = defineComponent({
 	setup() {
@@ -61,6 +62,7 @@ export const pushConnection = defineComponent({
 			useWorkflowsStore,
 			useSettingsStore,
 			useSegment,
+			useOrchestrationStore,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -111,7 +113,10 @@ export const pushConnection = defineComponent({
 			this.connectRetries = 0;
 			this.lostConnection = false;
 			this.rootStore.pushConnectionActive = true;
-			this.clearAllStickyNotifications();
+			try {
+				// in the workers view context this fn is not defined
+				this.clearAllStickyNotifications();
+			} catch {}
 			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
 		},
 
@@ -196,6 +201,12 @@ export const pushConnection = defineComponent({
 				return false;
 			}
 
+			if (receivedData.type === 'sendWorkerStatusMessage') {
+				const pushData = receivedData.data;
+				this.orchestrationManagerStore.updateWorkerStatus(pushData.status);
+				return true;
+			}
+
 			if (receivedData.type === 'sendConsoleMessage') {
 				const pushData = receivedData.data;
 				console.log(pushData.source, ...pushData.messages);
@@ -278,6 +289,33 @@ export const pushConnection = defineComponent({
 						}
 					}
 				}
+			}
+
+			if (
+				receivedData.type === 'workflowFailedToActivate' &&
+				this.workflowsStore.workflowId === receivedData.data.workflowId
+			) {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				this.workflowsStore.setActive(false);
+
+				this.showError(
+					new Error(receivedData.data.errorMessage),
+					this.$locale.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'activated' },
+					}) + ':',
+				);
+
+				return true;
+			}
+
+			if (receivedData.type === 'workflowActivated') {
+				this.workflowsStore.setWorkflowActive(receivedData.data.workflowId);
+				return true;
+			}
+
+			if (receivedData.type === 'workflowDeactivated') {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				return true;
 			}
 
 			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
@@ -408,7 +446,9 @@ export const pushConnection = defineComponent({
 								}
 							}
 
-							this.$telemetry.track('Instance FE emitted paired item error', eventData);
+							this.$telemetry.track('Instance FE emitted paired item error', eventData, {
+								withPostHog: true,
+							});
 						});
 					}
 
