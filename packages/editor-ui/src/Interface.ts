@@ -1243,6 +1243,7 @@ export type NodeFilterType =
 
 export type NodeCreatorOpenSource =
 	| ''
+	| 'context_menu'
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
 	| 'add_input_endpoint'

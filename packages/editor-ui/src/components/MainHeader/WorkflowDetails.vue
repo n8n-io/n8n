@@ -247,6 +247,9 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
+		currentUserIsOwner(): boolean {
+			return this.usersStore.currentUser?.isOwner ?? false;
+		},
 		contextBasedTranslationKeys(): NestedRecord<string> {
 			return this.uiStore.contextBasedTranslationKeys;
 		},
@@ -327,15 +330,18 @@ export default defineComponent({
 				);
 			}
 
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.PUSH,
-				label: this.$locale.baseText('menuActions.push'),
-				disabled:
-					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
-					!this.onWorkflowPage ||
-					this.onExecutionsTab ||
-					this.readOnlyEnv,
-			});
+			if (this.currentUserIsOwner) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.PUSH,
+					label: this.$locale.baseText('menuActions.push'),
+					disabled:
+						!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+						!this.onWorkflowPage ||
+						this.onExecutionsTab ||
+						this.readOnlyEnv ||
+						!this.currentUserIsOwner,
+				});
+			}
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
