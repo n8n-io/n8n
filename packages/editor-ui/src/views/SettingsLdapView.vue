@@ -682,7 +682,7 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
-		async getLdapSynchronizations(state: any) {
+		async getLdapSynchronizations(state: { loaded: () => void; complete: () => void }) {
 			try {
 				this.loadingTable = true;
 				const data = await this.settingsStore.getLdapSynchronizations({

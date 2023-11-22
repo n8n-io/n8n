@@ -305,6 +305,7 @@ import type {
 	INodeUpdatePropertiesInformation,
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
+	ToggleNodeCreatorOptions,
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
