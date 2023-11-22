@@ -35,8 +35,8 @@ export const initErrorHandling = async () => {
 	process.on('uncaughtException', (error) => {
 		ErrorReporterProxy.error(error);
 		if (
-			error.constructor?.name !== 'AxiosError' ||
-			!error.message.includes('ApplicationError') ||
+			error.constructor?.name !== 'AxiosError' &&
+			!error.name.includes('ApplicationError') &&
 			!error.message.includes('Invalid URL Passed')
 		)
 			throw error;
