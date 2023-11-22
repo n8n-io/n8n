@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { COLLABORATION_HEARTBEAT_INTERVAL } from '@/constants';
-import { useCollaborationStore, useUsersStore, useWorkflowsStore } from '@/stores';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 import { onBeforeUnmount } from 'vue';
 import { onMounted } from 'vue';
 import { computed, ref } from 'vue';
@@ -56,7 +58,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="`collaboration-pane-container ${$style.container}`">
+	<div
+		:class="`collaboration-pane-container ${$style.container}`"
+		data-test-id="collaboration-pane"
+	>
 		<n8n-user-stack :users="activeUsers" :currentUserEmail="currentUserEmail" />
 	</div>
 </template>
