@@ -177,6 +177,7 @@ export class ActiveExecutions {
 		} else {
 			// Workflow is running in current process
 			this.activeExecutions[executionId].workflowExecution!.cancel();
+			setTimeout(() => this.remove(executionId), 10);
 		}
 
 		return this.getPostExecutePromise(executionId);

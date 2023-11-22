@@ -827,8 +827,14 @@ export class WorkflowExecute {
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
-				this.abortController.abort();
 				gotCancel = true;
+				this.abortController.abort();
+				void this.processSuccessExecution(
+					startedAt,
+					workflow,
+					new WorkflowOperationError('Workflow has been canceled!'),
+					closeFunction,
+				);
 			});
 
 			const returnPromise = (async () => {
