@@ -24,6 +24,7 @@
 				v-if="buttonText"
 				:label="buttonText"
 				:loading="buttonLoading"
+				data-test-id="form-submit-button"
 				size="large"
 				@click="onButtonClick"
 			/>

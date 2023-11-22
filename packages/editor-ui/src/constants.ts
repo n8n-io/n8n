@@ -178,7 +178,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 
 export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
 
-export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
 export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
 
@@ -196,6 +196,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_ACTION: 'node_connection_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
+	CONTEXT_MENU: 'context_menu',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -650,3 +651,5 @@ export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
 export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+
+export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
