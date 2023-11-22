@@ -65,13 +65,10 @@ describe('Undo/Redo', () => {
 			.should('have.css', 'top', '220px');
 	});
 
-	it('should undo/redo deleting node using delete button', () => {
+	it('should undo/redo deleting node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodeByName(CODE_NODE_NAME)
-			.find('[data-test-id=delete-node-button]')
-			.click({ force: true });
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
@@ -151,7 +148,7 @@ describe('Undo/Redo', () => {
 			.should('have.css', 'top', '320px');
 	});
 
-	it('should undo/redo deleting a connection by pressing delete button', () => {
+	it('should undo/redo deleting a connection using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().realHover();
@@ -177,14 +174,10 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-	it('should undo/redo disabling a node using disable button', () => {
+	it('should undo/redo disabling a node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="disable-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -252,11 +245,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo duplicating a node', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="duplicate-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.actions.hitRedo();

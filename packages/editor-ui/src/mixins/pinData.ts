@@ -19,9 +19,11 @@ export type PinDataSource =
 	| 'save-edit'
 	| 'on-ndv-close-modal'
 	| 'duplicate-node'
-	| 'add-nodes';
+	| 'add-nodes'
+	| 'context-menu'
+	| 'keyboard-shortcut';
 
-export type UnpinDataSource = 'unpin-and-execute-modal';
+export type UnpinDataSource = 'unpin-and-execute-modal' | 'context-menu' | 'keyboard-shortcut';
 
 export const pinData = defineComponent({
 	setup() {
