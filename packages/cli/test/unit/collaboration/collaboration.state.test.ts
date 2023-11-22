@@ -1,5 +1,5 @@
 import { TIME } from '@/constants';
-import { CollaborationState } from './collaboration.state';
+import { CollaborationState } from '@/collaboration/collaboration.state';
 
 const origDate = global.Date;
 
@@ -33,10 +33,9 @@ describe('CollaborationState', () => {
 			jest
 				.spyOn(global.Date, 'now')
 				.mockReturnValue(new origDate('2023-01-01T00:35:00.000Z').getTime());
-			const updatedWorkflowIds = collaborationState.cleanInactiveUsers(10 * TIME.MINUTE);
+			collaborationState.cleanInactiveUsers(workflowId, 10 * TIME.MINUTE);
 
 			// Assert: The inactive user should be removed
-			expect(updatedWorkflowIds).toEqual([workflowId]);
 			expect(collaborationState.getActiveWorkflowUsers(workflowId)).toEqual([
 				{ userId: 'activeUser', lastSeen: new origDate('2023-01-01T00:30:00.000Z') },
 			]);
@@ -51,10 +50,9 @@ describe('CollaborationState', () => {
 			jest
 				.spyOn(global.Date, 'now')
 				.mockReturnValue(new origDate('2023-01-01T00:35:00.000Z').getTime());
-			const updatedWorkflowIds = collaborationState.cleanInactiveUsers(10 * TIME.MINUTE);
+			collaborationState.cleanInactiveUsers(workflowId, 10 * TIME.MINUTE);
 
 			// Assert: The active user should still be present
-			expect(updatedWorkflowIds).toEqual([]);
 			expect(collaborationState.getActiveWorkflowUsers(workflowId)).toEqual([
 				{ userId: 'activeUser', lastSeen: new origDate('2023-01-01T00:30:00.000Z') },
 			]);

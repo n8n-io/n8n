@@ -1,5 +1,5 @@
 import type { User } from '@db/entities/User';
-import { assert, type Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 type ActiveWorkflowUser = {
@@ -61,29 +61,19 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Removes all users that have not been seen for a given time
+	 * Removes all users that have not been seen in a given time
 	 */
-	cleanInactiveUsers(inactiveTimeInMs: number): Array<Workflow['id']> {
-		const { activeUsersByWorkflowId } = this.state;
-		const now = Date.now();
-		const updatedWorkflowIds = new Set<Workflow['id']>();
-
-		for (const workflowId of activeUsersByWorkflowId.keys()) {
-			const activeUsers = activeUsersByWorkflowId.get(workflowId);
-			assert(activeUsers);
-
-			for (const user of activeUsers.values()) {
-				if (now - user.lastSeen.getTime() > inactiveTimeInMs) {
-					activeUsers.delete(user.userId);
-					updatedWorkflowIds.add(workflowId);
-				}
-			}
-
-			if (activeUsers.size === 0) {
-				activeUsersByWorkflowId.delete(workflowId);
-			}
+	cleanInactiveUsers(workflowId: Workflow['id'], inactivityCleanUpTimeInMs: number) {
+		const activeUsers = this.state.activeUsersByWorkflowId.get(workflowId);
+		if (!activeUsers) {
+			return;
 		}
 
-		return Array.from(updatedWorkflowIds);
+		const now = Date.now();
+		for (const user of activeUsers.values()) {
+			if (now - user.lastSeen.getTime() > inactivityCleanUpTimeInMs) {
+				activeUsers.delete(user.userId);
+			}
+		}
 	}
 }
