@@ -254,11 +254,11 @@ const commonPollingParameters: INodeProperties[] = [
 
 const commonCORSParameters: INodeProperties[] = [
 	{
-		displayName: 'Allowed Origin(s)',
+		displayName: 'Allowed Origins (CORS)',
 		name: 'allowedOrigins',
 		type: 'string',
 		default: '*',
-		description: 'The origin(s) to allow non-preflight requests from',
+		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
 	},
 ];
 
@@ -271,9 +271,9 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 		properties.unshift(...commonPollingParameters);
 	}
 	if (nodeType.webhook && supportsCORS) {
-		const index = properties.findIndex(({ name }) => name === 'options');
-		if (index === -1) properties.push(...commonCORSParameters);
-		else properties.splice(index, 0, ...commonCORSParameters);
+		const optionsProperty = properties.find(({ name }) => name === 'options');
+		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		else properties.push(...commonCORSParameters);
 	}
 }
 
