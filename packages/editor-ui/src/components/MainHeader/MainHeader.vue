@@ -90,11 +90,6 @@ export default defineComponent({
 	mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
-		// Initialize the push connection
-		this.pushConnect();
-	},
-	beforeUnmount() {
-		this.pushDisconnect();
 	},
 	watch: {
 		$route(to, from) {
