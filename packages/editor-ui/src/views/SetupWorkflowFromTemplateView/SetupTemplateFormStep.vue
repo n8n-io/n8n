@@ -77,7 +77,7 @@ const onCredentialDeselected = () => {
 </script>
 
 <template>
-	<li :class="$style.container">
+	<li :class="$style.container" data-test-id="setup-credentials-form-step">
 		<n8n-heading tag="h2" size="large">
 			<div v-if="nodeType" :class="$style.heading">
 				<span :class="$style.headingOrder">{{ order }}.</span>
