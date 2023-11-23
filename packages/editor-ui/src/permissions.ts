@@ -6,7 +6,13 @@
 
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRBACStore } from '@/stores/rbac.store';
+
+/**
+ * Old permissions implementation
+ * @deprecated
+ */
 
 export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
@@ -36,15 +42,20 @@ export const parsePermissionsTable = (
 	user: IUser | null,
 	table: IPermissionsTable,
 ): IPermissions => {
-	const genericTable = [{ name: UserRole.InstanceOwner, test: () => user?.isOwner }];
+	const genericTable: IPermissionsTable = [
+		{ name: UserRole.InstanceOwner, test: () => !!user?.isOwner },
+	];
 
-	return [...genericTable, ...table].reduce((permissions: IPermissions, row) => {
-		permissions[row.name] = Array.isArray(row.test)
-			? row.test.some((ability) => permissions[ability])
-			: (row.test as IPermissionsTableRowTestFn)(permissions);
+	return [...genericTable, ...table].reduce(
+		(permissions: IPermissions, row: IPermissionsTableRow) => {
+			permissions[row.name] = Array.isArray(row.test)
+				? row.test.some((ability) => permissions[ability])
+				: row.test(permissions);
 
-		return permissions;
-	}, {});
+			return permissions;
+		},
+		{},
+	);
 };
 
 /**
@@ -60,16 +71,11 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 	const table: IPermissionsTable = [
 		{
 			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(credential?.ownedBy && credential.ownedBy.id === user?.id) || !isSharingEnabled,
+			test: () => !!(credential?.ownedBy?.id === user?.id) || !isSharingEnabled,
 		},
 		{
 			name: UserRole.ResourceSharee,
 			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
-		},
-		{
-			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
 		},
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -85,6 +91,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 
 export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
+	const rbacStore = useRBACStore();
 	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
 		EnterpriseEditionFeature.Sharing,
 	);
@@ -93,27 +100,15 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 	const table: IPermissionsTable = [
 		{
 			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(isNewWorkflow || (workflow?.ownedBy && workflow.ownedBy.id === user?.id)) ||
-				!isSharingEnabled,
+			test: () => !!(isNewWorkflow || workflow?.ownedBy?.id === user?.id) || !isSharingEnabled,
 		},
 		{
-			name: UserRole.ResourceSharee,
-			test: () => !!workflow?.sharedWith?.find((sharee) => sharee.id === user?.id),
+			name: 'updateSharing',
+			test: (permissions) => rbacStore.hasScope('workflow:update') || !!permissions.isOwner,
 		},
 		{
-			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
-		},
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
-		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{
-			name: 'use',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
+			name: 'delete',
+			test: (permissions) => rbacStore.hasScope('workflow:delete') || !!permissions.isOwner,
 		},
 	];
 
@@ -121,20 +116,12 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 };
 
 export const getVariablesPermissions = (user: IUser | null) => {
+	const rbacStore = useRBACStore();
 	const table: IPermissionsTable = [
-		{
-			name: 'create',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'edit',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'delete',
-			test: [UserRole.InstanceOwner],
-		},
-		{ name: 'use', test: () => true },
+		{ name: 'create', test: () => rbacStore.hasScope('variable:create') },
+		{ name: 'edit', test: () => rbacStore.hasScope('variable:update') },
+		{ name: 'delete', test: () => rbacStore.hasScope('variable:delete') },
+		{ name: 'use', test: () => rbacStore.hasScope('variable:read') },
 	];
 
 	return parsePermissionsTable(user, table);
