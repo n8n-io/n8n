@@ -415,7 +415,7 @@ export const pushConnection = defineComponent({
 							execution &&
 							execution.executedNode &&
 							execution.data?.resultData?.runData?.[execution.executedNode];
-						if (nodeType && nodeType.polling && !nodeOutput) {
+						if (nodeType?.polling && !nodeOutput) {
 							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
