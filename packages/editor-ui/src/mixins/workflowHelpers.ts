@@ -201,7 +201,7 @@ export function resolveParameter(
 		// in pagination expressions
 		additionalKeys.$response = get(
 			executionData,
-			`data.executionData.contextData['node:${activeNode!.name}'].response`,
+			`data.executionData.contextData['node:${activeNode.name}'].response`,
 			{},
 		);
 	}
