@@ -16,6 +16,7 @@ export type ContextMenuTarget =
 	| { source: 'canvas' }
 	| { source: 'node-right-click'; node: INode }
 	| { source: 'node-button'; node: INode };
+export type ContextMenuActionCallback = (action: ContextMenuAction, targets: INode[]) => void;
 export type ContextMenuAction =
 	| 'open'
 	| 'copy'
@@ -28,14 +29,16 @@ export type ContextMenuAction =
 	| 'select_all'
 	| 'deselect_all'
 	| 'add_node'
-	| 'add_sticky';
+	| 'add_sticky'
+	| 'change_color';
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
 const target = ref<ContextMenuTarget>({ source: 'canvas' });
 const actions = ref<IActionDropdownItem[]>([]);
+const actionCallback = ref<ContextMenuActionCallback>(() => {});
 
-export const useContextMenu = () => {
+export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) => {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
@@ -104,6 +107,7 @@ export const useContextMenu = () => {
 
 		event.preventDefault();
 
+		actionCallback.value = onAction;
 		target.value = menuTarget;
 		position.value = getMousePosition(event);
 		isOpen.value = true;
@@ -196,6 +200,12 @@ export const useContextMenu = () => {
 								id: 'open',
 								label: i18n.baseText('contextMenu.editSticky'),
 								shortcut: { keys: ['↵'] },
+								disabled: isReadOnly.value,
+							},
+							{
+								id: 'change_color',
+								label: i18n.baseText('contextMenu.changeColor'),
+								disabled: isReadOnly.value,
 							},
 					  ]
 					: [
@@ -207,6 +217,7 @@ export const useContextMenu = () => {
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.execute'),
+								disabled: isReadOnly.value,
 							},
 							{
 								id: 'rename',
@@ -221,6 +232,10 @@ export const useContextMenu = () => {
 
 			actions.value = menuActions;
 		}
+	};
+
+	const _dispatchAction = (action: ContextMenuAction) => {
+		actionCallback.value(action, targetNodes.value);
 	};
 
 	watch(
@@ -238,5 +253,6 @@ export const useContextMenu = () => {
 		targetNodes,
 		open,
 		close,
+		_dispatchAction,
 	};
 };
