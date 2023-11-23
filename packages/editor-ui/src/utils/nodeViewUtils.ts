@@ -7,7 +7,6 @@ import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	ConnectionTypes,
 	IConnection,
-	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
