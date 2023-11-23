@@ -117,11 +117,7 @@ export class Start extends BaseCommand {
 				this.pruningService.stopPruning();
 			}
 
-			if (
-				config.getEnv('executions.mode') === 'queue' &&
-				config.getEnv('multiMainSetup.enabled') &&
-				config.getEnv('generic.instanceType') === 'main'
-			) {
+			if (Container.get(MultiMainSetup).isEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
 				await Container.get(MultiMainSetup).shutdown();

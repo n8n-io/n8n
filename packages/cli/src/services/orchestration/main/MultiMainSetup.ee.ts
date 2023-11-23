@@ -38,7 +38,7 @@ export class MultiMainSetup extends SingleMainSetup {
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
-		if (this.isInitialized) return;
+		if (!this.isEnabled || this.isInitialized) return;
 
 		await this.initPublisher();
 

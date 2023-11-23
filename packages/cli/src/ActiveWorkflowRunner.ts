@@ -99,13 +99,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async init() {
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main'
-		) {
-			await this.multiMainSetup.init();
-		}
+		await this.multiMainSetup.init();
 
 		await this.addActiveWorkflows('init');
 
