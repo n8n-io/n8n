@@ -9,7 +9,12 @@
 		</n8n-heading>
 
 		<p class="description">
-			<i18n-t tag="span" keypath="templateSetup.credential.description" scope="global">
+			<i18n-t
+				tag="span"
+				keypath="templateSetup.credential.description"
+				:plural="credentials.usedBy.length"
+				scope="global"
+			>
 				<span v-html="nodeNames" />
 			</i18n-t>
 		</p>
@@ -89,13 +94,10 @@ export default defineComponent({
 		nodeNames() {
 			const formatNodeName = (node: IWorkflowTemplateNode) => `<b>${node.name}</b>`;
 
-			const nodesStr = this.credentials.usedBy.length > 1 ? 'nodes' : 'node';
-			const formattedList = formatList(this.credentials.usedBy, {
+			return formatList(this.credentials.usedBy, {
 				formatFn: formatNodeName,
 				i18n: this.$locale,
 			});
-
-			return `${formattedList} ${nodesStr}`;
 		},
 		selectedCredentialId() {
 			return this.setupTemplateStore.selectedCredentialIdByName[this.credentialName];
