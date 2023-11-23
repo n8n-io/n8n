@@ -5,23 +5,19 @@
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
-import {
-	jsonParse,
-	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationWebhookOptions,
-} from 'n8n-workflow';
+import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 	IWorkflowExecuteAdditionalData,
+	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { Agent as HTTPSAgent } from 'https';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
-import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
 import Container from 'typedi';
 

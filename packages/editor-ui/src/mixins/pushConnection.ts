@@ -102,7 +102,7 @@ export const pushConnection = defineComponent({
 				const messageData = this.pushMessageQueue.shift();
 
 				const result = await this.pushMessageReceived(messageData!.message, true);
-				if (result === false) {
+				if (!result) {
 					// Was not successful
 					messageData!.retriesLeft -= 1;
 
