@@ -1,7 +1,6 @@
-import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
-import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
-import { META_KEY } from '../constants';
+import { NDV, WorkflowPage } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -367,5 +366,24 @@ describe('NDV', () => {
 		ndv.actions.typeIntoParameterInput('otherField', 'test');
 		// Should call the endpoint only once (on mount), not for every keystroke
 		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
+	});
+
+	it('should show node name and version in settings', () => {
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
+
+		workflowPage.actions.openNode('Edit Fields (old)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.2)');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Edit Fields (latest)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.2 (Latest)');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Function');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
+		ndv.actions.close();
 	});
 });
