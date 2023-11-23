@@ -8,7 +8,14 @@ export const sourceControlLicensedAndEnabledMiddleware: RequestHandler = (req, r
 	if (sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
 		next();
 	} else {
-		res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		if (!sourceControlPreferencesService.isSourceControlConnected()) {
+			res.status(412).json({
+				status: 'error',
+				message: 'source_control_not_connected',
+			});
+		} else {
+			res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		}
 	}
 };
 
