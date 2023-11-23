@@ -11,7 +11,7 @@ overrides:
   '@types/node': ^18.16.16
   chokidar: 3.5.2
   jsonwebtoken: 9.0.0
-  prettier: ^3.0.3
+  prettier: ^3.1.0
   semver: ^7.5.4
   tough-cookie: ^4.1.3
   tslib: ^2.6.1
@@ -177,7 +177,7 @@ importers:
         version: 1.0.0
       eslint-plugin-prettier:
         specifier: 5.0.1
-        version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.0.3)
+        version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.1.0)
       eslint-plugin-unicorn:
         specifier: 49.0.0
         version: 49.0.0(eslint@8.54.0)
@@ -756,7 +756,7 @@ importers:
         version: 2.4.1(vue@3.3.4)
       autoprefixer:
         specifier: ^10.4.14
-        version: 10.4.14(postcss@8.4.27)
+        version: 10.4.14(postcss@8.4.31)
       core-js:
         specifier: ^3.31.0
         version: 3.31.0
@@ -908,8 +908,8 @@ importers:
         specifier: ^2.1.6
         version: 2.1.6(typescript@5.3.2)(vue@3.3.4)
       prettier:
-        specifier: ^3.0.3
-        version: 3.0.3
+        specifier: ^3.1.0
+        version: 3.1.0
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.3.4)
@@ -6968,7 +6968,7 @@ packages:
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       leven: 3.1.0
       ora: 5.4.1
-      prettier: 3.0.3
+      prettier: 3.1.0
       prompts: 2.4.2
       puppeteer-core: 2.1.1
       read-pkg-up: 7.0.1
@@ -7025,7 +7025,7 @@ packages:
       globby: 11.1.0
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       lodash: 4.17.21
-      prettier: 3.0.3
+      prettier: 3.1.0
       recast: 0.23.3
     transitivePeerDependencies:
       - supports-color
@@ -9857,7 +9857,7 @@ packages:
       - encoding
     dev: false
 
-  /autoprefixer@10.4.14(postcss@8.4.27):
+  /autoprefixer@10.4.14(postcss@8.4.31):
     resolution: {integrity: sha512-FQzyfOsTlwVzjHxKEqRIAdJx9niO6VCBCoEwax/VLSoQF29ggECcPuBqUMZ+u8jCZOPSy8b8/8KnuFbp0SaFZQ==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
@@ -9869,7 +9869,7 @@ packages:
       fraction.js: 4.2.0
       normalize-range: 0.1.2
       picocolors: 1.0.0
-      postcss: 8.4.27
+      postcss: 8.4.31
       postcss-value-parser: 4.2.0
     dev: true
 
@@ -10678,7 +10678,7 @@ packages:
       normalize-path: 3.0.0
       readdirp: 3.6.0
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
 
   /chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -11452,7 +11452,7 @@ packages:
       cypress: ^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x
     dependencies:
       cypress: 12.17.2
-      prettier: 3.0.3
+      prettier: 3.1.0
     dev: true
 
   /cypress@12.17.2:
@@ -12574,14 +12574,14 @@ packages:
       - typescript
     dev: true
 
-  /eslint-plugin-prettier@5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.0.3):
+  /eslint-plugin-prettier@5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.1.0):
     resolution: {integrity: sha512-m3u5RnR56asrwV/lDC4GHorlW75DsFfmUcjfCYylTUs85dBRnB7VM6xG8eCMJdeDRnppzmxZVf1GEPJvl1JmNg==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       '@types/eslint': '>=8.0.0'
       eslint: '>=8.0.0'
       eslint-config-prettier: '*'
-      prettier: ^3.0.3
+      prettier: ^3.1.0
     peerDependenciesMeta:
       '@types/eslint':
         optional: true
@@ -12591,7 +12591,7 @@ packages:
       '@types/eslint': 8.44.7
       eslint: 8.54.0
       eslint-config-prettier: 9.0.0(eslint@8.54.0)
-      prettier: 3.0.3
+      prettier: 3.1.0
       prettier-linter-helpers: 1.0.0
       synckit: 0.8.5
     dev: true
@@ -13615,17 +13615,10 @@ packages:
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
 
-  /fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
-    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
-    os: [darwin]
-    optional: true
-
   /fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
-    dev: true
     optional: true
 
   /function-bind@1.1.2:
@@ -15415,7 +15408,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /jest-leak-detector@29.6.2:
@@ -18665,8 +18658,8 @@ packages:
       fast-diff: 1.2.0
     dev: true
 
-  /prettier@3.0.3:
-    resolution: {integrity: sha512-L/4pUDMxcNa8R/EthV08Zt42WBO4h1rarVtK0K+QJG0X187OLo7l699jWw0GKuwzkPQ//jMFA/8Xm6Fh3J/DAg==}
+  /prettier@3.1.0:
+    resolution: {integrity: sha512-TQLvXjq5IAibjh8EpBIkNKxO749UEWABoiIZehEPiY4GNpVdhaFKqSTu+QrlU6D2dPAfubRmtJTi4K4YkQ5eXw==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -19724,7 +19717,7 @@ packages:
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /rollup@4.5.1:
@@ -22265,7 +22258,7 @@ packages:
       postcss: 8.4.27
       rollup: 3.26.3
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /vite@4.4.7(sass@1.64.1):
@@ -22301,7 +22294,7 @@ packages:
       rollup: 3.26.3
       sass: 1.64.1
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /vite@5.0.2:
