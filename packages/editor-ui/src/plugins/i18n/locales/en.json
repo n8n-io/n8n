@@ -2244,7 +2244,7 @@
 	"filter.operatorGroup.basic": "Basic",
 	"filter.operatorGroup.string": "String",
 	"filter.operatorGroup.number": "Number",
-	"filter.operatorGroup.date": "Date",
+	"filter.operatorGroup.date": "Date & Time",
 	"filter.operatorGroup.boolean": "Boolean",
 	"filter.operatorGroup.array": "Array",
 	"filter.operatorGroup.object": "Object",
@@ -2285,5 +2285,5 @@
 	"filter.maxConditions": "Maximum conditions reached",
 	"filter.condition.placeholderLeft": "e.g. value1",
 	"filter.condition.placeholderRight": "e.g. value2",
-	"filter.condition.placeholderDate": "e.g. 1999-12-31"
+	"filter.condition.placeholderDate": "e.g. 2023-12-31 00:00:00"
 }

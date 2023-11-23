@@ -42,13 +42,15 @@ export class IfV2 implements INodeType {
 					default: {},
 					options: [
 						{
-							displayName: 'Case Sensitive',
+							displayName: 'Ignore Case',
+							description: 'Whether to ignore letter case when evaluating conditions',
 							name: 'caseSensitive',
 							type: 'boolean',
 							default: true,
 						},
 						{
 							displayName: 'Less Strict Type Validation',
+							description: 'Whether to try casting value types based on the selected operator',
 							name: 'looseTypeValidation',
 							type: 'boolean',
 							default: true,
