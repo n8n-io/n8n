@@ -14,6 +14,7 @@ export class MultiMainSetup extends SingleMainSetup {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
 			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('generic.instanceType') === 'main' &&
 			this.isLicensed
 		);
 	}
