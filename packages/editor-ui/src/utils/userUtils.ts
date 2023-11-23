@@ -61,7 +61,6 @@ import {
 	CODE_NODE_TYPE,
 } from '@/constants';
 import type {
-	IPermissions,
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
@@ -70,7 +69,6 @@ import type {
 	IUser,
 	ILogInStatus,
 	IRole,
-	IUserPermissions,
 } from '@/Interface';
 
 /*
@@ -95,89 +93,6 @@ export const ROLE: { Owner: IRole; Member: IRole; Default: IRole } = {
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
-};
-
-export const PERMISSIONS: IUserPermissions = {
-	TAGS: {
-		CAN_DELETE_TAGS: {
-			allow: {
-				role: [ROLE.Owner],
-			},
-		},
-	},
-	PRIMARY_MENU: {
-		CAN_ACCESS_USER_INFO: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-			deny: {
-				role: [ROLE.Default],
-			},
-		},
-	},
-	USER_SETTINGS: {
-		VIEW_UM_SETUP_WARNING: {
-			allow: {
-				role: [ROLE.Default],
-			},
-		},
-	},
-	USAGE: {
-		CAN_ACTIVATE_LICENSE: {
-			allow: {
-				role: [ROLE.Owner],
-			},
-		},
-	},
-};
-
-/**
- * To be authorized, user must pass all deny rules and pass any of the allow rules.
- *
- */
-export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
-	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
-	// big AND block
-	// if any of these are false, block user
-	if (permissions.deny) {
-		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
-			return false;
-		}
-
-		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
-			return false;
-		}
-
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
-			if (permissions.deny.role && permissions.deny.role.includes(role)) {
-				return false;
-			}
-		} else if (permissions.deny.role) {
-			return false;
-		}
-	}
-
-	// big OR block
-	// if any of these are true, allow user
-	if (permissions.allow) {
-		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
-			return true;
-		}
-
-		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
-			return true;
-		}
-
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
-			if (permissions.allow.role && permissions.allow.role.includes(role)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
 };
 
 export function getPersonalizedNodeTypes(

@@ -49,6 +49,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
+import type { Scope } from '@n8n/permissions';
 import type { runExternalHook } from '@/utils';
 
 export * from 'n8n-design-system/types';
@@ -682,6 +683,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
+	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
@@ -1682,6 +1684,7 @@ export declare namespace Cloud {
 }
 
 export interface CloudPlanState {
+	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;
