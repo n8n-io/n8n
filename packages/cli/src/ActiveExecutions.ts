@@ -7,7 +7,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { WorkflowOperationError, createDeferredPromise } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
@@ -19,7 +19,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 
 @Service()
@@ -119,6 +119,17 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].responsePromise = responsePromise;
 	}
 
+	attachAbortController(executionId: string, abortController: AbortController): void {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
+			throw new Error(
+				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
+			);
+		}
+
+		execution.abortController = abortController;
+	}
+
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			return;
@@ -170,12 +181,14 @@ export class ActiveExecutions {
 				setTimeout(() => {
 					// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
-						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 						type: timeout || 'stopExecution',
 					});
 				}, 1);
 			}
 		} else {
+			// Notify nodes to abort all operations
+			this.activeExecutions[executionId].abortController?.abort();
+
 			// Workflow is running in current process
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
@@ -190,12 +203,12 @@ export class ActiveExecutions {
 	 * @param {string} executionId The id of the execution to wait for
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new WorkflowOperationError(`There is no active execution with id "${executionId}".`);
+		}
+
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
-
-		if (this.activeExecutions[executionId] === undefined) {
-			throw new Error(`There is no active execution with id "${executionId}".`);
-		}
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 

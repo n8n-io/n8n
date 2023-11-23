@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { WorkflowSelect } from './dtos/workflow.select.dto';
 import { UserSelect } from './dtos/user.select.dto';
 import { CredentialsSelect } from './dtos/credentials.select.dto';

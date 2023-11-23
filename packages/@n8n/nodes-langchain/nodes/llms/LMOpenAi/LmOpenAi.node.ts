@@ -10,6 +10,7 @@ import {
 import type { ClientOptions } from 'openai';
 import { OpenAI } from 'langchain/llms/openai';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,7 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -162,8 +164,15 @@ export class LmOpenAi implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 0,
-						description: 'Maximum amount of time a request is allowed to take in seconds',
+						default: 60000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{
@@ -191,6 +200,7 @@ export class LmOpenAi implements INodeType {
 			presencePenalty?: number;
 			temperature?: number;
 			timeout?: number;
+			maxRetries?: number;
 			topP?: number;
 		};
 
@@ -204,6 +214,8 @@ export class LmOpenAi implements INodeType {
 			modelName,
 			...options,
 			configuration,
+			timeout: options.timeout ?? 60000,
+			maxRetries: options.maxRetries ?? 2,
 		});
 
 		return {

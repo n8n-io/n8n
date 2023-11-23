@@ -12,10 +12,12 @@ import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 
+// This node is deprecated. Use VectorStoreZep instead.
 export class VectorStoreZepLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zep Vector Store: Load',
 		name: 'vectorStoreZepLoad',
+		hidden: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],

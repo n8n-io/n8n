@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type { Readable } from 'stream';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -10,14 +11,13 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import { v4 as uuid } from 'uuid';
-import type { Readable } from 'stream';
 import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
 
 import { oldVersionNotice } from '@utils/descriptions';
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
 
 const UPLOAD_CHUNK_SIZE = 256 * 1024;
 

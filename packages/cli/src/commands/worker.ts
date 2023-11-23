@@ -27,7 +27,8 @@ import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -112,13 +113,11 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-			executionId,
-			{
-				includeData: true,
-				unflattenData: true,
-			},
-		);
+		const executionRepository = Container.get(ExecutionRepository);
+		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!fullExecutionData) {
 			this.logger.error(
@@ -133,12 +132,13 @@ export class Worker extends BaseCommand {
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
+		await executionRepository.updateStatus(executionId, 'running');
 
 		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
-			const workflowData = await Db.collections.Workflow.findOne({
+			const workflowData = await Container.get(WorkflowRepository).findOne({
 				select: ['id', 'staticData'],
 				where: {
 					id: workflowId,
@@ -220,6 +220,7 @@ export class Worker extends BaseCommand {
 			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
 		};
 
+		// TODO: setup AbortController
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 		if (fullExecutionData.data !== undefined) {

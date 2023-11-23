@@ -17,7 +17,7 @@ export const userHelpers = defineComponent({
 		},
 
 		canUserAccessRoute(route: RouteLocation): boolean {
-			const permissions: IPermissions = route.meta && route.meta.permissions;
+			const permissions: IPermissions = route.meta?.permissions;
 			const usersStore = useUsersStore();
 			const currentUser = usersStore.currentUser;
 

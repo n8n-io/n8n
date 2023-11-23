@@ -1,7 +1,5 @@
-import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import * as Db from '@/Db';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
@@ -9,6 +7,8 @@ import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
 import { License } from '@/License';
 import { Container } from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
+import { JwtService } from '@/services/jwt.service';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -34,7 +34,7 @@ export function issueJWT(user: User): JwtToken {
 			.digest('hex');
 	}
 
-	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
+	const signedToken = Container.get(JwtService).sign(payload, {
 		expiresIn: expiresIn / 1000 /* in seconds */,
 	});
 
@@ -44,17 +44,20 @@ export function issueJWT(user: User): JwtToken {
 	};
 }
 
+export const createPasswordSha = (user: User) =>
+	createHash('sha256')
+		.update(user.password.slice(user.password.length / 2))
+		.digest('hex');
+
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOne({
+	const user = await Container.get(UserRepository).findOne({
 		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
 	let passwordHash = null;
 	if (user?.password) {
-		passwordHash = createHash('sha256')
-			.update(user.password.slice(user.password.length / 2))
-			.digest('hex');
+		passwordHash = createPasswordSha(user);
 	}
 
 	// currently only LDAP users during synchronization
@@ -72,9 +75,9 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+	const jwtPayload: JwtPayload = Container.get(JwtService).verify(token, {
 		algorithms: ['HS256'],
-	}) as JwtPayload;
+	});
 	return resolveJwtContent(jwtPayload);
 }
 

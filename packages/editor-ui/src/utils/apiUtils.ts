@@ -1,12 +1,7 @@
 import type { AxiosRequestConfig, Method } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
-import type {
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IRestApiContext,
-	IWorkflowDb,
-} from '@/Interface';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
 export const NO_NETWORK_ERROR_CODE = 999;
@@ -103,7 +98,7 @@ async function request(config: {
 	}
 }
 
-export async function makeRestApiRequest(
+export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
@@ -118,7 +113,7 @@ export async function makeRestApiRequest(
 	});
 
 	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
-	return response.data;
+	return response.data as T;
 }
 
 export async function get(
@@ -150,7 +145,7 @@ export function unflattenExecutionData(
 	// Unflatten the data
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
-		workflowData: fullExecutionData.workflowData as IWorkflowDb,
+		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),
 	};
 

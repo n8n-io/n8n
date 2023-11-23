@@ -82,8 +82,8 @@ class CredentialType implements ICredentialTypes {
 		return this.credentialTypes[credentialType].type;
 	}
 
-	getNodeTypesToTestWith(type: string): string[] {
-		return knownCredentials[type]?.nodesToTestWith ?? [];
+	getSupportedNodes(type: string): string[] {
+		return knownCredentials[type]?.supportedNodes ?? [];
 	}
 
 	getParentTypes(typeName: string): string[] {
@@ -176,7 +176,6 @@ export function WorkflowExecuteAdditionalData(
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
 		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		timezone: workflowTestData?.input.workflowData.settings?.timezone || 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',

@@ -15,7 +15,7 @@ export const copyPaste = defineComponent({
 		};
 	},
 	mounted() {
-		if (this.copyPasteElementsGotCreated === true) {
+		if (this.copyPasteElementsGotCreated) {
 			return;
 		}
 
@@ -111,7 +111,7 @@ export const copyPaste = defineComponent({
 				// Check if the event got emitted from a message box or from something
 				// else which should ignore the copy/paste
 				// @ts-ignore
-				const path = e.path || (e.composedPath && e.composedPath());
+				const path = e.path || e.composedPath?.();
 				for (let index = 0; index < path.length; index++) {
 					if (
 						path[index].className &&

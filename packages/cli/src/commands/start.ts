@@ -13,24 +13,24 @@ import { promisify } from 'util';
 import glob from 'fast-glob';
 
 import { sleep, jsonParse } from 'n8n-workflow';
-import { createHash } from 'crypto';
 import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { TestWebhooks } from '@/TestWebhooks';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { License, FeatureNotLicensedError } from '@/License';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -65,6 +65,8 @@ export class Start extends BaseCommand {
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected server = new Server();
+
+	private pruningService: PruningService;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
@@ -111,24 +113,17 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(ExecutionRepository).clearTimers();
-
-			await Container.get(InternalHooks).onN8nStop();
-
-			const skipWebhookDeregistration = config.getEnv(
-				'endpoints.skipWebhooksDeregistrationOnShutdown',
-			);
-
-			const removePromises = [];
-			if (!skipWebhookDeregistration) {
-				removePromises.push(this.activeWorkflowRunner.removeAll());
+			if (this.pruningService.isPruningEnabled()) {
+				this.pruningService.stopPruning();
 			}
 
-			// Remove all test webhooks
-			const testWebhooks = Container.get(TestWebhooks);
-			removePromises.push(testWebhooks.removeAll());
+			if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
-			await Promise.all(removePromises);
+				await Container.get(MultiMainSetup).shutdown();
+			}
+
+			await Container.get(InternalHooks).onN8nStop();
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -171,10 +166,11 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				const destFile = path.join(staticCacheDir, fileName);
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
@@ -213,7 +209,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		this.logger.debug('License init complete');
+
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -231,32 +227,55 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		// queue mode in single-main scenario
+
+		if (!config.getEnv('multiMainSetup.enabled')) {
+			await Container.get(SingleMainSetup).init();
 			await Container.get(OrchestrationHandlerMainService).init();
+			return;
 		}
+
+		// queue mode in multi-main scenario
+
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		await Container.get(OrchestrationHandlerMainService).init();
+
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		multiMainSetup.on('leadershipChange', async () => {
+			if (multiMainSetup.isLeader) {
+				this.logger.debug('[Leadership change] Clearing all activation errors...');
+
+				await this.activeWorkflowRunner.clearAllActivationErrors();
+
+				this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
+
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+			} else {
+				this.logger.debug(
+					'[Leadership change] Removing all trigger- and poller-based workflows...',
+				);
+
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			}
+		});
 	}
 
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
 
-		if (!config.getEnv('userManagement.jwtSecret')) {
-			// If we don't have a JWT secret set, generate
-			// one based and save to config.
-			const { encryptionKey } = this.instanceSettings;
-
-			// For a key off every other letter from encryption key
-			// CAREFUL: do not change this or it breaks all existing tokens.
-			let baseKey = '';
-			for (let i = 0; i < encryptionKey.length; i += 2) {
-				baseKey += encryptionKey[i];
-			}
-			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
-		}
-
 		// Load settings from database and set them to config.
-		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
+		const databaseSettings = await Container.get(SettingsRepository).findBy({
+			loadOnStartup: true,
+		});
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
@@ -264,7 +283,6 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
@@ -275,7 +293,7 @@ export class Start extends BaseCommand {
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				await Db.collections.Execution.query('VACUUM;');
+				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
 		}
 
@@ -316,6 +334,8 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
+		await this.initPruning();
+
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 
@@ -347,6 +367,32 @@ export class Start extends BaseCommand {
 					} else {
 						// record it and write into terminal
 						process.stdout.write(key);
+					}
+				}
+			});
+		}
+	}
+
+	async initPruning() {
+		this.pruningService = Container.get(PruningService);
+
+		if (this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
+
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const multiMainSetup = Container.get(MultiMainSetup);
+
+			await multiMainSetup.init();
+
+			multiMainSetup.on('leadershipChange', async () => {
+				if (multiMainSetup.isLeader) {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.startPruning();
+					}
+				} else {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.stopPruning();
 					}
 				}
 			});

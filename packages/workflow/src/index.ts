@@ -9,6 +9,7 @@ export * from './Authentication';
 export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
+export * from './GlobalState';
 export * from './Interfaces';
 export * from './MessageEventBus';
 export * from './ExecutionStatus';

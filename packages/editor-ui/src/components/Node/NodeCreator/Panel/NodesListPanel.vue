@@ -162,7 +162,7 @@ function onBackButton() {
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
 					:content="activeViewStack.info"
-					theme="info"
+					theme="warning"
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
@@ -235,6 +235,7 @@ function onBackButton() {
 	background: var(--color-background-xlight);
 	height: 100%;
 	background-color: $node-creator-background-color;
+	--color-background-node-icon-badge: var(--color-background-xlight);
 	width: 385px;
 	display: flex;
 	flex-direction: column;

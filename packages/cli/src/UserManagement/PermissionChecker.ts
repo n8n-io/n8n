@@ -1,20 +1,16 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import {
-	NodeOperationError,
-	SubworkflowOperationError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
-import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { isSharingEnabled } from './UserManagementHelper';
-import { WorkflowsService } from '@/workflows/workflows.services';
-import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
+import { UserRepository } from '@db/repositories/user.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 export class PermissionChecker {
 	/**
@@ -31,7 +27,7 @@ export class PermissionChecker {
 
 		// allow if requesting user is instance owner
 
-		const user = await Db.collections.User.findOneOrFail({
+		const user = await Container.get(UserRepository).findOneOrFail({
 			where: { id: userId },
 			relations: ['globalRole'],
 		});
@@ -44,7 +40,7 @@ export class PermissionChecker {
 		let workflowUserIds = [userId];
 
 		if (workflow.id && isSharingEnabled()) {
-			const workflowSharings = await Db.collections.SharedWorkflow.find({
+			const workflowSharings = await Container.get(SharedWorkflowRepository).find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
 				select: ['userId'],
@@ -60,7 +56,7 @@ export class PermissionChecker {
 			credentialsWhere.roleId = role.id;
 		}
 
-		const credentialSharings = await Db.collections.SharedCredentials.find({
+		const credentialSharings = await Container.get(SharedCredentialsRepository).find({
 			where: credentialsWhere,
 		});
 
@@ -135,14 +131,7 @@ export class PermissionChecker {
 		}
 
 		if (policy === 'workflowsFromSameOwner') {
-			const user = await Container.get(UserService).findOne({ where: { id: userId } });
-			if (!user) {
-				throw new WorkflowOperationError(
-					'Fatal error: user not found. Please contact the system administrator.',
-				);
-			}
-			const sharing = await WorkflowsService.getSharing(user, subworkflow.id, ['role', 'user']);
-			if (!sharing || sharing.role.name !== 'owner') {
+			if (subworkflowOwner?.id !== userId) {
 				throw errorToThrow;
 			}
 		}
@@ -157,6 +146,7 @@ export class PermissionChecker {
 					if (!cred.id) {
 						throw new NodeOperationError(node, 'Node uses invalid credential', {
 							description: 'Please recreate the credential.',
+							severity: 'warning',
 						});
 					}
 

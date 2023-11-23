@@ -66,7 +66,13 @@ export class AuthController {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
-			user = await handleLdapLogin(email, password);
+			const preliminaryUser = await handleEmailLogin(email, password);
+			if (preliminaryUser?.globalRole?.name === 'owner') {
+				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
+			} else {
+				user = await handleLdapLogin(email, password);
+			}
 		} else {
 			user = await handleEmailLogin(email, password);
 		}
@@ -98,7 +104,7 @@ export class AuthController {
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return this.userService.toPublic(user, { posthog: this.postHog });
+			return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
 		void this.internalHooks.onUserLoginFailed({
 			user: email,
@@ -123,7 +129,7 @@ export class AuthController {
 			try {
 				user = await resolveJwt(cookieContents);
 
-				return await this.userService.toPublic(user, { posthog: this.postHog });
+				return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -146,7 +152,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return this.userService.toPublic(user, { posthog: this.postHog });
+		return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 	}
 
 	/**

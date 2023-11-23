@@ -13,17 +13,18 @@ import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSand
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
 import { DynamicTool } from 'langchain/tools';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Code Tool',
+		displayName: 'Custom Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Create a tool via code',
+		description: 'Write a tool in JS or Python',
 		defaults: {
-			name: 'Code Tool',
+			name: 'Custom Code Tool',
 		},
 		codex: {
 			categories: ['AI'],
@@ -44,6 +45,7 @@ export class ToolCode implements INodeType {
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Name',
 				name: 'name',

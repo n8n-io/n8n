@@ -99,6 +99,8 @@ jobs:
           runTests: false
           install: false
           build: pnpm build
+        env:
+          VUE_APP_MAX_PINNED_DATA_SIZE: 16384
 
       - name: Cypress install
         run: pnpm cypress:install

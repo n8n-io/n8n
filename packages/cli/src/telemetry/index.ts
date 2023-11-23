@@ -56,7 +56,6 @@ export class Telemetry {
 
 			const logLevel = config.getEnv('logs.level');
 
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			this.rudderStack = new RudderStack(key, url, { logLevel });
 

@@ -1,7 +1,7 @@
-import { WebhookRepository } from '@/databases/repositories';
+import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import type { DeepPartial } from 'typeorm';
 
@@ -103,12 +103,6 @@ export class WebhookService {
 
 	async deleteWorkflowWebhooks(workflowId: string) {
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
-
-		return this.deleteWebhooks(webhooks);
-	}
-
-	async deleteInstanceWebhooks() {
-		const webhooks = await this.webhookRepository.find();
 
 		return this.deleteWebhooks(webhooks);
 	}

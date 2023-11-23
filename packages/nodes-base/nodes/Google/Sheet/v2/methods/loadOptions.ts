@@ -5,8 +5,13 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return [];
+
+	const { mode, value } = documentId;
+
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	const responseData = await sheet.spreadsheetGetSheets();
@@ -33,8 +38,13 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return [];
+
+	const { mode, value } = documentId;
+
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	let sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
@@ -45,7 +55,7 @@ export async function getSheetHeaderRow(
 		sheetWithinDocument = '0';
 	}
 
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	const sheetName = await sheet.spreadsheetGetSheetNameById(this.getNode(), sheetWithinDocument);
 	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
 	if (sheetData === undefined) {

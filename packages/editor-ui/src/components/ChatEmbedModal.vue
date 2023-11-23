@@ -5,9 +5,8 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '../constants';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { useI18n } from '@/composables';
@@ -22,7 +21,6 @@ const props = defineProps({
 const i18n = useI18n();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 
 const tabs = ref([
 	{

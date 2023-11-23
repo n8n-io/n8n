@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@/databases/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import type {
 	ExternalSecretsSettings,
 	SecretsProvider,
@@ -19,7 +19,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 
 @Service()
 export class ExternalSecretsManager {
@@ -82,7 +82,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationMainService).broadcastReloadExternalSecretsProviders();
+		await Container.get(SingleMainSetup).broadcastReloadExternalSecretsProviders();
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {

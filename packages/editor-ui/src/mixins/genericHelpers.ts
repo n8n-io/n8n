@@ -3,7 +3,7 @@ import { mapStores } from 'pinia';
 import dateformat from 'dateformat';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables';
-import { useSourceControlStore } from '@/stores';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const genericHelpers = defineComponent({
 	setup() {
@@ -13,7 +13,7 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			loadingService: null as any | null,
+			loadingService: null as null | { close: () => void; text: string },
 		};
 	},
 	computed: {
@@ -71,11 +71,13 @@ export const genericHelpers = defineComponent({
 				lock: true,
 				text: text || this.$locale.baseText('genericHelpers.loading'),
 				spinner: 'el-icon-loading',
-				background: 'rgba(255, 255, 255, 0.8)',
+				background: 'var(--color-dialog-overlay-background)',
 			});
 		},
 		setLoadingText(text: string) {
-			this.loadingService.text = text;
+			if (this.loadingService !== null) {
+				this.loadingService.text = text;
+			}
 		},
 		stopLoading() {
 			if (this.loadingService !== null) {

@@ -10,6 +10,7 @@ import {
 import type { ClientOptions } from 'openai';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,19 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.responseFormat': ['json_object'],
+					},
+				},
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -142,6 +156,25 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
+						displayName: 'Response Format',
+						name: 'responseFormat',
+						default: 'text',
+						type: 'options',
+						options: [
+							{
+								name: 'Text',
+								value: 'text',
+								description: 'Regular text response',
+							},
+							{
+								name: 'JSON',
+								value: 'json_object',
+								description:
+									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
+							},
+						],
+					},
+					{
 						displayName: 'Presence Penalty',
 						name: 'presencePenalty',
 						default: 0,
@@ -162,8 +195,15 @@ export class LmChatOpenAi implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 0,
-						description: 'Maximum amount of time a request is allowed to take in seconds',
+						default: 60000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{
@@ -188,10 +228,12 @@ export class LmChatOpenAi implements INodeType {
 			baseURL?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
+			maxRetries: number;
+			timeout: number;
 			presencePenalty?: number;
 			temperature?: number;
-			timeout?: number;
 			topP?: number;
+			responseFormat?: 'text' | 'json_object';
 		};
 
 		const configuration: ClientOptions = {};
@@ -203,7 +245,14 @@ export class LmChatOpenAi implements INodeType {
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			timeout: options.timeout ?? 60000,
+			maxRetries: options.maxRetries ?? 2,
 			configuration,
+			modelKwargs: options.responseFormat
+				? {
+						response_format: { type: options.responseFormat },
+				  }
+				: undefined,
 		});
 
 		return {

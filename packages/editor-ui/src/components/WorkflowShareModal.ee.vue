@@ -221,9 +221,7 @@ export default defineComponent({
 			return (
 				[
 					{
-						...(this.workflow && this.workflow.ownedBy
-							? this.workflow.ownedBy
-							: this.usersStore.currentUser),
+						...(this.workflow?.ownedBy ? this.workflow.ownedBy : this.usersStore.currentUser),
 						isOwner: true,
 					},
 				] as Array<Partial<IUser>>
@@ -357,8 +355,8 @@ export default defineComponent({
 								(workflowSharee) => workflowSharee.id === sharee.id,
 							);
 						}) &&
-						!this.workflow.sharedWith!.find(
-							(workflowSharee) => workflowSharee.id === credential.ownedBy!.id,
+						!this.workflow.sharedWith.find(
+							(workflowSharee) => workflowSharee.id === credential.ownedBy.id,
 						);
 				}
 

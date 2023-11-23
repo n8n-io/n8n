@@ -19,7 +19,7 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { getBannerRowHeight } from '@/utils';
 
 export default defineComponent({
@@ -70,7 +70,7 @@ export default defineComponent({
 			return 'SM';
 		},
 
-		value(): any | undefined {
+		value(): number | undefined {
 			if (this.valueXS !== undefined && this.width < BREAKPOINT_SM) {
 				return this.valueXS;
 			}

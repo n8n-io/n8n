@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables';
-import { useUIStore, useAuditLogsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useAuditLogsStore } from '@/stores/auditLogs.store';
 
 const locale = useI18n();
 const uiStore = useUIStore();

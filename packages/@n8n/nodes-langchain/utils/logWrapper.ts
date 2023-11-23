@@ -28,6 +28,13 @@ import { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
+const errorsMap: { [key: string]: { message: string; description: string } } = {
+	'You exceeded your current quota, please check your plan and billing details.': {
+		message: 'OpenAI quota exceeded',
+		description: 'You exceeded your current quota, please check your plan and billing details.',
+	},
+};
+
 export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
@@ -42,15 +49,29 @@ export async function callMethodAsync<T>(
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
 		const connectedNode = parameters.executeFunctions.getNode();
-		const error = new NodeOperationError(connectedNode, e);
+
+		const error = new NodeOperationError(connectedNode, e, {
+			functionality: 'configuration-node',
+		});
+
+		if (errorsMap[error.message]) {
+			error.description = errorsMap[error.message].description;
+			error.message = errorsMap[error.message].message;
+		}
+
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,
 			parameters.currentNodeRunIndex,
 			error,
 		);
+		if (error.message) {
+			error.description = error.message;
+			throw error;
+		}
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+			{ functionality: 'configuration-node' },
 		);
 	}
 }
@@ -78,6 +99,7 @@ export function callMethodSync<T>(
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+			{ functionality: 'configuration-node' },
 		);
 	}
 }
@@ -211,16 +233,25 @@ export function logWrapper(
 							[{ json: { messages, options } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [messages, options, runManager],
-						})) as ChatResult;
-
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-						return response;
+						try {
+							const response = (await callMethodAsync.call(target, {
+								executeFunctions,
+								connectionType,
+								currentNodeRunIndex: index,
+								method: target[prop],
+								arguments: [
+									messages,
+									{ ...options, signal: executeFunctions.getExecutionCancelSignal() },
+									runManager,
+								],
+							})) as ChatResult;
+							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+							return response;
+						} catch (error) {
+							// Mute AbortError as they are expected
+							if (error?.name === 'AbortError') return { generations: [] };
+							throw error;
+						}
 					};
 				}
 			}
@@ -342,13 +373,13 @@ export function logWrapper(
 				}
 			}
 
-			// ========== N8nJsonLoader ==========
+			// ========== N8n Loaders Process All ==========
 			if (
 				originalInstance instanceof N8nJsonLoader ||
 				originalInstance instanceof N8nBinaryLoader
 			) {
-				// JSON Input -> Documents
-				if (prop === 'process' && 'process' in target) {
+				// Process All
+				if (prop === 'processAll' && 'processAll' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
 						connectionType = NodeConnectionType.AiDocument;
 						const { index } = executeFunctions.addInputData(connectionType, [items]);
@@ -362,6 +393,26 @@ export function logWrapper(
 						})) as number[];
 
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						return response;
+					};
+				}
+				// Process Each
+				if (prop === 'processItem' && 'processItem' in target) {
+					return async (item: INodeExecutionData, itemIndex: number): Promise<number[]> => {
+						connectionType = NodeConnectionType.AiDocument;
+						const { index } = executeFunctions.addInputData(connectionType, [[item]]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [item, itemIndex],
+						})) as number[];
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { response }, pairedItem: { item: itemIndex } }],
+						]);
 						return response;
 					};
 				}

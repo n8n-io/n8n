@@ -9,6 +9,7 @@ import {
 
 import { ChatAnthropic } from 'langchain/chat_models/anthropic';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmChatAnthropic implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,17 +48,26 @@ export class LmChatAnthropic implements INodeType {
 			},
 		],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				options: [
 					{
-						name: 'Claude',
+						name: 'Claude 2',
 						value: 'claude-2',
 					},
 					{
-						name: 'Claude Instant',
+						name: 'Claude 2.1',
+						value: 'claude-2.1',
+					},
+					{
+						name: 'Claude Instant 1.2',
+						value: 'claude-instant-1.2',
+					},
+					{
+						name: 'Claude Instant 1',
 						value: 'claude-instant-1',
 					},
 				],

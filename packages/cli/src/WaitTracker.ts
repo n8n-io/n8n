@@ -13,7 +13,7 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
@@ -110,7 +110,7 @@ export class WaitTracker {
 		}
 
 		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
-			throw new Error(
+			throw new WorkflowOperationError(
 				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
 			);
 		}

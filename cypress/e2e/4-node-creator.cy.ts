@@ -34,7 +34,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 3);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
@@ -478,11 +478,9 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wa');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wait');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('spreadsheet');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Spreadsheet File');

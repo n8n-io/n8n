@@ -12,7 +12,7 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	let sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
@@ -23,7 +23,7 @@ export async function getMappingColumns(
 		sheetWithinDocument = '0';
 	}
 
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	const sheetName = await sheet.spreadsheetGetSheetNameById(this.getNode(), sheetWithinDocument);
 	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
 	const columns = sheet.testFilter(sheetData || [], 0, 0).filter((col) => col !== '');

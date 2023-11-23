@@ -61,7 +61,7 @@ function mixinTimestamps<T extends Constructor<{}>>(base: T) {
 }
 
 class BaseEntity {}
-/* eslint-disable @typescript-eslint/naming-convention */
+
 export const WithStringId = mixinStringId(BaseEntity);
 export const WithTimestamps = mixinTimestamps(BaseEntity);
 export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);

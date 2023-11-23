@@ -3,15 +3,19 @@ import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExecutionMetadataService } from '@/services/executionMetadata.service';
 import { Logger } from '@/Logger';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';
 	const workflowWasCanceled = runData.status === 'canceled';
+	const workflowHasFailed = runData.status === 'failed';
 	const workflowDidSucceed =
-		!runData.data.resultData.error && !workflowHasCrashed && !workflowWasCanceled;
+		!runData.data.resultData?.error &&
+		!workflowHasCrashed &&
+		!workflowWasCanceled &&
+		!workflowHasFailed;
 	let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 	if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 	if (workflowWasCanceled) workflowStatusFinal = 'canceled';

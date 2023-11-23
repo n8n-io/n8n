@@ -1,13 +1,11 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import {
-	useWorkflowsStore,
-	useNodeTypesStore,
-	useUIStore,
-	useHistoryStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { INodeUi, XYPosition } from '@/Interface';
 import {
 	applyScale,
@@ -250,8 +248,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 							}
 
 							newNodePosition = [
-								parseInt(element.style.left!.slice(0, -2), 10),
-								parseInt(element.style.top!.slice(0, -2), 10),
+								parseInt(element.style.left.slice(0, -2), 10),
+								parseInt(element.style.top.slice(0, -2), 10),
 							];
 
 							const updateInformation = {

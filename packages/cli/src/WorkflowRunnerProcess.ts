@@ -178,7 +178,7 @@ class WorkflowRunnerProcess {
 		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 			executionId: inputData.executionId,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
@@ -269,12 +269,13 @@ class WorkflowRunnerProcess {
 
 			return returnData!.data!.main;
 		};
-
+		const abortController = new AbortController();
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
 				this.data.executionMode,
 				this.data.executionData,
+				abortController,
 			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
 		}
@@ -288,7 +289,12 @@ class WorkflowRunnerProcess {
 			const startNode = WorkflowHelpers.getExecutionStartNode(this.data, this.workflow);
 
 			// Can execute without webhook so go on
-			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
+			this.workflowExecute = new WorkflowExecute(
+				additionalData,
+				this.data.executionMode,
+				undefined,
+				abortController,
+			);
 			return this.workflowExecute.run(
 				this.workflow,
 				startNode,
@@ -297,7 +303,12 @@ class WorkflowRunnerProcess {
 			);
 		}
 		// Execute only the nodes between start and destination nodes
-		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
+		this.workflowExecute = new WorkflowExecute(
+			additionalData,
+			this.data.executionMode,
+			undefined,
+			abortController,
+		);
 		return this.workflowExecute.runPartialWorkflow(
 			this.workflow,
 			this.data.runData,
@@ -309,9 +320,7 @@ class WorkflowRunnerProcess {
 
 	/**
 	 * Sends hook data to the parent process that it executes them
-	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
 		try {
 			await sendToParentProcess('processHook', {
@@ -384,7 +393,6 @@ class WorkflowRunnerProcess {
  * @param {string} type The type of data to send
  * @param {*} data The data
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
 	return new Promise((resolve, reject) => {
 		process.send!(

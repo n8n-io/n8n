@@ -32,6 +32,7 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	ICredentialTestFunctions,
+	Severity,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -42,7 +43,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import type { User } from '@db/entities/User';
@@ -50,10 +50,11 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { isObjectLiteral } from './utils';
 import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -86,6 +87,15 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
+class CredentialNotFoundError extends Error {
+	severity: Severity;
+
+	constructor(credentialId: string, credentialType: string) {
+		super(`Credential with ID "${credentialId}" does not exist for type "${credentialType}".`);
+		this.severity = 'warning';
+	}
+}
+
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
@@ -93,6 +103,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {
 		super();
 	}
@@ -106,7 +118,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -131,20 +142,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 				if (authenticate.type === 'generic') {
 					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
 						Object.entries(outerValue).forEach(([key, value]) => {
-							keyResolved = this.resolveValue(
-								key,
-								{ $credentials: credentials },
-								workflow,
-								node,
-								defaultTimezone,
-							);
+							keyResolved = this.resolveValue(key, { $credentials: credentials }, workflow, node);
 
 							valueResolved = this.resolveValue(
 								value as string,
 								{ $credentials: credentials },
 								workflow,
 								node,
-								defaultTimezone,
 							);
 
 							// @ts-ignore
@@ -221,12 +225,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Resolves the given value in case it is an expression
 	 */
-	resolveValue(
+	private resolveValue(
 		parameterValue: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): string {
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
@@ -236,7 +239,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			node,
 			parameterValue,
 			'internal',
-			defaultTimezone,
 			additionalKeys,
 			undefined,
 			'',
@@ -258,9 +260,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns the credentials instance
-	 *
-	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
-	 * @param {string} type Type of the credential to return instance of
 	 */
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
@@ -271,17 +270,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credential = userId
-			? await Db.collections.SharedCredentials.findOneOrFail({
-					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, userId },
-			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+		let credential: CredentialsEntity;
 
-		if (!credential) {
-			throw new Error(
-				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
-			);
+		try {
+			credential = userId
+				? await this.sharedCredentialsRepository
+						.findOneOrFail({
+							relations: ['credentials'],
+							where: { credentials: { id: nodeCredential.id, type }, userId },
+						})
+						.then((shared) => shared.credentials)
+				: await this.credentialsRepository.findOneByOrFail({ id: nodeCredential.id, type });
+		} catch (error) {
+			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
 
 		return new Credentials(
@@ -294,8 +295,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns all the properties of the credentials with the given name
-	 *
-	 * @param {string} type The name of the type to return credentials off
 	 */
 	getCredentialsProperties(type: string): INodeProperties[] {
 		const credentialTypeData = this.credentialTypes.getByName(type);
@@ -337,17 +336,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns the decrypted credential data with applied overwrites
-	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return data of
-	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 */
 	async getDecrypted(
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -367,7 +361,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal,
 			type,
 			mode,
-			defaultTimezone,
 			expressionResolveValues,
 			canUseSecrets,
 		);
@@ -381,7 +374,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
@@ -413,8 +405,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		});
 
 		if (expressionResolveValues) {
-			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
-
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
 					decryptedData as INodeParameters,
@@ -424,7 +414,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.node.name,
 					expressionResolveValues.connectionInputData,
 					mode,
-					timezone,
 					additionalKeys,
 					undefined,
 					false,
@@ -447,7 +436,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mockNode,
 				decryptedData as INodeParameters,
 				mode,
-				defaultTimezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -460,10 +448,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Updates credentials in the database
-	 *
-	 * @param {string} name Name of the credentials to set data of
-	 * @param {string} type Type of the credentials to set data of
-	 * @param {ICredentialDataDecryptedObject} data The data to set
 	 */
 	async updateCredentials(
 		nodeCredentials: INodeCredentialsDetails,
@@ -484,7 +468,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		await Db.collections.Credentials.update(findQuery, newCredentialsData);
+		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
 	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
@@ -506,8 +490,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			};
 		}
 
-		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
-		for (const nodeName of nodeTypesToTestWith) {
+		const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+		for (const nodeName of supportedNodes) {
 			const node = this.nodeTypes.getByName(nodeName);
 
 			// Always set to an array even if node is not versioned to not having
@@ -597,7 +581,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialsDecrypted.data,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
-					additionalData.timezone,
 					undefined,
 					user.isOwner,
 				);
@@ -796,7 +779,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return false;
 		}
 
-		const credential = await Db.collections.SharedCredentials.findOne({
+		const credential = await this.sharedCredentialsRepository.findOne({
 			where: {
 				role: {
 					scope: 'credential',
@@ -820,36 +803,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		return true;
 	}
-}
-
-/**
- * Get a credential if it has been shared with a user.
- */
-export async function getCredentialForUser(
-	credentialId: string,
-	user: User,
-): Promise<ICredentialsDb | null> {
-	const sharedCredential = await Db.collections.SharedCredentials.findOne({
-		relations: ['credentials'],
-		where: whereClause({
-			user,
-			entityType: 'credentials',
-			entityId: credentialId,
-		}),
-	});
-
-	if (!sharedCredential) return null;
-
-	return sharedCredential.credentials as ICredentialsDb;
-}
-
-/**
- * Get a credential without user check
- */
-export async function getCredentialWithoutUser(
-	credentialId: string,
-): Promise<ICredentialsDb | null> {
-	return Db.collections.Credentials.findOneBy({ id: credentialId });
 }
 
 export function createCredentialsFromCredentialsEntity(

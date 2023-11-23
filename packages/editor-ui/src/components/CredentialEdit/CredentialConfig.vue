@@ -288,7 +288,7 @@ export default defineComponent({
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			const documentationUrl = type && type.documentationUrl;
+			const documentationUrl = type?.documentationUrl;
 
 			if (!documentationUrl) {
 				return '';
@@ -306,7 +306,7 @@ export default defineComponent({
 
 			if (url.hostname === DOCS_DOMAIN) {
 				url.searchParams.set('utm_source', 'n8n_app');
-				url.searchParams.set('utm_medium', 'left_nav_menu');
+				url.searchParams.set('utm_medium', 'credential_settings');
 				url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
 			}
 

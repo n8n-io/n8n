@@ -74,10 +74,7 @@ export async function reActAgentAgentExecute(
 		let input = this.getNodeParameter('text', itemIndex) as string;
 
 		if (input === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No value for the required parameter "Text" was returned.',
-			);
+			throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 		}
 
 		if (prompt) {
@@ -85,7 +82,6 @@ export async function reActAgentAgentExecute(
 		}
 
 		let response = await agentExecutor.call({ input, outputParsers });
-
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };
 		}

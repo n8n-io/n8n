@@ -3,6 +3,7 @@ import type {
 	ILoadOptionsFunctions,
 	IDataObject,
 	IPollFunctions,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
@@ -117,7 +118,7 @@ export class GoogleSheet {
 	/**
 	 *  Returns the name of a sheet from a sheet id
 	 */
-	async spreadsheetGetSheetNameById(sheetId: string) {
+	async spreadsheetGetSheetNameById(node: INode, sheetId: string) {
 		const query = {
 			fields: 'sheets.properties',
 		};
@@ -133,9 +134,13 @@ export class GoogleSheet {
 		const foundItem = response.sheets.find(
 			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
 		);
+
 		if (!foundItem?.properties?.title) {
-			throw new Error(`Sheet with id ${sheetId} not found`);
+			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
+				severity: 'warning',
+			});
 		}
+
 		return foundItem.properties.title;
 	}
 
@@ -242,24 +247,8 @@ export class GoogleSheet {
 		data: string[][],
 		valueInputMode: ValueInputOption,
 		lastRow?: number,
+		useAppend?: boolean,
 	) {
-		// const body = {
-		// 	range,
-		// 	values: data,
-		// };
-
-		// const query = {
-		// 	valueInputOption: valueInputMode,
-		// };
-
-		// const response = await apiRequest.call(
-		// 	this.executeFunctions,
-		// 	'POST',
-		// 	`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
-		// 	body,
-		// 	query,
-		// );
-
 		const lastRowWithData =
 			lastRow ||
 			(((await this.getData(range, 'UNFORMATTED_VALUE')) as string[][]) || []).length + 1;
@@ -270,6 +259,7 @@ export class GoogleSheet {
 			valueInputMode,
 			lastRowWithData,
 			data.length,
+			useAppend,
 		);
 
 		return response;
@@ -281,6 +271,7 @@ export class GoogleSheet {
 		valueInputMode: ValueInputOption,
 		row: number,
 		rowsLength?: number,
+		useAppend?: boolean,
 	) {
 		const [name, _sheetRange] = sheetName.split('!');
 		const range = `${name}!${row}:${rowsLength ? row + rowsLength - 1 : row}`;
@@ -294,13 +285,25 @@ export class GoogleSheet {
 			valueInputOption: valueInputMode,
 		};
 
-		const response = await apiRequest.call(
-			this.executeFunctions,
-			'PUT',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
-			body,
-			query,
-		);
+		let response;
+
+		if (useAppend) {
+			response = await apiRequest.call(
+				this.executeFunctions,
+				'POST',
+				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+				body,
+				query,
+			);
+		} else {
+			response = await apiRequest.call(
+				this.executeFunctions,
+				'PUT',
+				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+				body,
+				query,
+			);
+		}
 
 		return response;
 	}
@@ -381,6 +384,7 @@ export class GoogleSheet {
 		usePathForKeyRow: boolean,
 		columnNamesList?: string[][],
 		lastRow?: number,
+		useAppend?: boolean,
 	): Promise<string[][]> {
 		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
@@ -388,8 +392,9 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 			columnNamesList,
+			useAppend ? null : '',
 		);
-		return this.appendData(range, data, valueInputMode, lastRow);
+		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -695,6 +700,7 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 		columnNamesList?: string[][],
+		emptyValue: string | null = '',
 	): Promise<string[][]> {
 		const decodedRange = this.getDecodedSheetRange(range);
 
@@ -725,7 +731,7 @@ export class GoogleSheet {
 					value = item[key] as string;
 				}
 				if (value === undefined || value === null) {
-					rowData.push('');
+					rowData.push(emptyValue as string);
 					return;
 				}
 				if (typeof value === 'object') {

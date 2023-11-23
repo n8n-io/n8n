@@ -10,9 +10,8 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {

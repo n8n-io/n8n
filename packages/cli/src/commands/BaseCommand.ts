@@ -20,7 +20,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { generateHostInstanceId } from '../databases/utils/generators';
+import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
@@ -71,6 +71,12 @@ export abstract class BaseCommand extends Command {
 		if (process.env.EXECUTIONS_PROCESS === 'own') {
 			this.logger.warn(
 				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
+			);
+		}
+
+		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
+			this.logger.warn(
+				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
 			);
 		}
 
@@ -252,6 +258,7 @@ export abstract class BaseCommand extends Command {
 			try {
 				this.logger.debug('Attempting license activation');
 				await license.activate(activationKey);
+				this.logger.debug('License init complete');
 			} catch (e) {
 				this.logger.error('Could not activate license', e as Error);
 			}

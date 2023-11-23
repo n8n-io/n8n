@@ -9,6 +9,20 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+
+import moment from 'moment-timezone';
+import {
+	goToWebinarApiRequest,
+	goToWebinarApiRequestAllItems,
+	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
+	loadWebinars,
+	loadWebinarSessions,
+} from './GenericFunctions';
 import {
 	attendeeFields,
 	attendeeOperations,
@@ -23,22 +37,6 @@ import {
 	webinarFields,
 	webinarOperations,
 } from './descriptions';
-
-import {
-	goToWebinarApiRequest,
-	goToWebinarApiRequestAllItems,
-	handleGetAll,
-	loadAnswers,
-	loadRegistranMultiChoiceQuestions,
-	loadRegistranSimpleQuestions,
-	loadWebinars,
-	loadWebinarSessions,
-} from './GenericFunctions';
-
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
-
-import moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {

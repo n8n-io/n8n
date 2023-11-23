@@ -2,7 +2,7 @@ import Container from 'typedi';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { RedisService } from '@/services/redis.service';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 mockInstance(Logger);
 const redisService = Container.get(RedisService);
@@ -27,7 +27,6 @@ describe('RedisService', () => {
 				};
 			}
 			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return function (...args: any) {
 				return new Redis(args);
 			};

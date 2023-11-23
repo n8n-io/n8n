@@ -1,17 +1,13 @@
 import {
 	changePassword,
 	deleteUser,
-	getInviteLink,
 	getPasswordResetLink,
 	getUsers,
-	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
-	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
-	signup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -41,6 +37,7 @@ import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
+import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -52,6 +49,7 @@ const isInstanceOwner = (user: IUserResponse | null) =>
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
+		initialized: false,
 		currentUserId: null,
 		users: {},
 		currentUserCloudInfo: null,
@@ -102,7 +100,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return false;
 		},
 		personalizedNodeTypes(): string[] {
-			const user = this.currentUser as IUser | null;
+			const user = this.currentUser;
 			if (!user) {
 				return [];
 			}
@@ -122,6 +120,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			try {
+				await this.loginWithCookie();
+				this.initialized = true;
+			} catch (e) {}
+		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
 				const prevUser = this.users[userResponse.id] || {};
@@ -223,7 +231,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return validateSignupToken(rootStore.getRestApiContext, params);
 		},
-		async signup(params: {
+		async acceptInvitation(params: {
 			inviteeId: string;
 			inviterId: string;
 			firstName: string;
@@ -231,7 +239,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await signup(rootStore.getRestApiContext, params);
+			const user = await acceptInvitation(rootStore.getRestApiContext, params);
 			if (user) {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
@@ -317,13 +325,14 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
 			return users;
 		},
-		async reinviteUser(params: { id: string }): Promise<void> {
+		async reinviteUser(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await reinvite(rootStore.getRestApiContext, params);
-		},
-		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
-			const rootStore = useRootStore();
-			return getInviteLink(rootStore.getRestApiContext, params);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
+				{ email: params.email },
+			]);
+			if (!invitationResponse[0].user.emailSent) {
+				throw Error(invitationResponse[0].error);
+			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();

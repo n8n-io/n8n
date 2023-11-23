@@ -1,6 +1,7 @@
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
-import { mockInstance } from '../integration/shared/utils/mocking';
+import { mockInstance } from '../shared/mocking';
+
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';
 
@@ -23,7 +24,6 @@ function toIRun(item?: object) {
 }
 
 function getDataId(run: IRun, kind: 'binary' | 'json') {
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore
 	return run.data.resultData.runData.myNode[0].data.main[0][0][kind].data.id;
 }
@@ -128,5 +128,15 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 				expect(binaryDataService.rename).not.toHaveBeenCalled();
 			});
 		});
+	});
+
+	it('should do nothing on itemless case', async () => {
+		const executionId = '999';
+
+		const promise = restoreBinaryDataId(toIRun(), executionId);
+
+		await expect(promise).resolves.not.toThrow();
+
+		expect(binaryDataService.rename).not.toHaveBeenCalled();
 	});
 }

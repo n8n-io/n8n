@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -78,6 +77,7 @@ export class SpreadsheetFileV1 implements INodeType {
 
 					if (binaryData.id) {
 						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+						xlsxOptions.codepage = 65001; // utf8 codepage
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
 						const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);

@@ -62,7 +62,7 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCredentialsStore } from '@/stores';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
@@ -122,7 +122,7 @@ export default defineComponent({
 		},
 		focusOnNameInput() {
 			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
-			if (inputRef && inputRef.focus) {
+			if (inputRef?.focus) {
 				inputRef.focus();
 			}
 		},

@@ -6,11 +6,11 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeOperationError, sleep } from 'n8n-workflow';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

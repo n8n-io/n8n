@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,6 +46,7 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName:
 					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
@@ -59,6 +61,23 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 				default: 'sentence-transformers/distilbert-base-nli-mean-tokens',
 				description: 'The model name to use from HuggingFace library',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Inference Endpoint',
+						name: 'endpointUrl',
+						default: '',
+						description: 'Custom endpoint URL',
+						type: 'string',
+					},
+				],
+			},
 		],
 	};
 
@@ -70,9 +89,12 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 			'sentence-transformers/distilbert-base-nli-mean-tokens',
 		) as string;
 		const credentials = await this.getCredentials('huggingFaceApi');
+		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+
 		const embeddings = new HuggingFaceInferenceEmbeddings({
 			apiKey: credentials.apiKey as string,
 			model,
+			...options,
 		});
 
 		return {

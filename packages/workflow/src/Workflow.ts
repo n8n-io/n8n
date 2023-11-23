@@ -1053,7 +1053,10 @@ export class Workflow {
 		activation: WorkflowActivateMode,
 		isTest?: boolean,
 	): Promise<boolean | undefined> {
-		const node = this.getNode(webhookData.node) as INode;
+		const node = this.getNode(webhookData.node);
+
+		if (!node) return;
+
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
@@ -1218,6 +1221,7 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): Promise<IRunNodeResponse> {
 		const { node } = executionData;
 		let inputData = executionData.data;
@@ -1305,6 +1309,7 @@ export class Workflow {
 				additionalData,
 				executionData,
 				mode,
+				abortController,
 			);
 			const data =
 				nodeType instanceof Node
@@ -1387,6 +1392,8 @@ export class Workflow {
 					nodeType,
 					executionData,
 					nodeExecuteFunctions,
+					undefined,
+					abortController,
 				),
 			};
 		}

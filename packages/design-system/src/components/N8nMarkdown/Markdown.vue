@@ -141,7 +141,8 @@ export default defineComponent({
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
+							const attributeValue = friendlyAttrValue(imageUrls[id]);
+							return attributeValue ? `src=${attributeValue}` : '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -261,7 +262,16 @@ export default defineComponent({
 }
 
 .sticky {
-	color: var(--color-text-dark);
+	color: var(--color-sticky-font);
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		color: var(--color-sticky-font);
+	}
 
 	h1,
 	h2,
@@ -308,15 +318,15 @@ export default defineComponent({
 	}
 
 	code {
-		background-color: var(--color-background-base);
+		background-color: var(--color-sticky-code-background);
 		padding: 0 var(--spacing-4xs);
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	a {
@@ -327,6 +337,8 @@ export default defineComponent({
 
 	img {
 		object-fit: contain;
+		margin-top: var(--spacing-xs);
+		margin-bottom: var(--spacing-2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;

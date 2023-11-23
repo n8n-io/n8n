@@ -108,6 +108,7 @@
 			>
 				<n8n-icon-button
 					:disabled="isWorkflowHistoryButtonDisabled"
+					data-test-id="workflow-history-button"
 					type="tertiary"
 					icon="history"
 					size="medium"
@@ -163,16 +164,14 @@ import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '
 import { saveAs } from 'file-saver';
 import { useTitleChange, useToast, useMessage } from '@/composables';
 import type { MessageBoxInputData } from 'element-plus';
-import {
-	useUIStore,
-	useSettingsStore,
-	useWorkflowsStore,
-	useRootStore,
-	useTagsStore,
-	useUsersStore,
-	useUsageStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -239,6 +238,9 @@ export default defineComponent({
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
+		},
+		currentUserIsOwner(): boolean {
+			return this.usersStore.currentUser?.isOwner ?? false;
 		},
 		contextBasedTranslationKeys(): NestedRecord<string> {
 			return this.uiStore.contextBasedTranslationKeys;
@@ -320,15 +322,18 @@ export default defineComponent({
 				);
 			}
 
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.PUSH,
-				label: this.$locale.baseText('menuActions.push'),
-				disabled:
-					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
-					!this.onWorkflowPage ||
-					this.onExecutionsTab ||
-					this.readOnlyEnv,
-			});
+			if (this.currentUserIsOwner) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.PUSH,
+					label: this.$locale.baseText('menuActions.push'),
+					disabled:
+						!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+						!this.onWorkflowPage ||
+						this.onExecutionsTab ||
+						this.readOnlyEnv ||
+						!this.currentUserIsOwner,
+				});
+			}
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -349,9 +354,8 @@ export default defineComponent({
 			return actions;
 		},
 		isWorkflowHistoryFeatureEnabled(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
-				this.settingsStore.isDevRelease
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowHistory,
 			);
 		},
 		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
@@ -379,7 +383,17 @@ export default defineComponent({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) await this.settingsStore.fetchPromptsData();
+
+			if (saved) {
+				await this.settingsStore.fetchPromptsData();
+
+				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+					await this.$router.replace({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.currentWorkflowId },
+					});
+				}
+			}
 		},
 		onShareButtonClick() {
 			this.uiStore.openModalWithData({

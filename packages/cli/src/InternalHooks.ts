@@ -27,7 +27,6 @@ import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { ExecutionRepository } from '@db/repositories';
 import { RoleService } from './services/role.service';
 import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
 import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
@@ -55,7 +54,6 @@ export class InternalHooks implements IInternalHooksClass {
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
-		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
@@ -256,15 +254,10 @@ export class InternalHooks implements IInternalHooksClass {
 				workflowName: (data as IWorkflowBase).name,
 			};
 		}
-		void Promise.all([
-			this.executionRepository.updateExistingExecution(executionId, {
-				status: 'running',
-			}),
-			eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.started',
-				payload,
-			}),
-		]);
+		void eventBus.sendWorkflowEvent({
+			eventName: 'n8n.workflow.started',
+			payload,
+		});
 	}
 
 	async onWorkflowCrashed(

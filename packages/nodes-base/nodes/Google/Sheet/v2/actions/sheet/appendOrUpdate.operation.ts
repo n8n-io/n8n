@@ -1,11 +1,11 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ISheetUpdateData,
 	SheetProperties,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
@@ -202,6 +202,14 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
+			{
+				displayName: 'Use Append',
+				name: 'useAppend',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
+			},
 		],
 	},
 ];
@@ -245,7 +253,7 @@ export async function execute(
 
 	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || sheetData[headerRow] === undefined) {
+	if (sheetData?.[headerRow] === undefined) {
 		throw new NodeOperationError(
 			this.getNode(),
 			`Could not retrieve the column names from row ${headerRow + 1}`,
@@ -394,17 +402,30 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
-		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 		const lastRow = sheetData.length + 1;
-		await sheet.appendSheetData(
-			appendData,
-			range,
-			headerRow + 1,
-			valueInputMode,
-			false,
-			[columnNames.concat([...newColumns])],
-			lastRow,
-		);
+		if (options.useAppend) {
+			await sheet.appendSheetData(
+				appendData,
+				range,
+				headerRow + 1,
+				valueInputMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				lastRow,
+				options.useAppend as boolean,
+			);
+		} else {
+			await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
+			await sheet.appendSheetData(
+				appendData,
+				range,
+				headerRow + 1,
+				valueInputMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				lastRow,
+			);
+		}
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {

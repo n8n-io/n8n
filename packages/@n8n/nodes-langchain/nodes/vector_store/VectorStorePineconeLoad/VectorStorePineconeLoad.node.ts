@@ -7,15 +7,18 @@ import {
 } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 
+// This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Load',
+		// Vector Store nodes got merged into a single node
+		hidden: true,
 		name: 'vectorStorePineconeLoad',
 		icon: 'file:pinecone.svg',
 		group: ['transform'],
@@ -90,8 +93,7 @@ export class VectorStorePineconeLoad implements INodeType {
 			itemIndex,
 		)) as Embeddings;
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});

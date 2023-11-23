@@ -9,6 +9,7 @@ import {
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,7 @@ export class DocumentGithubLoader implements INodeType {
 		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Repository Link',
 				name: 'repository',

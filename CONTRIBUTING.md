@@ -5,24 +5,25 @@ Great that you are here and you want to contribute to n8n
 ## Contents
 
 - [Contributing to n8n](#contributing-to-n8n)
-  - [Contents](#contents)
-  - [Code of conduct](#code-of-conduct)
-  - [Directory structure](#directory-structure)
-  - [Development setup](#development-setup)
-    - [Requirements](#requirements)
-      - [Node.js](#nodejs)
-      - [pnpm](#pnpm)
-        - [pnpm workspaces](#pnpm-workspaces)
-      - [corepack](#corepack)
-      - [Build tools](#build-tools)
-    - [Actual n8n setup](#actual-n8n-setup)
-    - [Start](#start)
-  - [Development cycle](#development-cycle)
-    - [Test suite](#test-suite)
-  - [Releasing](#releasing)
-  - [Create custom nodes](#create-custom-nodes)
-  - [Extend documentation](#extend-documentation)
-  - [Contributor License Agreement](#contributor-license-agreement)
+	- [Contents](#contents)
+	- [Code of conduct](#code-of-conduct)
+	- [Directory structure](#directory-structure)
+	- [Development setup](#development-setup)
+		- [Requirements](#requirements)
+			- [Node.js](#nodejs)
+			- [pnpm](#pnpm)
+				- [pnpm workspaces](#pnpm-workspaces)
+			- [corepack](#corepack)
+			- [Build tools](#build-tools)
+		- [Actual n8n setup](#actual-n8n-setup)
+		- [Start](#start)
+	- [Development cycle](#development-cycle)
+		- [Test suite](#test-suite)
+	- [Releasing](#releasing)
+	- [Create custom nodes](#create-custom-nodes)
+	- [Extend documentation](#extend-documentation)
+	- [Contribute workflow templates](#contribute-workflow-templates)
+	- [Contributor License Agreement](#contributor-license-agreement)
 
 ## Code of conduct
 
@@ -219,6 +220,14 @@ Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/) t
 ## Extend documentation
 
 The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
+
+## Contribute workflow templates
+
+You can submit your workflows to n8n's template library.
+
+n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
+
+Refer to [n8n Creator hub](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f) for information on how to submit templates and become a creator.
 
 ## Contributor License Agreement
 

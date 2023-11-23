@@ -10,13 +10,14 @@ import {
 import { useUIStore } from '@/stores/ui.store';
 import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
 };
 
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const NodeCreator = defineAsyncComponent(
 	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
@@ -105,24 +106,31 @@ function nodeTypeSelected(nodeTypes: string[]) {
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-				<n8n-icon-button
-					size="xlarge"
-					icon="plus"
-					type="tertiary"
-					:class="$style.nodeCreatorPlus"
-					@click="openNodeCreator"
-					:title="$locale.baseText('nodeView.addNode')"
-				/>
+				<keyboard-shortcut-tooltip
+					:label="$locale.baseText('nodeView.openNodesPanel')"
+					:shortcut="{ keys: ['Tab'] }"
+					placement="left"
+				>
+					<n8n-icon-button
+						size="xlarge"
+						icon="plus"
+						type="tertiary"
+						:class="$style.nodeCreatorPlus"
+						@click="openNodeCreator"
+					/>
+				</keyboard-shortcut-tooltip>
 				<div
 					:class="[$style.addStickyButton, state.showStickyButton ? $style.visibleButton : '']"
 					@click="addStickyNote"
 					data-test-id="add-sticky-button"
 				>
-					<n8n-icon-button
-						type="tertiary"
-						:icon="['far', 'note-sticky']"
-						:title="$locale.baseText('nodeView.addSticky')"
-					/>
+					<keyboard-shortcut-tooltip
+						:label="$locale.baseText('nodeView.addStickyHint')"
+						:shortcut="{ keys: ['s'], shiftKey: true }"
+						placement="left"
+					>
+						<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
+					</keyboard-shortcut-tooltip>
 				</div>
 			</div>
 		</div>
@@ -170,13 +178,13 @@ function nodeTypeSelected(nodeTypes: string[]) {
 	pointer-events: all !important;
 
 	button {
-		border-color: var(--color-foreground-xdark);
-		color: var(--color-foreground-xdark);
+		border-color: var(--color-button-node-creator-border-font);
+		color: var(--color-button-node-creator-border-font);
 
 		&:hover {
-			border-color: var(--color-primary);
-			color: var(--color-primary);
-			background: var(--color-background-xlight);
+			border-color: var(--color-button-node-creator-hover-border-font);
+			color: var(--color-button-node-creator-hover-border-font);
+			background: var(--color-button-node-creator-background);
 		}
 	}
 }

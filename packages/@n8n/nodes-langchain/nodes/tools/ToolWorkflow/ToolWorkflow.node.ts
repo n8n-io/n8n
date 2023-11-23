@@ -16,17 +16,18 @@ import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Workflow Tool',
+		displayName: 'Custom n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
 		version: 1,
-		description: 'Create a tool via a workflow',
+		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Workflow Tool',
+			name: 'Custom n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],
@@ -47,6 +48,7 @@ export class ToolWorkflow implements INodeType {
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Name',
 				name: 'name',

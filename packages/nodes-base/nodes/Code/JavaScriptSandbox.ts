@@ -52,7 +52,8 @@ export class JavaScriptSandbox extends Sandbox {
 	async runCode(): Promise<unknown> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		try {
-			return await this.vm.run(script, __dirname);
+			const executionResult = await this.vm.run(script, __dirname);
+			return executionResult;
 		} catch (error) {
 			throw new ExecutionError(error);
 		}

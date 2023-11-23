@@ -5,7 +5,7 @@ import { OrchestrationService } from '../../orchestration.base.service';
 @Service()
 export class OrchestrationWorkerService extends OrchestrationService {
 	sanityCheck(): boolean {
-		return this.initialized && this.isQueueMode && this.isWorkerInstance;
+		return this.isInitialized && this.isQueueMode && this.isWorkerInstance;
 	}
 
 	async publishToEventLog(message: AbstractEventMessage) {

@@ -30,7 +30,7 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
-import { useUIStore } from '@/stores';
+import { useCredentialsStore, useUIStore } from '@/stores';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 
 export interface Props {
@@ -110,7 +110,7 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) {
+		if (!isActive) {
 			setShowScrim(false);
 			resetViewStacks();
 		}
@@ -135,9 +135,12 @@ registerKeyHook('NodeCreatorCloseTab', {
 });
 
 watch(
-	() => useNodeTypesStore().visibleNodeTypes,
-	(nodeTypes) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+	() => ({
+		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
+		nodeTypes: useNodeTypesStore().visibleNodeTypes,
+	}),
+	({ nodeTypes, httpOnlyCredentials }) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
 
 		setActions(actions);
 		setMergeNodes(mergedNodes);
@@ -174,7 +177,7 @@ onBeforeUnmount(() => {
 	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
-	background: var(--color-background-dark);
+	background: var(--color-dialog-overlay-background);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 

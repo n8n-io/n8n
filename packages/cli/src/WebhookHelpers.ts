@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
 /* eslint-disable prefer-spread */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import type express from 'express';
@@ -246,7 +245,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseMode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'onReceived',
@@ -255,7 +253,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		200,
@@ -265,7 +262,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'firstEntryJson',
@@ -288,7 +284,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		'={{$parameter["options"]["binaryData"]}}',
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		false,
@@ -370,7 +365,6 @@ export async function executeWebhook(
 				workflowStartNode,
 				webhookData.webhookDescription.responseHeaders,
 				executionMode,
-				additionalData.timezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -644,7 +638,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responsePropertyName,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								undefined,
@@ -658,7 +651,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responseContentType,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								undefined,
@@ -704,7 +696,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responseBinaryPropertyName,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								'data',

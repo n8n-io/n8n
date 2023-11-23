@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -11,8 +10,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
-import { createHmac } from 'crypto';
+import { join as pathJoin } from 'path';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -20,30 +18,13 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
-import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
-import type { RequestOptions } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
 
-import {
-	Credentials,
-	LoadMappingOptions,
-	LoadNodeParameterOptions,
-	LoadNodeListSearch,
-} from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import type {
-	INodeCredentials,
-	INodeCredentialsDetails,
-	INodeListSearchResult,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeNameVersion,
-	WorkflowExecuteMode,
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
-	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -59,66 +40,42 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
-	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
 	N8N_VERSION,
-	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
-import type {
-	CurlHelper,
-	ExecutionRequest,
-	NodeListSearchRequest,
-	NodeParameterOptionsRequest,
-	OAuthRequest,
-	ResourceMapperRequest,
-	WorkflowRequest,
-} from '@/requests';
+import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
 import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MeController,
-	MFAController,
-	NodeTypesController,
-	OwnerController,
-	PasswordResetController,
-	TagsController,
-	TranslationController,
-	UsersController,
-	WorkflowStatisticsController,
-} from '@/controllers';
-
-import { BinaryDataController } from './controllers/binaryData.controller';
+import { AuthController } from '@/controllers/auth.controller';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
+import { LdapController } from '@/controllers/ldap.controller';
+import { MeController } from '@/controllers/me.controller';
+import { MFAController } from '@/controllers/mfa.controller';
+import { NodeTypesController } from '@/controllers/nodeTypes.controller';
+import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
+import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
+import { OwnerController } from '@/controllers/owner.controller';
+import { PasswordResetController } from '@/controllers/passwordReset.controller';
+import { TagsController } from '@/controllers/tags.controller';
+import { TranslationController } from '@/controllers/translation.controller';
+import { UsersController } from '@/controllers/users.controller';
+import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
-import * as Db from '@/Db';
-import type {
-	ICredentialsDb,
-	ICredentialsOverwrite,
-	IDiagnosticInfo,
-	IExecutionsStopData,
-} from '@/Interfaces';
+import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import {
-	CredentialsHelper,
-	getCredentialForUser,
-	getCredentialWithoutUser,
-} from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WaitTracker } from '@/WaitTracker';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
@@ -143,16 +100,22 @@ import {
 } from './sso/ssoHelpers';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository, SettingsRepository } from '@db/repositories';
+
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
-import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
+import { InvitationController } from './controllers/invitation.controller';
 
 const exec = promisify(callbackExec);
 
@@ -252,6 +215,7 @@ export class Server extends AbstractServer {
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
@@ -260,24 +224,24 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Db.collections.Workflow.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		}).then(async (workflow) =>
-			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-		);
+		void Container.get(WorkflowRepository)
+			.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+				where: {},
+			})
+			.then(async (workflow) =>
+				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes, logger } = this;
-		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
-		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MfaService);
 
@@ -285,6 +249,8 @@ export class Server extends AbstractServer {
 			new EventBusController(),
 			new EventBusControllerEE(),
 			Container.get(AuthController),
+			Container.get(OAuth1CredentialController),
+			Container.get(OAuth2CredentialController),
 			new OwnerController(
 				config,
 				logger,
@@ -294,31 +260,20 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(MeController),
+			Container.get(DynamicNodeParametersController),
 			new NodeTypesController(config, nodeTypes),
-			new PasswordResetController(
-				logger,
-				externalHooks,
-				internalHooks,
-				mailer,
-				userService,
-				jwtService,
-				mfaService,
-			),
+			Container.get(PasswordResetController),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
-				repositories.SharedCredentials,
-				repositories.SharedWorkflow,
+				Container.get(SharedCredentialsRepository),
+				Container.get(SharedWorkflowRepository),
 				activeWorkflowRunner,
-				mailer,
-				jwtService,
 				Container.get(RoleService),
 				userService,
-				postHog,
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -327,6 +282,14 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			new InvitationController(
+				config,
+				logger,
+				internalHooks,
+				externalHooks,
+				Container.get(UserService),
+				postHog,
+			),
 		];
 
 		if (isLdapEnabled()) {
@@ -335,7 +298,6 @@ export class Server extends AbstractServer {
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { CommunityPackagesController } = await import(
 				'@/controllers/communityPackages.controller'
 			);
@@ -343,7 +305,6 @@ export class Server extends AbstractServer {
 		}
 
 		if (inE2ETests) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { E2EController } = await import('./controllers/e2e.controller');
 			controllers.push(Container.get(E2EController));
 		}
@@ -357,7 +318,6 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { MetricsService } = await import('@/services/metrics.service');
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
@@ -475,170 +435,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/node-parameter-options`,
-			ResponseHelper.send(
-				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
-					}
-					// @ts-ignore
-					if (req.query.loadOptions) {
-						return loadDataInstance.getOptionsViaRequestProperty(
-							// @ts-ignore
-							jsonParse(req.query.loadOptions as string),
-							additionalData,
-						);
-					}
-
-					return [];
-				},
-			),
-		);
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/nodes-list-search`,
-			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const listSearchInstance = new LoadNodeListSearch(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return listSearchInstance.getOptionsViaMethodName(
-							methodName,
-							additionalData,
-							req.query.filter,
-							req.query.paginationToken,
-						);
-					}
-
-					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/get-mapping-fields`,
-			ResponseHelper.send(
-				async (
-					req: ResourceMapperRequest,
-					res: express.Response,
-				): Promise<ResourceMapperFields | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadMappingOptionsInstance = new LoadMappingOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
-						methodName,
-						additionalData,
-					);
-
-					return fields;
-				},
-			),
-		);
-
-		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
 
@@ -646,17 +442,17 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage(req.user);
 			}),
 		);
 
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
-				const shared = await Db.collections.SharedWorkflow.findOne({
+				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,
@@ -701,259 +497,6 @@ export class Server extends AbstractServer {
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// OAuth1-Credential/Auth
-		// ----------------------------------------
-
-		// Authorize OAuth Data
-		this.app.get(
-			`/${this.restEndpoint}/oauth1-credential/auth`,
-			ResponseHelper.send(async (req: OAuthRequest.OAuth1Credential.Auth): Promise<string> => {
-				const { id: credentialId } = req.query;
-
-				if (!credentialId) {
-					this.logger.error('OAuth1 credential authorization failed due to missing credential ID');
-					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
-				}
-
-				const credential = await getCredentialForUser(credentialId, req.user);
-
-				if (!credential) {
-					this.logger.error(
-						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
-						{ userId: req.user.id },
-					);
-					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
-				}
-
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-
-				const mode: WorkflowExecuteMode = 'internal';
-				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = Container.get(CredentialsHelper);
-				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					additionalData,
-					credential as INodeCredentialsDetails,
-					credential.type,
-					mode,
-					timezone,
-					true,
-				);
-
-				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-					additionalData,
-					decryptedDataOriginal,
-					credential.type,
-					mode,
-					timezone,
-				);
-
-				const signatureMethod = oauthCredentials.signatureMethod as string;
-
-				const oAuthOptions: clientOAuth1.Options = {
-					consumer: {
-						key: oauthCredentials.consumerKey as string,
-						secret: oauthCredentials.consumerSecret as string,
-					},
-					signature_method: signatureMethod,
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					hash_function(base, key) {
-						let algorithm: string;
-						switch (signatureMethod) {
-							case 'HMAC-SHA256':
-								algorithm = 'sha256';
-								break;
-							case 'HMAC-SHA512':
-								algorithm = 'sha512';
-								break;
-							default:
-								algorithm = 'sha1';
-								break;
-						}
-
-						return createHmac(algorithm, key).update(base).digest('base64');
-					},
-				};
-
-				const oauthRequestData = {
-					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth1-credential/callback?cid=${credentialId}`,
-				};
-
-				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
-
-				const oauth = new clientOAuth1(oAuthOptions);
-
-				const options: RequestOptions = {
-					method: 'POST',
-					url: oauthCredentials.requestTokenUrl as string,
-					data: oauthRequestData,
-				};
-
-				const data = oauth.toHeader(oauth.authorize(options));
-
-				// @ts-ignore
-				options.headers = data;
-
-				const response = await axios.request(options as Partial<AxiosRequestConfig>);
-
-				// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-				const paramsParser = new URLSearchParams(response.data);
-
-				const responseJson = Object.fromEntries(paramsParser.entries());
-
-				const returnUri = `${oauthCredentials.authUrl as string}?oauth_token=${
-					responseJson.oauth_token
-				}`;
-
-				// Encrypt the data
-				const credentials = new Credentials(
-					credential as INodeCredentialsDetails,
-					credential.type,
-					credential.nodesAccess,
-				);
-
-				credentials.setData(decryptedDataOriginal);
-				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-
-				// Add special database related data
-				newCredentialsData.updatedAt = new Date();
-
-				// Update the credentials in DB
-				await Db.collections.Credentials.update(credentialId, newCredentialsData);
-
-				this.logger.verbose('OAuth1 authorization successful for new credential', {
-					userId: req.user.id,
-					credentialId,
-				});
-
-				return returnUri;
-			}),
-		);
-
-		// Verify and store app code. Generate access tokens and store for respective credential.
-		this.app.get(
-			`/${this.restEndpoint}/oauth1-credential/callback`,
-			async (req: OAuthRequest.OAuth1Credential.Callback, res: express.Response) => {
-				try {
-					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
-
-					if (!oauth_verifier || !oauth_token) {
-						const errorResponse = new ResponseHelper.ServiceUnavailableError(
-							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
-								req.query,
-							)}`,
-						);
-						this.logger.error(
-							'OAuth1 callback failed because of insufficient parameters received',
-							{
-								userId: req.user?.id,
-								credentialId,
-							},
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					const credential = await getCredentialWithoutUser(credentialId);
-
-					if (!credential) {
-						this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
-							userId: req.user?.id,
-							credentialId,
-						});
-						const errorResponse = new ResponseHelper.NotFoundError(
-							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-
-					const mode: WorkflowExecuteMode = 'internal';
-					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = Container.get(CredentialsHelper);
-					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						additionalData,
-						credential as INodeCredentialsDetails,
-						credential.type,
-						mode,
-						timezone,
-						true,
-					);
-					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-						additionalData,
-						decryptedDataOriginal,
-						credential.type,
-						mode,
-						timezone,
-					);
-
-					const options: AxiosRequestConfig = {
-						method: 'POST',
-						url: oauthCredentials.accessTokenUrl as string,
-						params: {
-							oauth_token,
-							oauth_verifier,
-						},
-					};
-
-					let oauthToken;
-
-					try {
-						oauthToken = await axios.request(options);
-					} catch (error) {
-						this.logger.error('Unable to fetch tokens for OAuth1 callback', {
-							userId: req.user?.id,
-							credentialId,
-						});
-						const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-					const paramParser = new URLSearchParams(oauthToken.data);
-
-					const oauthTokenJson = Object.fromEntries(paramParser.entries());
-
-					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
-
-					const credentials = new Credentials(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						credential.nodesAccess,
-					);
-					credentials.setData(decryptedDataOriginal);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-					// Add special database related data
-					newCredentialsData.updatedAt = new Date();
-					// Save the credentials in DB
-					await Db.collections.Credentials.update(credentialId, newCredentialsData);
-
-					this.logger.verbose('OAuth1 callback successful for new credential', {
-						userId: req.user?.id,
-						credentialId,
-					});
-					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
-				} catch (error) {
-					this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
-						userId: req.user?.id,
-						credentialId: req.query.cid,
-					});
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
-
-		// ----------------------------------------
-		// OAuth2-Credential
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/oauth2-credential`, oauth2CredentialController);
 
 		// ----------------------------------------
 		// Executions
@@ -1238,11 +781,12 @@ export class Server extends AbstractServer {
 			);
 		}
 
+		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {
-					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const isIndex = path === pathJoin(staticCacheDir, 'index.html');
 					const cacheControl = isIndex
 						? 'no-cache, no-store, must-revalidate'
 						: 'max-age=86400, immutable';
@@ -1268,7 +812,7 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
-				express.static(GENERATED_STATIC_DIR),
+				express.static(staticCacheDir),
 				express.static(EDITOR_UI_DIST_DIR, staticOptions),
 			);
 
@@ -1278,7 +822,7 @@ export class Server extends AbstractServer {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR));
+			this.app.use('/', express.static(staticCacheDir));
 		}
 	}
 

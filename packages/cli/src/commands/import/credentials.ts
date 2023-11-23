@@ -1,5 +1,5 @@
 import { flags } from '@oclif/command';
-import { Credentials } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
@@ -15,6 +15,7 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { UserRepository } from '@db/repositories/user.repository';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
@@ -69,6 +70,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		let totalImported = 0;
 
+		const cipher = Container.get(Cipher);
 		await this.initOwnerCredentialRole();
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
@@ -92,12 +94,10 @@ export class ImportCredentialsCommand extends BaseCommand {
 					const credential = jsonParse<ICredentialsEncrypted>(
 						fs.readFileSync(file, { encoding: 'utf8' }),
 					);
-
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
-						Credentials.prototype.setData.call(credential, credential.data);
+						credential.data = cipher.encrypt(credential.data);
 					}
-
 					await this.storeCredential(credential, user);
 				}
 			});
@@ -123,7 +123,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			for (const credential of credentials) {
 				if (typeof credential.data === 'object') {
 					// plain data / decrypted input. Should be encrypted first.
-					Credentials.prototype.setData.call(credential, credential.data);
+					credential.data = cipher.encrypt(credential.data);
 				}
 				await this.storeCredential(credential, user);
 			}
@@ -155,7 +155,10 @@ export class ImportCredentialsCommand extends BaseCommand {
 		this.ownerCredentialRole = ownerCredentialRole;
 	}
 
-	private async storeCredential(credential: object, user: User) {
+	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
+		if (!credential.nodesAccess) {
+			credential.nodesAccess = [];
+		}
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 		await this.transactionManager.upsert(
 			SharedCredentials,
@@ -173,7 +176,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		const owner =
 			ownerGlobalRole &&
-			(await Db.collections.User.findOneBy({ globalRoleId: ownerGlobalRole.id }));
+			(await Container.get(UserRepository).findOneBy({ globalRoleId: ownerGlobalRole.id }));
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
@@ -183,7 +186,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User.findOneBy({ id: userId });
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

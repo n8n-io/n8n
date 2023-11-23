@@ -3,7 +3,8 @@ import type { PropType, Ref } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
-import { useExternalSecretsStore, useUIStore } from '@/stores';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useExternalSecretsProvider, useI18n, useToast } from '@/composables';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
@@ -51,7 +52,7 @@ const canConnect = computed(() => {
 });
 
 const formattedDate = computed((provider: ExternalSecretsProvider) => {
-	return DateTime.fromISO(props.provider.connectedAt!).toFormat('dd LLL yyyy');
+	return DateTime.fromISO(props.provider.connectedAt).toFormat('dd LLL yyyy');
 });
 
 onMounted(() => {

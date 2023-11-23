@@ -16,7 +16,6 @@ import {
 } from '@/constants';
 
 import { useUsersStore } from '@/stores/users.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
 
 import { useActions } from '../composables/useActions';
@@ -104,7 +103,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result === true;
+	return result;
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
@@ -171,7 +170,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	void runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
+	void runExternalHook('nodeCreateList.onViewActions', trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
@@ -192,7 +191,7 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0].key;
-	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
+	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });

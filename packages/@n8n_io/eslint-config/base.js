@@ -135,6 +135,11 @@ const config = (module.exports = {
 		indent: 'off',
 
 		/**
+		 * https://eslint.org/docs/latest/rules/no-constant-binary-expression
+		 */
+		'no-constant-binary-expression': 'error',
+
+		/**
 		 * https://eslint.org/docs/latest/rules/sort-imports
 		 */
 		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
@@ -231,7 +236,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'variable',
-				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},

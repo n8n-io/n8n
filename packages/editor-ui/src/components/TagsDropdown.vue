@@ -17,6 +17,7 @@
 			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
+			data-test-id="tags-dropdown"
 			@update:modelValue="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
@@ -48,6 +49,7 @@
 				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
+				data-test-id="tag"
 				ref="tagRefs"
 			/>
 
@@ -68,9 +70,8 @@ import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { useI18n, useToast } from '@/composables';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { PropType } from 'vue';
-import type { N8nOption, N8nSelect } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
 
 type SelectRef = InstanceType<typeof N8nSelect>;

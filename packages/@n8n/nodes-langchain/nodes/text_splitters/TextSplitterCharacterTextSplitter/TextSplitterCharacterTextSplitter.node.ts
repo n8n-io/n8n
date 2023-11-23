@@ -9,6 +9,7 @@ import {
 import type { CharacterTextSplitterParams } from 'langchain/text_splitter';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,6 +41,7 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		outputs: [NodeConnectionType.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
 			{
 				displayName: 'Separator',
 				name: 'separator',

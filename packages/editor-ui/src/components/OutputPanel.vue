@@ -11,12 +11,15 @@
 		:sessionId="sessionId"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
+		@search="$emit('search', $event)"
 		ref="runData"
 		:data-output-type="outputMode"
 	>
@@ -144,6 +147,7 @@ export default defineComponent({
 	props: {
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -162,6 +166,10 @@ export default defineComponent({
 			default: false,
 		},
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		isPaneActive: {
 			type: Boolean,
 			default: false,
 		},
@@ -318,6 +326,9 @@ export default defineComponent({
 			} else {
 				ndvEventBus.emit('setPositionByName', 'initial');
 			}
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 });

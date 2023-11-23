@@ -60,10 +60,7 @@ export async function jiraSoftwareCloudApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		if (
-			error.description?.includes &&
-			error.description.includes("Field 'priority' cannot be set")
-		) {
+		if (error.description?.includes?.("Field 'priority' cannot be set")) {
 			throw new NodeApiError(this.getNode(), error as JsonObject, {
 				message:
 					"Field 'priority' cannot be set. You need to add the Priority field to your Jira Project's Issue Types.",

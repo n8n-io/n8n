@@ -14,6 +14,10 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 	});
 
 	it('should render trial banner for opt-in cloud user', () => {
+		cy.intercept('GET', '/rest/admin/cloud-plan', {
+			body: planData,
+		}).as('getPlanData');
+
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -21,10 +25,6 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 				});
 			});
 		}).as('loadSettings');
-
-		cy.intercept('GET', '/rest/admin/cloud-plan', {
-			body: planData,
-		}).as('getPlanData');
 
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
@@ -63,5 +63,21 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 		bannerStack.getters.banner().should('not.be.visible');
 
 		mainSidebar.actions.signout();
+	});
+
+	it('Should show admin button', () => {
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' }, n8nMetadata: { userId: 1 } },
+				});
+			});
+		}).as('loadSettings');
+
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+
+		cy.visit(workflowPage.url);
+
+		mainSidebar.getters.adminPanel().should('be.visible');
 	});
 });

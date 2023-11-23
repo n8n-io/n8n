@@ -91,11 +91,17 @@ export const schema = {
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
+			poolSize: {
+				doc: 'PostgresDB Pool Size',
+				format: Number,
+				default: 2,
+				env: 'DB_POSTGRESDB_POOL_SIZE',
+			},
 
 			ssl: {
 				enabled: {
 					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'DB_POSTGRESDB_SSL_ENABLED',
 				},
@@ -119,7 +125,7 @@ export const schema = {
 				},
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
-					format: 'Boolean',
+					format: Boolean,
 					default: true,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
@@ -215,7 +221,7 @@ export const schema = {
 		},
 		onboardingFlowDisabled: {
 			doc: 'Show onboarding flow in new workflow',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
@@ -288,7 +294,7 @@ export const schema = {
 		},
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
@@ -300,7 +306,7 @@ export const schema = {
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
@@ -312,7 +318,7 @@ export const schema = {
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
@@ -358,7 +364,7 @@ export const schema = {
 		health: {
 			active: {
 				doc: 'If health checks should be enabled',
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
 			},
@@ -420,7 +426,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 				tls: {
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'QUEUE_BULL_REDIS_TLS',
 					doc: 'Enable TLS on Redis connections. Default: false',
@@ -437,6 +443,32 @@ export const schema = {
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
+			},
+			settings: {
+				lockDuration: {
+					doc: 'How long (ms) is the lease period for a worker to work on a message',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_LOCK_DURATION',
+				},
+				lockRenewTime: {
+					doc: 'How frequently (ms) should a worker renew the lease time',
+					format: Number,
+					default: 15000,
+					env: 'QUEUE_WORKER_LOCK_RENEW_TIME',
+				},
+				stalledInterval: {
+					doc: 'How often check for stalled jobs (use 0 for never checking)',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_STALLED_INTERVAL',
+				},
+				maxStalledCount: {
+					doc: 'Max amount of times a stalled job will be re-processed',
+					format: Number,
+					default: 1,
+					env: 'QUEUE_WORKER_MAX_STALLED_COUNT',
+				},
 			},
 		},
 	},
@@ -558,7 +590,7 @@ export const schema = {
 		},
 		metrics: {
 			enable: {
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'N8N_METRICS',
 				doc: 'Enable /metrics endpoint. Default: false',
@@ -665,24 +697,6 @@ export const schema = {
 			default: false,
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
-		},
-		skipWebhooksDeregistrationOnShutdown: {
-			/**
-			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
-			 * and registers on startup / activation. If we skip
-			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
-			 * We don't have to worry about startup as it always
-			 * checks if webhooks already exist.
-			 * If users want to upgrade n8n, it is possible to run
-			 * two instances simultaneously without downtime, similar
-			 * to blue/green deployment.
-			 * WARNING: Trigger nodes (like Cron) will cause duplication
-			 * of work, so be aware when using.
-			 */
-			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 
@@ -1314,5 +1328,38 @@ export const schema = {
 			default: -1,
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
+	},
+
+	multiMainSetup: {
+		instanceType: {
+			doc: 'Type of instance in multi-main setup',
+			format: ['unset', 'leader', 'follower'] as const,
+			default: 'unset', // only until first leader key check
+		},
+		enabled: {
+			doc: 'Whether to enable multi-main setup for queue mode (license required)',
+			format: Boolean,
+			default: false,
+			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
+		},
+		ttl: {
+			doc: 'Time to live (in seconds) for leader key in multi-main setup',
+			format: Number,
+			default: 10,
+			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
+		},
+		interval: {
+			doc: 'Interval (in seconds) for leader check in multi-main setup',
+			format: Number,
+			default: 3,
+			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
+		},
+	},
+
+	proxy_hops: {
+		format: Number,
+		default: 0,
+		env: 'N8N_PROXY_HOPS',
+		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 };

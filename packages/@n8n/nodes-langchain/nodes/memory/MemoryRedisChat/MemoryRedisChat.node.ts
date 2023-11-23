@@ -13,6 +13,7 @@ import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class MemoryRedisChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,6 +51,7 @@ export class MemoryRedisChat implements INodeType {
 		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',

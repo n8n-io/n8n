@@ -1,9 +1,11 @@
 import fsp from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { BinaryDataService, FileNotFoundError } from 'n8n-core';
-import * as testDb from './shared/testDb';
-import { mockInstance, setupTestServer } from './shared/utils';
 import type { SuperAgentTest } from 'supertest';
+
+import { mockInstance } from '../shared/mocking';
+import { setupTestServer } from './shared/utils';
+import { createOwner } from './shared/db/users';
 
 jest.mock('fs/promises');
 
@@ -16,7 +18,7 @@ let testServer = setupTestServer({ endpointGroups: ['binaryData'] });
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const owner = await testDb.createOwner();
+	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
@@ -82,6 +84,26 @@ describe('GET /binary-data', () => {
 			expect(binaryDataService.getAsStream).toHaveBeenCalledWith(fsBinaryDataId);
 			expect(res.headers['content-type']).toBe(mimeType);
 			expect(res.headers['content-disposition']).toBe(contentDisposition);
+		});
+	});
+
+	describe('should handle non-ASCII filename [filesystem]', () => {
+		test('on request to download', async () => {
+			const nonAsciiFileName = 'äöüß.png';
+
+			const res = await authOwnerAgent
+				.get('/binary-data')
+				.query({
+					id: fsBinaryDataId,
+					fileName: nonAsciiFileName,
+					mimeType,
+					action: 'download',
+				})
+				.expect(200);
+
+			expect(res.headers['content-disposition']).toBe(
+				`attachment; filename="${encodeURIComponent(nonAsciiFileName)}"`,
+			);
 		});
 	});
 

@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { Calculator } from 'langchain/tools/calculator';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +17,7 @@ export class ToolCalculator implements INodeType {
 		icon: 'fa:calculator',
 		group: ['transform'],
 		version: 1,
-		description: 'Use Calculator',
+		description: 'Make it easier for AI agents to perform arithmetic',
 		defaults: {
 			name: 'Calculator',
 		},
@@ -38,7 +39,7 @@ export class ToolCalculator implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
-		properties: [],
+		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {

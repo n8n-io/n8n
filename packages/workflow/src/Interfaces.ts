@@ -196,7 +196,6 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -217,7 +216,6 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -310,6 +308,11 @@ export interface ICredentialTestRequestData {
 	testRequest: ICredentialTestRequest;
 }
 
+type ICredentialHttpRequestNode = {
+	name: string;
+	docsUrl: string;
+} & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
@@ -326,12 +329,13 @@ export interface ICredentialType {
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
+	httpRequestNode?: ICredentialHttpRequestNode;
 }
 
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
-	getNodeTypesToTestWith(type: string): string[];
+	getSupportedNodes(type: string): string[];
 	getParentTypes(typeName: string): string[];
 }
 
@@ -418,6 +422,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteFunctions;
 }
 
@@ -433,6 +438,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortController?: AbortController,
 	): IExecuteSingleFunctions;
 }
 
@@ -513,10 +519,18 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
+export interface PaginationOptions {
+	binaryResult?: boolean;
+	continue: boolean | string;
+	request: IRequestOptionsSimplifiedAuth;
+	maxRequests?: number;
+}
+
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse | Readable;
+	__bodyResolved?: boolean;
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage?: string;
@@ -710,6 +724,14 @@ export interface RequestHelperFunctions {
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
+	requestWithAuthenticationPaginated(
+		this: IAllExecuteFunctions,
+		requestOptions: OptionsWithUri,
+		itemIndex: number,
+		paginationOptions: PaginationOptions,
+		credentialsType?: string,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any[]>;
 
 	requestOAuth1(
 		this: IAllExecuteFunctions,
@@ -747,13 +769,17 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 	[K in Keys]: NonNullable<FunctionsBase[K]>;
 };
 
+export type ContextType = 'flow' | 'node';
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
-	getContext(type: string): IContextObject;
+	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getExecutionCancelSignal(): AbortSignal | undefined;
+	onExecutionCancellation(cleanup: () => Promise<void>, reject: (reason: Error) => void): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -770,6 +796,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getExecutionCancelSignal(): AbortSignal | undefined;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -922,6 +949,7 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
 	name: string;
@@ -936,10 +964,12 @@ export interface INode {
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
+	onError?: OnError;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
+	extendsCredential?: string;
 }
 
 export interface IPinData {
@@ -1040,7 +1070,8 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
-	| 'resourceMapper';
+	| 'resourceMapper'
+	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1067,6 +1098,7 @@ export interface ILoadOptions {
 
 export interface INodePropertyTypeOptions {
 	action?: string; // Supported by: button
+	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1380,6 +1412,7 @@ export interface INodeTypeBaseDescription {
 	name: string;
 	icon?: string;
 	iconUrl?: string;
+	badgeIconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1494,6 +1527,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 }
 
 export type ConnectionTypes =
+	| 'ai_agent'
 	| 'ai_chain'
 	| 'ai_document'
 	| 'ai_embedding'
@@ -1508,6 +1542,8 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiAgent = 'ai_agent',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiChain = 'ai_chain',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1548,6 +1584,7 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
+	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
@@ -1592,6 +1629,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
@@ -1655,6 +1693,11 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	$getPairedItem: (
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		pairedItem: IPairedItemData,
+	) => INodeExecutionData | null;
 	constructor: any;
 }
 
@@ -1686,7 +1729,7 @@ export type LoadingDetails = {
 };
 
 export type CredentialLoadingDetails = LoadingDetails & {
-	nodesToTestWith?: string[];
+	supportedNodes?: string[];
 	extends?: string[];
 };
 
@@ -1854,6 +1897,7 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
+	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
@@ -1862,7 +1906,6 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
-	timezone: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -1882,7 +1925,14 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook';
-export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
+
+export type WorkflowActivateMode =
+	| 'init'
+	| 'create'
+	| 'update'
+	| 'activate'
+	| 'manual'
+	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;
@@ -2007,6 +2057,7 @@ export interface INoteGraphItem {
 export interface INodeGraphItem {
 	id: string;
 	type: string;
+	version?: number;
 	resource?: string;
 	operation?: string;
 	domain?: string; // HTTP Request node v1
@@ -2284,6 +2335,7 @@ export interface IN8nUISettings {
 		debugInEditor: boolean;
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
+		workerView: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

@@ -1,3 +1,4 @@
+import Container from 'typedi';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -11,12 +12,13 @@ import { Workflow } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
-import Container from 'typedi';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { mockInstance } from '../shared/mocking';
 
 describe('CredentialsHelper', () => {
-	const TEST_ENCRYPTION_KEY = 'test';
-
+	mockInstance(CredentialsRepository);
+	mockInstance(SharedCredentialsRepository);
 	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
 		loadedNodes: {
 			'test.set': {
@@ -267,8 +269,6 @@ describe('CredentialsHelper', () => {
 			nodeTypes,
 		});
 
-		const timezone = 'America/New_York';
-
 		for (const testData of tests) {
 			test(testData.description, async () => {
 				mockNodesAndCredentials.loadedCredentials = {
@@ -286,7 +286,6 @@ describe('CredentialsHelper', () => {
 					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
-					timezone,
 				);
 
 				expect(result).toEqual(testData.output);

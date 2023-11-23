@@ -106,6 +106,8 @@ const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 export type Severity = 'warning' | 'error';
 
+export type Functionality = 'regular' | 'configuration-node';
+
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
 }
@@ -117,6 +119,7 @@ interface NodeOperationErrorOptions {
 	itemIndex?: number;
 	severity?: Severity;
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
+	functionality?: Functionality;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -137,6 +140,8 @@ export abstract class ExecutionBaseError extends Error {
 	lineNumber: number | undefined;
 
 	severity: Severity = 'error';
+
+	functionality: Functionality = 'regular';
 
 	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
 		const options = cause instanceof Error ? { cause } : {};
@@ -317,6 +322,7 @@ export class NodeOperationError extends NodeError {
 
 		if (options.message) this.message = options.message;
 		if (options.severity) this.severity = options.severity;
+		if (options.functionality) this.functionality = options.functionality;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
@@ -352,13 +358,11 @@ export class NodeApiError extends NodeError {
 			runIndex,
 			itemIndex,
 			severity,
+			functionality,
 			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
-
-		if (severity) this.severity = severity;
-		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
 
 		// only for request library error
 		if (error.error) {
@@ -399,6 +403,12 @@ export class NodeApiError extends NodeError {
 		} else {
 			this.httpCode =
 				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
+		}
+
+		if (severity) {
+			this.severity = severity;
+		} else if (this.httpCode?.charAt(0) !== '5') {
+			this.severity = 'warning';
 		}
 
 		// set description of this error
@@ -442,6 +452,7 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		);
 
+		if (functionality !== undefined) this.context.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}
