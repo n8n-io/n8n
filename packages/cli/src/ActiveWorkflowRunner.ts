@@ -4,7 +4,6 @@
 
 import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
-import config from '@/config';
 
 import type {
 	ExecutionError,
