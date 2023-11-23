@@ -49,6 +49,10 @@ const alias = [
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
+	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
+		find: new RegExp(`^lodash.${name}$`, 'i'),
+		replacement: `lodash-es/${name}`,
+	})),
 	{
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
