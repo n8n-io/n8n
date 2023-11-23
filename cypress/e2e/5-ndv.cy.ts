@@ -368,25 +368,22 @@ describe('NDV', () => {
 		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
 	});
 
-	it('should show node name and version in settings', () => {
-		cy.fixture('Test_workflow_ndv_version.json').then((data) => {
-			cy.get('body').paste(JSON.stringify(data));
-			workflowPage.actions.zoomToFit();
+	it.only('should show node name and version in settings', () => {
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
 
-			workflowPage.actions.openNode('Edit Fields (old)');
-			ndv.actions.openSettings();
-			ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.2)');
-			ndv.actions.close();
+		workflowPage.actions.openNode('Edit Fields (old)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.2)');
+		ndv.actions.close();
 
-			workflowPage.actions.openNode('Edit Fields (latest)');
-			ndv.actions.openSettings();
-			ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.2 (Latest)');
-			ndv.actions.close();
+		workflowPage.actions.openNode('Edit Fields (latest)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.2 (Latest)');
+		ndv.actions.close();
 
-			workflowPage.actions.openNode('Function');
-			ndv.actions.openSettings();
-			ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
-			ndv.actions.close();
-		});
+		workflowPage.actions.openNode('Function');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
+		ndv.actions.close();
 	});
 });
