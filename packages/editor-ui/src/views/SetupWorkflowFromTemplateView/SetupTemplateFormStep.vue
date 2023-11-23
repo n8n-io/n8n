@@ -1,5 +1,5 @@
 <template>
-	<li>
+	<li data-test-id="setup-credentials-form-step">
 		<n8n-heading tag="h2" size="large">
 			<div v-if="nodeType" class="heading">
 				<span class="headingOrder">{{ order }}.</span>

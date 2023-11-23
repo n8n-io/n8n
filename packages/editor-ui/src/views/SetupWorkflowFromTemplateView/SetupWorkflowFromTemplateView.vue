@@ -10,7 +10,7 @@
 		<template #content>
 			<div class="grid">
 				<div class="gridContent">
-					<div class="notice">
+					<div class="notice" data-test-id="info-callout">
 						<AppsRequiringCredsNotice v-if="isReady" />
 						<n8n-loading v-else variant="p" />
 					</div>
@@ -46,6 +46,7 @@
 								:label="$locale.baseText('templateSetup.continue.button')"
 								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 								@click="setupTemplateStore.createWorkflow($router)"
+								data-test-id="continue-button"
 							/>
 						</n8n-tooltip>
 						<div v-else>

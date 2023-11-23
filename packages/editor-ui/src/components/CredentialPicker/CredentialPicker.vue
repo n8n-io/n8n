@@ -22,7 +22,12 @@
 			/>
 		</div>
 
-		<n8n-button v-else :label="`Create new ${appName} credential`" @click="createNewCredential" />
+		<n8n-button
+			v-else
+			:label="`Create new ${appName} credential`"
+			@click="createNewCredential"
+			data-test-id="create-credential"
+		/>
 	</div>
 </template>
 
