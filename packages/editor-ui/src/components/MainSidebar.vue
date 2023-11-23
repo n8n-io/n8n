@@ -122,6 +122,8 @@ import {
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
+import { ROLE } from '@/utils';
+import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -177,7 +179,9 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
+			return hasPermission(['role'], {
+				role: [ROLE.Member, ROLE.Owner],
+			});
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -347,7 +351,7 @@ export default defineComponent({
 			};
 		},
 	},
-	mounted() {
+	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
 			void this.$externalHooks().run('mainSidebar.mounted', {

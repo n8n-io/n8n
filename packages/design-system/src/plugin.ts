@@ -55,7 +55,9 @@ import {
 	N8nUserStack,
 } from './components';
 
-export const N8nPlugin: Plugin<{}> = {
+export interface N8nPluginOptions {}
+
+export const N8nPlugin: Plugin<N8nPluginOptions> = {
 	install: (app) => {
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-dropdown', N8nActionDropdown);
