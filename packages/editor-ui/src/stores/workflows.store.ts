@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IActivationError,
 	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -365,7 +364,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 		},
 
-		async getActivationError(id: string): Promise<IActivationError | undefined> {
+		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
 		},
@@ -552,6 +551,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = true;
 			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(true);
+			}
 		},
 
 		setWorkflowInactive(workflowId: string): void {
@@ -561,6 +563,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = false;
+			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(false);
 			}
 		},
 
@@ -745,16 +750,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			// Check if the same connection exists already
-			const checkProperties = ['index', 'node', 'type'];
-			let propertyName: string;
+			const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+			let propertyName: keyof IConnection;
 			let connectionExists = false;
 			connectionLoop: for (const existingConnection of this.workflow.connections[sourceData.node][
 				sourceData.type
 			][sourceData.index]) {
 				for (propertyName of checkProperties) {
-					if (
-						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
-					) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
 						continue connectionLoop;
 					}
 				}

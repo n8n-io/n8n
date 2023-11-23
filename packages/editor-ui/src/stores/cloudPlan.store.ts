@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 
 const DEFAULT_STATE: CloudPlanState = {
+	initialized: false,
 	data: null,
 	usage: null,
 	loadingPlan: false,
@@ -151,8 +152,26 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		} catch {}
 	};
 
+	const redirectToDashboard = async () => {
+		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+		const { code } = await getAutoLoginCode();
+		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
+	};
+
+	const initialize = async () => {
+		if (state.initialized) {
+			return;
+		}
+
+		await checkForCloudPlanData();
+		await fetchUserCloudAccount();
+
+		state.initialized = true;
+	};
+
 	return {
 		state,
+		initialize,
 		getOwnerCurrentPlan,
 		getInstanceCurrentUsage,
 		usageLeft,
@@ -166,5 +185,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
+		redirectToDashboard,
 	};
 });

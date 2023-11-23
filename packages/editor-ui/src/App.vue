@@ -35,7 +35,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { extendExternalHooks } from '@/mixins/externalHooks';
 import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
@@ -57,12 +56,12 @@ import {
 	useCloudPlanStore,
 	useSourceControlStore,
 	useUsageStore,
+	usePushConnectionStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import type { ExternalHooks } from '@/types';
-import type { PartialDeep } from 'type-fest';
 import { runExternalHook } from '@/utils';
+import { initializeAuthenticatedFeatures } from '@/init';
 
 export default defineComponent({
 	name: 'App',
@@ -94,6 +93,7 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
+			usePushConnectionStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -114,76 +114,22 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
-		async initializeCloudData() {
-			await this.cloudPlanStore.checkForCloudPlanData();
-			await this.cloudPlanStore.fetchUserCloudAccount();
-		},
-		async initializeTemplates() {
-			if (this.settingsStore.isTemplatesEnabled) {
-				try {
-					await this.settingsStore.testTemplatesEndpoint();
-				} catch (e) {}
-			}
-		},
-		async initializeSourceControl() {
-			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-				await this.sourceControlStore.getPreferences();
-			}
-		},
-		async initializeNodeTranslationHeaders() {
-			if (this.defaultLocale !== 'en') {
-				await this.nodeTypesStore.getNodeTranslationHeaders();
-			}
-		},
-		async initializeHooks(): Promise<void> {
-			const hooksImports = [];
-
-			if (this.settingsStore.isCloudDeployment) {
-				hooksImports.push(
-					import('./hooks/cloud').then(
-						({ n8nCloudHooks }: { n8nCloudHooks: PartialDeep<ExternalHooks> }) => {
-							extendExternalHooks(n8nCloudHooks);
-						},
-					),
-				);
-			}
-
-			await Promise.allSettled(hooksImports);
-		},
-		async onAfterAuthenticate() {
-			if (this.onAfterAuthenticateInitialized) {
-				return;
-			}
-
-			if (!this.usersStore.currentUser) {
-				return;
-			}
-
-			await Promise.all([
-				this.initializeCloudData(),
-				this.initializeSourceControl(),
-				this.initializeTemplates(),
-				this.initializeNodeTranslationHeaders(),
-			]);
-
-			this.onAfterAuthenticateInitialized = true;
-		},
 	},
 	async mounted() {
 		this.logHiringBanner();
 
-		await this.initializeHooks();
-
 		void this.checkForNewVersions();
-		void this.onAfterAuthenticate();
+		void initializeAuthenticatedFeatures();
 
 		void runExternalHook('app.mount');
+		this.pushStore.pushConnect();
 		this.loading = false;
 	},
 	watch: {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		async 'usersStore.currentUser'(currentValue, previousValue) {
 			if (currentValue && !previousValue) {
-				await this.onAfterAuthenticate();
+				await initializeAuthenticatedFeatures();
 			}
 		},
 		defaultLocale(newLocale) {

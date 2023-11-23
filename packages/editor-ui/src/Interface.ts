@@ -49,6 +49,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
+import type { Scope } from '@n8n/permissions';
 import type { runExternalHook } from '@/utils';
 
 export * from 'n8n-design-system/types';
@@ -411,6 +412,16 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
+export type PushDataUsersForWorkflow = {
+	workflowId: string;
+	activeUsers: Array<{ user: IUser; lastSeen: string }>;
+};
+
+type PushDataWorkflowUsersChanged = {
+	data: PushDataUsersForWorkflow;
+	type: 'activeWorkflowUsersChanged';
+};
+
 export type IPushData =
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
@@ -421,7 +432,26 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataExecutionRecovered
-	| PushDataWorkerStatusMessage;
+	| PushDataWorkerStatusMessage
+	| PushDataActiveWorkflowAdded
+	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowFailedToActivate
+	| PushDataWorkflowUsersChanged;
+
+type PushDataActiveWorkflowAdded = {
+	data: IActiveWorkflowAdded;
+	type: 'workflowActivated';
+};
+
+type PushDataActiveWorkflowRemoved = {
+	data: IActiveWorkflowRemoved;
+	type: 'workflowDeactivated';
+};
+
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
+};
 
 type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
@@ -489,6 +519,19 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionId: string;
 	retryOf?: string;
+}
+
+export interface IActiveWorkflowAdded {
+	workflowId: string;
+}
+
+export interface IActiveWorkflowRemoved {
+	workflowId: string;
+}
+
+export interface IWorkflowFailedToActivate {
+	workflowId: string;
+	errorMessage: string;
 }
 
 export interface IPushDataUnsavedExecutionFinished {
@@ -640,6 +683,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
+	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
@@ -659,6 +703,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	globalRoleId?: number;
 }
 
 export interface IVersionNotificationSettings {
@@ -1197,6 +1242,7 @@ export type NodeFilterType =
 
 export type NodeCreatorOpenSource =
 	| ''
+	| 'context_menu'
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
 	| 'add_input_endpoint'
@@ -1355,17 +1401,6 @@ export interface ITabBarItem {
 	disabled?: boolean;
 }
 
-export interface IResourceLocatorReqParams {
-	nodeTypeAndVersion: INodeTypeNameVersion;
-	path: string;
-	methodName?: string;
-	searchList?: ILoadOptions;
-	currentNodeParameters: INodeParameters;
-	credentials?: INodeCredentials;
-	filter?: string;
-	paginationToken?: unknown;
-}
-
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 }
@@ -1473,13 +1508,30 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface ResourceMapperReqParams {
-	nodeTypeAndVersion: INodeTypeNameVersion;
-	path: string;
-	methodName?: string;
-	currentNodeParameters: INodeParameters;
-	credentials?: INodeCredentials;
+export declare namespace DynamicNodeParameters {
+	interface BaseRequest {
+		path: string;
+		nodeTypeAndVersion: INodeTypeNameVersion;
+		currentNodeParameters: INodeParameters;
+		methodName?: string;
+		credentials?: INodeCredentials;
+	}
+
+	interface OptionsRequest extends BaseRequest {
+		loadOptions?: ILoadOptions;
+	}
+
+	interface ResourceLocatorResultsRequest extends BaseRequest {
+		methodName: string;
+		filter?: string;
+		paginationToken?: string;
+	}
+
+	interface ResourceMapperFieldsRequest extends BaseRequest {
+		methodName: string;
+	}
 }
+
 export interface EnvironmentVariable {
 	id: number;
 	key: string;
@@ -1632,6 +1684,7 @@ export declare namespace Cloud {
 }
 
 export interface CloudPlanState {
+	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;

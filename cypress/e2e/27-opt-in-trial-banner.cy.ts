@@ -64,4 +64,20 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 
 		mainSidebar.actions.signout();
 	});
+
+	it('Should show admin button', () => {
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' }, n8nMetadata: { userId: 1 } },
+				});
+			});
+		}).as('loadSettings');
+
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+
+		cy.visit(workflowPage.url);
+
+		mainSidebar.getters.adminPanel().should('be.visible');
+	});
 });

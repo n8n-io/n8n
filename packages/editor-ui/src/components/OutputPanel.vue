@@ -201,7 +201,7 @@ export default defineComponent({
 			return false;
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));

@@ -94,7 +94,7 @@ export default defineComponent({
 			}
 
 			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
-				(webhookData) => webhookData.restartWebhook !== true && !webhookData.hasLifecycleMethods,
+				(webhookData) => webhookData.restartWebhook !== true,
 			);
 		},
 		baseText() {
