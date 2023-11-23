@@ -1,4 +1,4 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 import { Pinecone } from '@pinecone-database/pinecone';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
@@ -15,6 +15,33 @@ export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 		name: index.name,
 		value: index.name,
 	}));
+
+	return { results };
+}
+
+export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('supabaseApi');
+
+	const results = [];
+
+	const { paths } = await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
+		headers: {
+			Prefer: 'return=representation',
+		},
+		method: 'GET',
+		uri: `${credentials.host}/rest/v1/`,
+		json: true,
+	});
+
+	for (const path of Object.keys(paths as IDataObject)) {
+		//omit introspection path
+		if (path === '/') continue;
+
+		results.push({
+			name: path.replace('/', ''),
+			value: path.replace('/', ''),
+		});
+	}
 
 	return { results };
 }

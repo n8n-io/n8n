@@ -3,17 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
+import { supabaseTableNameRLC } from '../shared/descriptions';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
-const sharedFields: INodeProperties[] = [
-	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'Name of the table to load from',
-	},
-];
+const sharedFields: INodeProperties[] = [supabaseTableNameRLC];
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -65,6 +58,9 @@ export const VectorStoreSupabase = createVectorStoreNode({
 				required: true,
 			},
 		],
+	},
+	methods: {
+		listSearch: { supabaseTableNameSearch },
 	},
 	sharedFields,
 	insertFields,
