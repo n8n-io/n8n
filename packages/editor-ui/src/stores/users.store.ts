@@ -43,7 +43,7 @@ import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isDefaultUser = (user: IUserResponse | null) =>
-	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
+	Boolean(user?.isPending && user?.globalRole?.name === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
@@ -72,6 +72,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		isInstanceOwner(): boolean {
 			return isInstanceOwner(this.currentUser);
+		},
+		isMember(): boolean {
+			return !this.isDefaultUser && !this.isInstanceOwner;
 		},
 		mfaEnabled(): boolean {
 			return this.currentUser?.mfaEnabled ?? false;
