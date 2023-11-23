@@ -41,6 +41,7 @@ export class ChatTrigger implements INodeType {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				ndvHideUrl: true,
 			},
 			{
 				name: 'default',
