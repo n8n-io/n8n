@@ -177,7 +177,7 @@ importers:
         version: 1.0.0
       eslint-plugin-prettier:
         specifier: 5.0.1
-        version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.1.0)
+        version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.0.3)
       eslint-plugin-unicorn:
         specifier: 49.0.0
         version: 49.0.0(eslint@8.54.0)
@@ -756,7 +756,7 @@ importers:
         version: 2.4.1(vue@3.3.4)
       autoprefixer:
         specifier: ^10.4.14
-        version: 10.4.14(postcss@8.4.31)
+        version: 10.4.14(postcss@8.4.27)
       core-js:
         specifier: ^3.31.0
         version: 3.31.0
@@ -909,7 +909,7 @@ importers:
         version: 2.1.6(typescript@5.3.2)(vue@3.3.4)
       prettier:
         specifier: ^3.0.3
-        version: 3.1.0
+        version: 3.0.3
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.3.4)
@@ -6968,7 +6968,7 @@ packages:
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       leven: 3.1.0
       ora: 5.4.1
-      prettier: 3.1.0
+      prettier: 3.0.3
       prompts: 2.4.2
       puppeteer-core: 2.1.1
       read-pkg-up: 7.0.1
@@ -7025,7 +7025,7 @@ packages:
       globby: 11.1.0
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       lodash: 4.17.21
-      prettier: 3.1.0
+      prettier: 3.0.3
       recast: 0.23.3
     transitivePeerDependencies:
       - supports-color
@@ -8850,7 +8850,7 @@ packages:
     dependencies:
       '@vitest/spy': 0.33.0
       '@vitest/utils': 0.33.0
-      chai: 4.3.10
+      chai: 4.3.7
     dev: true
 
   /@vitest/runner@0.33.0:
@@ -9857,7 +9857,7 @@ packages:
       - encoding
     dev: false
 
-  /autoprefixer@10.4.14(postcss@8.4.31):
+  /autoprefixer@10.4.14(postcss@8.4.27):
     resolution: {integrity: sha512-FQzyfOsTlwVzjHxKEqRIAdJx9niO6VCBCoEwax/VLSoQF29ggECcPuBqUMZ+u8jCZOPSy8b8/8KnuFbp0SaFZQ==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
@@ -9869,7 +9869,7 @@ packages:
       fraction.js: 4.2.0
       normalize-range: 0.1.2
       picocolors: 1.0.0
-      postcss: 8.4.31
+      postcss: 8.4.27
       postcss-value-parser: 4.2.0
     dev: true
 
@@ -10555,14 +10555,14 @@ packages:
     resolution: {integrity: sha512-4tYFyifaFfGacoiObjJegolkwSU4xQNGbVgUiNYVUxbQ2x2lUsFvY4hVgVzGiIe6WLOPqycWXA40l+PWsxthUw==}
     dev: true
 
-  /chai@4.3.10:
-    resolution: {integrity: sha512-0UXG04VuVbruMUYbJ6JctvH0YnC/4q3/AkT18q4NaITo91CUm0liMS9VqzT9vZhVQ/1eqPanMWjBM+Juhfb/9g==}
+  /chai@4.3.7:
+    resolution: {integrity: sha512-HLnAzZ2iupm25PlN0xFreAlBA5zaBSv3og0DdeGA4Ar6h6rJ3A0rolRUKJhSF2V10GZKDgWF/VmAEsNWjCRB+A==}
     engines: {node: '>=4'}
     dependencies:
       assertion-error: 1.1.0
-      check-error: 1.0.3
+      check-error: 1.0.2
       deep-eql: 4.1.3
-      get-func-name: 2.0.2
+      get-func-name: 2.0.0
       loupe: 2.3.6
       pathval: 1.1.1
       type-detect: 4.0.8
@@ -10635,10 +10635,8 @@ packages:
       '@kurkle/color': 0.3.2
     dev: false
 
-  /check-error@1.0.3:
-    resolution: {integrity: sha512-iKEoDYaRmd1mxM90a2OEfWhjsjPpYPuQ+lMYsoxB126+t8fw7ySEO48nmDg5COTjxDI65/Y2OWpeEHk3ZOe8zg==}
-    dependencies:
-      get-func-name: 2.0.2
+  /check-error@1.0.2:
+    resolution: {integrity: sha512-BrgHpW9NURQgzoNyjfq0Wu6VFO6D7IZEmJNdtgNqpzGG8RuNFHt2jQxWlAs4HMe119chBnv+34syEZtc6IhLtA==}
     dev: true
 
   /check-more-types@2.24.0:
@@ -10680,7 +10678,7 @@ packages:
       normalize-path: 3.0.0
       readdirp: 3.6.0
     optionalDependencies:
-      fsevents: 2.3.3
+      fsevents: 2.3.2
 
   /chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -11454,7 +11452,7 @@ packages:
       cypress: ^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x
     dependencies:
       cypress: 12.17.2
-      prettier: 3.1.0
+      prettier: 3.0.3
     dev: true
 
   /cypress@12.17.2:
@@ -12576,7 +12574,7 @@ packages:
       - typescript
     dev: true
 
-  /eslint-plugin-prettier@5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.1.0):
+  /eslint-plugin-prettier@5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.0.3):
     resolution: {integrity: sha512-m3u5RnR56asrwV/lDC4GHorlW75DsFfmUcjfCYylTUs85dBRnB7VM6xG8eCMJdeDRnppzmxZVf1GEPJvl1JmNg==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
@@ -12593,7 +12591,7 @@ packages:
       '@types/eslint': 8.44.7
       eslint: 8.54.0
       eslint-config-prettier: 9.0.0(eslint@8.54.0)
-      prettier: 3.1.0
+      prettier: 3.0.3
       prettier-linter-helpers: 1.0.0
       synckit: 0.8.5
     dev: true
@@ -13617,10 +13615,17 @@ packages:
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
 
+  /fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+    optional: true
+
   /fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+    dev: true
     optional: true
 
   /function-bind@1.1.2:
@@ -13714,8 +13719,8 @@ packages:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
 
-  /get-func-name@2.0.2:
-    resolution: {integrity: sha512-8vXOvuE167CtIc3OyItco7N/dpRtBbYOsPsXCz7X/PMnlGjYjSGuZJgM1Y7mmew7BKf9BqvLX2tnOVy1BBUsxQ==}
+  /get-func-name@2.0.0:
+    resolution: {integrity: sha512-Hm0ixYtaSZ/V7C8FJrtZIuBBI+iSgL+1Aq82zSu8VQNB4S3Gk8e7Qs3VwBDJAhmRZcFqkl3tQu36g/Foh5I5ig==}
     dev: true
 
   /get-intrinsic@1.2.1:
@@ -15410,7 +15415,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.3
+      fsevents: 2.3.2
     dev: true
 
   /jest-leak-detector@29.6.2:
@@ -16572,7 +16577,7 @@ packages:
   /loupe@2.3.6:
     resolution: {integrity: sha512-RaPMZKiMy8/JruncMU5Bt6na1eftNoo++R4Y+N2FrxkDVTrGvcyzFTsaGif4QTeKESheMGegbhw6iUAq+5A8zA==}
     dependencies:
-      get-func-name: 2.0.2
+      get-func-name: 2.0.0
     dev: true
 
   /lower-case@2.0.2:
@@ -18588,6 +18593,15 @@ packages:
       picocolors: 1.0.0
       source-map-js: 1.0.2
 
+  /postcss@8.4.27:
+    resolution: {integrity: sha512-gY/ACJtJPSmUFPDCHtX78+01fHa64FaU4zaaWfuh1MhGJISufJAH4cun6k/8fwsHYeK4UQmENQK+tRLCFJE8JQ==}
+    engines: {node: ^10 || ^12 || >=14}
+    dependencies:
+      nanoid: 3.3.6
+      picocolors: 1.0.0
+      source-map-js: 1.0.2
+    dev: true
+
   /postcss@8.4.31:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -18651,8 +18665,8 @@ packages:
       fast-diff: 1.2.0
     dev: true
 
-  /prettier@3.1.0:
-    resolution: {integrity: sha512-TQLvXjq5IAibjh8EpBIkNKxO749UEWABoiIZehEPiY4GNpVdhaFKqSTu+QrlU6D2dPAfubRmtJTi4K4YkQ5eXw==}
+  /prettier@3.0.3:
+    resolution: {integrity: sha512-L/4pUDMxcNa8R/EthV08Zt42WBO4h1rarVtK0K+QJG0X187OLo7l699jWw0GKuwzkPQ//jMFA/8Xm6Fh3J/DAg==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -19710,7 +19724,7 @@ packages:
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
     optionalDependencies:
-      fsevents: 2.3.3
+      fsevents: 2.3.2
     dev: true
 
   /rollup@4.5.1:
@@ -22248,10 +22262,10 @@ packages:
     dependencies:
       '@types/node': 18.16.16
       esbuild: 0.18.17
-      postcss: 8.4.31
+      postcss: 8.4.27
       rollup: 3.26.3
     optionalDependencies:
-      fsevents: 2.3.3
+      fsevents: 2.3.2
     dev: true
 
   /vite@4.4.7(sass@1.64.1):
@@ -22283,11 +22297,11 @@ packages:
         optional: true
     dependencies:
       esbuild: 0.18.17
-      postcss: 8.4.31
+      postcss: 8.4.27
       rollup: 3.26.3
       sass: 1.64.1
     optionalDependencies:
-      fsevents: 2.3.3
+      fsevents: 2.3.2
     dev: true
 
   /vite@5.0.2:
@@ -22367,7 +22381,7 @@ packages:
       acorn: 8.10.0
       acorn-walk: 8.2.0
       cac: 6.7.14
-      chai: 4.3.10
+      chai: 4.3.7
       debug: 4.3.4(supports-color@8.1.1)
       local-pkg: 0.4.3
       magic-string: 0.30.1
