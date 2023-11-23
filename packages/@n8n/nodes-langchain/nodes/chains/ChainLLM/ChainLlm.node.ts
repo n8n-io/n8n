@@ -44,13 +44,16 @@ async function getImageMessage(
 			'Invalid message type. Only imageBinary and imageUrl are supported',
 		);
 	}
-
-	if (message.messageType === 'imageUrl') {
+	const detail = message.imageDetail === 'auto' ? undefined : message.imageDetail;
+	if (message.messageType === 'imageUrl' && message.imageUrl) {
 		return new HumanMessage({
 			content: [
 				{
 					type: 'image_url',
-					image_url: message.imageUrl,
+					image_url: {
+						url: message.imageUrl,
+						detail,
+					},
 				},
 			],
 		});
@@ -71,6 +74,7 @@ async function getImageMessage(
 				type: 'image_url',
 				image_url: {
 					url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
+					detail,
 				},
 			},
 		],
