@@ -6,7 +6,16 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Middleware,
+	Patch,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
 import { NodeRequest } from '@/requests';
 import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -14,7 +23,6 @@ import type { CommunityPackages } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 const {
 	PACKAGE_NOT_INSTALLED,

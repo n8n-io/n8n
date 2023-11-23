@@ -15,8 +15,7 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
-import { RestController, Get, Post, Authorized } from '@/decorators';
-import { RequireGlobalScope } from '@/decorators/Scopes';
+import { RestController, Get, Post, Authorized, RequireGlobalScope } from '@/decorators';
 
 // ----------------------------------------
 // TypeGuards

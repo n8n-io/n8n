@@ -15,12 +15,11 @@ import type {
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
+import { RestController, Get, Post, Delete, Authorized, RequireGlobalScope } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 // ----------------------------------------
 // TypeGuards

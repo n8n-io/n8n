@@ -1,7 +1,7 @@
 import { Container, Service } from 'typedi';
 import type { PullResult } from 'simple-git';
 import express from 'express';
-import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
+import { Authorized, Get, Post, Patch, RestController, RequireGlobalScope } from '@/decorators';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
@@ -17,7 +17,6 @@ import type { ImportResult } from './types/importResult';
 import { InternalHooks } from '../../InternalHooks';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Service()
 @Authorized()

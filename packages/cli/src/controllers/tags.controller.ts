@@ -1,11 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
-import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Middleware,
+	Patch,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
 import { TagService } from '@/services/tag.service';
 import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 import { Service } from 'typedi';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Authorized()
 @RestController('/tags')

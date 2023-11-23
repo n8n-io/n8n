@@ -1,10 +1,9 @@
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import { Service } from 'typedi';
 import { ProviderNotFoundError, ExternalSecretsService } from './ExternalSecrets.service.ee';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Service()
 @Authorized()

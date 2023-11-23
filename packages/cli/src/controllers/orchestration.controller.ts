@@ -1,9 +1,8 @@
-import { Authorized, Post, RestController } from '@/decorators';
+import { Authorized, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { Service } from 'typedi';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { License } from '../License';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Authorized()
 @RestController('/orchestration')

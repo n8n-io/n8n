@@ -1,7 +1,14 @@
 import express from 'express';
 import { Container, Service } from 'typedi';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Get,
+	NoAuthRequired,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -27,7 +34,6 @@ import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFail
 import { InternalHooks } from '@/InternalHooks';
 import url from 'url';
 import querystring from 'querystring';
-import { RequireGlobalScope } from '@/decorators/Scopes';
 
 @Service()
 @Authorized()
