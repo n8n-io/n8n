@@ -9,8 +9,9 @@
 		</n8n-heading>
 
 		<p class="description">
-			The credential you select will be used in the
-			<span v-html="nodeNames" /> of the workflow template.
+			<i18n-t tag="span" keypath="templateSetup.credential.description" scope="global">
+				<span v-html="nodeNames" />
+			</i18n-t>
 		</p>
 
 		<div class="credentials">
@@ -36,8 +37,8 @@
 <script lang="ts">
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import { defineComponent } from 'vue';
+import { assert } from '@/utils/assert';
 import NodeIcon from '@/components/NodeIcon.vue';
-
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { mapStores } from 'pinia';
@@ -69,7 +70,9 @@ export default defineComponent({
 	computed: {
 		...mapStores(useSetupTemplateStore, useNodeTypesStore, useCredentialsStore),
 		credentials() {
-			return this.setupTemplateStore.credentialsByName.get(this.credentialName)!;
+			const credential = this.setupTemplateStore.credentialsByName.get(this.credentialName);
+			assert(credential);
+			return credential;
 		},
 		node() {
 			return this.credentials.usedBy[0];
@@ -87,7 +90,10 @@ export default defineComponent({
 			const formatNodeName = (node: IWorkflowTemplateNode) => `<b>${node.name}</b>`;
 
 			const nodesStr = this.credentials.usedBy.length > 1 ? 'nodes' : 'node';
-			const formattedList = formatList(this.credentials.usedBy, formatNodeName);
+			const formattedList = formatList(this.credentials.usedBy, {
+				formatFn: formatNodeName,
+				i18n: this.$locale,
+			});
 
 			return `${formattedList} ${nodesStr}`;
 		},

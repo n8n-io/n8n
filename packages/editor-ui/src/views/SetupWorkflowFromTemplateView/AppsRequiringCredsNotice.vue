@@ -1,33 +1,30 @@
 <template>
-	<n8n-notice theme="info"
-		>You need <span v-html="appNodeCounts"></span> account to setup this template</n8n-notice
-	>
+	<n8n-notice theme="info">
+		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
+			<span v-html="appNodeCounts" />
+		</i18n-t>
+	</n8n-notice>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import N8nNotice from 'n8n-design-system/components/N8nNotice';
-import type { AppCredentials } from './setupTemplate.store.getters';
+import type { AppCredentials } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { storeToRefs } from 'pinia';
+import { formatList } from '@/utils/formatters/listFormatter';
+import { useI18n } from '@/composables';
 
+const i18n = useI18n();
 const store = useSetupTemplateStore();
 const { appCredentials } = storeToRefs(store);
 
 const formatApp = (app: AppCredentials) => `<b>${app.credentials.length}x ${app.appName}</b>`;
 
 const appNodeCounts = computed(() => {
-	if (appCredentials.value.length === 0) {
-		return '';
-	}
-
-	if (appCredentials.value.length <= 1) {
-		const first = appCredentials.value[0];
-		return formatApp(first);
-	}
-
-	const allButLast = appCredentials.value.slice(0, -1);
-	const last = appCredentials.value.slice(-1)[0];
-	return `${allButLast.map(formatApp).join(', ')} and ${formatApp(last)}`;
+	return formatList(appCredentials.value, {
+		formatFn: formatApp,
+		i18n,
+	});
 });
 </script>

@@ -6,8 +6,8 @@
 			</div>
 
 			<n8n-heading v-if="isReady" class="title" tag="h1" size="2xlarge"
-				>Setup '{{ title }}' template</n8n-heading
-			>
+				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
+			</n8n-heading>
 			<n8n-loading v-else variant="h1" />
 
 			<div class="notice">
@@ -33,9 +33,9 @@
 			</div>
 
 			<div class="actions">
-				<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)"
-					>Skip</n8n-link
-				>
+				<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
+					$locale.baseText('templateSetup.skip')
+				}}</n8n-link>
 
 				<n8n-tooltip
 					v-if="isReady"
@@ -43,7 +43,7 @@
 					:disabled="setupTemplateStore.numCredentialsLeft === 0"
 				>
 					<n8n-button
-						label="Continue"
+						:label="$locale.baseText('templateSetup.continue.button')"
 						:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 						@click="setupTemplateStore.createWorkflow($router)"
 					/>
@@ -102,9 +102,10 @@ export default defineComponent({
 		buttonTooltip() {
 			const numLeft = this.setupTemplateStore.numCredentialsLeft;
 
-			return numLeft > 0
-				? `Connect to ${numLeft} more app${numLeft > 1 ? 's' : ''} to continue`
-				: undefined;
+			return this.$locale.baseText('templateSetup.continue.tooltip', {
+				adjustToNumber: numLeft,
+				interpolate: { numLeft: numLeft.toString() },
+			});
 		},
 	},
 	watch: {
