@@ -23,7 +23,7 @@ watch(
 
 function onActionSelect(item: string) {
 	const action = item as ContextMenuAction;
-	contextMenu._dispatchAction(item as ContextMenuAction);
+	contextMenu._dispatchAction(action);
 	emit('action', action, contextMenu.targetNodes.value);
 }
 
