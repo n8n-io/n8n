@@ -152,7 +152,7 @@
 					@valueChanged="valueChanged"
 					@parameterBlur="onParameterBlur"
 				/>
-				<div class="node-meta">
+				<div class="node-version" data-test-id="node-version">
 					{{
 						$locale.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
@@ -1160,7 +1160,7 @@ export default defineComponent({
 	top: -25px;
 }
 
-.node-meta {
+.node-version {
 	border-top: var(--border-base);
 	font-size: var(--font-size-xs);
 	font-size: var(--font-size-2xs);
