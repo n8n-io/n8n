@@ -1,9 +1,9 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+import sharedOptions from '@n8n_io/eslint-config/shared';
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
+export default {
 	extends: ['@n8n_io/eslint-config/frontend'],
 
 	...sharedOptions(__dirname, 'frontend'),
