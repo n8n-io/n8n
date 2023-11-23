@@ -13,7 +13,7 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			loadingService: null as any | null,
+			loadingService: null as null | { close: () => void; text: string },
 		};
 	},
 	computed: {
@@ -75,7 +75,9 @@ export const genericHelpers = defineComponent({
 			});
 		},
 		setLoadingText(text: string) {
-			this.loadingService.text = text;
+			if (this.loadingService !== null) {
+				this.loadingService.text = text;
+			}
 		},
 		stopLoading() {
 			if (this.loadingService !== null) {

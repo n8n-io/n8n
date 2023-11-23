@@ -108,7 +108,12 @@ async function getChainPromptTemplate(
 					const test = await getImageMessage(context, itemIndex, message);
 					return test;
 				}
-				const res = messageClass.fromTemplate(message.message);
+
+				const res = messageClass.fromTemplate(
+					// Since we're using the message as template, we need to escape any curly braces
+					// so LangChain doesn't try to parse them as variables
+					(message.message || '').replace(/[{}]/g, (match) => match + match),
+				);
 				return res;
 			}),
 		);
