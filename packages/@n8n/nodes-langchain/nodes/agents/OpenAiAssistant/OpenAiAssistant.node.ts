@@ -1,10 +1,15 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { AgentExecutor } from 'langchain/agents';
+import { OpenAI as OpenAIClient } from 'openai';
+import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import { type Tool } from 'langchain/tools';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { formatToOpenAIAssistantTool } from './utils';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -13,7 +18,7 @@ export class OpenAiAssistant implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Generates an action plan and executes it. Can use external tools.',
+		description: 'Utilizes Assistant API from Open AI.',
 		subtitle: 'Open AI Assistant',
 		defaults: {
 			name: 'OpenAI Assistant',
@@ -34,18 +39,8 @@ export class OpenAiAssistant implements INodeType {
 			},
 		},
 		inputs: [
-			{
-				type: NodeConnectionType.AiLanguageModel,
-				filter: {
-					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
-				},
-			},
-			{
-				type: NodeConnectionType.AiTool,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
 		],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -54,25 +49,305 @@ export class OpenAiAssistant implements INodeType {
 				required: true,
 			},
 		],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL:
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+		},
 		properties: [
+			{
+				displayName: 'Operation',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				default: 'existing',
+				options: [
+					{
+						name: 'Use Existing Assistant',
+						value: 'existing',
+					},
+					{
+						name: 'Create New Assistant',
+						value: 'new',
+					},
+				],
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						'/mode': ['new'],
+					},
+				},
+			},
+			{
+				displayName: 'Instructions',
+				name: 'instructions',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					rows: 5,
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						'/mode': ['new'],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will be used to power the assistant. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+				required: true,
+				displayOptions: {
+					show: {
+						'/mode': ['new'],
+					},
+				},
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'filter',
+										properties: {
+											pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'gpt-3.5-turbo-1106',
+			},
 			{
 				displayName: 'Assistant',
 				name: 'assistantId',
-				type: 'string',
-				description: 'The assistant to use',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'/mode': ['existing'],
+					},
+				},
+				description:
+					'The assistant to use. <a href="https://beta.openai.com/docs/assistants/overview">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								headers: {
+									'OpenAI-Beta': 'assistants=v1',
+								},
+								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/assistants',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.name}}',
+											value: '={{$responseItem.id}}',
+											// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+											description: '={{$responseItem.model}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assistant',
+					},
+				},
+				required: true,
 				default: '',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '={{ $json.input }}',
+			},
+			{
+				displayName: 'OpenAI Tools',
+				name: 'nativeTools',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'Code Interpreter',
+						value: 'code_interpreter',
+					},
+					{
+						name: 'Retrieval',
+						value: 'retrieval',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Base URL',
+						name: 'baseURL',
+						default: 'https://api.openai.com/v1',
+						description: 'Override the default base URL for the API',
+						type: 'string',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 10000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
+						type: 'number',
+					},
+				],
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const assistantId = this.getNodeParameter('assistantId', 0, '') as string;
-		console.log(
-			'🚀 ~ file: OpenAiAssistant.node.ts:70 ~ OpenAiAssistant ~ execute ~ assistantId:',
-			assistantId,
-		);
+		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		const credentials = await this.getCredentials('openAiApi');
 
-		// throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);
-		return [[{ json: { test: 123 } }]];
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const input = this.getNodeParameter('text', itemIndex) as string;
+			const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
+			const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
+				'code_interpreter' | 'retrieval'
+			>;
+
+			const options = this.getNodeParameter('options', itemIndex, {}) as {
+				baseURL?: string;
+				maxRetries: number;
+				timeout: number;
+			};
+
+			if (input === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+			}
+
+			const client = new OpenAIClient({
+				apiKey: credentials.apiKey as string,
+				maxRetries: options.maxRetries ?? 2,
+				timeout: options.timeout ?? 10000,
+				baseURL: options.baseURL,
+			});
+			let agent;
+			if (assistantId) {
+				agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+				// Always update assistant with current tools
+				const assistant = await client.beta.assistants.retrieve(assistantId);
+				const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
+				const nativeToolsParsed = nativeTools.map((tool) => ({ type: tool }));
+				const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
+				const currentTools = assistant.tools;
+
+				console.log('currentTools', JSON.stringify(currentTools, null, 2));
+				console.log('newTools', JSON.stringify(newTools, null, 2));
+				await client.beta.assistants.update(assistantId, {
+					tools: newTools,
+				});
+			} else {
+				const name = this.getNodeParameter('name', itemIndex, '') as string;
+				const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
+				const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+
+				agent = await OpenAIAssistantRunnable.createAssistant({
+					model,
+					client,
+					instructions,
+					name,
+					tools,
+					asAgent: true,
+				});
+			}
+
+			const agentExecutor = AgentExecutor.fromAgentAndTools({
+				agent,
+				tools,
+			});
+
+			const response = await agentExecutor.call({
+				content: input,
+				signal: this.getExecutionCancelSignal(),
+				timeout: options.timeout ?? 10000,
+			});
+
+			returnData.push({ json: response });
+		}
+
+		return this.prepareOutputData(returnData);
 	}
 }

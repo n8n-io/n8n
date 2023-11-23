@@ -93,7 +93,11 @@ export async function conversationalAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers });
+		let response = await agentExecutor.call({
+			input,
+			outputParsers,
+			signal: this.getExecutionCancelSignal(),
+		});
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

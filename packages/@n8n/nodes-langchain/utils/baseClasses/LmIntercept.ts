@@ -1,4 +1,4 @@
-import type { TextSplitter } from 'langchain/text_splitter';
+import type { BaseLLM, BaseLLMCallOptions } from 'langchain/llms/base';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { ConnectionTypes, IExecuteFunctions } from 'n8n-workflow';
 
@@ -141,27 +141,29 @@ export function handleLangchainAsyncError(
 	);
 }
 
-export function createTracedSplitter(
-	context: IExecuteFunctions,
-	provider: TextSplitter,
-): TextSplitter {
+export function createTrackedLmIntercept(context: IExecuteFunctions, provider: BaseLLM): BaseLLM {
 	return new Proxy(provider, {
 		get: (target, prop, receiver) => {
-			if (prop === 'splitText') {
+			if (prop === 'generate') {
 				return async (
-					...args: Parameters<TextSplitter['splitText']>
-				): Promise<ReturnType<TextSplitter['splitText']>> => {
+					...args: Parameters<BaseLLM['_generate']>
+				): Promise<ReturnType<BaseLLM['_generate']>> => {
 					// Ensuring method call is type-safe
 					const method = target[prop];
 					if (typeof method === 'function') {
-						const [text] = args;
+						const [messages, opts, ...rest] = args;
+
+						const options: BaseLLMCallOptions = {
+							...opts,
+							signal: context.getExecutionCancelSignal(),
+						};
 
 						const { index } = context.addInputData(NodeConnectionType.AiTextSplitter, [
-							[{ json: { text } }],
+							[{ json: { messages, options } }],
 						]);
 
 						try {
-							const response = await method.apply(target, args);
+							const response = await method.apply(target, [...args, ...rest]);
 
 							context.addOutputData(NodeConnectionType.AiTextSplitter, index, [
 								[{ json: { response } }],

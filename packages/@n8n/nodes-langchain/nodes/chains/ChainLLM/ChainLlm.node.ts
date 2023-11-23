@@ -45,12 +45,15 @@ async function getImageMessage(
 		);
 	}
 
-	if (message.messageType === 'imageUrl') {
+	if (message.messageType === 'imageUrl' && message.imageUrl) {
 		return new HumanMessage({
 			content: [
 				{
 					type: 'image_url',
-					image_url: message.imageUrl,
+					image_url: {
+						url: message.imageUrl,
+						detail: message.imageDetail === 'auto' ? undefined : message.imageDetail,
+					},
 				},
 			],
 		});

@@ -1,88 +1,92 @@
 import { CallbackManager } from 'langchain/callbacks';
-import { NodeConnectionType, type IExecuteFunctions } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { ConnectionTypes, IExecuteFunctions } from 'n8n-workflow';
+
+const errorsMap: { [key: string]: { message: string; description: string } } = {
+	'You exceeded your current quota, please check your plan and billing details.': {
+		message: 'OpenAI quota exceeded',
+		description: 'You exceeded your current quota, please check your plan and billing details.',
+	},
+};
+
+export function handleLangchainAsyncError(
+	context: IExecuteFunctions,
+	originalError: Error,
+	connectionType: ConnectionTypes,
+	currentNodeRunIndex: number,
+) {
+	const connectedNode = context.getNode();
+
+	const error = new NodeOperationError(connectedNode, originalError, {
+		functionality: 'configuration-node',
+	});
+
+	if (errorsMap[error.message]) {
+		error.description = errorsMap[error.message].description;
+		error.message = errorsMap[error.message].message;
+	}
+
+	context.addOutputData(connectionType, currentNodeRunIndex, error);
+	if (error.message) {
+		error.description = error.message;
+		throw error;
+	}
+	throw new NodeOperationError(
+		connectedNode,
+		`Error on node "${connectedNode.name}" which is connected via input "${connectionType}"`,
+		{ functionality: 'configuration-node' },
+	);
+}
 
 export const getLlmInputOutputCallbacks = (context: IExecuteFunctions) => {
-	let lastInputIndex = 0;
+	// To correctly set input/output we need to store the indexes by runId
+	const ioIndexMap = new Map<string, number>();
 
 	return CallbackManager.fromHandlers({
-		handleLLMStart: (llm, prompts, runId) => {
+		handleLLMStart: (_llm, prompts, runId) => {
 			const { index } = context.addInputData(NodeConnectionType.AiLanguageModel, [
 				[{ json: { response: prompts } }],
 			]);
-			// console.log('LLM Start:', llm, prompts, runId);
-			context.addNodeExecutionTrace({
-				content: { prompts, runId },
-				type: 'input',
-				node: { name: context.getNode().name, type: context.getNode().type },
-			});
-			lastInputIndex = index;
+
+			ioIndexMap.set(runId, index);
 		},
 		handleLLMEnd: (output, runId) => {
-			context.addOutputData(NodeConnectionType.AiLanguageModel, lastInputIndex, [
+			context.addOutputData(NodeConnectionType.AiLanguageModel, ioIndexMap.get(runId) ?? 0, [
 				[{ json: { response: output } }],
 			]);
-			// console.log('LLM End', output, runId);
-			context.addNodeExecutionTrace({
-				content: { output, runId },
-				type: 'output',
-				node: { name: context.getNode().name, type: context.getNode().type },
-			});
 		},
-		handleLLMError: (error, runId, parentRunId, tags) => {
-			// console.log('LLM Error:', error, runId, parentRunId, tags);
-			context.addNodeExecutionTrace({
-				content: { error, runId },
-				type: 'error',
-				node: { name: context.getNode().name, type: context.getNode().type },
-			});
+		handleLLMError: (error, runId) => {
+			handleLangchainAsyncError(
+				context,
+				error,
+				NodeConnectionType.AiLanguageModel,
+				ioIndexMap.get(runId) ?? 0,
+			);
 		},
 	});
 };
 
 export const getToolCallbacks = (context: IExecuteFunctions) => {
-	let lastInputIndex = 0;
+	const ioIndexMap = new Map<string, number>();
 
 	return CallbackManager.fromHandlers({
-		handleToolStart(tool, query, runId, parentRunId, tags, metadata, name) {
-			console.log(
-				'🚀 ~ file: callbacks.ts:39 ~ handleToolStart ~ tool, query, runId, parentRunId, tags, metadata, name:',
-				tool,
-				query,
-				runId,
-				parentRunId,
-				tags,
-				metadata,
-				name,
-			);
+		handleToolStart(_tool, query, runId) {
 			const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-			lastInputIndex = index;
+
+			ioIndexMap.set(runId, index);
 		},
-		handleToolEnd(output, runId, parentRunId, tags) {
-			console.log(
-				'🚀 ~ file: callbacks.ts:52 ~ handleToolEnd ~ output, runId, parentRunId, tags:',
-				output,
-				runId,
-				parentRunId,
-				tags,
-			);
-			context.addOutputData(NodeConnectionType.AiTool, lastInputIndex, [
+		handleToolEnd(output, runId) {
+			context.addOutputData(NodeConnectionType.AiTool, ioIndexMap.get(runId) ?? 0, [
 				[{ json: { response: output } }],
 			]);
-			context.addNodeExecutionTrace({
-				content: { output, runId },
-				type: 'output',
-				node: { name: context.getNode().name, type: context.getNode().type },
-			});
 		},
-		handleToolError(error, runId, parentRunId, tags) {
-			console.log(
-				'🚀 ~ file: callbacks.ts:69 ~ handleToolError ~ error, runId, parentRunId, tags:',
+		handleToolError(error, runId) {
+			handleLangchainAsyncError(
+				context,
 				error,
-				runId,
-				parentRunId,
-				tags,
+				NodeConnectionType.AiTool,
+				ioIndexMap.get(runId) ?? 0,
 			);
-			context.addOutputData(NodeConnectionType.AiTool, lastInputIndex, error);
 		},
 	});
 };
