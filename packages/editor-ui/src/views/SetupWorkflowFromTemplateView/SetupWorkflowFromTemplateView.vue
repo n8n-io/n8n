@@ -1,65 +1,66 @@
 <template>
-	<div class="grid">
-		<div class="gridContent">
-			<div class="goBack">
-				<GoBackButton />
-			</div>
-
-			<n8n-heading v-if="isReady" class="title" tag="h1" size="2xlarge"
+	<TemplatesView :goBackEnabled="true">
+		<template #header>
+			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
 				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
 			</n8n-heading>
 			<n8n-loading v-else variant="h1" />
+		</template>
 
-			<div class="notice">
-				<AppsRequiringCredsNotice v-if="isReady" />
-				<n8n-loading v-else variant="p" />
-			</div>
+		<template #content>
+			<div class="grid">
+				<div class="gridContent">
+					<div class="notice">
+						<AppsRequiringCredsNotice v-if="isReady" />
+						<n8n-loading v-else variant="p" />
+					</div>
 
-			<div>
-				<ol v-if="isReady">
-					<SetupTemplateFormStep
-						class="appCredential appCredentialBorder"
-						v-bind:key="credentials.credentialName"
-						v-for="(credentials, index) in setupTemplateStore.credentialUsages"
-						:order="index + 1"
-						:credentials="credentials"
-						:credentialName="credentials.credentialName"
-					/>
-				</ol>
-				<div v-else>
-					<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
-					<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+					<div>
+						<ol v-if="isReady">
+							<SetupTemplateFormStep
+								class="appCredential appCredentialBorder"
+								v-bind:key="credentials.credentialName"
+								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
+								:order="index + 1"
+								:credentials="credentials"
+								:credentialName="credentials.credentialName"
+							/>
+						</ol>
+						<div v-else>
+							<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+							<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+						</div>
+					</div>
+
+					<div class="actions">
+						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
+							$locale.baseText('templateSetup.skip')
+						}}</n8n-link>
+
+						<n8n-tooltip
+							v-if="isReady"
+							:content="buttonTooltip"
+							:disabled="setupTemplateStore.numCredentialsLeft === 0"
+						>
+							<n8n-button
+								:label="$locale.baseText('templateSetup.continue.button')"
+								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
+								@click="setupTemplateStore.createWorkflow($router)"
+							/>
+						</n8n-tooltip>
+						<div v-else>
+							<n8n-loading variant="button" />
+						</div>
+					</div>
 				</div>
 			</div>
-
-			<div class="actions">
-				<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
-					$locale.baseText('templateSetup.skip')
-				}}</n8n-link>
-
-				<n8n-tooltip
-					v-if="isReady"
-					:content="buttonTooltip"
-					:disabled="setupTemplateStore.numCredentialsLeft === 0"
-				>
-					<n8n-button
-						:label="$locale.baseText('templateSetup.continue.button')"
-						:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
-						@click="setupTemplateStore.createWorkflow($router)"
-					/>
-				</n8n-tooltip>
-				<div v-else>
-					<n8n-loading variant="button" />
-				</div>
-			</div>
-		</div>
-	</div>
+		</template>
+	</TemplatesView>
 </template>
 
 <script lang="ts">
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import GoBackButton from '@/components/GoBackButton.vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import N8nLink from 'n8n-design-system/components/N8nLink';
 import { useSetupTemplateStore } from './setupTemplate.store';
@@ -67,12 +68,13 @@ import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { VIEWS } from '@/constants';
+import TemplatesView from '../TemplatesView.vue';
 
 export default defineComponent({
 	name: 'SetupWorkflowFromTemplateView',
 	mixins: [externalHooks],
 	components: {
-		GoBackButton,
+		TemplatesView,
 		N8nHeading,
 		N8nLink,
 		AppsRequiringCredsNotice,
@@ -159,7 +161,7 @@ export default defineComponent({
 }
 
 .gridContent {
-	grid-column: 4 / span 6;
+	grid-column: 3 / span 8;
 
 	@media (max-width: 800px) {
 		grid-column: 3 / span 8;
@@ -185,12 +187,6 @@ export default defineComponent({
 
 .appCredentialBorder:not(:last-of-type) {
 	border-bottom: 1px solid var(--prim-gray-540);
-}
-
-.title {
-	display: flex;
-	flex-direction: column;
-	margin-bottom: var(--spacing-2xl);
 }
 
 .actions {
