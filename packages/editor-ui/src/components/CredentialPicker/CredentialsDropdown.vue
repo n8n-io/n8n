@@ -1,11 +1,11 @@
 <template>
 	<n8n-select
 		size="small"
-		:modelValue="selectedCredentialId"
+		:modelValue="props.selectedCredentialId"
 		@update:modelValue="onCredentialSelected"
 	>
 		<n8n-option
-			v-for="item in credentialOptions"
+			v-for="item in props.credentialOptions"
 			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:key="item.id"
 			:label="item.name"
@@ -26,9 +26,9 @@
 	</n8n-select>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { useI18n } from '@/composables';
 
 export type CredentialOption = {
 	id: string;
@@ -36,42 +36,33 @@ export type CredentialOption = {
 	typeDisplayName: string | undefined;
 };
 
-export default defineComponent({
-	name: 'CredentialsDropdown',
-	props: {
-		credentialType: {
-			type: String,
-			required: true,
-		},
-		credentialOptions: {
-			type: Array as PropType<CredentialOption[]>,
-			required: true,
-		},
-		selectedCredentialId: {
-			type: String,
-			required: false,
-		},
+const props = defineProps({
+	credentialOptions: {
+		type: Array as PropType<CredentialOption[]>,
+		required: true,
 	},
-	emits: {
-		credentialSelected: (_credentialId: string) => true,
-		newCredential: () => true,
-	},
-	data() {
-		return {
-			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
-		};
-	},
-	computed: {},
-	methods: {
-		onCredentialSelected(credentialId: string) {
-			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.$emit('newCredential');
-			} else {
-				this.$emit('credentialSelected', credentialId);
-			}
-		},
+	selectedCredentialId: {
+		type: String,
+		required: false,
 	},
 });
+
+const $emit = defineEmits({
+	credentialSelected: (_credentialId: string) => true,
+	newCredential: () => true,
+});
+
+const i18n = useI18n();
+
+const NEW_CREDENTIALS_TEXT = `- ${i18n.baseText('nodeCredentials.createNew')} -`;
+
+const onCredentialSelected = (credentialId: string) => {
+	if (credentialId === NEW_CREDENTIALS_TEXT) {
+		$emit('newCredential');
+	} else {
+		$emit('credentialSelected', credentialId);
+	}
+};
 </script>
 
 <style lang="scss" module>
