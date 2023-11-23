@@ -57,9 +57,10 @@ function indentLines(code: string, indent: string = '	') {
 		.join('\n');
 }
 
+const importCode = 'import'; // To avoid vite from parsing the import statement
 const commonCode = computed(() => ({
-	import: `import '@n8n/chat/style.css';
-import { createChat } from '@n8n/chat';`,
+	import: `${importCode} '@n8n/chat/style.css';
+${importCode} { createChat } from '@n8n/chat';`,
 	createChat: `createChat({
 	webhookUrl: '${webhookUrl.value}'
 });`,
@@ -69,7 +70,7 @@ import { createChat } from '@n8n/chat';`,
 const cdnCode = computed(
 	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
 <script type="module">
-import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
+${importCode} { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 ${commonCode.value.createChat}
 </${'script'}>`,
@@ -77,7 +78,7 @@ ${commonCode.value.createChat}
 
 const vueCode = computed(
 	() => `<script lang="ts" setup>
-import { onMounted } from 'vue';
+${importCode} { onMounted } from 'vue';
 ${commonCode.value.import}
 
 onMounted(() => {
@@ -87,7 +88,7 @@ ${indentLines(commonCode.value.createChat)}
 );
 
 const reactCode = computed(
-	() => `import { useEffect } from 'react';
+	() => `${importCode} { useEffect } from 'react';
 ${commonCode.value.import}
 
 export const App = () => {
@@ -125,29 +126,38 @@ function closeDialog() {
 				<n8n-tabs :options="tabs" v-model="currentTab" />
 
 				<div v-if="currentTab !== 'cdn'">
-					<n8n-text>
-						{{ i18n.baseText('chatEmbed.install') }}
-					</n8n-text>
+					<div class="mb-s">
+						<n8n-text>
+							{{ i18n.baseText('chatEmbed.install') }}
+						</n8n-text>
+					</div>
 					<CodeNodeEditor :modelValue="commonCode.install" isReadOnly />
 				</div>
 
-				<n8n-text>
-					<i18n-t :keypath="`chatEmbed.paste.${currentTab}`">
-						<template #code>
-							<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
-						</template>
-					</i18n-t>
-				</n8n-text>
+				<div class="mb-s">
+					<n8n-text>
+						<i18n-t :keypath="`chatEmbed.paste.${currentTab}`">
+							<template #code>
+								<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
+							</template>
+						</i18n-t>
+					</n8n-text>
+				</div>
+
 				<HtmlEditor v-if="currentTab === 'cdn'" :modelValue="cdnCode" isReadOnly />
 				<HtmlEditor v-if="currentTab === 'vue'" :modelValue="vueCode" isReadOnly />
 				<CodeNodeEditor v-if="currentTab === 'react'" :modelValue="reactCode" isReadOnly />
 				<CodeNodeEditor v-if="currentTab === 'other'" :modelValue="otherCode" isReadOnly />
 
-				<n8n-info-tip>
+				<n8n-text>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
-					<n8n-link :href="i18n.baseText('chatEmbed.url')" new-window size="small" bold>
+					<n8n-link :href="i18n.baseText('chatEmbed.url')" new-window bold>
 						{{ i18n.baseText('chatEmbed.packageInfo.link') }}
 					</n8n-link>
+				</n8n-text>
+
+				<n8n-info-tip class="mt-s">
+					{{ i18n.baseText('chatEmbed.chatTriggerNode') }}
 				</n8n-info-tip>
 			</div>
 		</template>

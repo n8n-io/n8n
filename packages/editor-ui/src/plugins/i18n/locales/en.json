@@ -156,6 +156,7 @@
 	"chatEmbed.paste.other.file": "main.ts",
 	"chatEmbed.packageInfo.description": "The n8n Chat widget can be easily customized to fit your needs.",
 	"chatEmbed.packageInfo.link": "Read the full documentation",
+	"chatEmbed.chatTriggerNode": "You can use a Chat Trigger Node to embed the chat widget directly into n8n.",
 	"chatEmbed.url": "https://www.npmjs.com/package/{'@'}n8n/chat",
 	"codeEdit.edit": "Edit",
 	"codeNodeEditor.askAi": "✨ Ask AI",
