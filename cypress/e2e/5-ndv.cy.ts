@@ -368,7 +368,7 @@ describe('NDV', () => {
 		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
 	});
 
-	it.only('should show node name and version in settings', () => {
+	it('should show node name and version in settings', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
 
 		workflowPage.actions.openNode('Edit Fields (old)');
