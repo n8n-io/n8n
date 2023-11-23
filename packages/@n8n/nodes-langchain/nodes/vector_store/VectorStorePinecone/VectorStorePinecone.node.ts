@@ -4,16 +4,10 @@ import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
+import { pineconeIndexRLC } from '../shared/descriptions';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
-const sharedFields: INodeProperties[] = [
-	{
-		displayName: 'Pinecone Index',
-		name: 'pineconeIndex',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-];
+const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
 const retrieveFields: INodeProperties[] = [
 	{
@@ -77,6 +71,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 			},
 		],
 	},
+	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,

@@ -11,6 +11,8 @@ import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
+import { pineconeIndexRLC } from '../shared/descriptions';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeInsert implements INodeType {
@@ -63,13 +65,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		],
 		outputs: [NodeConnectionType.Main],
 		properties: [
-			{
-				displayName: 'Pinecone Index',
-				name: 'pineconeIndex',
-				type: 'string',
-				default: '',
-				required: true,
-			},
+			pineconeIndexRLC,
 			{
 				displayName: 'Pinecone Namespace',
 				name: 'pineconeNamespace',
@@ -90,6 +86,12 @@ export class VectorStorePineconeInsert implements INodeType {
 				description: 'Whether to clear the namespace before inserting new data',
 			},
 		],
+	};
+
+	methods = {
+		listSearch: {
+			pineconeIndexSearch,
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
