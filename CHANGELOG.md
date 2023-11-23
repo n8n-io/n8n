@@ -1,3 +1,34 @@
+# [1.18.0](https://github.com/n8n-io/n8n/compare/n8n@1.17.0...n8n@1.18.0) (2023-11-22)
+
+
+### Bug Fixes
+
+* **core:** Account for non-ASCII chars in filename on binary data download ([#7742](https://github.com/n8n-io/n8n/issues/7742)) ([b4ebb1a](https://github.com/n8n-io/n8n/commit/b4ebb1a28dc87c297721299a635e836dcaa273b7))
+* **core:** Correct permissions for getstatus ([#7724](https://github.com/n8n-io/n8n/issues/7724)) ([f96c1d2](https://github.com/n8n-io/n8n/commit/f96c1d204400028c55a2120d0569180379c0649f))
+* **core:** Ensure failed executions are saved in queue mode ([#7744](https://github.com/n8n-io/n8n/issues/7744)) ([b7c5c74](https://github.com/n8n-io/n8n/commit/b7c5c7406f6f978bbd84737de34114e9492ae5f6))
+* **core:** Guard against node not found on cancelling test webhook ([#7750](https://github.com/n8n-io/n8n/issues/7750)) ([6be453b](https://github.com/n8n-io/n8n/commit/6be453b716eff14df420ef565ea1b5ffb3ce73f0))
+* **editor:** Handle permission edge cases (empty scopes) ([#7723](https://github.com/n8n-io/n8n/issues/7723)) ([e2ffd39](https://github.com/n8n-io/n8n/commit/e2ffd397fc0ab8d88128ba78d02c5df003af4a9d))
+* **editor:** Make sure LineController is registered with chart.js ([#7730](https://github.com/n8n-io/n8n/issues/7730)) ([ebee1a5](https://github.com/n8n-io/n8n/commit/ebee1a590873aa56c23fd610616196ee27fe657a))
+* **editor:** Move workerview entry into settings menu ([#7761](https://github.com/n8n-io/n8n/issues/7761)) ([366cd67](https://github.com/n8n-io/n8n/commit/366cd672a74649a19fc927e0327ae7c19ed5a1fc))
+* **editor:** Only show push to git menu item to owners ([#7766](https://github.com/n8n-io/n8n/issues/7766)) ([0d3d33d](https://github.com/n8n-io/n8n/commit/0d3d33dd1f2354248ac341a0c9f2553812f404e0))
+* **editor:** Show v1 banner dismiss button if owner ([#7722](https://github.com/n8n-io/n8n/issues/7722)) ([44d3b3e](https://github.com/n8n-io/n8n/commit/44d3b3ed7ee77715006591a4f49049388fcd4035))
+* **editor:** Use project diagram icon for worker view ([#7764](https://github.com/n8n-io/n8n/issues/7764)) ([ff0b651](https://github.com/n8n-io/n8n/commit/ff0b6511f74831c499ab032910dfa9cf38356e8c))
+* **editor:** Validate user info before submiting ([#7608](https://github.com/n8n-io/n8n/issues/7608)) ([2064f7f](https://github.com/n8n-io/n8n/commit/2064f7f251913a0cc22b4e27bb38df921f711109))
+* **GitHub Node:** Fix issue preventing file edits on branches ([#7734](https://github.com/n8n-io/n8n/issues/7734)) ([ce002a6](https://github.com/n8n-io/n8n/commit/ce002a6cc672d1e13cc3d3470add78781d1ef20e))
+* **Google Sheets Node:** Check for `null` before destructuring ([#7729](https://github.com/n8n-io/n8n/issues/7729)) ([5d4a52d](https://github.com/n8n-io/n8n/commit/5d4a52d3b7e35924e1a8c9a2c808418bdf224d2c))
+* **Item Lists Node:** Don't check same type in remove duplicates operation ([#7678](https://github.com/n8n-io/n8n/issues/7678)) ([4f30764](https://github.com/n8n-io/n8n/commit/4f307646f3a5691331c7c610c62f562921a005f8))
+* **JotForm Trigger Node:** Fix iteration on form loader ([#7751](https://github.com/n8n-io/n8n/issues/7751)) ([82f3202](https://github.com/n8n-io/n8n/commit/82f3202a2de2863f01abe3cf84d6f37eba4fb6fa))
+
+
+### Features
+
+* Add Creator hub link to Templates page ([#7721](https://github.com/n8n-io/n8n/issues/7721)) ([4dbae0e](https://github.com/n8n-io/n8n/commit/4dbae0e2e95d1b5f46cfc50a5a9fc6bb761defde))
+* **core:** Coordinate manual workflow activation and deactivation in multi-main scenario ([#7643](https://github.com/n8n-io/n8n/issues/7643)) ([4c40825](https://github.com/n8n-io/n8n/commit/4c4082503c916d654758da738321f9e78a098ce5)), closes [#7566](https://github.com/n8n-io/n8n/issues/7566)
+* **editor:** Add node context menu ([#7620](https://github.com/n8n-io/n8n/issues/7620)) ([8d12c1a](https://github.com/n8n-io/n8n/commit/8d12c1ad8d9283764647836bdd50224259d506e9))
+* **editor:** Node IO filter ([#7503](https://github.com/n8n-io/n8n/issues/7503)) ([1881765](https://github.com/n8n-io/n8n/commit/18817651ec5d9ed5e774379ae5cf8f57c5461e43))
+
+
+
 # [1.17.0](https://github.com/n8n-io/n8n/compare/n8n@1.16.0...n8n@1.17.0) (2023-11-15)
 
 

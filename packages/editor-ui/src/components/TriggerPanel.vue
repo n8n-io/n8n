@@ -193,7 +193,7 @@ export default defineComponent({
 			return Boolean(this.nodeType?.webhooks?.length);
 		},
 		isPollingNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.polling);
+			return Boolean(this.nodeType?.polling);
 		},
 		isListeningForEvents(): boolean {
 			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;

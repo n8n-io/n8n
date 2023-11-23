@@ -1,16 +1,23 @@
 import { useStorage } from '@/composables/useStorage';
 
-import type { RouteLocation, RouteRecordRaw } from 'vue-router';
+import type {
+	NavigationGuardNext,
+	RouteLocation,
+	RouteRecordRaw,
+	RouteLocationRaw,
+	RouteLocationNormalized,
+} from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import type { IPermissions } from './Interface';
-import { isAuthorized, LOGIN_STATUS, ROLE, runExternalHook } from '@/utils';
+import { ROLE, runExternalHook } from '@/utils';
 import { useSettingsStore } from './stores/settings.store';
-import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
+import { middleware } from '@/rbac/middleware';
+import type { RouteConfig, RouterMiddleware } from '@/types/router';
+import { initializeCore } from '@/init';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -51,20 +58,6 @@ const WorkerView = async () => import('./views/WorkerView.vue');
 const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
-interface IRouteConfig {
-	meta: {
-		nodeView?: boolean;
-		templatesEnabled?: boolean;
-		getRedirect?: () => { name: string } | false;
-		permissions: IPermissions;
-		telemetry?: {
-			disabled?: true;
-			getProperties: (route: RouteLocation) => object;
-		};
-		scrollOffset?: number;
-	};
-}
-
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
@@ -83,11 +76,7 @@ export const routes = [
 			return { name: VIEWS.WORKFLOWS };
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -109,11 +98,7 @@ export const routes = [
 				},
 			},
 			getRedirect: getTemplatesRedirect,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -135,11 +120,7 @@ export const routes = [
 					};
 				},
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -165,11 +146,7 @@ export const routes = [
 			setScrollPosition(pos: number) {
 				this.scrollOffset = pos;
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -180,11 +157,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -194,13 +167,7 @@ export const routes = [
 			default: VariablesView,
 			sidebar: MainSidebar,
 		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
+		meta: { middleware: ['authenticated'] },
 	},
 	{
 		path: '/executions',
@@ -210,11 +177,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -225,11 +188,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -243,13 +202,10 @@ export const routes = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-				deny: {
-					shouldDeny: () =>
-						!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.DebugInEditor],
 				},
 			},
 		},
@@ -264,11 +220,7 @@ export const routes = [
 		},
 		meta: {
 			keepWorkflowAlive: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 		children: [
 			{
@@ -279,11 +231,7 @@ export const routes = [
 				},
 				meta: {
 					keepWorkflowAlive: true,
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-					},
+					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -294,11 +242,7 @@ export const routes = [
 				},
 				meta: {
 					keepWorkflowAlive: true,
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-					},
+					middleware: ['authenticated'],
 				},
 			},
 		],
@@ -311,15 +255,10 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-				deny: {
-					shouldDeny: () =>
-						!useSettingsStore().isEnterpriseFeatureEnabled(
-							EnterpriseEditionFeature.WorkflowHistory,
-						),
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
 				},
 			},
 		},
@@ -336,11 +275,7 @@ export const routes = [
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -355,11 +290,7 @@ export const routes = [
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -373,11 +304,7 @@ export const routes = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -387,11 +314,7 @@ export const routes = [
 			default: NodeView,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -405,11 +328,7 @@ export const routes = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -426,11 +345,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
-			},
+			middleware: ['guest'],
 		},
 	},
 	{
@@ -443,11 +358,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
-			},
+			middleware: ['guest'],
 		},
 	},
 	{
@@ -460,11 +371,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -474,13 +381,12 @@ export const routes = [
 			default: SetupView,
 		},
 		meta: {
+			middleware: ['role'],
+			middlewareOptions: {
+				role: [ROLE.Default],
+			},
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					role: [ROLE.Default],
-				},
 			},
 		},
 	},
@@ -491,13 +397,9 @@ export const routes = [
 			default: ForgotMyPasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
 			},
 		},
 	},
@@ -508,13 +410,9 @@ export const routes = [
 			default: ChangePasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
 			},
 		},
 	},
@@ -530,26 +428,22 @@ export const routes = [
 					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !(
+								settingsStore.settings.hideUsagePage ||
+								settingsStore.settings.deployment?.type === 'cloud'
+							);
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'usage',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return (
-									settingsStore.settings.hideUsagePage ||
-									settingsStore.settings.deployment?.type === 'cloud'
-								);
-							},
 						},
 					},
 				},
@@ -561,20 +455,16 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner, ROLE.Member],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'personal',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							role: [ROLE.Default],
 						},
 					},
 				},
@@ -586,17 +476,16 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'users',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -608,23 +497,19 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isPublicApiEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'api',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return !settingsStore.isPublicApiEnabled;
-							},
 						},
 					},
 				},
@@ -636,17 +521,16 @@ export const routes = [
 					settingsView: SettingsSourceControl,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'environments',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -658,17 +542,16 @@ export const routes = [
 					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'external-secrets',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -680,23 +563,20 @@ export const routes = [
 					settingsView: SettingsSso,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !settingsStore.isDesktopDeployment;
+						},
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'sso',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isDesktopDeployment;
-							},
 						},
 					},
 				},
@@ -708,16 +588,12 @@ export const routes = [
 					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
 					},
 				},
 			},
@@ -728,11 +604,7 @@ export const routes = [
 					settingsView: WorkerView,
 				},
 				meta: {
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-					},
+					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -742,19 +614,16 @@ export const routes = [
 					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isCommunityNodesFeatureEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return !settingsStore.isCommunityNodesFeatureEnabled;
-							},
-						},
 					},
 				},
 			},
@@ -765,17 +634,13 @@ export const routes = [
 					settingsView: SettingsFakeDoorView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: route.params.featureId,
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
 						},
 					},
 				},
@@ -787,13 +652,9 @@ export const routes = [
 					settingsView: SettingsLdapView,
 				},
 				meta: {
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner],
 					},
 				},
 			},
@@ -804,20 +665,19 @@ export const routes = [
 					settingsView: SettingsAuditLogs,
 				},
 				meta: {
+					middleware: ['authenticated', 'role', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							return !!useStorage('audit-logs').value;
+						},
+						role: [ROLE.Owner],
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'audit-logs',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => !useStorage('audit-logs').value,
 						},
 					},
 				},
@@ -831,24 +691,20 @@ export const routes = [
 			default: SamlOnboarding,
 		},
 		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					const settingsStore = useSettingsStore();
+					const ssoStore = useSSOStore();
+					return (
+						ssoStore.isEnterpriseSamlEnabled &&
+						!settingsStore.isCloudDeployment &&
+						!settingsStore.isDesktopDeployment
+					);
+				},
+			},
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						const ssoStore = useSSOStore();
-						return (
-							!ssoStore.isEnterpriseSamlEnabled ||
-							settingsStore.isCloudDeployment ||
-							settingsStore.isDesktopDeployment
-						);
-					},
-				},
 			},
 		},
 	},
@@ -867,21 +723,15 @@ export const routes = [
 			telemetry: {
 				disabled: true,
 			},
-			permissions: {
-				allow: {
-					// TODO: Once custom permissions are merged, this needs to be updated with index validation
-					loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
-				},
-			},
 		},
 	},
-] as Array<RouteRecordRaw & IRouteConfig>;
+] as Array<RouteRecordRaw & RouteConfig>;
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
-	scrollBehavior(to, from, savedPosition) {
+	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
-		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
+		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
 			// for templates view, reset scroll position in this case
 			to.meta.setScrollPosition(0);
 		}
@@ -889,19 +739,19 @@ const router = createRouter({
 	routes,
 });
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {
 	/**
-	 * Initialize stores before routing
+	 * Initialize application core
+	 * This step executes before first route is loaded and is required for permission checks
 	 */
 
-	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
-	await usersStore.initialize();
+	await initializeCore();
 
 	/**
 	 * Redirect to setup page. User should be redirected to this only once
 	 */
 
+	const settingsStore = useSettingsStore();
 	if (settingsStore.showSetupPage) {
 		if (to.name === VIEWS.SETUP) {
 			return next();
@@ -914,41 +764,25 @@ router.beforeEach(async (to, from, next) => {
 	 * Verify user permissions for current route
 	 */
 
-	const currentUser = usersStore.currentUser;
-	const permissions = to.meta?.permissions as IPermissions;
-	const canUserAccessCurrentRoute = permissions && isAuthorized(permissions, currentUser);
-	if (canUserAccessCurrentRoute) {
-		return next();
-	}
+	const routeMiddleware = to.meta?.middleware ?? [];
+	const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
+	for (const middlewareName of routeMiddleware) {
+		let nextCalled = false;
+		const middlewareNext = ((location: RouteLocationRaw): void => {
+			next(location);
+			nextCalled = true;
+		}) as NavigationGuardNext;
 
-	/**
-	 * If user cannot access the page and is not logged in, redirect to sign in
-	 */
+		const middlewareOptions = routeMiddlewareOptions[middlewareName];
+		const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
+		await middlewareFn(to, from, middlewareNext, middlewareOptions);
 
-	if (!currentUser) {
-		const redirect =
-			to.query.redirect ||
-			encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-		return next({ name: VIEWS.SIGNIN, query: { redirect } });
-	}
-
-	/**
-	 * If user cannot access page but is logged in, respect sign in redirect
-	 */
-
-	if (to.name === VIEWS.SIGNIN && typeof to.query.redirect === 'string') {
-		const redirect = decodeURIComponent(to.query.redirect);
-		if (redirect.startsWith('/')) {
-			// protect against phishing
-			return next(redirect);
+		if (nextCalled) {
+			return;
 		}
 	}
 
-	/**
-	 * Otherwise, redirect to home page
-	 */
-
-	return next({ name: VIEWS.HOMEPAGE });
+	return next();
 });
 
 router.afterEach((to, from) => {
