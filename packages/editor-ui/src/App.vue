@@ -56,6 +56,7 @@ import {
 	useCloudPlanStore,
 	useSourceControlStore,
 	useUsageStore,
+	usePushConnectionStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
@@ -92,6 +93,7 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
+			usePushConnectionStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -120,6 +122,7 @@ export default defineComponent({
 		void initializeAuthenticatedFeatures();
 
 		void runExternalHook('app.mount');
+		this.pushStore.pushConnect();
 		this.loading = false;
 	},
 	watch: {
