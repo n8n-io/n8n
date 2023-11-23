@@ -13,13 +13,13 @@ export class ExternalSecretsController {
 	constructor(private readonly secretsService: ExternalSecretsService) {}
 
 	@Get('/providers')
-	@RequireGlobalScope('externalSecretsStore:list')
+	@RequireGlobalScope('externalSecretsProvider:list')
 	async getProviders() {
 		return this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')
-	@RequireGlobalScope('externalSecretsStore:read')
+	@RequireGlobalScope('externalSecretsProvider:read')
 	async getProvider(req: ExternalSecretsRequest.GetProvider) {
 		const providerName = req.params.provider;
 		try {
@@ -33,7 +33,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/test')
-	@RequireGlobalScope('externalSecretsStore:read')
+	@RequireGlobalScope('externalSecretsProvider:read')
 	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
 		try {
@@ -53,7 +53,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider')
-	@RequireGlobalScope('externalSecretsStore:create')
+	@RequireGlobalScope('externalSecretsProvider:create')
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;
 		try {
@@ -68,7 +68,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/connect')
-	@RequireGlobalScope('externalSecretsStore:update')
+	@RequireGlobalScope('externalSecretsProvider:update')
 	async setProviderConnected(req: ExternalSecretsRequest.SetProviderConnected) {
 		const providerName = req.params.provider;
 		try {
@@ -83,7 +83,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/update')
-	@RequireGlobalScope('externalSecretsStore:update')
+	@RequireGlobalScope('externalSecretsProvider:sync')
 	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
 		try {

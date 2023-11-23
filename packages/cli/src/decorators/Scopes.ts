@@ -2,7 +2,6 @@ import type { Scope, ScopeOptions } from '@n8n/permissions';
 import type { ScopeMetadata } from './types';
 import { CONTROLLER_REQUIRED_SCOPES } from './constants';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const RequireGlobalScope = (scope: Scope | Scope[], scopeOptions?: ScopeOptions) => {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	return (target: Function | Object, handlerName?: string) => {

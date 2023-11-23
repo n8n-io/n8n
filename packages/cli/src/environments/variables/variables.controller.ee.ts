@@ -17,16 +17,12 @@ import {
 	VariablesLicenseError,
 	VariablesValidationError,
 } from './variables.service.ee';
-import { Logger } from '@/Logger';
 
 @Service()
 @Authorized()
 @RestController('/variables')
 export class VariablesController {
-	constructor(
-		private variablesService: VariablesService,
-		private logger: Logger,
-	) {}
+	constructor(private variablesService: VariablesService) {}
 
 	@Get('/')
 	@RequireGlobalScope('variable:list')

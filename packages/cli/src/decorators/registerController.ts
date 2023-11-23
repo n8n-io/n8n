@@ -112,9 +112,9 @@ export const registerController = (app: Application, config: Config, cObj: objec
 
 		routes.forEach(
 			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
-				const authRole = authRoles && (authRoles[handlerName] ?? authRoles['*']);
-				const features = licenseFeatures && (licenseFeatures[handlerName] ?? licenseFeatures['*']);
-				const scopes = requiredScopes && (requiredScopes[handlerName] ?? requiredScopes['*']);
+				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
+				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
+				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
 				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
 				router[method](
 					path,

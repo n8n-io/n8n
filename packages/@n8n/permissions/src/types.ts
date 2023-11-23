@@ -6,7 +6,7 @@ export type Resource =
 	| 'credential'
 	| 'variable'
 	| 'sourceControl'
-	| 'externalSecretsStore'
+	| 'externalSecretsProvider'
 	| 'externalSecret'
 	| 'eventBusEvent'
 	| 'eventBusDestination'
@@ -27,8 +27,8 @@ export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword
 export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
-export type ExternalSecretStoreScope = ResourceScope<
-	'externalSecretsStore',
+export type ExternalSecretProviderScope = ResourceScope<
+	'externalSecretsProvider',
 	DefaultOperations | 'sync'
 >;
 export type ExternalSecretScope = ResourceScope<'externalSecret', 'list'>;
@@ -52,7 +52,7 @@ export type Scope =
 	| CredentialScope
 	| VariableScope
 	| SourceControlScope
-	| ExternalSecretStoreScope
+	| ExternalSecretProviderScope
 	| ExternalSecretScope
 	| EventBusEventScope
 	| EventBusDestinationScope
