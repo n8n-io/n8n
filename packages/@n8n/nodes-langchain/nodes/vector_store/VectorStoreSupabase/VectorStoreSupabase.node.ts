@@ -67,7 +67,9 @@ export const VectorStoreSupabase = createVectorStoreNode({
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			queryName: string;
 		};
@@ -82,7 +84,9 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		});
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			queryName: string;
 		};

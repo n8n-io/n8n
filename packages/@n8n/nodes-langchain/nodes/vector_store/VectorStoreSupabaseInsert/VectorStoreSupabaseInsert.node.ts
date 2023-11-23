@@ -97,7 +97,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		this.logger.verbose('Executing data for Supabase Insert Vector Store');
 
 		const items = this.getInputData(0);
-		const tableName = this.getNodeParameter('tableName', 0) as string;
+		const tableName = this.getNodeParameter('tableName', 0, '', { extractValue: true }) as string;
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 

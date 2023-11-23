@@ -77,7 +77,9 @@ export const VectorStorePinecone = createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 		};
@@ -98,7 +100,9 @@ export const VectorStorePinecone = createVectorStoreNode({
 		return PineconeStore.fromExistingIndex(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 			clearNamespace?: boolean;

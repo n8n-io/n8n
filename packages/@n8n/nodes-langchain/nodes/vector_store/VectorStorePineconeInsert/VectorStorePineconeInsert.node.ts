@@ -99,7 +99,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		this.logger.verbose('Executing data for Pinecone Insert Vector Store');
 
 		const namespace = this.getNodeParameter('pineconeNamespace', 0) as string;
-		const index = this.getNodeParameter('pineconeIndex', 0) as string;
+		const index = this.getNodeParameter('pineconeIndex', 0, '', { extractValue: true }) as string;
 		const clearNamespace = this.getNodeParameter('clearNamespace', 0) as boolean;
 
 		const credentials = await this.getCredentials('pineconeApi');
