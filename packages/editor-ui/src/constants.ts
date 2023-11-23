@@ -567,6 +567,7 @@ export const enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
+	RBAC = 'rbac',
 	COLLABORATION = 'collaboration',
 	PUSH = 'push',
 }

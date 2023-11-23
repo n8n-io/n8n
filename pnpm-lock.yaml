@@ -850,6 +850,9 @@ importers:
       '@n8n/codemirror-lang-sql':
         specifier: ^1.0.2
         version: 1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../@n8n/permissions
       '@vueuse/components':
         specifier: ^10.5.0
         version: 10.5.0(vue@3.3.4)
