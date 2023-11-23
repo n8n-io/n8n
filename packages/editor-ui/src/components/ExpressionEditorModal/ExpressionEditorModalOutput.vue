@@ -78,7 +78,7 @@ export default defineComponent({
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
 							: segment.resolved
-							? (segment.resolved as any).toString().length
+							? segment.resolved.toString().length
 							: 0;
 
 					segment.to = cursor;
