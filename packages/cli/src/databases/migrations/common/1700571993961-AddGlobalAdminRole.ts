@@ -14,7 +14,7 @@ export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 		const roleTableName = escape.tableName('role');
 		const userTableName = escape.tableName('user');
 
-		const adminRoleIdResult: Array<{ id: number }> = await runQuery(
+		const adminRoleIdResult = await runQuery<Array<{ id: number }>>(
 			`SELECT id FROM ${roleTableName} WHERE name = :name AND scope = :scope`,
 			{
 				name: 'admin',
@@ -22,7 +22,7 @@ export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 			},
 		);
 
-		const memberRoleIdResult: Array<{ id: number }> = await runQuery(
+		const memberRoleIdResult = await runQuery<Array<{ id: number }>>(
 			`SELECT id FROM ${roleTableName} WHERE name = :name AND scope = :scope`,
 			{
 				name: 'member',
@@ -31,7 +31,7 @@ export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 		);
 
 		const adminRoleId = adminRoleIdResult[0]?.id;
-		if (!adminRoleId) {
+		if (adminRoleId === undefined) {
 			// Couldn't find admin role. It's a bit odd but it means we don't
 			// have anything to do.
 			return;
@@ -39,7 +39,7 @@ export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 
 		const memberRoleId = memberRoleIdResult[0]?.id;
 		if (!memberRoleId) {
-			throw Error('Could not find global member role!');
+			throw new Error('Could not find global member role!');
 		}
 
 		await runQuery(
