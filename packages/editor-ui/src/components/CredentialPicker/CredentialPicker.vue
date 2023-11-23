@@ -62,6 +62,8 @@ export default defineComponent({
 	emits: {
 		credentialSelected: (_credentialId: string) => true,
 		credentialDeselected: () => true,
+		openCreateCredentialModal: () => true,
+		openEditCredentialModal: () => true,
 	},
 	data() {
 		return {
@@ -91,10 +93,12 @@ export default defineComponent({
 			}
 		},
 		createNewCredential() {
+			this.$emit('openCreateCredentialModal');
 			this.uiStore.openNewCredential(this.credentialType, true);
 		},
 		editCredential() {
 			assert(this.selectedCredentialId);
+			this.$emit('openEditCredentialModal');
 			this.uiStore.openExistingCredential(this.selectedCredentialId);
 		},
 	},

@@ -27,6 +27,20 @@
 				:selectedCredentialId="selectedCredentialId"
 				@credential-selected="onCredentialSelected"
 				@credential-deselected="onCredentialDeselected"
+				@open-create-credential-modal="
+					setupTemplateStore.trackUserOpenedCredentialModal({
+						$telemetry,
+						credentialType,
+						newCredential: true,
+					})
+				"
+				@open-edit-credential-modal="
+					setupTemplateStore.trackUserOpenedCredentialModal({
+						$telemetry,
+						credentialType,
+						newCredential: false,
+					})
+				"
 			/>
 
 			<IconSuccess

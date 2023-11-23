@@ -228,6 +228,62 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 
 	//#endregion Getters
 
+	//#region Telemetry
+
+	const trackUserOpenedCredentialSetup = ($telemetry: Telemetry) => {
+		const telemetryPayload = {
+			template_id: templateId.value,
+			wf_template_repo_session_id: templatesStore.currentSessionId,
+		};
+
+		$telemetry.track('User opened credential setup', telemetryPayload, {
+			withPostHog: true,
+		});
+	};
+
+	const trackUserClosedCredentialSetup = (opts: { $telemetry: Telemetry; completed: boolean }) => {
+		const { $telemetry, completed } = opts;
+
+		$telemetry.track('User closed credential setup', {
+			template_id: templateId.value,
+			wf_template_repo_session_id: templatesStore.currentSessionId,
+			completed,
+		});
+		$telemetry.track(
+			'User inserted workflow template',
+			{
+				source: 'workflow',
+				template_id: templateId.value,
+				wf_template_repo_session_id: templatesStore.currentSessionId,
+			},
+			{
+				withPostHog: true,
+			},
+		);
+	};
+
+	const trackUserOpenedCredentialModal = (opts: {
+		$telemetry: Telemetry;
+		credentialType: string;
+		newCredential: boolean;
+	}) => {
+		const { $telemetry, credentialType, newCredential } = opts;
+
+		$telemetry.track(
+			'User opened Credential modal',
+			{
+				source: 'cred_setup',
+				credential_type: credentialType,
+				new_credential: newCredential,
+			},
+			{
+				withPostHog: true,
+			},
+		);
+	};
+
+	//#endregion Telemetry
+
 	//#region Actions
 
 	const setTemplateId = (id: string) => {
@@ -280,9 +336,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		};
 
 		await $externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-		$telemetry.track('User inserted workflow template', telemetryPayload, {
-			withPostHog: true,
-		});
+		trackUserClosedCredentialSetup({ $telemetry, completed: false });
 
 		// Replace the URL so back button doesn't come back to this setup view
 		await $router.replace({
@@ -294,7 +348,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Creates a workflow from the template and navigates to the workflow view.
 	 */
-	const createWorkflow = async ($router: Router) => {
+	const createWorkflow = async (opts: { $router: Router; $telemetry: Telemetry }) => {
+		const { $router, $telemetry } = opts;
 		if (!template.value) {
 			return;
 		}
@@ -308,6 +363,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				rootStore,
 				workflowsStore,
 			);
+
+			trackUserClosedCredentialSetup({ $telemetry, completed: true });
 
 			// Replace the URL so back button doesn't come back to this setup view
 			await $router.replace({
@@ -346,5 +403,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
+		trackUserOpenedCredentialSetup,
+		trackUserOpenedCredentialModal,
 	};
 });

@@ -45,7 +45,7 @@
 							<n8n-button
 								:label="$locale.baseText('templateSetup.continue.button')"
 								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
-								@click="setupTemplateStore.createWorkflow($router)"
+								@click="setupTemplateStore.createWorkflow({ $router, $telemetry })"
 								data-test-id="continue-button"
 							/>
 						</n8n-tooltip>
@@ -148,6 +148,8 @@ export default defineComponent({
 	async mounted() {
 		await this.setupTemplateStore.init();
 		await this.skipIfTemplateHasNoCreds();
+
+		this.setupTemplateStore.trackUserOpenedCredentialSetup(this.$telemetry);
 	},
 });
 </script>

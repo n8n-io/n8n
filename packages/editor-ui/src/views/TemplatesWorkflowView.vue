@@ -97,17 +97,6 @@ export default defineComponent({
 	},
 	methods: {
 		openTemplateSetup(id: string, e: PointerEvent) {
-			const telemetryPayload = {
-				source: 'workflow',
-				template_id: id,
-				wf_template_repo_session_id: this.templatesStore.currentSessionId,
-			};
-
-			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-				withPostHog: true,
-			});
-
 			if (isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
 				if (e.metaKey || e.ctrlKey) {
 					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
@@ -117,6 +106,17 @@ export default defineComponent({
 					void this.$router.push({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
 				}
 			} else {
+				const telemetryPayload = {
+					source: 'workflow',
+					template_id: id,
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
+				};
+
+				void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+					withPostHog: true,
+				});
+
 				if (e.metaKey || e.ctrlKey) {
 					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 					window.open(route.href, '_blank');
