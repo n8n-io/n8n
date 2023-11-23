@@ -152,7 +152,7 @@ export class LmOllama implements INodeType {
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			...options,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

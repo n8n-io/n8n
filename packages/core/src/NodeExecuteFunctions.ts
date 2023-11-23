@@ -2532,7 +2532,7 @@ const executionLoggingFunctions = (
 	executionTracesController?: ExecutionTracesController,
 ): Pick<IExecuteFunctions, 'addNodeExecutionTrace'> => ({
 	addNodeExecutionTrace: (message: ExecutionTrace) => {
-		console.log('Add Node Execution Log', message);
+		// console.log('Add Node Execution Log', message);
 		if (!executionTracesController) {
 			console.log('Execution Logs Controller not available');
 			return;

@@ -217,7 +217,7 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { WikipediaQueryRun } from 'langchain/tools';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { ToolWithCallbacks } from '../../../utils/baseClasses/ToolWithCallbacks';
 
 export class ToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,12 +39,60 @@ export class ToolWikipedia implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
-		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
+		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Base URL',
+						name: 'baseUrl',
+						type: 'string',
+						default: 'https://en.wikipedia.org/w/api.php',
+						description: 'Base URL of the Wikipedia API',
+					},
+					{
+						displayName: 'Top K Results',
+						name: 'topKResults',
+						type: 'number',
+						default: 3,
+						description: 'Number of results to return',
+					},
+					{
+						displayName: 'Max Doc Content Length',
+						name: 'maxDocContentLength',
+						type: 'number',
+						default: 4000,
+						description: 'Maximum length of the document content to return',
+					},
+				],
+			},
+		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+		const options = this.getNodeParameter('options', itemIndex, {
+			baseUrl: 'https://en.wikipedia.org/w/api.php',
+			maxDocContentLength: 4000,
+			topKResults: 3,
+		}) as {
+			baseUrl: string;
+			maxDocContentLength: number;
+			topKResults: number;
+		};
+
+		const wikipediaToolWrapped = new ToolWithCallbacks(this, WikipediaQueryRun, {
+			baseUrl: options.baseUrl,
+			maxDocContentLength: options.maxDocContentLength,
+			topKResults: options.topKResults,
+		});
+
 		return {
-			response: logWrapper(new WikipediaQueryRun(), this),
+			response: wikipediaToolWrapped.getToolInstance(),
 		};
 	}
 }

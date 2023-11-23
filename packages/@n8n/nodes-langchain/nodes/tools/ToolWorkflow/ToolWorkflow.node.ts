@@ -17,6 +17,7 @@ import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getToolCallbacks } from '../../../utils/callbacks';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -376,9 +377,9 @@ export class ToolWorkflow implements INodeType {
 			response: new DynamicTool({
 				name,
 				description,
-
+				callbacks: getToolCallbacks(this),
 				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+					// const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
@@ -409,11 +410,11 @@ export class ToolWorkflow implements INodeType {
 						response = `There was an error: "${executionError.message}"`;
 					}
 
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
+					// if (executionError) {
+					// 	void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+					// } else {
+					// 	void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+					// }
 					return response;
 				},
 			}),

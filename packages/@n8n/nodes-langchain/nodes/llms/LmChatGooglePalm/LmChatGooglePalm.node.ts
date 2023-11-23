@@ -157,7 +157,7 @@ export class LmChatGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

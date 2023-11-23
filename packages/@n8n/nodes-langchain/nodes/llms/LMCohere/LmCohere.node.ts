@@ -98,7 +98,7 @@ export class LmCohere implements INodeType {
 		const model = new Cohere({
 			apiKey: credentials.apiKey as string,
 			...options,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

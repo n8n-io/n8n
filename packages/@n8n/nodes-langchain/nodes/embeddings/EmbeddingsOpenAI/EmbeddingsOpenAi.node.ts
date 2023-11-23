@@ -9,8 +9,8 @@ import {
 
 import type { ClientOptions } from 'openai';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { EmbeddingsWrapper } from '../../../utils/baseClasses/EmbeddingsWrapper';
 
 export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,7 +94,6 @@ export class EmbeddingsOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings');
 		const credentials = await this.getCredentials('openAiApi');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -122,7 +121,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		);
 
 		return {
-			response: logWrapper(embeddings, this),
+			response: new EmbeddingsWrapper(this, embeddings),
 		};
 	}
 }

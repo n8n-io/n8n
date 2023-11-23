@@ -133,7 +133,7 @@ export class LmChatAnthropic implements INodeType {
 			anthropicApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

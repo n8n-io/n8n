@@ -156,7 +156,7 @@ export class LmChatAwsBedrock implements INodeType {
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

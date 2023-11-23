@@ -15,7 +15,7 @@ export class WorkflowExecutionTracer implements ExecutionTracesController {
 	}
 
 	addTrace(nodeName: string, log: unknown) {
-		console.log('WorkflowExecutionTracer.addTrade', JSON.stringify(log, null, 2));
+		// console.log('WorkflowExecutionTracer.addTrade', JSON.stringify(log, null, 2));
 
 		this.executionTraces.push({
 			log,

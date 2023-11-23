@@ -6,7 +6,6 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { Tool } from 'langchain/tools';
 import type { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
 import { BaseChatMessageHistory } from 'langchain/schema';
 import { BaseChatModel } from 'langchain/chat_models/base';
@@ -106,7 +105,6 @@ export function callMethodSync<T>(
 
 export function logWrapper(
 	originalInstance:
-		| Tool
 		| BaseChatModel
 		| BaseChatMemory
 		| BaseLLM
@@ -442,27 +440,27 @@ export function logWrapper(
 			}
 
 			// ========== Tool ==========
-			if (originalInstance instanceof Tool) {
-				if (prop === '_call' && '_call' in target) {
-					return async (query: string): Promise<string> => {
-						connectionType = NodeConnectionType.AiTool;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { query } }],
-						]);
+			// if (originalInstance instanceof Tool) {
+			// 	if (prop === '_call' && '_call' in target) {
+			// 		return async (query: string): Promise<string> => {
+			// 			connectionType = NodeConnectionType.AiTool;
+			// 			const { index } = executeFunctions.addInputData(connectionType, [
+			// 				[{ json: { query } }],
+			// 			]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [query],
-						})) as string;
+			// 			const response = (await callMethodAsync.call(target, {
+			// 				executeFunctions,
+			// 				connectionType,
+			// 				currentNodeRunIndex: index,
+			// 				method: target[prop],
+			// 				arguments: [query],
+			// 			})) as string;
 
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-						return response;
-					};
-				}
-			}
+			// 			executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+			// 			return response;
+			// 		};
+			// 	}
+			// }
 
 			// ========== VectorStore ==========
 			if (originalInstance instanceof VectorStore) {

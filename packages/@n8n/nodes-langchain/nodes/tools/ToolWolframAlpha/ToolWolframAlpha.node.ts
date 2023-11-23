@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { WolframAlphaTool } from 'langchain/tools';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getToolCallbacks } from '../../../utils/callbacks';
 
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,11 +48,14 @@ export class ToolWolframAlpha implements INodeType {
 		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('wolframAlphaApi');
 
 		return {
-			response: logWrapper(new WolframAlphaTool({ appid: credentials.appId as string }), this),
+			response: new WolframAlphaTool({
+				appid: credentials.appId as string,
+				callbacks: getToolCallbacks(this),
+			}),
 		};
 	}
 }

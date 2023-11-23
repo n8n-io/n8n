@@ -14,6 +14,8 @@ import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
 import { DynamicTool } from 'langchain/tools';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getToolCallbacks } from '../../../utils/callbacks';
+import { ToolWithCallbacks } from '../../../utils/baseClasses/ToolWithCallbacks';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,44 +168,39 @@ export class ToolCode implements INodeType {
 			return sandbox.runCode() as Promise<string>;
 		};
 
+		const payload = {
+			name,
+			description,
+			callbacks: getToolCallbacks(this),
+
+			func: async (query: string): Promise<string> => {
+				let response: string = '';
+				let executionError: ExecutionError | undefined;
+				try {
+					response = await runFunction(query);
+				} catch (error: unknown) {
+					executionError = error as ExecutionError;
+					response = `There was an error: "${executionError.message}"`;
+				}
+
+				if (typeof response === 'number') {
+					response = (response as number).toString();
+				}
+
+				if (typeof response !== 'string') {
+					// TODO: Do some more testing. Issues here should actually fail the workflow
+					executionError = new NodeOperationError(
+						this.getNode(),
+						`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
+					);
+					response = `There was an error: "${executionError.message}"`;
+				}
+
+				return response;
+			},
+		};
 		return {
-			response: new DynamicTool({
-				name,
-				description,
-
-				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
-					let response: string = '';
-					let executionError: ExecutionError | undefined;
-					try {
-						response = await runFunction(query);
-					} catch (error: unknown) {
-						executionError = error as ExecutionError;
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (typeof response === 'number') {
-						response = (response as number).toString();
-					}
-
-					if (typeof response !== 'string') {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(
-							this.getNode(),
-							`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
-						);
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
-					return response;
-				},
-			}),
+			response: new ToolWithCallbacks(this, DynamicTool, payload).getToolInstance(),
 		};
 	}
 }

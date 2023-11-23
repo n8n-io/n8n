@@ -65,6 +65,7 @@ export class RoutingNode {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 	) {
+		console.log('Before constructor ');
 		this.additionalData = additionalData;
 		this.connectionInputData = connectionInputData;
 		this.runExecutionData = runExecutionData;

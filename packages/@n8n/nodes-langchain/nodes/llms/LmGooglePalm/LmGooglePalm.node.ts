@@ -164,7 +164,7 @@ export class LmGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
-			callbacks: getLlmInputOutputCallbacks(this, itemIndex),
+			callbacks: getLlmInputOutputCallbacks(this),
 		});
 
 		return {

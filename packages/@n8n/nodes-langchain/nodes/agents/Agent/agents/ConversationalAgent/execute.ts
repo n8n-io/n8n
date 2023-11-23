@@ -12,6 +12,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import { getToolCallbacks } from '../../../../../utils/callbacks';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -51,6 +52,7 @@ export async function conversationalAgentExecute(
 		agentType: 'chat-conversational-react-description',
 		memory,
 		maxIterations: options.maxIterations ?? 10,
+		callbacks: getToolCallbacks(this),
 		agentArgs: {
 			systemMessage: options.systemMessage,
 			humanMessage: options.humanMessage,

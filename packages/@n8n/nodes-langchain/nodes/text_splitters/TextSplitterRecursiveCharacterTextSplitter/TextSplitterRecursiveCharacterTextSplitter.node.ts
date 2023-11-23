@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 import type { RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { createTracedSplitter } from '../../../utils/baseClasses/TextSplitterWrapper';
 
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,7 +74,8 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		const splitter = new RecursiveCharacterTextSplitter(params);
 
 		return {
-			response: logWrapper(splitter, this),
+			response: createTracedSplitter(this, splitter),
+			// response: createTracedSplitter(this, splitter),
 		};
 	}
 }

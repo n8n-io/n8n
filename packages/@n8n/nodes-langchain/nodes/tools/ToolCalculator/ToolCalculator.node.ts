@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { Calculator } from 'langchain/tools/calculator';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { ToolWithCallbacks } from '../../../utils/baseClasses/ToolWithCallbacks';
 
 export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,9 +42,9 @@ export class ToolCalculator implements INodeType {
 		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		return {
-			response: logWrapper(new Calculator(), this),
+			response: new ToolWithCallbacks(this, Calculator).getToolInstance(),
 		};
 	}
 }

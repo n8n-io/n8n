@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { SerpAPI } from 'langchain/tools';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { ToolWithCallbacks } from '../../../utils/baseClasses/ToolWithCallbacks';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -117,8 +117,10 @@ export class ToolSerpApi implements INodeType {
 
 		const options = this.getNodeParameter('options', itemIndex) as object;
 
+		const serpApi = new ToolWithCallbacks(this, SerpAPI, credentials.apiKey as string, options);
+
 		return {
-			response: logWrapper(new SerpAPI(credentials.apiKey as string, options), this),
+			response: serpApi.getToolInstance(),
 		};
 	}
 }
