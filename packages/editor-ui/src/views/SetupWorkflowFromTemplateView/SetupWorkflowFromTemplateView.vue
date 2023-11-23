@@ -8,9 +8,9 @@
 		</template>
 
 		<template #content>
-			<div class="grid">
-				<div class="gridContent">
-					<div class="notice">
+			<div :class="$style.grid">
+				<div :class="$style.gridContent">
+					<div :class="$style.notice">
 						<AppsRequiringCredsNotice v-if="isReady" />
 						<n8n-loading v-else variant="p" />
 					</div>
@@ -18,7 +18,7 @@
 					<div>
 						<ol v-if="isReady">
 							<SetupTemplateFormStep
-								class="appCredential appCredentialBorder"
+								:class="[$style.appCredential, $style.appCredentialBorder]"
 								v-bind:key="credentials.credentialName"
 								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
 								:order="index + 1"
@@ -27,12 +27,20 @@
 							/>
 						</ol>
 						<div v-else>
-							<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
-							<n8n-loading class="appCredential appCredentialBorder" variant="p" :rows="3" />
+							<n8n-loading
+								:class="[$style.appCredential, $style.appCredentialBorder]"
+								variant="p"
+								:rows="3"
+							/>
+							<n8n-loading
+								:class="[$style.appCredential, $style.appCredentialBorder]"
+								variant="p"
+								:rows="3"
+							/>
 						</div>
 					</div>
 
-					<div class="actions">
+					<div :class="$style.actions">
 						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
 							$locale.baseText('templateSetup.skip')
 						}}</n8n-link>
@@ -151,9 +159,8 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
 .grid {
-	flex: 1;
 	display: grid;
 	grid-template-columns: repeat(12, 1fr);
 	padding: var(--spacing-l) var(--spacing-l) 0;
@@ -170,10 +177,6 @@ export default defineComponent({
 	@media (max-width: 640px) {
 		grid-column: 2 / span 10;
 	}
-}
-
-.goBack {
-	margin-bottom: var(--spacing-2xs);
 }
 
 .notice {

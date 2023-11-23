@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div v-if="credentialOptions.length > 0" class="dropdown">
+		<div v-if="credentialOptions.length > 0" :class="$style.dropdown">
 			<CredentialsDropdown
 				:credential-type="credentialType"
 				:credential-options="credentialOptions"
@@ -13,8 +13,8 @@
 				icon="pen"
 				type="secondary"
 				:class="{
-					edit: true,
-					invisible: !selectedCredentialId,
+					[$style.edit]: true,
+					[$style.invisible]: !selectedCredentialId,
 				}"
 				:title="$locale.baseText('nodeCredentials.updateCredential')"
 				@click="editCredential()"
@@ -125,11 +125,7 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" scope>
-.container {
-	display: flex;
-}
-
+<style lang="scss" module>
 .dropdown {
 	display: flex;
 }
@@ -138,20 +134,9 @@ export default defineComponent({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	// color: var(--color-text-base);
 	min-width: 20px;
 	margin-left: var(--spacing-2xs);
 	font-size: var(--font-size-s);
-}
-
-.input {
-	display: flex;
-	align-items: center;
-}
-
-.credentialOption {
-	display: flex;
-	flex-direction: column;
 }
 
 .invisible {

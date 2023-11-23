@@ -11,7 +11,7 @@
 			:label="item.name"
 			:value="item.id"
 		>
-			<div class="credentialOption mt-2xs mb-2xs">
+			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
 				<n8n-text bold>{{ item.name }}</n8n-text>
 				<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
 			</div>
@@ -74,7 +74,7 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" scope>
+<style lang="scss" module>
 .credentialOption {
 	display: flex;
 	flex-direction: column;

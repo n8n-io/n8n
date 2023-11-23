@@ -1,14 +1,14 @@
 <template>
-	<li>
+	<li :class="$style.container">
 		<n8n-heading tag="h2" size="large">
-			<div v-if="nodeType" class="heading">
-				<span class="headingOrder">{{ order }}.</span>
-				<span class="headingIcon"><NodeIcon :node-type="nodeType" /></span>
+			<div v-if="nodeType" :class="$style.heading">
+				<span :class="$style.headingOrder">{{ order }}.</span>
+				<span :class="$style.headingIcon"><NodeIcon :node-type="nodeType" /></span>
 				{{ appName }}
 			</div>
 		</n8n-heading>
 
-		<p class="description">
+		<p :class="$style.description">
 			<i18n-t
 				tag="span"
 				keypath="templateSetup.credential.description"
@@ -19,9 +19,9 @@
 			</i18n-t>
 		</p>
 
-		<div class="credentials">
+		<div :class="$style.credentials">
 			<CredentialPicker
-				class="credential-picker"
+				:class="$style.credentialPicker"
 				:app-name="appName"
 				:credentialType="credentialType"
 				:selectedCredentialId="selectedCredentialId"
@@ -31,8 +31,8 @@
 
 			<IconSuccess
 				:class="{
-					'credential-ok': true,
-					invisible: !selectedCredentialId,
+					[$style.credentialOk]: true,
+					[$style.invisible]: !selectedCredentialId,
 				}"
 			/>
 		</div>
@@ -117,7 +117,18 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
+.container {
+	list-style: none;
+	margin-bottom: var(--spacing-l);
+}
+
+.container:not(:last-of-type) {
+	border-bottom: 2px solid var(--prim-gray-420);
+	padding-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing-xl);
+}
+
 .heading {
 	display: flex;
 	align-items: center;
@@ -143,23 +154,12 @@ export default defineComponent({
 	align-items: center;
 }
 
-.credential-picker {
+.credentialPicker {
 	flex: 1;
 }
 
-.credential-ok {
+.credentialOk {
 	margin-left: var(--spacing-2xs);
-}
-
-li {
-	list-style: none;
-	margin-bottom: var(--spacing-l);
-}
-
-li:not(:last-of-type) {
-	border-bottom: 2px solid var(--prim-gray-420);
-	padding-bottom: var(--spacing-xl);
-	margin-bottom: var(--spacing-xl);
 }
 
 .invisible {
