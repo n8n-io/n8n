@@ -51,9 +51,7 @@ export class License {
 			return;
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			await this.multiMainSetup.init();
-		}
+		await this.multiMainSetup.init();
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
