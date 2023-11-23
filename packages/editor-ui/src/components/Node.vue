@@ -268,7 +268,7 @@ export default defineComponent({
 			}
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isExecuting(): boolean {
 			return this.workflowsStore.isNodeExecuting(this.data.name);
