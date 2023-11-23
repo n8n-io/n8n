@@ -44,6 +44,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	USERS_QUOTA_REACHED: 'Maximum number of users reached',
 	OAUTH2_CREDENTIAL_TEST_SUCCEEDED: 'Connection Successful!',
 	OAUTH2_CREDENTIAL_TEST_FAILED: 'This OAuth2 credential was not connected to an account.',
+	MEMBER_CANNOT_CHANGE_ROLE: 'Member cannot change role for any user',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';

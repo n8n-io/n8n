@@ -4,7 +4,7 @@ import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '@/ResponseHelper';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
@@ -17,8 +17,10 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
-@Authorized(['global', 'owner'])
+const { MEMBER_CANNOT_CHANGE_ROLE } = RESPONSE_ERROR_MESSAGES;
+
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -152,6 +154,7 @@ export class UsersController {
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
+	// @TODO: Unprotected?
 	@Delete('/:id')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
@@ -305,5 +308,54 @@ export class UsersController {
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 		return { success: true };
+	}
+
+	// @TODO: add scope check - https://github.com/n8n-io/n8n/pull/7737
+	@Patch('/:id/role')
+	async changeRole(req: UserRequest.ChangeRole) {
+		if (req.user.globalRole.scope === 'global' && req.user.globalRole.name === 'member') {
+			throw new UnauthorizedError(MEMBER_CANNOT_CHANGE_ROLE);
+		}
+
+		const { newRole: roleToSet } = req.body;
+
+		if (!roleToSet) {
+			throw new BadRequestError('Expected `newRole` to exist');
+		}
+
+		if (!roleToSet?.name || !roleToSet?.scope) {
+			throw new BadRequestError('Expected `newRole` to have `name` and `scope`');
+		}
+
+		const targetUser = await this.userService.findOne({
+			where: { id: req.params.id },
+			relations: ['globalRole'],
+		});
+
+		if (targetUser === null) {
+			throw new NotFoundError('Target user not found');
+		}
+
+		if (
+			req.user.globalRole.name === 'admin' &&
+			req.user.globalRole.scope === 'global' &&
+			targetUser.globalRole.scope === 'global' &&
+			targetUser.globalRole.name === 'owner'
+		) {
+			throw new UnauthorizedError('Admin cannot change role on global owner');
+		}
+
+		if (
+			req.user.globalRole.name === 'admin' &&
+			req.user.globalRole.scope === 'global' &&
+			roleToSet.scope === 'global' &&
+			roleToSet.name === 'owner'
+		) {
+			throw new UnauthorizedError('Admin cannot promote user to global owner');
+		}
+
+		const role = await this.roleService.findCached(roleToSet.scope, roleToSet.name);
+
+		await this.userService.update(targetUser.id, { globalRole: role });
 	}
 }
