@@ -593,7 +593,18 @@ export default defineComponent({
 							data: { eventBus: this.eventBus, status },
 						});
 					} catch (error) {
-						this.showError(error, this.$locale.baseText('error'));
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						switch (error.message) {
+							case 'source_control_not_connected':
+								this.showError(
+									{ ...error, message: '' },
+									this.$locale.baseText('settings.sourceControl.error.not.connected.title'),
+									this.$locale.baseText('settings.sourceControl.error.not.connected.message'),
+								);
+								break;
+							default:
+								this.showError(error, this.$locale.baseText('error'));
+						}
 					} finally {
 						this.stopLoading();
 					}
