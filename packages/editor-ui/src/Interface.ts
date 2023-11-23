@@ -789,6 +789,9 @@ export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtend
 	workflows: ITemplatesWorkflow[];
 }
 
+/**
+ * A template without the actual workflow definition
+ */
 export interface ITemplatesWorkflow {
 	id: number;
 	createdAt: string;
@@ -806,6 +809,9 @@ export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflo
 	categories: ITemplatesCategory[];
 }
 
+/**
+ * A template with also the full workflow definition
+ */
 export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 	full: true;
 }
