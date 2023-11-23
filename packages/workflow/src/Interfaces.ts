@@ -778,6 +778,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getExecutionCancelSignal(): AbortSignal;
 	onExecutionCancellation(handler: () => unknown): void;
 };
 
