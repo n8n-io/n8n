@@ -325,7 +325,7 @@ export declare namespace UserRequest {
 	export type ChangeRole = AuthenticatedRequest<
 		{ id: string },
 		{},
-		{ newRole?: { scope: RoleScopes; name: RoleNames } },
+		{ newRole?: { scope?: RoleScopes; name?: RoleNames } },
 		{}
 	>;
 

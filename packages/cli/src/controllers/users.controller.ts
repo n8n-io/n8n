@@ -338,19 +338,27 @@ export class UsersController {
 			throw new UnauthorizedError(NO_MEMBER);
 		}
 
-		const { newRole: roleToSet } = req.body;
+		const { newRole } = req.body;
 
-		if (!roleToSet) {
+		if (!newRole) {
 			throw new BadRequestError(MISSING_NEW_ROLE_KEY);
 		}
 
-		if (!roleToSet?.name || !roleToSet?.scope) {
+		if (!newRole.name || !newRole.scope) {
 			throw new BadRequestError(MISSING_NEW_ROLE_VALUE);
+		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'admin' &&
+			newRole.scope === 'global' &&
+			newRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_ADMIN_TO_OWNER);
 		}
 
 		const targetUser = await this.userService.findOne({
 			where: { id: req.params.id },
-			relations: ['globalRole'],
 		});
 
 		if (targetUser === null) {
@@ -368,15 +376,6 @@ export class UsersController {
 
 		if (
 			req.user.globalRole.scope === 'global' &&
-			req.user.globalRole.name === 'admin' &&
-			roleToSet.scope === 'global' &&
-			roleToSet.name === 'owner'
-		) {
-			throw new UnauthorizedError(NO_ADMIN_TO_OWNER);
-		}
-
-		if (
-			req.user.globalRole.scope === 'global' &&
 			req.user.globalRole.name === 'owner' &&
 			targetUser.globalRole.scope === 'global' &&
 			targetUser.globalRole.name === 'owner'
@@ -384,9 +383,9 @@ export class UsersController {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		const role = await this.roleService.findCached(roleToSet.scope, roleToSet.name);
+		const roleToSet = await this.roleService.findCached(newRole.scope, newRole.name);
 
-		await this.userService.update(targetUser.id, { globalRole: role });
+		await this.userService.update(targetUser.id, { globalRole: roleToSet });
 
 		return { success: true };
 	}
