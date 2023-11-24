@@ -5,6 +5,7 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
+export * from './errors';
 export * from './Authentication';
 export * from './Constants';
 export * from './Cron';
