@@ -144,11 +144,7 @@ export const routes = [
 					};
 				},
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
