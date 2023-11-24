@@ -39,82 +39,83 @@
 	</li>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from 'vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
-import { defineComponent } from 'vue';
-import { assert } from '@/utils/assert';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import { mapStores } from 'pinia';
-import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { formatList } from '@/utils/formatters/listFormatter';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import type { IWorkflowTemplateNode } from '@/Interface';
 import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
+import { assert } from '@/utils/assert';
+import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
+import { formatList } from '@/utils/formatters/listFormatter';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { IWorkflowTemplateNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'SetupTemplateFormStep',
-	components: {
-		N8nHeading,
-		NodeIcon,
-		CredentialPicker,
-		IconSuccess,
+// Props
+const props = defineProps({
+	order: {
+		type: Number,
+		required: true,
 	},
-	props: {
-		order: {
-			type: Number,
-			required: true,
-		},
-		credentialName: {
-			type: String,
-			required: true,
-		},
-	},
-	computed: {
-		...mapStores(useSetupTemplateStore, useNodeTypesStore, useCredentialsStore),
-		credentials() {
-			const credential = this.setupTemplateStore.credentialsByName.get(this.credentialName);
-			assert(credential);
-			return credential;
-		},
-		node() {
-			return this.credentials.usedBy[0];
-		},
-		nodeType() {
-			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-		},
-		credentialType() {
-			return this.credentials.credentialType;
-		},
-		appName() {
-			return this.nodeType ? getAppNameFromNodeName(this.nodeType.displayName) : this.node.type;
-		},
-		nodeNames() {
-			const formatNodeName = (node: IWorkflowTemplateNode) => `<b>${node.name}</b>`;
-
-			return formatList(this.credentials.usedBy, {
-				formatFn: formatNodeName,
-				i18n: this.$locale,
-			});
-		},
-		selectedCredentialId() {
-			return this.setupTemplateStore.selectedCredentialIdByName[this.credentialName];
-		},
-		availableCredentials() {
-			return this.credentialsStore.getCredentialsByType(this.credentialType);
-		},
-	},
-	methods: {
-		onCredentialSelected(credentialId: string) {
-			this.setupTemplateStore.setSelectedCredentialId(this.credentialName, credentialId);
-		},
-		onCredentialDeselected() {
-			this.setupTemplateStore.unsetSelectedCredential(this.credentialName);
-		},
+	credentialName: {
+		type: String,
+		required: true,
 	},
 });
+
+// Stores
+const setupTemplateStore = useSetupTemplateStore();
+const nodeTypesStore = useNodeTypesStore();
+const i18n = useI18n();
+
+//#region Computed
+
+const credentials = computed(() => {
+	const credential = setupTemplateStore.credentialsByName.get(props.credentialName);
+	assert(credential);
+	return credential;
+});
+
+const node = computed(() => credentials.value.usedBy[0]);
+
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+);
+
+const credentialType = computed(() => credentials.value.credentialType);
+
+const appName = computed(() =>
+	nodeType.value ? getAppNameFromNodeName(nodeType.value.displayName) : node.value.type,
+);
+
+const nodeNames = computed(() => {
+	const formatNodeName = (nodeToFormat: IWorkflowTemplateNode) => `<b>${nodeToFormat.name}</b>`;
+	return formatList(credentials.value.usedBy, {
+		formatFn: formatNodeName,
+		i18n,
+	});
+});
+
+const selectedCredentialId = computed(
+	() => setupTemplateStore.selectedCredentialIdByName[props.credentialName],
+);
+
+//#endregion Computed
+
+//#region Methods
+
+const onCredentialSelected = (credentialId: string) => {
+	setupTemplateStore.setSelectedCredentialId(props.credentialName, credentialId);
+};
+
+const onCredentialDeselected = () => {
+	setupTemplateStore.unsetSelectedCredential(props.credentialName);
+};
+
+//#endregion Methods
 </script>
 
 <style lang="scss" module>
