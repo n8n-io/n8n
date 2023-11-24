@@ -9,7 +9,7 @@ import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
-import { getGlobalMemberRole, getGlobalOwnerRole } from './roles';
+import { getGlobalAdminRole, getGlobalMemberRole, getGlobalOwnerRole } from './roles';
 
 /**
  * Store a user in the DB, defaulting to a `member`.
@@ -76,6 +76,10 @@ export async function createMember() {
 	return createUser({ globalRole: await getGlobalMemberRole() });
 }
 
+export async function createAdmin() {
+	return createUser({ globalRole: await getGlobalAdminRole() });
+}
+
 export async function createUserShell(globalRole: Role): Promise<User> {
 	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
@@ -125,6 +129,12 @@ export async function addApiKey(user: User): Promise<User> {
 
 export const getAllUsers = async () =>
 	Container.get(UserRepository).find({
+		relations: ['globalRole', 'authIdentities'],
+	});
+
+export const getUserById = async (id: string) =>
+	Container.get(UserRepository).findOneOrFail({
+		where: { id },
 		relations: ['globalRole', 'authIdentities'],
 	});
 

@@ -4,6 +4,7 @@ import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useSourceControlStore, useUIStore } from '@/stores';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -16,6 +17,8 @@ const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 });
 
 describe('useContextMenu', () => {
+	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
 
@@ -28,6 +31,12 @@ describe('useContextMenu', () => {
 				},
 			}),
 		);
+		sourceControlStore = useSourceControlStore();
+		uiStore = useUIStore();
+		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
+		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+			branchReadOnly: false,
+		} as never);
 	});
 
 	afterEach(() => {
@@ -88,5 +97,29 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodes.value).toEqual([node]);
+	});
+
+	describe('Read-only mode', () => {
+		it('should return the correct actions when right clicking a sticky', () => {
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			const { open, isOpen, actions, targetNodes } = useContextMenu();
+			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
+			open(mockEvent, { source: 'node-right-click', node: sticky });
+
+			expect(isOpen.value).toBe(true);
+			expect(actions.value).toMatchSnapshot();
+			expect(targetNodes.value).toEqual([sticky]);
+		});
+
+		it('should return the correct actions when right clicking a Node', () => {
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			const { open, isOpen, actions, targetNodes } = useContextMenu();
+			const node = nodeFactory();
+			open(mockEvent, { source: 'node-right-click', node });
+
+			expect(isOpen.value).toBe(true);
+			expect(actions.value).toMatchSnapshot();
+			expect(targetNodes.value).toEqual([node]);
+		});
 	});
 });
