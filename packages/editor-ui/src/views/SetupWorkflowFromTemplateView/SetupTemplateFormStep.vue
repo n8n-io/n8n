@@ -50,7 +50,6 @@ import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import type { IWorkflowTemplateNode } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 
