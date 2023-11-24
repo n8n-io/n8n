@@ -272,7 +272,8 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
 					if (isRetry !== true) {
@@ -285,9 +286,16 @@ export const pushConnection = defineComponent({
 
 				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
-				if (pushData.data.status === 'crashed') {
+				if (runDataExecuted.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
 						'pushConnection.executionFailed.message',
+					);
+				} else if (runDataExecuted.status === 'canceled') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'executionsList.showMessage.stopExecution.message',
+						{
+							interpolate: { activeExecutionId },
+						},
 					);
 				}
 
@@ -389,7 +397,11 @@ export const pushConnection = defineComponent({
 						});
 					} else {
 						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
+						let type = 'error';
+						if (runDataExecuted.status === 'canceled') {
+							title = this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title');
+							type = 'warning';
+						} else if (runDataExecuted.data.resultData.lastNodeExecuted) {
 							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
 						} else {
 							title = 'Problem executing workflow';
@@ -398,7 +410,7 @@ export const pushConnection = defineComponent({
 						this.showMessage({
 							title,
 							message: runDataExecutedErrorMessage,
-							type: 'error',
+							type,
 							duration: 0,
 							dangerouslyUseHTMLString: true,
 						});
