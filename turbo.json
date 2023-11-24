@@ -8,6 +8,10 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
+		"build:backend": {},
+		"build:frontend": {},
+		"test:backend": {},
+		"test:frontend": {},
 		"typecheck": {},
 		"format": {},
 		"lint": {},
