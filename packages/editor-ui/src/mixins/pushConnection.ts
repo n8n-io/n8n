@@ -6,8 +6,7 @@ import type {
 } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
+import { useNodeHelpers, useTitleChange, useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -43,6 +42,7 @@ export const pushConnection = defineComponent({
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers: useNodeHelpers(),
 		};
 	},
 	created() {
@@ -50,7 +50,7 @@ export const pushConnection = defineComponent({
 			void this.pushMessageReceived(message);
 		});
 	},
-	mixins: [externalHooks, nodeHelpers, workflowHelpers],
+	mixins: [externalHooks, workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
@@ -102,7 +102,7 @@ export const pushConnection = defineComponent({
 				const messageData = this.pushMessageQueue.shift();
 
 				const result = await this.pushMessageReceived(messageData!.message, true);
-				if (result === false) {
+				if (!result) {
 					// Was not successful
 					messageData!.retriesLeft -= 1;
 
@@ -456,7 +456,7 @@ export const pushConnection = defineComponent({
 
 				// Set the node execution issues on all the nodes which produced an error so that
 				// it can be displayed in the node-view
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const lastNodeExecuted: string | undefined =
 					runDataExecuted.data.resultData.lastNodeExecuted;

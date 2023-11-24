@@ -607,7 +607,6 @@ import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -616,7 +615,7 @@ import { clearJsonKey, executionDataToJson, isEmpty, searchInObject } from '@/ut
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast } from '@/composables';
+import { useToast, useNodeHelpers } from '@/composables';
 import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
@@ -631,7 +630,7 @@ export type EnterEditModeArgs = {
 
 export default defineComponent({
 	name: 'RunData',
-	mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
+	mixins: [externalHooks, genericHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
@@ -697,8 +696,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -926,7 +927,7 @@ export default defineComponent({
 				return [];
 			}
 
-			const binaryData = this.getBinaryData(
+			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.node.name,
 				this.runIndex,
@@ -1277,7 +1278,7 @@ export default defineComponent({
 			let inputData: INodeExecutionData[] = [];
 
 			if (this.node) {
-				inputData = this.getNodeInputData(
+				inputData = this.nodeHelpers.getNodeInputData(
 					this.node,
 					runIndex,
 					outputIndex,
@@ -1360,7 +1361,7 @@ export default defineComponent({
 		},
 		clearExecutionData() {
 			this.workflowsStore.setWorkflowExecutionData(null);
-			this.updateNodesExecutionIssues();
+			this.nodeHelpers.updateNodesExecutionIssues();
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];

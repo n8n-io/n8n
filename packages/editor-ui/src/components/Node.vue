@@ -158,10 +158,8 @@ import {
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
-
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -185,15 +183,17 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables';
+import { type ContextMenuTarget, useContextMenu, useNodeHelpers } from '@/composables';
 
 export default defineComponent({
 	name: 'Node',
 	setup() {
 		const contextMenu = useContextMenu();
-		return { contextMenu };
+		const nodeHelpers = useNodeHelpers();
+
+		return { contextMenu, nodeHelpers };
 	},
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
+	mixins: [externalHooks, nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
@@ -623,17 +623,20 @@ export default defineComponent({
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
-				const nodeSubtitle =
-					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+				if (this.data && this.nodeType) {
+					const nodeSubtitle =
+						this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) ??
+						'';
 
-				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+					this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+				}
 			} catch (e) {
 				// avoid breaking UI if expression error occurs
 			}
 		},
 		disableNode() {
 			if (this.data !== null) {
-				this.disableNodes([this.data]);
+				this.nodeHelpers.disableNodes([this.data]);
 				this.historyStore.pushCommandToUndo(
 					new EnableNodeToggleCommand(
 						this.data.name,

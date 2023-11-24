@@ -145,7 +145,6 @@ import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -171,11 +170,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system';
-import { useMessage } from '@/composables';
+import { useMessage, useNodeHelpers } from '@/composables';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
+	mixins: [externalHooks, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -196,7 +195,9 @@ export default defineComponent({
 		},
 	},
 	setup(props) {
+		const nodeHelpers = useNodeHelpers();
 		return {
+			nodeHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -456,14 +457,18 @@ export default defineComponent({
 
 				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
 				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
+					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
+						node,
+						this.activeNodeType,
+						this.getCurrentWorkflow(),
+					),
 				});
 
 				setTimeout(() => {
 					if (this.activeNode) {
 						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 							this.activeNode.name,
-						) as INodeConnections;
+						) ;
 
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',

@@ -135,8 +135,7 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast, useMessage } from '@/composables';
+import { useToast, useMessage, useNodeHelpers } from '@/composables';
 
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
@@ -173,7 +172,7 @@ interface NodeAccessMap {
 
 export default defineComponent({
 	name: 'CredentialEdit',
-	mixins: [nodeHelpers, externalHooks],
+	mixins: [externalHooks],
 	components: {
 		CredentialSharing,
 		CredentialConfig,
@@ -198,9 +197,12 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useToast(),
 			...useMessage(),
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -942,7 +944,7 @@ export default defineComponent({
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name
-			this.updateNodesCredentialsIssues();
+			this.nodeHelpers.updateNodesCredentialsIssues();
 
 			return credential;
 		},
@@ -989,7 +991,7 @@ export default defineComponent({
 
 			this.isDeleting = false;
 			// Now that the credentials were removed check if any nodes used them
-			this.updateNodesCredentialsIssues();
+			this.nodeHelpers.updateNodesCredentialsIssues();
 			this.credentialData = {};
 
 			this.showMessage({

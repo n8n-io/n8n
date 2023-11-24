@@ -1,6 +1,8 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from './useI18n';
+import { useMessage } from './useMessage';
+import { useToast } from './useToast';
 import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	EnterpriseEditionFeature,

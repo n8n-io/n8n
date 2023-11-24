@@ -45,10 +45,9 @@ import type {
 	XYPosition,
 } from '../Interface';
 
-import { useMessage, useToast } from '@/composables';
+import { useMessage, useNodeHelpers, useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
@@ -473,11 +472,13 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [externalHooks, nodeHelpers, genericHelpers],
+	mixins: [externalHooks, genericHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useToast(),
 			...useMessage(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -604,7 +605,7 @@ export const workflowHelpers = defineComponent({
 						typeUnknown: true,
 					};
 				} else {
-					nodeIssues = this.getNodeIssues(nodeType.description, node, ['execution']);
+					nodeIssues = this.nodeHelpers.getNodeIssues(nodeType.description, node, ['execution']);
 				}
 
 				if (nodeIssues !== null) {
@@ -706,7 +707,7 @@ export const workflowHelpers = defineComponent({
 					const saveCredentials: INodeCredentials = {};
 					for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
 						if (
-							this.hasProxyAuth(node) ||
+							this.nodeHelpers.hasProxyAuth(node) ||
 							Object.keys(node.parameters).includes('genericAuthType')
 						) {
 							saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
@@ -715,7 +716,7 @@ export const workflowHelpers = defineComponent({
 
 						const credentialTypeDescription = nodeType.credentials
 							// filter out credentials with same name in different node versions
-							.filter((c) => this.displayParameter(node.parameters, c, '', node))
+							.filter((c) => this.nodeHelpers.displayParameter(node.parameters, c, '', node))
 							.find((c) => c.name === nodeCredentialTypeName);
 
 						if (credentialTypeDescription === undefined) {
@@ -723,7 +724,14 @@ export const workflowHelpers = defineComponent({
 							continue;
 						}
 
-						if (!this.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+						if (
+							!this.nodeHelpers.displayParameter(
+								node.parameters,
+								credentialTypeDescription,
+								'',
+								node,
+							)
+						) {
 							// Credential should not be displayed so do also not save
 							continue;
 						}

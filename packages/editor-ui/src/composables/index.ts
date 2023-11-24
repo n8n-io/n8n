@@ -15,3 +15,4 @@ export * from './useNodeSpecificationValues';
 export * from './useDataSchema';
 export * from './useExecutionDebugging';
 export * from './useContextMenu';
+export * from './useNodeHelpers';

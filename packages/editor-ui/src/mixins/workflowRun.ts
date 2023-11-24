@@ -10,7 +10,7 @@ import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 } from 'n8n-workflow';
 
-import { useToast } from '@/composables';
+import { useNodeHelpers, useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
@@ -24,9 +24,12 @@ import { openPopUpWindow } from '@/utils/executionUtils';
 export const workflowRun = defineComponent({
 	mixins: [externalHooks, workflowHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -262,7 +265,7 @@ export const workflowRun = defineComponent({
 					},
 				};
 				this.workflowsStore.setWorkflowExecutionData(executionData);
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
