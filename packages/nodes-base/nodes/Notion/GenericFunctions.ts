@@ -1069,9 +1069,14 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 	});
 }
 
-export function simplifyBlocksOutput(blocks: IDataObject[]) {
+export function simplifyBlocksOutput(blocks: IDataObject[], rootId: string) {
 	for (const block of blocks) {
 		const type = block.type as string;
+		block.root_id = rootId;
+
+		['created_time', 'last_edited_time', 'created_by'].forEach((key) => {
+			delete block[key];
+		});
 
 		try {
 			if (['code'].includes(type)) {

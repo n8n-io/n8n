@@ -319,7 +319,7 @@ export class NotionV2 implements INodeType {
 						const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
 
 						if (simplifyOutput) {
-							responseData = simplifyBlocksOutput(responseData);
+							responseData = simplifyBlocksOutput(responseData, blockId);
 						}
 					}
 
