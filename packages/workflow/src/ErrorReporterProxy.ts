@@ -23,7 +23,8 @@ const instance: ErrorReporter = {
 		if (error instanceof Error) {
 			let e = error;
 			do {
-				Logger.error(`${e.constructor.name}: ${e.message}`);
+				const meta = e instanceof ReportableError ? e.options.extra : undefined;
+				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);
 		}
