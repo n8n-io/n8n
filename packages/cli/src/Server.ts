@@ -116,6 +116,7 @@ import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
+import { CollaborationService } from './collaboration/collaboration.service';
 
 const exec = promisify(callbackExec);
 
@@ -137,6 +138,8 @@ export class Server extends AbstractServer {
 	private frontendService?: FrontendService;
 
 	private postHog: PostHogClient;
+
+	private collaborationService: CollaborationService;
 
 	constructor() {
 		super('main');
@@ -233,6 +236,7 @@ export class Server extends AbstractServer {
 			.then(async (workflow) =>
 				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
+		this.collaborationService = Container.get(CollaborationService);
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {

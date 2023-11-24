@@ -147,7 +147,11 @@ export default defineComponent({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
+			(
+				this.$refs.inputFieldExpression as {
+					itemSelected: (variable: IVariableItemSelected) => void;
+				}
+			).itemSelected(eventData);
 			void this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.modelValue,
@@ -224,8 +228,11 @@ export default defineComponent({
 			this.latestValue = this.modelValue;
 
 			const resolvedExpressionValue =
-				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
-				undefined;
+				(
+					this.$refs.expressionResult as {
+						getValue: () => string;
+					}
+				)?.getValue() || '';
 			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,

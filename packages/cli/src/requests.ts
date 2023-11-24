@@ -25,7 +25,7 @@ import type {
 	SecretsProvider,
 	SecretsProviderState,
 } from '@/Interfaces';
-import type { Role } from '@db/entities/Role';
+import type { Role, RoleNames, RoleScopes } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
@@ -320,6 +320,13 @@ export declare namespace UserRequest {
 		{},
 		{},
 		{ transferId?: string; includeRole: boolean }
+	>;
+
+	export type ChangeRole = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ newRole?: { scope?: RoleScopes; name?: RoleNames } },
+		{}
 	>;
 
 	export type Get = AuthenticatedRequest<

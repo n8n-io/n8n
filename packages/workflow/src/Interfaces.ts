@@ -1594,7 +1594,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
-	polling?: boolean;
+	polling?: true | undefined;
+	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
@@ -1650,7 +1651,6 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
