@@ -845,6 +845,7 @@
     "js-nacl": "1.4.0",
     "jsonwebtoken": "9.0.0",
     "kafkajs": "1.16.0",
+    "kafkajs-snappy-typescript": "1.0.2",
     "ldapts": "4.2.6",
     "lodash": "4.17.21",
     "lossless-json": "1.0.5",
