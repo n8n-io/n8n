@@ -41,16 +41,18 @@ export const initErrorHandling = async () => {
 	addGlobalEventProcessor((event, { originalException }) => {
 		if (originalException instanceof ExecutionBaseError && originalException.severity === 'warning')
 			return null;
+
+		if (originalException instanceof ReportableError) {
+			const { level, extra } = originalException;
+			if (level === 'warning') return null;
+			event.level = level;
+			if (extra) event.extra = { ...event.extra, ...extra };
+		}
+
 		if (!event.exception) return null;
 		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
-
-		if (originalException instanceof ReportableError) {
-			const { level, extra } = originalException;
-			event.level = level;
-			if (extra) event.extra = { ...event.extra, ...extra };
-		}
 
 		return event;
 	});

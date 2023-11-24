@@ -17,7 +17,7 @@ export class ReportableError extends Error {
 
 	constructor(message: string, { level, tags, extra, ...rest }: ReportableErrorOptions) {
 		super(message, rest);
-		this.level = level ?? 'warning';
+		this.level = level ?? 'error';
 		this.tags = tags;
 		this.extra = extra;
 	}
