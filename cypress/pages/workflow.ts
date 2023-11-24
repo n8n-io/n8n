@@ -48,6 +48,7 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
 		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
