@@ -117,12 +117,19 @@ export class Webhook extends Node {
 			throw error;
 		}
 
+		if (req.contentType === 'multipart/form-data') {
+			return this.handleFormData(context);
+		}
+
 		if (options.binaryData) {
 			return this.handleBinaryData(context);
 		}
 
-		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
+		if (!req.body && req.rawBody) {
+			//if body is empty but rawBody is not, try to parse binary data anyway
+			try {
+				return await this.handleBinaryData(context);
+			} catch (error) {}
 		}
 
 		const response: INodeExecutionData = {
@@ -215,36 +222,38 @@ export class Webhook extends Node {
 		};
 
 		let count = 0;
-		for (const key of Object.keys(files)) {
-			const processFiles: MultiPartFormData.File[] = [];
-			let multiFile = false;
-			if (Array.isArray(files[key])) {
-				processFiles.push(...(files[key] as MultiPartFormData.File[]));
-				multiFile = true;
-			} else {
-				processFiles.push(files[key] as MultiPartFormData.File);
-			}
-
-			let fileCount = 0;
-			for (const file of processFiles) {
-				let binaryPropertyName = key;
-				if (binaryPropertyName.endsWith('[]')) {
-					binaryPropertyName = binaryPropertyName.slice(0, -2);
-				}
-				if (multiFile) {
-					binaryPropertyName += fileCount++;
-				}
-				if (options.binaryPropertyName) {
-					binaryPropertyName = `${options.binaryPropertyName}${count}`;
+		if (options.binaryData !== false) {
+			for (const key of Object.keys(files)) {
+				const processFiles: MultiPartFormData.File[] = [];
+				let multiFile = false;
+				if (Array.isArray(files[key])) {
+					processFiles.push(...(files[key] as MultiPartFormData.File[]));
+					multiFile = true;
+				} else {
+					processFiles.push(files[key] as MultiPartFormData.File);
 				}
 
-				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-					file.filepath,
-					file.originalFilename ?? file.newFilename,
-					file.mimetype,
-				);
+				let fileCount = 0;
+				for (const file of processFiles) {
+					let binaryPropertyName = key;
+					if (binaryPropertyName.endsWith('[]')) {
+						binaryPropertyName = binaryPropertyName.slice(0, -2);
+					}
+					if (multiFile) {
+						binaryPropertyName += fileCount++;
+					}
+					if (options.binaryPropertyName) {
+						binaryPropertyName = `${options.binaryPropertyName}${count}`;
+					}
 
-				count += 1;
+					returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+						file.filepath,
+						file.originalFilename ?? file.newFilename,
+						file.mimetype,
+					);
+
+					count += 1;
+				}
 			}
 		}
 		return { workflowData: [[returnItem]] };
@@ -266,7 +275,7 @@ export class Webhook extends Node {
 					headers: req.headers,
 					params: req.params,
 					query: req.query,
-					body: {},
+					body: req.body ?? {},
 				},
 			};
 
