@@ -4,7 +4,7 @@ import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '@/ResponseHelper';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
@@ -18,7 +18,7 @@ import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
 
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -31,6 +31,18 @@ export class UsersController {
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
 	) {}
+
+	static ERROR_MESSAGES = {
+		CHANGE_ROLE: {
+			NO_MEMBER: 'Member cannot change role for any user',
+			MISSING_NEW_ROLE_KEY: 'Expected `newRole` to exist',
+			MISSING_NEW_ROLE_VALUE: 'Expected `newRole` to have `name` and `scope`',
+			NO_USER: 'Target user not found',
+			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
+			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
+			NO_ADMIN_TO_OWNER: 'Admin cannot promote user to global owner',
+		},
+	} as const;
 
 	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<User> = {};
@@ -70,7 +82,7 @@ export class UsersController {
 		return findManyOptions;
 	}
 
-	removeSupplementaryFields(
+	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: ListQuery.Options,
 	) {
@@ -152,6 +164,7 @@ export class UsersController {
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
+	@Authorized(['global', 'owner'])
 	@Delete('/:id')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
@@ -304,6 +317,77 @@ export class UsersController {
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
+		return { success: true };
+	}
+
+	// @TODO: Add scope check `@RequireGlobalScope('user:changeRole')`
+	// once this has been merged: https://github.com/n8n-io/n8n/pull/7737
+	@Authorized('any')
+	@Patch('/:id/role')
+	async changeRole(req: UserRequest.ChangeRole) {
+		const {
+			NO_MEMBER,
+			MISSING_NEW_ROLE_KEY,
+			MISSING_NEW_ROLE_VALUE,
+			NO_ADMIN_ON_OWNER,
+			NO_ADMIN_TO_OWNER,
+			NO_USER,
+			NO_OWNER_ON_OWNER,
+		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+
+		if (req.user.globalRole.scope === 'global' && req.user.globalRole.name === 'member') {
+			throw new UnauthorizedError(NO_MEMBER);
+		}
+
+		const { newRole } = req.body;
+
+		if (!newRole) {
+			throw new BadRequestError(MISSING_NEW_ROLE_KEY);
+		}
+
+		if (!newRole.name || !newRole.scope) {
+			throw new BadRequestError(MISSING_NEW_ROLE_VALUE);
+		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'admin' &&
+			newRole.scope === 'global' &&
+			newRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_ADMIN_TO_OWNER);
+		}
+
+		const targetUser = await this.userService.findOne({
+			where: { id: req.params.id },
+		});
+
+		if (targetUser === null) {
+			throw new NotFoundError(NO_USER);
+		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'admin' &&
+			targetUser.globalRole.scope === 'global' &&
+			targetUser.globalRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
+		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'owner' &&
+			targetUser.globalRole.scope === 'global' &&
+			targetUser.globalRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
+		}
+
+		const roleToSet = await this.roleService.findCached(newRole.scope, newRole.name);
+
+		await this.userService.update(targetUser.id, { globalRole: roleToSet });
+
 		return { success: true };
 	}
 }
