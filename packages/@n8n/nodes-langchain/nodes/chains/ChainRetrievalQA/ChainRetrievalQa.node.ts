@@ -63,7 +63,7 @@ export class ChainRetrievalQa implements INodeType {
 				name: 'query',
 				type: 'string',
 				required: true,
-				default: '={{ $json.chat_input }}',
+				default: '={{ $json.chat_input ?? $json.input }}',
 			},
 		],
 	};

@@ -12,7 +12,7 @@ export const conversationalAgentProperties: INodeProperties[] = [
 				agent: ['conversationalAgent'],
 			},
 		},
-		default: '={{ $json.chat_input }}',
+		default: '={{ $json.chat_input ?? $json.input }}',
 	},
 	{
 		displayName: 'Options',

@@ -12,7 +12,7 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 				agent: ['openAiFunctionsAgent'],
 			},
 		},
-		default: '={{ $json.chat_input }}',
+		default: '={{ $json.chat_input ?? $json.input }}',
 	},
 	{
 		displayName: 'Options',

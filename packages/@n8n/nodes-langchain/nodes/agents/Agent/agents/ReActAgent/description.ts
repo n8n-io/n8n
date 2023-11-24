@@ -12,7 +12,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				agent: ['reActAgent'],
 			},
 		},
-		default: '={{ $json.chat_input }}',
+		default: '={{ $json.chat_input ?? $json.input }}',
 	},
 	{
 		displayName: 'Options',
