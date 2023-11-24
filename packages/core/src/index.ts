@@ -1,5 +1,6 @@
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
+export * from './errors';
 export * from './ActiveWorkflows';
 export * from './BinaryData/BinaryData.service';
 export * from './BinaryData/types';

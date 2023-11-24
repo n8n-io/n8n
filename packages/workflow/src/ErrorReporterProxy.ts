@@ -1,21 +1,8 @@
 import * as Logger from './LoggerProxy';
-import type { Event } from '@sentry/node';
-
-export type ReportableErrorOptions = {
-	level?: 'warning' | 'error' | 'fatal';
-} & Pick<Event, 'extra'>;
+import { ReportableError, type ReportingOptions } from './errors/reportable.error';
 
 interface ErrorReporter {
-	report: (error: Error | string, options?: ReportableErrorOptions) => void;
-}
-
-export class ReportableError extends Error {
-	constructor(
-		message: string,
-		public options: Partial<ErrorOptions> & ReportableErrorOptions,
-	) {
-		super(message, options);
-	}
+	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
 const instance: ErrorReporter = {
@@ -23,7 +10,7 @@ const instance: ErrorReporter = {
 		if (error instanceof Error) {
 			let e = error;
 			do {
-				const meta = e instanceof ReportableError ? e.options.extra : undefined;
+				const meta = e instanceof ReportableError ? e.extra : undefined;
 				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);
@@ -41,10 +28,10 @@ const wrap = (e: unknown) => {
 	return;
 };
 
-export const error = (e: unknown, options?: ReportableErrorOptions) => {
+export const error = (e: unknown, options?: ReportingOptions) => {
 	const toReport = wrap(e);
 	if (toReport) instance.report(toReport, options);
 };
 
-export const warn = (warning: Error | string, options?: ReportableErrorOptions) =>
+export const warn = (warning: Error | string, options?: ReportingOptions) =>
 	error(warning, { level: 'warning', ...options });
