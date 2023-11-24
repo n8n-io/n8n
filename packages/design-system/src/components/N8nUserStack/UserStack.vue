@@ -99,6 +99,7 @@ const menuHeight = computed(() => {
 									v-for="user in groupUsers"
 									:key="user.id"
 									:data-test-id="`user-stack-info-${user.id}`"
+									:class="$style.userInfoContainer"
 								>
 									<n8n-user-info
 										v-bind="user"
@@ -157,6 +158,12 @@ const menuHeight = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-2xs);
+}
+
+.userInfoContainer {
+	display: flex;
+	padding-top: var(--spacing-5xs);
+	padding-bottom: var(--spacing-5xs);
 }
 </style>
 
