@@ -223,7 +223,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async markAsCrashed(executionIds: string[]) {
 		await this.update(
-			{ id: In(executionIds), status: In(['new', 'running']) },
+			{ id: In(executionIds) },
 			{
 				status: 'crashed',
 				stoppedAt: new Date(),
