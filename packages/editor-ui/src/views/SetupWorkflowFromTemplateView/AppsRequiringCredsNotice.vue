@@ -1,11 +1,3 @@
-<template>
-	<n8n-notice theme="info">
-		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
-			<span v-html="appNodeCounts" />
-		</i18n-t>
-	</n8n-notice>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import N8nNotice from 'n8n-design-system/components/N8nNotice';
@@ -28,3 +20,11 @@ const appNodeCounts = computed(() => {
 	});
 });
 </script>
+
+<template>
+	<n8n-notice theme="info">
+		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
+			<span v-html="appNodeCounts" />
+		</i18n-t>
+	</n8n-notice>
+</template>

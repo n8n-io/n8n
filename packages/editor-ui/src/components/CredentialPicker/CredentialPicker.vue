@@ -1,41 +1,10 @@
-<template>
-	<div>
-		<div v-if="credentialOptions.length > 0" :class="$style.dropdown">
-			<CredentialsDropdown
-				:credential-type="props.credentialType"
-				:credential-options="credentialOptions"
-				:selected-credential-id="props.selectedCredentialId"
-				@credential-selected="onCredentialSelected"
-				@new-credential="createNewCredential"
-			/>
-
-			<n8n-icon-button
-				icon="pen"
-				type="secondary"
-				:class="{
-					[$style.edit]: true,
-					[$style.invisible]: !props.selectedCredentialId,
-				}"
-				:title="$locale.baseText('nodeCredentials.updateCredential')"
-				@click="editCredential()"
-				data-test-id="credential-edit-button"
-			/>
-		</div>
-
-		<n8n-button
-			v-else
-			:label="`Create new ${props.appName} credential`"
-			@click="createNewCredential"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useUIStore } from '@/stores';
 import { listenForCredentialChanges, useCredentialsStore } from '@/stores/credentials.store';
 import { assert } from '@/utils/assert';
 import CredentialsDropdown from './CredentialsDropdown.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps({
 	appName: {
@@ -59,6 +28,7 @@ const $emit = defineEmits({
 
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const i18n = useI18n();
 
 const availableCredentials = computed(() => {
 	return credentialsStore.getCredentialsByType(props.credentialType);
@@ -111,6 +81,38 @@ listenForCredentialChanges({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<div v-if="credentialOptions.length > 0" :class="$style.dropdown">
+			<CredentialsDropdown
+				:credential-type="props.credentialType"
+				:credential-options="credentialOptions"
+				:selected-credential-id="props.selectedCredentialId"
+				@credential-selected="onCredentialSelected"
+				@new-credential="createNewCredential"
+			/>
+
+			<n8n-icon-button
+				icon="pen"
+				type="secondary"
+				:class="{
+					[$style.edit]: true,
+					[$style.invisible]: !props.selectedCredentialId,
+				}"
+				:title="i18n.baseText('nodeCredentials.updateCredential')"
+				@click="editCredential()"
+				data-test-id="credential-edit-button"
+			/>
+		</div>
+
+		<n8n-button
+			v-else
+			:label="`Create new ${props.appName} credential`"
+			@click="createNewCredential"
+		/>
+	</div>
+</template>
 
 <style lang="scss" module>
 .dropdown {

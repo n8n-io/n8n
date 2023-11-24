@@ -1,44 +1,3 @@
-<template>
-	<li :class="$style.container">
-		<n8n-heading tag="h2" size="large">
-			<div v-if="nodeType" :class="$style.heading">
-				<span :class="$style.headingOrder">{{ order }}.</span>
-				<span :class="$style.headingIcon"><NodeIcon :node-type="nodeType" /></span>
-				{{ appName }}
-			</div>
-		</n8n-heading>
-
-		<p :class="$style.description">
-			<i18n-t
-				tag="span"
-				keypath="templateSetup.credential.description"
-				:plural="credentials.usedBy.length"
-				scope="global"
-			>
-				<span v-html="nodeNames" />
-			</i18n-t>
-		</p>
-
-		<div :class="$style.credentials">
-			<CredentialPicker
-				:class="$style.credentialPicker"
-				:app-name="appName"
-				:credentialType="credentialType"
-				:selectedCredentialId="selectedCredentialId"
-				@credential-selected="onCredentialSelected"
-				@credential-deselected="onCredentialDeselected"
-			/>
-
-			<IconSuccess
-				:class="{
-					[$style.credentialOk]: true,
-					[$style.invisible]: !selectedCredentialId,
-				}"
-			/>
-		</div>
-	</li>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
@@ -116,6 +75,47 @@ const onCredentialDeselected = () => {
 
 //#endregion Methods
 </script>
+
+<template>
+	<li :class="$style.container">
+		<n8n-heading tag="h2" size="large">
+			<div v-if="nodeType" :class="$style.heading">
+				<span :class="$style.headingOrder">{{ order }}.</span>
+				<span :class="$style.headingIcon"><NodeIcon :node-type="nodeType" /></span>
+				{{ appName }}
+			</div>
+		</n8n-heading>
+
+		<p :class="$style.description">
+			<i18n-t
+				tag="span"
+				keypath="templateSetup.credential.description"
+				:plural="credentials.usedBy.length"
+				scope="global"
+			>
+				<span v-html="nodeNames" />
+			</i18n-t>
+		</p>
+
+		<div :class="$style.credentials">
+			<CredentialPicker
+				:class="$style.credentialPicker"
+				:app-name="appName"
+				:credentialType="credentialType"
+				:selectedCredentialId="selectedCredentialId"
+				@credential-selected="onCredentialSelected"
+				@credential-deselected="onCredentialDeselected"
+			/>
+
+			<IconSuccess
+				:class="{
+					[$style.credentialOk]: true,
+					[$style.invisible]: !selectedCredentialId,
+				}"
+			/>
+		</div>
+	</li>
+</template>
 
 <style lang="scss" module>
 .container {

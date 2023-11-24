@@ -1,63 +1,3 @@
-<template>
-	<TemplatesView :goBackEnabled="true">
-		<template #header>
-			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
-				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
-			</n8n-heading>
-			<n8n-loading v-else variant="h1" />
-		</template>
-
-		<template #content>
-			<div :class="$style.grid">
-				<div :class="$style.gridContent">
-					<div :class="$style.notice">
-						<AppsRequiringCredsNotice v-if="isReady" />
-						<n8n-loading v-else variant="p" />
-					</div>
-
-					<div>
-						<ol v-if="isReady" :class="$style.appCredentialsContainer">
-							<SetupTemplateFormStep
-								:class="$style.appCredential"
-								v-bind:key="credentials.credentialName"
-								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
-								:order="index + 1"
-								:credentials="credentials"
-								:credentialName="credentials.credentialName"
-							/>
-						</ol>
-						<div v-else :class="$style.appCredentialsContainer">
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-						</div>
-					</div>
-
-					<div :class="$style.actions">
-						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
-							$locale.baseText('templateSetup.skip')
-						}}</n8n-link>
-
-						<n8n-tooltip
-							v-if="isReady"
-							:content="buttonTooltip"
-							:disabled="setupTemplateStore.numCredentialsLeft === 0"
-						>
-							<n8n-button
-								:label="$locale.baseText('templateSetup.continue.button')"
-								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
-								@click="setupTemplateStore.createWorkflow($router)"
-							/>
-						</n8n-tooltip>
-						<div v-else>
-							<n8n-loading variant="button" />
-						</div>
-					</div>
-				</div>
-			</div>
-		</template>
-	</TemplatesView>
-</template>
-
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -156,6 +96,66 @@ onMounted(async () => {
 
 //#endregion Lifecycle hooks
 </script>
+
+<template>
+	<TemplatesView :goBackEnabled="true">
+		<template #header>
+			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
+				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
+			</n8n-heading>
+			<n8n-loading v-else variant="h1" />
+		</template>
+
+		<template #content>
+			<div :class="$style.grid">
+				<div :class="$style.gridContent">
+					<div :class="$style.notice">
+						<AppsRequiringCredsNotice v-if="isReady" />
+						<n8n-loading v-else variant="p" />
+					</div>
+
+					<div>
+						<ol v-if="isReady" :class="$style.appCredentialsContainer">
+							<SetupTemplateFormStep
+								:class="$style.appCredential"
+								v-bind:key="credentials.credentialName"
+								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
+								:order="index + 1"
+								:credentials="credentials"
+								:credentialName="credentials.credentialName"
+							/>
+						</ol>
+						<div v-else :class="$style.appCredentialsContainer">
+							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+						</div>
+					</div>
+
+					<div :class="$style.actions">
+						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
+							$locale.baseText('templateSetup.skip')
+						}}</n8n-link>
+
+						<n8n-tooltip
+							v-if="isReady"
+							:content="buttonTooltip"
+							:disabled="setupTemplateStore.numCredentialsLeft === 0"
+						>
+							<n8n-button
+								:label="$locale.baseText('templateSetup.continue.button')"
+								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
+								@click="setupTemplateStore.createWorkflow($router)"
+							/>
+						</n8n-tooltip>
+						<div v-else>
+							<n8n-loading variant="button" />
+						</div>
+					</div>
+				</div>
+			</div>
+		</template>
+	</TemplatesView>
+</template>
 
 <style lang="scss" module>
 .grid {

@@ -1,31 +1,3 @@
-<template>
-	<n8n-select
-		size="small"
-		:modelValue="props.selectedCredentialId"
-		@update:modelValue="onCredentialSelected"
-	>
-		<n8n-option
-			v-for="item in props.credentialOptions"
-			:data-test-id="`node-credentials-select-item-${item.id}`"
-			:key="item.id"
-			:label="item.name"
-			:value="item.id"
-		>
-			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
-				<n8n-text bold>{{ item.name }}</n8n-text>
-				<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
-			</div>
-		</n8n-option>
-		<n8n-option
-			data-test-id="node-credentials-select-item-new"
-			:key="NEW_CREDENTIALS_TEXT"
-			:value="NEW_CREDENTIALS_TEXT"
-			:label="NEW_CREDENTIALS_TEXT"
-		>
-		</n8n-option>
-	</n8n-select>
-</template>
-
 <script setup lang="ts">
 import type { PropType } from 'vue';
 import { useI18n } from '@/composables';
@@ -64,6 +36,34 @@ const onCredentialSelected = (credentialId: string) => {
 	}
 };
 </script>
+
+<template>
+	<n8n-select
+		size="small"
+		:modelValue="props.selectedCredentialId"
+		@update:modelValue="onCredentialSelected"
+	>
+		<n8n-option
+			v-for="item in props.credentialOptions"
+			:data-test-id="`node-credentials-select-item-${item.id}`"
+			:key="item.id"
+			:label="item.name"
+			:value="item.id"
+		>
+			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
+				<n8n-text bold>{{ item.name }}</n8n-text>
+				<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
+			</div>
+		</n8n-option>
+		<n8n-option
+			data-test-id="node-credentials-select-item-new"
+			:key="NEW_CREDENTIALS_TEXT"
+			:value="NEW_CREDENTIALS_TEXT"
+			:label="NEW_CREDENTIALS_TEXT"
+		>
+		</n8n-option>
+	</n8n-select>
+</template>
 
 <style lang="scss" module>
 .credentialOption {
