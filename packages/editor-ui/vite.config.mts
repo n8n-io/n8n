@@ -51,7 +51,7 @@ const alias = [
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: require.resolve(`lodash-es/${name}`),
+		replacement: `lodash-es/${name}`,
 	})),
 	{
 		find: /^lodash\.(.+)$/,

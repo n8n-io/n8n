@@ -44,4 +44,14 @@ describe('parsePermissionsTable()', () => {
 
 		expect(permissions.canRead).toBe(true);
 	});
+
+	it('should pass permission to test functions', () => {
+		const permissions = parsePermissionsTable(user, [
+			{ name: 'canRead', test: (p) => !!p.isInstanceOwner },
+			{ name: 'canUpdate', test: (p) => !!p.canRead },
+		]);
+
+		expect(permissions.canRead).toBe(true);
+		expect(permissions.canUpdate).toBe(true);
+	});
 });

@@ -84,6 +84,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return nodeType ?? null;
 			};
 		},
+		getNodeVersions() {
+			return (nodeTypeName: string): number[] => {
+				return Object.keys(this.nodeTypes[nodeTypeName] ?? {}).map(Number);
+			};
+		},
 		getCredentialOnlyNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 				const credentialName = getCredentialTypeName(nodeTypeName);

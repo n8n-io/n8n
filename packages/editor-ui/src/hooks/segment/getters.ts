@@ -235,9 +235,8 @@ export const getExecutionFinishedEventData = (
 
 	if (meta.errorMessage || meta.resultDataError) {
 		eventData.properties!.status = 'failed';
-		eventData.properties!.error_message =
-			(meta.resultDataError && meta.resultDataError.message) || '';
-		eventData.properties!.error_stack = (meta.resultDataError && meta.resultDataError.stack) || '';
+		eventData.properties!.error_message = meta.resultDataError?.message || '';
+		eventData.properties!.error_stack = meta.resultDataError?.stack || '';
 		eventData.properties!.error_ui_message = meta.errorMessage || '';
 		eventData.properties!.error_timestamp = new Date();
 
