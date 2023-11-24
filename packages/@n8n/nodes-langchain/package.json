@@ -139,6 +139,7 @@
     "mssql": "^8.1.2",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "openai": "^4.19.0",
     "pdf-parse": "^1.1.1",
     "pg": "^8.11.3",
     "redis": "^4.6.8",

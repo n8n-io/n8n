@@ -9,8 +9,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { formatToOpenAIAssistantTool } from './utils';
-import { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {

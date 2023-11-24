@@ -5,7 +5,6 @@ import type { StructuredTool } from 'langchain/tools';
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
 // since these functions are not exported
 
-
 /**
  * Formats a `StructuredTool` instance into a format that is compatible
  * with OpenAI's ChatCompletionFunctions. It uses the `zodToJsonSchema`
