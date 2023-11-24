@@ -196,7 +196,7 @@ export default defineComponent({
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-top: 4rem;
-	margin-bottom: 4rem;
+	margin-top: var(--spacing-3xl);
+	margin-bottom: var(--spacing-3xl);
 }
 </style>
