@@ -120,8 +120,8 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		// Check warning toast (works because Cypress waits enough for the element to show after the http request node has finished)
+		workflowPage.getters.warningToast().should('be.visible');
 	});
 
 	it('should test webhook workflow', () => {
@@ -267,7 +267,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		// Check warning toast (works because Cypress waits enough for the element to show after the http request node has finished)
+		workflowPage.getters.warningToast().should('be.visible');
 	});
 });
