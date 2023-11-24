@@ -1562,10 +1562,6 @@ export default defineComponent({
 			try {
 				this.stopExecutionInProgress = true;
 				await this.workflowsStore.stopCurrentExecution(executionId);
-				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
-					type: 'success',
-				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
