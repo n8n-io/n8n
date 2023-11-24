@@ -121,13 +121,6 @@ const onCredentialDeselected = () => {
 <style lang="scss" module>
 .container {
 	list-style: none;
-	margin-bottom: var(--spacing-l);
-}
-
-.container:not(:last-of-type) {
-	border-bottom: 2px solid var(--prim-gray-420);
-	padding-bottom: var(--spacing-xl);
-	margin-bottom: var(--spacing-xl);
 }
 
 .heading {

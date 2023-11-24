@@ -16,9 +16,9 @@
 					</div>
 
 					<div>
-						<ol v-if="isReady">
+						<ol v-if="isReady" :class="$style.appCredentialsContainer">
 							<SetupTemplateFormStep
-								:class="[$style.appCredential, $style.appCredentialBorder]"
+								:class="$style.appCredential"
 								v-bind:key="credentials.credentialName"
 								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
 								:order="index + 1"
@@ -26,17 +26,9 @@
 								:credentialName="credentials.credentialName"
 							/>
 						</ol>
-						<div v-else>
-							<n8n-loading
-								:class="[$style.appCredential, $style.appCredentialBorder]"
-								variant="p"
-								:rows="3"
-							/>
-							<n8n-loading
-								:class="[$style.appCredential, $style.appCredentialBorder]"
-								variant="p"
-								:rows="3"
-							/>
+						<div v-else :class="$style.appCredentialsContainer">
+							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
 						</div>
 					</div>
 
@@ -189,12 +181,14 @@ onMounted(async () => {
 	margin-bottom: var(--spacing-2xl);
 }
 
-.appCredential:not(:last-of-type) {
-	padding-bottom: var(--spacing-2xl);
-	margin-bottom: var(--spacing-2xl);
+.appCredentialsContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2xl);
 }
 
-.appCredentialBorder:not(:last-of-type) {
+.appCredential:not(:last-of-type) {
+	padding-bottom: var(--spacing-2xl);
 	border-bottom: 1px solid var(--prim-gray-540);
 }
 
