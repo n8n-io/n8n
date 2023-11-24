@@ -25,6 +25,10 @@
 	--color-background-light: var(--prim-gray-820);
 	--color-background-xlight: var(--prim-gray-740);
 
+	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
+	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
+	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+
 	// Secondary tokens
 
 	// Canvas
@@ -159,6 +163,9 @@
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-820);
 	--color-switch-toggle: var(--prim-gray-40);
+
+	// Action Dropdown
+	--color-action-dropdown-item-active-background: var(--color-background-xlight);
 
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);

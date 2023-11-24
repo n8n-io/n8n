@@ -5,6 +5,7 @@ import type {
 	IBinaryData,
 	INode,
 	INodeExecutionData,
+	GenericValue,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -146,4 +147,23 @@ export function addBinariesToItem(
 	}
 
 	return newItem;
+}
+
+export function typeToNumber(value: GenericValue): number {
+	if (typeof value === 'object') {
+		if (Array.isArray(value)) return 9;
+		if (value === null) return 10;
+		if (value instanceof Date) return 11;
+	}
+	const types = {
+		_string: 1,
+		_number: 2,
+		_bigint: 3,
+		_boolean: 4,
+		_symbol: 5,
+		_undefined: 6,
+		_object: 7,
+		_function: 8,
+	};
+	return types[`_${typeof value}`];
 }

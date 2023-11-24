@@ -26,9 +26,10 @@ import type {
 	IUser,
 	IUserResponse,
 	IUsersState,
+	CurrentUserResponse,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -37,6 +38,8 @@ import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
+import { useRBACStore } from '@/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isDefaultUser = (user: IUserResponse | null) =>
@@ -79,26 +82,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		globalRoleName(): IRole {
 			return this.currentUser?.globalRole?.name ?? 'default';
 		},
-		canUserDeleteTags(): boolean {
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
-		},
-		canUserActivateLicense(): boolean {
-			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
-		},
-		canUserAccessSidebarUserInfo() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, currentUser);
-			}
-			return false;
-		},
-		showUMSetupWarning() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
-			}
-			return false;
-		},
 		personalizedNodeTypes(): string[] {
 			const user = this.currentUser;
 			if (!user) {
@@ -129,6 +112,19 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				await this.loginWithCookie();
 				this.initialized = true;
 			} catch (e) {}
+		},
+		setCurrentUser(user: CurrentUserResponse) {
+			this.addUsers([user]);
+			this.currentUserId = user.id;
+
+			const defaultScopes: Scope[] = [];
+			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
+			usePostHog().init(user.featureFlags);
+		},
+		unsetCurrentUser() {
+			this.currentUserId = null;
+			this.currentUserCloudInfo = null;
+			useRBACStore().setGlobalScopes([]);
 		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
@@ -177,10 +173,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
 		async loginWithCreds(params: {
 			email: string;
@@ -194,18 +187,14 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
-			this.currentUserId = null;
+			this.unsetCurrentUser();
 			useCloudPlanStore().reset();
 			usePostHog().reset();
-			this.currentUserCloudInfo = null;
 			useUIStore().clearBannerStack();
 		},
 		async createOwner(params: {
@@ -218,10 +207,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await setupOwner(rootStore.getRestApiContext, params);
 			const settingsStore = useSettingsStore();
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+				this.setCurrentUser(user);
 				settingsStore.stopShowingSetupPage();
-				usePostHog().init(user.featureFlags);
 			}
 		},
 		async validateSignupToken(params: {
@@ -241,9 +228,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			const user = await acceptInvitation(rootStore.getRestApiContext, params);
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
-				usePostHog().init(user.featureFlags);
+				this.setCurrentUser(user);
 			}
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {

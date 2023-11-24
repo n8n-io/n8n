@@ -70,7 +70,7 @@ export default defineComponent({
 			return 'SM';
 		},
 
-		value(): any | undefined {
+		value(): number | undefined {
 			if (this.valueXS !== undefined && this.width < BREAKPOINT_SM) {
 				return this.valueXS;
 			}

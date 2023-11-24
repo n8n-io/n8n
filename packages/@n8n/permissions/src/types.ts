@@ -10,8 +10,9 @@ export type Resource =
 
 export type ResourceScope<
 	R extends Resource,
-	Operations extends string = DefaultOperations,
-> = `${R}:${Operations}`;
+	Operation extends string = DefaultOperations,
+> = `${R}:${Operation}`;
+
 export type WildcardScope = `${Resource}:*` | '*';
 
 export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;

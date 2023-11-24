@@ -111,7 +111,6 @@ export const useUsageStore = defineStore('usage', () => {
 			() =>
 				`${subscriptionAppUrl.value}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
 		),
-		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
 		telemetryPayload: computed<UsageTelemetry>(() => ({
 			instance_id: instanceId.value,

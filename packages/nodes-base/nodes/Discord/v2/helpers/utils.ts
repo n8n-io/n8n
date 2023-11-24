@@ -8,8 +8,8 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { isEmpty } from 'lodash';
 import FormData from 'form-data';
-import { capitalize } from '../../../../utils/utilities';
 import { extension } from 'mime-types';
+import { capitalize } from '../../../../utils/utilities';
 import { discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =

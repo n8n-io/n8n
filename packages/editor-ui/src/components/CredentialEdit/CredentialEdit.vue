@@ -686,7 +686,7 @@ export default defineComponent({
 			this.hasUnsavedChanges = true;
 		},
 
-		onDataChange({ name, value }: { name: string; value: any }) {
+		onDataChange({ name, value }: { name: string; value: CredentialInformation }) {
 			// skip update if new value matches the current
 			if (this.credentialData[name] === value) return;
 

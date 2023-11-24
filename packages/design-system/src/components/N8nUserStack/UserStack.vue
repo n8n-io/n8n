@@ -75,26 +75,31 @@ const menuHeight = computed(() => {
 			:max-height="menuHeight"
 			popper-class="user-stack-popper"
 		>
-			<div :class="$style.avatars">
+			<div :class="$style.avatars" data-test-id="user-stack-avatars">
 				<n8n-avatar
 					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
 					:key="user.id"
 					:firstName="user.firstName"
 					:lastName="user.lastName"
 					:class="$style.avatar"
+					:data-test-id="`user-stack-avatar-${user.id}`"
 					size="small"
 				/>
 				<div v-if="hiddenUsersCount > 0" :class="$style.hiddenBadge">+{{ hiddenUsersCount }}</div>
 			</div>
 			<template #dropdown>
-				<el-dropdown-menu class="user-stack-list">
+				<el-dropdown-menu class="user-stack-list" data-test-id="user-stack-list">
 					<div v-for="(groupUsers, index) in nonEmptyGroups" :key="index">
 						<div :class="$style.groupContainer">
 							<el-dropdown-item>
 								<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
 							</el-dropdown-item>
 							<div :class="$style.groupUsers">
-								<el-dropdown-item v-for="user in groupUsers" :key="user.id">
+								<el-dropdown-item
+									v-for="user in groupUsers"
+									:key="user.id"
+									:data-test-id="`user-stack-info-${user.id}`"
+								>
 									<n8n-user-info
 										v-bind="user"
 										:isCurrentUser="user.email === props.currentUserEmail"
@@ -156,11 +161,12 @@ const menuHeight = computed(() => {
 </style>
 
 <style lang="scss">
-.user-stack-list {
+ul.user-stack-list {
 	border: none;
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: var(--spacing-s);
+	padding-bottom: var(--spacing-2xs);
 
 	.el-dropdown-menu__item {
 		line-height: var(--font-line-height-regular);
