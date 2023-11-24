@@ -12,11 +12,13 @@ const workflowPage = new WorkflowPage();
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
 
 describe('Template credentials setup', () => {
-	it('can be opened from template workflow page', () => {
+	beforeEach(() => {
 		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
 			fixture: testTemplate.fixture,
 		});
+	});
 
+	it('can be opened from template workflow page', () => {
 		templateWorkflowPage.actions.visit(testTemplate.id);
 		templateCredentialsSetupPage.actions.enableFeatureFlag();
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
@@ -27,9 +29,6 @@ describe('Template credentials setup', () => {
 	});
 
 	it('can be opened with a direct url', () => {
-		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
-			fixture: testTemplate.fixture,
-		});
 		templateCredentialsSetupPage.actions.visit(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
@@ -37,10 +36,38 @@ describe('Template credentials setup', () => {
 			.should('be.visible');
 	});
 
-	it('can be skip template creation', () => {
-		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
-			fixture: testTemplate.fixture,
+	it('has all the elements on page', () => {
+		templateCredentialsSetupPage.actions.visit(testTemplate.id);
+
+		templateCredentialsSetupPage.getters
+			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.should('be.visible');
+
+		templateCredentialsSetupPage.getters
+			.infoCallout()
+			.should(
+				'contain.text',
+				'You need 1x Shopify, 1x X (Formerly Twitter) and 1x Telegram account to setup this template',
+			);
+
+		const expectedAppNames = ['1. Shopify', '2. X (Formerly Twitter)', '3. Telegram'];
+		const expectedAppDescriptions = [
+			'The credential you select will be used in the product created node of the workflow template.',
+			'The credential you select will be used in the Twitter node of the workflow template.',
+			'The credential you select will be used in the Telegram node of the workflow template.',
+		];
+
+		templateCredentialsSetupPage.getters.appCredentialSteps().each(($el, index) => {
+			templateCredentialsSetupPage.getters
+				.stepHeading($el)
+				.should('have.text', expectedAppNames[index]);
+			templateCredentialsSetupPage.getters
+				.stepDescription($el)
+				.should('have.text', expectedAppDescriptions[index]);
 		});
+	});
+
+	it('can skip template creation', () => {
 		templateCredentialsSetupPage.actions.visit(testTemplate.id);
 
 		templateCredentialsSetupPage.getters.skipLink().click();
@@ -48,9 +75,6 @@ describe('Template credentials setup', () => {
 	});
 
 	it('can create credentials and workflow from the template', () => {
-		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
-			fixture: testTemplate.fixture,
-		});
 		templateCredentialsSetupPage.actions.visit(testTemplate.id);
 
 		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');

@@ -10,7 +10,6 @@ export class TemplateWorkflowPage extends BasePage {
 	actions = {
 		visit: (templateId: number) => {
 			cy.visit(`${this.url}/${templateId}`);
-			cy.waitForLoad();
 		},
 
 		clickUseThisWorkflowButton: () => {
