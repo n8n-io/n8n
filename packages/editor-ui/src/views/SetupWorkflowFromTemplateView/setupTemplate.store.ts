@@ -237,12 +237,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Loads the template if it hasn't been loaded yet.
 	 */
-	const loadTemplateIfNeeded = () => {
+	const loadTemplateIfNeeded = async () => {
 		if (!!template.value || !templateId.value) {
 			return;
 		}
 
-		void templatesStore.fetchTemplateById(templateId.value);
+		await templatesStore.fetchTemplateById(templateId.value);
 	};
 
 	/**

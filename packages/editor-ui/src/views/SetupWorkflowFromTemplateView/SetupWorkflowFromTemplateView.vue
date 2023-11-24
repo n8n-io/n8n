@@ -66,97 +66,103 @@
 	</TemplatesView>
 </template>
 
-<script lang="ts">
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useSetupTemplateStore } from './setupTemplate.store';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import N8nLink from 'n8n-design-system/components/N8nLink';
-import { useSetupTemplateStore } from './setupTemplate.store';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
-import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS } from '@/constants';
 import TemplatesView from '../TemplatesView.vue';
+import { VIEWS } from '@/constants';
+import { useExternalHooks, useI18n, useTelemetry } from '@/composables';
 
-export default defineComponent({
-	name: 'SetupWorkflowFromTemplateView',
-	mixins: [externalHooks],
-	components: {
-		TemplatesView,
-		N8nHeading,
-		N8nLink,
-		AppsRequiringCredsNotice,
-		SetupTemplateFormStep,
-	},
-	computed: {
-		...mapStores(useSetupTemplateStore),
-		templateId() {
-			return Array.isArray(this.$route.params.id)
-				? this.$route.params.id[0]
-				: this.$route.params.id;
-		},
-		title() {
-			return this.setupTemplateStore.template?.name ?? 'unknown';
-		},
-		isReady() {
-			return !this.setupTemplateStore.isLoading;
-		},
-		skipSetupUrl() {
-			const route = this.$router.resolve({
-				name: VIEWS.TEMPLATE_IMPORT,
-				params: { id: this.templateId },
-			});
+// Store
+const setupTemplateStore = useSetupTemplateStore();
+const i18n = useI18n();
+const $telemetry = useTelemetry();
+const $externalHooks = useExternalHooks();
 
-			return route.fullPath;
-		},
-		buttonTooltip() {
-			const numLeft = this.setupTemplateStore.numCredentialsLeft;
+// Router
+const route = useRoute();
+const $router = useRouter();
 
-			return this.$locale.baseText('templateSetup.continue.tooltip', {
-				adjustToNumber: numLeft,
-				interpolate: { numLeft: numLeft.toString() },
-			});
-		},
-	},
-	watch: {
-		templateId(newTemplateId) {
-			this.setupTemplateStore.setTemplateId(newTemplateId);
-			void this.setupTemplateStore.loadTemplateIfNeeded();
-		},
-	},
-	methods: {
-		async onSkipSetup(event: MouseEvent) {
-			event.preventDefault();
+//#region Computed
 
-			await this.setupTemplateStore.skipSetup({
-				$externalHooks: this.$externalHooks(),
-				$telemetry: this.$telemetry,
-				$router: this.$router,
-			});
-		},
-		async skipIfTemplateHasNoCreds() {
-			const isTemplateLoaded = !!this.setupTemplateStore.template;
-			if (!isTemplateLoaded) {
-				return;
-			}
+const templateId = computed(() =>
+	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+);
+const title = computed(() => setupTemplateStore.template?.name ?? 'unknown');
+const isReady = computed(() => !setupTemplateStore.isLoading);
 
-			if (this.setupTemplateStore.credentialUsages.length === 0) {
-				await this.setupTemplateStore.skipSetup({
-					$externalHooks: this.$externalHooks(),
-					$telemetry: this.$telemetry,
-					$router: this.$router,
-				});
-			}
-		},
-	},
-	async created() {
-		this.setupTemplateStore.setTemplateId(this.templateId);
-	},
-	async mounted() {
-		await this.setupTemplateStore.init();
-		await this.skipIfTemplateHasNoCreds();
-	},
+const skipSetupUrl = computed(() => {
+	const resolvedRoute = $router.resolve({
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: templateId.value },
+	});
+	return resolvedRoute.fullPath;
 });
+
+const buttonTooltip = computed(() => {
+	const numLeft = setupTemplateStore.numCredentialsLeft;
+
+	return i18n.baseText('templateSetup.continue.tooltip', {
+		adjustToNumber: numLeft,
+		interpolate: { numLeft: numLeft.toString() },
+	});
+});
+
+//#endregion Computed
+
+//#region Watchers
+
+watch(templateId, async (newTemplateId) => {
+	setupTemplateStore.setTemplateId(newTemplateId);
+	await setupTemplateStore.loadTemplateIfNeeded();
+});
+
+//#endregion Watchers
+
+//#region Methods
+
+const onSkipSetup = async (event: MouseEvent) => {
+	event.preventDefault();
+
+	await setupTemplateStore.skipSetup({
+		$externalHooks,
+		$telemetry,
+		$router,
+	});
+};
+
+const skipIfTemplateHasNoCreds = async () => {
+	const isTemplateLoaded = !!setupTemplateStore.template;
+	if (!isTemplateLoaded) {
+		return;
+	}
+
+	if (setupTemplateStore.credentialUsages.length === 0) {
+		await setupTemplateStore.skipSetup({
+			$externalHooks,
+			$telemetry,
+			$router,
+		});
+	}
+};
+
+//#endregion Methods
+
+//#region Lifecycle hooks
+
+setupTemplateStore.setTemplateId(templateId.value);
+
+onMounted(async () => {
+	await setupTemplateStore.init();
+	await skipIfTemplateHasNoCreds();
+});
+
+//#endregion Lifecycle hooks
 </script>
 
 <style lang="scss" module>
