@@ -4,38 +4,47 @@ import { N8nActionDropdown } from 'n8n-design-system';
 import type { INode } from 'n8n-workflow';
 import { watch, ref } from 'vue';
 
-const { isOpen, actions, position, targetNodes, target, close } = useContextMenu();
-const contextMenu = ref<InstanceType<typeof N8nActionDropdown>>();
+const contextMenu = useContextMenu();
+const { position, isOpen, actions, target } = contextMenu;
+const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
 const emit = defineEmits<{ (event: 'action', action: ContextMenuAction, nodes: INode[]): void }>();
 
 watch(
 	isOpen,
 	() => {
 		if (isOpen) {
-			contextMenu.value?.open();
+			dropdown.value?.open();
 		} else {
-			contextMenu.value?.close();
+			dropdown.value?.close();
 		}
 	},
 	{ flush: 'post' },
 );
 
 function onActionSelect(item: string) {
-	emit('action', item as ContextMenuAction, targetNodes.value);
+	const action = item as ContextMenuAction;
+	contextMenu._dispatchAction(action);
+	emit('action', action, contextMenu.targetNodes.value);
 }
 
 function onVisibleChange(open: boolean) {
 	if (!open) {
-		close();
+		contextMenu.close();
 	}
 }
 </script>
 
 <template>
 	<Teleport v-if="isOpen" to="body">
-		<div :class="$style.contextMenu" :style="{ top: `${position[1]}px`, left: `${position[0]}px` }">
+		<div
+			:class="$style.contextMenu"
+			:style="{
+				left: `${position[0]}px`,
+				top: `${position[1]}px`,
+			}"
+		>
 			<n8n-action-dropdown
-				ref="contextMenu"
+				ref="dropdown"
 				:items="actions"
 				placement="bottom-start"
 				data-test-id="context-menu"

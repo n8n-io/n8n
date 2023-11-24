@@ -35,6 +35,7 @@
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
 						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
