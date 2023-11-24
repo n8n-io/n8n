@@ -152,6 +152,17 @@
 					@valueChanged="valueChanged"
 					@parameterBlur="onParameterBlur"
 				/>
+				<div class="node-version" data-test-id="node-version">
+					{{
+						$locale.baseText('nodeSettings.nodeVersion', {
+							interpolate: {
+								node: nodeType?.displayName as string,
+								version: node.typeVersion.toString(),
+							},
+						})
+					}}
+					<span>({{ nodeVersionTag }})</span>
+				</div>
 			</div>
 		</div>
 		<n8n-block-ui :show="blockUI" />
@@ -257,6 +268,29 @@ export default defineComponent({
 			}
 
 			return '';
+		},
+		nodeTypeVersions(): number[] {
+			if (!this.node) return [];
+			return this.nodeTypesStore.getNodeVersions(this.node.type);
+		},
+		latestVersion(): number {
+			return Math.max(...this.nodeTypeVersions);
+		},
+		isLatestNodeVersion(): boolean {
+			return this.latestVersion === this.node?.typeVersion;
+		},
+		nodeVersionTag(): string {
+			if (!this.nodeType || this.nodeType.hidden) {
+				return this.$locale.baseText('nodeSettings.deprecated');
+			}
+
+			if (this.isLatestNodeVersion) {
+				return this.$locale.baseText('nodeSettings.latest');
+			}
+
+			return this.$locale.baseText('nodeSettings.latestVersion', {
+				interpolate: { version: this.latestVersion.toString() },
+			});
 		},
 		nodeTypeDescription(): string {
 			if (this.nodeType?.description) {
@@ -1124,6 +1158,14 @@ export default defineComponent({
 	position: absolute;
 	right: 7px;
 	top: -25px;
+}
+
+.node-version {
+	border-top: var(--border-base);
+	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
+	color: var(--color-text-light);
 }
 
 .parameter-value {
