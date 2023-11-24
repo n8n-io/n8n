@@ -2509,15 +2509,15 @@ const getCommonWorkflowFunctions = (
 });
 
 const executionCancellationFunctions = (
-	abortSignal: AbortSignal,
+	abortSignal?: AbortSignal,
 ): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
 	getExecutionCancelSignal: () => abortSignal,
 	onExecutionCancellation: (handler) => {
 		const fn = () => {
-			abortSignal.removeEventListener('abort', fn);
+			abortSignal?.removeEventListener('abort', fn);
 			handler();
 		};
-		abortSignal.addEventListener('abort', fn);
+		abortSignal?.addEventListener('abort', fn);
 	},
 });
 
@@ -3100,7 +3100,7 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortSignal: AbortSignal,
+	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
@@ -3527,7 +3527,7 @@ export function getExecuteSingleFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortSignal: AbortSignal,
+	abortSignal?: AbortSignal,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {

@@ -1216,7 +1216,7 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
-		abortSignal: AbortSignal,
+		abortSignal?: AbortSignal,
 	): Promise<IRunNodeResponse> {
 		const { node } = executionData;
 		let inputData = executionData.data;
@@ -1387,6 +1387,7 @@ export class Workflow {
 					nodeType,
 					executionData,
 					nodeExecuteFunctions,
+					undefined,
 					abortSignal,
 				),
 			};
