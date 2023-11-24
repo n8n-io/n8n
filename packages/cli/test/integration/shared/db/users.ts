@@ -132,7 +132,7 @@ export const getAllUsers = async () =>
 		relations: ['globalRole', 'authIdentities'],
 	});
 
-export const getById = async (id: string) =>
+export const getUserById = async (id: string) =>
 	Container.get(UserRepository).findOneOrFail({
 		where: { id },
 		relations: ['globalRole', 'authIdentities'],
