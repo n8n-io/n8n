@@ -162,6 +162,8 @@ export class ActiveExecutions {
 			return;
 		}
 
+		const postExecutePromise = this.getPostExecutePromise(executionId);
+
 		// In case something goes wrong make sure that promise gets first
 		// returned that it gets then also resolved correctly.
 		if (this.activeExecutions[executionId].process !== undefined) {
@@ -177,10 +179,9 @@ export class ActiveExecutions {
 		} else {
 			// Workflow is running in current process
 			this.activeExecutions[executionId].workflowExecution!.cancel();
-			setTimeout(() => this.remove(executionId), 10);
 		}
 
-		return this.getPostExecutePromise(executionId);
+		return postExecutePromise;
 	}
 
 	/**
