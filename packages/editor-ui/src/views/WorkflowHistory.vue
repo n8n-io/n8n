@@ -16,6 +16,7 @@ import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistory
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { telemetry } from '@/plugins/telemetry';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -72,6 +73,10 @@ const isFirstItemShown = computed(
 );
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
+const sendTelemetry = (event: string) => {
+	telemetry.track(event, {});
+};
+
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
@@ -82,6 +87,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 };
 
 onBeforeMount(async () => {
+	sendTelemetry('User opened workflow history');
 	try {
 		const [workflow] = await Promise.all([
 			workflowsStore.fetchWorkflow(route.params.workflowId),
@@ -232,15 +238,19 @@ const onAction = async ({
 		switch (action) {
 			case WORKFLOW_HISTORY_ACTIONS.OPEN:
 				openInNewTab(id);
+				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
 				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
+				sendTelemetry('User downloaded version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
 				await cloneWorkflowVersion(id, data);
+				sendTelemetry('User cloned version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				await restoreWorkflowVersion(id, data);
+				sendTelemetry('User restored version');
 				break;
 		}
 	} catch (error) {
@@ -282,6 +292,7 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
+		sendTelemetry('User selected version');
 	} catch (error) {
 		toast.showError(
 			new Error(`${error.message} "${route.params.versionId}"&nbsp;`),
