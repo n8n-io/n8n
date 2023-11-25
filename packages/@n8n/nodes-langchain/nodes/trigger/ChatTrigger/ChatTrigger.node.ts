@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { pick } from 'lodash';
 import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
 
@@ -93,7 +94,7 @@ export class ChatTrigger implements INodeType {
 				typeOptions: {
 					rows: 3,
 				},
-				placeholder: 'Add Message',
+				placeholder: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				default: '',
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
@@ -104,14 +105,6 @@ export class ChatTrigger implements INodeType {
 				placeholder: 'Add Field',
 				default: {},
 				options: [
-					{
-						displayName: 'Get Started',
-						name: 'getStarted',
-						type: 'string',
-						default: 'New Conversation',
-						placeholder: 'e.g. New Conversation',
-						description: 'Shown at the start of the chat, in the middle of the chat window',
-					},
 					{
 						displayName: 'Input Placeholder',
 						name: 'inputPlaceholder',
@@ -126,6 +119,14 @@ export class ChatTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to support the request to load messages of a previous session',
+					},
+					{
+						displayName: 'Start Conversation Button Text',
+						name: 'getStarted',
+						type: 'string',
+						default: 'New Conversation',
+						placeholder: 'e.g. New Conversation',
+						description: 'Shown at the start of the chat, in the middle of the chat window',
 					},
 					{
 						displayName: 'Subtitle',
@@ -188,9 +189,11 @@ export class ChatTrigger implements INodeType {
 				.map((line) => line.trim());
 			const instanceId = this.getInstanceId();
 
+			const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
+
 			const page = createPage({
 				i18n: {
-					en: options as Record<string, string>,
+					en: i18nConfig,
 				},
 				initialMessages,
 				webhookUrl,
