@@ -1608,6 +1608,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
+	allowLocalhost?: boolean; // If for a cloud only service we can block localhost
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
 	triggerPanel?: {

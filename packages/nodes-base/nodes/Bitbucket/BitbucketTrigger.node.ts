@@ -274,7 +274,7 @@ export class BitbucketTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
 				const resource = this.getNodeParameter('resource', 0);

@@ -38,7 +38,6 @@ export class LoneScaleTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-
 		properties: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options

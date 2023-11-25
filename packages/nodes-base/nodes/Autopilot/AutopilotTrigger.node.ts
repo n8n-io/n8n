@@ -95,7 +95,7 @@ export class AutopilotTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
 				const body: IDataObject = {

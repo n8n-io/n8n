@@ -59,6 +59,7 @@ export class CrowdDevTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Trigger',

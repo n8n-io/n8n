@@ -127,7 +127,7 @@ export class MailerLiteTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const event = this.getNodeParameter('event') as string;
 
 				const endpoint = '/webhooks';

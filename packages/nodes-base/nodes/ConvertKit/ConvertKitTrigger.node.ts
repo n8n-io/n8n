@@ -251,7 +251,7 @@ export class ConvertKitTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				let event = this.getNodeParameter('event', 0) as string;
 
@@ -264,7 +264,7 @@ export class ConvertKitTrigger implements INodeType {
 				}
 
 				const body: IDataObject = {
-					target_url: webhookUrl as string,
+					target_url: webhookUrl,
 					event: {
 						name: event,
 					},

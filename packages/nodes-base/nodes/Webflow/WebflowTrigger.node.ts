@@ -220,11 +220,12 @@ export class WebflowTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const siteId = this.getNodeParameter('site') as string;
 				const event = this.getNodeParameter('event') as string;
 				const endpoint = `/sites/${siteId}/webhooks`;
+
 				const body: IDataObject = {
 					site_id: siteId,
 					triggerType: event,

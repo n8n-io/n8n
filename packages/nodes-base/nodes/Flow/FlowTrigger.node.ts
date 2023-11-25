@@ -127,10 +127,11 @@ export class FlowTrigger implements INodeType {
 				const credentials = await this.getCredentials('flowApi');
 
 				let resourceIds, body, responseData;
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
 				const endpoint = '/integration_webhooks';
+
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
 				}

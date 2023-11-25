@@ -147,7 +147,7 @@ export class CalendlyTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events') as string;
 				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 

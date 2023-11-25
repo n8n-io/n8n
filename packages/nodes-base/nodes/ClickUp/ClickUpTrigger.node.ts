@@ -279,12 +279,13 @@ export class ClickUpTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const filters = this.getNodeParameter('filters') as IDataObject;
 				const teamId = this.getNodeParameter('team') as string;
 				const events = this.getNodeParameter('events') as string[];
 				const endpoint = `/team/${teamId}/webhook`;
+
 				const body: IDataObject = {
 					endpoint: webhookUrl,
 					events,

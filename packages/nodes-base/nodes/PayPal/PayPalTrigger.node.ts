@@ -115,8 +115,9 @@ export class PayPalTrigger implements INodeType {
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				let webhook;
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events', []) as string[];
+
 				const body = {
 					url: webhookUrl,
 					event_types: events.map((event) => {

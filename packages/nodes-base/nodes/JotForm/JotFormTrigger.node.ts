@@ -128,10 +128,11 @@ export class JotFormTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
 				const endpoint = `/form/${formId}/webhooks`;
+
 				const body: IDataObject = {
 					webhookURL: webhookUrl,
 				};

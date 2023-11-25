@@ -174,7 +174,7 @@ export class TypeformTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				const formId = this.getNodeParameter('formId') as string;
 				const webhookId = 'n8n-' + Math.random().toString(36).substring(2, 15);

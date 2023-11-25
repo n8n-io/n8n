@@ -178,7 +178,7 @@ export class TelegramTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				let allowedUpdates = this.getNodeParameter('updates') as string[];
 

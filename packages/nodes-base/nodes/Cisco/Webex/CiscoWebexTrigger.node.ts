@@ -515,7 +515,8 @@ export class CiscoWebexTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
 				const event = this.getNodeParameter('event') as string;
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;

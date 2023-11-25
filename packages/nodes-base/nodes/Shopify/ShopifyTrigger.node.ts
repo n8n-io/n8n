@@ -347,7 +347,7 @@ export class ShopifyTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const endpoint = '/webhooks.json';

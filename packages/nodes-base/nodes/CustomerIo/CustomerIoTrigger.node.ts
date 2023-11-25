@@ -255,7 +255,7 @@ export class CustomerIoTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events', []) as string[];
 
 				const endpoint = '/reporting_webhooks';

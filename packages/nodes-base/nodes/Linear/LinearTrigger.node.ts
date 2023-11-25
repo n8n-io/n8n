@@ -192,9 +192,10 @@ export class LinearTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const teamId = this.getNodeParameter('teamId') as string;
 				const resources = this.getNodeParameter('resources') as string[];
+
 				const body = {
 					query: `
 						mutation webhookCreate($url: String!, $teamId: String!, $resources: [String!]!) {

@@ -118,10 +118,11 @@ export class WiseTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const profileId = this.getNodeParameter('profileId') as string;
 				const event = this.getNodeParameter('event') as string;
+
 				const trigger = getTriggerName(event);
 				const body: IDataObject = {
 					name: 'n8n Webhook',

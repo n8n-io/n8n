@@ -110,7 +110,7 @@ export class KeapTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const eventId = this.getNodeParameter('eventId') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				const body = {
 					eventKey: eventId,

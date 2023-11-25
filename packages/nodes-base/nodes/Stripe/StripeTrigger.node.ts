@@ -863,7 +863,7 @@ export class StripeTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				const events = this.getNodeParameter('events', []);
 

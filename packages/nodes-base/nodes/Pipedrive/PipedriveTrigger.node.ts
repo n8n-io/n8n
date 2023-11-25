@@ -244,7 +244,7 @@ export class PipedriveTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 				const eventAction = this.getNodeParameter('action') as string;
 				const eventObject = this.getNodeParameter('object') as string;

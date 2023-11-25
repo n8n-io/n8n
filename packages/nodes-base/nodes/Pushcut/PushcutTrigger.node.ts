@@ -70,7 +70,7 @@ export class PushcutTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const actionName = this.getNodeParameter('actionName');
 
 				const endpoint = '/subscriptions';

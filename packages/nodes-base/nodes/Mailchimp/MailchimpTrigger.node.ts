@@ -209,10 +209,11 @@ export class MailchimpTrigger implements INodeType {
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				let webhook;
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const listId = this.getNodeParameter('list') as string;
 				const events = this.getNodeParameter('events', []) as string[];
 				const sources = this.getNodeParameter('sources', []) as string[];
+
 				const body = {
 					url: webhookUrl,
 					events: events.reduce((object, currentValue) => {

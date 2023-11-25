@@ -51,6 +51,7 @@ import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import { NodeOperationError } from './NodeErrors';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -1066,6 +1067,18 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
+
+		if (method === 'checkExists') {
+			const webhookUrl = thisArgs.getNodeWebhookUrl('default');
+			const allowLocal = nodeType.description.allowLocalhost ?? false;
+
+			if (webhookUrl?.includes('//localhost') && !allowLocal) {
+				throw new NodeOperationError(
+					thisArgs.getNode(),
+					`The webhook for node "${node?.name}" cannot work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!`,
+				);
+			}
+		}
 
 		return webhookFn.call(thisArgs);
 	}
