@@ -121,6 +121,13 @@ export class ChatTrigger implements INodeType {
 						description: 'Shown as placeholder text in the chat input field',
 					},
 					{
+						displayName: 'Load Previous Session',
+						name: 'loadPreviousSession',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to support the request to load messages of a previous session',
+					},
+					{
 						displayName: 'Subtitle',
 						name: 'subtitle',
 						type: 'string',
@@ -157,6 +164,14 @@ export class ChatTrigger implements INodeType {
 			throw error;
 		}
 
+		const options = this.getNodeParameter('options', {}) as {
+			getStarted?: string;
+			inputPlaceholder?: string;
+			loadPreviousSession?: boolean;
+			subtitle?: string;
+			title?: string;
+		};
+
 		// Show the chat on GET request
 		if (webhookName === 'setup') {
 			const webhookUrlRaw = this.getNodeWebhookUrl('default') as string;
@@ -166,7 +181,6 @@ export class ChatTrigger implements INodeType {
 				| 'none'
 				| 'basicAuth'
 				| 'headerAuth';
-			const options = this.getNodeParameter('options', {});
 			const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 			const initialMessages = initialMessagesRaw
 				.split('\n')
@@ -192,6 +206,14 @@ export class ChatTrigger implements INodeType {
 		}
 
 		const bodyData = this.getBodyData() ?? {};
+
+		if (options.loadPreviousSession !== true && bodyData.action === 'loadPreviousSession') {
+			// If messages of a previous session should not be loaded, simply return an empty array
+			return {
+				webhookResponse: { data: [] },
+			};
+		}
+
 		const returnData: IDataObject = {};
 		returnData.sessionId = bodyData.sessionId;
 		returnData.action = bodyData.action;
