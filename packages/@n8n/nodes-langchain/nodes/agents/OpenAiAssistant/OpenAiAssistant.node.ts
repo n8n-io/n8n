@@ -64,12 +64,12 @@ export class OpenAiAssistant implements INodeType {
 				default: 'existing',
 				options: [
 					{
-						name: 'Use Existing Assistant',
-						value: 'existing',
-					},
-					{
 						name: 'Create New Assistant',
 						value: 'new',
+					},
+					{
+						name: 'Use Existing Assistant',
+						value: 'existing',
 					},
 				],
 			},
@@ -258,17 +258,17 @@ export class OpenAiAssistant implements INodeType {
 						type: 'string',
 					},
 					{
-						displayName: 'Timeout',
-						name: 'timeout',
-						default: 10000,
-						description: 'Maximum amount of time a request is allowed to take in milliseconds',
-						type: 'number',
-					},
-					{
 						displayName: 'Max Retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',
+						type: 'number',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 10000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
 						type: 'number',
 					},
 				],
