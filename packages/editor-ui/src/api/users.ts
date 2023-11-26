@@ -2,10 +2,12 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
+	IRole,
 	IUserResponse,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { ScopeLevel } from '@n8n/permissions';
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
@@ -142,4 +144,11 @@ export async function submitPersonalizationSurvey(
 	params: IPersonalizationLatestVersion,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
+}
+
+export async function updateRole(
+	context: IRestApiContext,
+	{ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } },
+): Promise<IUserResponse> {
+	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRole: role });
 }

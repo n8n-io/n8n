@@ -55,6 +55,7 @@
 			>
 				<template #actions="{ user }">
 					<n8n-select
+						:modelValue="user.globalRole.name"
 						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
 						:disabled="usersStore.isMember"
 						data-test-id="user-role-select"
@@ -247,8 +248,8 @@ export default defineComponent({
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
 		},
-		onRoleChange(user: IUser, role: IRole) {
-			console.log('onRoleChange', user, role);
+		async onRoleChange(user: IUser, name: IRole) {
+			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });
 		},
 	},
 });

@@ -15,6 +15,7 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
+	updateRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -39,7 +40,7 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, ScopeLevel } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isDefaultUser = (user: IUserResponse | null) =>
@@ -377,6 +378,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async confirmEmail() {
 			await confirmEmail(useRootStore().getRestApiContext);
+		},
+
+		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+			const rootStore = useRootStore();
+			await updateRole(rootStore.getRestApiContext, { id, role });
+			await this.fetchUsers();
 		},
 	},
 });
