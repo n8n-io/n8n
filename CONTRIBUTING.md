@@ -19,6 +19,8 @@ Great that you are here and you want to contribute to n8n
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
 		- [Test suite](#test-suite)
+			- [Unit tests](#unit-tests)
+			- [E2E tests](#e2e-tests)
 	- [Releasing](#releasing)
 	- [Create custom nodes](#create-custom-nodes)
 	- [Extend documentation](#extend-documentation)
@@ -187,7 +189,9 @@ automatically build your code, restart the backend and refresh the frontend
 
 ### Test suite
 
-The tests can be started via:
+#### Unit tests
+
+Unit tests can be started via:
 
 ```
 pnpm test
@@ -196,6 +200,16 @@ pnpm test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+#### E2E tests
+
+E2E tests can be started via one of the following commands:
+
+- `pnpm test:e2e:ui`: Start n8n and run e2e tests interactively using built UI code. Does not react to code changes (i.e. runs `pnpm start` and `cypress open`)
+- `pnpm test:e2e:dev`: Start n8n in development mode and run e2e tests interactively. Reacts to code changes (i.e. runs `pnpm dev` and `cypress open`)
+- `pnpm test:e2e:all`: Start n8n and run e2e tests headless (i.e. runs `pnpm start` and `cypress run --headless`)
+
+⚠️ Remember to stop your dev server before. Otherwise port binding will fail.
 
 ## Releasing
 

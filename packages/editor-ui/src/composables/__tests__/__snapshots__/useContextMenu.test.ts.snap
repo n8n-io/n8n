@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`useContextMenu > should return the correct actions opening the menu from the button 1`] = `
+exports[`useContextMenu > Read-only mode > should return the correct actions when right clicking a Node 1`] = `
 [
   {
     "id": "open",
@@ -12,6 +12,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
+    "disabled": true,
     "id": "execute",
     "label": "Execute node",
   },
@@ -97,106 +98,10 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
 ]
 `;
 
-exports[`useContextMenu > should return the correct actions when right clicking a Node 1`] = `
+exports[`useContextMenu > Read-only mode > should return the correct actions when right clicking a sticky 1`] = `
 [
   {
-    "id": "open",
-    "label": "Open node...",
-    "shortcut": {
-      "keys": [
-        "↵",
-      ],
-    },
-  },
-  {
-    "id": "execute",
-    "label": "Execute node",
-  },
-  {
     "disabled": true,
-    "id": "rename",
-    "label": "Rename node",
-    "shortcut": {
-      "keys": [
-        "F2",
-      ],
-    },
-  },
-  {
-    "disabled": true,
-    "id": "toggle_activation",
-    "label": "Deactivate node",
-    "shortcut": {
-      "keys": [
-        "D",
-      ],
-    },
-  },
-  {
-    "disabled": true,
-    "id": "toggle_pin",
-    "label": "Pin node",
-    "shortcut": {
-      "keys": [
-        "p",
-      ],
-    },
-  },
-  {
-    "id": "copy",
-    "label": "Copy node",
-    "shortcut": {
-      "keys": [
-        "C",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "disabled": true,
-    "id": "duplicate",
-    "label": "Duplicate node",
-    "shortcut": {
-      "keys": [
-        "D",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "disabled": false,
-    "divided": true,
-    "id": "select_all",
-    "label": "Select all",
-    "shortcut": {
-      "keys": [
-        "A",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "disabled": false,
-    "id": "deselect_all",
-    "label": "Clear selection",
-  },
-  {
-    "disabled": true,
-    "divided": true,
-    "id": "delete",
-    "label": "Delete node",
-    "shortcut": {
-      "keys": [
-        "Del",
-      ],
-    },
-  },
-]
-`;
-
-exports[`useContextMenu > should return the correct actions when right clicking a sticky 1`] = `
-[
-  {
     "id": "open",
     "label": "Edit sticky note",
     "shortcut": {
@@ -204,6 +109,11 @@ exports[`useContextMenu > should return the correct actions when right clicking 
         "↵",
       ],
     },
+  },
+  {
+    "disabled": true,
+    "id": "change_color",
+    "label": "Change color",
   },
   {
     "id": "copy",
@@ -257,10 +167,275 @@ exports[`useContextMenu > should return the correct actions when right clicking 
 ]
 `;
 
+exports[`useContextMenu > should return the correct actions opening the menu from the button 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open node...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Execute node",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename node",
+    "shortcut": {
+      "keys": [
+        "F2",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate node",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin node",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy node",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate node",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete node",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should return the correct actions when right clicking a Node 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open node...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Execute node",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename node",
+    "shortcut": {
+      "keys": [
+        "F2",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate node",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin node",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy node",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate node",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete node",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should return the correct actions when right clicking a sticky 1`] = `
+[
+  {
+    "disabled": false,
+    "id": "open",
+    "label": "Edit sticky note",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "change_color",
+    "label": "Change color",
+  },
+  {
+    "id": "copy",
+    "label": "Copy sticky note",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate sticky note",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete sticky note",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
 exports[`useContextMenu > should support opening and closing (default = right click on canvas) 1`] = `
 [
   {
-    "disabled": true,
+    "disabled": false,
     "id": "toggle_activation",
     "label": "Deactivate 2 nodes",
     "shortcut": {
@@ -318,7 +493,7 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     "label": "Clear selection",
   },
   {
-    "disabled": true,
+    "disabled": false,
     "divided": true,
     "id": "delete",
     "label": "Delete 2 nodes",
