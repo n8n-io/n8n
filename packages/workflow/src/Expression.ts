@@ -15,7 +15,8 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './errors/expression.error';
+import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 

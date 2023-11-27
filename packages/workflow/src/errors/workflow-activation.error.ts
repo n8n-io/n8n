@@ -1,5 +1,5 @@
-import type { INode } from './Interfaces';
-import { ExecutionBaseError, type Severity } from './NodeErrors';
+import type { INode, Severity } from '../Interfaces';
+import { ExecutionBaseError } from './abstract/execution-base.error';
 
 interface WorkflowActivationErrorOptions {
 	cause?: Error;
@@ -32,16 +32,5 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.workflowId = workflowId;
 		this.message = message;
 		if (severity) this.severity = severity;
-	}
-}
-
-export class WorkflowDeactivationError extends WorkflowActivationError {}
-
-export class WebhookPathAlreadyTakenError extends WorkflowActivationError {
-	constructor(nodeName: string, cause?: Error) {
-		super(
-			`The URL path that the "${nodeName}" node uses is already taken. Please change it to something else.`,
-			{ severity: 'warning', cause },
-		);
 	}
 }
