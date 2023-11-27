@@ -263,6 +263,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				this.setNodeTypes(nodeTypes);
 			}
 		},
+		/**
+		 * Loads node types if they haven't been loaded yet
+		 */
+		async loadNodeTypesIfNotLoaded(): Promise<void> {
+			if (Object.keys(this.nodeTypes).length === 0) {
+				await this.getNodeTypes();
+			}
+		},
 		async getNodeTranslationHeaders(): Promise<void> {
 			const rootStore = useRootStore();
 			const headers = await getNodeTranslationHeaders(rootStore.getRestApiContext);

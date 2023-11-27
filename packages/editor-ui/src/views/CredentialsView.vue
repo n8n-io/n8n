@@ -110,11 +110,8 @@ export default defineComponent({
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
 				this.externalSecretsStore.fetchAllSecrets(),
+				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
 			];
-
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				loadPromises.push(this.nodeTypesStore.getNodeTypes());
-			}
 
 			await Promise.all(loadPromises);
 

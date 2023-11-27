@@ -401,6 +401,7 @@ export const enum VIEWS {
 	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
+	TEMPLATE_SETUP = 'TemplatesWorkflowSetupView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
