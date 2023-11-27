@@ -8,7 +8,8 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import { ROLE, runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
+import { ROLE } from '@/utils/userUtils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';

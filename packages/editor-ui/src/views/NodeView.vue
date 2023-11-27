@@ -332,7 +332,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
+import { getAccountAge } from '@/utils/userUtils';
+import { getConnectionInfo, getNodeViewTab } from '@/utils/canvasUtils';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,

@@ -92,7 +92,7 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';

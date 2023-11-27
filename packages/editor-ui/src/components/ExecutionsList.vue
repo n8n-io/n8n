@@ -304,7 +304,8 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isEmpty, setPageTitle } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default defineComponent({

@@ -108,7 +108,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isNumber, isString } from '@/utils';
+import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,

@@ -176,7 +176,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';

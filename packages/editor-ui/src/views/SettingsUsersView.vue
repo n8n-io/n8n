@@ -87,7 +87,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 
 export default defineComponent({
 	name: 'SettingsUsersView',

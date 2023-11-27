@@ -1,4 +1,4 @@
-import { highlightText } from '@/utils';
+import { highlightText } from '@/utils/htmlUtils';
 
 describe('highlightText', () => {
 	it('should return original text if search parameter is an empty string', () => {

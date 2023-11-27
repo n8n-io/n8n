@@ -57,7 +57,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
 import { initializeAuthenticatedFeatures } from '@/init';
 
 export default defineComponent({

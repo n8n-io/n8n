@@ -8,7 +8,7 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import { getObjectKeys, isEmpty } from '@/utils';
+import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsageStore } from '@/stores/usage.store';

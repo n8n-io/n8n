@@ -136,7 +136,7 @@ import {
 	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
 	isRequiredCredential,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;

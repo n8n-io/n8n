@@ -120,7 +120,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({
