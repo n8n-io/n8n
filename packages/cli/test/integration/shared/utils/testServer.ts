@@ -268,6 +268,7 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(EHS),
 								Container.get(USE),
+								Container.get(License),
 							),
 						);
 						break;

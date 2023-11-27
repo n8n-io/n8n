@@ -81,6 +81,7 @@ export const LICENSE_FEATURES = {
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
+	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
 } as const;
 
 export const LICENSE_QUOTAS = {

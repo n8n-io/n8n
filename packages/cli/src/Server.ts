@@ -292,6 +292,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				externalHooks,
 				Container.get(UserService),
+				Container.get(License),
 				postHog,
 			),
 			Container.get(VariablesController),
