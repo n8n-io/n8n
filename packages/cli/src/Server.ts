@@ -446,7 +446,10 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage({
+					user: req.user,
+					scope: 'workflow:list',
+				});
 			}),
 		);
 
@@ -458,8 +461,9 @@ export class Server extends AbstractServer {
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: whereClause({
+					where: await whereClause({
 						user: req.user,
+						globalScope: 'workflow:read',
 						entityType: 'workflow',
 						entityId: workflowId,
 					}),

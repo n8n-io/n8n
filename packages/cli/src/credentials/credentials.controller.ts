@@ -57,7 +57,12 @@ credentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);
+		const sharing = await CredentialsService.getSharing(
+			req.user,
+			credentialId,
+			{ allowGlobalScope: true, globalScope: 'credential:read' },
+			['credentials'],
+		);
 
 		if (!sharing) {
 			throw new ResponseHelper.NotFoundError(
@@ -92,7 +97,10 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
+		const sharing = await CredentialsService.getSharing(req.user, credentials.id, {
+			allowGlobalScope: true,
+			globalScope: 'credential:read',
+		});
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
@@ -135,7 +143,10 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsDb> => {
 		const { id: credentialId } = req.params;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId, {
+			allowGlobalScope: true,
+			globalScope: 'credential:update',
+		});
 
 		if (!sharing) {
 			Container.get(Logger).info(
@@ -187,7 +198,10 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId, {
+			allowGlobalScope: true,
+			globalScope: 'credential:delete',
+		});
 
 		if (!sharing) {
 			Container.get(Logger).info(
