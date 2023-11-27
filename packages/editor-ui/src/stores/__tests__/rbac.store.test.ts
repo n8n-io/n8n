@@ -57,7 +57,7 @@ describe('RBAC store', () => {
 			const newScope = 'example:list' as Scope;
 			const rbacStore = useRBACStore();
 			rbacStore.addResourceScope(newScope, { resourceId: '1', resourceType: 'variable' });
-			expect(rbacStore.scopesByResourceId['variable']['1']).toContain(newScope);
+			expect(rbacStore.scopesByResourceId.variable['1']).toContain(newScope);
 		});
 
 		it('should not add resource scope if it already exists', () => {
@@ -66,7 +66,7 @@ describe('RBAC store', () => {
 			rbacStore.addResourceScope(newScope, { resourceId: '1', resourceType: 'variable' });
 			rbacStore.addResourceScope(newScope, { resourceId: '1', resourceType: 'variable' });
 			expect(
-				rbacStore.scopesByResourceId['variable']['1'].filter((scope) => scope === newScope),
+				rbacStore.scopesByResourceId.variable['1'].filter((scope) => scope === newScope),
 			).toHaveLength(1);
 		});
 	});

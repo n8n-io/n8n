@@ -15,7 +15,9 @@
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
-				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+				<div>
+					{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}
+				</div>
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
@@ -29,7 +31,6 @@
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading"
 				data-test-id="workflow-activate-switch"
 			>
 			</el-switch>
@@ -155,10 +156,6 @@ export default defineComponent({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
-
-	:deep(.el-loading-spinner) {
-		margin-top: -10px;
-	}
 }
 
 .could-not-be-started {
