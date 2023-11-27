@@ -1,6 +1,6 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-import { InvalidExecutionMetadata } from './errors/invalid-execution-metadata.error';
+import { InvalidExecutionMetadataError } from './errors/invalid-execution-metadata.error';
 
 export const KV_LIMIT = 10;
 
@@ -20,17 +20,17 @@ export function setWorkflowExecutionMetadata(
 		return;
 	}
 	if (typeof key !== 'string') {
-		throw new InvalidExecutionMetadata('key', key);
+		throw new InvalidExecutionMetadataError('key', key);
 	}
 	if (key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
-		throw new InvalidExecutionMetadata(
+		throw new InvalidExecutionMetadataError(
 			'key',
 			key,
 			`Custom date key can only contain characters "A-Za-z0-9_" (key "${key}")`,
 		);
 	}
 	if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint') {
-		throw new InvalidExecutionMetadata('value', key);
+		throw new InvalidExecutionMetadataError('value', key);
 	}
 	const val = String(value);
 	if (key.length > 50) {

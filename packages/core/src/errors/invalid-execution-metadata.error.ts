@@ -1,6 +1,6 @@
 import { ApplicationError } from 'n8n-workflow';
 
-export class InvalidExecutionMetadata extends ApplicationError {
+export class InvalidExecutionMetadataError extends ApplicationError {
 	constructor(
 		public type: 'key' | 'value',
 		key: unknown,

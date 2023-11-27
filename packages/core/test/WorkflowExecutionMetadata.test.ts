@@ -5,7 +5,7 @@ import {
 	getWorkflowExecutionMetadata,
 	getAllWorkflowExecutionMetadata,
 } from '@/ExecutionMetadata';
-import { InvalidExecutionMetadata } from '@/errors/invalid-execution-metadata.error';
+import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
 import type { IRunExecutionData } from 'n8n-workflow';
 
 describe('Execution Metadata functions', () => {
@@ -52,7 +52,7 @@ describe('Execution Metadata functions', () => {
 		} as IRunExecutionData;
 
 		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).not.toThrow(
-			InvalidExecutionMetadata,
+			InvalidExecutionMetadataError,
 		);
 
 		expect(metadata).toEqual({
@@ -60,7 +60,7 @@ describe('Execution Metadata functions', () => {
 		});
 
 		expect(() => setWorkflowExecutionMetadata(executionData, 'test2', {})).toThrow(
-			InvalidExecutionMetadata,
+			InvalidExecutionMetadataError,
 		);
 
 		expect(metadata).not.toEqual({
@@ -84,7 +84,7 @@ describe('Execution Metadata functions', () => {
 				test3: 'value3',
 				test4: 'value4',
 			}),
-		).toThrow(InvalidExecutionMetadata);
+		).toThrow(InvalidExecutionMetadataError);
 
 		expect(metadata).toEqual({
 			test3: 'value3',
@@ -101,7 +101,7 @@ describe('Execution Metadata functions', () => {
 		} as IRunExecutionData;
 
 		expect(() => setWorkflowExecutionMetadata(executionData, 'te$t1$', 1234)).toThrow(
-			InvalidExecutionMetadata,
+			InvalidExecutionMetadataError,
 		);
 
 		expect(metadata).not.toEqual({
