@@ -14,6 +14,7 @@ export class MultiMainSetup extends SingleMainSetup {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
 			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('generic.instanceType') === 'main' &&
 			this.isLicensed
 		);
 	}
@@ -37,7 +38,7 @@ export class MultiMainSetup extends SingleMainSetup {
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
-		if (this.isInitialized) return;
+		if (!this.isEnabled || this.isInitialized) return;
 
 		await this.initPublisher();
 

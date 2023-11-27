@@ -4,7 +4,6 @@
 
 import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
-import config from '@/config';
 
 import type {
 	ExecutionError,
@@ -23,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	INodeType,
 	IWebhookData,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -39,6 +39,7 @@ import type {
 	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookAccessControlOptions,
 	WebhookRequest,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -97,9 +98,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async init() {
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			await this.multiMainSetup.init();
-		}
+		await this.multiMainSetup.init();
 
 		await this.addActiveWorkflows('init');
 
@@ -137,26 +136,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		response: express.Response,
 	): Promise<IResponseCallbackData> {
 		const httpMethod = request.method;
-		let path = request.params.path;
+		const path = request.params.path;
 
 		this.logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
 		// Reset request parameters
 		request.params = {} as WebhookRequest['params'];
 
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
-
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-
-		if (webhook === null) {
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path, httpMethod),
-				WEBHOOK_PROD_UNREGISTERED_HINT,
-			);
-		}
+		const webhook = await this.findWebhook(path, httpMethod);
 
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
@@ -235,11 +222,43 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 	}
 
-	/**
-	 * Gets all request methods associated with a single webhook
-	 */
 	async getWebhookMethods(path: string) {
 		return this.webhookService.getWebhookMethods(path);
+	}
+
+	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		const webhook = await this.findWebhook(path, httpMethod);
+
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: webhook.workflowId },
+			select: ['nodes'],
+		});
+
+		const nodes = workflowData?.nodes;
+		const webhookNode = nodes?.find(
+			({ type, parameters, typeVersion }) =>
+				parameters?.path === path &&
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
+		);
+		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
+	}
+
+	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
+		const webhook = await this.webhookService.findWebhook(httpMethod, path);
+		if (webhook === null) {
+			throw new ResponseHelper.NotFoundError(
+				webhookNotFoundErrorMessage(path, httpMethod),
+				WEBHOOK_PROD_UNREGISTERED_HINT,
+			);
+		}
+
+		return webhook;
 	}
 
 	/**

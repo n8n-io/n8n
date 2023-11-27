@@ -59,4 +59,21 @@ export class CollaborationState {
 
 		return [...workflowState.values()];
 	}
+
+	/**
+	 * Removes all users that have not been seen in a given time
+	 */
+	cleanInactiveUsers(workflowId: Workflow['id'], inactivityCleanUpTimeInMs: number) {
+		const activeUsers = this.state.activeUsersByWorkflowId.get(workflowId);
+		if (!activeUsers) {
+			return;
+		}
+
+		const now = Date.now();
+		for (const user of activeUsers.values()) {
+			if (now - user.lastSeen.getTime() > inactivityCleanUpTimeInMs) {
+				activeUsers.delete(user.userId);
+			}
+		}
+	}
 }

@@ -4,7 +4,7 @@ import { defineConfig, mergeConfig } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
-import { vitestConfig } from '../design-system/vite.config';
+import { vitestConfig } from '../design-system/vite.config.mts';
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -51,7 +51,7 @@ const alias = [
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: require.resolve(`lodash-es/${name}`),
+		replacement: `lodash-es/${name}`,
 	})),
 	{
 		find: /^lodash\.(.+)$/,

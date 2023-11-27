@@ -13,7 +13,7 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			loadingService: null as any | null,
+			loadingService: null as null | { close: () => void; text: string },
 		};
 	},
 	computed: {
@@ -66,16 +66,16 @@ export const genericHelpers = defineComponent({
 				return;
 			}
 
-			// @ts-ignore
 			this.loadingService = this.$loading({
 				lock: true,
 				text: text || this.$locale.baseText('genericHelpers.loading'),
-				spinner: 'el-icon-loading',
 				background: 'var(--color-dialog-overlay-background)',
 			});
 		},
 		setLoadingText(text: string) {
-			this.loadingService.text = text;
+			if (this.loadingService !== null) {
+				this.loadingService.text = text;
+			}
 		},
 		stopLoading() {
 			if (this.loadingService !== null) {

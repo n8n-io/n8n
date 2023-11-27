@@ -17,6 +17,7 @@ import {
 	VariablesLicenseError,
 	VariablesValidationError,
 } from './variables.service.ee';
+import { Logger } from '@/Logger';
 
 @Service()
 @Authorized()
@@ -48,18 +49,18 @@ export class VariablesController {
 		}
 	}
 
-	@Get('/:id(\\w+)')
+	@Get('/:id')
 	@RequireGlobalScope('variable:read')
 	async getVariable(req: VariablesRequest.Get) {
 		const id = req.params.id;
-		const variable = await Container.get(VariablesService).getCached(id);
+		const variable = await this.variablesService.getCached(id);
 		if (variable === null) {
 			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
 		return variable;
 	}
 
-	@Patch('/:id(\\w+)')
+	@Patch('/:id')
 	@Licensed('feat:variables')
 	@RequireGlobalScope('variable:update')
 	async updateVariable(req: VariablesRequest.Update) {
@@ -67,7 +68,7 @@ export class VariablesController {
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await Container.get(VariablesService).update(id, variable);
+			return await this.variablesService.update(id, variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
 				throw new ResponseHelper.BadRequestError(error.message);

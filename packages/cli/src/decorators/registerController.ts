@@ -99,6 +99,7 @@ export const registerController = (app: Application, config: Config, cObj: objec
 	const requiredScopes = Reflect.getMetadata(CONTROLLER_REQUIRED_SCOPES, controllerClass) as
 		| ScopeMetadata
 		| undefined;
+
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
 		const restBasePath = config.getEnv('endpoints.rest');

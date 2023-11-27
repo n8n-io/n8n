@@ -230,6 +230,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
+	TIME,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -305,6 +306,7 @@ import type {
 	INodeUpdatePropertiesInformation,
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
+	ToggleNodeCreatorOptions,
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -328,6 +330,8 @@ import {
 	useUIStore,
 	useHistoryStore,
 	useExternalSecretsStore,
+	useCollaborationStore,
+	usePushConnectionStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -522,15 +526,18 @@ export default defineComponent({
 						},
 					);
 				} else {
+					this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 					next();
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
+				this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
 			}
 		} else {
+			this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 			next();
 		}
 	},
@@ -553,6 +560,8 @@ export default defineComponent({
 			useWorkflowsEEStore,
 			useHistoryStore,
 			useExternalSecretsStore,
+			useCollaborationStore,
+			usePushConnectionStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -716,6 +725,7 @@ export default defineComponent({
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
+			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 		};
 	},
 	methods: {
@@ -1063,6 +1073,7 @@ export default defineComponent({
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
 			this.stopLoading();
+			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
 			if (this.isTouchDevice) {
@@ -1553,10 +1564,6 @@ export default defineComponent({
 			try {
 				this.stopExecutionInProgress = true;
 				await this.workflowsStore.stopCurrentExecution(executionId);
-				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
-					type: 'success',
-				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
@@ -3046,19 +3053,29 @@ export default defineComponent({
 
 			this.eventsAttached = false;
 		},
-		onBeforeUnload(e) {
+		onBeforeUnload(e: BeforeUnloadEvent) {
 			if (this.isDemo || window.preventNodeViewBeforeUnload) {
 				return;
 			} else if (this.uiStore.stateIsDirty) {
-				const confirmationMessage = this.$locale.baseText(
-					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-				);
-				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+				// A bit hacky solution to detecting users leaving the page after prompt:
+				// 1. Notify that workflow is closed straight away
+				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
+				// 2. If user decided to stay on the page we notify that the workflow is opened again
+				this.unloadTimeout = setTimeout(() => {
+					this.collaborationStore.notifyWorkflowOpened(this.workflowsStore.workflowId);
+				}, 5 * TIME.SECOND);
+				e.returnValue = true; //Gecko + IE
+				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
 				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
+		},
+		onUnload() {
+			// This will fire if users decides to leave the page after prompted
+			// Clear the interval to prevent the notification from being sent
+			clearTimeout(this.unloadTimeout);
 		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
@@ -3158,6 +3175,7 @@ export default defineComponent({
 			document.addEventListener('keyup', this.keyUp);
 
 			window.addEventListener('beforeunload', this.onBeforeUnload);
+			window.addEventListener('unload', this.onUnload);
 		},
 		getOutputEndpointUUID(
 			nodeName: string,
@@ -4658,12 +4676,21 @@ export default defineComponent({
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
+	beforeMount() {
+		if (!this.isDemo) {
+			this.pushStore.pushConnect();
+		}
+	},
 	beforeUnmount() {
 		// Make sure the event listeners get removed again else we
 		// could add up with them registered multiple times
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+
+		if (!this.isDemo) {
+			this.pushStore.pushDisconnect();
+		}
 
 		this.resetWorkspace();
 		this.instance.unbind();

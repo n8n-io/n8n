@@ -17,8 +17,9 @@ export type Resource =
 
 export type ResourceScope<
 	R extends Resource,
-	Operations extends string = DefaultOperations,
-> = `${R}:${Operations}`;
+	Operation extends string = DefaultOperations,
+> = `${R}:${Operation}`;
+
 export type WildcardScope = `${Resource}:*` | '*';
 
 export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;
@@ -61,10 +62,11 @@ export type Scope =
 	| LdapScope
 	| SamlScope;
 
-export type ScopeLevel<T extends 'global' | 'project' | 'resource'> = Record<T, Scope[]>;
-export type GlobalScopes = ScopeLevel<'global'>;
-export type ProjectScopes = ScopeLevel<'project'>;
-export type ResourceScopes = ScopeLevel<'resource'>;
+export type ScopeLevel = 'global' | 'project' | 'resource';
+export type GetScopeLevel<T extends ScopeLevel> = Record<T, Scope[]>;
+export type GlobalScopes = GetScopeLevel<'global'>;
+export type ProjectScopes = GetScopeLevel<'project'>;
+export type ResourceScopes = GetScopeLevel<'resource'>;
 export type ScopeLevels = GlobalScopes & (ProjectScopes | (ProjectScopes & ResourceScopes));
 
 export type ScopeMode = 'oneOf' | 'allOf';

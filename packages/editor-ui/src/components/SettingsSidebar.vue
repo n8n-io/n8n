@@ -119,7 +119,7 @@ export default defineComponent({
 				},
 				{
 					id: 'settings-workersview',
-					icon: 'truck-monster',
+					icon: 'project-diagram',
 					label: this.$locale.baseText('mainSidebar.workersView'),
 					position: 'top',
 					available:

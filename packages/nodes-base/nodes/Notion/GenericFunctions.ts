@@ -39,6 +39,7 @@ export type SortData = { key: string; type: string; direction: string; timestamp
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
 	2: '2021-08-16',
+	2.1: '2021-08-16',
 };
 
 export async function notionApiRequest(
@@ -1066,4 +1067,46 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 			});
 		}
 	});
+}
+
+export function simplifyBlocksOutput(blocks: IDataObject[], rootId: string) {
+	for (const block of blocks) {
+		const type = block.type as string;
+		block.root_id = rootId;
+
+		['created_time', 'last_edited_time', 'created_by'].forEach((key) => {
+			delete block[key];
+		});
+
+		try {
+			if (['code'].includes(type)) {
+				const text = (block[type] as IDataObject).text as IDataObject[];
+				if (text && Array.isArray(text)) {
+					const content = text.map((entry) => entry.plain_text || '').join('');
+					block.content = content;
+					delete block[type];
+				}
+				continue;
+			}
+
+			if (['child_page', 'child_database'].includes(type)) {
+				const content = (block[type] as IDataObject).title as string;
+				block.content = content;
+				delete block[type];
+				continue;
+			}
+
+			const text = (block[type] as IDataObject)?.text as IDataObject[];
+
+			if (text && Array.isArray(text)) {
+				const content = text.map((entry) => entry.plain_text || '').join('');
+				block.content = content;
+				delete block[type];
+			}
+		} catch (e) {
+			continue;
+		}
+	}
+
+	return blocks;
 }

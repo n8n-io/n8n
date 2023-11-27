@@ -36,7 +36,7 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { IConfig } from '@oclif/config';
+import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
