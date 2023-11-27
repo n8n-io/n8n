@@ -56,7 +56,7 @@ export class VariablesController {
 		}
 	}
 
-	@Get('/:id(\\w+)')
+	@Get('/:id')
 	async getVariable(req: VariablesRequest.Get) {
 		const id = req.params.id;
 		const variable = await Container.get(VariablesService).getCached(id);
@@ -66,7 +66,7 @@ export class VariablesController {
 		return variable;
 	}
 
-	@Patch('/:id(\\w+)', { middlewares: [variablesLicensedMiddleware] })
+	@Patch('/:id', { middlewares: [variablesLicensedMiddleware] })
 	async updateVariable(req: VariablesRequest.Update) {
 		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {
@@ -90,7 +90,7 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {
