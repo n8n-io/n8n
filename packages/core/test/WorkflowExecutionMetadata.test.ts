@@ -1,11 +1,11 @@
 import {
-	getAllWorkflowExecutionMetadata,
-	getWorkflowExecutionMetadata,
-	KV_LIMIT,
-	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
-	InvalidExecutionMetadata,
-} from '@/errors/invalid-execution-metadata.error';
+	setAllWorkflowExecutionMetadata,
+	KV_LIMIT,
+	getWorkflowExecutionMetadata,
+	getAllWorkflowExecutionMetadata,
+} from '@/ExecutionMetadata';
+import { InvalidExecutionMetadata } from '@/errors/invalid-execution-metadata.error';
 import type { IRunExecutionData } from 'n8n-workflow';
 
 describe('Execution Metadata functions', () => {
