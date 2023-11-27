@@ -331,6 +331,7 @@ import {
 	useHistoryStore,
 	useExternalSecretsStore,
 	useCollaborationStore,
+	usePushConnectionStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -560,6 +561,7 @@ export default defineComponent({
 			useHistoryStore,
 			useExternalSecretsStore,
 			useCollaborationStore,
+			usePushConnectionStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1562,10 +1564,6 @@ export default defineComponent({
 			try {
 				this.stopExecutionInProgress = true;
 				await this.workflowsStore.stopCurrentExecution(executionId);
-				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
-					type: 'success',
-				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
@@ -2218,6 +2216,7 @@ export default defineComponent({
 				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
+					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
@@ -4678,12 +4677,21 @@ export default defineComponent({
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
+	beforeMount() {
+		if (!this.isDemo) {
+			this.pushStore.pushConnect();
+		}
+	},
 	beforeUnmount() {
 		// Make sure the event listeners get removed again else we
 		// could add up with them registered multiple times
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+
+		if (!this.isDemo) {
+			this.pushStore.pushDisconnect();
+		}
 
 		this.resetWorkspace();
 		this.instance.unbind();
