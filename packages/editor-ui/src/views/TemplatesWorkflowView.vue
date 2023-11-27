@@ -14,6 +14,7 @@
 				<div :class="$style.button">
 					<n8n-button
 						v-if="template"
+						data-test-id="use-template-button"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
 						@click="openTemplateSetup(template.id, $event)"
