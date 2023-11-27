@@ -9,7 +9,6 @@
     "email": "jan@n8n.io"
   },
   "main": "index.js",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"

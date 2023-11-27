@@ -9,7 +9,6 @@
   },
   "main": "src/main.ts",
   "import": "src/main.ts",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
