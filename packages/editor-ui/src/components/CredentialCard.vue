@@ -37,7 +37,7 @@ import { defineComponent } from 'vue';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';

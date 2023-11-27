@@ -128,7 +128,7 @@ import {
 	VIEWS,
 } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils/userUtils';

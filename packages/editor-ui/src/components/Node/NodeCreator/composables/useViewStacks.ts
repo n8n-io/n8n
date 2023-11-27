@@ -22,7 +22,7 @@ import {
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 import type { INodeInputFilter } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

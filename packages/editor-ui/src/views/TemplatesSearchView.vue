@@ -99,7 +99,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {

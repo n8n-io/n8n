@@ -20,7 +20,7 @@ import {
 	isMatchingField,
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 
 interface Props {
 	parameter: INodeProperties;

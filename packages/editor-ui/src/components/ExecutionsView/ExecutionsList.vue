@@ -52,7 +52,8 @@ import type {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';

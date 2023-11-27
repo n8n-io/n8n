@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import { useAuditLogsStore } from '@/stores/auditLogs.store';
 import { useUIStore } from '@/stores/ui.store';
 

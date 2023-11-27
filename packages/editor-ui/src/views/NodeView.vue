@@ -237,19 +237,16 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import {
-	useGlobalLinkActions,
-	useCanvasMouseSelect,
-	useMessage,
-	useToast,
-	useTitleChange,
-	useExecutionDebugging,
-	useContextMenu,
-	type ContextMenuAction,
-	useDataSchema,
-} from '@/composables';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 import { type PinDataSource, pinData } from '@/mixins/pinData';

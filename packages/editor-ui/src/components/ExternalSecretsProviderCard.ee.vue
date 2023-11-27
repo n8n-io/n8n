@@ -5,7 +5,9 @@ import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderIm
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useExternalSecretsProvider, useI18n, useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRefs } from 'vue';

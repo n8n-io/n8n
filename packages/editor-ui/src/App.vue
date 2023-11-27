@@ -45,7 +45,9 @@ import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast, useExternalHooks } from '@/composables';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';

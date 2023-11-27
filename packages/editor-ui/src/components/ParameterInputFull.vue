@@ -77,7 +77,8 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';

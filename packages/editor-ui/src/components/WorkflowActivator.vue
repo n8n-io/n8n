@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts">
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

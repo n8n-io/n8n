@@ -55,7 +55,8 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
-import { useI18n, useTelemetry } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 export interface Props {

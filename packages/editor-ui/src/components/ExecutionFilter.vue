@@ -13,7 +13,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useTelemetry } from '@/composables';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 
 export type ExecutionFilterProps = {

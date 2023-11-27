@@ -69,7 +69,7 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 import AskAI from './AskAI/AskAI.vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'code-node-editor',

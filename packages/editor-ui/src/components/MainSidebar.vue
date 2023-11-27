@@ -100,7 +100,7 @@ import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } f
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
