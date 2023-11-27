@@ -177,7 +177,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 
 export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
 
-export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
 export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
 
@@ -194,6 +194,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
+	CONTEXT_MENU: 'context_menu',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -400,6 +401,7 @@ export const enum VIEWS {
 	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
+	TEMPLATE_SETUP = 'TemplatesWorkflowSetupView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
@@ -566,6 +568,9 @@ export const enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
+	RBAC = 'rbac',
+	COLLABORATION = 'collaboration',
+	PUSH = 'push',
 }
 
 export const enum SignInType {
@@ -621,6 +626,7 @@ export const ALLOWED_HTML_TAGS = [
 	'small',
 	'details',
 	'summary',
+	'mark',
 ];
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
@@ -647,3 +653,15 @@ export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
 export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+
+export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
+
+/**
+ * Units of time in milliseconds
+ */
+export const TIME = {
+	SECOND: 1000,
+	MINUTE: 60 * 1000,
+	HOUR: 60 * 60 * 1000,
+	DAY: 24 * 60 * 60 * 1000,
+};

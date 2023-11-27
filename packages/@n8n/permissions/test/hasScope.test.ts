@@ -80,6 +80,12 @@ describe('hasScope', () => {
 				global: memberPermissions,
 			}),
 		).toBe(false);
+
+		expect(
+			hasScope([], {
+				global: memberPermissions,
+			}),
+		).toBe(false);
 	});
 
 	test('should work with allOf mode', () => {
@@ -106,6 +112,16 @@ describe('hasScope', () => {
 		expect(
 			hasScope(
 				['workflow:create', 'user:list'],
+				{
+					global: memberPermissions,
+				},
+				{ mode: 'allOf' },
+			),
+		).toBe(false);
+
+		expect(
+			hasScope(
+				[],
 				{
 					global: memberPermissions,
 				},

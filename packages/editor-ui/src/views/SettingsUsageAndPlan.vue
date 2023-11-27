@@ -8,6 +8,8 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
 import { useToast } from '@/composables';
+import { ROLE } from '@/utils';
+import { hasPermission } from '@/rbac/permissions';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -25,6 +27,12 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+
+const canUserActivateLicense = computed(() =>
+	hasPermission(['role'], {
+		role: [ROLE.Owner],
+	}),
+);
 
 const showActivationSuccess = () => {
 	toast.showMessage({
@@ -77,7 +85,7 @@ onMounted(async () => {
 		}
 	}
 	try {
-		if (!route.query.key && usageStore.canUserActivateLicense) {
+		if (!route.query.key && canUserActivateLicense.value) {
 			await usageStore.refreshLicenseManagementToken();
 		} else {
 			await usageStore.getLicenseInfo();
@@ -184,7 +192,7 @@ const openPricingPage = () => {
 				<n8n-button
 					:class="$style.buttonTertiary"
 					@click="onAddActivationKey"
-					v-if="usageStore.canUserActivateLicense"
+					v-if="canUserActivateLicense"
 					type="tertiary"
 					size="large"
 				>
@@ -262,7 +270,7 @@ const openPricingPage = () => {
 	margin: 0 0 var(--spacing-xs);
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-light-grey);
+	border: 1px solid var(--color-foreground-base);
 	white-space: nowrap;
 
 	.count {

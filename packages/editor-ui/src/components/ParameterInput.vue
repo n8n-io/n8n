@@ -422,6 +422,8 @@ import { useI18n } from '@/composables';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
+type Picker = { $emit: (arg0: string, arg1: Date) => void };
+
 export default defineComponent({
 	name: 'parameter-input',
 	mixins: [externalHooks, nodeHelpers, workflowHelpers, debounceHelper],
@@ -529,14 +531,14 @@ export default defineComponent({
 					{
 						text: 'Today', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							picker.$emit('pick', new Date());
 						},
 					},
 					{
 						text: 'Yesterday', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
 							picker.$emit('pick', date);
@@ -545,7 +547,7 @@ export default defineComponent({
 					{
 						text: 'A week ago', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
 							picker.$emit('pick', date);

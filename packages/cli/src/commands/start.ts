@@ -13,7 +13,6 @@ import { promisify } from 'util';
 import glob from 'fast-glob';
 
 import { sleep, jsonParse } from 'n8n-workflow';
-import { createHash } from 'crypto';
 import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -25,10 +24,11 @@ import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License, FeatureNotLicensedError } from '@/License';
-import { IConfig } from '@oclif/config';
-import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import type { IConfig } from '@oclif/config';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 
@@ -113,18 +113,14 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			if (await this.pruningService.isPruningEnabled()) {
-				await this.pruningService.stopPruning();
+			if (this.pruningService.isPruningEnabled()) {
+				this.pruningService.stopPruning();
 			}
 
-			if (config.getEnv('leaderSelection.enabled')) {
-				const { MultiMainInstancePublisher } = await import(
-					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-				);
-
+			if (Container.get(MultiMainSetup).isEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
-				await Container.get(MultiMainInstancePublisher).destroy();
+				await Container.get(MultiMainSetup).shutdown();
 			}
 
 			await Container.get(InternalHooks).onN8nStop();
@@ -231,38 +227,42 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		if (!config.get('leaderSelection.enabled')) {
-			await Container.get(SingleMainInstancePublisher).init();
+		// queue mode in single-main scenario
+
+		if (!config.getEnv('multiMainSetup.enabled')) {
+			await Container.get(SingleMainSetup).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 			return;
 		}
 
-		// multi-main scenario
+		// queue mode in multi-main scenario
 
-		const { MultiMainInstancePublisher } = await import(
-			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-		);
-
-		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-		await multiMainInstancePublisher.init();
-
-		if (
-			multiMainInstancePublisher.isLeader &&
-			!Container.get(License).isMultipleMainInstancesLicensed()
-		) {
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		multiMainInstancePublisher.on('leadershipChange', async () => {
-			if (multiMainInstancePublisher.isLeader) {
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		multiMainSetup.on('leadershipChange', async () => {
+			if (multiMainSetup.isLeader) {
+				this.logger.debug('[Leadership change] Clearing all activation errors...');
+
+				await this.activeWorkflowRunner.clearAllActivationErrors();
+
+				this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
+
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
-				// only in case of leadership change without shutdown
+				this.logger.debug(
+					'[Leadership change] Removing all trigger- and poller-based workflows...',
+				);
+
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});
@@ -271,20 +271,6 @@ export class Start extends BaseCommand {
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
-
-		if (!config.getEnv('userManagement.jwtSecret')) {
-			// If we don't have a JWT secret set, generate
-			// one based and save to config.
-			const { encryptionKey } = this.instanceSettings;
-
-			// For a key off every other letter from encryption key
-			// CAREFUL: do not change this or it breaks all existing tokens.
-			let baseKey = '';
-			for (let i = 0; i < encryptionKey.length; i += 2) {
-				baseKey += encryptionKey[i];
-			}
-			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
-		}
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({
@@ -348,10 +334,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		this.pruningService = Container.get(PruningService);
-		if (await this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
-		}
+		await this.initPruning();
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
@@ -384,6 +367,32 @@ export class Start extends BaseCommand {
 					} else {
 						// record it and write into terminal
 						process.stdout.write(key);
+					}
+				}
+			});
+		}
+	}
+
+	async initPruning() {
+		this.pruningService = Container.get(PruningService);
+
+		if (this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
+
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const multiMainSetup = Container.get(MultiMainSetup);
+
+			await multiMainSetup.init();
+
+			multiMainSetup.on('leadershipChange', async () => {
+				if (multiMainSetup.isLeader) {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.startPruning();
+					}
+				} else {
+					if (this.pruningService.isPruningEnabled()) {
+						this.pruningService.stopPruning();
 					}
 				}
 			});

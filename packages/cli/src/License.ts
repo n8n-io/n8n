@@ -16,6 +16,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 type FeatureReturnType = Partial<
 	{
@@ -40,6 +41,7 @@ export class License {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly multiMainSetup: MultiMainSetup,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
@@ -48,6 +50,8 @@ export class License {
 		if (this.manager) {
 			return;
 		}
+
+		await this.multiMainSetup.init();
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -114,22 +118,28 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (config.getEnv('leaderSelection.enabled')) {
-				const { MultiMainInstancePublisher } = await import(
-					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
+				| boolean
+				| undefined;
+
+			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+
+			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+				this.logger.debug(
+					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
-
-				const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-				await multiMainInstancePublisher.init();
-
-				if (multiMainInstancePublisher.isFollower) {
-					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
-					return;
-				}
+				return;
 			}
 
+			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+				this.logger.debug(
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+				);
+			}
+		}
+
+		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();

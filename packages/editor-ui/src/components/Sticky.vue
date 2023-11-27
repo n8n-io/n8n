@@ -19,6 +19,7 @@
 			<div
 				class="sticky-box"
 				@click.left="mouseLeftClick"
+				@contextmenu="onContextMenu"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
 			>
@@ -64,6 +65,7 @@
 				>
 					<template #reference>
 						<div
+							ref="colorPopoverTrigger"
 							class="option"
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
@@ -82,12 +84,12 @@
 							:style="{
 								'border-width': '1px',
 								'border-style': 'solid',
-								'border-color': 'var(--color-text-dark)',
-								'background-color': `var(--sticky-color-${index + 1})`,
+								'border-color': 'var(--color-foreground-xdark)',
+								'background-color': `var(--color-sticky-background-${index + 1})`,
 								'box-shadow':
 									(index === 0 && node?.parameters.color === '') ||
 									index + 1 === node?.parameters.color
-										? `0 0 0 1px var(--sticky-color-${index + 1})`
+										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
 										: 'none',
 							}"
 						></div>
@@ -99,7 +101,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -120,11 +122,25 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useContextMenu } from '@/composables';
 
 export default defineComponent({
 	name: 'Sticky',
 	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
-
+	setup() {
+		const colorPopoverTrigger = ref<HTMLDivElement>();
+		const forceActions = ref(false);
+		const setForceActions = (value: boolean) => {
+			forceActions.value = value;
+		};
+		const contextMenu = useContextMenu((action) => {
+			if (action === 'change_color') {
+				setForceActions(true);
+				colorPopoverTrigger.value?.click();
+			}
+		});
+		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+	},
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -203,17 +219,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			forceActions: false,
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
 		onShowPopover() {
-			this.forceActions = true;
+			this.setForceActions(true);
 		},
 		onHidePopover() {
-			this.forceActions = false;
+			this.setForceActions(false);
 		},
 		async deleteNode() {
 			// Wait a tick else vue causes problems because the data is gone
@@ -241,8 +256,8 @@ export default defineComponent({
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						? 'templates'
-						: 'other';
+						  ? 'templates'
+						  : 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}
@@ -308,6 +323,11 @@ export default defineComponent({
 				setTimeout(() => {
 					this.isTouchActive = false;
 				}, 2000);
+			}
+		},
+		onContextMenu(e: MouseEvent): void {
+			if (this.node) {
+				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
 			}
 		},
 	},

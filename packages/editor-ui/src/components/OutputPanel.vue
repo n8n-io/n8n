@@ -11,12 +11,15 @@
 		:sessionId="sessionId"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
+		@search="$emit('search', $event)"
 		ref="runData"
 		:data-output-type="outputMode"
 	>
@@ -166,6 +169,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		isPaneActive: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -194,7 +201,7 @@ export default defineComponent({
 			return false;
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
@@ -319,6 +326,9 @@ export default defineComponent({
 			} else {
 				ndvEventBus.emit('setPositionByName', 'initial');
 			}
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 });

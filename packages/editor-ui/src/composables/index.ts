@@ -1,7 +1,6 @@
 export { default as useCanvasMouseSelect } from './useCanvasMouseSelect';
 export * from './useCopyToClipboard';
 export * from './useDebounce';
-export { default as useDeviceSupport } from './useDeviceSupport';
 export * from './useExternalHooks';
 export * from './useExternalSecretsProvider';
 export { default as useGlobalLinkActions } from './useGlobalLinkActions';
@@ -15,3 +14,4 @@ export * from './useToast';
 export * from './useNodeSpecificationValues';
 export * from './useDataSchema';
 export * from './useExecutionDebugging';
+export * from './useContextMenu';

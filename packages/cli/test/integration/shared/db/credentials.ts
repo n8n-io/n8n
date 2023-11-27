@@ -66,3 +66,6 @@ export function affixRoleToSaveCredential(role: Role) {
 export async function getAllCredentials() {
 	return Container.get(CredentialsRepository).find();
 }
+
+export const getCredentialById = async (id: string) =>
+	Container.get(CredentialsRepository).findOneBy({ id });

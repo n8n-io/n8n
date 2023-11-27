@@ -52,10 +52,6 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
@@ -114,10 +110,6 @@ describe('Execution', () => {
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -128,8 +120,8 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		// Check warning toast (works because Cypress waits enough for the element to show after the http request node has finished)
+		workflowPage.getters.warningToast().should('be.visible');
 	});
 
 	it('should test webhook workflow', () => {
@@ -189,10 +181,6 @@ describe('Execution', () => {
 		// Check canvas nodes after 2nd step (waiting node finished its execution and the http request node is about to start)
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 		workflowPage.getters
@@ -269,10 +257,6 @@ describe('Execution', () => {
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -283,7 +267,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		// Check warning toast (works because Cypress waits enough for the element to show after the http request node has finished)
+		workflowPage.getters.warningToast().should('be.visible');
 	});
 });
