@@ -1,13 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import {
-	useWorkflowsStore,
-	useNodeTypesStore,
-	useUIStore,
-	useHistoryStore,
-	useSourceControlStore,
-} from '@/stores';
+
 import type { INodeUi, XYPosition } from '@/Interface';
 import {
 	applyScale,
@@ -42,6 +36,12 @@ import {
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
+
+import { useWorkflowsStore } from './workflows.store';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useUIStore } from './ui.store';
+import { useHistoryStore } from './history.store';
+import { useSourceControlStore } from './sourceControl.store';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();

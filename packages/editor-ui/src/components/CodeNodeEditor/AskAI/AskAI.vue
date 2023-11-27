@@ -10,7 +10,10 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useDataSchema, useI18n, useMessage, useTelemetry, useToast } from '@/composables';
-import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
+import { useNDVStore } from '@/stores/ndv.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils';
 import {
 	ASK_AI_EXPERIMENT,
