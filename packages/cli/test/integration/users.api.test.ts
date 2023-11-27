@@ -1,403 +1,359 @@
-import type { SuperAgentTest } from 'supertest';
-
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { Role } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-
 import Container from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+
+import { UsersController } from '@/controllers/users.controller';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
-import { mockInstance } from '../shared/mocking';
+import { getCredentialById, saveCredential } from './shared/db/credentials';
+import { getCredentialOwnerRole, getWorkflowOwnerRole } from './shared/db/roles';
+import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
+import { createWorkflow, getWorkflowById } from './shared/db/workflows';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { randomCredentialPayload, randomName } from './shared/random';
-import * as testDb from './shared/testDb';
+import { validateUser } from './shared/utils/users';
+import { randomName } from './shared/random';
 import * as utils from './shared/utils/';
-import { saveCredential } from './shared/db/credentials';
-import { getAllRoles } from './shared/db/roles';
-import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import type { PublicUser } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
-import { UsersController } from '@/controllers/users.controller';
-import { ExternalHooks } from '@/ExternalHooks';
-import { Logger } from '@/Logger';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import * as testDb from './shared/testDb';
 
-const { any } = expect;
-
-let credentialOwnerRole: Role;
-let globalMemberRole: Role;
-let workflowOwnerRole: Role;
-
-let owner: User;
-let admin: User;
-let otherAdmin: User;
-let member: User;
-let otherMember: User;
-
-let authOwnerAgent: SuperAgentTest;
-let authAdminAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
-let authlessAgent: SuperAgentTest;
-
-let usersCount: number;
-
-mockInstance(InternalHooks);
-mockInstance(ExternalHooks);
-mockInstance(Logger);
-mockInstance(ActiveWorkflowRunner);
+import type { SuperAgentTest } from 'supertest';
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
-beforeAll(async () => {
-	const [_, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole, fetchedCredentialOwnerRole] =
-		await getAllRoles();
-
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-
-	usersCount = [owner, admin, otherAdmin, member, otherMember].length;
-});
-
-beforeEach(async () => {
-	jest.resetAllMocks();
-	await testDb.truncate(['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
-	owner = await createOwner();
-	member = await createMember();
-	otherMember = await createMember();
-	admin = await createAdmin();
-	otherAdmin = await createAdmin();
-	authOwnerAgent = testServer.authAgentFor(owner);
-	authAdminAgent = testServer.authAgentFor(admin);
-	authMemberAgent = testServer.authAgentFor(member);
-	authlessAgent = testServer.authlessAgent;
-});
-
-const validatePublicUser = (user: PublicUser) => {
-	expect(typeof user.id).toBe('string');
-	expect(user.email).toBeDefined();
-	expect(user.firstName).toBeDefined();
-	expect(user.lastName).toBeDefined();
-	expect(typeof user.isOwner).toBe('boolean');
-	expect(user.isPending).toBe(false);
-	expect(user.signInType).toBe('email');
-	expect(user.settings).toBe(null);
-	expect(user.personalizationAnswers).toBeNull();
-	expect(user.password).toBeUndefined();
-	expect(user.globalRole).toBeDefined();
-};
-
 describe('GET /users', () => {
+	let owner: User;
+	let member: User;
+	let ownerAgent: SuperAgentTest;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		owner = await createOwner();
+		member = await createMember();
+		await createMember();
+
+		ownerAgent = testServer.authAgentFor(owner);
+	});
+
 	test('should return all users', async () => {
-		const response = await authOwnerAgent.get('/users').expect(200);
+		const response = await ownerAgent.get('/users').expect(200);
 
-		expect(response.body.data).toHaveLength(usersCount);
+		expect(response.body.data).toHaveLength(3);
 
-		response.body.data.forEach(validatePublicUser);
+		response.body.data.forEach(validateUser);
 	});
 
-	describe('filter', () => {
-		test('should filter users by field: email', async () => {
-			const secondMember = await createMember();
+	describe('list query options', () => {
+		describe('filter', () => {
+			test('should filter users by field: email', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "email": "${member.email}" }`)
+					.expect(200);
 
-			const response = await authOwnerAgent
-				.get('/users')
-				.query(`filter={ "email": "${secondMember.email}" }`)
-				.expect(200);
+				expect(response.body.data).toHaveLength(1);
 
-			expect(response.body.data).toHaveLength(1);
+				const [user] = response.body.data;
 
-			const [user] = response.body.data;
+				expect(user.email).toBe(member.email);
 
-			expect(user.email).toBe(secondMember.email);
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "email": "non@existing.com" }')
+					.expect(200);
 
-			const _response = await testServer
-				.authAgentFor(owner)
-				.get('/users')
-				.query('filter={ "email": "non@existing.com" }')
-				.expect(200);
+				expect(_response.body.data).toHaveLength(0);
+			});
 
-			expect(_response.body.data).toHaveLength(0);
-		});
+			test('should filter users by field: firstName', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "firstName": "${member.firstName}" }`)
+					.expect(200);
 
-		test('should filter users by field: firstName', async () => {
-			const secondMember = await createMember();
+				expect(response.body.data).toHaveLength(1);
 
-			const response = await authOwnerAgent
-				.get('/users')
-				.query(`filter={ "firstName": "${secondMember.firstName}" }`)
-				.expect(200);
+				const [user] = response.body.data;
 
-			expect(response.body.data).toHaveLength(1);
+				expect(user.email).toBe(member.email);
 
-			const [user] = response.body.data;
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "firstName": "Non-Existing" }')
+					.expect(200);
 
-			expect(user.email).toBe(secondMember.email);
+				expect(_response.body.data).toHaveLength(0);
+			});
 
-			const _response = await testServer
-				.authAgentFor(owner)
-				.get('/users')
-				.query('filter={ "firstName": "Non-Existing" }')
-				.expect(200);
+			test('should filter users by field: lastName', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "lastName": "${member.lastName}" }`)
+					.expect(200);
 
-			expect(_response.body.data).toHaveLength(0);
-		});
+				expect(response.body.data).toHaveLength(1);
 
-		test('should filter users by field: lastName', async () => {
-			const secondMember = await createMember();
+				const [user] = response.body.data;
 
-			const response = await authOwnerAgent
-				.get('/users')
-				.query(`filter={ "lastName": "${secondMember.lastName}" }`)
-				.expect(200);
+				expect(user.email).toBe(member.email);
 
-			expect(response.body.data).toHaveLength(1);
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "lastName": "Non-Existing" }')
+					.expect(200);
 
-			const [user] = response.body.data;
+				expect(_response.body.data).toHaveLength(0);
+			});
 
-			expect(user.email).toBe(secondMember.email);
+			test('should filter users by computed field: isOwner', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": true }')
+					.expect(200);
 
-			const _response = await authOwnerAgent
-				.get('/users')
-				.query('filter={ "lastName": "Non-Existing" }')
-				.expect(200);
+				expect(response.body.data).toHaveLength(1);
 
-			expect(_response.body.data).toHaveLength(0);
-		});
+				const [user] = response.body.data;
 
-		test('should filter users by computed field: isOwner', async () => {
-			const response = await authOwnerAgent
-				.get('/users')
-				.query('filter={ "isOwner": true }')
-				.expect(200);
+				expect(user.isOwner).toBe(true);
 
-			expect(response.body.data).toHaveLength(1);
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": false }')
+					.expect(200);
 
-			const [user] = response.body.data;
+				expect(_response.body.data).toHaveLength(2);
 
-			expect(user.isOwner).toBe(true);
+				const [_user] = _response.body.data;
 
-			const _response = await testServer
-				.authAgentFor(owner)
-				.get('/users')
-				.query('filter={ "isOwner": false }')
-				.expect(200);
-
-			expect(_response.body.data).toHaveLength(usersCount - 1);
-
-			const [_user] = _response.body.data;
-
-			expect(_user.isOwner).toBe(false);
-		});
-	});
-
-	describe('select', () => {
-		test('should select user field: id', async () => {
-			const response = await authOwnerAgent.get('/users').query('select=["id"]').expect(200);
-
-			expect(response.body).toEqual({
-				data: new Array(usersCount).fill({ id: any(String) }),
+				expect(_user.isOwner).toBe(false);
 			});
 		});
 
-		test('should select user field: email', async () => {
-			const response = await authOwnerAgent.get('/users').query('select=["email"]').expect(200);
+		describe('select', () => {
+			test('should select user field: id', async () => {
+				const response = await ownerAgent.get('/users').query('select=["id"]').expect(200);
 
-			expect(response.body).toEqual({
-				data: new Array(usersCount).fill({ email: any(String) }),
+				expect(response.body).toEqual({
+					data: [
+						{ id: expect.any(String) },
+						{ id: expect.any(String) },
+						{ id: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: email', async () => {
+				const response = await ownerAgent.get('/users').query('select=["email"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ email: expect.any(String) },
+						{ email: expect.any(String) },
+						{ email: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: firstName', async () => {
+				const response = await ownerAgent.get('/users').query('select=["firstName"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ firstName: expect.any(String) },
+						{ firstName: expect.any(String) },
+						{ firstName: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: lastName', async () => {
+				const response = await ownerAgent.get('/users').query('select=["lastName"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ lastName: expect.any(String) },
+						{ lastName: expect.any(String) },
+						{ lastName: expect.any(String) },
+					],
+				});
 			});
 		});
 
-		test('should select user field: firstName', async () => {
-			const response = await authOwnerAgent.get('/users').query('select=["firstName"]').expect(200);
+		describe('take', () => {
+			test('should return n users or less, without skip', async () => {
+				const response = await ownerAgent.get('/users').query('take=2').expect(200);
 
-			expect(response.body).toEqual({
-				data: new Array(usersCount).fill({ firstName: any(String) }),
+				expect(response.body.data).toHaveLength(2);
+
+				response.body.data.forEach(validateUser);
+
+				const _response = await ownerAgent.get('/users').query('take=1').expect(200);
+
+				expect(_response.body.data).toHaveLength(1);
+
+				_response.body.data.forEach(validateUser);
+			});
+
+			test('should return n users or less, with skip', async () => {
+				const response = await ownerAgent.get('/users').query('take=1&skip=1').expect(200);
+
+				expect(response.body.data).toHaveLength(1);
+
+				response.body.data.forEach(validateUser);
 			});
 		});
 
-		test('should select user field: lastName', async () => {
-			const response = await authOwnerAgent.get('/users').query('select=["lastName"]').expect(200);
+		describe('auxiliary fields', () => {
+			/**
+			 * Some list query options require auxiliary fields:
+			 *
+			 * - `isOwner` requires `globalRole`
+			 * - `select` with `take` requires `id` (for pagination)
+			 */
+			test('should support options that require auxiliary fields', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": true }&select=["firstName"]&take=1')
+					.expect(200);
 
-			expect(response.body).toEqual({
-				data: new Array(usersCount).fill({ lastName: any(String) }),
+				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
 			});
-		});
-	});
-
-	describe('take', () => {
-		test('should return n users or less, without skip', async () => {
-			const response = await authOwnerAgent.get('/users').query('take=2').expect(200);
-
-			expect(response.body.data).toHaveLength(2);
-
-			response.body.data.forEach(validatePublicUser);
-
-			const _response = await authOwnerAgent.get('/users').query('take=1').expect(200);
-
-			expect(_response.body.data).toHaveLength(1);
-
-			_response.body.data.forEach(validatePublicUser);
-		});
-
-		test('should return n users or less, with skip', async () => {
-			const response = await authOwnerAgent.get('/users').query('take=1&skip=1').expect(200);
-
-			expect(response.body.data).toHaveLength(1);
-
-			response.body.data.forEach(validatePublicUser);
-		});
-	});
-
-	describe('combinations', () => {
-		test('should support options that require auxiliary fields', async () => {
-			// isOwner requires globalRole
-			// id-less select with take requires id
-
-			const response = await authOwnerAgent
-				.get('/users')
-				.query('filter={ "isOwner": true }&select=["firstName"]&take=10')
-				.expect(200);
-
-			expect(response.body).toEqual({ data: [{ firstName: any(String) }] });
 		});
 	});
 });
 
 describe('DELETE /users/:id', () => {
-	test('should delete the user', async () => {
-		const newWorkflow = new WorkflowEntity();
+	let owner: User;
+	let member: User;
+	let ownerAgent: SuperAgentTest;
+	let workflowOwnerRole: Role;
+	let credentialOwnerRole: Role;
 
-		Object.assign(newWorkflow, {
-			name: randomName(),
-			active: false,
-			connections: {},
-			nodes: [],
-		});
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
 
-		const savedWorkflow = await Container.get(WorkflowRepository).save(newWorkflow);
+		owner = await createOwner();
+		member = await createMember();
+		ownerAgent = testServer.authAgentFor(owner);
 
-		await Container.get(SharedWorkflowRepository).save({
-			role: workflowOwnerRole,
-			user: member,
-			workflow: savedWorkflow,
-		});
+		workflowOwnerRole = await getWorkflowOwnerRole();
+		credentialOwnerRole = await getCredentialOwnerRole();
+	});
 
-		const newCredential = new CredentialsEntity();
+	test('should delete user and their resources', async () => {
+		const savedWorkflow = await createWorkflow({ name: randomName() }, member);
 
-		Object.assign(newCredential, {
-			name: randomName(),
-			data: '',
-			type: '',
-			nodesAccess: [],
-		});
+		const savedCredential = await saveCredential(
+			{ name: randomName(), type: '', data: {}, nodesAccess: [] },
+			{ user: member, role: credentialOwnerRole },
+		);
 
-		const savedCredential = await Container.get(CredentialsRepository).save(newCredential);
-
-		await Container.get(SharedCredentialsRepository).save({
-			role: credentialOwnerRole,
-			user: member,
-			credentials: savedCredential,
-		});
-
-		const response = await authOwnerAgent.delete(`/users/${member.id}`);
+		const response = await ownerAgent.delete(`/users/${member.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
-		expect(user).toBeNull(); // deleted
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['user'],
 			where: { userId: member.id, roleId: workflowOwnerRole.id },
 		});
-		expect(sharedWorkflow).toBeNull(); // deleted
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			relations: ['user'],
 			where: { userId: member.id, roleId: credentialOwnerRole.id },
 		});
-		expect(sharedCredential).toBeNull(); // deleted
 
-		const workflow = await Container.get(WorkflowRepository).findOneBy({ id: savedWorkflow.id });
-		expect(workflow).toBeNull(); // deleted
+		const workflow = await getWorkflowById(savedWorkflow.id);
 
-		// TODO: Include active workflow and check whether webhook has been removed
+		const credential = await getCredentialById(savedCredential.id);
 
-		const credential = await Container.get(CredentialsRepository).findOneBy({
-			id: savedCredential.id,
-		});
-		expect(credential).toBeNull(); // deleted
+		// @TODO: Include active workflow and check whether webhook has been removed
+
+		expect(user).toBeNull();
+		expect(sharedWorkflow).toBeNull();
+		expect(sharedCredential).toBeNull();
+		expect(workflow).toBeNull();
+		expect(credential).toBeNull();
+
+		// restore
+
+		member = await createMember();
 	});
 
-	test('should fail to delete self', async () => {
-		const response = await authOwnerAgent.delete(`/users/${owner.id}`);
+	test('should delete user and transfer their resources', async () => {
+		const [savedWorkflow, savedCredential] = await Promise.all([
+			await createWorkflow({ name: randomName() }, member),
+			await saveCredential(
+				{ name: randomName(), type: '', data: {}, nodesAccess: [] },
+				{
+					user: member,
+					role: credentialOwnerRole,
+				},
+			),
+		]);
 
-		expect(response.statusCode).toBe(400);
-
-		const user = await Container.get(UserRepository).findOneBy({ id: owner.id });
-		expect(user).toBeDefined();
-	});
-
-	test('should fail if user to delete is transferee', async () => {
-		const { id: idToDelete } = await createUser({ globalRole: globalMemberRole });
-
-		const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
-			transferId: idToDelete,
-		});
-
-		expect(response.statusCode).toBe(400);
-
-		const user = await Container.get(UserRepository).findOneBy({ id: idToDelete });
-		expect(user).toBeDefined();
-	});
-
-	test('with transferId should perform transfer', async () => {
-		const userToDelete = await createUser({ globalRole: globalMemberRole });
-
-		const savedWorkflow = await createWorkflow(undefined, userToDelete);
-
-		const savedCredential = await saveCredential(randomCredentialPayload(), {
-			user: userToDelete,
-			role: credentialOwnerRole,
-		});
-
-		const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
+		const response = await ownerAgent.delete(`/users/${member.id}`).query({
 			transferId: owner.id,
 		});
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneOrFail({
-			relations: ['workflow'],
-			where: { userId: owner.id },
-		});
+		const [user, sharedWorkflow, sharedCredential] = await Promise.all([
+			await Container.get(UserRepository).findOneBy({ id: member.id }),
+			await Container.get(SharedWorkflowRepository).findOneOrFail({
+				relations: ['workflow'],
+				where: { userId: owner.id },
+			}),
+			await Container.get(SharedCredentialsRepository).findOneOrFail({
+				relations: ['credentials'],
+				where: { userId: owner.id },
+			}),
+		]);
 
-		expect(sharedWorkflow.workflow).toBeDefined();
+		expect(user).toBeNull();
 		expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
+		expect(sharedCredential.credentials.id).toBe(savedCredential.id);
+	});
 
-		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['credentials'],
-			where: { userId: owner.id },
+	test('should fail to delete self', async () => {
+		const response = await ownerAgent.delete(`/users/${owner.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		const user = await getUserById(owner.id);
+
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete if user to delete is transferee', async () => {
+		const response = await ownerAgent.delete(`/users/${member.id}`).query({
+			transferId: member.id,
 		});
 
-		expect(sharedCredential.credentials).toBeDefined();
-		expect(sharedCredential.credentials.id).toBe(savedCredential.id);
+		expect(response.statusCode).toBe(400);
 
-		const deletedUser = await Container.get(UserRepository).findOneBy({ id: userToDelete.id });
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 
-		expect(deletedUser).toBeNull();
+		expect(user).toBeDefined();
 	});
 });
 
 describe('PATCH /users/:id/role', () => {
+	let owner: User;
+	let admin: User;
+	let otherAdmin: User;
+	let member: User;
+	let otherMember: User;
+
+	let ownerAgent: SuperAgentTest;
+	let adminAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
+	let authlessAgent: SuperAgentTest;
+
 	const {
 		NO_MEMBER,
 		MISSING_NEW_ROLE_KEY,
@@ -407,6 +363,23 @@ describe('PATCH /users/:id/role', () => {
 		NO_USER,
 		NO_OWNER_ON_OWNER,
 	} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		[owner, admin, otherAdmin, member, otherMember] = await Promise.all([
+			await createOwner(),
+			await createAdmin(),
+			await createAdmin(),
+			await createMember(),
+			await createMember(),
+		]);
+
+		ownerAgent = testServer.authAgentFor(owner);
+		adminAgent = testServer.authAgentFor(admin);
+		memberAgent = testServer.authAgentFor(member);
+		authlessAgent = testServer.authlessAgent;
+	});
 
 	describe('unauthenticated user', () => {
 		test('should receive 401', async () => {
@@ -420,7 +393,7 @@ describe('PATCH /users/:id/role', () => {
 
 	describe('member', () => {
 		test('should fail to demote owner to member', async () => {
-			const response = await authMemberAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -429,7 +402,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to demote owner to admin', async () => {
-			const response = await authMemberAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -438,7 +411,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to demote admin to member', async () => {
-			const response = await authMemberAgent.patch(`/users/${admin.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${admin.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -447,7 +420,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote other member to owner', async () => {
-			const response = await authMemberAgent.patch(`/users/${otherMember.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
 				newRole: { scope: 'global', name: 'owner' },
 			});
 
@@ -456,7 +429,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote other member to admin', async () => {
-			const response = await authMemberAgent.patch(`/users/${otherMember.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -465,7 +438,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote self to admin', async () => {
-			const response = await authMemberAgent.patch(`/users/${member.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -474,7 +447,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote self to owner', async () => {
-			const response = await authMemberAgent.patch(`/users/${member.id}/role`).send({
+			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'owner' },
 			});
 
@@ -485,12 +458,12 @@ describe('PATCH /users/:id/role', () => {
 
 	describe('admin', () => {
 		test('should receive 400 on invalid payload', async () => {
-			const response = await authAdminAgent.patch(`/users/${member.id}/role`).send({});
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({});
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe(MISSING_NEW_ROLE_KEY);
 
-			const _response = await authAdminAgent.patch(`/users/${member.id}/role`).send({
+			const _response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: {},
 			});
 
@@ -499,7 +472,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should receive 404 on unknown target user', async () => {
-			const response = await authAdminAgent
+			const response = await adminAgent
 				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
 				.send({
 					newRole: { scope: 'global', name: 'member' },
@@ -510,7 +483,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to demote owner to admin', async () => {
-			const response = await authAdminAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -519,7 +492,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to demote owner to member', async () => {
-			const response = await authAdminAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -528,7 +501,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote member to owner', async () => {
-			const response = await authAdminAgent.patch(`/users/${member.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'owner' },
 			});
 
@@ -537,7 +510,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote admin to owner', async () => {
-			const response = await authAdminAgent.patch(`/users/${member.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'owner' },
 			});
 
@@ -546,7 +519,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should be able to demote admin to member', async () => {
-			const response = await authAdminAgent.patch(`/users/${otherAdmin.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${otherAdmin.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -557,10 +530,15 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(user.globalRole.scope).toBe('global');
 			expect(user.globalRole.name).toBe('member');
+
+			// restore other admin
+
+			otherAdmin = await createAdmin();
+			adminAgent = testServer.authAgentFor(otherAdmin);
 		});
 
 		test('should be able to demote self to member', async () => {
-			const response = await authAdminAgent.patch(`/users/${admin.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${admin.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -571,10 +549,15 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(user.globalRole.scope).toBe('global');
 			expect(user.globalRole.name).toBe('member');
+
+			// restore admin
+
+			admin = await createAdmin();
+			adminAgent = testServer.authAgentFor(admin);
 		});
 
 		test('should be able to promote member to admin', async () => {
-			const response = await authAdminAgent.patch(`/users/${member.id}/role`).send({
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -585,12 +568,17 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(user.globalRole.scope).toBe('global');
 			expect(user.globalRole.name).toBe('admin');
+
+			// restore member
+
+			member = await createMember();
+			memberAgent = testServer.authAgentFor(member);
 		});
 	});
 
 	describe('owner', () => {
 		test('should be able to promote member to admin', async () => {
-			const response = await authOwnerAgent.patch(`/users/${member.id}/role`).send({
+			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -601,10 +589,15 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(user.globalRole.scope).toBe('global');
 			expect(user.globalRole.name).toBe('admin');
+
+			// restore member
+
+			member = await createMember();
+			memberAgent = testServer.authAgentFor(member);
 		});
 
 		test('should be able to demote admin to member', async () => {
-			const response = await authOwnerAgent.patch(`/users/${admin.id}/role`).send({
+			const response = await ownerAgent.patch(`/users/${admin.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
@@ -615,10 +608,15 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(user.globalRole.scope).toBe('global');
 			expect(user.globalRole.name).toBe('member');
+
+			// restore admin
+
+			admin = await createAdmin();
+			adminAgent = testServer.authAgentFor(admin);
 		});
 
 		test('should fail to demote self to admin', async () => {
-			const response = await authOwnerAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
 
@@ -627,7 +625,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to demote self to member', async () => {
-			const response = await authOwnerAgent.patch(`/users/${owner.id}/role`).send({
+			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
 			});
 
