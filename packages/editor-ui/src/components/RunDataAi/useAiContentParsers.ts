@@ -93,7 +93,7 @@ const outputTypeParsers: {
 							type: string;
 							image_url?: {
 								url: string;
-							}
+							};
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
