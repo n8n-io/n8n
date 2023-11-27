@@ -8,6 +8,10 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
+	parserOptions: {
+		project: './tsconfig.json',
+	},
+
 	ignorePatterns: [
 		'jest.config.js',
 		// TODO: Remove these

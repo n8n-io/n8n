@@ -472,9 +472,11 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should receive 404 on unknown target user', async () => {
-			const response = await adminAgent.patch('/users/99999/role').send({
-				newRole: { scope: 'global', name: 'member' },
-			});
+			const response = await adminAgent
+				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
+				.send({
+					newRole: { scope: 'global', name: 'member' },
+				});
 
 			expect(response.statusCode).toBe(404);
 			expect(response.body.message).toBe(NO_USER);

@@ -2,9 +2,7 @@
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { onBeforeUnmount } from 'vue';
-import { onMounted } from 'vue';
-import { computed, ref } from 'vue';
+import { onBeforeUnmount, onMounted, computed, ref } from 'vue';
 import { TIME } from '@/constants';
 
 const collaborationStore = useCollaborationStore();
