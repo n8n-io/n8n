@@ -14,7 +14,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
 	ASK_AI_EXPERIMENT,
 	ASK_AI_MAX_PROMPT_LENGTH,

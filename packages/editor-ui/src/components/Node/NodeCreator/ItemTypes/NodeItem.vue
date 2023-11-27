@@ -49,7 +49,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
 
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';

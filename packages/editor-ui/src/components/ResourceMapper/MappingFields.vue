@@ -15,7 +15,11 @@ import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
-import { fieldCannotBeDeleted, isMatchingField, parseResourceMapperFieldName } from '@/utils';
+import {
+	fieldCannotBeDeleted,
+	isMatchingField,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables';
 
 interface Props {

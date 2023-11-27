@@ -126,7 +126,7 @@ import { useToast } from '@/composables';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 

@@ -57,7 +57,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import { getActivatableTriggerNodes } from '@/utils';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',

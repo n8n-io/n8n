@@ -1,7 +1,7 @@
 import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type { IPinData, INodeExecutionData } from 'n8n-workflow';
-import { stringSizeInBytes } from '@/utils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,

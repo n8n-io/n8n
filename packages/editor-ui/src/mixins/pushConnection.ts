@@ -23,7 +23,7 @@ import type {
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';

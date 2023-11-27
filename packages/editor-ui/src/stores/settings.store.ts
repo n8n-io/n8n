@@ -25,14 +25,14 @@ import type {
 	ITelemetrySettings,
 	WorkflowSettings,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useTitleChange, useToast } from '@/composables';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
@@ -392,5 +392,3 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 	},
 });
-
-export { useUsersStore };

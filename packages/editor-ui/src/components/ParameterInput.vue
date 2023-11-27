@@ -398,7 +398,8 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
+import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
 	CUSTOM_API_CALL_KEY,
