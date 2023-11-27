@@ -74,9 +74,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		isInstanceOwner(): boolean {
 			return isInstanceOwner(this.currentUser);
 		},
-		isMember(): boolean {
-			return !this.isDefaultUser && !this.isInstanceOwner;
-		},
 		mfaEnabled(): boolean {
 			return this.currentUser?.mfaEnabled ?? false;
 		},
