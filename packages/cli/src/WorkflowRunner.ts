@@ -356,7 +356,6 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
-					abortController,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
@@ -376,7 +375,6 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					undefined,
-					abortController,
 				);
 				workflowExecution = workflowExecute.run(
 					workflow,
@@ -391,7 +389,6 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					undefined,
-					abortController,
 				);
 				workflowExecution = workflowExecute.runPartialWorkflow(
 					workflow,
