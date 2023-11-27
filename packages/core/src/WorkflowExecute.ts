@@ -29,13 +29,13 @@ import type {
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 	NodeHelpers,
 	NodeConnectionType,
 } from 'n8n-workflow';
