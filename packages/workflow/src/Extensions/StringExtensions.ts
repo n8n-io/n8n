@@ -1,10 +1,10 @@
 // import { createHash } from 'crypto';
 import { titleCase } from 'title-case';
-import * as ExpressionError from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
 import { encode } from 'js-base64';
 import { transliterate } from 'transliteration';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 	md5: CryptoJS.MD5,
@@ -122,7 +122,7 @@ function hash(value: string, extraArgs?: unknown): string {
 	}
 	const hashFunction = hashFunctions[algorithm.toLowerCase()];
 	if (!hashFunction) {
-		throw new ExpressionError.ExpressionExtensionError(
+		throw new ExpressionExtensionError(
 			`Unknown algorithm ${algorithm}. Available algorithms are: ${Object.keys(hashFunctions)
 				.map((s) => s.toUpperCase())
 				.join(', ')}, and Base64.`,
@@ -194,7 +194,7 @@ function toDate(value: string): Date {
 	const date = new Date(Date.parse(value));
 
 	if (date.toString() === 'Invalid Date') {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
+		throw new ExpressionExtensionError('cannot convert to date');
 	}
 	// If time component is not specified, force 00:00h
 	if (!/:/.test(value)) {
@@ -224,7 +224,7 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 	const int = parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
 
 	if (isNaN(int)) {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to integer');
+		throw new ExpressionExtensionError('cannot convert to integer');
 	}
 
 	return int;
@@ -232,15 +232,13 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 
 function toFloat(value: string) {
 	if (value.includes(',')) {
-		throw new ExpressionError.ExpressionExtensionError(
-			'cannot convert to float, expected . as decimal separator',
-		);
+		throw new ExpressionExtensionError('cannot convert to float, expected . as decimal separator');
 	}
 
 	const float = parseFloat(value.replace(CURRENCY_REGEXP, ''));
 
 	if (isNaN(float)) {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to float');
+		throw new ExpressionExtensionError('cannot convert to float');
 	}
 
 	return float;
