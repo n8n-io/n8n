@@ -77,6 +77,8 @@ function getSandbox(
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNode = this.getNode;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.getExecutionCancelSignal = this.getExecutionCancelSignal;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.logger = this.logger;

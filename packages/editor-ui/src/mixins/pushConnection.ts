@@ -404,18 +404,25 @@ export const pushConnection = defineComponent({
 						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
 						let title: string;
 						let type = 'error';
+						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
 						if (runDataExecuted.status === 'canceled') {
 							title = this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title');
 							type = 'warning';
-						} else if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						} else if (nodeError.node.name) {
+							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
 
 						this.showMessage({
 							title,
-							message: runDataExecutedErrorMessage,
+							message:
+								(nodeError?.description ?? runDataExecutedErrorMessage) +
+								this.$locale.baseText('pushConnection.executionError.openNode', {
+									interpolate: {
+										node: nodeError.node.name,
+									},
+								}),
 							type,
 							duration: 0,
 							dangerouslyUseHTMLString: true,

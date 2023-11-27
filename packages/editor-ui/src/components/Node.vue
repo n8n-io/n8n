@@ -393,7 +393,7 @@ export default defineComponent({
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
-				return nodeExecutionRunData[0].executionStatus ?? '';
+				return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
 			}
 			return '';
 		},
@@ -402,7 +402,7 @@ export default defineComponent({
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
-					if (executionRunData.error) {
+					if (executionRunData?.error) {
 						issues.push(
 							`${executionRunData.error.message}${
 								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
