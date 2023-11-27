@@ -35,7 +35,6 @@
 					"
 					active-color="#13ce66"
 					inactive-color="#8899AA"
-					element-loading-spinner="el-icon-loading"
 					data-test-id="workflow-activate-switch"
 				>
 				</el-switch>
