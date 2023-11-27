@@ -19,6 +19,12 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get information about a user',
 			},
 			{
+				name: "Get User's Profile",
+				value: 'getProfile',
+				description: "Get a user's",
+				action: "Get a user's profile",
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get a list of many users',
@@ -54,7 +60,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of the user to get information about',
 		displayOptions: {
 			show: {
-				operation: ['info'],
+				operation: ['info', 'getProfile'],
 				resource: ['user'],
 			},
 		},
