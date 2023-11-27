@@ -38,7 +38,8 @@
 
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
-import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';

@@ -5,13 +5,11 @@ import { waitFor } from '@testing-library/vue';
 import { uuid } from '@jsplumb/util';
 import type { INode } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
-import {
-	useNDVStore,
-	useNodeTypesStore,
-	useSettingsStore,
-	useUsersStore,
-	useWorkflowsStore,
-} from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { defaultMockNodeTypesArray } from '@/__tests__/defaults';
 import { setupServer } from '@/__tests__/server';
