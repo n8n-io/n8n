@@ -8,6 +8,9 @@ interface ExecutionBaseErrorOptions {
 export abstract class ExecutionBaseError extends ApplicationError {
 	description: string | null | undefined;
 
+	/**
+	 * @tech_debt Ensure `cause` can only be `Error` or `undefined`
+	 */
 	cause: Error | JsonObject | undefined;
 
 	timestamp: number;
