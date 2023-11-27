@@ -15,7 +15,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';

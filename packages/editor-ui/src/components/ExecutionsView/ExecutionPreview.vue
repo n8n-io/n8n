@@ -152,7 +152,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { ElDropdown } from 'element-plus';
-import { useExecutionDebugging, useMessage } from '@/composables';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';

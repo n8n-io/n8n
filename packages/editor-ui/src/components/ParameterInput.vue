@@ -418,7 +418,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 

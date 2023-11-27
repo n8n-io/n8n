@@ -43,9 +43,10 @@ import type {
 	IWorkflowDb,
 	TargetItem,
 	XYPosition,
-} from '../Interface';
+} from '@/Interface';
 
-import { useMessage, useToast } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';

@@ -144,7 +144,8 @@
 import { defineComponent } from 'vue';
 import { capitalizeFirstLetter } from '@/utils/htmlUtils';
 import { convertToDisplayDate } from '@/utils/typesUtils';
-import { useToast, useMessage } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import type {
 	ILdapConfig,
 	ILdapSyncData,

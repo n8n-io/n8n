@@ -11,7 +11,7 @@ import {
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 export type PinDataSource =

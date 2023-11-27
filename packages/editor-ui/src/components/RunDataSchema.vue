@@ -10,7 +10,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import { runExternalHook } from '@/utils/externalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;

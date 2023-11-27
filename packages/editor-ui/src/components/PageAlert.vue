@@ -6,7 +6,7 @@
 import { defineComponent } from 'vue';
 import type { NotificationInstance } from 'element-plus';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'PageAlert',

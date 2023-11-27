@@ -7,7 +7,8 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {

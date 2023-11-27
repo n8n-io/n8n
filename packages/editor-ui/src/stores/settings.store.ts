@@ -32,7 +32,8 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange, useToast } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {

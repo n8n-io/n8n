@@ -54,7 +54,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';

@@ -122,7 +122,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useContextMenu } from '@/composables';
+import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',

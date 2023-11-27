@@ -167,7 +167,9 @@ import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { MessageBoxInputData } from 'element-plus';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
