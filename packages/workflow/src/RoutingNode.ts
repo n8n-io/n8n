@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -37,11 +38,14 @@ import type {
 	PostReceiveAction,
 	JsonObject,
 } from './Interfaces';
-import type { NodeError } from './NodeErrors';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+
 import * as NodeHelpers from './NodeHelpers';
 
 import type { Workflow } from './Workflow';
+import type { NodeError } from './errors/abstract/node.error';
+
+import { NodeOperationError } from './errors/node-operation.error';
+import { NodeApiError } from './errors/node-api.error';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;

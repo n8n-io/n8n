@@ -9,7 +9,7 @@ import type { ExpressionTestEvaluation, ExpressionTestTransform } from './Expres
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
-import { ExpressionError } from '@/ExpressionError';
+import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
 
 setDifferEnabled(true);
