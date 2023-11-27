@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import {
 	mockSubcategoryCreateElement,
 	mockLabelCreateElement,
