@@ -159,10 +159,9 @@ watch(
 						:view="item.properties"
 						:class="$style.viewItem"
 					/>
-
-					<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 				</div>
 			</div>
+			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 		</div>
 	</div>
 	<div :class="$style.empty" v-else>
