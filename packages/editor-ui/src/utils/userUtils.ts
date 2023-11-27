@@ -84,9 +84,11 @@ function isPersonalizationSurveyV2OrLater(
 	return 'version' in data;
 }
 
-export const ROLE: { Owner: IRole; Member: IRole; Default: IRole } = {
+export type Roles = { [R in IRole as Capitalize<R>]: R };
+export const ROLE: Roles = {
 	Owner: 'owner',
 	Member: 'member',
+	Admin: 'admin',
 	Default: 'default', // default user with no email when setting up instance
 };
 
