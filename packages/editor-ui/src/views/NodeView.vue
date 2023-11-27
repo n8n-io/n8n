@@ -331,6 +331,7 @@ import {
 	useHistoryStore,
 	useExternalSecretsStore,
 	useCollaborationStore,
+	usePushConnectionStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -560,6 +561,7 @@ export default defineComponent({
 			useHistoryStore,
 			useExternalSecretsStore,
 			useCollaborationStore,
+			usePushConnectionStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -4674,12 +4676,21 @@ export default defineComponent({
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
+	beforeMount() {
+		if (!this.isDemo) {
+			this.pushStore.pushConnect();
+		}
+	},
 	beforeUnmount() {
 		// Make sure the event listeners get removed again else we
 		// could add up with them registered multiple times
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+
+		if (!this.isDemo) {
+			this.pushStore.pushDisconnect();
+		}
 
 		this.resetWorkspace();
 		this.instance.unbind();
