@@ -40,7 +40,7 @@ export class UsersController {
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
-			NO_ADMIN_TO_OWNER: 'Admin cannot promote user to global owner',
+			NO_USER_TO_OWNER: 'Cannot promote user to global owner',
 		},
 	} as const;
 
@@ -330,7 +330,7 @@ export class UsersController {
 			MISSING_NEW_ROLE_KEY,
 			MISSING_NEW_ROLE_VALUE,
 			NO_ADMIN_ON_OWNER,
-			NO_ADMIN_TO_OWNER,
+			NO_USER_TO_OWNER,
 			NO_USER,
 			NO_OWNER_ON_OWNER,
 		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
@@ -349,13 +349,8 @@ export class UsersController {
 			throw new BadRequestError(MISSING_NEW_ROLE_VALUE);
 		}
 
-		if (
-			req.user.globalRole.scope === 'global' &&
-			req.user.globalRole.name === 'admin' &&
-			newRole.scope === 'global' &&
-			newRole.name === 'owner'
-		) {
-			throw new UnauthorizedError(NO_ADMIN_TO_OWNER);
+		if (newRole.scope === 'global' && newRole.name === 'owner') {
+			throw new UnauthorizedError(NO_USER_TO_OWNER);
 		}
 
 		const targetUser = await this.userService.findOne({
