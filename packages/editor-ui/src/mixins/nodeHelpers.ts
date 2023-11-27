@@ -176,6 +176,8 @@ export const nodeHelpers = defineComponent({
 			}
 
 			for (const taskData of workflowResultData[node.name]) {
+				if (!taskData) return false;
+
 				if (taskData.error !== undefined) {
 					return true;
 				}

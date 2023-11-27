@@ -6,7 +6,7 @@ import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
-import { IConfig } from '@oclif/config';
+import type { IConfig } from '@oclif/config';
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 

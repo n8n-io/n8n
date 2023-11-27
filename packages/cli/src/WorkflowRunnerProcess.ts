@@ -269,13 +269,11 @@ class WorkflowRunnerProcess {
 
 			return returnData!.data!.main;
 		};
-		const abortController = new AbortController();
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
 				this.data.executionMode,
-				this.data.executionData,
-				abortController,
+				this.data.executionData
 			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
 		}
@@ -292,8 +290,7 @@ class WorkflowRunnerProcess {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
 				this.data.executionMode,
-				undefined,
-				abortController,
+				undefined
 			);
 			return this.workflowExecute.run(
 				this.workflow,
@@ -306,8 +303,7 @@ class WorkflowRunnerProcess {
 		this.workflowExecute = new WorkflowExecute(
 			additionalData,
 			this.data.executionMode,
-			undefined,
-			abortController,
+			undefined
 		);
 		return this.workflowExecute.runPartialWorkflow(
 			this.workflow,
