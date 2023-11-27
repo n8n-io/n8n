@@ -476,7 +476,12 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['user:create', 'user:update'],
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
