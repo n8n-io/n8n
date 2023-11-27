@@ -1,12 +1,7 @@
 import { computed, nextTick, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import type {
-	NodeConnectionType,
-	INodeCreateElement,
-	NodeFilterType,
-	SimplifiedNodeType,
-} from '@/Interface';
+import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	DEFAULT_SUBCATEGORY,
@@ -21,10 +16,11 @@ import {
 	subcategorizeItems,
 	sortNodeCreateElements,
 	searchNodes,
+	flattenCreateElements,
 } from '../utils';
 import { useI18n } from '@/composables';
 
-import type { INodeInputFilter } from 'n8n-workflow';
+import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores';
 import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
@@ -54,6 +50,7 @@ interface ViewStack {
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
+	sections?: string[];
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -71,7 +68,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (stack.search && searchBaseItems.value) {
 			const searchBase =
-				searchBaseItems.value.length > 0 ? searchBaseItems.value : stack.baselineItems;
+				searchBaseItems.value.length > 0
+					? searchBaseItems.value
+					: flattenCreateElements(stack.baselineItems ?? []);
 
 			return extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 		}
@@ -82,10 +81,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack) return {};
 
+		const flatBaselineItems = flattenCreateElements(stack.baselineItems ?? []);
+
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: (stack.baselineItems || []).length > 8 || stack?.hasSearch,
+			hasSearch: flatBaselineItems.length > 8 || stack?.hasSearch,
 		};
 	});
 
@@ -178,10 +179,28 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		let stackItems =
-			stack?.items ??
-			subcategorizeItems(nodeCreatorStore.mergedNodes)[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ??
-			[];
+		let stackItems = stack?.items ?? [];
+
+		if (!stack?.items) {
+			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
+			const itemsBySubcategory = subcategorizeItems(nodeCreatorStore.mergedNodes, stack.sections);
+			const itemsBySection = itemsBySubcategory[subcategory];
+			// Always has 1 section (other)
+			const hasSections = Object.keys(itemsBySection).length > 1;
+
+			if (stack.sections && hasSections) {
+				stackItems = [...stack.sections, 'other'].map((section) => {
+					const items = itemsBySection[section];
+					return {
+						type: 'section',
+						key: section,
+						children: items,
+					};
+				});
+			} else {
+				stackItems = itemsBySection.other;
+			}
+		}
 
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched

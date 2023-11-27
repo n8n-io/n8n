@@ -49,6 +49,7 @@ export interface NodeViewItem {
 		connectionType?: NodeConnectionType;
 		panelClass?: string;
 		group?: string[];
+		sections?: string[];
 		description?: string;
 		forceIncludeNodes?: string[];
 	};

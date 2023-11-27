@@ -9,6 +9,7 @@ import type {
 	ViewCreateElement,
 	LabelCreateElement,
 	ActionCreateElement,
+	SectionCreateElement,
 } from '@/Interface';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -91,6 +92,16 @@ export const mockSubcategoryCreateElement = (
 	key: uuidv4(),
 	type: 'subcategory',
 	properties: mockSubcategoryItemProps(overrides),
+});
+
+export const mockSectionCreateElement = (
+	overrides?: Partial<SectionCreateElement>,
+): SectionCreateElement => ({
+	uuid: uuidv4(),
+	key: uuidv4(),
+	type: 'section',
+	children: [mockNodeCreateElement(), mockNodeCreateElement()],
+	...overrides,
 });
 
 export const mockViewCreateElement = (

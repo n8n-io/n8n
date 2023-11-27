@@ -8,6 +8,8 @@ import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
+import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+import type { BaseTextKey } from '@/plugins/i18n';
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
@@ -110,47 +112,57 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<div
-			v-for="item in elements"
-			:key="item.uuid"
-			data-test-id="item-iterator-item"
-			:class="{
-				clickable: !disabled,
-				[$style.active]: activeItemId === item.uuid,
-				[$style.iteratorItem]: true,
-				[$style[item.type]]: true,
-			}"
-			ref="iteratorItems"
-			:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
-			:data-keyboard-nav-id="item.uuid"
-			@click="wrappedEmit('selected', item)"
-		>
+		<div v-for="item in elements" :key="item.uuid">
 			<div v-if="renderedItems.includes(item)">
-				<label-item v-if="item.type === 'label'" :item="item" />
-				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+				<CategorizedItemsRenderer
+					v-if="item.type === 'section'"
+					:elements="item.children"
+					expanded
+					:category="$locale.baseText(`nodeCreator.sectionNames.${item.key}` as BaseTextKey)"
+					@selected="wrappedEmit('selected', item)"
+				>
+				</CategorizedItemsRenderer>
 
-				<node-item
-					v-if="item.type === 'node'"
-					:nodeType="item.properties"
-					:active="true"
-					:subcategory="item.subcategory"
-				/>
+				<div
+					v-else
+					:class="{
+						clickable: !disabled,
+						[$style.active]: activeItemId === item.uuid,
+						[$style.iteratorItem]: true,
+						[$style[item.type]]: true,
+					}"
+					ref="iteratorItems"
+					data-test-id="item-iterator-item"
+					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
+					:data-keyboard-nav-id="item.uuid"
+					@click="wrappedEmit('selected', item)"
+				>
+					<label-item v-if="item.type === 'label'" :item="item" />
+					<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
-				<action-item
-					v-if="item.type === 'action'"
-					:nodeType="item.properties"
-					:action="item.properties"
-					:active="true"
-				/>
+					<node-item
+						v-if="item.type === 'node'"
+						:nodeType="item.properties"
+						:active="true"
+						:subcategory="item.subcategory"
+					/>
 
-				<view-item
-					v-else-if="item.type === 'view'"
-					:view="item.properties"
-					:class="$style.viewItem"
-				/>
+					<action-item
+						v-if="item.type === 'action'"
+						:nodeType="item.properties"
+						:action="item.properties"
+						:active="true"
+					/>
+
+					<view-item
+						v-else-if="item.type === 'view'"
+						:view="item.properties"
+						:class="$style.viewItem"
+					/>
+
+					<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
+				</div>
 			</div>
-
-			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 		</div>
 	</div>
 	<div :class="$style.empty" v-else>

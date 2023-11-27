@@ -70,6 +70,7 @@ function onSelected(item: INodeCreateElement) {
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
+			sections: item.properties.sections,
 		});
 
 		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
@@ -159,7 +160,8 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	return item;
 }
 
-function baseSubcategoriesFilter(item: INodeCreateElement) {
+function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
+	if (item.type === 'section') return item.children.every(baseSubcategoriesFilter);
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
