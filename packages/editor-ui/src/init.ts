@@ -25,7 +25,7 @@ export async function initializeCore() {
 	await settingsStore.initialize();
 	await usersStore.initialize();
 	if (settingsStore.isCloudDeployment) {
-		await Promise.all([cloudPlanStore.initialize(), initializeCloudHooks()]);
+		await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
 	}
 
 	coreInitialized = true;
