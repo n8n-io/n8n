@@ -3,7 +3,6 @@ import { DataSource, EntityManager, InsertResult, QueryFailedError } from 'typeo
 import { mockInstance } from '../../shared/mocking';
 import { mock, mockClear } from 'jest-mock-extended';
 import { StatisticsNames, WorkflowStatistics } from '@/databases/entities/WorkflowStatistics';
-import { mocked } from 'jest-mock';
 
 const entityManager = mockInstance(EntityManager);
 const dataSource = mockInstance(DataSource, { manager: entityManager });
