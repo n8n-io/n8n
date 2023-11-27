@@ -15,6 +15,7 @@
 		<template #content>
 			<div :class="$style.container">
 				<n8n-form-inputs
+					v-model="formValues"
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
@@ -22,6 +23,18 @@
 					tagSize="small"
 					@submit="onSubmit"
 				/>
+				<n8n-checkbox v-if="canRegisterForEnterpriseTrial" v-model="registerForEnterpriseTrial">
+					<i18n-t keypath="personalizationModal.registerEmailForTrial">
+						<template #trial>
+							<strong>
+								{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+							</strong>
+						</template>
+					</i18n-t>
+					<n8n-text size="small" tag="div" color="text-light">
+						{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+					</n8n-text>
+				</n8n-checkbox>
 			</div>
 		</template>
 		<template #footer>
@@ -38,7 +51,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 const SURVEY_VERSION = 'v4';
@@ -152,11 +165,13 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			formValues: {},
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
+			registerForEnterpriseTrial: true,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
 		};
@@ -168,6 +183,31 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
+		currentUser() {
+			return this.usersStore.currentUser;
+		},
+		canRegisterForEnterpriseTrial() {
+			const isSizeEligible = [COMPANY_SIZE_500_999, COMPANY_SIZE_1000_OR_MORE].includes(
+				this.formValues[COMPANY_SIZE_KEY],
+			);
+
+			const emailParts = (this.currentUser?.email || '@').split('@');
+			const emailDomain = emailParts[emailParts.length - 1];
+			const emailDomainParts = emailDomain.split('.');
+			const isEmailEligible = ![
+				'gmail',
+				'yahoo',
+				'hotmail',
+				'aol',
+				'live',
+				'outlook',
+				'icloud',
+				'mail',
+				'email',
+			].find((provider) => emailDomainParts.includes(provider));
+
+			return isSizeEligible && isEmailEligible;
+		},
 		survey() {
 			const survey: IFormInputs = [
 				{
