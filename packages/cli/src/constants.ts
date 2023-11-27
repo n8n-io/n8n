@@ -21,11 +21,7 @@ export function getN8nPackageJson() {
 	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
 }
 
-export const STARTING_NODES = [
-	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.start',
-	'n8n-nodes-base.manualTrigger',
-];
+export const STARTING_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
 
 export const N8N_VERSION = getN8nPackageJson().version;
 
