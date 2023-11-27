@@ -111,6 +111,15 @@ export function configurePool(credentials: IDataObject) {
 	return new mssql.ConnectionPool(config);
 }
 
+const escapeTableName = (table: string) => {
+	table = table.trim();
+	if (table.startsWith('[') && table.endsWith(']')) {
+		return table;
+	} else {
+		return `[${table}]`;
+	}
+};
+
 export async function insertOperation(tables: ITables, pool: mssql.ConnectionPool) {
 	return executeQueryQueue(
 		tables,
@@ -128,7 +137,7 @@ export async function insertOperation(tables: ITables, pool: mssql.ConnectionPoo
 					}
 				}
 
-				const query = `INSERT INTO [${table}] (${formatColumns(
+				const query = `INSERT INTO ${escapeTableName(table)} (${formatColumns(
 					columnString,
 				)}) VALUES ${valuesPlaceholder.join(', ')};`;
 
@@ -155,7 +164,9 @@ export async function updateOperation(tables: ITables, pool: mssql.ConnectionPoo
 					request.input(`v${index}`, item[col]);
 				}
 
-				const query = `UPDATE [${table}] SET ${setValues.join(', ')} WHERE ${condition};`;
+				const query = `UPDATE ${escapeTableName(table)} SET ${setValues.join(
+					', ',
+				)} WHERE ${condition};`;
 
 				return request.query(query);
 			});
@@ -182,9 +193,9 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 						request.input(`v${index}`, entry[deleteKey]);
 					}
 
-					const query = `DELETE FROM [${table}] WHERE [${deleteKey}] IN (${valuesPlaceholder.join(
-						', ',
-					)});`;
+					const query = `DELETE FROM ${escapeTableName(
+						table,
+					)} WHERE [${deleteKey}] IN (${valuesPlaceholder.join(', ')});`;
 
 					return request.query(query);
 				});
