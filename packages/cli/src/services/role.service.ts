@@ -57,6 +57,10 @@ export class RoleService {
 		{ scope: 'workflow', name: 'editor' },
 	];
 
+	listRoles() {
+		return this.roles;
+	}
+
 	private isValid(scope: RoleScopes, name: RoleNames) {
 		return this.roles.some((r) => r.scope === scope && r.name === name);
 	}

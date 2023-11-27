@@ -117,6 +117,7 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
 
 const exec = promisify(callbackExec);
 
@@ -295,6 +296,7 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
 
 		if (isLdapEnabled()) {
