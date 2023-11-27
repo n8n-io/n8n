@@ -70,7 +70,7 @@ async function onUpdateConnected(value: boolean) {
 </script>
 
 <template>
-	<div class="connection-switch" v-loading="saving" element-loading-spinner="el-icon-loading">
+	<div class="connection-switch" v-loading="saving">
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"

@@ -670,7 +670,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV2
 	| IPersonalizationSurveyAnswersV3;
 
-export type IRole = 'default' | 'owner' | 'member';
+export type IRole = 'default' | 'owner' | 'member' | 'admin';
 
 export interface IUserResponse {
 	id: string;
