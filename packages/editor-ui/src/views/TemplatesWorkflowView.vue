@@ -16,7 +16,7 @@
 						v-if="template"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openWorkflow(template.id, $event)"
+						@click="openTemplateSetup(template.id, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
@@ -68,6 +68,7 @@ import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -94,7 +95,7 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		openWorkflow(id: string, e: PointerEvent) {
+		openTemplateSetup(id: string, e: PointerEvent) {
 			const telemetryPayload = {
 				source: 'workflow',
 				template_id: id,
@@ -105,12 +106,23 @@ export default defineComponent({
 			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
 				withPostHog: true,
 			});
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-				window.open(route.href, '_blank');
-				return;
+
+			if (isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
+					window.open(route.href, '_blank');
+					return;
+				} else {
+					void this.$router.push({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
+				}
 			} else {
-				void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+					window.open(route.href, '_blank');
+					return;
+				} else {
+					void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				}
 			}
 		},
 		onHidePreview() {
