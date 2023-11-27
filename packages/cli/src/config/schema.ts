@@ -313,7 +313,7 @@ export const schema = {
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
 			format: 'Boolean',
-			default: true,
+			default: false,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
