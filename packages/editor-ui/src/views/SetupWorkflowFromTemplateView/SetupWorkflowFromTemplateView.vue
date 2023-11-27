@@ -109,7 +109,7 @@ onMounted(async () => {
 		<template #content>
 			<div :class="$style.grid">
 				<div :class="$style.gridContent">
-					<div :class="$style.notice">
+					<div :class="$style.notice" data-test-id="info-callout">
 						<AppsRequiringCredsNotice v-if="isReady" />
 						<n8n-loading v-else variant="p" />
 					</div>
@@ -145,6 +145,7 @@ onMounted(async () => {
 								:label="$locale.baseText('templateSetup.continue.button')"
 								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 								@click="setupTemplateStore.createWorkflow($router)"
+								data-test-id="continue-button"
 							/>
 						</n8n-tooltip>
 						<div v-else>

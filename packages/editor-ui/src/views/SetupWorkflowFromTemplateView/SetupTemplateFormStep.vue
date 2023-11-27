@@ -77,16 +77,16 @@ const onCredentialDeselected = () => {
 </script>
 
 <template>
-	<li :class="$style.container">
+	<li :class="$style.container" data-test-id="setup-credentials-form-step">
 		<n8n-heading tag="h2" size="large">
-			<div v-if="nodeType" :class="$style.heading">
+			<div v-if="nodeType" :class="$style.heading" data-test-id="credential-step-heading">
 				<span :class="$style.headingOrder">{{ order }}.</span>
 				<span :class="$style.headingIcon"><NodeIcon :node-type="nodeType" /></span>
 				{{ appName }}
 			</div>
 		</n8n-heading>
 
-		<p :class="$style.description">
+		<p :class="$style.description" data-test-id="credential-step-description">
 			<i18n-t
 				tag="span"
 				keypath="templateSetup.credential.description"
