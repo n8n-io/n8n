@@ -9,10 +9,10 @@ import type {
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import { ROLE, runExternalHook } from '@/utils';
-import { useSettingsStore } from './stores/settings.store';
-import { useTemplatesStore } from './stores/templates.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSSOStore } from './stores/sso.store';
+import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
 import { middleware } from '@/rbac/middleware';

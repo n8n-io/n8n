@@ -25,7 +25,7 @@ import {
 import { useI18n } from '@/composables';
 
 import type { INodeInputFilter } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {

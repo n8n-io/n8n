@@ -30,7 +30,7 @@ import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import RunDataHtml from '@/components/RunDataHtml.vue';
 
 export default defineComponent({

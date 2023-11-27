@@ -7,8 +7,10 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export const useExecutionDebugging = () => {
 	const router = useRouter();

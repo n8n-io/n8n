@@ -29,7 +29,7 @@ import { useI18n, useToast } from '@/composables';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
-import { useOrchestrationStore } from '../stores/orchestration.store';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { setPageTitle } from '@/utils';
 import { pushConnection } from '../mixins/pushConnection';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
