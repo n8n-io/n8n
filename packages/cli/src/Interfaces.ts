@@ -209,7 +209,6 @@ export interface IExecutingWorkflowData {
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
-	abortController?: AbortController;
 	status: ExecutionStatus;
 }
 

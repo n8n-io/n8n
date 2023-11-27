@@ -103,6 +103,7 @@
 	"auth.password": "Password",
 	"auth.role": "Role",
 	"auth.roles.member": "Member",
+	"auth.roles.admin": "Admin",
 	"auth.roles.owner": "Owner",
 	"auth.agreement.label": "Inform me about security vulnerabilities if they arise",
 	"auth.setup.next": "Next",
