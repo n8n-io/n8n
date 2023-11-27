@@ -1080,9 +1080,12 @@ export function simplifyBlocksOutput(blocks: IDataObject[], rootId: string) {
 
 		try {
 			if (['code'].includes(type)) {
-				const content = ((block[type] as IDataObject).text as IDataObject).content;
-				block.content = content;
-				delete block[type];
+				const text = (block[type] as IDataObject).text as IDataObject[];
+				if (text && Array.isArray(text)) {
+					const content = text.map((entry) => entry.plain_text || '').join('');
+					block.content = content;
+					delete block[type];
+				}
 				continue;
 			}
 
