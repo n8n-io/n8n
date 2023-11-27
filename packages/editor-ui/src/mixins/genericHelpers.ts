@@ -66,11 +66,9 @@ export const genericHelpers = defineComponent({
 				return;
 			}
 
-			// @ts-ignore
 			this.loadingService = this.$loading({
 				lock: true,
 				text: text || this.$locale.baseText('genericHelpers.loading'),
-				spinner: 'el-icon-loading',
 				background: 'var(--color-dialog-overlay-background)',
 			});
 		},
