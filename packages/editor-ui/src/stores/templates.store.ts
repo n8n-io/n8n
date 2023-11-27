@@ -47,6 +47,12 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		getTemplateById() {
 			return (id: string): null | ITemplatesWorkflow => this.workflows[id];
 		},
+		getFullTemplateById() {
+			return (id: string): null | ITemplatesWorkflowFull => {
+				const template = this.workflows[id];
+				return template && 'full' in template && template.full ? template : null;
+			};
+		},
 		getCollectionById() {
 			return (id: string): null | ITemplatesCollection => this.collections[id];
 		},
