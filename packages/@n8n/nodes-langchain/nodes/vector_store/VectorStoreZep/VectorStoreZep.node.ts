@@ -1,7 +1,6 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import type { IZepConfig } from 'langchain/vectorstores/zep';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
-import type { VectorStore } from 'langchain/vectorstores/base';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
@@ -115,6 +114,17 @@ export const VectorStoreZep = createVectorStoreNode({
 			isAutoEmbedded: options.isAutoEmbedded ?? true,
 		};
 
-		ZepVectorStore.fromDocuments(documents, embeddings, zepConfig) as Promise<VectorStore>;
+		try {
+			await ZepVectorStore.fromDocuments(documents, embeddings, zepConfig);
+		} catch (error) {
+			if (error.message === 'Got an unexpected status code: 400') {
+				throw new NodeOperationError(context.getNode(), `Collection ${collectionName} not found`, {
+					itemIndex,
+					description:
+						'Please check that the collection exists in your vector store, or make sure that collection name satixfies naming rules',
+				});
+			}
+			throw new NodeOperationError(context.getNode(), error, { itemIndex });
+		}
 	},
 });

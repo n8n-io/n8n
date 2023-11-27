@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
@@ -93,10 +93,23 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
-		void SupabaseVectorStore.fromDocuments(documents, embeddings, {
-			client,
-			tableName,
-			queryName: options.queryName ?? 'match_documents',
-		});
+		try {
+			await SupabaseVectorStore.fromDocuments(documents, embeddings, {
+				client,
+				tableName,
+				queryName: options.queryName ?? 'match_documents',
+			});
+		} catch (error) {
+			if (error.message === 'Error inserting: undefined 404 Not Found') {
+				throw new NodeOperationError(context.getNode(), `Table ${tableName} not found`, {
+					itemIndex,
+					description: 'Please check that the table exists in your vector store',
+				});
+			} else {
+				throw new NodeOperationError(context.getNode(), error, {
+					itemIndex,
+				});
+			}
+		}
 	},
 });

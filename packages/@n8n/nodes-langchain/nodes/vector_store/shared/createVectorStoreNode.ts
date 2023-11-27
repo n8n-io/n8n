@@ -260,7 +260,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					);
 					resultData.push(...serializedDocuments);
 
-					await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					try {
+						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					} catch (error) {
+						throw error;
+					}
 				}
 
 				return this.prepareOutputData(resultData);

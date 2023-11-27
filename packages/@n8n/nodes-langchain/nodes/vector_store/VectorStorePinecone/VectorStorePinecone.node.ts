@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -113,6 +113,15 @@ export const VectorStorePinecone = createVectorStoreNode({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
+
+		const indexes = (await client.listIndexes()).map((i) => i.name);
+
+		if (!indexes.includes(index)) {
+			throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
+				itemIndex,
+				description: 'Please check that the index exists in your vector store',
+			});
+		}
 
 		const pineconeIndex = client.Index(index);
 
