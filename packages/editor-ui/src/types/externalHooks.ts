@@ -21,7 +21,7 @@ import type {
 	OutputModeChangedEventData,
 	UpdatedWorkflowSettingsEventData,
 	UserSavedCredentialsEventData,
-} from '@/hooks';
+} from '@/hooks/segment';
 import type {
 	INodeCreateElement,
 	INodeUi,
