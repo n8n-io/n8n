@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 
 import * as ResponseHelper from '@/ResponseHelper';
 import { VariablesRequest } from '@/requests';
@@ -17,7 +17,6 @@ import {
 	VariablesLicenseError,
 	VariablesValidationError,
 } from './variables.service.ee';
-import { Logger } from '@/Logger';
 
 @Service()
 @Authorized()
