@@ -57,7 +57,7 @@
 					<n8n-select
 						:modelValue="user.globalRole.name"
 						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
-						:disabled="usersStore.isMember"
+						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
 					>
 						<n8n-option
@@ -160,6 +160,9 @@ export default defineComponent({
 					label: this.$locale.baseText('auth.roles.admin'),
 				},
 			];
+		},
+		canUpdateRole(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'user:update' } });
 		},
 	},
 	methods: {
