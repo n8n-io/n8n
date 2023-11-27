@@ -1,4 +1,4 @@
-import { ExpressionExtensionError } from './../ExpressionError';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 import { DateTime } from 'luxon';
 import type {

@@ -1,5 +1,5 @@
 import * as Logger from './LoggerProxy';
-import { ReportableError, type ReportingOptions } from './errors/reportable.error';
+import { ApplicationError, type ReportingOptions } from './errors/application.error';
 
 interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
@@ -10,7 +10,7 @@ const instance: ErrorReporter = {
 		if (error instanceof Error) {
 			let e = error;
 			do {
-				const meta = e instanceof ReportableError ? e.extra : undefined;
+				const meta = e instanceof ApplicationError ? e.extra : undefined;
 				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { ExpressionExtensionError } from './../ExpressionError';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { ExtensionMap } from './Extensions';
 
 function format(value: number, extraArgs: unknown[]): string {

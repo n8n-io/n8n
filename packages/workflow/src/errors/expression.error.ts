@@ -1,5 +1,5 @@
-import type { IDataObject } from './Interfaces';
-import { ExecutionBaseError } from './NodeErrors';
+import type { IDataObject } from '../Interfaces';
+import { ExecutionBaseError } from './abstract/execution-base.error';
 
 /**
  * Class for instantiating an expression error
@@ -47,5 +47,3 @@ export class ExpressionError extends ExecutionBaseError {
 		}
 	}
 }
-
-export class ExpressionExtensionError extends ExpressionError {}
