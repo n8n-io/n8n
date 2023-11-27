@@ -110,6 +110,7 @@ listenForCredentialChanges({
 			v-else
 			:label="`Create new ${props.appName} credential`"
 			@click="createNewCredential"
+			data-test-id="create-credential"
 		/>
 	</div>
 </template>
