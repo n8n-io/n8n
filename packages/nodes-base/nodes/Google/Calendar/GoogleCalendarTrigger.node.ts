@@ -9,7 +9,12 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 
-import { encodeURIComponentOnce, getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	encodeURIComponentOnce,
+	getCalendars,
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
 
 export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
