@@ -12,14 +12,14 @@ export function hasScope(
 ): boolean;
 export function hasScope(
 	scope: Scope | Scope[],
-	userScopes: unknown,
+	userScopes: GlobalScopes | ScopeLevels,
 	options: ScopeOptions = { mode: 'oneOf' },
 ): boolean {
 	if (!Array.isArray(scope)) {
 		scope = [scope];
 	}
 
-	const userScopeSet = new Set(Object.values(userScopes ?? {}).flat());
+	const userScopeSet = new Set(Object.values(userScopes).flat());
 
 	if (options.mode === 'allOf') {
 		return !!scope.length && scope.every((s) => userScopeSet.has(s));

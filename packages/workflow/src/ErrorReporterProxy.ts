@@ -1,11 +1,5 @@
-import type { Primitives } from './utils';
 import * as Logger from './LoggerProxy';
-
-export interface ReportingOptions {
-	level?: 'warning' | 'error' | 'fatal';
-	tags?: Record<string, Primitives>;
-	extra?: Record<string, unknown>;
-}
+import { ReportableError, type ReportingOptions } from './errors/reportable.error';
 
 interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
@@ -16,7 +10,8 @@ const instance: ErrorReporter = {
 		if (error instanceof Error) {
 			let e = error;
 			do {
-				Logger.error(`${e.constructor.name}: ${e.message}`);
+				const meta = e instanceof ReportableError ? e.extra : undefined;
+				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);
 		}

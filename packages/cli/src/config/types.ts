@@ -32,12 +32,12 @@ type GetPathSegments<Traversable, Filter> = Traversable extends Filter
 type JoinByDotting<T extends string[]> = T extends [infer F]
 	? F
 	: T extends [infer F, ...infer R]
-	? F extends string
-		? R extends string[]
-			? `${F}.${JoinByDotting<R>}`
+	  ? F extends string
+			? R extends string[]
+				? `${F}.${JoinByDotting<R>}`
+				: never
 			: never
-		: never
-	: string;
+	  : string;
 
 type ToDottedPath<T> = JoinByDotting<RemoveExcess<T>>;
 
@@ -65,14 +65,14 @@ type ConfigOptionPath =
 type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 	? number
 	: T extends BooleanPath
-	? boolean
-	: T extends StringLiteralArrayPath
-	? StringLiteralMap[T]
-	: T extends keyof ExceptionPaths
-	? ExceptionPaths[T]
-	: T extends StringPath
-	? string
-	: unknown;
+	  ? boolean
+	  : T extends StringLiteralArrayPath
+	    ? StringLiteralMap[T]
+	    : T extends keyof ExceptionPaths
+	      ? ExceptionPaths[T]
+	      : T extends StringPath
+	        ? string
+	        : unknown;
 
 type ExceptionPaths = {
 	'queue.bull.redis': object;

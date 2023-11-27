@@ -372,19 +372,17 @@ export class WorkflowsService {
 			}
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			const multiMainSetup = Container.get(MultiMainSetup);
+		const multiMainSetup = Container.get(MultiMainSetup);
 
-			await multiMainSetup.init();
+		await multiMainSetup.init();
 
-			if (multiMainSetup.isEnabled) {
-				await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
-					workflowId,
-					oldState,
-					newState: updatedWorkflow.active,
-					versionId: shared.workflow.versionId,
-				});
-			}
+		if (multiMainSetup.isEnabled) {
+			await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
+				workflowId,
+				oldState,
+				newState: updatedWorkflow.active,
+				versionId: shared.workflow.versionId,
+			});
 		}
 
 		return updatedWorkflow;
