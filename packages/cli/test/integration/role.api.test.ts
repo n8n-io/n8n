@@ -51,13 +51,13 @@ describe('GET /roles', () => {
 			const response = await toAgent[user].get('/roles').expect(200);
 
 			expect(response.body.data).toEqual([
-				{ scope: 'global', name: 'owner', licensed: true },
-				{ scope: 'global', name: 'member', licensed: true },
-				{ scope: 'global', name: 'admin', licensed: true },
-				{ scope: 'workflow', name: 'owner', licensed: true },
-				{ scope: 'credential', name: 'owner', licensed: true },
-				{ scope: 'credential', name: 'user', licensed: true },
-				{ scope: 'workflow', name: 'editor', licensed: true },
+				{ scope: 'global', name: 'owner', isAvailable: true },
+				{ scope: 'global', name: 'member', isAvailable: true },
+				{ scope: 'global', name: 'admin', isAvailable: true },
+				{ scope: 'workflow', name: 'owner', isAvailable: true },
+				{ scope: 'credential', name: 'owner', isAvailable: true },
+				{ scope: 'credential', name: 'user', isAvailable: true },
+				{ scope: 'workflow', name: 'editor', isAvailable: true },
 			]);
 		});
 	});
@@ -69,13 +69,13 @@ describe('GET /roles', () => {
 			const response = await toAgent[user].get('/roles').expect(200);
 
 			expect(response.body.data).toEqual([
-				{ scope: 'global', name: 'owner', licensed: true },
-				{ scope: 'global', name: 'member', licensed: true },
-				{ scope: 'global', name: 'admin', licensed: false },
-				{ scope: 'workflow', name: 'owner', licensed: true },
-				{ scope: 'credential', name: 'owner', licensed: true },
-				{ scope: 'credential', name: 'user', licensed: true },
-				{ scope: 'workflow', name: 'editor', licensed: true },
+				{ scope: 'global', name: 'owner', isAvailable: true },
+				{ scope: 'global', name: 'member', isAvailable: true },
+				{ scope: 'global', name: 'admin', isAvailable: false },
+				{ scope: 'workflow', name: 'owner', isAvailable: true },
+				{ scope: 'credential', name: 'owner', isAvailable: true },
+				{ scope: 'credential', name: 'user', isAvailable: true },
+				{ scope: 'workflow', name: 'editor', isAvailable: true },
 			]);
 		});
 	});

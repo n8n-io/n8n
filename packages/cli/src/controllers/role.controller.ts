@@ -15,10 +15,10 @@ export class RoleController {
 	async listRoles() {
 		return this.roleService.listRoles().map((role) => {
 			if (role.scope === 'global' && role.name === 'admin') {
-				return { ...role, licensed: this.license.isAdvancedPermissionsLicensed() };
+				return { ...role, isAvailable: this.license.isAdvancedPermissionsLicensed() };
 			}
 
-			return { ...role, licensed: true };
+			return { ...role, isAvailable: true };
 		});
 	}
 }
