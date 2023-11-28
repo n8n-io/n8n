@@ -41,7 +41,6 @@ export type EventBusDestinationScope = ResourceScope<
 	DefaultOperations | 'test'
 >;
 export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
-
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
