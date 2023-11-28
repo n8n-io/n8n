@@ -12,7 +12,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, jsonParse, jsonStringify } from 'n8n-workflow';
 
 export type PinDataSource =
 	| 'pin-icon-click'
@@ -39,9 +39,19 @@ export const pinData = defineComponent({
 		hasPinData(): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
 		},
+		isSubNode() {
+			if (!this.nodeType.outputs || typeof this.nodeType.outputs === 'string') {
+				return false;
+			}
+			const outputTypes = NodeHelpers.getConnectionTypes(this.nodeType.outputs);
+			return outputTypes
+				? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+				: false;
+		},
 		isPinDataNodeType(): boolean {
 			return (
 				!!this.node &&
+				!this.isSubNode &&
 				!this.isMultipleOutputsNodeType &&
 				!PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type)
 			);
