@@ -224,7 +224,7 @@ export class OpenAiAssistant implements INodeType {
 				name: 'text',
 				type: 'string',
 				required: true,
-				default: '={{ $json.input }}',
+				default: '={{ $json.chat_input }}',
 			},
 			{
 				displayName: 'OpenAI Tools',
