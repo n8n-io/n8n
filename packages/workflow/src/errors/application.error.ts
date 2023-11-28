@@ -6,16 +6,17 @@ export type ReportingOptions = {
 	level?: Level;
 } & Pick<Event, 'tags' | 'extra'>;
 
-export type ReportableErrorOptions = Partial<ErrorOptions> & ReportingOptions;
-
-export class ReportableError extends Error {
+export class ApplicationError extends Error {
 	readonly level: Level;
 
 	readonly tags?: Event['tags'];
 
 	readonly extra?: Event['extra'];
 
-	constructor(message: string, { level, tags, extra, ...rest }: ReportableErrorOptions) {
+	constructor(
+		message: string,
+		{ level, tags, extra, ...rest }: Partial<ErrorOptions> & ReportingOptions = {},
+	) {
 		super(message, rest);
 		this.level = level ?? 'error';
 		this.tags = tags;
