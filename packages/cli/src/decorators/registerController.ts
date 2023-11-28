@@ -19,11 +19,11 @@ import type {
 	MiddlewareMetadata,
 	RouteMetadata,
 	ScopeMetadata,
-	ScopeWithOptions,
 } from './types';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import Container from 'typedi';
 import { License } from '@/License';
+import type { Scope } from '@n8n/permissions';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -59,15 +59,15 @@ export const createLicenseMiddleware =
 	};
 
 export const createGlobalScopeMiddleware =
-	(scopes: ScopeWithOptions): RequestHandler =>
+	(scopes: Scope[]): RequestHandler =>
 	async ({ user }: AuthenticatedRequest, res, next) => {
-		if (scopes.scopes.length === 0) {
+		if (scopes.length === 0) {
 			return next();
 		}
 
 		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
 
-		const hasScopes = await user.hasGlobalScope(scopes.scopes, scopes.options);
+		const hasScopes = await user.hasGlobalScope(scopes);
 		if (!hasScopes) {
 			return res.status(403).json({ status: 'error', message: 'Unauthorized' });
 		}
