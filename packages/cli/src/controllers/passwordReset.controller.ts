@@ -6,13 +6,6 @@ import validator from 'validator';
 
 import { Get, Post, RestController } from '@/decorators';
 import {
-	BadRequestError,
-	InternalServerError,
-	NotFoundError,
-	UnauthorizedError,
-	UnprocessableRequestError,
-} from '@/ResponseHelper';
-import {
 	getInstanceBaseUrl,
 	hashPassword,
 	validatePassword,
@@ -29,6 +22,11 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
