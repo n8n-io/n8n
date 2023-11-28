@@ -52,23 +52,7 @@
 				@copyPasswordResetLink="onCopyPasswordResetLink"
 				@allowSSOManualLogin="onAllowSSOManualLogin"
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
-			>
-				<template #actions="{ user }">
-					<n8n-select
-						:modelValue="user.globalRole.name"
-						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
-						:disabled="!canUpdateRole"
-						data-test-id="user-role-select"
-					>
-						<n8n-option
-							v-for="role in userRoles"
-							:key="role.value"
-							:value="role.value"
-							:label="role.label"
-						/>
-					</n8n-select>
-				</template>
-			</n8n-users-list>
+			/>
 		</div>
 	</div>
 </template>
