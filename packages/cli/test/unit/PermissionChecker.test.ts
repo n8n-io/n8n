@@ -26,6 +26,7 @@ import { getCredentialOwnerRole, getWorkflowOwnerRole } from '../integration/sha
 import { createOwner, createUser } from '../integration/shared/db/users';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
@@ -271,7 +272,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		} catch (error) {
 			if (error instanceof SubworkflowOperationError) {
 				expect(error.description).toBe(
-					`${fakeUser.firstName} (${fakeUser.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+					'In the community version, a subworkflow can only be called by a workflow created by the same owner as the subworkflow.',
 				);
 			}
 		}
@@ -300,20 +301,38 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
-	test('sameOwner passes when both workflows are owned by the same user', async () => {
-		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockImplementation(async () => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
-
-		const subworkflow = new Workflow({
+	describe('with `workflowsFromSameOwner` policy in community edition', () => {
+		const workflowArgs = {
 			nodes: [],
 			connections: {},
 			active: false,
 			nodeTypes: mockNodeTypes,
-			id: '2',
+			id: generateNanoId(),
+		};
+
+		it('should pass if workflow is owned by the same user', async () => {
+			jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
+
+			ownershipService.getWorkflowOwnerCached.mockResolvedValue(fakeUser);
+
+			const subworkflow = new Workflow(workflowArgs);
+
+			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, fakeUser.id);
+
+			await expect(check).resolves.not.toThrow();
 		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
-		).resolves.not.toThrow();
+
+		it('should throw if workflow is not owned by the same user', async () => {
+			jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
+
+			ownershipService.getWorkflowOwnerCached.mockResolvedValue(fakeUser);
+
+			const subworkflow = new Workflow(workflowArgs);
+
+			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, nonOwnerUser.id);
+
+			await expect(check).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
+		});
 	});
 
 	test('workflowsFromAList works when the list contains the parent id', async () => {

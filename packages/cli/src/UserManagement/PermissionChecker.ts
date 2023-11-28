@@ -93,14 +93,6 @@ export class PermissionChecker {
 			return;
 		}
 
-		let policy =
-			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
-
-		if (!isSharingEnabled()) {
-			// Community version allows only same owner workflows
-			policy = 'workflowsFromSameOwner';
-		}
-
 		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
 			subworkflow.id,
 		);
@@ -111,6 +103,16 @@ export class PermissionChecker {
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
 				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
 		);
+
+		let policy =
+			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+		if (!isSharingEnabled()) {
+			// Community version allows only same owner workflows
+			policy = 'workflowsFromSameOwner';
+			errorToThrow.description =
+				'In the community version, a subworkflow can only be called by a workflow created by the same owner as the subworkflow.';
+		}
 
 		if (policy === 'none') {
 			throw errorToThrow;

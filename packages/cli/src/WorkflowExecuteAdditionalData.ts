@@ -77,7 +77,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
 		// If it's an object with a 'message' property, create a new Error instance.
 		let error: Error | undefined;
-		if ('node' in errorObject) {
+		if ('node' in errorObject && typeof errorObject.node === 'object') {
 			const node = workflow.getNode((errorObject.node as { name: string }).name);
 			if (node) {
 				error = new NodeOperationError(
@@ -95,6 +95,12 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 		if ('stack' in errorObject) {
 			// If there's a 'stack' property, set it on the new Error instance.
 			error.stack = errorObject.stack as string;
+		}
+
+		if ('description' in errorObject) {
+			// @ts-expect-error Error descriptions are surfaced by the UI but
+			// not all backend errors account for this property yet.
+			error.description = errorObject.description as string;
 		}
 
 		return error;
@@ -820,6 +826,7 @@ async function executeWorkflow(
 		}
 		data = await workflowExecute.processRunExecutionData(workflow);
 	} catch (error) {
+		console.log('error', error);
 		const executionError = error ? (error as ExecutionError) : undefined;
 		const fullRunData: IRun = {
 			data: {
