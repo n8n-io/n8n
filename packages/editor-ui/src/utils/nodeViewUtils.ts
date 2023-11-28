@@ -282,9 +282,9 @@ export const getInputNameOverlay = (
 				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
+			label.classList.add(`node-connection-type-${inputName ?? 'main'}`);
 			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
-				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -317,9 +317,9 @@ export const getOutputNameOverlay = (
 			if (ep?.__meta?.endpointLabelLength) {
 				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
 			}
+			label.classList.add(`node-connection-type-${getScope(outputName) ?? 'main'}`);
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
-				label.classList.add(`node-connection-type-${getScope(outputName)}`);
 			}
 			if (category) {
 				label.classList.add(`node-connection-category-${category}`);

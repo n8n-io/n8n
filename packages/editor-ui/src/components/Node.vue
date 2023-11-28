@@ -1057,12 +1057,6 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: hsla(
-			var(--color-foreground-base-h),
-			60%,
-			var(--color-foreground-base-l),
-			80%
-		);
 	}
 }
 
@@ -1446,7 +1440,7 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-label-length='medium'] {
+	&.node-connection-type-main[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;
