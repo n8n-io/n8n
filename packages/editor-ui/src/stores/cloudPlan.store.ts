@@ -133,9 +133,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 					clearTimeout(interval);
 					return;
 				}
-			} catch (e) {
-				throw new Error(e.message);
-			}
+			} catch {}
 		}, CLOUD_TRIAL_CHECK_INTERVAL);
 	};
 
