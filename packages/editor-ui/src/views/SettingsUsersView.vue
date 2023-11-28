@@ -35,6 +35,17 @@
 				@click:button="goToUpgrade"
 			/>
 		</div>
+		<n8n-alert type="warning">
+			<template #title>{{ $locale.baseText('settings.users.advancedPermissions.title') }}</template>
+			<span>{{ $locale.baseText('settings.users.advancedPermissions.warning') }}</span>
+			<template #aside>
+				<n8n-button
+					:label="$locale.baseText('generic.seePlans')"
+					@click="goToUpgrade"
+					size="small"
+				/>
+			</template>
+		</n8n-alert>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
@@ -52,7 +63,24 @@
 				@copyPasswordResetLink="onCopyPasswordResetLink"
 				@allowSSOManualLogin="onAllowSSOManualLogin"
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
-			/>
+			>
+				<template #actions="{ user }">
+					<n8n-select
+						:modelValue="user.globalRole.name"
+						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
+						:disabled="!canUpdateRole"
+						data-test-id="user-role-select"
+					>
+						<n8n-option
+							v-for="role in userRoles"
+							:key="role.value"
+							:value="role.value"
+							:label="role.label"
+							:disabled="role.disabled"
+						/>
+					</n8n-select>
+				</template>
+			</n8n-users-list>
 		</div>
 	</div>
 </template>
@@ -133,7 +161,12 @@ export default defineComponent({
 				},
 			];
 		},
-		userRoles(): Array<{ value: IRole; label: string }> {
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
+		},
+		userRoles(): Array<{ value: IRole; label: string; disabled?: boolean }> {
 			return [
 				{
 					value: ROLE.Member,
@@ -142,6 +175,7 @@ export default defineComponent({
 				{
 					value: ROLE.Admin,
 					label: this.$locale.baseText('auth.roles.admin'),
+					disabled: !this.isAdvancedPermissionsEnabled,
 				},
 			];
 		},
