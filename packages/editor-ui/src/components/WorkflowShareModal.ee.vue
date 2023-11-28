@@ -23,7 +23,7 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.isOwner" :bold="false" class="mb-s">
+				<n8n-info-tip v-if="!workflowPermissions.updateSharing" :bold="false" class="mb-s">
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -213,8 +213,9 @@ export default defineComponent({
 				const isAlreadySharedWithUser = (this.sharedWith || []).find(
 					(sharee) => sharee.id === user.id,
 				);
+				const isOwner = this.workflow?.ownedBy?.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser;
+				return !isCurrentUser && !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): Array<Partial<IUser>> {
