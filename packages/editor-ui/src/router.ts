@@ -9,7 +9,6 @@ import type {
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import { runExternalHook } from '@/utils/externalHooks';
-import { ROLE } from '@/utils/userUtils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -406,10 +405,7 @@ export const routes = [
 			default: SetupView,
 		},
 		meta: {
-			middleware: ['role'],
-			middlewareOptions: {
-				role: [ROLE.Default],
-			},
+			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
 			},
