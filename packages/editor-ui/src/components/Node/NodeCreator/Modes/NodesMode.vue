@@ -49,7 +49,6 @@ function selectNodeType(nodeTypes: string[]) {
 }
 
 function onSelected(item: INodeCreateElement) {
-	console.log(item);
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
