@@ -91,26 +91,18 @@ const outputTypeParsers: {
 					if (content.type === 'constructor' && content.id?.includes('schema') && content.kwargs) {
 						interface MessageContent {
 							type: string;
-							image_url?:
-								| {
-										url?: string;
-								  }
-								| string;
+							image_url?: {
+								url: string;
+							};
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
 							const messageContent = message[0] as {
 								type?: string;
-								image_url?: string | { url?: string };
+								image_url?: { url: string };
 							};
 							if (messageContent?.type === 'image_url') {
-								if (typeof messageContent.image_url === 'string') {
-									// URL Image
-									message = `![Input image](${messageContent.image_url})`;
-								} else {
-									// Binary Image
-									message = `![Input image](${messageContent.image_url?.url})`;
-								}
+								message = `![Input image](${messageContent.image_url?.url})`;
 							}
 							message = message as MessageContent[];
 						}

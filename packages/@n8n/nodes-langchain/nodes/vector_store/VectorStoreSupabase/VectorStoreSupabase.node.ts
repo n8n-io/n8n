@@ -1,19 +1,12 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
+import { supabaseTableNameRLC } from '../shared/descriptions';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
-const sharedFields: INodeProperties[] = [
-	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'Name of the table to load from',
-	},
-];
+const sharedFields: INodeProperties[] = [supabaseTableNameRLC];
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -66,12 +59,17 @@ export const VectorStoreSupabase = createVectorStoreNode({
 			},
 		],
 	},
+	methods: {
+		listSearch: { supabaseTableNameSearch },
+	},
 	sharedFields,
 	insertFields,
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			queryName: string;
 		};
@@ -86,17 +84,32 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		});
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
-		void SupabaseVectorStore.fromDocuments(documents, embeddings, {
-			client,
-			tableName,
-			queryName: options.queryName ?? 'match_documents',
-		});
+		try {
+			await SupabaseVectorStore.fromDocuments(documents, embeddings, {
+				client,
+				tableName,
+				queryName: options.queryName ?? 'match_documents',
+			});
+		} catch (error) {
+			if ((error as Error).message === 'Error inserting: undefined 404 Not Found') {
+				throw new NodeOperationError(context.getNode(), `Table ${tableName} not found`, {
+					itemIndex,
+					description: 'Please check that the table exists in your vector store',
+				});
+			} else {
+				throw new NodeOperationError(context.getNode(), error as Error, {
+					itemIndex,
+				});
+			}
+		}
 	},
 });

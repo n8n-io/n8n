@@ -404,6 +404,7 @@ export const enum VIEWS {
 	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
+	TEMPLATE_SETUP = 'TemplatesWorkflowSetupView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
@@ -570,6 +571,9 @@ export const enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
+	RBAC = 'rbac',
+	COLLABORATION = 'collaboration',
+	PUSH = 'push',
 }
 
 export const enum SignInType {
@@ -655,3 +659,13 @@ export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
+
+/**
+ * Units of time in milliseconds
+ */
+export const TIME = {
+	SECOND: 1000,
+	MINUTE: 60 * 1000,
+	HOUR: 60 * 60 * 1000,
+	DAY: 24 * 60 * 60 * 1000,
+};

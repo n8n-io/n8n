@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -37,11 +38,14 @@ import type {
 	PostReceiveAction,
 	JsonObject,
 } from './Interfaces';
-import type { NodeError } from './NodeErrors';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+
 import * as NodeHelpers from './NodeHelpers';
 
 import type { Workflow } from './Workflow';
+import type { NodeError } from './errors/abstract/node.error';
+
+import { NodeOperationError } from './errors/node-operation.error';
+import { NodeApiError } from './errors/node-api.error';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -79,7 +83,7 @@ export class RoutingNode {
 		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
-		abortController?: AbortController,
+		abortSignal?: AbortSignal,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
@@ -100,7 +104,7 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
-			abortController,
+			abortSignal,
 		);
 
 		let credentials: ICredentialDataDecryptedObject | undefined;
@@ -138,7 +142,7 @@ export class RoutingNode {
 					this.additionalData,
 					executeData,
 					this.mode,
-					abortController,
+					abortSignal,
 				);
 				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {

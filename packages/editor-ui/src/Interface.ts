@@ -45,11 +45,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
-import type { runExternalHook } from '@/utils';
+import type { Scope } from '@n8n/permissions';
+import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -247,10 +249,22 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	};
 }
 
+export interface IWorkflowTemplateNode
+	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
+	// The credentials in a template workflow have a different type than in a regular workflow
+	credentials?: IWorkflowTemplateNodeCredentials;
+}
+
+export interface IWorkflowTemplateNodeCredentials {
+	[key: string]: string | INodeCredentialsDetails;
+}
+
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
+	workflow: Pick<IWorkflowData, 'connections' | 'settings' | 'pinData'> & {
+		nodes: IWorkflowTemplateNode[];
+	};
 }
 
 export interface INewWorkflowData {
@@ -411,6 +425,16 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
+export type PushDataUsersForWorkflow = {
+	workflowId: string;
+	activeUsers: Array<{ user: IUser; lastSeen: string }>;
+};
+
+type PushDataWorkflowUsersChanged = {
+	data: PushDataUsersForWorkflow;
+	type: 'activeWorkflowUsersChanged';
+};
+
 export type IPushData =
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
@@ -424,7 +448,8 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved
-	| PushDataWorkflowFailedToActivate;
+	| PushDataWorkflowFailedToActivate
+	| PushDataWorkflowUsersChanged;
 
 type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
@@ -658,7 +683,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV2
 	| IPersonalizationSurveyAnswersV3;
 
-export type IRole = 'default' | 'owner' | 'member';
+export type IRole = 'default' | 'owner' | 'member' | 'admin';
 
 export interface IUserResponse {
 	id: string;
@@ -671,6 +696,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
+	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
@@ -690,6 +716,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	globalRoleId?: number;
 }
 
 export interface IVersionNotificationSettings {
@@ -776,6 +803,9 @@ export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtend
 	workflows: ITemplatesWorkflow[];
 }
 
+/**
+ * A template without the actual workflow definition
+ */
 export interface ITemplatesWorkflow {
 	id: number;
 	createdAt: string;
@@ -793,6 +823,9 @@ export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflo
 	categories: ITemplatesCategory[];
 }
 
+/**
+ * A template with also the full workflow definition
+ */
 export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 	full: true;
 }
@@ -1278,18 +1311,20 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface INodeTypesState {
-	nodeTypes: {
-		[nodeType: string]: {
-			[version: number]: INodeTypeDescription;
-		};
+export type NodeTypesByTypeNameAndVersion = {
+	[nodeType: string]: {
+		[version: number]: INodeTypeDescription;
 	};
+};
+
+export interface INodeTypesState {
+	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
 export interface ITemplateState {
 	categories: { [id: string]: ITemplatesCategory };
 	collections: { [id: string]: ITemplatesCollection };
-	workflows: { [id: string]: ITemplatesWorkflow };
+	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
 	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];
@@ -1671,6 +1706,7 @@ export declare namespace Cloud {
 }
 
 export interface CloudPlanState {
+	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;

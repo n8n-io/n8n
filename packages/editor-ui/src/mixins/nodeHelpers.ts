@@ -34,7 +34,7 @@ import type {
 
 import { get } from 'lodash-es';
 
-import { isObject } from '@/utils';
+import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -176,6 +176,8 @@ export const nodeHelpers = defineComponent({
 			}
 
 			for (const taskData of workflowResultData[node.name]) {
+				if (!taskData) return false;
+
 				if (taskData.error !== undefined) {
 					return true;
 				}

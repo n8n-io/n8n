@@ -65,6 +65,7 @@
 				>
 					<template #reference>
 						<div
+							ref="colorPopoverTrigger"
 							class="option"
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
@@ -100,14 +101,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isNumber, isString } from '@/utils';
+import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -121,14 +122,24 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useContextMenu } from '@/composables';
+import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',
 	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
 	setup() {
-		const contextMenu = useContextMenu();
-		return { contextMenu };
+		const colorPopoverTrigger = ref<HTMLDivElement>();
+		const forceActions = ref(false);
+		const setForceActions = (value: boolean) => {
+			forceActions.value = value;
+		};
+		const contextMenu = useContextMenu((action) => {
+			if (action === 'change_color') {
+				setForceActions(true);
+				colorPopoverTrigger.value?.click();
+			}
+		});
+		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	props: {
 		nodeViewScale: {
@@ -208,17 +219,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			forceActions: false,
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
 		onShowPopover() {
-			this.forceActions = true;
+			this.setForceActions(true);
 		},
 		onHidePopover() {
-			this.forceActions = false;
+			this.setForceActions(false);
 		},
 		async deleteNode() {
 			// Wait a tick else vue causes problems because the data is gone
@@ -246,8 +256,8 @@ export default defineComponent({
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						? 'templates'
-						: 'other';
+						  ? 'templates'
+						  : 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}

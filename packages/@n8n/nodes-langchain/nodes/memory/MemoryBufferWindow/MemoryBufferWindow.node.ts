@@ -71,7 +71,7 @@ export class MemoryBufferWindow implements INodeType {
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
-		description: 'Stores the chat history in a windowed buffer. Refreshes on restart.',
+		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Window Buffer Memory',
 		},

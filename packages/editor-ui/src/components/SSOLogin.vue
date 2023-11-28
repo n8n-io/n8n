@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useSSOStore } from '@/stores/sso.store';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();

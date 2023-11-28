@@ -6,7 +6,7 @@ import type {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-} from '../Interface';
+} from '@/Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -40,6 +40,8 @@ import { useUsersStore } from './users.store';
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
 const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth', 'oAuth1Api'];
+
+export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 	state: (): ICredentialsState => ({
@@ -130,9 +132,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getNodesWithAccess() {
 			return (credentialTypeName: string) => {
 				const nodeTypesStore = useNodeTypesStore();
-				const allLatestNodeTypes: INodeTypeDescription[] = nodeTypesStore.allLatestNodeTypes;
+				const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
@@ -400,3 +402,42 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForCredentialChanges = (opts: {
+	store: CredentialsStore;
+	onCredentialCreated?: (credential: ICredentialsResponse) => void;
+	onCredentialUpdated?: (credential: ICredentialsResponse) => void;
+	onCredentialDeleted?: (credentialId: string) => void;
+}): void => {
+	const { store, onCredentialCreated, onCredentialDeleted, onCredentialUpdated } = opts;
+	const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
+
+	store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async (returnValue) => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'createNewCredential':
+					const createdCredential = returnValue as ICredentialsResponse;
+					onCredentialCreated?.(createdCredential);
+					break;
+
+				case 'updateCredential':
+					const updatedCredential = returnValue as ICredentialsResponse;
+					onCredentialUpdated?.(updatedCredential);
+					break;
+
+				case 'deleteCredential':
+					const credentialId = args[0].id;
+					onCredentialDeleted?.(credentialId);
+					break;
+			}
+		});
+	});
+};

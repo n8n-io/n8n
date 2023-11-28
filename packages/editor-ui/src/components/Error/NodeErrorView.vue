@@ -122,7 +122,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
 import type {
@@ -131,7 +131,7 @@ import type {
 	INodePropertyOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 

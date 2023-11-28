@@ -17,7 +17,6 @@ import {
 import { SourceControlGitService } from './sourceControlGit.service.ee';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
-import { BadRequestError } from '@/ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { SourceControlPushWorkFolder } from './types/sourceControlPushWorkFolder';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
@@ -35,6 +34,7 @@ import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 export class SourceControlService {

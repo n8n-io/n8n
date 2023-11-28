@@ -27,6 +27,9 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { Logger } from '@/Logger';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -84,7 +87,7 @@ workflowsController.post(
 
 		if (!savedWorkflow) {
 			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.InternalServerError('Failed to save workflow');
+			throw new InternalServerError('Failed to save workflow');
 		}
 
 		await Container.get(WorkflowHistoryService).saveVersion(
@@ -160,10 +163,10 @@ workflowsController.get(
 	'/from-url',
 	ResponseHelper.send(async (req: express.Request): Promise<IWorkflowResponse> => {
 		if (req.query.url === undefined) {
-			throw new ResponseHelper.BadRequestError('The parameter "url" is missing!');
+			throw new BadRequestError('The parameter "url" is missing!');
 		}
 		if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.',
 			);
 		}
@@ -172,7 +175,7 @@ workflowsController.get(
 			const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
 			workflowData = data;
 		} catch (error) {
-			throw new ResponseHelper.BadRequestError('The URL does not point to valid JSON file!');
+			throw new BadRequestError('The URL does not point to valid JSON file!');
 		}
 
 		// Do a very basic check if it is really a n8n-workflow-json
@@ -183,7 +186,7 @@ workflowsController.get(
 			typeof workflowData.connections !== 'object' ||
 			Array.isArray(workflowData.connections)
 		) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The data in the file does not seem to be a n8n workflow JSON file!',
 			);
 		}
@@ -221,7 +224,7 @@ workflowsController.get(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Could not load the workflow - you can only access workflows owned by you',
 			);
 		}
@@ -271,7 +274,7 @@ workflowsController.delete(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}

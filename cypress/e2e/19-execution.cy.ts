@@ -114,10 +114,6 @@ describe('Execution', () => {
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -192,10 +188,6 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
@@ -265,10 +257,6 @@ describe('Execution', () => {
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 		workflowPage.getters

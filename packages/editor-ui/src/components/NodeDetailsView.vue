@@ -43,6 +43,8 @@
 				:isDraggable="!isTriggerNode"
 				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
+				:key="activeNode.name"
+				@switchSelectedNode="onSwitchSelectedNode"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -171,8 +173,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system';
-import { useMessage } from '@/composables';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -643,6 +645,9 @@ export default defineComponent({
 		},
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+		async onSwitchSelectedNode(nodeTypeName: string) {
+			this.$emit('switchSelectedNode', nodeTypeName);
 		},
 		async close() {
 			if (this.isDragging) {

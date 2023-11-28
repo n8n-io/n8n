@@ -177,7 +177,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -186,7 +186,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables';
+import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Node',
@@ -269,7 +269,7 @@ export default defineComponent({
 			}
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isExecuting(): boolean {
 			return this.workflowsStore.isNodeExecuting(this.data.name);
@@ -393,7 +393,7 @@ export default defineComponent({
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
-				return nodeExecutionRunData[0].executionStatus ?? '';
+				return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
 			}
 			return '';
 		},
@@ -402,7 +402,7 @@ export default defineComponent({
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
-					if (executionRunData.error) {
+					if (executionRunData?.error) {
 						issues.push(
 							`${executionRunData.error.message}${
 								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''

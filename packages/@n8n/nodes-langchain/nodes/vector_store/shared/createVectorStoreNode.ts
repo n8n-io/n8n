@@ -10,6 +10,8 @@ import type {
 	INodeTypeDescription,
 	SupplyData,
 	INodeType,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
@@ -30,6 +32,15 @@ interface NodeMeta {
 }
 interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
+	methods?: {
+		listSearch?: {
+			[key: string]: (
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
+		};
+	};
 	sharedFields: INodeProperties[];
 	insertFields?: INodeProperties[];
 	loadFields?: INodeProperties[];
@@ -178,6 +189,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			],
 		};
 
+		methods = args.methods;
+
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 
@@ -247,7 +260,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					);
 					resultData.push(...serializedDocuments);
 
-					await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					try {
+						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					} catch (error) {
+						throw error;
+					}
 				}
 
 				return this.prepareOutputData(resultData);

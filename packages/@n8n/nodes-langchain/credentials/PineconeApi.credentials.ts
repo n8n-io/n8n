@@ -1,6 +1,6 @@
 import type {
 	IAuthenticateGeneric,
-	// ICredentialTestRequest,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -35,6 +35,15 @@ export class PineconeApi implements ICredentialType {
 		properties: {
 			headers: {
 				'Api-Key': '={{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://controller.{{$credentials.environment}}.pinecone.io/databases',
+			headers: {
+				accept: 'application/json; charset=utf-8',
 			},
 		},
 	};

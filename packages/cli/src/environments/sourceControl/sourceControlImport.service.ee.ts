@@ -24,7 +24,7 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
-import { VariablesService } from '../variables/variables.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';

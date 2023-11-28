@@ -44,13 +44,16 @@ async function getImageMessage(
 			'Invalid message type. Only imageBinary and imageUrl are supported',
 		);
 	}
-
-	if (message.messageType === 'imageUrl') {
+	const detail = message.imageDetail === 'auto' ? undefined : message.imageDetail;
+	if (message.messageType === 'imageUrl' && message.imageUrl) {
 		return new HumanMessage({
 			content: [
 				{
 					type: 'image_url',
-					image_url: message.imageUrl,
+					image_url: {
+						url: message.imageUrl,
+						detail,
+					},
 				},
 			],
 		});
@@ -71,6 +74,7 @@ async function getImageMessage(
 				type: 'image_url',
 				image_url: {
 					url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
+					detail,
 				},
 			},
 		],
@@ -191,7 +195,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -236,6 +240,23 @@ export class ChainLlm implements INodeType {
 				type: 'string',
 				required: true,
 				default: '={{ $json.input }}',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Prompt',
+				name: 'prompt',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chat_input }}',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Chat Messages (if Using a Chat Model)',

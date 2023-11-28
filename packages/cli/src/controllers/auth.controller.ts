@@ -2,12 +2,6 @@ import validator from 'validator';
 import { In } from 'typeorm';
 import { Service } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import {
-	AuthError,
-	BadRequestError,
-	InternalServerError,
-	UnauthorizedError,
-} from '@/ResponseHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
@@ -27,6 +21,10 @@ import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
 @Service()
 @RestController()

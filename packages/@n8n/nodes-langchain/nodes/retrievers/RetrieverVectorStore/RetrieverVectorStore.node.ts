@@ -47,11 +47,11 @@ export class RetrieverVectorStore implements INodeType {
 		outputNames: ['Retriever'],
 		properties: [
 			{
-				displayName: 'Top K',
+				displayName: 'Limit',
 				name: 'topK',
 				type: 'number',
 				default: 4,
-				description: 'Number of top results to fetch from vector store',
+				description: 'The maximum number of results to return',
 			},
 		],
 	};

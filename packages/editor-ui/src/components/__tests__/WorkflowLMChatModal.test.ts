@@ -10,7 +10,10 @@ import { uuid } from '@jsplumb/util';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createPinia, setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { testingNodeTypes, mockNodeTypesToArray } from '@/__tests__/defaults';
 import { setupServer } from '@/__tests__/server';
 
@@ -106,7 +109,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Chat node not found',
+				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
 			),
 		);
 	});
@@ -121,7 +124,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Chat node not found',
+				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
 			),
 		);
 	});

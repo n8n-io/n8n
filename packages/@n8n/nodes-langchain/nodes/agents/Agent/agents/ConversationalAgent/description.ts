@@ -10,9 +10,23 @@ export const conversationalAgentProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				agent: ['conversationalAgent'],
+				'@version': [1],
 			},
 		},
 		default: '={{ $json.input }}',
+	},
+	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				agent: ['conversationalAgent'],
+				'@version': [1.1],
+			},
+		},
+		default: '={{ $json.chat_input }}',
 	},
 	{
 		displayName: 'Options',
