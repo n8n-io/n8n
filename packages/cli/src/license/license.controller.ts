@@ -8,6 +8,8 @@ import { LicenseService } from './License.service';
 import { License } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export const licenseController = express.Router();
 
@@ -24,9 +26,7 @@ licenseController.use((req: AuthenticatedRequest, res, next) => {
 			});
 			ResponseHelper.sendErrorResponse(
 				res,
-				new ResponseHelper.UnauthorizedError(
-					'Only an instance owner may activate or renew a license',
-				),
+				new UnauthorizedError('Only an instance owner may activate or renew a license'),
 			);
 			return;
 		}
@@ -85,7 +85,7 @@ licenseController.post(
 					Container.get(Logger).error(message, { stack: error.stack ?? 'n/a' });
 			}
 
-			throw new ResponseHelper.BadRequestError(message);
+			throw new BadRequestError(message);
 		}
 
 		// Return the read data, plus the management JWT
@@ -113,7 +113,7 @@ licenseController.post(
 			// not awaiting so as not to make the endpoint hang
 			void Container.get(InternalHooks).onLicenseRenewAttempt({ success: false });
 			if (error instanceof Error) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			}
 		}
 

@@ -16,7 +16,6 @@ import {
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getInitSSOFormView } from '../views/initSsoPost';
 import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';
@@ -34,6 +33,8 @@ import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFail
 import { InternalHooks } from '@/InternalHooks';
 import url from 'url';
 import querystring from 'querystring';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 @Service()
 @Authorized()

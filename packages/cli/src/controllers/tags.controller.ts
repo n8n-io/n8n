@@ -11,9 +11,9 @@ import {
 	RequireGlobalScope,
 } from '@/decorators';
 import { TagService } from '@/services/tag.service';
-import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 import { Service } from 'typedi';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized()
 @RestController('/tags')
