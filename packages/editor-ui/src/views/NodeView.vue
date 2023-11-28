@@ -112,6 +112,7 @@
 					@mouseenter="showTriggerMissingToltip(true)"
 					@mouseleave="showTriggerMissingToltip(false)"
 					@click="onRunContainerClick"
+					v-if="!isManualChatOnly"
 				>
 					<keyboard-shortcut-tooltip
 						:label="runButtonText"
@@ -227,6 +228,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	NODE_CREATOR_OPEN_SOURCES,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
@@ -673,6 +675,9 @@ export default defineComponent({
 		},
 		containsTrigger(): boolean {
 			return this.triggerNodes.length > 0;
+		},
+		isManualChatOnly(): boolean {
+			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		containsChatNodes(): boolean {
 			return !!this.nodes.find(
@@ -4432,6 +4437,26 @@ export default defineComponent({
 					to.inputIndex ?? 0,
 					NodeConnectionType.Main,
 				);
+			}
+
+			const lastAddedNode = this.nodes[this.nodes.length - 1];
+			const workflow = this.getCurrentWorkflow();
+			const lastNodeInputs = workflow.getParentNodesByDepth(lastAddedNode.name, 1);
+
+			// If the last added node has multiple inputs, move them down
+			if (lastNodeInputs.length > 1) {
+				lastNodeInputs.slice(1).forEach((node, index) => {
+					const nodeUi = this.workflowsStore.getNodeByName(node.name)
+					if (!nodeUi) return;
+
+					this.onMoveNode({
+						nodeName: nodeUi.name,
+						position: [
+							nodeUi.position[0],
+							nodeUi.position[1] + (100 * (index +1))
+						]
+					})
+				})
 			}
 		},
 
