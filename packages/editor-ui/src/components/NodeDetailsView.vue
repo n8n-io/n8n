@@ -8,6 +8,7 @@
 		width="auto"
 		append-to-body
 		data-test-id="ndv"
+		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -42,6 +43,8 @@
 				:isDraggable="!isTriggerNode"
 				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
+				:key="activeNode.name"
+				@switchSelectedNode="onSwitchSelectedNode"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -274,6 +277,15 @@ export default defineComponent({
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
+		},
+		hasOutputConnection() {
+			if (!this.activeNode) return false;
+			const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
+				this.activeNode.name,
+			) as INodeConnections;
+
+			// Check if there's at-least one output connection
+			return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
@@ -634,6 +646,9 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+		async onSwitchSelectedNode(nodeTypeName: string) {
+			this.$emit('switchSelectedNode', nodeTypeName);
+		},
 		async close() {
 			if (this.isDragging) {
 				return;
@@ -739,6 +754,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
+[data-has-output-connection='true'] .ndv-connection-hint-notice {
+	display: none;
+}
 .ndv-wrapper {
 	overflow: visible;
 	margin-top: 0;

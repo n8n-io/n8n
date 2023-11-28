@@ -9,7 +9,7 @@
 			:style="iconStyleData"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
+			<n8n-tooltip :placement="tooltipPosition" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
@@ -77,6 +77,10 @@ export default defineComponent({
 		},
 		showTooltip: {
 			type: Boolean,
+		},
+		tooltipPosition: {
+			type: String,
+			default: 'top',
 		},
 		badge: { type: Object as PropType<{ src: string; type: string }> },
 	},

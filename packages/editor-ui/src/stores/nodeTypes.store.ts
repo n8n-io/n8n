@@ -157,6 +157,26 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 							}
 							acc[outputType].push(node.name);
 						});
+					} else {
+						// If outputs is not an array, it must be a string expression
+						// in which case we'll try to match all possible non-main output types that are supported
+						const connectorTypes: ConnectionTypes[] = [
+							NodeConnectionType.AiVectorStore,
+							NodeConnectionType.AiChain,
+							NodeConnectionType.AiDocument,
+							NodeConnectionType.AiEmbedding,
+							NodeConnectionType.AiLanguageModel,
+							NodeConnectionType.AiMemory,
+							NodeConnectionType.AiOutputParser,
+							NodeConnectionType.AiTextSplitter,
+							NodeConnectionType.AiTool,
+						];
+						connectorTypes.forEach((outputType: ConnectionTypes) => {
+							if (outputTypes.includes(outputType)) {
+								acc[outputType] = acc[outputType] || [];
+								acc[outputType].push(node.name);
+							}
+						});
 					}
 
 					return acc;

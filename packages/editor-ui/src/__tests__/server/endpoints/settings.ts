@@ -41,6 +41,7 @@ const defaultSettings: IN8nUISettings = {
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
 	onboardingCallPromptEnabled: false,
 	personalizationSurveyEnabled: false,
+	releaseChannel: 'stable',
 	posthog: {
 		apiHost: '',
 		apiKey: '',
