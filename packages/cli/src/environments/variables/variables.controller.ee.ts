@@ -1,14 +1,14 @@
 import { Container, Service } from 'typedi';
 
-import * as ResponseHelper from '@/ResponseHelper';
 import { VariablesRequest } from '@/requests';
 import { Authorized, Delete, Get, Licensed, Patch, Post, RestController } from '@/decorators';
-import {
-	VariablesService,
-	VariablesLicenseError,
-	VariablesValidationError,
-} from './variables.service.ee';
+import { VariablesService } from './variables.service.ee';
 import { Logger } from '@/Logger';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 
 @Service()
 @Authorized()
@@ -31,17 +31,17 @@ export class VariablesController {
 			this.logger.info('Attempt to update a variable blocked due to lack of permissions', {
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
+			throw new UnauthorizedError('Unauthorized');
 		}
 		const variable = req.body;
 		delete variable.id;
 		try {
 			return await Container.get(VariablesService).create(variable);
 		} catch (error) {
-			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
-			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+			if (error instanceof VariableCountLimitReachedError) {
+				throw new BadRequestError(error.message);
+			} else if (error instanceof VariableValidationError) {
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}
@@ -52,7 +52,7 @@ export class VariablesController {
 		const id = req.params.id;
 		const variable = await Container.get(VariablesService).getCached(id);
 		if (variable === null) {
-			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
+			throw new NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
 		return variable;
 	}
@@ -66,17 +66,17 @@ export class VariablesController {
 				id,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
+			throw new UnauthorizedError('Unauthorized');
 		}
 		const variable = req.body;
 		delete variable.id;
 		try {
 			return await Container.get(VariablesService).update(id, variable);
 		} catch (error) {
-			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
-			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+			if (error instanceof VariableCountLimitReachedError) {
+				throw new BadRequestError(error.message);
+			} else if (error instanceof VariableValidationError) {
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}
@@ -90,7 +90,7 @@ export class VariablesController {
 				id,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.UnauthorizedError('Unauthorized');
+			throw new UnauthorizedError('Unauthorized');
 		}
 		await this.variablesService.delete(id);
 

@@ -1,7 +1,6 @@
 import { In } from 'typeorm';
 import Container, { Service } from 'typedi';
 import { Authorized, NoAuthRequired, Post, RestController } from '@/decorators';
-import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Response } from 'express';
@@ -16,6 +15,8 @@ import { hashPassword, validatePassword } from '@/UserManagement/UserManagementH
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
 import validator from 'validator';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
 @Service()
 @RestController('/invitations')

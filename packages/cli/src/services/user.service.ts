@@ -15,8 +15,8 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { InternalServerError } from '@/ResponseHelper';
 import type { UserRequest } from '@/requests';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 @Service()
 export class UserService {
