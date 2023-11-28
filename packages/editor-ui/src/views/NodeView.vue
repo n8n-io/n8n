@@ -4602,6 +4602,7 @@ export default defineComponent({
 		sourceControlEventBus.on('pull', this.onSourceControlPull);
 
 		this.readOnlyEnvRouteCheck();
+		this.canvasStore.isDemo = this.isDemo;
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
