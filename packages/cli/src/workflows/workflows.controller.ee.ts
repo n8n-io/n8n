@@ -23,6 +23,10 @@ import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { Logger } from '@/Logger';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const EEWorkflowController = express.Router();
 
@@ -52,13 +56,13 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
 		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
 
 		if (!ownsWorkflow || !workflow) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			throw new UnauthorizedError('Forbidden');
 		}
 
 		let newShareeIds: string[] = [];
@@ -101,13 +105,13 @@ EEWorkflowController.get(
 		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
 
 		if (!workflow) {
-			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(
+			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
@@ -156,7 +160,7 @@ EEWorkflowController.post(
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
 		}
@@ -181,7 +185,7 @@ EEWorkflowController.post(
 
 		if (!savedWorkflow) {
 			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.InternalServerError(
+			throw new InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}

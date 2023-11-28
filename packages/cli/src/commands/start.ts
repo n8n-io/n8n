@@ -23,7 +23,7 @@ import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License, FeatureNotLicensedError } from '@/License';
+import { License } from '@/License';
 import type { IConfig } from '@oclif/config';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
@@ -31,6 +31,7 @@ import { PruningService } from '@/services/pruning.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

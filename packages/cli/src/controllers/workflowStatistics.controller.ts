@@ -7,9 +7,9 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { ExecutionRequest } from '@/requests';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { NotFoundError } from '@/ResponseHelper';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
 import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 interface WorkflowStatisticsData<T> {
 	productionSuccess: T;

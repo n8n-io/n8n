@@ -5,7 +5,6 @@ import { Service } from 'typedi';
 import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
-import { BadRequestError } from '@/ResponseHelper';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
@@ -21,6 +20,7 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 @Authorized()

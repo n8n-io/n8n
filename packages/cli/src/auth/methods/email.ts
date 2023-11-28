@@ -1,10 +1,10 @@
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
-import * as ResponseHelper from '@/ResponseHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { isLdapLoginEnabled } from '@/Ldap/helpers';
 import { UserRepository } from '@db/repositories/user.repository';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 export const handleEmailLogin = async (
 	email: string,
@@ -27,7 +27,7 @@ export const handleEmailLogin = async (
 			user_id: user.id,
 		});
 
-		throw new ResponseHelper.AuthError('Reset your password to gain access to the instance.');
+		throw new AuthError('Reset your password to gain access to the instance.');
 	}
 
 	return undefined;
