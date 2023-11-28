@@ -16,6 +16,7 @@
 		"Gzip",
 		"uncompress",
 		"compress",
+		"decompress",
 		"archive",
 		"unarchive",
 		"Binary",

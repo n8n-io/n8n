@@ -68,20 +68,20 @@ export class Compression implements INodeType {
 					{
 						name: 'Compress',
 						value: 'compress',
-						action: 'Compress file',
-						description: 'Compress one or more files to zip or gzip',
+						action: 'Compress file(s)',
+						description: 'Compress files into a zip or gzip archive',
 					},
 					{
 						name: 'Decompress',
 						value: 'decompress',
-						action: 'Decompress zip or gzip archives',
+						action: 'Decompress file(s)',
 						description: 'Decompress zip or gzip archives',
 					},
 				],
 				default: 'decompress',
 			},
 			{
-				displayName: 'File Property',
+				displayName: 'Input Binary Field(s)',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -91,9 +91,10 @@ export class Compression implements INodeType {
 						operation: ['compress', 'decompress'],
 					},
 				},
-				placeholder: '',
+				placeholder: 'e.g. data,data2,data3',
+				hint: 'The name of the input fields containing the files to compress or decompress',
 				description:
-					'Name of the binary property which contains the data for the file(s) to be compress/decompress. Multiple can be used separated by a comma (,).',
+					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
 				displayName: 'Output Format',
@@ -122,7 +123,7 @@ export class Compression implements INodeType {
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				placeholder: 'data.zip',
+				placeholder: 'e.g. data.zip',
 				required: true,
 				displayOptions: {
 					show: {
@@ -130,10 +131,10 @@ export class Compression implements INodeType {
 						outputFormat: ['zip'],
 					},
 				},
-				description: 'Name of the file to be compressed',
+				description: 'Name of the output file',
 			},
 			{
-				displayName: 'Binary Property Output',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
@@ -144,11 +145,10 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property to which to write the data of the compressed files',
+				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'Output Prefix',
+				displayName: 'Output File Prefix',
 				name: 'outputPrefix',
 				type: 'string',
 				default: 'data',
@@ -159,7 +159,7 @@ export class Compression implements INodeType {
 						outputFormat: ['gzip'],
 					},
 				},
-				description: 'Prefix use for all gzip compressed files',
+				description: 'Prefix to add to the gzip file',
 			},
 			{
 				displayName: 'Output Prefix',
@@ -172,7 +172,7 @@ export class Compression implements INodeType {
 						operation: ['decompress'],
 					},
 				},
-				description: 'Prefix use for all decompressed files',
+				description: 'Prefix to add to the decompressed files',
 			},
 		],
 	};
