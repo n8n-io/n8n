@@ -1277,12 +1277,14 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface INodeTypesState {
-	nodeTypes: {
-		[nodeType: string]: {
-			[version: number]: INodeTypeDescription;
-		};
+export type NodeTypesByTypeNameAndVersion = {
+	[nodeType: string]: {
+		[version: number]: INodeTypeDescription;
 	};
+};
+
+export interface INodeTypesState {
+	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
 export interface ITemplateState {
