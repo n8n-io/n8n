@@ -6,6 +6,7 @@ import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to 
 import {
 	CONTROLLER_AUTH_ROLES,
 	CONTROLLER_BASE_PATH,
+	CONTROLLER_LICENSE_FEATURES,
 	CONTROLLER_MIDDLEWARES,
 	CONTROLLER_ROUTES,
 } from './constants';
@@ -13,9 +14,13 @@ import type {
 	AuthRole,
 	AuthRoleMetadata,
 	Controller,
+	LicenseMetadata,
 	MiddlewareMetadata,
 	RouteMetadata,
 } from './types';
+import type { BooleanLicenseFeature } from '@/Interfaces';
+import Container from 'typedi';
+import { License } from '@/License';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -29,6 +34,25 @@ export const createAuthMiddleware =
 			return next();
 
 		res.status(403).json({ status: 'error', message: 'Unauthorized' });
+	};
+
+export const createLicenseMiddleware =
+	(features: BooleanLicenseFeature[]): RequestHandler =>
+	(_req, res, next) => {
+		if (features.length === 0) {
+			return next();
+		}
+
+		const licenseService = Container.get(License);
+
+		const hasAllFeatures = features.every((feature) => licenseService.isFeatureEnabled(feature));
+		if (!hasAllFeatures) {
+			return res
+				.status(403)
+				.json({ status: 'error', message: 'Plan lacks license for this feature' });
+		}
+
+		return next();
 	};
 
 const authFreeRoutes: string[] = [];
@@ -49,6 +73,9 @@ export const registerController = (app: Application, config: Config, cObj: objec
 		| AuthRoleMetadata
 		| undefined;
 	const routes = Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) as RouteMetadata[];
+	const licenseFeatures = Reflect.getMetadata(CONTROLLER_LICENSE_FEATURES, controllerClass) as
+		| LicenseMetadata
+		| undefined;
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
 		const restBasePath = config.getEnv('endpoints.rest');
@@ -63,10 +90,12 @@ export const registerController = (app: Application, config: Config, cObj: objec
 		routes.forEach(
 			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
 				const authRole = authRoles && (authRoles[handlerName] ?? authRoles['*']);
+				const features = licenseFeatures && (licenseFeatures[handlerName] ?? licenseFeatures['*']);
 				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
 				router[method](
 					path,
 					...(authRole ? [createAuthMiddleware(authRole)] : []),
+					...(features ? [createLicenseMiddleware(features)] : []),
 					...controllerMiddlewares,
 					...routeMiddlewares,
 					usesTemplates ? handler : send(handler),

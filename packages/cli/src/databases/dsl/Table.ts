@@ -1,5 +1,5 @@
-import type { TableForeignKeyOptions, TableIndexOptions } from 'typeorm';
-import { Table, QueryRunner, TableColumn } from 'typeorm';
+import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from 'typeorm';
+import { Table, TableColumn } from 'typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 
