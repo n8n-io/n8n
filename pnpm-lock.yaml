@@ -965,6 +965,9 @@ importers:
       '@sentry/vite-plugin':
         specifier: ^2.5.0
         version: 2.5.0
+      '@testing-library/vue':
+        specifier: ^7.0.0
+        version: 7.0.0(@vue/compiler-sfc@3.3.4)(vue@3.3.4)
       '@types/dateformat':
         specifier: ^3.0.0
         version: 3.0.1
@@ -9722,7 +9725,7 @@ packages:
       lodash.uniqby: 4.7.0
       node-fetch: 2.6.8
       parse-github-url: 1.0.2
-      regenerator-runtime: 0.13.9
+      regenerator-runtime: 0.13.11
       semver: 7.5.4
     transitivePeerDependencies:
       - encoding
@@ -19247,10 +19250,6 @@ packages:
 
   /regenerator-runtime@0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
-
-  /regenerator-runtime@0.13.9:
-    resolution: {integrity: sha512-p3VT+cOEgxFsRRA9X4lkI1E+k2/CtnKtU4gcxyaCUreilL/vqI6CdZ3wxVUx3UOUg+gnUOQQcRI7BmSI656MYA==}
-    dev: false
 
   /regenerator-transform@0.15.1:
     resolution: {integrity: sha512-knzmNAcuyxV+gQCufkYcvOqX/qIIfHLv0u5x79kRxuGojfYVky1f15TzZEu2Avte8QGepvUNTnLskf8E6X6Vyg==}
