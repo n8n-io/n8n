@@ -64,6 +64,13 @@
 
 	// Secondary tokens
 
+	// LangChain
+	--color-lm-chat-messages-background: var(--color-background-base);
+	--color-lm-chat-bot-background: var(--prim-gray-120);
+	--color-lm-chat-bot-border: var(--prim-gray-200);
+	--color-lm-chat-user-background: var(--prim-color-alt-a-tint-400);
+	--color-lm-chat-user-border: var(--prim-color-alt-a-tint-300);
+
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
 	--color-canvas-dot: var(--prim-gray-120);

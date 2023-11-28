@@ -1,4 +1,4 @@
-import type { IDataObject, JsonObject, Severity } from '../../Interfaces';
+import type { Functionality, IDataObject, JsonObject, Severity } from '../../Interfaces';
 import { ApplicationError } from '../application.error';
 
 interface ExecutionBaseErrorOptions {
@@ -20,6 +20,8 @@ export abstract class ExecutionBaseError extends ApplicationError {
 	lineNumber: number | undefined;
 
 	severity: Severity = 'error';
+
+	functionality: Functionality = 'regular';
 
 	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
 		const options = cause instanceof Error ? { cause } : {};
