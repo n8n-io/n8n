@@ -9,7 +9,6 @@ import {
 	MessageEventBusDestinationSyslog,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { BadRequestError } from '@/ResponseHelper';
 import type {
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationOptions,
@@ -20,6 +19,7 @@ import type { MessageEventBusDestination } from './MessageEventBusDestination/Me
 import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 // ----------------------------------------
 // TypeGuards

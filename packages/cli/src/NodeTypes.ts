@@ -12,14 +12,7 @@ import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
 import type { Dirent } from 'fs';
-
-class UnrecognizedNodeError extends Error {
-	severity = 'warning';
-
-	constructor(nodeType: string) {
-		super(`Unrecognized node type: ${nodeType}".`);
-	}
-}
+import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -75,7 +68,7 @@ export class NodeTypes implements INodeTypes {
 			return loadedNodes[type];
 		}
 
-		throw new UnrecognizedNodeError(type);
+		throw new UnrecognizedNodeTypeError(type);
 	}
 
 	async getNodeTranslationPath({

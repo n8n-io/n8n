@@ -4,7 +4,6 @@ import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@/ResponseHelper';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
@@ -17,6 +16,9 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized()
 @RestController('/users')
