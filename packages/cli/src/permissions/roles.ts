@@ -17,6 +17,7 @@ export const ownerPermissions: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:share',
 	'variable:create',
 	'variable:read',
 	'variable:update',
