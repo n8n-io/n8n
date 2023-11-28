@@ -1,4 +1,4 @@
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { Response } from 'express';
 import { Service } from 'typedi';
@@ -7,17 +7,19 @@ import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/external-secrets')
 export class ExternalSecretsController {
 	constructor(private readonly secretsService: ExternalSecretsService) {}
 
 	@Get('/providers')
+	@RequireGlobalScope('externalSecretsProvider:list')
 	async getProviders() {
 		return this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')
+	@RequireGlobalScope('externalSecretsProvider:read')
 	async getProvider(req: ExternalSecretsRequest.GetProvider) {
 		const providerName = req.params.provider;
 		try {
@@ -31,6 +33,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/test')
+	@RequireGlobalScope('externalSecretsProvider:read')
 	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
 		try {
@@ -50,6 +53,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider')
+	@RequireGlobalScope('externalSecretsProvider:create')
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;
 		try {
@@ -64,6 +68,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/connect')
+	@RequireGlobalScope('externalSecretsProvider:update')
 	async setProviderConnected(req: ExternalSecretsRequest.SetProviderConnected) {
 		const providerName = req.params.provider;
 		try {
@@ -78,6 +83,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/update')
+	@RequireGlobalScope('externalSecretsProvider:sync')
 	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
 		try {
@@ -97,6 +103,7 @@ export class ExternalSecretsController {
 	}
 
 	@Get('/secrets')
+	@RequireGlobalScope('externalSecret:list')
 	getSecretNames() {
 		return this.secretsService.getAllSecrets();
 	}

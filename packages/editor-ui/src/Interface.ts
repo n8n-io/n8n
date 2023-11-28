@@ -51,7 +51,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils';
+import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -1310,12 +1310,14 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface INodeTypesState {
-	nodeTypes: {
-		[nodeType: string]: {
-			[version: number]: INodeTypeDescription;
-		};
+export type NodeTypesByTypeNameAndVersion = {
+	[nodeType: string]: {
+		[version: number]: INodeTypeDescription;
 	};
+};
+
+export interface INodeTypesState {
+	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
 export interface ITemplateState {

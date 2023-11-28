@@ -5,9 +5,11 @@ import { computed, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import type { SourceControlAggregatedFile } from '@/Interface';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 

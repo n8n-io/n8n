@@ -3,7 +3,7 @@ import type { PropType } from 'vue';
 import { computed, defineComponent, ref, useCssModule } from 'vue';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
-import { useI18n } from '../../composables';
+import { useI18n } from '../../composables/useI18n';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nPagination from '../N8nPagination';

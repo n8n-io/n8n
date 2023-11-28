@@ -43,7 +43,8 @@
 import type { NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({

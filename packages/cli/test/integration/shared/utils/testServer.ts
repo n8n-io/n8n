@@ -296,6 +296,11 @@ export const setupTestServer = ({
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
 						registerController(app, config, Container.get(BinaryDataController));
 						break;
+
+					case 'role':
+						const { RoleController } = await import('@/controllers/role.controller');
+						registerController(app, config, Container.get(RoleController));
+						break;
 				}
 			}
 		}
