@@ -10,7 +10,10 @@ import { uuid } from '@jsplumb/util';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createPinia, setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { testingNodeTypes, mockNodeTypesToArray } from '@/__tests__/defaults';
 import { setupServer } from '@/__tests__/server';
 
