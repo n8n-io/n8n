@@ -100,7 +100,7 @@ import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } f
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -109,20 +109,18 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useWorkflowsStore,
-	useRootStore,
-	useVersionsStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-} from '@/stores/';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({

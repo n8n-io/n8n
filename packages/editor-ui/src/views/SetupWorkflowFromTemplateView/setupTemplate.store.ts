@@ -2,13 +2,11 @@ import sortBy from 'lodash-es/sortBy';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
-import {
-	useCredentialsStore,
-	useNodeTypesStore,
-	useRootStore,
-	useTemplatesStore,
-	useWorkflowsStore,
-} from '@/stores';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
 import type {

@@ -1,4 +1,4 @@
-import { isNumber, closestNumberDivisibleBy } from '@/utils';
+import { isNumber } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
@@ -14,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 /*
 	Canvas constants and functions.
@@ -510,6 +510,25 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	}
 
 	return true;
+};
+
+const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
+	const quotient = Math.ceil(inputNumber / divisibleBy);
+
+	// 1st possible closest number
+	const inputNumber1 = divisibleBy * quotient;
+
+	// 2nd possible closest number
+	const inputNumber2 =
+		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
+
+	// if true, then inputNumber1 is the required closest number
+	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
+		return inputNumber1;
+	}
+
+	// else inputNumber2 is the required closest number
+	return inputNumber2;
 };
 
 export const getNewNodePosition = (

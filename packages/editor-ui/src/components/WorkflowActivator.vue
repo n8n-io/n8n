@@ -51,13 +51,13 @@
 </template>
 
 <script lang="ts">
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import { getActivatableTriggerNodes } from '@/utils';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',

@@ -3,8 +3,7 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { CacheService } from './cache.service';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
-
-class InvalidRoleError extends Error {}
+import { InvalidRoleError } from '@/errors/invalid-role.error';
 
 @Service()
 export class RoleService {

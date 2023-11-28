@@ -46,7 +46,7 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	VIEWS,
 } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

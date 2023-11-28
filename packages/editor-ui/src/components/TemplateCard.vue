@@ -47,7 +47,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { filterTemplateNodes, abbreviateNumber } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
 

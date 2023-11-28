@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export type CredentialOption = {
 	id: string;

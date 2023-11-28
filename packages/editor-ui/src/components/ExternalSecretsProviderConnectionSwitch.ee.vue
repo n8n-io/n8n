@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
-import { useExternalSecretsStore } from '@/stores';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useLoadingService } from '@/composables/useLoadingService';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 

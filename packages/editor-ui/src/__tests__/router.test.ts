@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router from '@/router';
 import { VIEWS } from '@/constants';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const App = {
 	template: '<div />',

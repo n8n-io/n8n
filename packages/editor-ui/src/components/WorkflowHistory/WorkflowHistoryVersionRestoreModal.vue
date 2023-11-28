@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import Modal from '@/components/Modal.vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 const props = defineProps<{
 	modalName: string;

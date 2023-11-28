@@ -40,6 +40,7 @@ import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -413,7 +414,7 @@ export class Worker extends BaseCommand {
 					await connection.query('SELECT 1');
 				} catch (e) {
 					this.logger.error('No Database connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
+					const error = new ServiceUnavailableError('No Database connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 
@@ -424,7 +425,7 @@ export class Worker extends BaseCommand {
 					await Worker.jobQueue.ping();
 				} catch (e) {
 					this.logger.error('No Redis connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
+					const error = new ServiceUnavailableError('No Redis connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 

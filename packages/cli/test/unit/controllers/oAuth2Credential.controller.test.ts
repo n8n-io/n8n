@@ -9,7 +9,6 @@ import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { OAuthRequest } from '@/requests';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -19,6 +18,8 @@ import { SecretsHelper } from '@/SecretsHelpers';
 import { CredentialsHelper } from '@/CredentialsHelper';
 
 import { mockInstance } from '../../shared/mocking';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);

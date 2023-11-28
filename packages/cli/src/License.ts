@@ -24,14 +24,6 @@ type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
-export class FeatureNotLicensedError extends Error {
-	constructor(feature: (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES]) {
-		super(
-			`Your license does not allow for ${feature}. To enable ${feature}, please upgrade to a license that supports this feature.`,
-		);
-	}
-}
-
 @Service()
 export class License {
 	private manager: LicenseManager | undefined;

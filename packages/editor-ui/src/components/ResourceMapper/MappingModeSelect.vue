@@ -2,7 +2,7 @@
 import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 
 interface Props {
 	initialValue: string;
