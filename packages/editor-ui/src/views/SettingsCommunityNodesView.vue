@@ -91,7 +91,7 @@ export default defineComponent({
 	},
 	async mounted() {
 		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushConnect();
+		this.pushStore.pushConnect();
 
 		try {
 			this.loading = true;
@@ -137,7 +137,7 @@ export default defineComponent({
 		}
 	},
 	beforeUnmount() {
-		this.pushDisconnect();
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
