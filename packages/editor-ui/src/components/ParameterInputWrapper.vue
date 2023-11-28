@@ -61,9 +61,10 @@ import type {
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';

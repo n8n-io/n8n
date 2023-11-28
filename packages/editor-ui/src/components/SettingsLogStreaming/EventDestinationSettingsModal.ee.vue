@@ -192,7 +192,7 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';

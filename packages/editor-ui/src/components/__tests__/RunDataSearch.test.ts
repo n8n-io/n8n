@@ -2,7 +2,8 @@ import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataSearch from '@/components/RunDataSearch.vue';
-import { useSettingsStore, useUIStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const renderComponent = createComponentRenderer(RunDataSearch);
 let pinia: ReturnType<typeof createPinia>;

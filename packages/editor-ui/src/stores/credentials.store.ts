@@ -6,7 +6,7 @@ import type {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-} from '../Interface';
+} from '@/Interface';
 import {
 	createNewCredential,
 	deleteCredential,

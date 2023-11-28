@@ -291,7 +291,10 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useToast, useMessage, useI18n, useTelemetry } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -304,7 +307,8 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isEmpty, setPageTitle } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default defineComponent({

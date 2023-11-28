@@ -237,19 +237,16 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import {
-	useGlobalLinkActions,
-	useCanvasMouseSelect,
-	useMessage,
-	useToast,
-	useTitleChange,
-	useExecutionDebugging,
-	useContextMenu,
-	type ContextMenuAction,
-	useDataSchema,
-} from '@/composables';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 import { type PinDataSource, pinData } from '@/mixins/pinData';
@@ -312,29 +309,28 @@ import type {
 import { debounceHelper } from '@/mixins/debounce';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import {
-	useEnvironmentsStore,
-	useWorkflowsEEStore,
-	useCanvasStore,
-	useNodeCreatorStore,
-	useTagsStore,
-	useCredentialsStore,
-	useNodeTypesStore,
-	useTemplatesStore,
-	useSegment,
-	useNDVStore,
-	useRootStore,
-	useWorkflowsStore,
-	useUsersStore,
-	useSettingsStore,
-	useUIStore,
-	useHistoryStore,
-	useExternalSecretsStore,
-	useCollaborationStore,
-	usePushConnectionStore,
-} from '@/stores';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSegment } from '@/stores/segment.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
+import { getAccountAge } from '@/utils/userUtils';
+import { getConnectionInfo, getNodeViewTab } from '@/utils/canvasUtils';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
