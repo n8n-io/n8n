@@ -26,7 +26,6 @@ export async function initializeCore() {
 	await usersStore.initialize();
 	if (settingsStore.isCloudDeployment) {
 		const results = await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
-		console.log('CLOUD STORE INIT', results);
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
 				console.error(

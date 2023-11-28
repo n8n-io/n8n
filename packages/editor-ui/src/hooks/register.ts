@@ -7,6 +7,11 @@ export async function initializeCloudHooks() {
 	}
 
 	const { n8nCloudHooks } = await import('@/hooks/cloud');
-	extendExternalHooks(n8nCloudHooks);
-	cloudHooksInitialized = true;
+	try {
+		extendExternalHooks(n8nCloudHooks);
+	} catch (error) {
+		throw new Error(`Failed to extend external hooks: ${error.message}`);
+	} finally {
+		cloudHooksInitialized = true;
+	}
 }
