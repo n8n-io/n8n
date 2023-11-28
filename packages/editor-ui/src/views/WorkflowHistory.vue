@@ -74,7 +74,9 @@ const isFirstItemShown = computed(
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
-	telemetry.track(event, {});
+	telemetry.track(event, {
+		workflow_id: route.params.workflowId,
+	});
 };
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
@@ -268,6 +270,7 @@ const onAction = async ({
 const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
+		sendTelemetry('User opened version in new tab');
 	} else {
 		await router.push({
 			name: VIEWS.WORKFLOW_HISTORY,
