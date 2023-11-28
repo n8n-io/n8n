@@ -567,7 +567,7 @@ export const routes = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: 'externalSecretsStore:manage',
+							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:read'],
 						},
 					},
 					telemetry: {
@@ -594,7 +594,7 @@ export const routes = [
 							return !settingsStore.isDesktopDeployment;
 						},
 						rbac: {
-							scope: 'sso:manage',
+							scope: 'saml:manage',
 						},
 					},
 					telemetry: {
@@ -645,7 +645,7 @@ export const routes = [
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						rbac: {
-							scope: 'communityNodes:manage',
+							scope: 'communityPackage:manage',
 						},
 						custom: () => {
 							const settingsStore = useSettingsStore();

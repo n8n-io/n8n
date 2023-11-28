@@ -117,6 +117,7 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 
@@ -288,6 +289,7 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
 			new InvitationController(
 				config,
 				logger,
@@ -297,6 +299,7 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
 
 		if (isLdapEnabled()) {
