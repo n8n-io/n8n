@@ -8,13 +8,14 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import { ROLE, runExternalHook } from '@/utils';
-import { useSettingsStore } from './stores/settings.store';
-import { useTemplatesStore } from './stores/templates.store';
+import { runExternalHook } from '@/utils/externalHooks';
+import { ROLE } from '@/utils/userUtils';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSSOStore } from './stores/sso.store';
+import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
@@ -42,6 +43,8 @@ const SigninView = async () => import('./views/SigninView.vue');
 const SignupView = async () => import('./views/SignupView.vue');
 const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
 const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+const SetupWorkflowFromTemplateView = async () =>
+	import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
 const CredentialsView = async () => import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
@@ -106,6 +109,28 @@ export const routes = [
 		name: VIEWS.TEMPLATE,
 		components: {
 			default: TemplatesWorkflowView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			telemetry: {
+				getProperties(route: RouteLocation) {
+					const templatesStore = useTemplatesStore();
+					return {
+						template_id: route.params.id,
+						wf_template_repo_session_id: templatesStore.currentSessionId,
+					};
+				},
+			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/templates/:id/setup',
+		name: VIEWS.TEMPLATE_SETUP,
+		components: {
+			default: SetupWorkflowFromTemplateView,
 			sidebar: MainSidebar,
 		},
 		meta: {

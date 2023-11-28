@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nTooltip from '../N8nTooltip';
 

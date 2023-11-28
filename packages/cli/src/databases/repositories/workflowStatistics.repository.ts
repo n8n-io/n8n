@@ -4,7 +4,7 @@ import config from '@/config';
 import type { StatisticsNames } from '../entities/WorkflowStatistics';
 import { WorkflowStatistics } from '../entities/WorkflowStatistics';
 
-type StatisticsInsertResult = 'insert' | 'failed';
+type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
 
 @Service()
@@ -21,6 +21,13 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	): Promise<StatisticsInsertResult> {
 		// Try to insert the data loaded statistic
 		try {
+			const exists = await this.findOne({
+				where: {
+					workflowId,
+					name: eventName,
+				},
+			});
+			if (exists) return 'alreadyExists';
 			await this.insert({
 				workflowId,
 				name: eventName,

@@ -45,12 +45,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils';
+import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -248,10 +249,22 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	};
 }
 
+export interface IWorkflowTemplateNode
+	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
+	// The credentials in a template workflow have a different type than in a regular workflow
+	credentials?: IWorkflowTemplateNodeCredentials;
+}
+
+export interface IWorkflowTemplateNodeCredentials {
+	[key: string]: string | INodeCredentialsDetails;
+}
+
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
+	workflow: Pick<IWorkflowData, 'connections' | 'settings' | 'pinData'> & {
+		nodes: IWorkflowTemplateNode[];
+	};
 }
 
 export interface INewWorkflowData {
@@ -790,6 +803,9 @@ export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtend
 	workflows: ITemplatesWorkflow[];
 }
 
+/**
+ * A template without the actual workflow definition
+ */
 export interface ITemplatesWorkflow {
 	id: number;
 	createdAt: string;
@@ -807,6 +823,9 @@ export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflo
 	categories: ITemplatesCategory[];
 }
 
+/**
+ * A template with also the full workflow definition
+ */
 export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 	full: true;
 }
@@ -1291,18 +1310,20 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface INodeTypesState {
-	nodeTypes: {
-		[nodeType: string]: {
-			[version: number]: INodeTypeDescription;
-		};
+export type NodeTypesByTypeNameAndVersion = {
+	[nodeType: string]: {
+		[version: number]: INodeTypeDescription;
 	};
+};
+
+export interface INodeTypesState {
+	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
 export interface ITemplateState {
 	categories: { [id: string]: ITemplatesCategory };
 	collections: { [id: string]: ITemplatesCollection };
-	workflows: { [id: string]: ITemplatesWorkflow };
+	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
 	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];

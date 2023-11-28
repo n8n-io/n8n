@@ -20,9 +20,9 @@ import type {
 } from '@/Interfaces';
 import { Push } from '@/push';
 import { NodeTypes } from '@/NodeTypes';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { webhookNotFoundErrorMessage } from './utils';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
@@ -80,7 +80,7 @@ export class TestWebhooks implements IWebhookManager {
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				const methods = await this.getWebhookMethods(path);
-				throw new ResponseHelper.NotFoundError(
+				throw new NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod, methods),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
@@ -108,7 +108,7 @@ export class TestWebhooks implements IWebhookManager {
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
 			const methods = await this.getWebhookMethods(path);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod, methods),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
@@ -121,7 +121,7 @@ export class TestWebhooks implements IWebhookManager {
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise(async (resolve, reject) => {
@@ -168,10 +168,7 @@ export class TestWebhooks implements IWebhookManager {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path),
-				WEBHOOK_TEST_UNREGISTERED_HINT,
-			);
+			throw new NotFoundError(webhookNotFoundErrorMessage(path), WEBHOOK_TEST_UNREGISTERED_HINT);
 		}
 
 		return webhookMethods;

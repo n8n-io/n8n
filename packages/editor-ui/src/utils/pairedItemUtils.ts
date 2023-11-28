@@ -1,6 +1,6 @@
 import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
-import type { IExecutionResponse, TargetItem } from '../Interface';
-import { isNotNull } from '@/utils';
+import type { IExecutionResponse, TargetItem } from '@/Interface';
+import { isNotNull } from '@/utils/typeGuards';
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes

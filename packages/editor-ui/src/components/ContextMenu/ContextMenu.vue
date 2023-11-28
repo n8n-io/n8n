@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { type ContextMenuAction, useContextMenu } from '@/composables';
+import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { N8nActionDropdown } from 'n8n-design-system';
 import type { INode } from 'n8n-workflow';
 import { watch, ref } from 'vue';

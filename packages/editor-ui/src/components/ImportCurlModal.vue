@@ -46,7 +46,7 @@ import {
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';

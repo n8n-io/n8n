@@ -1,14 +1,18 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export const useExecutionDebugging = () => {
 	const router = useRouter();
