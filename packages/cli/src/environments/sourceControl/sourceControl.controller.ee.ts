@@ -1,7 +1,7 @@
 import { Container, Service } from 'typedi';
 import type { PullResult } from 'simple-git';
 import express from 'express';
-import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
+import { Authorized, Get, Post, Patch, RestController, RequireGlobalScope } from '@/decorators';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
@@ -19,6 +19,7 @@ import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
+@Authorized()
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
 	constructor(
@@ -33,8 +34,8 @@ export class SourceControlController {
 		return this.sourceControlPreferencesService.getPreferences();
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@RequireGlobalScope('sourceControl:manage')
 	async setPreferences(req: SourceControlRequest.UpdatePreferences) {
 		if (
 			req.body.branchReadOnly === undefined &&
@@ -97,8 +98,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Patch('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@RequireGlobalScope('sourceControl:manage')
 	async updatePreferences(req: SourceControlRequest.UpdatePreferences) {
 		try {
 			const sanitizedPreferences: Partial<SourceControlPreferences> = {
@@ -141,8 +142,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/disconnect', { middlewares: [sourceControlLicensedMiddleware] })
+	@RequireGlobalScope('sourceControl:manage')
 	async disconnect(req: SourceControlRequest.Disconnect) {
 		try {
 			return await this.sourceControlService.disconnect(req.body);
@@ -161,8 +162,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@RequireGlobalScope('sourceControl:push')
 	async pushWorkfolder(
 		req: SourceControlRequest.PushWorkFolder,
 		res: express.Response,
@@ -183,8 +184,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/pull-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@RequireGlobalScope('sourceControl:pull')
 	async pullWorkfolder(
 		req: SourceControlRequest.PullWorkFolder,
 		res: express.Response,
@@ -202,8 +203,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@RequireGlobalScope('sourceControl:manage')
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		try {
 			return await this.sourceControlService.resetWorkfolder();
@@ -235,8 +236,8 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/generate-key-pair', { middlewares: [sourceControlLicensedMiddleware] })
+	@RequireGlobalScope('sourceControl:manage')
 	async generateKeyPair(
 		req: SourceControlRequest.GenerateKeyPair,
 	): Promise<SourceControlPreferences> {

@@ -1,7 +1,14 @@
 import express from 'express';
 import { Container, Service } from 'typedi';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Get,
+	NoAuthRequired,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -30,6 +37,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 
 @Service()
+@Authorized()
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(private samlService: SamlService) {}
@@ -61,8 +69,8 @@ export class SamlController {
 	 * POST /sso/saml/config
 	 * Set SAML config
 	 */
-	@Authorized(['global', 'owner'])
 	@Post(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
+	@RequireGlobalScope('saml:manage')
 	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
@@ -80,8 +88,8 @@ export class SamlController {
 	 * POST /sso/saml/config/toggle
 	 * Set SAML config
 	 */
-	@Authorized(['global', 'owner'])
 	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedMiddleware] })
+	@RequireGlobalScope('saml:manage')
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
@@ -196,8 +204,8 @@ export class SamlController {
 	 * Test SAML config
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
-	@Authorized(['global', 'owner'])
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
+	@RequireGlobalScope('saml:manage')
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
 		return this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}
