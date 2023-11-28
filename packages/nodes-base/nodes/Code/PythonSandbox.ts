@@ -39,10 +39,6 @@ export class PythonSandbox extends Sandbox {
 		}, {} as PythonSandboxContext);
 	}
 
-	async runCode(): Promise<unknown> {
-		return this.runCodeInPython<unknown>();
-	}
-
 	async runCodeAllItems() {
 		const executionResult = await this.runCodeInPython<INodeExecutionData[]>();
 		return this.validateRunCodeAllItems(executionResult);
