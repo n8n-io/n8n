@@ -68,7 +68,7 @@
 				<template v-if="isSubNode">
 					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
 				</template>
-				<template v-else="isSubNode">
+				<template v-else>
 					{{ $locale.baseText('ndv.output.runNodeHint') }}
 					<span @click="insertTestData" v-if="canPinData">
 						<br />
