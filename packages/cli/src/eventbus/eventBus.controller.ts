@@ -9,13 +9,13 @@ import type { EventMessageTypes, FailedEventSummary } from './EventMessageClasse
 import { eventNamesAll } from './EventMessageClasses';
 import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
-import { BadRequestError } from '@/ResponseHelper';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 import { RestController, Get, Post, Authorized } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 // ----------------------------------------
 // TypeGuards
