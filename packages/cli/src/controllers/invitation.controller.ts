@@ -90,11 +90,15 @@ export class InvitationController {
 			}
 
 			if (invite.role && !['member', 'admin'].includes(invite.role)) {
-				throw new BadRequestError(`Cannot invite user with invalid role: ${invite.role}`);
+				throw new BadRequestError(
+					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'member' or 'admin'.`,
+				);
 			}
 
 			if (invite.role === 'admin' && !this.license.isAdvancedPermissionsLicensed()) {
-				throw new BadRequestError('Cannot invite admin user without advanced permissions');
+				throw new UnauthorizedError(
+					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
+				);
 			}
 		});
 
