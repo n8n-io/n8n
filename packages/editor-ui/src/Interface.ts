@@ -1269,6 +1269,7 @@ export type NodeCreatorOpenSource =
 	| 'tab'
 	| 'node_connection_action'
 	| 'node_connection_drop'
+	| 'notice_error_message'
 	| 'add_node_button';
 
 export interface INodeCreatorState {
