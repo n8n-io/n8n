@@ -223,6 +223,7 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'The file path of the file to delete. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-delete.txt',
 				required: true,
 			},
 
@@ -273,8 +274,8 @@ export class Ftp implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				placeholder: '/documents/invoice.txt',
 				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-download.txt',
 				required: true,
 			},
 			{
@@ -304,6 +305,7 @@ export class Ftp implements INodeType {
 				name: 'oldPath',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. /public/documents/old-file.txt',
 				required: true,
 			},
 			{
@@ -316,6 +318,7 @@ export class Ftp implements INodeType {
 				name: 'newPath',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. /public/documents/new-file.txt',
 				required: true,
 			},
 			{
@@ -355,6 +358,7 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'The file path of the file to upload. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-upload.txt',
 				required: true,
 			},
 			{
@@ -411,6 +415,7 @@ export class Ftp implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '/',
+				placeholder: 'e.g. /public/folder',
 				description: 'Path of directory to list contents of',
 				required: true,
 			},
