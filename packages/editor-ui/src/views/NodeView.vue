@@ -4703,6 +4703,7 @@ export default defineComponent({
 		});
 
 		this.readOnlyEnvRouteCheck();
+		this.canvasStore.isDemo = this.isDemo;
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
