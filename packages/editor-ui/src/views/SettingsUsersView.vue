@@ -35,17 +35,15 @@
 				@click:button="goToUpgrade"
 			/>
 		</div>
-		<n8n-alert type="warning">
-			<template #title>{{ $locale.baseText('settings.users.advancedPermissions.title') }}</template>
-			<span>{{ $locale.baseText('settings.users.advancedPermissions.warning') }}</span>
-			<template #aside>
-				<n8n-button
-					:label="$locale.baseText('generic.seePlans')"
-					@click="goToUpgrade"
-					size="small"
-				/>
-			</template>
-		</n8n-alert>
+		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+			<i18n-t keypath="settings.users.advancedPermissions.warning">
+				<template #link>
+					<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+						{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+					</n8n-link>
+				</template>
+			</i18n-t>
+		</n8n-notice>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
@@ -268,6 +266,9 @@ export default defineComponent({
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+		},
+		goToUpgradeAdvancedPermissions() {
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
 		async onRoleChange(user: IUser, name: IRole) {
 			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });

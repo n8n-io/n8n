@@ -1772,7 +1772,8 @@ export type UTMCampaign =
 	| 'upgrade-users'
 	| 'upgrade-variables'
 	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history';
+	| 'upgrade-workflow-history'
+	| 'upgrade-advanced-permissions';
 
 export type N8nBanners = {
 	[key in BannerName]: {
