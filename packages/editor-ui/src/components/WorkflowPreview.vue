@@ -136,19 +136,21 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
-	try {
-		const json = JSON.parse(data);
-		if (json.command === 'n8nReady') {
-			ready.value = true;
-		} else if (json.command === 'openNDV') {
-			nodeViewDetailsOpened.value = true;
-		} else if (json.command === 'closeNDV') {
-			nodeViewDetailsOpened.value = false;
-		} else if (json.command === 'error') {
-			emit('close');
+	if (data?.includes('"command"')) {
+		try {
+			const json = JSON.parse(data);
+			if (json.command === 'n8nReady') {
+				ready.value = true;
+			} else if (json.command === 'openNDV') {
+				nodeViewDetailsOpened.value = true;
+			} else if (json.command === 'closeNDV') {
+				nodeViewDetailsOpened.value = false;
+			} else if (json.command === 'error') {
+				emit('close');
+			}
+		} catch (e) {
+			console.error(e);
 		}
-	} catch (e) {
-		console.error(e);
 	}
 };
 const onDocumentScroll = () => {
