@@ -25,10 +25,16 @@ export async function initializeCore() {
 	await settingsStore.initialize();
 	await usersStore.initialize();
 	if (settingsStore.isCloudDeployment) {
-		const res = await Promise.all([cloudPlanStore.initialize(), initializeCloudHooks()]);
-		console.log('---------------------[ CLOUD STORE INIT ]');
-		console.log(res);
-		console.log('--------------------[ /CLOUD STORE INIT ]');
+		const results = await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
+		console.log('CLOUD STORE INIT', results);
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				console.error(
+					`Failed to initialize ${index === 0 ? 'cloud plan store' : 'cloud hooks'}:`,
+					result.reason,
+				);
+			}
+		});
 	}
 
 	coreInitialized = true;
