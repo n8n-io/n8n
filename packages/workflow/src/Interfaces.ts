@@ -13,12 +13,13 @@ import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
-import type { ExpressionError } from './ExpressionError';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { ExpressionError } from './errors/expression.error';
 import type { Workflow } from './Workflow';
-import type { WorkflowActivationError } from './WorkflowActivationError';
-import type { WorkflowOperationError } from './WorkflowErrors';
+import type { WorkflowActivationError } from './errors/workflow-activation.error';
+import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { NodeOperationError } from './errors/node-operation.error';
+import type { NodeApiError } from './errors/node-api.error';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -422,6 +423,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortSignal?: AbortSignal,
 	): IExecuteFunctions;
 }
 
@@ -437,6 +439,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		abortSignal?: AbortSignal,
 	): IExecuteSingleFunctions;
 }
 
@@ -776,6 +779,8 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getExecutionCancelSignal(): AbortSignal | undefined;
+	onExecutionCancellation(handler: () => unknown): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -2369,3 +2374,5 @@ export type BannerName =
 	| 'TRIAL'
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
+
+export type Severity = 'warning' | 'error';

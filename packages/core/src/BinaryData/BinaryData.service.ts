@@ -2,12 +2,13 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
-import { UnknownManagerError, InvalidModeError } from './errors';
+import { InvalidModeError } from '../errors/invalid-mode.error';
 import { areConfigModes, toBuffer } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
+import { InvalidManagerError } from '../errors/invalid-manager.error';
 
 @Service()
 export class BinaryDataService {
@@ -241,6 +242,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownManagerError(mode);
+		throw new InvalidManagerError(mode);
 	}
 }
