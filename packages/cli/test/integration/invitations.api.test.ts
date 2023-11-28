@@ -17,7 +17,7 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { getGlobalMemberRole } from './shared/db/roles';
+import { getGlobalAdminRole, getGlobalMemberRole } from './shared/db/roles';
 import { createMember, createOwner, createUser, createUserShell } from './shared/db/users';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
@@ -49,7 +49,7 @@ describe('POST /invitations/:id/accept', () => {
 		authlessAgent = testServer.authlessAgent;
 	});
 
-	test('should fill out a user shell', async () => {
+	test('should fill out a member shell', async () => {
 		const globalMemberRole = await getGlobalMemberRole();
 		const memberShell = await createUserShell(globalMemberRole);
 
@@ -84,7 +84,8 @@ describe('POST /invitations/:id/accept', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole).toBeDefined();
+		expect(globalRole.scope).toBe('global');
+		expect(globalRole.name).toBe('member');
 		expect(apiKey).not.toBeDefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -97,6 +98,57 @@ describe('POST /invitations/:id/accept', () => {
 		expect(storedMember.firstName).toBe(memberData.firstName);
 		expect(storedMember.lastName).toBe(memberData.lastName);
 		expect(storedMember.password).not.toBe(memberData.password);
+	});
+
+	test('should fill out an admin shell', async () => {
+		const globalAdminRole = await getGlobalAdminRole();
+		const adminShell = await createUserShell(globalAdminRole);
+
+		const memberData = {
+			inviterId: owner.id,
+			firstName: randomName(),
+			lastName: randomName(),
+			password: randomValidPassword(),
+		};
+
+		const response = await authlessAgent
+			.post(`/invitations/${adminShell.id}/accept`)
+			.send(memberData)
+			.expect(200);
+
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			personalizationAnswers,
+			password,
+			globalRole,
+			isPending,
+			apiKey,
+		} = response.body.data;
+
+		expect(validator.isUUID(id)).toBe(true);
+		expect(email).toBeDefined();
+		expect(firstName).toBe(memberData.firstName);
+		expect(lastName).toBe(memberData.lastName);
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeUndefined();
+		expect(isPending).toBe(false);
+		expect(globalRole.scope).toBe('global');
+		expect(globalRole.name).toBe('admin');
+		expect(apiKey).not.toBeDefined();
+
+		const authToken = utils.getAuthToken(response);
+		expect(authToken).toBeDefined();
+
+		const storedAdmin = await Container.get(UserRepository).findOneByOrFail({
+			id: adminShell.id,
+		});
+
+		expect(storedAdmin.firstName).toBe(memberData.firstName);
+		expect(storedAdmin.lastName).toBe(memberData.lastName);
+		expect(storedAdmin.password).not.toBe(memberData.password);
 	});
 
 	test('should fail with invalid payloads', async () => {
