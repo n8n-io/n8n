@@ -17,7 +17,6 @@
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-					?
 				</div>
 			</n8n-tooltip>
 			<template v-else>
@@ -30,7 +29,6 @@
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-					?
 				</div>
 			</template>
 		</div>
