@@ -30,7 +30,6 @@
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-					?
 				</div>
 			</template>
 		</div>
