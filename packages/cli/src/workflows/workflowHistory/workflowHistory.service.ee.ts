@@ -7,9 +7,8 @@ import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repo
 import { Service } from 'typedi';
 import { isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';
 import { Logger } from '@/Logger';
-
-export class SharedWorkflowNotFoundError extends Error {}
-export class HistoryVersionNotFoundError extends Error {}
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 
 @Service()
 export class WorkflowHistoryService {
@@ -36,7 +35,7 @@ export class WorkflowHistoryService {
 	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
 		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
 		if (!sharedWorkflow) {
-			throw new SharedWorkflowNotFoundError();
+			throw new SharedWorkflowNotFoundError('');
 		}
 		return this.workflowHistoryRepository.find({
 			where: {
@@ -52,7 +51,7 @@ export class WorkflowHistoryService {
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
 		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
 		if (!sharedWorkflow) {
-			throw new SharedWorkflowNotFoundError();
+			throw new SharedWorkflowNotFoundError('');
 		}
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
@@ -61,7 +60,7 @@ export class WorkflowHistoryService {
 			},
 		});
 		if (!hist) {
-			throw new HistoryVersionNotFoundError();
+			throw new WorkflowHistoryVersionNotFoundError('');
 		}
 		return hist;
 	}
