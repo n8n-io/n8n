@@ -1,4 +1,4 @@
-import { SectionCreateElement } from '@/Interface';
+import type { SectionCreateElement } from '@/Interface';
 import { groupItemsInSections } from '../utils';
 import { mockNodeCreateElement } from './utils';
 
