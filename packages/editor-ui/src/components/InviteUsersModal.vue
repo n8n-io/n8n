@@ -132,10 +132,6 @@ export default defineComponent({
 							value: ROLE.Member,
 							label: this.$locale.baseText('auth.roles.member'),
 						},
-						{
-							value: ROLE.Admin,
-							label: this.$locale.baseText('auth.roles.admin'),
-						},
 					],
 					capitalize: true,
 				},
