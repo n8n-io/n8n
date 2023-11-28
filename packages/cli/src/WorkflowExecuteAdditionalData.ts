@@ -566,7 +566,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
+					const saveSettings = toSaveSettings(this.workflowData.settings);
+
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+
+					const shouldNotSave =
+						(workflowStatusFinal === 'success' && !saveSettings.success) ||
+						(workflowStatusFinal !== 'success' && !saveSettings.error);
 
 					if (workflowStatusFinal !== 'success') {
 						executeErrorWorkflow(
@@ -576,6 +582,16 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.executionId,
 							this.retryOf,
 						);
+					}
+
+					if (shouldNotSave) {
+						if (!fullRunData.waitTill) {
+							await Container.get(ExecutionRepository).hardDelete({
+								workflowId: this.workflowData.id as string,
+								executionId: this.executionId,
+							});
+							return;
+						}
 					}
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
