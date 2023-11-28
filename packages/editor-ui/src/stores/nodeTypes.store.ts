@@ -6,12 +6,7 @@ import {
 	getResourceLocatorResults,
 	getResourceMapperFields,
 } from '@/api/nodeTypes';
-import {
-	DEFAULT_NODETYPE_VERSION,
-	HTTP_REQUEST_NODE_TYPE,
-	STORES,
-	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
-} from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
 import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
@@ -36,10 +31,6 @@ import {
 	isCredentialOnlyNodeType,
 } from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
-
-function getNodeVersions(nodeType: INodeTypeDescription) {
-	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
-}
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 

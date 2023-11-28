@@ -1,4 +1,4 @@
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 export const twitterV2: INodeTypeDescription = {
 	displayName: 'X (Formerly Twitter)',
