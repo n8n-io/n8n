@@ -14,7 +14,7 @@ import {
 	scaleBigger,
 	scaleReset,
 	scaleSmaller,
-} from '@/utils';
+} from '@/utils/canvasUtils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,

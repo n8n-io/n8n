@@ -17,7 +17,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';

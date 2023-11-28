@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';

@@ -36,7 +36,7 @@
 import { defineComponent } from 'vue';
 import Modal from '@/components/Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { createEventBus } from 'n8n-design-system/utils';

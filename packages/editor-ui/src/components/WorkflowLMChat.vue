@@ -111,7 +111,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,

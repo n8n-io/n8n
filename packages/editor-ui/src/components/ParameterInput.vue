@@ -398,7 +398,8 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
+import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -417,7 +418,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 

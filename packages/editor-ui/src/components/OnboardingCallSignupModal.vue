@@ -50,7 +50,7 @@ import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants
 import Modal from './Modal.vue';
 
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';

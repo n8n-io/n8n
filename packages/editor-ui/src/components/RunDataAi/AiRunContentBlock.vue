@@ -68,7 +68,9 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
-import { useCopyToClipboard, useI18n, useToast } from '@/composables';
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{

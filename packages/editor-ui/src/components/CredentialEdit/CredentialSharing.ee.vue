@@ -72,7 +72,7 @@
 <script lang="ts">
 import type { IUser, IUserListAction } from '@/Interface';
 import { defineComponent } from 'vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';

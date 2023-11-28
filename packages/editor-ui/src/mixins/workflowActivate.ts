@@ -4,7 +4,7 @@ import { useStorage } from '@/composables/useStorage';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,

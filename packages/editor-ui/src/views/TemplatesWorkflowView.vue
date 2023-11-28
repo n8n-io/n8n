@@ -65,7 +65,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { setPageTitle } from '@/utils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';

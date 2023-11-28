@@ -34,7 +34,7 @@ import type {
 
 import { get } from 'lodash-es';
 
-import { isObject } from '@/utils';
+import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
