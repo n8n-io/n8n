@@ -66,12 +66,15 @@ export const ownerPermissions: Scope[] = [
 ];
 export const adminPermissions: Scope[] = ownerPermissions.concat();
 export const memberPermissions: Scope[] = [
-	'tag:create',
-	'tag:read',
-	'tag:update',
-	'tag:list',
 	'eventBusEvent:list',
 	'eventBusEvent:read',
 	'eventBusDestination:list',
 	'eventBusDestination:test',
+	'tag:create',
+	'tag:read',
+	'tag:update',
+	'tag:list',
+	'user:list',
+	'variable:list',
+	'variable:read',
 ];

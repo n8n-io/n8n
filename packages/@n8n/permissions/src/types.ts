@@ -3,7 +3,6 @@ export type Resource =
 	| 'auditLogs'
 	| 'communityPackage'
 	| 'credential'
-	| 'externalSecretsStore'
 	| 'externalSecretsProvider'
 	| 'externalSecret'
 	| 'eventBusEvent'
