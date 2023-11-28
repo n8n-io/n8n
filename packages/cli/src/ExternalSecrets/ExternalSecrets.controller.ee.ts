@@ -1,9 +1,10 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
-import { NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import { Service } from 'typedi';
-import { ProviderNotFoundError, ExternalSecretsService } from './ExternalSecrets.service.ee';
+import { ExternalSecretsService } from './ExternalSecrets.service.ee';
+import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 @Authorized(['global', 'owner'])
@@ -22,7 +23,7 @@ export class ExternalSecretsController {
 		try {
 			return this.secretsService.getProvider(providerName);
 		} catch (e) {
-			if (e instanceof ProviderNotFoundError) {
+			if (e instanceof ExternalSecretsProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
 			}
 			throw e;
@@ -41,7 +42,7 @@ export class ExternalSecretsController {
 			}
 			return result;
 		} catch (e) {
-			if (e instanceof ProviderNotFoundError) {
+			if (e instanceof ExternalSecretsProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
 			}
 			throw e;
@@ -54,7 +55,7 @@ export class ExternalSecretsController {
 		try {
 			await this.secretsService.saveProviderSettings(providerName, req.body, req.user.id);
 		} catch (e) {
-			if (e instanceof ProviderNotFoundError) {
+			if (e instanceof ExternalSecretsProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
 			}
 			throw e;
@@ -68,7 +69,7 @@ export class ExternalSecretsController {
 		try {
 			await this.secretsService.saveProviderConnected(providerName, req.body.connected);
 		} catch (e) {
-			if (e instanceof ProviderNotFoundError) {
+			if (e instanceof ExternalSecretsProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
 			}
 			throw e;
@@ -88,7 +89,7 @@ export class ExternalSecretsController {
 			}
 			return { updated: resp };
 		} catch (e) {
-			if (e instanceof ProviderNotFoundError) {
+			if (e instanceof ExternalSecretsProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
 			}
 			throw e;
