@@ -567,7 +567,7 @@ export const routes = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:read'],
+							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:update'],
 						},
 					},
 					telemetry: {
@@ -645,7 +645,7 @@ export const routes = [
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						rbac: {
-							scope: 'communityPackage:manage',
+							scope: ['communityPackage:list', 'communityPackage:update'],
 						},
 						custom: () => {
 							const settingsStore = useSettingsStore();
