@@ -3,7 +3,9 @@ import { computed, ref, onMounted } from 'vue';
 import { useSSOStore } from '@/stores/sso.store';
 import { useUIStore } from '@/stores/ui.store';
 import CopyInput from '@/components/CopyInput.vue';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',

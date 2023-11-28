@@ -3,7 +3,7 @@ import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'SignoutView',
