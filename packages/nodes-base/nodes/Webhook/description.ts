@@ -196,6 +196,13 @@ export const optionsProperty: INodeProperties = {
 	default: {},
 	options: [
 		{
+			displayName: 'Allowed Origins (CORS)',
+			name: 'allowedOrigins',
+			type: 'string',
+			default: '*',
+			description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+		},
+		{
 			displayName: 'Binary Data',
 			name: 'binaryData',
 			type: 'boolean',

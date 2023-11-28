@@ -45,7 +45,6 @@ export class Webhook extends Node {
 		defaults: {
 			name: 'Webhook',
 		},
-		supportsCORS: true,
 		triggerPanel: {
 			header: '',
 			executionsHelp: {
