@@ -12,6 +12,8 @@ import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
+import { supabaseTableNameRLC } from '../shared/descriptions';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseInsert implements INodeType {
@@ -71,14 +73,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 				type: 'notice',
 				default: '',
 			},
-			{
-				displayName: 'Table Name',
-				name: 'tableName',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Name of the table to insert into',
-			},
+			supabaseTableNameRLC,
 			{
 				displayName: 'Query Name',
 				name: 'queryName',
@@ -96,11 +91,13 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		],
 	};
 
+	methods = { listSearch: { supabaseTableNameSearch } };
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing data for Supabase Insert Vector Store');
 
 		const items = this.getInputData(0);
-		const tableName = this.getNodeParameter('tableName', 0) as string;
+		const tableName = this.getNodeParameter('tableName', 0, '', { extractValue: true }) as string;
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 

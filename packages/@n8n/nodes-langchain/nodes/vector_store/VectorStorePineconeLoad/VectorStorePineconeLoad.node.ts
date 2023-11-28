@@ -12,6 +12,8 @@ import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { pineconeIndexRLC } from '../shared/descriptions';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
@@ -57,13 +59,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		outputs: [NodeConnectionType.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
-			{
-				displayName: 'Pinecone Index',
-				name: 'pineconeIndex',
-				type: 'string',
-				default: '',
-				required: true,
-			},
+			pineconeIndexRLC,
 			{
 				displayName: 'Pinecone Namespace',
 				name: 'pineconeNamespace',
@@ -81,11 +77,19 @@ export class VectorStorePineconeLoad implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			pineconeIndexSearch,
+		},
+	};
+
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Pinecone Load Vector Store');
 
 		const namespace = this.getNodeParameter('pineconeNamespace', itemIndex) as string;
-		const index = this.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const index = this.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
 		const embeddings = (await this.getInputConnectionData(

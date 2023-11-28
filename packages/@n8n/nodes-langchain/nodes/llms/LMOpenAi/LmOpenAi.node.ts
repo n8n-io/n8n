@@ -1,16 +1,28 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
+import { NodeConnectionType } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import type { ClientOptions } from 'openai';
 import { OpenAI } from 'langchain/llms/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+type LmOpenAiOptions = {
+	baseURL?: string;
+	frequencyPenalty?: number;
+	maxTokens?: number;
+	presencePenalty?: number;
+	temperature?: number;
+	timeout?: number;
+	maxRetries?: number;
+	topP?: number;
+};
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,55 +70,33 @@ export class LmOpenAi implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'options',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'gpt-3.5-turbo-instruct' },
+				required: true,
 				description:
 					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{$responseItem.owned_by.startsWith('system')",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'openAiModelSearch',
 						},
 					},
-				},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
 				routing: {
 					send: {
 						type: 'body',
 						property: 'model',
+						value: '={{$parameter.model.value}}',
 					},
 				},
-				default: 'gpt-3.5-turbo-instruct',
 			},
 			{
 				displayName: 'Options',
@@ -189,10 +179,47 @@ export class LmOpenAi implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			async openAiModelSearch(this: ILoadOptionsFunctions) {
+				const results = [];
+
+				const options = this.getNodeParameter('options', {}) as LmOpenAiOptions;
+
+				let uri = 'https://api.openai.com/v1/models';
+
+				if (options.baseURL) {
+					uri = `${options.baseURL}/models`;
+				}
+
+				const data = (
+					await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {
+						method: 'GET',
+						uri,
+						json: true,
+					})
+				).data as Array<{ owned_by: string; id: string }>;
+
+				for (const model of data) {
+					if (!model.owned_by?.startsWith('system')) continue;
+					results.push({
+						name: model.id,
+						value: model.id,
+					});
+				}
+
+				return { results };
+			},
+		},
+	};
+
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const modelName = this.getNodeParameter('model', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			frequencyPenalty?: number;

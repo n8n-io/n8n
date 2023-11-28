@@ -1,19 +1,13 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
+import { pineconeIndexRLC } from '../shared/descriptions';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
-const sharedFields: INodeProperties[] = [
-	{
-		displayName: 'Pinecone Index',
-		name: 'pineconeIndex',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-];
+const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
 const retrieveFields: INodeProperties[] = [
 	{
@@ -77,12 +71,15 @@ export const VectorStorePinecone = createVectorStoreNode({
 			},
 		],
 	},
+	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 		};
@@ -103,7 +100,9 @@ export const VectorStorePinecone = createVectorStoreNode({
 		return PineconeStore.fromExistingIndex(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 			clearNamespace?: boolean;
@@ -114,6 +113,15 @@ export const VectorStorePinecone = createVectorStoreNode({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
+
+		const indexes = (await client.listIndexes()).map((i) => i.name);
+
+		if (!indexes.includes(index)) {
+			throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
+				itemIndex,
+				description: 'Please check that the index exists in your vector store',
+			});
+		}
 
 		const pineconeIndex = client.Index(index);
 

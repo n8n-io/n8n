@@ -791,6 +791,7 @@
 	"ndv.output.pageSize": "Page Size",
 	"ndv.output.run": "Run",
 	"ndv.output.runNodeHint": "Execute this node to output data",
+	"ndv.output.runNodeHintSubNode": "Output will appear here once the parent node is run",
 	"ndv.output.insertTestData": "insert test data",
 	"ndv.output.staleDataWarning.regular": "Node parameters have changed.<br>Execute node again to refresh output.",
 	"ndv.output.staleDataWarning.pinData": "Node parameter changes will not affect pinned output data.",

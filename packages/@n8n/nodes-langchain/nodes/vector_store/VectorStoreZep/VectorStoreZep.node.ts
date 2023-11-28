@@ -1,7 +1,7 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IZepConfig } from 'langchain/vectorstores/zep';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
-import type { VectorStore } from 'langchain/vectorstores/base';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
@@ -115,6 +115,19 @@ export const VectorStoreZep = createVectorStoreNode({
 			isAutoEmbedded: options.isAutoEmbedded ?? true,
 		};
 
-		ZepVectorStore.fromDocuments(documents, embeddings, zepConfig) as Promise<VectorStore>;
+		try {
+			await ZepVectorStore.fromDocuments(documents, embeddings, zepConfig);
+		} catch (error) {
+			const errorCode = (error as IDataObject).code as number;
+			const responseData = (error as IDataObject).responseData as string;
+			if (errorCode === 400 && responseData.includes('CreateDocumentCollectionRequest')) {
+				throw new NodeOperationError(context.getNode(), `Collection ${collectionName} not found`, {
+					itemIndex,
+					description:
+						'Please check that the collection exists in your vector store, or make sure that collection name contains only alphanumeric characters',
+				});
+			}
+			throw new NodeOperationError(context.getNode(), error as Error, { itemIndex });
+		}
 	},
 });
