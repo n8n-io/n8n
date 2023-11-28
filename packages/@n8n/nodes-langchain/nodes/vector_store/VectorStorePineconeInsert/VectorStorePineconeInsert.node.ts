@@ -11,6 +11,8 @@ import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
+import { pineconeIndexRLC } from '../shared/descriptions';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeInsert implements INodeType {
@@ -63,13 +65,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		],
 		outputs: [NodeConnectionType.Main],
 		properties: [
-			{
-				displayName: 'Pinecone Index',
-				name: 'pineconeIndex',
-				type: 'string',
-				default: '',
-				required: true,
-			},
+			pineconeIndexRLC,
 			{
 				displayName: 'Pinecone Namespace',
 				name: 'pineconeNamespace',
@@ -92,12 +88,18 @@ export class VectorStorePineconeInsert implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			pineconeIndexSearch,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData(0);
 		this.logger.verbose('Executing data for Pinecone Insert Vector Store');
 
 		const namespace = this.getNodeParameter('pineconeNamespace', 0) as string;
-		const index = this.getNodeParameter('pineconeIndex', 0) as string;
+		const index = this.getNodeParameter('pineconeIndex', 0, '', { extractValue: true }) as string;
 		const clearNamespace = this.getNodeParameter('clearNamespace', 0) as boolean;
 
 		const credentials = await this.getCredentials('pineconeApi');

@@ -38,7 +38,6 @@ import type {
 	BinaryHelperFunctions,
 	ConnectionTypes,
 	ContextType,
-	ExecutionError,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -101,7 +100,7 @@ import {
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeSSLError,
+	NodeSslError,
 	OAuth2GrantType,
 	WorkflowDataProxy,
 	createDeferredPromise,
@@ -143,7 +142,7 @@ import {
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
-} from './WorkflowExecutionMetadata';
+} from './ExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
 import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
@@ -808,7 +807,7 @@ export async function proxyRequestToAxios(
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
-				throw new NodeSSLError(error);
+				throw new NodeSslError(error);
 			}
 		}
 
@@ -2509,18 +2508,15 @@ const getCommonWorkflowFunctions = (
 });
 
 const executionCancellationFunctions = (
-	abortController?: AbortController,
+	abortSignal?: AbortSignal,
 ): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
-	getExecutionCancelSignal: () => {
-		return abortController?.signal;
-	},
-	onExecutionCancellation: (cleanup, reject) => {
-		const handler = async () => {
-			abortController?.signal?.removeEventListener('abort', handler);
-			await cleanup();
-			reject?.(new Error('Execution cancelled'));
+	getExecutionCancelSignal: () => abortSignal,
+	onExecutionCancellation: (handler) => {
+		const fn = () => {
+			abortSignal?.removeEventListener('abort', fn);
+			handler();
 		};
-		abortController?.signal?.addEventListener('abort', handler);
+		abortSignal?.addEventListener('abort', fn);
 	},
 });
 
@@ -3103,12 +3099,12 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortController?: AbortController,
+	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			...executionCancellationFunctions(abortController),
+			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
 				getCredentials(
@@ -3305,7 +3301,7 @@ export function getExecuteFunctions(
 							// Display on the calling node which node has the error
 							throw new NodeOperationError(
 								connectedNode,
-								`Error in sub-node ${connectedNode.name}‘. `,
+								`Error in sub-node ${connectedNode.name}`,
 								{
 									itemIndex,
 									functionality: 'configuration-node',
@@ -3447,7 +3443,7 @@ export function getExecuteFunctions(
 
 			addInputData(
 				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][] | ExecutionError,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
 				let currentNodeRunIndex = 0;
@@ -3478,7 +3474,7 @@ export function getExecuteFunctions(
 			addOutputData(
 				connectionType: ConnectionTypes,
 				currentNodeRunIndex: number,
-				data: INodeExecutionData[][] | ExecutionError,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3532,12 +3528,12 @@ export function getExecuteSingleFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
-	abortController?: AbortController,
+	abortSignal?: AbortSignal,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			...executionCancellationFunctions(abortController),
+			...executionCancellationFunctions(abortSignal),
 			continueOnFail: () => continueOnFail(node),
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;

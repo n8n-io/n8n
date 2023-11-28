@@ -13,12 +13,13 @@ import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
-import type { ExpressionError } from './ExpressionError';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { ExpressionError } from './errors/expression.error';
 import type { Workflow } from './Workflow';
-import type { WorkflowActivationError } from './WorkflowActivationError';
-import type { WorkflowOperationError } from './WorkflowErrors';
+import type { WorkflowActivationError } from './errors/workflow-activation.error';
+import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { NodeOperationError } from './errors/node-operation.error';
+import type { NodeApiError } from './errors/node-api.error';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -422,7 +423,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
-		abortController?: AbortController,
+		abortSignal?: AbortSignal,
 	): IExecuteFunctions;
 }
 
@@ -438,7 +439,7 @@ export interface IGetExecuteSingleFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
-		abortController?: AbortController,
+		abortSignal?: AbortSignal,
 	): IExecuteSingleFunctions;
 }
 
@@ -779,7 +780,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
-	onExecutionCancellation(cleanup: () => Promise<void>, reject: (reason: Error) => void): void;
+	onExecutionCancellation(handler: () => unknown): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -796,7 +797,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
-		getExecutionCancelSignal(): AbortSignal | undefined;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1603,7 +1603,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
-	polling?: boolean;
+	polling?: true | undefined;
+	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
@@ -1659,7 +1660,6 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
@@ -1897,7 +1897,6 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
-	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
@@ -2379,3 +2378,6 @@ export type BannerName =
 	| 'TRIAL'
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
+
+export type Severity = 'warning' | 'error';
+export type Functionality = 'regular' | 'configuration-node';

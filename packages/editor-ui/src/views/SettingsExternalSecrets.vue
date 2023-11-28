@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
@@ -9,7 +10,6 @@ import type { ExternalSecretsProvider } from '@/Interface';
 const i18n = useI18n();
 const uiStore = useUIStore();
 const externalSecretsStore = useExternalSecretsStore();
-const message = useMessage();
 const toast = useToast();
 
 const sortedProviders = computed(() => {

@@ -18,7 +18,7 @@ export class ChainRetrievalQa implements INodeType {
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -64,6 +64,23 @@ export class ChainRetrievalQa implements INodeType {
 				type: 'string',
 				required: true,
 				default: '={{ $json.input }}',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chat_input }}',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 		],
 	};

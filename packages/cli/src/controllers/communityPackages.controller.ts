@@ -6,14 +6,24 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Middleware,
+	Patch,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
 import { NodeRequest } from '@/requests';
-import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -33,7 +43,7 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 }
 
 @Service()
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/community-packages')
 export class CommunityPackagesController {
 	constructor(
@@ -54,6 +64,7 @@ export class CommunityPackagesController {
 	}
 
 	@Post('/')
+	@RequireGlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
 		const { name } = req.body;
 
@@ -150,6 +161,7 @@ export class CommunityPackagesController {
 	}
 
 	@Get('/')
+	@RequireGlobalScope('communityPackage:list')
 	async getInstalledPackages() {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
@@ -184,6 +196,7 @@ export class CommunityPackagesController {
 	}
 
 	@Delete('/')
+	@RequireGlobalScope('communityPackage:uninstall')
 	async uninstallPackage(req: NodeRequest.Delete) {
 		const { name } = req.query;
 
@@ -235,6 +248,7 @@ export class CommunityPackagesController {
 	}
 
 	@Patch('/')
+	@RequireGlobalScope('communityPackage:update')
 	async updatePackage(req: NodeRequest.Update) {
 		const { name } = req.body;
 

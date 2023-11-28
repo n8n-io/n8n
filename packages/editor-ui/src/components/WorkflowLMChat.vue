@@ -111,7 +111,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
@@ -286,8 +286,10 @@ export default defineComponent({
 
 			if (!chatNode) {
 				this.showError(
-					new Error('Chat viable node(Agent or Chain) could not be found!'),
-					'Chat node not found',
+					new Error(
+						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+					),
+					'Missing AI node',
 				);
 				return;
 			}
@@ -391,6 +393,8 @@ export default defineComponent({
 				return;
 			}
 
+			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
 				executionTime: 0,
@@ -400,7 +404,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									input: message,
+									[inputKey]: message,
 								},
 							},
 						],

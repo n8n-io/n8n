@@ -63,6 +63,9 @@ import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Logger } from './Logger';
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { InternalServerError } from './errors/response-errors/internal-server.error';
+import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -98,7 +101,28 @@ export const webhookRequestHandler =
 					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			}
-			res.header('Access-Control-Allow-Origin', req.headers.origin);
+
+			const requestedMethod =
+				method === 'OPTIONS'
+					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+					: method;
+			if (webhookManager.findAccessControlOptions && requestedMethod) {
+				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
+				const { allowedOrigins } = options ?? {};
+
+				res.header(
+					'Access-Control-Allow-Origin',
+					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
+				);
+
+				if (method === 'OPTIONS') {
+					res.header('Access-Control-Max-Age', '300');
+					const requestedHeaders = req.headers['access-control-request-headers'];
+					if (requestedHeaders?.length) {
+						res.header('Access-Control-Allow-Headers', requestedHeaders);
+					}
+				}
+			}
 		}
 
 		if (method === 'OPTIONS') {
@@ -216,7 +240,7 @@ export async function executeWebhook(
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.InternalServerError(errorMessage);
+		throw new InternalServerError(errorMessage);
 	}
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -233,7 +257,7 @@ export async function executeWebhook(
 		try {
 			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
 		} catch (error) {
-			throw new ResponseHelper.NotFoundError('Cannot find workflow');
+			throw new NotFoundError('Cannot find workflow');
 		}
 	}
 
@@ -273,7 +297,7 @@ export async function executeWebhook(
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.InternalServerError(errorMessage);
+		throw new InternalServerError(errorMessage);
 	}
 
 	// Add the Response and Request so that this data can be accessed in the node
@@ -760,13 +784,13 @@ export async function executeWebhook(
 						responseCallback(new Error('There was a problem executing the workflow'), {});
 					}
 
-					throw new ResponseHelper.InternalServerError(e.message);
+					throw new InternalServerError(e.message);
 				});
 		}
 		return executionId;
 	} catch (e) {
 		const error =
-			e instanceof ResponseHelper.UnprocessableRequestError
+			e instanceof UnprocessableRequestError
 				? e
 				: new Error('There was a problem executing the workflow', { cause: e });
 		if (didSendResponse) throw error;

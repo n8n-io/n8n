@@ -119,7 +119,7 @@ import type {
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -136,7 +136,7 @@ import {
 	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
 	isRequiredCredential,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;

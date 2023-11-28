@@ -14,7 +14,7 @@ import {
 } from '@/constants';
 import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit } from '@/utils';
+import { omit } from '@/utils/typesUtils';
 import type {
 	ConnectionTypes,
 	INode,
@@ -82,6 +82,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
 				const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
 				return nodeType ?? null;
+			};
+		},
+		getNodeVersions() {
+			return (nodeTypeName: string): number[] => {
+				return Object.keys(this.nodeTypes[nodeTypeName] ?? {}).map(Number);
 			};
 		},
 		getCredentialOnlyNodeType() {
@@ -276,6 +281,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
+			}
+		},
+		/**
+		 * Loads node types if they haven't been loaded yet
+		 */
+		async loadNodeTypesIfNotLoaded(): Promise<void> {
+			if (Object.keys(this.nodeTypes).length === 0) {
+				await this.getNodeTypes();
 			}
 		},
 		async getNodeTranslationHeaders(): Promise<void> {

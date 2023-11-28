@@ -67,7 +67,8 @@ import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, w
 import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus, N8nOption, N8nSelect } from 'n8n-design-system';

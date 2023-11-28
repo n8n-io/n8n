@@ -40,6 +40,7 @@ export class PruningService {
 
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('generic.instanceType') === 'main' &&
 			config.getEnv('multiMainSetup.instanceType') === 'follower'
 		) {
 			return false;

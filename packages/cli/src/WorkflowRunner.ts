@@ -347,7 +347,6 @@ export class WorkflowRunner {
 				sessionId: data.sessionId,
 			});
 
-			const abortController = new AbortController();
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -356,7 +355,6 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
-					abortController,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
@@ -372,12 +370,7 @@ export class WorkflowRunner {
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
 
 				// Can execute without webhook so go on
-				const workflowExecute = new WorkflowExecute(
-					additionalData,
-					data.executionMode,
-					undefined,
-					abortController,
-				);
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(
 					workflow,
 					startNode,
@@ -387,12 +380,7 @@ export class WorkflowRunner {
 			} else {
 				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
-				const workflowExecute = new WorkflowExecute(
-					additionalData,
-					data.executionMode,
-					undefined,
-					abortController,
-				);
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.runPartialWorkflow(
 					workflow,
 					data.runData,
@@ -402,7 +390,6 @@ export class WorkflowRunner {
 				);
 			}
 
-			this.activeExecutions.attachAbortController(executionId, abortController);
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
@@ -653,7 +640,6 @@ export class WorkflowRunner {
 			// So we're just preventing crashes here.
 		});
 
-		// TODO: setup AbortController
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 		return executionId;
 	}

@@ -6,10 +6,11 @@ import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
-import { isEmpty, runExternalHook } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { runExternalHook } from '@/utils/externalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;

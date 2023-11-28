@@ -142,8 +142,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { convertToDisplayDate, capitalizeFirstLetter } from '@/utils';
-import { useToast, useMessage } from '@/composables';
+import { capitalizeFirstLetter } from '@/utils/htmlUtils';
+import { convertToDisplayDate } from '@/utils/typesUtils';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import type {
 	ILdapConfig,
 	ILdapSyncData,

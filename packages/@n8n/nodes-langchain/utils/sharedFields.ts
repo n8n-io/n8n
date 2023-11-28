@@ -101,24 +101,36 @@ export function getConnectionHintNoticeField(
 		groupedConnections.get(connectionString)?.push(localeString);
 	});
 
-	const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
-		// If there are multiple locales, join them with ' or '
-		// use determineArticle to insert the correct article
-		const locale =
-			locales.length > 1
-				? locales
-						.map((localeString, index, { length }) => {
-							return (
-								(index === 0 ? `${determineArticle(localeString)} ` : '') +
-								(index < length - 1 ? `${localeString} or ` : localeString)
-							);
-						})
-						.join('')
-				: `${determineArticle(locales[0])} ${locales[0]}`;
-		return getAhref({ connection, locale });
-	});
+	let displayName;
+
+	if (groupedConnections.size === 1) {
+		const [[connection, locales]] = Array.from(groupedConnections);
+		displayName = `This node must be connected to ${determineArticle(
+			locales[0],
+		)} ${locales[0].toLowerCase()}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
+	} else {
+		const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
+			// If there are multiple locales, join them with ' or '
+			// use determineArticle to insert the correct article
+			const locale =
+				locales.length > 1
+					? locales
+							.map((localeString, index, { length }) => {
+								return (
+									(index === 0 ? `${determineArticle(localeString)} ` : '') +
+									(index < length - 1 ? `${localeString} or ` : localeString)
+								);
+							})
+							.join('')
+					: `${determineArticle(locales[0])} ${locales[0]}`;
+			return getAhref({ connection, locale });
+		});
+
+		displayName = `This node needs to be connected to ${ahrefs.join(' or ')}.`;
+	}
+
 	return {
-		displayName: `This node needs to be connected to ${ahrefs.join(' or ')}.`,
+		displayName,
 		name: 'notice',
 		type: 'notice',
 		default: '',

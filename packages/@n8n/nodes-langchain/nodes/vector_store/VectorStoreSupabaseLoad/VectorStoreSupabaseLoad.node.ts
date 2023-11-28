@@ -12,6 +12,8 @@ import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { supabaseTableNameRLC } from '../shared/descriptions';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
@@ -57,14 +59,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		outputs: [NodeConnectionType.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
-			{
-				displayName: 'Table Name',
-				name: 'tableName',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Name of the table to load from',
-			},
+			supabaseTableNameRLC,
 			{
 				displayName: 'Query Name',
 				name: 'queryName',
@@ -84,10 +79,14 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		],
 	};
 
+	methods = { listSearch: { supabaseTableNameSearch } };
+
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply Supabase Load Vector Store');
 
-		const tableName = this.getNodeParameter('tableName', itemIndex) as string;
+		const tableName = this.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const queryName = this.getNodeParameter('queryName', itemIndex) as string;
 
 		const credentials = await this.getCredentials('supabaseApi');
