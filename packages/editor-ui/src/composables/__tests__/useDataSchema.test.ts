@@ -1,5 +1,5 @@
 import jp from 'jsonpath';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
 import type { Schema } from '@/Interface';
 
 describe('useDataSchema', () => {

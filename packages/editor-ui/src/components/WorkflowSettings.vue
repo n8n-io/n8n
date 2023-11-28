@@ -357,7 +357,7 @@ import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
 	IUser,

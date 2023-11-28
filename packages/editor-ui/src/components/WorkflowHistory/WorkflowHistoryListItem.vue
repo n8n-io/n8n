@@ -7,7 +7,7 @@ import type {
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 } from '@/types/workflowHistory';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	item: WorkflowHistory;

@@ -14,7 +14,7 @@ import {
 } from '@/constants';
 import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit } from '@/utils';
+import { omit } from '@/utils/typesUtils';
 import type {
 	ConnectionTypes,
 	INode,

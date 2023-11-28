@@ -1,6 +1,6 @@
 import { roleMiddleware } from '@/rbac/middleware/role';
 import { useUsersStore } from '@/stores/users.store';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 import type { IUser } from '@/Interface';
 import type { RouteLocationNormalized } from 'vue-router';
 import { VIEWS } from '@/constants';

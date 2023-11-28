@@ -8,7 +8,7 @@ import {
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 

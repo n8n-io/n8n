@@ -79,7 +79,7 @@ import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import type { IRole, IUser, IUserListAction } from '@/Interface';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -87,7 +87,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 
 export default defineComponent({
 	name: 'SettingsUsersView',

@@ -65,7 +65,8 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';

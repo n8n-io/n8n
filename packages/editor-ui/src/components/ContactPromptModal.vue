@@ -42,7 +42,7 @@ import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'ContactPromptModal',
