@@ -15,3 +15,10 @@ export const activateLicenseKey = async (
 export const renewLicense = async (context: IRestApiContext): Promise<UsageState['data']> => {
 	return makeRestApiRequest(context, 'POST', '/license/renew');
 };
+
+export const requestLicenseTrial = async (
+	context: IRestApiContext,
+	data: {},
+): Promise<UsageState['data']> => {
+	return makeRestApiRequest(context, 'POST', 'endpoint', data);
+};

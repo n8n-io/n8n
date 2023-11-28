@@ -165,13 +165,13 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			formValues: {},
+			formValues: {} as Record<string, string>,
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
-			registerForEnterpriseTrial: true,
+			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
 		};
@@ -671,6 +671,7 @@ export default defineComponent({
 		onSave() {
 			this.formBus.emit('submit');
 		},
+		async requestSelfServeEnterpriseTrial() {},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
 			this.isSaving = true;
 
@@ -690,6 +691,10 @@ export default defineComponent({
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 
 				this.posthogStore.setMetadata(survey, 'user');
+
+				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
+					await this.requestSelfServeEnterpriseTrial();
+				}
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();

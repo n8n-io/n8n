@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@/Interface';
-import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
+import { activateLicenseKey, getLicense, renewLicense, requestLicenseTrial } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -84,12 +84,20 @@ export const useUsageStore = defineStore('usage', () => {
 		}
 	};
 
+	const requestEnterpriseLicenseTrial = async () => {
+		const data = await requestLicenseTrial(rootStore.getRestApiContext, { type: 'enterprise' });
+
+		console.log(data);
+		return data;
+	};
+
 	return {
 		setLoading,
 		getLicenseInfo,
 		setData,
 		activateLicense,
 		refreshLicenseManagementToken,
+		requestEnterpriseLicenseTrial,
 		planName,
 		planId,
 		executionLimit,
