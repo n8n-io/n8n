@@ -480,10 +480,7 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
-					middlewareOptions: {
-						role: [ROLE.Owner, ROLE.Member],
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -548,9 +545,11 @@ export const routes = [
 					settingsView: SettingsSourceControl,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'sourceControl:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -569,9 +568,11 @@ export const routes = [
 					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'externalSecretsStore:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -590,13 +591,15 @@ export const routes = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
 							return !settingsStore.isDesktopDeployment;
 						},
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'sso:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -615,9 +618,11 @@ export const routes = [
 					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'logStreaming:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -641,9 +646,11 @@ export const routes = [
 					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'communityNodes:manage',
+						},
 						custom: () => {
 							const settingsStore = useSettingsStore();
 							return settingsStore.isCommunityNodesFeatureEnabled;
@@ -679,9 +686,11 @@ export const routes = [
 					settingsView: SettingsLdapView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'ldap:manage',
+						},
 					},
 				},
 			},
@@ -692,12 +701,14 @@ export const routes = [
 					settingsView: SettingsAuditLogs,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						custom: () => {
 							return !!useStorage('audit-logs').value;
 						},
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'auditLogs:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
