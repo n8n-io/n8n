@@ -223,6 +223,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isAdvancedPermissionsLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
+	}
+
 	isDebugInEditorLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
 	}
