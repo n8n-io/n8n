@@ -17,7 +17,7 @@ const SUPPORTED_MIME_TYPES = {
 	csvLoader: ['text/csv'],
 	epubLoader: ['application/epub+zip'],
 	docxLoader: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-	textLoader: ['text/plain'],
+	textLoader: ['text/plain', 'text/mdx', 'text/md'],
 	jsonLoader: ['application/json'],
 };
 
