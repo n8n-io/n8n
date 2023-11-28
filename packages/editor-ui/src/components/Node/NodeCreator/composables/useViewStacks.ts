@@ -10,7 +10,6 @@ import { computed, nextTick, ref } from 'vue';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { useI18n } from '@/composables';
 import {
 	flattenCreateElements,
 	groupItemsInSections,
@@ -19,14 +18,16 @@ import {
 	subcategorizeItems,
 	transformNodeType,
 } from '../utils';
-import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import {
 	AINodesView,
 	type NodeViewItem,
 	type NodeViewItemSection,
 } from '@/components/Node/NodeCreator/viewsData';
-import { useNodeTypesStore } from '@/stores';
+import { useI18n } from '@/composables/useI18n';
+import { useKeyboardNavigation } from './useKeyboardNavigation';
+
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
 
 interface ViewStack {

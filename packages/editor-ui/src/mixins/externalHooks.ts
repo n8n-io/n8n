@@ -2,7 +2,7 @@ import type { IExternalHooks } from '@/Interface';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks, ExternalHooksGenericContext } from '@/types';
 import { defineComponent } from 'vue';
-import { runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
 
 export function extendExternalHooks(hooksExtension: PartialDeep<ExternalHooks>) {
 	if (typeof window.n8nExternalHooks === 'undefined') {

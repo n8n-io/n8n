@@ -115,7 +115,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
@@ -131,7 +131,8 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useUIStore, useWorkflowsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';

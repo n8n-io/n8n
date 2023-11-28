@@ -1,15 +1,14 @@
 import { Authorized, RestController, Get, Middleware } from '@/decorators';
 import { WorkflowHistoryRequest } from '@/requests';
 import { Service } from 'typedi';
-import {
-	HistoryVersionNotFoundError,
-	SharedWorkflowNotFoundError,
-	WorkflowHistoryService,
-} from './workflowHistory.service.ee';
+import { WorkflowHistoryService } from './workflowHistory.service.ee';
 import { Request, Response, NextFunction } from 'express';
 import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflowHistoryHelper.ee';
-import { NotFoundError } from '@/ResponseHelper';
+
 import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 
 const DEFAULT_TAKE = 20;
 
@@ -67,7 +66,7 @@ export class WorkflowHistoryController {
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');
-			} else if (e instanceof HistoryVersionNotFoundError) {
+			} else if (e instanceof WorkflowHistoryVersionNotFoundError) {
 				throw new NotFoundError('Could not find version');
 			}
 			throw e;

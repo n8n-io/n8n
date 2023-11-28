@@ -112,7 +112,7 @@ import {
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import CopyInput from '@/components/CopyInput.vue';

@@ -22,7 +22,8 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
-import { useI18n, useTelemetry } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export interface Props {
 	rootView: 'trigger' | 'action';

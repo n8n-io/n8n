@@ -8,7 +8,7 @@ import type {
 } from '@/Interface';
 import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
-import { sublimeSearch } from '@/utils';
+import { sublimeSearch } from '@/utils/sortUtils';
 import { i18n } from '@/plugins/i18n';
 import type { NodeViewItemSection } from './viewsData';
 
