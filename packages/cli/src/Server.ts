@@ -288,6 +288,7 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
 			new InvitationController(
 				config,
 				logger,
