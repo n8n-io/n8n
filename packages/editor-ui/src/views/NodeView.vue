@@ -4260,56 +4260,58 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			try {
-				const json = JSON.parse(message.data);
-				if (json && json.command === 'openWorkflow') {
-					try {
-						await this.importWorkflowExact(json);
-						this.isExecutionPreview = false;
-					} catch (e) {
-						if (window.top) {
-							window.top.postMessage(
-								JSON.stringify({
-									command: 'error',
-									message: this.$locale.baseText('openWorkflow.workflowImportError'),
-								}),
-								'*',
-							);
+			if (message?.data?.includes('"command"')) {
+				try {
+					const json = JSON.parse(message.data);
+					if (json && json.command === 'openWorkflow') {
+						try {
+							await this.importWorkflowExact(json);
+							this.isExecutionPreview = false;
+						} catch (e) {
+							if (window.top) {
+								window.top.postMessage(
+									JSON.stringify({
+										command: 'error',
+										message: this.$locale.baseText('openWorkflow.workflowImportError'),
+									}),
+									'*',
+								);
+							}
+							this.showMessage({
+								title: this.$locale.baseText('openWorkflow.workflowImportError'),
+								message: (e as Error).message,
+								type: 'error',
+							});
 						}
-						this.showMessage({
-							title: this.$locale.baseText('openWorkflow.workflowImportError'),
-							message: (e as Error).message,
-							type: 'error',
-						});
-					}
-				} else if (json && json.command === 'openExecution') {
-					try {
-						// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
-						// so everything it needs has to be sent using post messages and passed down to child components
-						this.isProductionExecutionPreview = json.executionMode !== 'manual';
+					} else if (json && json.command === 'openExecution') {
+						try {
+							// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
+							// so everything it needs has to be sent using post messages and passed down to child components
+							this.isProductionExecutionPreview = json.executionMode !== 'manual';
 
-						await this.openExecution(json.executionId);
-						this.isExecutionPreview = true;
-					} catch (e) {
-						if (window.top) {
-							window.top.postMessage(
-								JSON.stringify({
-									command: 'error',
-									message: this.$locale.baseText('nodeView.showError.openExecution.title'),
-								}),
-								'*',
-							);
+							await this.openExecution(json.executionId);
+							this.isExecutionPreview = true;
+						} catch (e) {
+							if (window.top) {
+								window.top.postMessage(
+									JSON.stringify({
+										command: 'error',
+										message: this.$locale.baseText('nodeView.showError.openExecution.title'),
+									}),
+									'*',
+								);
+							}
+							this.showMessage({
+								title: this.$locale.baseText('nodeView.showError.openExecution.title'),
+								message: (e as Error).message,
+								type: 'error',
+							});
 						}
-						this.showMessage({
-							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
-							message: (e as Error).message,
-							type: 'error',
-						});
+					} else if (json?.command === 'setActiveExecution') {
+						this.workflowsStore.activeWorkflowExecution = json.execution;
 					}
-				} else if (json?.command === 'setActiveExecution') {
-					this.workflowsStore.activeWorkflowExecution = json.execution;
-				}
-			} catch (e) {}
+				} catch (e) {}
+			}
 		},
 		async onImportWorkflowDataEvent(data: IDataObject) {
 			await this.importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
