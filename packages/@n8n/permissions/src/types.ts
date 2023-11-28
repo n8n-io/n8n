@@ -2,7 +2,6 @@ export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list'
 export type Resource =
 	| 'auditLogs'
 	| 'communityPackage'
-	| 'communityNodes'
 	| 'credential'
 	| 'externalSecretsStore'
 	| 'externalSecretsProvider'
