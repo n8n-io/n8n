@@ -1,7 +1,7 @@
 import type { Scope } from '@n8n/permissions';
 
 export const ownerPermissions: Scope[] = [
- 	'auditLogs:manage',
+	'auditLogs:manage',
 	'credential:create',
 	'credential:read',
 	'credential:update',
@@ -70,14 +70,8 @@ export const memberPermissions: Scope[] = [
 	'tag:read',
 	'tag:update',
 	'tag:list',
-<<<<<<< HEAD
-	'user:list',
-	'variable:list',
-	'variable:read',
-=======
 	'eventBusEvent:list',
 	'eventBusEvent:read',
 	'eventBusDestination:list',
 	'eventBusDestination:test',
->>>>>>> origin/master
 ];
