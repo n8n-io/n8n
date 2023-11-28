@@ -1,28 +1,33 @@
-import { computed, nextTick, ref } from 'vue';
-import { defineStore } from 'pinia';
-import { v4 as uuid } from 'uuid';
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
+import { defineStore } from 'pinia';
+import { v4 as uuid } from 'uuid';
+import { computed, nextTick, ref } from 'vue';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { useKeyboardNavigation } from './useKeyboardNavigation';
-import {
-	transformNodeType,
-	subcategorizeItems,
-	sortNodeCreateElements,
-	searchNodes,
-	flattenCreateElements,
-} from '../utils';
 import { useI18n } from '@/composables';
+import {
+	flattenCreateElements,
+	groupItemsInSections,
+	searchNodes,
+	sortNodeCreateElements,
+	subcategorizeItems,
+	transformNodeType,
+} from '../utils';
+import { useKeyboardNavigation } from './useKeyboardNavigation';
 
-import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
+import {
+	AINodesView,
+	type NodeViewItem,
+	type NodeViewItemSection,
+} from '@/components/Node/NodeCreator/viewsData';
 import { useNodeTypesStore } from '@/stores';
-import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
+import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
 
 interface ViewStack {
 	uuid?: string;
@@ -50,7 +55,7 @@ interface ViewStack {
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
-	sections?: string[];
+	sections?: NodeViewItemSection[];
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -113,6 +118,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			return !activeStackItems.value.find((activeItem) => activeItem.key === item.key);
 		});
 	});
+
+	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
 
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
@@ -183,22 +190,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			const itemsBySubcategory = subcategorizeItems(nodeCreatorStore.mergedNodes, stack.sections);
-			const itemsBySection = itemsBySubcategory[subcategory];
-			// Always has 1 section (other)
-			const hasSections = Object.keys(itemsBySection).length > 1;
+			const itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			const sections = stack.sections;
 
-			if (stack.sections && hasSections) {
-				stackItems = [...stack.sections, 'other'].map((section) => {
-					const items = itemsBySection[section];
-					return {
-						type: 'section',
-						key: section,
-						children: items,
-					};
-				});
+			if (sections) {
+				stackItems = groupItemsInSections(itemsInSubcategory, sections);
 			} else {
-				stackItems = itemsBySection.other;
+				stackItems = itemsInSubcategory;
 			}
 		}
 

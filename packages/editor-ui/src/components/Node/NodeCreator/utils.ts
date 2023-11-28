@@ -4,11 +4,13 @@ import type {
 	SubcategorizedNodeTypes,
 	SimplifiedNodeType,
 	INodeCreateElement,
+	SectionCreateElement,
 } from '@/Interface';
 import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@/utils';
-import { get, set } from 'lodash-es';
+import { i18n } from '@/plugins/i18n';
+import type { NodeViewItemSection } from './viewsData';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -31,29 +33,23 @@ export function transformNodeType(
 		: (createElement as NodeCreateElement);
 }
 
-export function subcategorizeItems(items: SimplifiedNodeType[], sections: string[] = []) {
-	const ALLOWED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY];
+export function subcategorizeItems(items: SimplifiedNodeType[]) {
+	const WHITE_LISTED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
 		// Only some subcategories are allowed
-		let subcategories: Array<{ subcategory: string; section: string }> = [
-			{ subcategory: DEFAULT_SUBCATEGORY, section: 'other' },
-		];
+		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
 
-		ALLOWED_SUBCATEGORIES.forEach((category) => {
+		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
 			if (item.codex?.categories?.includes(category)) {
-				subcategories =
-					item.codex?.subcategories?.[category]?.map((fullSubcategory) => {
-						const [subcategory, section] = fullSubcategory.split('::');
-						return { subcategory, section: sections.includes(section) ? section : 'other' };
-					}) ?? [];
+				subcategories = item.codex?.subcategories?.[category] ?? [];
 			}
 		});
 
-		subcategories.forEach(({ subcategory, section }) => {
-			const createElement = transformNodeType(item, subcategory);
-			const existingItems = get(acc, [subcategory, section], []);
-
-			set(acc, [subcategory, section], [...existingItems, createElement]);
+		subcategories.forEach((subcategory: string) => {
+			if (!acc[subcategory]) {
+				acc[subcategory] = [];
+			}
+			acc[subcategory].push(transformNodeType(item, subcategory));
 		});
 
 		return acc;
@@ -85,4 +81,39 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
+}
+
+export function groupItemsInSections(
+	items: INodeCreateElement[],
+	sections: NodeViewItemSection[],
+): INodeCreateElement[] {
+	const itemsBySection = items.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
+		const section = sections.find((s) => s.items.includes(item.key));
+		const key = section?.key ?? 'other';
+		acc[key] = [...(acc[key] ?? []), item];
+		return acc;
+	}, {});
+
+	const result: SectionCreateElement[] = sections
+		.map(
+			(section): SectionCreateElement => ({
+				type: 'section',
+				key: section.key,
+				title: section.title,
+				children: itemsBySection[section.key],
+			}),
+		)
+		.concat({
+			type: 'section',
+			key: 'other',
+			title: i18n.baseText('nodeCreator.sectionNames.other'),
+			children: itemsBySection.other,
+		})
+		.filter((section) => section.children);
+
+	if (result.length <= 1) {
+		return items;
+	}
+
+	return result;
 }

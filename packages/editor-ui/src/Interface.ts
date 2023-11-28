@@ -922,6 +922,7 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 
 export interface SectionCreateElement extends CreateElementBase {
 	type: 'section';
+	title: string;
 	children: INodeCreateElement[];
 }
 
@@ -952,7 +953,7 @@ export type INodeCreateElement =
 	| ActionCreateElement;
 
 export interface SubcategorizedNodeTypes {
-	[subcategory: string]: { [section: string]: INodeCreateElement[] };
+	[subcategory: string]: INodeCreateElement[];
 }
 export interface ITag {
 	id: string;
