@@ -142,7 +142,7 @@ export default defineComponent({
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				await this.onClick();
+				await this.onClick(new Event('click'));
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText(
