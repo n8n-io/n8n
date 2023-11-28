@@ -301,6 +301,21 @@ export async function executeWebhook(
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
+	let binaryData;
+
+	const nodeVersion = workflowStartNode.typeVersion;
+	if (nodeVersion === 1) {
+		// binaryData option is removed in versions higher than 1
+		binaryData = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			'={{$parameter["options"]["binaryData"]}}',
+			executionMode,
+			additionalKeys,
+			undefined,
+			false,
+		);
+	}
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -308,22 +323,26 @@ export async function executeWebhook(
 		// the workflow should be executed or not
 		let webhookResultData: IWebhookResponseData;
 
-		const { contentType, encoding } = req;
-		if (contentType === 'multipart/form-data') {
-			const form = formidable({
-				multiples: true,
-				encoding: encoding as formidable.BufferEncoding,
-				// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
-			});
-			req.body = await new Promise((resolve) => {
-				form.parse(req, async (err, data, files) => {
-					normalizeFormData(data);
-					normalizeFormData(files);
-					resolve({ data, files });
+		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
+		// always falsy for versions higher than 1
+		if (!binaryData) {
+			const { contentType, encoding } = req;
+			if (contentType === 'multipart/form-data') {
+				const form = formidable({
+					multiples: true,
+					encoding: encoding as formidable.BufferEncoding,
+					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
-			});
-		} else {
-			await parseBody(req);
+				req.body = await new Promise((resolve) => {
+					form.parse(req, async (err, data, files) => {
+						normalizeFormData(data);
+						normalizeFormData(files);
+						resolve({ data, files });
+					});
+				});
+			} else {
+				await parseBody(req);
+			}
 		}
 
 		try {

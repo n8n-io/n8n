@@ -38,7 +38,7 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -117,16 +117,16 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
-		}
-
 		if (options.binaryData) {
 			return this.handleBinaryData(context);
 		}
 
-		if (!req.body && req.rawBody) {
-			//if body is empty but rawBody is not, try to parse binary data anyway
+		if (req.contentType === 'multipart/form-data') {
+			return this.handleFormData(context);
+		}
+
+		const nodeVersion = context.getNode().typeVersion;
+		if (nodeVersion > 1 && !req.body && req.rawBody && !options.rawBody) {
 			try {
 				return await this.handleBinaryData(context);
 			} catch (error) {}
@@ -222,40 +222,40 @@ export class Webhook extends Node {
 		};
 
 		let count = 0;
-		if (options.binaryData !== false) {
-			for (const key of Object.keys(files)) {
-				const processFiles: MultiPartFormData.File[] = [];
-				let multiFile = false;
-				if (Array.isArray(files[key])) {
-					processFiles.push(...(files[key] as MultiPartFormData.File[]));
-					multiFile = true;
-				} else {
-					processFiles.push(files[key] as MultiPartFormData.File);
+
+		for (const key of Object.keys(files)) {
+			const processFiles: MultiPartFormData.File[] = [];
+			let multiFile = false;
+			if (Array.isArray(files[key])) {
+				processFiles.push(...(files[key] as MultiPartFormData.File[]));
+				multiFile = true;
+			} else {
+				processFiles.push(files[key] as MultiPartFormData.File);
+			}
+
+			let fileCount = 0;
+			for (const file of processFiles) {
+				let binaryPropertyName = key;
+				if (binaryPropertyName.endsWith('[]')) {
+					binaryPropertyName = binaryPropertyName.slice(0, -2);
+				}
+				if (multiFile) {
+					binaryPropertyName += fileCount++;
+				}
+				if (options.binaryPropertyName) {
+					binaryPropertyName = `${options.binaryPropertyName}${count}`;
 				}
 
-				let fileCount = 0;
-				for (const file of processFiles) {
-					let binaryPropertyName = key;
-					if (binaryPropertyName.endsWith('[]')) {
-						binaryPropertyName = binaryPropertyName.slice(0, -2);
-					}
-					if (multiFile) {
-						binaryPropertyName += fileCount++;
-					}
-					if (options.binaryPropertyName) {
-						binaryPropertyName = `${options.binaryPropertyName}${count}`;
-					}
+				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+					file.filepath,
+					file.originalFilename ?? file.newFilename,
+					file.mimetype,
+				);
 
-					returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-						file.filepath,
-						file.originalFilename ?? file.newFilename,
-						file.mimetype,
-					);
-
-					count += 1;
-				}
+				count += 1;
 			}
 		}
+
 		return { workflowData: [[returnItem]] };
 	}
 
@@ -275,7 +275,7 @@ export class Webhook extends Node {
 					headers: req.headers,
 					params: req.params,
 					query: req.query,
-					body: req.body ?? {},
+					body: {},
 				},
 			};
 
