@@ -19,22 +19,10 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const usersStore = useUsersStore();
 
 	await settingsStore.initialize();
 	await usersStore.initialize();
-	if (settingsStore.isCloudDeployment) {
-		const results = await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
-		results.forEach((result, index) => {
-			if (result.status === 'rejected') {
-				console.error(
-					`Failed to initialize ${index === 0 ? 'cloud plan store' : 'cloud hooks'}:`,
-					result.reason,
-				);
-			}
-		});
-	}
 
 	coreInitialized = true;
 }
@@ -56,6 +44,7 @@ export async function initializeAuthenticatedFeatures() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		await sourceControlStore.getPreferences();
@@ -69,6 +58,18 @@ export async function initializeAuthenticatedFeatures() {
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
+	}
+
+	if (settingsStore.isCloudDeployment) {
+		const results = await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				console.error(
+					`Failed to initialize ${index === 0 ? 'cloud plan store' : 'cloud hooks'}:`,
+					result.reason,
+				);
+			}
+		});
 	}
 
 	authenticatedFeaturesInitialized = true;
