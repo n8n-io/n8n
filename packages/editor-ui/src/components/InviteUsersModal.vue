@@ -58,8 +58,8 @@ import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
-import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils/userUtils';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -132,6 +132,11 @@ export default defineComponent({
 							value: ROLE.Member,
 							label: this.$locale.baseText('auth.roles.member'),
 						},
+						{
+							value: ROLE.Admin,
+							label: this.$locale.baseText('auth.roles.admin'),
+							disabled: !this.isAdvancedPermissionsEnabled,
+						},
 					],
 					capitalize: true,
 				},
@@ -166,6 +171,11 @@ export default defineComponent({
 						this.showInviteUrls!.find((invite) => invite.user.id === user.id),
 				  )
 				: [];
+		},
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
 		},
 	},
 	methods: {
