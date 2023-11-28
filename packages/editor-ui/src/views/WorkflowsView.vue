@@ -135,7 +135,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useTagsStore } from '@/stores';
+import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 

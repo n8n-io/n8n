@@ -4,9 +4,9 @@ import { getLdapConfig, getLdapSynchronizations, updateLdapConfig } from '@/Ldap
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { LdapSync } from '@/Ldap/LdapSync.ee';
 import { LdapConfiguration } from '@/Ldap/types';
-import { BadRequestError } from '@/ResponseHelper';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized(['global', 'owner'])
 @RestController('/ldap')

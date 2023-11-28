@@ -7,7 +7,8 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -24,7 +25,7 @@ import type {
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -403,12 +404,8 @@ export const pushConnection = defineComponent({
 					) {
 						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
 						let title: string;
-						let type = 'error';
 						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
-						if (runDataExecuted.status === 'canceled') {
-							title = this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title');
-							type = 'warning';
-						} else if (nodeError.node.name) {
+						if (nodeError.node.name) {
 							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
@@ -423,7 +420,7 @@ export const pushConnection = defineComponent({
 										node: nodeError.node.name,
 									},
 								}),
-							type,
+							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,
 						});
@@ -433,7 +430,12 @@ export const pushConnection = defineComponent({
 							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
 
 						// Do not show the error message if the workflow got canceled manually
-						if (!isManualExecutionCancelled) {
+						if (isManualExecutionCancelled) {
+							this.showMessage({
+								title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
+								type: 'success',
+							});
+						} else {
 							if (runDataExecuted.data.resultData.lastNodeExecuted) {
 								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
 							} else {

@@ -29,13 +29,14 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { BadRequestError, InternalServerError } from '../ResponseHelper';
 import { RoleService } from '@/services/role.service';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance

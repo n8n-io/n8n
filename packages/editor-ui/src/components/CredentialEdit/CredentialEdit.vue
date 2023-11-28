@@ -136,7 +136,8 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
@@ -157,14 +158,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import {
-	isValidCredentialResponse,
 	getNodeAuthOptions,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
-	isCredentialModalState,
-	isExpression,
-	isTestableExpression,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
+import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
+import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { externalHooks } from '@/mixins/externalHooks';
 
 interface NodeAccessMap {

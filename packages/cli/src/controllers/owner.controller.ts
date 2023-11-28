@@ -1,7 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/ResponseHelper';
 import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
@@ -12,6 +11,7 @@ import { SettingsRepository } from '@db/repositories/settings.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')

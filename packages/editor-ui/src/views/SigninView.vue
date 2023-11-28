@@ -22,7 +22,7 @@
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
 import MfaView, { FORM } from './MfaView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';

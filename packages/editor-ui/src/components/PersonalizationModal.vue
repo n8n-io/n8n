@@ -128,10 +128,10 @@ import {
 	VIEWS,
 } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
-import { getAccountAge } from '@/utils';
+import { getAccountAge } from '@/utils/userUtils';
 import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';

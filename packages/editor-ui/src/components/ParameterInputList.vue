@@ -157,7 +157,11 @@ import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
+import {
+	getMainAuthField,
+	getNodeAuthFields,
+	isAuthRelatedParameter,
+} from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 

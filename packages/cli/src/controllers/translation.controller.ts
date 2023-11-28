@@ -3,9 +3,10 @@ import { ICredentialTypes } from 'n8n-workflow';
 import { join } from 'path';
 import { access } from 'fs/promises';
 import { Authorized, Get, RestController } from '@/decorators';
-import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { Config } from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
 export const NODE_HEADERS_PATH = join(NODES_BASE_DIR, 'dist/nodes/headers');

@@ -612,11 +612,13 @@ import { pinData } from '@/mixins/pinData';
 import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, isEmpty, searchInObject } from '@/utils';
+import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { searchInObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));

@@ -8,12 +8,13 @@ import {
 } from '@/constants';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import { NodeRequest } from '@/requests';
-import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 const {
 	PACKAGE_NOT_INSTALLED,

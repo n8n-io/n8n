@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type { NodePanelType } from '@/Interface';
 
 type Props = {

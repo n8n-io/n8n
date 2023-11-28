@@ -1,7 +1,7 @@
 import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type { IPinData, INodeExecutionData } from 'n8n-workflow';
-import { stringSizeInBytes } from '@/utils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -11,8 +11,8 @@ import {
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useToast } from '@/composables';
 import { NodeConnectionType, NodeHelpers, jsonParse, jsonStringify } from 'n8n-workflow';
+import { useToast } from '@/composables/useToast';
 
 export type PinDataSource =
 	| 'pin-icon-click'
