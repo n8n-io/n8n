@@ -40,7 +40,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export default defineComponent({
 	name: 'InlineExpressionEditorOutput',

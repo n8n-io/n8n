@@ -2,7 +2,10 @@
 import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';

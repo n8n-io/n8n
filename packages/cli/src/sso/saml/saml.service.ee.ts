@@ -2,7 +2,6 @@ import type express from 'express';
 import Container, { Service } from 'typedi';
 import type { User } from '@db/entities/User';
 import { jsonParse } from 'n8n-workflow';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
@@ -29,6 +28,8 @@ import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 @Service()
 export class SamlService {

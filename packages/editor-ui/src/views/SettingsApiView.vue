@@ -86,7 +86,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IUser } from '@/Interface';
-import { useToast, useMessage } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';

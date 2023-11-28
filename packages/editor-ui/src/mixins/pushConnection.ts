@@ -7,7 +7,8 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -23,7 +24,7 @@ import type {
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';

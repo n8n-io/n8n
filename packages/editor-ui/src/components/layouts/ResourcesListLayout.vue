@@ -194,7 +194,7 @@ import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export interface IResource {
 	id: string;

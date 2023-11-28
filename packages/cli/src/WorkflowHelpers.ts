@@ -43,7 +43,7 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { RoleService } from './services/role.service';
-import { VariablesService } from './environments/variables/variables.service';
+import { VariablesService } from './environments/variables/variables.service.ee';
 import { Logger } from './Logger';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');

@@ -15,7 +15,6 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
-import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -24,6 +23,8 @@ import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers'
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -114,9 +115,7 @@ export class ExecutionsService {
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
-				throw new ResponseHelper.InternalServerError(
-					'Parameter "filter" contained invalid JSON string.',
-				);
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
 			}
 		}
 
@@ -231,9 +230,7 @@ export class ExecutionsService {
 					executionId,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
-				`The execution with the ID "${executionId}" does not exist.`,
-			);
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
 
 		if (execution.finished) {
@@ -351,9 +348,7 @@ export class ExecutionsService {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new ResponseHelper.InternalServerError(
-					'Parameter "filter" contained invalid JSON string.',
-				);
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
 			}
 		}
 

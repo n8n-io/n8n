@@ -32,7 +32,6 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	ICredentialTestFunctions,
-	Severity,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -55,6 +54,7 @@ import { isObjectLiteral } from './utils';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -86,15 +86,6 @@ const mockNodeTypes: INodeTypes = {
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
-
-class CredentialNotFoundError extends Error {
-	severity: Severity;
-
-	constructor(credentialId: string, credentialType: string) {
-		super(`Credential with ID "${credentialId}" does not exist for type "${credentialType}".`);
-		this.severity = 'warning';
-	}
-}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {

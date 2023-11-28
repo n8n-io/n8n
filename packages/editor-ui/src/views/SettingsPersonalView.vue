@@ -116,7 +116,8 @@
 </template>
 
 <script lang="ts">
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
