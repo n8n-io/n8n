@@ -43,10 +43,9 @@ import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope, ScopeLevel } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
-const isDefaultUser = (user: IUserResponse | null) =>
-	user?.isPending && user?.globalRole?.name === ROLE.Owner;
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
