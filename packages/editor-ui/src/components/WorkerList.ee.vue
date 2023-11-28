@@ -67,7 +67,7 @@ export default defineComponent({
 		if (window.Cypress !== undefined) {
 			return;
 		}
-		this.pushConnect();
+		this.pushStore.pushConnect();
 		this.orchestrationManagerStore.startWorkerStatusPolling();
 	},
 	beforeUnmount() {
@@ -75,7 +75,7 @@ export default defineComponent({
 			return;
 		}
 		this.orchestrationManagerStore.stopWorkerStatusPolling();
-		this.pushDisconnect();
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useUIStore, useOrchestrationStore),
