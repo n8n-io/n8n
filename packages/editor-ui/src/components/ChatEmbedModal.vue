@@ -7,10 +7,10 @@ import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '../constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps({
 	modalBus: {

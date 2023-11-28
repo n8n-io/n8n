@@ -4,7 +4,10 @@ import {
 	PIN_DATA_NODE_TYPES_DENYLIST,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { useNodeTypesStore, useSourceControlStore, useUIStore, useWorkflowsStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';

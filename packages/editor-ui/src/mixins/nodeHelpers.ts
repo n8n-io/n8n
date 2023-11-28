@@ -34,13 +34,13 @@ import type {
 
 import { get } from 'lodash-es';
 
-import { isObject } from '@/utils';
+import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';

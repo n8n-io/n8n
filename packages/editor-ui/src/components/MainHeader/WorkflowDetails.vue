@@ -167,18 +167,18 @@ import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { MessageBoxInputData } from 'element-plus';
-import {
-	useUIStore,
-	useSettingsStore,
-	useWorkflowsStore,
-	useRootStore,
-	useTagsStore,
-	useUsersStore,
-	useUsageStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';

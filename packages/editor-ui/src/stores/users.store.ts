@@ -30,7 +30,7 @@ import type {
 	CurrentUserResponse,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
