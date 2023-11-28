@@ -117,14 +117,14 @@ export const VectorStoreZep = createVectorStoreNode({
 		try {
 			await ZepVectorStore.fromDocuments(documents, embeddings, zepConfig);
 		} catch (error) {
-			if (error.message === 'Got an unexpected status code: 400') {
+			if ((error as Error).message === 'Got an unexpected status code: 400') {
 				throw new NodeOperationError(context.getNode(), `Collection ${collectionName} not found`, {
 					itemIndex,
 					description:
 						'Please check that the collection exists in your vector store, or make sure that collection name satixfies naming rules',
 				});
 			}
-			throw new NodeOperationError(context.getNode(), error, { itemIndex });
+			throw new NodeOperationError(context.getNode(), error as Error, { itemIndex });
 		}
 	},
 });

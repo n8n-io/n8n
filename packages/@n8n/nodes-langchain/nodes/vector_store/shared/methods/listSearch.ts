@@ -24,16 +24,18 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 
 	const results = [];
 
-	const { paths } = await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
-		headers: {
-			Prefer: 'return=representation',
-		},
-		method: 'GET',
-		uri: `${credentials.host}/rest/v1/`,
-		json: true,
-	});
+	const paths = (
+		await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
+			headers: {
+				Prefer: 'return=representation',
+			},
+			method: 'GET',
+			uri: `${credentials.host}/rest/v1/`,
+			json: true,
+		})
+	).paths as IDataObject;
 
-	for (const path of Object.keys(paths as IDataObject)) {
+	for (const path of Object.keys(paths)) {
 		//omit introspection path
 		if (path === '/') continue;
 

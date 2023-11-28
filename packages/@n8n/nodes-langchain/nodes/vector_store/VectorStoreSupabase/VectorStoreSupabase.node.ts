@@ -100,13 +100,13 @@ export const VectorStoreSupabase = createVectorStoreNode({
 				queryName: options.queryName ?? 'match_documents',
 			});
 		} catch (error) {
-			if (error.message === 'Error inserting: undefined 404 Not Found') {
+			if ((error as Error).message === 'Error inserting: undefined 404 Not Found') {
 				throw new NodeOperationError(context.getNode(), `Table ${tableName} not found`, {
 					itemIndex,
 					description: 'Please check that the table exists in your vector store',
 				});
 			} else {
-				throw new NodeOperationError(context.getNode(), error, {
+				throw new NodeOperationError(context.getNode(), error as Error, {
 					itemIndex,
 				});
 			}

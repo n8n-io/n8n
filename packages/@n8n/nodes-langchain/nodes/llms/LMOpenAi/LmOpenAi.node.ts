@@ -5,7 +5,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
-	IDataObject,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
@@ -13,6 +12,17 @@ import type { ClientOptions } from 'openai';
 import { OpenAI } from 'langchain/llms/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+type LmOpenAiOptions = {
+	baseURL?: string;
+	frequencyPenalty?: number;
+	maxTokens?: number;
+	presencePenalty?: number;
+	temperature?: number;
+	timeout?: number;
+	maxRetries?: number;
+	topP?: number;
+};
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -174,7 +184,7 @@ export class LmOpenAi implements INodeType {
 			async openAiModelSearch(this: ILoadOptionsFunctions) {
 				const results = [];
 
-				const options = this.getNodeParameter('options', {}) as IDataObject;
+				const options = this.getNodeParameter('options', {}) as LmOpenAiOptions;
 
 				let uri = 'https://api.openai.com/v1/models';
 
@@ -182,17 +192,19 @@ export class LmOpenAi implements INodeType {
 					uri = `${options.baseURL}/models`;
 				}
 
-				const { data } = await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {
-					method: 'GET',
-					uri,
-					json: true,
-				});
+				const data = (
+					await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {
+						method: 'GET',
+						uri,
+						json: true,
+					})
+				).data as Array<{ owned_by: string; id: string }>;
 
-				for (const model of data as IDataObject[]) {
-					if (!(model.owned_by as string)?.startsWith('system')) continue;
+				for (const model of data) {
+					if (!model.owned_by?.startsWith('system')) continue;
 					results.push({
-						name: model.id as string,
-						value: model.id as string,
+						name: model.id,
+						value: model.id,
 					});
 				}
 
