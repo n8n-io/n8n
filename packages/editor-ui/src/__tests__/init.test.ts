@@ -66,7 +66,6 @@ describe('Init', () => {
 			expect(templatesTestSpy).not.toHaveBeenCalled();
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
-			expect(true).toBe(true);
 		});
 		it('should init authenticated features if user is not logged in', async () => {
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
@@ -78,7 +77,6 @@ describe('Init', () => {
 			expect(templatesTestSpy).toHaveBeenCalled();
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
-			expect(true).toBe(true);
 		});
 	});
 });
