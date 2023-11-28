@@ -2523,28 +2523,32 @@ export default defineComponent({
 					.catch((e) => {});
 			}
 		},
-		onEventConnectionAbort(connection: Connection) {
+		async onEventConnectionAbort(connection: Connection) {
 			try {
 				if (this.dropPrevented) {
 					this.dropPrevented = false;
 					return;
 				}
-
 				if (this.pullConnActiveNodeName) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
-					if (sourceNode) {
-						const sourceNodeName = sourceNode.name;
-						const outputIndex = connection.parameters.index;
+					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
 
+					if (sourceNode) {
+						const isTarget = connection.parameters.connection === 'target';
+						const sourceNodeName = isTarget ? this.pullConnActiveNodeName : sourceNode.name;
+						const targetNodeName = isTarget ? sourceNode.name : this.pullConnActiveNodeName;
+						const outputIndex = connection.parameters.index;
+						NodeViewUtils.resetConnectionAfterPull(connection);
+						await this.$nextTick();
 						this.connectTwoNodes(
 							sourceNodeName,
 							outputIndex,
-							this.pullConnActiveNodeName,
+							targetNodeName,
 							0,
-							NodeConnectionType.Main,
+							connectionType,
 						);
 						this.pullConnActiveNodeName = null;
-						this.dropPrevented = true;
+						this.dropPrevented = false;
 					}
 					return;
 				}
@@ -2919,6 +2923,24 @@ export default defineComponent({
 				console.error(e);
 			}
 		},
+		/**
+		 * Checks if the mouse event coordinates intersect with the given element's boundaries,
+		 * adjusted by the specified offset.
+		 *
+		 * @param {Element} element - The DOM element to check against.
+		 * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+		 * @param {Object} offset - Offset to adjust the element's boundaries.
+		 * @returns {boolean} True if the mouse coordinates intersect with the element.
+		 */
+		isElementIntersection(element: Element, mouseEvent: MouseEvent | TouchEvent, offset: number): boolean {
+				const { top, left, right, bottom } = element.getBoundingClientRect();
+				const [x, y] = NodeViewUtils.getMousePosition(mouseEvent);
+
+				const isWithinVerticalBounds = y >= top - offset && y <= bottom + offset;
+				const isWithinHorizontalBounds = x >= left - offset && x <= right + offset;
+
+				return isWithinVerticalBounds && isWithinHorizontalBounds;
+		},
 		onConnectionDrag(connection: Connection) {
 			// The overlays are visible by default so we need to hide the midpoint arrow
 			// manually
@@ -2929,49 +2951,44 @@ export default defineComponent({
 				this.canvasStore.newNodeInsertPosition = null;
 				NodeViewUtils.resetConnection(connection);
 
-				const nodes = [...document.querySelectorAll('.node-wrapper')];
+				const scope = connection.scope as ConnectionTypes;
+				const scopedEndpoints = Array.from(document.querySelectorAll(`[data-jtk-scope-${scope}=true]`))
+				const connectionType = connection.parameters.connection;
+				const requiredType = connectionType === 'source' ? 'target' : 'source';
+
+				const filteredEndpoints = scopedEndpoints
+					.filter((el) => {
+						const endpoint = el.jtk.endpoint as Endpoint;
+						if (!endpoint) return false;
+
+						// Prevent snapping(but not connecting) to the same node
+						const isSameNode = endpoint.parameters.nodeId === connection.parameters.nodeId;
+						const endpointType = endpoint.parameters.connection;
+
+						return !isSameNode && endpointType === requiredType
+					})
 
 				const onMouseMove = (e: MouseEvent | TouchEvent) => {
 					if (!connection) {
 						return;
 					}
+					const intersecting = filteredEndpoints.find((element: Element) => {
+						const endpoint = element.jtk.endpoint as Endpoint;
+						const isEndpointIntersect = this.isElementIntersection(element, e, 120);
+						const isNodeElementIntersect = this.isElementIntersection(endpoint.element, e, 150);
 
-					const element = document.querySelector('.jtk-endpoint.jtk-drag-hover');
-					if (element) {
-						const endpoint = element.jtk.endpoint;
-						NodeViewUtils.showDropConnectionState(connection, endpoint);
-						return;
-					}
+						if (isEndpointIntersect || isNodeElementIntersect) {
+							const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
 
-					const inputMargin = 24;
-					const intersecting = nodes.find((element: Element) => {
-						const { top, left, right, bottom } = element.getBoundingClientRect();
-						const [x, y] = NodeViewUtils.getMousePosition(e);
-						if (top <= y && bottom >= y && left - inputMargin <= x && right >= x) {
-							const nodeName = (element as HTMLElement).dataset.name as string;
-							const node = this.workflowsStore.getNodeByName(nodeName);
 							if (node) {
 								const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-								const workflow = this.getCurrentWorkflow();
-								const workflowNode = workflow.getNode(nodeName);
-								const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+								if (!nodeType) return false
 
-								if (nodeType && inputs.length === 1) {
-									this.pullConnActiveNodeName = node.name;
-									const endpointUUID = this.getInputEndpointUUID(
-										nodeName,
-										connection.parameters.type,
-										0,
-									);
-									if (endpointUUID) {
-										const endpoint = this.instance?.getEndpoint(endpointUUID);
+								this.pullConnActiveNodeName = node.name;
+								NodeViewUtils.showDropConnectionState(connection, endpoint);
 
-										NodeViewUtils.showDropConnectionState(connection, endpoint);
-
-										return true;
-									}
-								}
+								return true;
 							}
 						}
 
@@ -4926,14 +4943,14 @@ export default defineComponent({
 				&.connection-drag-scope-active-connection-target {
 					// Apply style to compatible output endpoints
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
-						transform: scale(1.375) rotate(45deg);
+						transform: scale(2) rotate(45deg);
 					}
 
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						// Apply style to dragged compatible input endpoint
 						&.jtk-dragging {
 							.add-input-endpoint-default {
-								transform: translate(-4px, -4px) scale(1.375);
+								transform: translate(-5px, -5px) scale(1.5);
 							}
 						}
 
@@ -4955,7 +4972,7 @@ export default defineComponent({
 					// Apply style to dragged compatible output endpoint
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						&.jtk-dragging {
-							transform: scale(1.375) rotate(45deg);
+							transform: scale(2) rotate(45deg);
 						}
 
 						// Apply style to non-dragged compatible input endpoints
@@ -4967,7 +4984,7 @@ export default defineComponent({
 					// Apply style to compatible output endpoints
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						.add-input-endpoint-default {
-							transform: translate(-4px, -4px) scale(1.375);
+							transform: translate(-5px, -5px) scale(1.5);
 						}
 					}
 
