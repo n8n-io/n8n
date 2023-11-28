@@ -132,9 +132,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getNodesWithAccess() {
 			return (credentialTypeName: string) => {
 				const nodeTypesStore = useNodeTypesStore();
-				const allLatestNodeTypes: INodeTypeDescription[] = nodeTypesStore.allLatestNodeTypes;
+				const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
