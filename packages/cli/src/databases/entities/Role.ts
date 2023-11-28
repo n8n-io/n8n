@@ -7,7 +7,7 @@ import type { SharedCredentials } from './SharedCredentials';
 import { WithTimestamps } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 
-export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
+export type RoleNames = 'owner' | 'member' | 'user' | 'editor' | 'admin';
 export type RoleScopes = 'global' | 'workflow' | 'credential';
 
 @Entity()
