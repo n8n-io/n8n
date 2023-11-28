@@ -319,8 +319,8 @@ importers:
         specifier: ^1.1.1
         version: 1.2.0
       langchain:
-        specifier: ^0.0.189
-        version: 0.0.189(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.7.2)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@tensorflow-models/universal-sentence-encoder@1.3.3)(@tensorflow/tfjs-converter@4.11.0)(@tensorflow/tfjs-core@4.11.0)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
+        specifier: ^0.0.195
+        version: 0.0.195(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.7.2)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@tensorflow-models/universal-sentence-encoder@1.3.3)(@tensorflow/tfjs-converter@4.11.0)(@tensorflow/tfjs-core@4.11.0)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -336,6 +336,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      openai:
+        specifier: ^4.19.0
+        version: 4.20.0
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
@@ -357,6 +360,9 @@ importers:
       zod:
         specifier: ^3.22.2
         version: 3.22.4
+      zod-to-json-schema:
+        specifier: ^3.22.0
+        version: 3.22.0(zod@3.22.4)
     devDependencies:
       '@types/express':
         specifier: ^4.17.6
@@ -1672,8 +1678,8 @@ packages:
     resolution: {integrity: sha512-pvFiLP2BeOKA/ZOS6jxx4XhKzdVLHDhGlFEaZ2flWWYf2xOqVniqpk38I04DFRyz+L0ASggl7SkItTc+ZLju4w==}
     dev: true
 
-  /@anthropic-ai/sdk@0.6.8:
-    resolution: {integrity: sha512-z4gDFrBf+W2wOVvwA3CA+5bfKOxQhPeXQo7+ITWj3r3XPulIMEasVT0KrD41G+anr5Yc3d2PKvXKB6b1LSon5w==}
+  /@anthropic-ai/sdk@0.9.1:
+    resolution: {integrity: sha512-wa1meQ2WSfoY8Uor3EdrJq0jTiZJoKoSii2ZVWRY1oN4Tlr5s59pADg9T79FTbPe1/se5c3pBeZgJL63wmuoBA==}
     dependencies:
       '@types/node': 18.16.16
       '@types/node-fetch': 2.6.4
@@ -18688,8 +18694,8 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.189(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.7.2)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@tensorflow-models/universal-sentence-encoder@1.3.3)(@tensorflow/tfjs-converter@4.11.0)(@tensorflow/tfjs-core@4.11.0)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
-    resolution: {integrity: sha512-74L0xGe7Me9RhTWgpImyYjkZm7Qo4JC2WCXkKCL3QP1ANi/Bk76pWPXCYwaI5DG+wlmgAUF+DWOi+Wi20p3fiA==}
+  /langchain@0.0.195(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.7.2)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@tensorflow-models/universal-sentence-encoder@1.3.3)(@tensorflow/tfjs-converter@4.11.0)(@tensorflow/tfjs-core@4.11.0)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
+    resolution: {integrity: sha512-b3TOfhSUwxe2ZCr4yYlR5dciyy0qyqrDeqAfVFJKM0H7/ueFHFllr4uJydsbzC5+ahlqDFRbzUEK005sbHgdSQ==}
     engines: {node: '>=18'}
     peerDependencies:
       '@aws-crypto/sha256-js': ^5.0.0
@@ -18720,6 +18726,7 @@ packages:
       '@planetscale/database': ^1.8.0
       '@qdrant/js-client-rest': ^1.2.0
       '@raycast/api': ^1.55.2
+      '@rockset/client': ^0.9.1
       '@smithy/eventstream-codec': ^2.0.5
       '@smithy/protocol-http': ^3.0.6
       '@smithy/signature-v4': ^2.0.10
@@ -18845,6 +18852,8 @@ packages:
       '@qdrant/js-client-rest':
         optional: true
       '@raycast/api':
+        optional: true
+      '@rockset/client':
         optional: true
       '@smithy/eventstream-codec':
         optional: true
@@ -18985,7 +18994,7 @@ packages:
       youtubei.js:
         optional: true
     dependencies:
-      '@anthropic-ai/sdk': 0.6.8
+      '@anthropic-ai/sdk': 0.9.1
       '@aws-sdk/client-bedrock-runtime': 3.454.0
       '@getzep/zep-js': 0.7.2
       '@google-ai/generativelanguage': 0.2.1
@@ -19024,7 +19033,7 @@ packages:
       uuid: 9.0.0
       yaml: 2.3.4
       zod: 3.22.4
-      zod-to-json-schema: 3.22.0(zod@3.22.4)
+      zod-to-json-schema: 3.20.3(zod@3.22.4)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -26984,6 +26993,14 @@ packages:
     optionalDependencies:
       commander: 9.4.1
     dev: true
+
+  /zod-to-json-schema@3.20.3(zod@3.22.4):
+    resolution: {integrity: sha512-/Q3wnyxAfCt94ZcrGiXXoiAfRqasxl9CX64LZ9fj+4dKH68zulUtU0uk1WMxQPfAxQ0ZI70dKzcoW7hHj+DwSQ==}
+    peerDependencies:
+      zod: ^3.20.0
+    dependencies:
+      zod: 3.22.4
+    dev: false
 
   /zod-to-json-schema@3.22.0(zod@3.22.4):
     resolution: {integrity: sha512-XQr8EwxPMzJGhoR+d/nRFWdi15VaZ+R5Uhssm+Xx5yS30xCpuutfKRm4rerE0SK9j2dWB5Z3FvDD0w8WMVGzkA==}
