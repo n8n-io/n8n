@@ -12,7 +12,7 @@ export class ReadWriteFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read/Write Files from Disk',
 		name: 'readWriteFile',
-		icon: 'fa:file',
+		icon: 'file:readWriteFile.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Read or write files from the computer that runs n8n',
@@ -39,7 +39,7 @@ export class ReadWriteFile implements INodeType {
 					{
 						name: 'Read File(s) From Disk',
 						value: 'read',
-						description: 'Retrieve one or more binary files from the computer that runs n8n',
+						description: 'Retrieve one or more files from the computer that runs n8n',
 						action: 'Read File(s) From Disk',
 					},
 					{

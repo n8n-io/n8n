@@ -24,11 +24,13 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Property',
+				displayName: 'Put Output File in Field',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property to which to write the data of the read files',
+				placeholder: 'e.g. data',
+				description: "By default 'data' is used",
+				hint: 'The name of the output binary field to put the file in',
 			},
 		],
 	},

@@ -7,21 +7,23 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Name',
+		displayName: 'File Path and Name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
 		required: true,
 		placeholder: 'e.g. /data/example.jpg',
-		description: 'Path to which the file should be written',
+		description:
+			'Path and name of the file that should be written. Also include the file extension.',
 	},
 	{
-		displayName: 'File Property',
+		displayName: 'Input Binary Field',
 		name: 'dataPropertyName',
 		type: 'string',
 		default: 'data',
+		placeholder: 'e.g. data',
 		required: true,
-		description: 'Name of the binary property which contains the data for the file to be written',
+		hint: 'The name of the input binary field containing the file to be written',
 	},
 	{
 		displayName: 'Options',
