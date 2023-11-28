@@ -1,6 +1,6 @@
 import { In } from 'typeorm';
 import Container, { Service } from 'typedi';
-import { Authorized, NoAuthRequired, Post, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
 import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Response } from 'express';
@@ -19,6 +19,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
 @Service()
+@Authorized()
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
@@ -34,8 +35,8 @@ export class InvitationController {
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Authorized(['global', 'owner'])
 	@Post('/')
+	@RequireGlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
