@@ -11,7 +11,7 @@ import type {
 	WorkflowWithSharingsAndCredentials,
 } from './workflows.types';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -161,7 +161,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				if (credentialId === undefined) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
-					throw new Error('The workflow contains credentials that you do not have access to');
+					throw new ApplicationError(
+						'The workflow contains credentials that you do not have access to',
+					);
 				}
 			});
 		});

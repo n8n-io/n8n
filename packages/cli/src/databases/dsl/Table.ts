@@ -2,6 +2,7 @@ import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from 'typ
 import { Table, TableColumn } from 'typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
+import { ApplicationError } from 'n8n-workflow';
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
@@ -131,7 +132,7 @@ class ModifyNotNull extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnName, isNullable } = this;
 		const table = await queryRunner.getTable(`${prefix}${tableName}`);
-		if (!table) throw new Error(`No table found with the name ${tableName}`);
+		if (!table) throw new ApplicationError('No table found', { extra: { tableName } });
 		const oldColumn = table.findColumnByName(columnName)!;
 		const newColumn = oldColumn.clone();
 		newColumn.isNullable = isNullable;
