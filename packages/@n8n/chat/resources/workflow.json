@@ -1,0 +1,293 @@
+{
+	"name": "AI Webhook Chat",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "513107b3-6f3a-4a1e-af21-659f0ed14183",
+				"responseMode": "responseNode",
+				"options": {
+					"domainAllowlist": "*.localhost"
+				}
+			},
+			"id": "51ab2689-647d-4cff-9d6f-0ba4df45e904",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [
+				900,
+				200
+			],
+			"webhookId": "513107b3-6f3a-4a1e-af21-659f0ed14183"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "3c7fd563-f610-41fa-b198-7fcf100e2815",
+			"name": "Chat OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [
+				1720,
+				620
+			],
+			"credentials": {
+				"openAiApi": {
+					"id": "B5Fiv70Adfg6htxn",
+					"name": "Alex's OpenAI Account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"sessionKey": "={{ $json.body.sessionId }}"
+			},
+			"id": "ebc23ffa-3bcf-494f-bcb8-51a5fff91885",
+			"name": "Window Buffer Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1,
+			"position": [
+				1920,
+				620
+			]
+		},
+		{
+			"parameters": {
+				"simplifyOutput": false
+			},
+			"id": "d6721a60-159b-4a93-ac6b-b81e16d9f16f",
+			"name": "Memory Chat Retriever",
+			"type": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
+			"typeVersion": 1,
+			"position": [
+				1780,
+				-40
+			]
+		},
+		{
+			"parameters": {
+				"sessionKey": "={{ $json.body.sessionId }}"
+			},
+			"id": "347edc3a-1dda-4996-b778-dcdc447ecfd8",
+			"name": "Memory Chat Retriever Window Buffer Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1,
+			"position": [
+				1800,
+				160
+			]
+		},
+		{
+			"parameters": {
+				"options": {
+					"responseCode": 200,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "sessionId",
+								"value": "={{ $json.body.sessionId }}"
+							},
+							{
+								"name": "Access-Control-Allow-Headers",
+								"value": "*"
+							}
+						]
+					}
+				}
+			},
+			"id": "d229963e-e2f1-4381-87d2-47043bd6ccc7",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1,
+			"position": [
+				2460,
+				220
+			]
+		},
+		{
+			"parameters": {
+				"dataType": "string",
+				"value1": "={{ $json.body.action }}",
+				"rules": {
+					"rules": [
+						{
+							"value2": "loadPreviousSession"
+						},
+						{
+							"value2": "sendMessage",
+							"output": 1
+						}
+					]
+				}
+			},
+			"id": "fc4ad994-5f38-4dce-b1e5-397acc512687",
+			"name": "Chatbot Action",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [
+				1320,
+				200
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "const response = { data: [] };\n\nfor (const item of $input.all()) {\n  response.data.push(item.json);\n}\n\nreturn {\n  json: response,\n  pairedItem: 0\n};"
+			},
+			"id": "e1a80bdc-411a-42df-88dd-36915b1ae8f4",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				2160,
+				-40
+			]
+		},
+		{
+			"parameters": {
+				"text": "={{ $json.body.message }}",
+				"options": {}
+			},
+			"id": "f28f5c00-c742-41d5-8ddb-f0f59ab111a3",
+			"name": "Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1,
+			"position": [
+				1780,
+				340
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.body = JSON.parse(item.json.body);\n}\n\nreturn $input.all();"
+			},
+			"id": "415c071b-18b2-4ac5-8634-e3d939bf36ac",
+			"name": "Transform request body",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1120,
+				200
+			]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Transform request body",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Memory Chat Retriever": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Memory Chat Retriever Window Buffer Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Memory Chat Retriever",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chatbot Action": {
+			"main": [
+				[
+					{
+						"node": "Memory Chat Retriever",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat OpenAI": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Window Buffer Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Agent": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transform request body": {
+			"main": [
+				[
+					{
+						"node": "Chatbot Action",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "12c145a2-74bf-48b5-a87a-ba707949eaed",
+	"id": "L3FlJuFOxZcHtoFT",
+	"meta": {
+		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
+	},
+	"tags": []
+}

@@ -2,7 +2,6 @@ import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
-import Chainable = Cypress.Chainable;
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
