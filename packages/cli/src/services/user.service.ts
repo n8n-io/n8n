@@ -238,10 +238,7 @@ export class UserService {
 		);
 	}
 
-	public async inviteUsers(
-		owner: User,
-		attributes: Array<{ email: string; role: 'member' | 'admin' }>,
-	) {
+	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
 		const memberRole = await this.roleService.findGlobalMemberRole();
 		const adminRole = await this.roleService.findGlobalAdminRole();
 
