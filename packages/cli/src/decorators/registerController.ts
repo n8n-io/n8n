@@ -24,6 +24,7 @@ import type { BooleanLicenseFeature } from '@/Interfaces';
 import Container from 'typedi';
 import { License } from '@/License';
 import type { Scope } from '@n8n/permissions';
+import { ApplicationError } from 'n8n-workflow';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -87,7 +88,9 @@ export const registerController = (app: Application, config: Config, cObj: objec
 		| string
 		| undefined;
 	if (!controllerBasePath)
-		throw new Error(`${controllerClass.name} is missing the RestController decorator`);
+		throw new ApplicationError('Controller is missing the RestController decorator', {
+			extra: { controllerName: controllerClass.name },
+		});
 
 	const authRoles = Reflect.getMetadata(CONTROLLER_AUTH_ROLES, controllerClass) as
 		| AuthRoleMetadata

@@ -17,7 +17,7 @@ import type {
 	INodeTypeData,
 	ICredentialTypeData,
 } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
 import {
@@ -56,7 +56,7 @@ export class LoadNodesAndCredentials {
 	) {}
 
 	async init() {
-		if (inTest) throw new Error('Not available in tests');
+		if (inTest) throw new ApplicationError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
