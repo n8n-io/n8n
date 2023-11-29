@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -62,11 +62,7 @@ export class N8nBinaryLoader {
 		if (!item) return [];
 
 		// TODO: Should we support traversing the object to find the binary data?
-		const binaryData = item.binary?.[binaryDataKey] as IBinaryData;
-
-		if (!binaryData) {
-			throw new NodeOperationError(this.context.getNode(), 'No binary data set.');
-		}
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, binaryDataKey);
 
 		const { mimeType } = binaryData;
 
