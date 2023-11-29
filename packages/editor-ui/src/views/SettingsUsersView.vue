@@ -64,7 +64,7 @@
 			>
 				<template #actions="{ user }">
 					<n8n-select
-						:modelValue="user.globalRole.name"
+						:modelValue="user?.globalRole?.name || 'member'"
 						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
