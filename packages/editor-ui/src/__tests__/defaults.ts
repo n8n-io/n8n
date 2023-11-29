@@ -5,8 +5,9 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import nodeTypesJson from '../../../nodes-base/dist/types/nodes.json';
+import aiNodeTypesJson from '../../../@n8n/nodes-langchain/dist/types/nodes.json';
 
-const allNodeTypes = [...nodeTypesJson];
+const allNodeTypes = [...nodeTypesJson, ...aiNodeTypesJson];
 
 function findNodeWithName(name: string): INodeTypeDescription {
 	return allNodeTypes.find((node) => node.name === name) as INodeTypeDescription;
