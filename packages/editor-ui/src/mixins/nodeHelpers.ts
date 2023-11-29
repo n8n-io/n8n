@@ -38,7 +38,7 @@ import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRBACStore } from '@/stores/rbac.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -54,7 +54,6 @@ export const nodeHelpers = defineComponent({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
-			useRBACStore,
 			useRootStore,
 		),
 	},
@@ -479,7 +478,10 @@ export const nodeHelpers = defineComponent({
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
 
-						if (!isCredentialUsedInWorkflow && !this.rbacStore.hasScope('credential:read')) {
+						if (
+							!isCredentialUsedInWorkflow &&
+							!hasPermission(['rbac'], { rbac: { scope: 'credential:read' } })
+						) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },

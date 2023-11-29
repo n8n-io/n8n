@@ -194,7 +194,7 @@ import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
-import { useRBACStore } from '@/stores/rbac.store';
+import { hasPermission } from '@/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import {
 	webhookModalDescription,
@@ -256,7 +256,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore, useRBACStore),
+		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
 		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
 			const options: Array<{ value: string; label: BaseTextKey }> = [];
 			for (const t of Object.values(MessageEventBusDestinationTypeNames)) {
@@ -306,7 +306,7 @@ export default defineComponent({
 			return items;
 		},
 		canManageLogStreaming(): boolean {
-			return this.rbacStore.hasScope('logStreaming:manage');
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 		},
 	},
 	mounted() {

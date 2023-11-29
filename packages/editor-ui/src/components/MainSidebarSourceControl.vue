@@ -3,7 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
-import { useRBACStore } from '@/stores/rbac.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
@@ -24,7 +24,6 @@ const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
-const rbacStore = useRBACStore();
 const toast = useToast();
 const i18n = useI18n();
 
@@ -37,7 +36,7 @@ const currentBranch = computed(() => {
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
-		rbacStore.hasScope('sourceControl:manage'),
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
 );
 
 async function pushWorkfolder() {

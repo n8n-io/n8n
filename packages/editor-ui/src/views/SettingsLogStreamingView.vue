@@ -28,7 +28,7 @@
 						<event-destination-card
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:eventBus="eventBus"
-							:canManageLogStreaming="canManageLogStreaming"
+							:readonly="!canManageLogStreaming"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
@@ -77,7 +77,7 @@ import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRBACStore } from '@/stores/rbac.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -139,7 +139,6 @@ export default defineComponent({
 			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
-			useRBACStore,
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
@@ -157,7 +156,7 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
 		},
 		canManageLogStreaming(): boolean {
-			return this.rbacStore.hasScope('logStreaming:manage');
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 		},
 	},
 	methods: {
