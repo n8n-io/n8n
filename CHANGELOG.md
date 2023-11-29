@@ -1,3 +1,14 @@
+## [1.19.2](https://github.com/n8n-io/n8n/compare/n8n@1.19.1...n8n@1.19.2) (2023-11-29)
+
+
+### Bug Fixes
+
+* **AWS DynamoDB Node:** Improve error message parsing ([#7793](https://github.com/n8n-io/n8n/issues/7793)) ([df06163](https://github.com/n8n-io/n8n/commit/df0616338fc9a2cb8c04ab7fe3d8c4f2d83385b6))
+* **Google Sheets Node:** Fix issue with paired items not being set correctly ([#7862](https://github.com/n8n-io/n8n/issues/7862)) ([5827b7a](https://github.com/n8n-io/n8n/commit/5827b7ac2c5f80e2a6d3c6d606805a4c981945d9))
+* **Notion Node:** Fix broken Notion node parameters ([#7864](https://github.com/n8n-io/n8n/issues/7864)) ([442d449](https://github.com/n8n-io/n8n/commit/442d4495a61dab42d3ff1a292c5b491e85c5ac30)), closes [#7791](https://github.com/n8n-io/n8n/issues/7791)
+
+
+
 ## [1.19.1](https://github.com/n8n-io/n8n/compare/n8n@1.19.0...n8n@1.19.1) (2023-11-29)
 
 
