@@ -19,7 +19,7 @@ RUN set -eux; \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/@n8n/chat && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-design-system && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-editor-ui/node_modules && \
-	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm && \
+	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm -f && \
 	rm -rf /root/.npm
 
 COPY docker-entrypoint.sh /
