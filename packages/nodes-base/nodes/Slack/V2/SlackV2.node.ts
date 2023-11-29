@@ -1172,6 +1172,11 @@ export class SlackV2 implements INodeType {
 						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 					}
+					if (operation === 'getProfile') {
+						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
+						responseData = await slackApiRequest.call(this, 'GET', '/users.profile.get', {}, qs);
+						responseData = responseData.profile;
+					}
 					if (operation === 'updateProfile') {
 						const options = this.getNodeParameter('options', i);
 						const timezone = this.getTimezone();
