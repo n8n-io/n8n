@@ -266,7 +266,7 @@ export default defineComponent({
 					position: 'bottom',
 					label: 'Admin Panel',
 					icon: 'home',
-					available: this.settingsStore.isCloudDeployment && this.usersStore.isInstanceOwner,
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 				},
 				{
 					id: 'settings',
