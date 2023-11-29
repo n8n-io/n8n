@@ -373,10 +373,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
+				const { isInstanceOwner } = useUsersStore();
 
-				const isOwner = useUsersStore().isInstanceOwner;
-
-				if (deploymentType === 'cloud' && isOwner) {
+				if (deploymentType === 'cloud' && isInstanceOwner) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
 					const { code } = await useCloudPlanStore().getAutoLoginCode();
 					linkUrl = `https://${adminPanelHost}/login`;
