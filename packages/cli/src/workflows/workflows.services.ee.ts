@@ -24,9 +24,10 @@ export class EEWorkflowsService extends WorkflowsService {
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, ['workflow', 'role'], {
-			allowGlobalOwner: false,
-		});
+		const sharing = await this.getSharing(user, workflowId, { allowGlobalScope: false }, [
+			'workflow',
+			'role',
+		]);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
 
