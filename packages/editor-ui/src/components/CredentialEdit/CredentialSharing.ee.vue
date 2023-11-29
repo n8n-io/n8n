@@ -31,28 +31,18 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip :bold="false" class="mb-s">
-				<template v-if="credentialPermissions.isOwner">
-					{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-				</template>
-				<template v-else>
-					{{
-						$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
-							interpolate: { credentialOwnerName },
-						})
-					}}
-				</template>
+			<n8n-info-tip v-if="credentialPermissions.isOwner" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
-			<n8n-info-tip
-				v-if="
-					!credentialPermissions.isOwner &&
-					!credentialPermissions.isSharee &&
-					credentialPermissions.isInstanceOwner
-				"
-				class="mb-s"
-				:bold="false"
-			>
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
+			<n8n-info-tip v-if="!credentialPermissions.updateSharing" :bold="false" class="mb-s">
+				{{
+					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
+						interpolate: { credentialOwnerName },
+					})
+				}}
+			</n8n-info-tip>
+			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.reader') }}
 			</n8n-info-tip>
 			<n8n-user-select
 				v-if="credentialPermissions.updateSharing"
@@ -82,7 +72,7 @@
 <script lang="ts">
 import type { IUser, IUserListAction } from '@/Interface';
 import { defineComponent } from 'vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -128,8 +118,9 @@ export default defineComponent({
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
 					(sharee: IUser) => sharee.id === user.id,
 				);
+				const isOwner = this.credentialData.ownedBy.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser;
+				return !isCurrentUser && !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): IUser[] {

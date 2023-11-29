@@ -22,7 +22,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'NodeSettingsTabs',

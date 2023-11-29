@@ -7,8 +7,9 @@ import type {
 } from '@/Interface';
 import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
-import { sublimeSearch } from '@/utils';
+
 import { get, set } from 'lodash-es';
+import { sublimeSearch } from '@/utils/sortUtils';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,

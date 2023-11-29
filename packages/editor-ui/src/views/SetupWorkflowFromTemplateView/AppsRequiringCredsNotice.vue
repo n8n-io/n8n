@@ -5,7 +5,7 @@ import type { AppCredentials } from '@/views/SetupWorkflowFromTemplateView/setup
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { storeToRefs } from 'pinia';
 import { formatList } from '@/utils/formatters/listFormatter';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 const store = useSetupTemplateStore();

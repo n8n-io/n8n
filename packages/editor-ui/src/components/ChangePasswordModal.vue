@@ -32,7 +32,7 @@
 import { defineComponent } from 'vue';
 
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';

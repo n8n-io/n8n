@@ -46,6 +46,14 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 	}
 
+	setError() {
+		this.endpoint.addClass('add-input-endpoint-error');
+	}
+
+	resetError() {
+		this.endpoint.removeClass('add-input-endpoint-error');
+	}
+
 	fireClickEvent = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint) {
 			this.instance.fire(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.endpoint);

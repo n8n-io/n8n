@@ -2,7 +2,6 @@ import type { BooleanLicenseFeature } from '@/Interfaces';
 import type { LicenseMetadata } from './types';
 import { CONTROLLER_LICENSE_FEATURES } from './constants';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const Licensed = (features: BooleanLicenseFeature | BooleanLicenseFeature[]) => {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	return (target: Function | object, handlerName?: string) => {

@@ -64,7 +64,7 @@
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { workflowHelpers } from '@/mixins/workflowHelpers';

@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
@@ -13,8 +13,9 @@ import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
 import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
+import { Push } from '@/push';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -51,6 +52,16 @@ type ResetRequest = Request<
 	}
 >;
 
+type PushRequest = Request<
+	{},
+	{},
+	{
+		type: IPushDataType;
+		sessionId: string;
+		data: object;
+	}
+>;
+
 @Service()
 @NoAuthRequired()
 @RestController('/e2e')
@@ -71,6 +82,7 @@ export class E2EController {
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
 		[LICENSE_FEATURES.WORKER_VIEW]: false,
+		[LICENSE_FEATURES.ADVANCED_PERMISSIONS]: false,
 	};
 
 	constructor(
@@ -92,6 +104,17 @@ export class E2EController {
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
 		await this.setupUserManagement(req.body.owner, req.body.members);
+	}
+
+	@Post('/push')
+	async push(req: PushRequest) {
+		const pushInstance = Container.get(Push);
+
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		const sessionId = Object.keys(pushInstance.getBackend().connections as object)[0];
+
+		pushInstance.send(req.body.type, req.body.data, sessionId);
 	}
 
 	@Patch('/feature')

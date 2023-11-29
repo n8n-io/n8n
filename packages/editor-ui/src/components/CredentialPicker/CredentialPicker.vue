@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { listenForCredentialChanges, useCredentialsStore } from '@/stores/credentials.store';
 import { assert } from '@/utils/assert';
 import CredentialsDropdown from './CredentialsDropdown.vue';

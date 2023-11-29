@@ -5,8 +5,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { NotificationInstance } from 'element-plus';
-import { sanitizeHtml } from '@/utils';
-import { useToast } from '@/composables';
+import { sanitizeHtml } from '@/utils/htmlUtils';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'PageAlert',

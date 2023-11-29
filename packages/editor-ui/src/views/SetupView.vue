@@ -11,7 +11,7 @@
 import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';

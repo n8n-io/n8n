@@ -6,9 +6,8 @@ import { canCreateNewVariable } from './enviromentHelpers';
 import { CacheService } from '@/services/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import type { DeepPartial } from 'typeorm';
-
-export class VariablesLicenseError extends Error {}
-export class VariablesValidationError extends Error {}
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
 
 @Service()
 export class VariablesService {
@@ -59,19 +58,19 @@ export class VariablesService {
 
 	validateVariable(variable: Omit<Variables, 'id'>): void {
 		if (variable.key.length > 50) {
-			throw new VariablesValidationError('key cannot be longer than 50 characters');
+			throw new VariableValidationError('key cannot be longer than 50 characters');
 		}
 		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
-			throw new VariablesValidationError('key can only contain characters A-Za-z0-9_');
+			throw new VariableValidationError('key can only contain characters A-Za-z0-9_');
 		}
 		if (variable.value?.length > 255) {
-			throw new VariablesValidationError('value cannot be longer than 255 characters');
+			throw new VariableValidationError('value cannot be longer than 255 characters');
 		}
 	}
 
 	async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
 		if (!canCreateNewVariable(await this.getCount())) {
-			throw new VariablesLicenseError('Variables limit reached');
+			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 		this.validateVariable(variable);
 
