@@ -936,7 +936,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2],
+					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 				},
@@ -959,7 +959,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2],
+					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -976,7 +976,7 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					'@version': [2],
+					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -999,7 +999,7 @@ export function getSearchFilters(resource: string) {
 			type: 'notice',
 			displayOptions: {
 				show: {
-					'@version': [2],
+					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
@@ -1013,7 +1013,7 @@ export function getSearchFilters(resource: string) {
 			type: 'string',
 			displayOptions: {
 				show: {
-					'@version': [2],
+					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],

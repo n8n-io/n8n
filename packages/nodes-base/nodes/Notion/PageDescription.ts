@@ -43,7 +43,7 @@ export const pageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 				resource: ['page'],
 			},
 		},
@@ -127,7 +127,7 @@ export const pageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 				resource: ['page'],
 				operation: ['archive'],
 			},
@@ -140,7 +140,7 @@ export const pageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 				resource: ['page'],
 				operation: ['archive'],
 			},
