@@ -8,7 +8,11 @@ import { DocxLoader } from 'langchain/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { N8nEPubLoader } from './EpubLoader';
+import { EPubLoader } from 'langchain/document_loaders/fs/epub';
+import { file as tmpFile } from 'tmp-promise';
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
+
 import { getMetadataFiltersValues } from './helpers';
 
 const SUPPORTED_MIME_TYPES = {
@@ -93,76 +97,85 @@ export class N8nBinaryLoader {
 		}
 
 		const bufferData = await this.context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-		const itemBlob = new Blob([new Uint8Array(bufferData)], { type: mimeType });
+		const tmpFileData = await tmpFile({ prefix: 'doc-loader-' });
 
-		let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
-		switch (mimeType) {
-			case 'application/pdf':
-				const splitPages = this.context.getNodeParameter(
-					`${this.optionsPrefix}splitPages`,
-					itemIndex,
-					false,
-				) as boolean;
-				loader = new PDFLoader(itemBlob, {
-					splitPages,
+		try {
+			await pipeline([new Uint8Array(bufferData)], createWriteStream(tmpFileData.path));
+
+			let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
+			switch (mimeType) {
+				case 'application/pdf':
+					const splitPages = this.context.getNodeParameter(
+						`${this.optionsPrefix}splitPages`,
+						itemIndex,
+						false,
+					) as boolean;
+					loader = new PDFLoader(tmpFileData.path, {
+						splitPages,
+					});
+					break;
+				case 'text/csv':
+					const column = this.context.getNodeParameter(
+						`${this.optionsPrefix}column`,
+						itemIndex,
+						null,
+					) as string;
+					const separator = this.context.getNodeParameter(
+						`${this.optionsPrefix}separator`,
+						itemIndex,
+						',',
+					) as string;
+
+					loader = new CSVLoader(tmpFileData.path, {
+						column: column ?? undefined,
+						separator,
+					});
+					break;
+				case 'application/epub+zip':
+					loader = new EPubLoader(tmpFileData.path)
+					break;
+				case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+					loader = new DocxLoader(tmpFileData.path);
+					break;
+				case 'text/plain':
+					loader = new TextLoader(tmpFileData.path);
+					break;
+				case 'application/json':
+					const pointers = this.context.getNodeParameter(
+						`${this.optionsPrefix}pointers`,
+						itemIndex,
+						'',
+					) as string;
+					const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
+					loader = new JSONLoader(tmpFileData.path, pointersArray);
+					break;
+				default:
+					loader = new TextLoader(tmpFileData.path);
+			}
+
+			const textSplitter = (await this.context.getInputConnectionData(
+				NodeConnectionType.AiTextSplitter,
+				0,
+			)) as TextSplitter | undefined;
+
+			const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
+
+			docs.push(...loadedDoc);
+
+			if (metadata) {
+				docs.forEach((document) => {
+					document.metadata = {
+						...document.metadata,
+						...metadata,
+					};
 				});
-				break;
-			case 'text/csv':
-				const column = this.context.getNodeParameter(
-					`${this.optionsPrefix}column`,
-					itemIndex,
-					null,
-				) as string;
-				const separator = this.context.getNodeParameter(
-					`${this.optionsPrefix}separator`,
-					itemIndex,
-					',',
-				) as string;
+			}
 
-				loader = new CSVLoader(itemBlob, {
-					column: column ?? undefined,
-					separator,
-				});
-				break;
-			case 'application/epub+zip':
-				loader = new N8nEPubLoader(Buffer.from(bufferData));
-				break;
-			case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-				loader = new DocxLoader(itemBlob);
-				break;
-			case 'text/plain':
-				loader = new TextLoader(itemBlob);
-				break;
-			case 'application/json':
-				const pointers = this.context.getNodeParameter(
-					`${this.optionsPrefix}pointers`,
-					itemIndex,
-					'',
-				) as string;
-				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-				loader = new JSONLoader(itemBlob, pointersArray);
-				break;
-			default:
-				loader = new TextLoader(itemBlob);
+			return docs;
+		} catch (error) {
+			throw new NodeOperationError(this.context.getNode(), error as Error);
+		} finally {
+			await tmpFileData.cleanup();
 		}
-
-		const textSplitter = (await this.context.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
-
-		const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
-
-		docs.push(...loadedDoc);
-
-		if (metadata) {
-			docs.forEach((document) => {
-				document.metadata = {
-					...document.metadata,
-					...metadata,
-				};
-			});
-		}
-		return docs;
 	}
 }
