@@ -1,3 +1,44 @@
+# [1.19.0](https://github.com/n8n-io/n8n/compare/n8n@1.18.0...n8n@1.19.0) (2023-11-29)
+
+
+### Bug Fixes
+
+* **core:** Ensure member and admin cannot be promoted to owner ([#7830](https://github.com/n8n-io/n8n/issues/7830)) ([9b87a59](https://github.com/n8n-io/n8n/commit/9b87a596ca4aec462faedcca1ba4655b168bc3bc)), closes [/linear.app/n8n/issue/PAY-985/add-user-role-modification-endpoint#comment-62355f6](https://github.com//linear.app/n8n/issue/PAY-985/add-user-role-modification-endpoint/issues/comment-62355f6)
+* **core:** Prevent error messages due to statistics about data loading ([#7824](https://github.com/n8n-io/n8n/issues/7824)) ([847f6ac](https://github.com/n8n-io/n8n/commit/847f6ac771316eea270d2e83adac5d8a6483475a))
+* **core:** Tighten checks for multi-main setup usage ([#7788](https://github.com/n8n-io/n8n/issues/7788)) ([fdb2c18](https://github.com/n8n-io/n8n/commit/fdb2c18ecc49d1e8759e809d2e2c2e4aa17009da))
+* **core:** Use AbortController to notify nodes to abort execution ([#6141](https://github.com/n8n-io/n8n/issues/6141)) ([d2c18c5](https://github.com/n8n-io/n8n/commit/d2c18c57274cac02e70cf1cc9e533a6ca98f0ec6))
+* **editor:** Add telemetry to workflow history ([#7811](https://github.com/n8n-io/n8n/issues/7811)) ([d497041](https://github.com/n8n-io/n8n/commit/d4970410e1ba328b05ddc23abcbf33c719de5624))
+* **editor:** Allow owners and admins to share workflows and credentials they don't own ([#7833](https://github.com/n8n-io/n8n/issues/7833)) ([3ab3ec9](https://github.com/n8n-io/n8n/commit/3ab3ec9da88f7b7ae07a98d7ef7c4f9892079048))
+* **editor:** Disable context menu actions in read-only mode ([#7789](https://github.com/n8n-io/n8n/issues/7789)) ([902beff](https://github.com/n8n-io/n8n/commit/902beffce51d547094ea249d1fbbb70a879165d6))
+* **editor:** Fix cloud plan data loading on instance ([#7841](https://github.com/n8n-io/n8n/issues/7841)) ([8b99384](https://github.com/n8n-io/n8n/commit/8b99384367161a47b3de13b7e83bcf6d07e3bf19))
+* **editor:** Fix credential icon for old node type version ([#7843](https://github.com/n8n-io/n8n/issues/7843)) ([4074107](https://github.com/n8n-io/n8n/commit/40741075117dd8018ca1c6d03c050c3959142ebd))
+* **editor:** Fix icon for unknown node type ([#7842](https://github.com/n8n-io/n8n/issues/7842)) ([28ac5a7](https://github.com/n8n-io/n8n/commit/28ac5a750eb28e9ab41611a76fa5fb9c30ce64dc))
+* **editor:** Fix mouse position in workflow previews ([#7853](https://github.com/n8n-io/n8n/issues/7853)) ([c063398](https://github.com/n8n-io/n8n/commit/c0633987bfd6de24db0efc4bcb73adba9e9b6a74))
+* **editor:** Show nice error when environment is not set up ([#7778](https://github.com/n8n-io/n8n/issues/7778)) ([5835e05](https://github.com/n8n-io/n8n/commit/5835e055d39921cdf2aa9799e427931bec8e5e2c))
+* **editor:** Suppress dev server websocket messages in workflow view ([#7808](https://github.com/n8n-io/n8n/issues/7808)) ([685ffd7](https://github.com/n8n-io/n8n/commit/685ffd74137199f5e10145a33f3e0f03dabc2e7f))
+* **Google Sheets Node:** Read operation execute for each item ([#7800](https://github.com/n8n-io/n8n/issues/7800)) ([d548872](https://github.com/n8n-io/n8n/commit/d5488725a83f6705b95c9de9d8736adf1b870134))
+* **HTTP Request Node:** Enable expressions for binary input data fields ([#7782](https://github.com/n8n-io/n8n/issues/7782)) ([6208af0](https://github.com/n8n-io/n8n/commit/6208af07eb393b0fb8483b8ae4949a63423cc409))
+* **Microsoft SQL Node:** Prevent double escaping table name ([#7801](https://github.com/n8n-io/n8n/issues/7801)) ([73ec753](https://github.com/n8n-io/n8n/commit/73ec7533ce4724940c2b23f677a9dfcf75de6a16))
+
+
+### Features
+
+* Add AI tool building capabilities  ([#7336](https://github.com/n8n-io/n8n/issues/7336)) ([87def60](https://github.com/n8n-io/n8n/commit/87def60979bd6525b59df4bd811571a2afe83bec))
+* Add initial scope checks via decorators ([#7737](https://github.com/n8n-io/n8n/issues/7737)) ([a37f1cb](https://github.com/n8n-io/n8n/commit/a37f1cb0bad87c486c387383f8179aa42f0b9e1a))
+* Add user role select to users list settings page ([#7796](https://github.com/n8n-io/n8n/issues/7796)) ([137e238](https://github.com/n8n-io/n8n/commit/137e23853fdbd3e62037a6cb7f742811af41a03d))
+* Ado 1296 spike credential setup in templates ([#7786](https://github.com/n8n-io/n8n/issues/7786)) ([aae45b0](https://github.com/n8n-io/n8n/commit/aae45b043b9e1427f9ffc44ef88d719782fccee5))
+* **core:** Add Support for custom CORS origins for webhooks ([#7455](https://github.com/n8n-io/n8n/issues/7455)) ([99a9ea4](https://github.com/n8n-io/n8n/commit/99a9ea497a3d21739f911da5c88c076f60471bed))
+* **core:** Allow user role modification ([#7797](https://github.com/n8n-io/n8n/issues/7797)) ([7a86d36](https://github.com/n8n-io/n8n/commit/7a86d3606852fcbc537533af24eef34279b229c6))
+* **core:** Set up endpoint for all existing roles with license flag ([#7834](https://github.com/n8n-io/n8n/issues/7834)) ([2356fb0](https://github.com/n8n-io/n8n/commit/2356fb0f0c247271ffa00d1cf25460e06212f1c4))
+* **editor:** Add node name and version to NDV node settings ([#7731](https://github.com/n8n-io/n8n/issues/7731)) ([da85198](https://github.com/n8n-io/n8n/commit/da851986f6f7cd4375b06c28a149dcb375fe8b83))
+* **editor:** Add routing middleware, permission checks, RBAC store, RBAC component ([#7702](https://github.com/n8n-io/n8n/issues/7702)) ([67a8891](https://github.com/n8n-io/n8n/commit/67a88914f2f2d11c413e7f627d659333d8419af8))
+* **editor:** Replace middleware for Role checks with Scope checks ([#7847](https://github.com/n8n-io/n8n/issues/7847)) ([72852a6](https://github.com/n8n-io/n8n/commit/72852a60eb15cbf45ebcdd390770c4cd9929a457))
+* **editor:** Show avatars for users currently working on the same workflow ([#7763](https://github.com/n8n-io/n8n/issues/7763)) ([77bc8ec](https://github.com/n8n-io/n8n/commit/77bc8ecd4b1552f7253bc1348087db518ce7ce07))
+* **Notion Node:** Option to simplify output in getChildBlocks operation ([#7791](https://github.com/n8n-io/n8n/issues/7791)) ([d667bca](https://github.com/n8n-io/n8n/commit/d667bca658a2b79fa5d0afba9ef25f26a10cdfc2))
+* **Slack Node:** Add support for getting the profile of a user ([#7829](https://github.com/n8n-io/n8n/issues/7829)) ([90bb6ba](https://github.com/n8n-io/n8n/commit/90bb6ba4174a71f0d42e8dc9f009b879ca9d4616))
+
+
+
 # [1.18.0](https://github.com/n8n-io/n8n/compare/n8n@1.17.0...n8n@1.18.0) (2023-11-22)
 
 
