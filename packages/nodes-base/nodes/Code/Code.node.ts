@@ -132,7 +132,7 @@ export class Code implements INodeType {
 			const sandbox = getSandbox();
 			let items: INodeExecutionData[];
 			try {
-				items = await sandbox.runCodeAllItems();
+				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
 				if (!this.continueOnFail()) throw error;
 				items = [{ json: { error: error.message } }];

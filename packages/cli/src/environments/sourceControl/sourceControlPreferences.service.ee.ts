@@ -10,7 +10,7 @@ import {
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -150,7 +150,9 @@ export class SourceControlPreferencesService {
 			validationError: { target: false },
 		});
 		if (validationResult.length > 0) {
-			throw new Error(`Invalid source control preferences: ${JSON.stringify(validationResult)}`);
+			throw new ApplicationError('Invalid source control preferences', {
+				extra: { preferences: validationResult },
+			});
 		}
 		return validationResult;
 	}
@@ -177,7 +179,7 @@ export class SourceControlPreferencesService {
 					loadOnStartup: true,
 				});
 			} catch (error) {
-				throw new Error(`Failed to save source control preferences: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;

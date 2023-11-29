@@ -6,6 +6,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';
@@ -111,7 +112,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		});
 
 		if (workflows.length === 0) {
-			throw new Error('No workflows found with specified filters.');
+			throw new ApplicationError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {

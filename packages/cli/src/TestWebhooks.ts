@@ -1,13 +1,14 @@
 import type express from 'express';
 import { Service } from 'typedi';
 
-import type {
-	IWebhookData,
-	IWorkflowExecuteAdditionalData,
-	IHttpRequestMethods,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
+import {
+	type IWebhookData,
+	type IWorkflowExecuteAdditionalData,
+	type IHttpRequestMethods,
+	type Workflow,
+	type WorkflowActivateMode,
+	type WorkflowExecuteMode,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
@@ -215,7 +216,9 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		if (workflow.id === undefined) {
-			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+			throw new ApplicationError(
+				'Webhooks can only be added for saved workflows as an ID is needed',
+			);
 		}
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
