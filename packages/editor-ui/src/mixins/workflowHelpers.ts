@@ -572,7 +572,8 @@ export const workflowHelpers = defineComponent({
 						workflow.nodes[nodeName].disabled !== true &&
 						workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE
 					) {
-						checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						const childNodes = workflow.getChildNodes(nodeName);
+						checkWebhook = [nodeName, ...checkWebhook, ...childNodes];
 					}
 				}
 
@@ -582,8 +583,14 @@ export const workflowHelpers = defineComponent({
 					// If no webhook nodes got found try to find another trigger node
 					const startNode = workflow.getStartNode();
 					if (startNode !== undefined) {
-						checkNodes = workflow.getChildNodes(startNode.name);
-						checkNodes.push(startNode.name);
+						checkNodes = [...workflow.getChildNodes(startNode.name), startNode.name];
+
+						// For the short-listed checkNodes, we also need to check them for any
+						// connected sub-nodes
+						for (const nodeName of checkNodes) {
+							const childNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+							checkNodes.push(...childNodes);
+						}
 					}
 				}
 			}
