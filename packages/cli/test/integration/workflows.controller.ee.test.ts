@@ -20,7 +20,9 @@ import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db
 import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
+import type { Role } from '@/databases/entities/Role';
 
+let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let anotherMember: User;
@@ -43,7 +45,7 @@ const testServer = utils.setupTestServer({
 
 beforeAll(async () => {
 	const globalOwnerRole = await getGlobalOwnerRole();
-	const globalMemberRole = await getGlobalMemberRole();
+	globalMemberRole = await getGlobalMemberRole();
 	const credentialOwnerRole = await getCredentialOwnerRole();
 
 	owner = await createUser({ globalRole: globalOwnerRole });
@@ -194,12 +196,27 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflows).toHaveLength(2);
 	});
 
-	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+	test('PUT /workflows/:id/share should not allow sharing with self by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
 			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const tempUser = await createUser({ globalRole: globalMemberRole });
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [tempUser.id] });
 
 		expect(response.statusCode).toBe(403);
 

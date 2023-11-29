@@ -426,12 +426,28 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials).toHaveLength(2);
 	});
 
-	test('should respond 403 for non-owned credentials for non-shared members', async () => {
+	test('should respond 403 for non-owned credentials for non-shared members sharing with self', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const response = await authAnotherMemberAgent
 			.put(`/credentials/${savedCredential.id}/share`)
 			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: savedCredential.id },
+		});
+		expect(sharedCredentials).toHaveLength(1);
+	});
+
+	test('should respond 403 for non-owned credentials for non-shared members sharing', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+		const tempUser = await createUser({ globalRole: globalMemberRole });
+
+		const response = await authAnotherMemberAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [tempUser.id] });
 
 		expect(response.statusCode).toBe(403);
 
