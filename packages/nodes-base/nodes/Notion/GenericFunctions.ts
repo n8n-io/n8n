@@ -961,10 +961,12 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: 'anyFilter',
