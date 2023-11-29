@@ -9,7 +9,7 @@ import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { EPubLoader } from 'langchain/document_loaders/fs/epub';
-import { file as tmpFile } from 'tmp-promise';
+import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
 
@@ -102,6 +102,8 @@ export class N8nBinaryLoader {
 		}
 
 		let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
+		let cleanupTmpFile: DirectoryResult["cleanup"] | undefined = undefined;
+
 		switch (mimeType) {
 			case 'application/pdf':
 				const splitPages = this.context.getNodeParameter(
@@ -135,17 +137,19 @@ export class N8nBinaryLoader {
 				let filePath: string;
 				if (filePathOrBlob instanceof Blob) {
 					const tmpFileData = await tmpFile({ prefix: 'epub-loader-' });
+					cleanupTmpFile = tmpFileData.cleanup;
 					try {
+						const bufferData = await filePathOrBlob.arrayBuffer();
 						await pipeline(
-							new Uint8Array(await filePathOrBlob.arrayBuffer()),
+							[new Uint8Array(bufferData)],
 							createWriteStream(tmpFileData.path),
 						);
+						loader = new EPubLoader(tmpFileData.path);
+						break
 					} catch (error) {
+						await cleanupTmpFile();
 						throw new NodeOperationError(this.context.getNode(), error as Error);
-					} finally {
-						await tmpFileData.cleanup();
 					}
-					filePath = tmpFileData.path;
 				} else {
 					filePath = filePathOrBlob;
 				}
@@ -188,6 +192,9 @@ export class N8nBinaryLoader {
 			});
 		}
 
+		if (cleanupTmpFile) {
+			await cleanupTmpFile();
+		}
 		return docs;
 	}
 }
