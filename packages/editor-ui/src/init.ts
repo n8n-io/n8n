@@ -19,13 +19,17 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const usersStore = useUsersStore();
 
 	await settingsStore.initialize();
 	await usersStore.initialize();
+
 	if (settingsStore.isCloudDeployment) {
-		await Promise.all([cloudPlanStore.initialize(), initializeCloudHooks()]);
+		try {
+			await initializeCloudHooks();
+		} catch (e) {
+			console.error('Failed to initialize cloud hooks:', e);
+		}
 	}
 
 	coreInitialized = true;
@@ -48,6 +52,7 @@ export async function initializeAuthenticatedFeatures() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		await sourceControlStore.getPreferences();
@@ -61,6 +66,14 @@ export async function initializeAuthenticatedFeatures() {
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
+	}
+
+	if (settingsStore.isCloudDeployment) {
+		try {
+			await cloudPlanStore.initialize();
+		} catch (e) {
+			console.error('Failed to initialize cloud plan store:', e);
+		}
 	}
 
 	authenticatedFeaturesInitialized = true;

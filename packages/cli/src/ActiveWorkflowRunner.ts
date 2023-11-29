@@ -30,6 +30,7 @@ import {
 	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
 	WebhookPathTakenError,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import type express from 'express';
@@ -425,7 +426,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 
 		if (workflowData === null) {
-			throw new Error(`Could not find workflow with id "${workflowId}"`);
+			throw new ApplicationError('Could not find workflow', { extra: { workflowId } });
 		}
 
 		const workflow = new Workflow({

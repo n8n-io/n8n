@@ -34,7 +34,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 3);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
