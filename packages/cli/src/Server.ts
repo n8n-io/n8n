@@ -281,6 +281,7 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				Container.get(RoleService),
 				userService,
+				Container.get(License),
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),

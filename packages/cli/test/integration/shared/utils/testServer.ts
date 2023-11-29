@@ -250,6 +250,7 @@ export const setupTestServer = ({
 								Container.get(ActiveWorkflowRunner),
 								Container.get(RS),
 								Container.get(US),
+								Container.get(License),
 							),
 						);
 						break;
