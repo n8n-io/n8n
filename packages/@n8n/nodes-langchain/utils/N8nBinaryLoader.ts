@@ -1,5 +1,5 @@
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -92,86 +92,102 @@ export class N8nBinaryLoader {
 			);
 		}
 
-		const bufferData = await this.context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-		const tmpFileData = await tmpFile({ prefix: 'doc-loader-' });
-
-		try {
-			await pipeline([new Uint8Array(bufferData)], createWriteStream(tmpFileData.path));
-
-			let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
-			switch (mimeType) {
-				case 'application/pdf':
-					const splitPages = this.context.getNodeParameter(
-						`${this.optionsPrefix}splitPages`,
-						itemIndex,
-						false,
-					) as boolean;
-					loader = new PDFLoader(tmpFileData.path, {
-						splitPages,
-					});
-					break;
-				case 'text/csv':
-					const column = this.context.getNodeParameter(
-						`${this.optionsPrefix}column`,
-						itemIndex,
-						null,
-					) as string;
-					const separator = this.context.getNodeParameter(
-						`${this.optionsPrefix}separator`,
-						itemIndex,
-						',',
-					) as string;
-
-					loader = new CSVLoader(tmpFileData.path, {
-						column: column ?? undefined,
-						separator,
-					});
-					break;
-				case 'application/epub+zip':
-					loader = new EPubLoader(tmpFileData.path)
-					break;
-				case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-					loader = new DocxLoader(tmpFileData.path);
-					break;
-				case 'text/plain':
-					loader = new TextLoader(tmpFileData.path);
-					break;
-				case 'application/json':
-					const pointers = this.context.getNodeParameter(
-						`${this.optionsPrefix}pointers`,
-						itemIndex,
-						'',
-					) as string;
-					const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-					loader = new JSONLoader(tmpFileData.path, pointersArray);
-					break;
-				default:
-					loader = new TextLoader(tmpFileData.path);
-			}
-
-			const textSplitter = (await this.context.getInputConnectionData(
-				NodeConnectionType.AiTextSplitter,
-				0,
-			)) as TextSplitter | undefined;
-
-			const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
-
-			docs.push(...loadedDoc);
-
-			if (metadata) {
-				docs.forEach((document) => {
-					document.metadata = {
-						...document.metadata,
-						...metadata,
-					};
-				});
-			}
-
-			return docs;
-		} catch (error) {
-			throw new NodeOperationError(this.context.getNode(), error as Error);
-		} finally {
-			await tmpFileData.cleanup();
+		let filePathOrBlob: string | Blob;
+		if (binaryData.id) {
+			filePathOrBlob = this.context.helpers.getBinaryPath(binaryData.id);
+		} else {
+			filePathOrBlob = new Blob([Buffer.from(binaryData.data, BINARY_ENCODING)], {
+				type: mimeType,
+			});
 		}
+
+		let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
+		switch (mimeType) {
+			case 'application/pdf':
+				const splitPages = this.context.getNodeParameter(
+					`${this.optionsPrefix}splitPages`,
+					itemIndex,
+					false,
+				) as boolean;
+				loader = new PDFLoader(filePathOrBlob, {
+					splitPages,
+				});
+				break;
+			case 'text/csv':
+				const column = this.context.getNodeParameter(
+					`${this.optionsPrefix}column`,
+					itemIndex,
+					null,
+				) as string;
+				const separator = this.context.getNodeParameter(
+					`${this.optionsPrefix}separator`,
+					itemIndex,
+					',',
+				) as string;
+
+				loader = new CSVLoader(filePathOrBlob, {
+					column: column ?? undefined,
+					separator,
+				});
+				break;
+			case 'application/epub+zip':
+				// EPubLoader currently does not accept Blobs https://github.com/langchain-ai/langchainjs/issues/1623
+				let filePath: string;
+				if (filePathOrBlob instanceof Blob) {
+					const tmpFileData = await tmpFile({ prefix: 'epub-loader-' });
+					try {
+						await pipeline(
+							new Uint8Array(await filePathOrBlob.arrayBuffer()),
+							createWriteStream(tmpFileData.path),
+						);
+					} catch (error) {
+						throw new NodeOperationError(this.context.getNode(), error as Error);
+					} finally {
+						await tmpFileData.cleanup();
+					}
+					filePath = tmpFileData.path;
+				} else {
+					filePath = filePathOrBlob;
+				}
+				loader = new EPubLoader(filePath);
+				break;
+			case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+				loader = new DocxLoader(filePathOrBlob);
+				break;
+			case 'text/plain':
+				loader = new TextLoader(filePathOrBlob);
+				break;
+			case 'application/json':
+				const pointers = this.context.getNodeParameter(
+					`${this.optionsPrefix}pointers`,
+					itemIndex,
+					'',
+				) as string;
+				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
+				loader = new JSONLoader(filePathOrBlob, pointersArray);
+				break;
+			default:
+				loader = new TextLoader(filePathOrBlob);
+		}
+
+		const textSplitter = (await this.context.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as TextSplitter | undefined;
+
+		const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
+
+		docs.push(...loadedDoc);
+
+		if (metadata) {
+			docs.forEach((document) => {
+				document.metadata = {
+					...document.metadata,
+					...metadata,
+				};
+			});
+		}
+
+		return docs;
 	}
 }
