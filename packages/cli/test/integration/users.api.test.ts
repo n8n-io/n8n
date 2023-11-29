@@ -355,7 +355,6 @@ describe('PATCH /users/:id/role', () => {
 	let authlessAgent: SuperAgentTest;
 
 	const {
-		NO_MEMBER,
 		MISSING_NEW_ROLE_KEY,
 		MISSING_NEW_ROLE_VALUE,
 		NO_ADMIN_ON_OWNER,
