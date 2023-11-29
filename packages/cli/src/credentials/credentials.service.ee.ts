@@ -53,10 +53,11 @@ export class EECredentialsService extends CredentialsService {
 	static async getSharings(
 		transaction: EntityManager,
 		credentialId: string,
+		relations = ['shared'],
 	): Promise<SharedCredentials[]> {
 		const credential = await transaction.findOne(CredentialsEntity, {
 			where: { id: credentialId },
-			relations: ['shared'],
+			relations,
 		});
 		return credential?.shared ?? [];
 	}
