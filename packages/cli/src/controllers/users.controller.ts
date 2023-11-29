@@ -323,10 +323,8 @@ export class UsersController {
 		return { success: true };
 	}
 
-	// @TODO: Add scope check `@RequireGlobalScope('user:changeRole')`
-	// once this has been merged: https://github.com/n8n-io/n8n/pull/7737
-	@Authorized('any')
 	@Patch('/:id/role')
+	@RequireGlobalScope('user:changeRole')
 	async changeRole(req: UserRequest.ChangeRole) {
 		const {
 			NO_MEMBER,
