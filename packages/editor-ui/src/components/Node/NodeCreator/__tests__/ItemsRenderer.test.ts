@@ -19,12 +19,27 @@ describe('ItemsRenderer', () => {
 		const items = [
 			mockSubcategoryCreateElement({ title: 'Subcategory 1' }),
 			mockLabelCreateElement('subcategory', { key: 'label1' }),
-			mockNodeCreateElement('subcategory', { displayName: 'Node 1', name: 'node1' }),
-			mockNodeCreateElement('subcategory', { displayName: 'Node 2', name: 'node2' }),
-			mockNodeCreateElement('subcategory', { displayName: 'Node 3', name: 'node3' }),
+			mockNodeCreateElement(
+				{ subcategory: 'subcategory' },
+				{ displayName: 'Node 1', name: 'node1' },
+			),
+			mockNodeCreateElement(
+				{ subcategory: 'subcategory' },
+				{ displayName: 'Node 2', name: 'node2' },
+			),
+			mockNodeCreateElement(
+				{ subcategory: 'subcategory' },
+				{ displayName: 'Node 3', name: 'node3' },
+			),
 			mockLabelCreateElement('subcategory', { key: 'label2' }),
-			mockNodeCreateElement('subcategory', { displayName: 'Node 2', name: 'node2' }),
-			mockNodeCreateElement('subcategory', { displayName: 'Node 3', name: 'node3' }),
+			mockNodeCreateElement(
+				{ subcategory: 'subcategory' },
+				{ displayName: 'Node 2', name: 'node2' },
+			),
+			mockNodeCreateElement(
+				{ subcategory: 'subcategory' },
+				{ displayName: 'Node 3', name: 'node3' },
+			),
 			mockSubcategoryCreateElement({ title: 'Subcategory 2' }),
 			mockSectionCreateElement(),
 		];

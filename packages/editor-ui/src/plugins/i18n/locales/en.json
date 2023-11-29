@@ -898,6 +898,8 @@
 	"nodeCreator.subcategoryNames.tools": "Tools",
 	"nodeCreator.subcategoryNames.vectorStores": "Vector Stores",
 	"nodeCreator.subcategoryNames.miscellaneous": "Miscellaneous",
+	"nodeCreator.sectionNames.popular": "Popular",
+	"nodeCreator.sectionNames.other": "Other",
 	"nodeCreator.triggerHelperPanel.addAnotherTrigger": "Add another trigger",
 	"nodeCreator.triggerHelperPanel.addAnotherTriggerDescription": "Triggers start your workflow. Workflows can have multiple triggers.",
 	"nodeCreator.triggerHelperPanel.title": "When should this workflow run?",

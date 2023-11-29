@@ -16,7 +16,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
-import { transformNodeType } from '../utils';
+import { flattenCreateElements, transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
@@ -182,10 +182,10 @@ function arrowLeft() {
 }
 
 function onKeySelect(activeItemId: string) {
-	const mergedItems = [
-		...(activeViewStack.value.items || []),
-		...(globalSearchItemsDiff.value || []),
-	];
+	const mergedItems = flattenCreateElements([
+		...(activeViewStack.value.items ?? []),
+		...(globalSearchItemsDiff.value ?? []),
+	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;

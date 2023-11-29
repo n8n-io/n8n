@@ -9,7 +9,7 @@ import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
-import type { BaseTextKey } from '@/plugins/i18n';
+
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
@@ -118,8 +118,8 @@ watch(
 					v-if="item.type === 'section'"
 					:elements="item.children"
 					expanded
-					:category="$locale.baseText(`nodeCreator.sectionNames.${item.key}` as BaseTextKey)"
-					@selected="wrappedEmit('selected', item)"
+					:category="item.title"
+					@selected="(child) => wrappedEmit('selected', child)"
 				>
 				</CategorizedItemsRenderer>
 
