@@ -124,17 +124,39 @@ EECredentialsController.put(
 			throw new BadRequestError('Bad request');
 		}
 
-		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
+		const isOwnedRes = await EECredentials.isOwned(req.user, credentialId);
+		const { ownsCredential } = isOwnedRes;
+		let { credential } = isOwnedRes;
 		if (!ownsCredential || !credential) {
-			throw new UnauthorizedError('Forbidden');
+			credential = undefined;
+			// Allow owners/admins to share
+			if (await req.user.hasGlobalScope('credential:share')) {
+				const sharedRes = await EECredentials.getSharing(req.user, credentialId, {
+					allowGlobalScope: true,
+					globalScope: 'credential:share',
+				});
+				credential = sharedRes?.credentials;
+			}
+			if (!credential) {
+				throw new UnauthorizedError('Forbidden');
+			}
 		}
+
+		const ownerIds = (
+			await EECredentials.getSharings(Db.getConnection().createEntityManager(), credentialId, [
+				'shared',
+				'shared.role',
+			])
+		)
+			.filter((e) => e.role.name === 'owner')
+			.map((e) => e.userId);
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
 			const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
-				req.user.id,
+				...ownerIds,
 				...shareWithIds,
 			]);
 			if (affected) amountRemoved = affected;
@@ -148,7 +170,7 @@ EECredentialsController.put(
 			);
 
 			if (newShareeIds.length) {
-				await EECredentials.share(trx, credential, newShareeIds);
+				await EECredentials.share(trx, credential!, newShareeIds);
 			}
 		});
 
