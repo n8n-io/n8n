@@ -180,9 +180,11 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['database'],
 				operation: ['getAll', 'get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,

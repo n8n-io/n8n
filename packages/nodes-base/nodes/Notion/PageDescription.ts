@@ -129,9 +129,11 @@ export const pageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['page'],
 				operation: ['archive'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		description: 'The Notion Page to archive',
@@ -142,9 +144,11 @@ export const pageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['page'],
 				operation: ['archive'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,
