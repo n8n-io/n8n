@@ -2974,8 +2974,8 @@ export default defineComponent({
 					}
 					const intersecting = filteredEndpoints.find((element: Element) => {
 						const endpoint = element.jtk.endpoint as Endpoint;
-						const isEndpointIntersect = this.isElementIntersection(element, e, 120);
-						const isNodeElementIntersect = this.isElementIntersection(endpoint.element, e, 150);
+						const isEndpointIntersect = this.isElementIntersection(element, e, 30);
+						const isNodeElementIntersect = this.isElementIntersection(endpoint.element, e, 10);
 
 						if (isEndpointIntersect || isNodeElementIntersect) {
 							const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
