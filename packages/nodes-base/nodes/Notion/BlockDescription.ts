@@ -209,7 +209,7 @@ export const blockFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 			hide: {
-				'@version': [1, 2, 2.1],
+				'@version': [1, 2],
 			},
 		},
 		default: true,

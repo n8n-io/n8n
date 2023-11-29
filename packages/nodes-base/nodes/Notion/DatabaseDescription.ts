@@ -8,8 +8,10 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['database'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [

@@ -936,9 +936,11 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2, 2.1],
 					resource: [resource],
 					operation: ['getAll'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: 'none',

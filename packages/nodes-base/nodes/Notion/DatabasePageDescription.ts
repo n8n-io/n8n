@@ -14,8 +14,10 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['databasePage'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [

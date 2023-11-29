@@ -43,8 +43,10 @@ export const pageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2, 2.1],
 				resource: ['page'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [
