@@ -109,7 +109,7 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		},
 		{
 			name: 'updateSharing',
-			test: (permissions) => rbacStore.hasScope('workflow:share') || !!permissions.isOwner,
+			test: (permissions) => !!permissions.isOwner,
 		},
 		{
 			name: 'delete',
