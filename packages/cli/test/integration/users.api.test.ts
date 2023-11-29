@@ -643,7 +643,7 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.body.message).toBe(NO_ADMIN_IF_UNLICENSED);
 		});
 
-		test('should be able to promote member to admin', async () => {
+		test('should be able to promote member to admin if licensed', async () => {
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
