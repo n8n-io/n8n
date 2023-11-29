@@ -4,7 +4,7 @@ import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { UserService } from '@/services/user.service';
-import { CredentialsService } from './credentials.service';
+import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -14,9 +14,10 @@ export class EECredentialsService extends CredentialsService {
 		user: User,
 		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharing = await this.getSharing(user, credentialId, ['credentials', 'role'], {
-			allowGlobalOwner: false,
-		});
+		const sharing = await this.getSharing(user, credentialId, { allowGlobalScope: false }, [
+			'credentials',
+			'role',
+		]);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsCredential: false };
 
@@ -31,15 +32,15 @@ export class EECredentialsService extends CredentialsService {
 	static async getSharing(
 		user: User,
 		credentialId: string,
+		options: CredentialsGetSharedOptions,
 		relations: string[] = ['credentials'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | null> {
 		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		// Omit user from where if the requesting user has relevant
+		// global credential permissions. This allows the user to
+		// access credentials they don't own.
+		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			where.userId = user.id;
 		}
 

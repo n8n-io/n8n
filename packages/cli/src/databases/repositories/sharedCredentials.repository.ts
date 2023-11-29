@@ -15,7 +15,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			relations: ['credentials'],
 			where: {
 				credentialsId,
-				...(!user.isOwner ? { userId: user.id } : {}),
+				...(!(await user.hasGlobalScope('credential:read')) ? { userId: user.id } : {}),
 			},
 		});
 		if (!sharedCredential) return null;
