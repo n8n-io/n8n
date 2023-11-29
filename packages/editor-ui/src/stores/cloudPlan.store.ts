@@ -54,7 +54,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const hasCloudPlan = computed(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
+		return usersStore.isInstanceOwner && settingsStore.isCloudDeployment && cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
@@ -142,7 +142,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			if (!userIsTrialing.value) return;
 			await getInstanceCurrentUsage();
 			startPollingInstanceUsageData();
-		} catch {}
+		} catch (e) {
+			console.error('Error fetching cloud plan data', e);
+		}
 	};
 
 	const fetchUserCloudAccount = async () => {
