@@ -28,6 +28,7 @@ export class InvitationController {
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly userService: UserService,
+		private readonly license: License,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -88,11 +89,26 @@ export class InvitationController {
 					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
 				);
 			}
+
+			if (invite.role && !['member', 'admin'].includes(invite.role)) {
+				throw new BadRequestError(
+					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'member' or 'admin'.`,
+				);
+			}
+
+			if (invite.role === 'admin' && !this.license.isAdvancedPermissionsLicensed()) {
+				throw new UnauthorizedError(
+					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
+				);
+			}
 		});
 
-		const emails = req.body.map((e) => e.email);
+		const attributes = req.body.map(({ email, role }) => ({
+			email,
+			role: role ?? 'member',
+		}));
 
-		const { usersInvited, usersCreated } = await this.userService.inviteMembers(req.user, emails);
+		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
