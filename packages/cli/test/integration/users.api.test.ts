@@ -364,6 +364,8 @@ describe('PATCH /users/:id/role', () => {
 		NO_OWNER_ON_OWNER,
 	} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
+	const UNAUTHORIZED = 'Unauthorized';
+
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
@@ -398,7 +400,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to demote owner to admin', async () => {
@@ -407,7 +409,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to demote admin to member', async () => {
@@ -416,7 +418,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to promote other member to owner', async () => {
@@ -425,7 +427,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to promote other member to admin', async () => {
@@ -434,7 +436,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to promote self to admin', async () => {
@@ -443,7 +445,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 
 		test('should fail to promote self to owner', async () => {
@@ -452,7 +454,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_MEMBER);
+			expect(response.body.message).toBe(UNAUTHORIZED);
 		});
 	});
 

@@ -46,7 +46,7 @@ export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>
 export type SamlScope = ResourceScope<'saml', 'manage'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
-export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword'>;
+export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
 
