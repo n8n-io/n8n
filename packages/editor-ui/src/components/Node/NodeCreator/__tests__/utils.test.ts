@@ -45,23 +45,5 @@ describe('NodeCreator - utils', () => {
 			);
 			expect(result).toEqual([node1, node2, node3]);
 		});
-
-		it('should handle items in multiple sections', () => {
-			const node1 = mockNodeCreateElement({ key: 'popularAndNewNode' });
-			const node2 = mockNodeCreateElement({ key: 'otherNode' });
-			const result = groupItemsInSections(
-				[node1, node2],
-				[
-					{ key: 'popular', title: 'Popular', items: ['popularAndNewNode'] },
-					{ key: 'new', title: 'New', items: ['popularAndNewNode'] },
-				],
-			) as SectionCreateElement[];
-			expect(result[0].title).toEqual('Popular');
-			expect(result[0].children).toEqual([node1]);
-			expect(result[1].title).toEqual('New');
-			expect(result[1].children).toEqual([node1]);
-			expect(result[2].title).toEqual('Other');
-			expect(result[2].children).toEqual([node2]);
-		});
 	});
 });

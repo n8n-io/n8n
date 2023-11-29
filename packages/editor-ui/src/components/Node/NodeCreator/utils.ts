@@ -88,12 +88,12 @@ export function groupItemsInSections(
 	items: INodeCreateElement[],
 	sections: NodeViewItemSection[],
 ): INodeCreateElement[] {
-	const itemByKey = items.reduce((acc: Record<string, INodeCreateElement>, item) => {
-		acc[item.key] = item;
+	const itemsBySection = items.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
+		const section = sections.find((s) => s.items.includes(item.key));
+		const key = section?.key ?? 'other';
+		acc[key] = [...(acc[key] ?? []), item];
 		return acc;
 	}, {});
-	const itemKeysInAnySection = new Set(sections.flatMap((section) => section.items));
-	const itemsWithoutSection = items.filter((item) => !itemKeysInAnySection.has(item.key));
 
 	const result: SectionCreateElement[] = sections
 		.map(
@@ -101,17 +101,18 @@ export function groupItemsInSections(
 				type: 'section',
 				key: section.key,
 				title: section.title,
-				children:
-					section.key === 'other'
-						? itemsWithoutSection
-						: section.items.map((key) => itemByKey[key]).filter(Boolean),
+				children: itemsBySection[section.key],
 			}),
 		)
-		.filter((section) => section.children && section.children.length > 0);
+		.concat({
+			type: 'section',
+			key: 'other',
+			title: i18n.baseText('nodeCreator.sectionNames.other'),
+			children: itemsBySection.other,
+		})
+		.filter((section) => section.children);
 
-	// Only "other" section, don't group items in to section, return flat list
-	const hasSections = result.find((section) => section.key !== 'other');
-	if (!hasSections) {
+	if (result.length <= 1) {
 		return items;
 	}
 
