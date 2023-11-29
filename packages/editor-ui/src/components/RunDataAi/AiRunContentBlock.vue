@@ -265,5 +265,6 @@ onMounted(() => {
 	border: none;
 	background: none;
 	padding: 0;
+	color: var(--color-text-base);
 }
 </style>

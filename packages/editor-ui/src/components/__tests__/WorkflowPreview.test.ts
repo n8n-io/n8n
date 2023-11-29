@@ -12,6 +12,7 @@ const renderComponent = createComponentRenderer(WorkflowPreview);
 let pinia: ReturnType<typeof createPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let postMessageSpy: vi.SpyInstance;
+let consoleErrorSpy: vi.SpyInstance;
 
 const sendPostMessageCommand = (command: string) => {
 	window.postMessage(`{"command":"${command}"}`, '*');
@@ -23,6 +24,7 @@ describe('WorkflowPreview', () => {
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
 
+		consoleErrorSpy = vi.spyOn(console, 'error');
 		postMessageSpy = vi.fn();
 		Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
 			writable: true,
@@ -30,6 +32,10 @@ describe('WorkflowPreview', () => {
 				postMessage: postMessageSpy,
 			},
 		});
+	});
+
+	afterEach(() => {
+		consoleErrorSpy.mockRestore();
 	});
 
 	it('should not call iframe postMessage when it is ready and no workflow or executionId props', async () => {
@@ -225,6 +231,20 @@ describe('WorkflowPreview', () => {
 
 		await waitFor(() => {
 			expect(emitted().close).toBeDefined();
+		});
+	});
+
+	it('should not do anything if no "command" is sent in the message', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage('commando', '*');
+
+		await waitFor(() => {
+			expect(console.error).not.toHaveBeenCalled();
+			expect(emitted()).toEqual({});
 		});
 	});
 });

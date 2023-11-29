@@ -65,14 +65,19 @@
 				$locale.baseText('ndv.output.waitingToRun')
 			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="canPinData">
-					<br />
-					{{ $locale.baseText('generic.or') }}
-					<n8n-text tag="a" size="medium" color="primary">
-						{{ $locale.baseText('ndv.output.insertTestData') }}
-					</n8n-text>
-				</span>
+				<template v-if="isSubNode">
+					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
+				</template>
+				<template v-else>
+					{{ $locale.baseText('ndv.output.runNodeHint') }}
+					<span @click="insertTestData" v-if="canPinData">
+						<br />
+						{{ $locale.baseText('generic.or') }}
+						<n8n-text tag="a" size="medium" color="primary">
+							{{ $locale.baseText('ndv.output.insertTestData') }}
+						</n8n-text>
+					</span>
+				</template>
 			</n8n-text>
 		</template>
 

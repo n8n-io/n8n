@@ -15,7 +15,7 @@ export const vitestConfig = defineVitestConfig({
 					coverage: {
 						enabled: true,
 						provider: 'v8',
-						reporter: require('../../jest.config.js').coverageReporters,
+						reporter: process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary',
 						all: true,
 					},
 			  }

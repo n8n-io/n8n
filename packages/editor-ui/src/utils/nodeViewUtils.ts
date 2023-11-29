@@ -663,7 +663,7 @@ export const getOutputSummary = (
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data?.[connectionType]) {
+		if (!run?.data?.[connectionType]) {
 			return;
 		}
 
