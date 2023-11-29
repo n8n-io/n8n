@@ -30,6 +30,7 @@ type EndpointGroup =
 	| 'executions'
 	| 'workflowHistory'
 	| 'binaryData'
+	| 'role'
 	| 'invitations';
 
 export interface SetupProps {

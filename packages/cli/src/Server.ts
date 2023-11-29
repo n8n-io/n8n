@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -117,6 +117,7 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 
@@ -298,6 +299,7 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
 
 		if (isLdapEnabled()) {
@@ -674,7 +676,9 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
+							extra: { jobId: req.params.id },
+						});
 					} else {
 						await queue.stopJob(job);
 					}

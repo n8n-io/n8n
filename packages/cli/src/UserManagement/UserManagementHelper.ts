@@ -12,6 +12,7 @@ import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { Scope } from '@n8n/permissions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ApplicationError } from 'n8n-workflow';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
@@ -95,14 +96,15 @@ export const hashPassword = async (validPassword: string): Promise<string> =>
 export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
 	try {
 		return await compare(plaintext, hashed);
-	} catch (error) {
+	} catch (e) {
+		const error = e instanceof Error ? e : new Error(`${e}`);
+
 		if (error instanceof Error && error.message.includes('Invalid salt version')) {
 			error.message +=
 				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		throw new Error(error);
+		throw new ApplicationError(error.message, { cause: error });
 	}
 }
 

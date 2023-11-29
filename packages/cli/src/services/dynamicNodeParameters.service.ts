@@ -16,7 +16,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
-import { Workflow, RoutingNode } from 'n8n-workflow';
+import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { NodeExecuteFunctions } from 'n8n-core';
 import { NodeTypes } from '@/NodeTypes';
 
@@ -57,8 +57,9 @@ export class DynamicNodeParametersService {
 			// requiring a baseURL to be defined can at least not a random server be called.
 			// In the future this code has to get improved that it does not use the request information from
 			// the request rather resolves it via the parameter-path and nodeType data.
-			throw new Error(
-				`The node-type "${nodeType.description.name}" does not exist or does not have "requestDefaults.baseURL" defined!`,
+			throw new ApplicationError(
+				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
+				{ tags: { nodeType: nodeType.description.name } },
 			);
 		}
 
@@ -114,7 +115,7 @@ export class DynamicNodeParametersService {
 		}
 
 		if (!Array.isArray(optionsData)) {
-			throw new Error('The returned data is not an array!');
+			throw new ApplicationError('The returned data is not an array');
 		}
 
 		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
@@ -182,9 +183,10 @@ export class DynamicNodeParametersService {
 	) {
 		const method = nodeType.methods?.[type]?.[methodName];
 		if (typeof method !== 'function') {
-			throw new Error(
-				`The node-type "${nodeType.description.name}" does not have the method "${methodName}" defined!`,
-			);
+			throw new ApplicationError('Node type does not have method defined', {
+				tags: { nodeType: nodeType.description.name },
+				extra: { methodName },
+			});
 		}
 		return method;
 	}

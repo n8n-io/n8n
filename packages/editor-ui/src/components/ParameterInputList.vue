@@ -30,7 +30,7 @@
 
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
-				class="parameter-item"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>

@@ -126,7 +126,13 @@ export default defineComponent({
 					mfaRecoveryCode: form.recoveryCode,
 				});
 				this.loading = false;
-				await this.cloudPlanStore.checkForCloudPlanData();
+				if (this.settingsStore.isCloudDeployment) {
+					try {
+						await this.cloudPlanStore.checkForCloudPlanData();
+					} catch (error) {
+						console.warn('Failed to check for cloud plan data', error);
+					}
+				}
 				await this.settingsStore.getSettings();
 				this.clearAllStickyNotifications();
 				this.checkRecoveryCodesLeft();

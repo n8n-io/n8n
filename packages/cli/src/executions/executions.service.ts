@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
+import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -234,7 +234,7 @@ export class ExecutionsService {
 		}
 
 		if (execution.finished) {
-			throw new Error('The execution succeeded, so it cannot be retried.');
+			throw new ApplicationError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
@@ -276,8 +276,9 @@ export class ExecutionsService {
 			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
-				throw new Error(
-					`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`,
+				throw new ApplicationError(
+					'Workflow could not be found and so the data not be loaded for the retry.',
+					{ extra: { workflowId } },
 				);
 			}
 
@@ -324,7 +325,7 @@ export class ExecutionsService {
 			await Container.get(ActiveExecutions).getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
-			throw new Error('The retry did not start for an unknown reason.');
+			throw new ApplicationError('The retry did not start for an unknown reason.');
 		}
 
 		return !!executionData.finished;

@@ -1,4 +1,8 @@
-import { ErrorReporterProxy as ErrorReporter, WorkflowOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ErrorReporterProxy as ErrorReporter,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
 import { Not, LessThanOrEqual } from 'typeorm';
@@ -106,7 +110,9 @@ export class WaitTracker {
 		});
 
 		if (!execution) {
-			throw new Error(`The execution ID "${executionId}" could not be found.`);
+			throw new ApplicationError('Execution not found.', {
+				extra: { executionId },
+			});
 		}
 
 		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
@@ -129,7 +135,9 @@ export class WaitTracker {
 				},
 			);
 			if (!restoredExecution) {
-				throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
+				throw new ApplicationError('Execution could not be recovered or canceled.', {
+					extra: { executionId },
+				});
 			}
 			fullExecutionData = restoredExecution;
 		}
@@ -172,14 +180,14 @@ export class WaitTracker {
 			});
 
 			if (!fullExecutionData) {
-				throw new Error(`The execution with the id "${executionId}" does not exist.`);
+				throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
 			}
 			if (fullExecutionData.finished) {
-				throw new Error('The execution did succeed and can so not be started again.');
+				throw new ApplicationError('The execution did succeed and can so not be started again.');
 			}
 
 			if (!fullExecutionData.workflowData.id) {
-				throw new Error('Only saved workflows can be resumed.');
+				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
 			const workflowId = fullExecutionData.workflowData.id;
 			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);

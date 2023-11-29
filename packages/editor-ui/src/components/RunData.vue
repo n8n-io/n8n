@@ -1325,7 +1325,7 @@ export default defineComponent({
 				return 0;
 			}
 
-			if (this.workflowRunData?.[this.node.name][runIndex].hasOwnProperty('error')) {
+			if (this.workflowRunData?.[this.node.name]?.[runIndex]?.hasOwnProperty('error')) {
 				return 1;
 			}
 
