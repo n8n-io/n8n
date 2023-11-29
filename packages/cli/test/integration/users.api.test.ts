@@ -18,8 +18,15 @@ import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+import { License } from '@/License';
+import { mockInstance } from '../shared/mocking';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
+
+const license = mockInstance(License, {
+	isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(true),
+	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+});
 
 describe('GET /users', () => {
 	let owner: User;
@@ -362,6 +369,7 @@ describe('PATCH /users/:id/role', () => {
 		NO_USER_TO_OWNER,
 		NO_USER,
 		NO_OWNER_ON_OWNER,
+		NO_ADMIN_IF_UNLICENSED,
 	} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 	beforeAll(async () => {
@@ -518,6 +526,17 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.body.message).toBe(NO_USER_TO_OWNER);
 		});
 
+		test('should fail to promote member to admin if not licensed', async () => {
+			license.isAdvancedPermissionsLicensed.mockReturnValueOnce(false);
+
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
+				newRole: { scope: 'global', name: 'admin' },
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_IF_UNLICENSED);
+		});
+
 		test('should be able to demote admin to member', async () => {
 			const response = await adminAgent.patch(`/users/${otherAdmin.id}/role`).send({
 				newRole: { scope: 'global', name: 'member' },
@@ -556,7 +575,7 @@ describe('PATCH /users/:id/role', () => {
 			adminAgent = testServer.authAgentFor(admin);
 		});
 
-		test('should be able to promote member to admin', async () => {
+		test('should be able to promote member to admin if licensed', async () => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});
@@ -613,7 +632,18 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.body.message).toBe(NO_USER_TO_OWNER);
 		});
 
-		test('should be able to promote member to admin', async () => {
+		test('should fail to promote member to admin if not licensed', async () => {
+			license.isAdvancedPermissionsLicensed.mockReturnValueOnce(false);
+
+			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+				newRole: { scope: 'global', name: 'admin' },
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_IF_UNLICENSED);
+		});
+
+		test('should be able to promote member to admin if licensed', async () => {
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
 			});

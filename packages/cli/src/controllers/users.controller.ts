@@ -19,6 +19,7 @@ import { Logger } from '@/Logger';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { License } from '@/License';
 
 @Authorized()
 @RestController('/users')
@@ -32,6 +33,7 @@ export class UsersController {
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
+		private readonly license: License,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -43,6 +45,7 @@ export class UsersController {
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
 			NO_USER_TO_OWNER: 'Cannot promote user to global owner',
+			NO_ADMIN_IF_UNLICENSED: 'Admin role is not available without a license',
 		},
 	} as const;
 
@@ -336,6 +339,7 @@ export class UsersController {
 			NO_USER_TO_OWNER,
 			NO_USER,
 			NO_OWNER_ON_OWNER,
+			NO_ADMIN_IF_UNLICENSED,
 		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 		if (req.user.globalRole.scope === 'global' && req.user.globalRole.name === 'member') {
@@ -362,6 +366,14 @@ export class UsersController {
 
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
+		}
+
+		if (
+			newRole.scope === 'global' &&
+			newRole.name === 'admin' &&
+			!this.license.isAdvancedPermissionsLicensed()
+		) {
+			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
 		}
 
 		if (
