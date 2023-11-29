@@ -39,10 +39,11 @@ export class EEWorkflowsService extends WorkflowsService {
 	static async getSharings(
 		transaction: EntityManager,
 		workflowId: string,
+		relations = ['shared'],
 	): Promise<SharedWorkflow[]> {
 		const workflow = await transaction.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			relations: ['shared'],
+			relations,
 		});
 		return workflow?.shared ?? [];
 	}
