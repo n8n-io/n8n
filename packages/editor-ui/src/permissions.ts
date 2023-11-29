@@ -84,7 +84,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
 		{
 			name: 'updateSharing',
-			test: (permissions) => rbacStore.hasScope('credential:share') || !!permissions.isOwner,
+			test: (permissions) => !!permissions.isOwner,
 		},
 		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
 		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -109,7 +109,7 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		},
 		{
 			name: 'updateSharing',
-			test: (permissions) => rbacStore.hasScope('workflow:share') || !!permissions.isOwner,
+			test: (permissions) => !!permissions.isOwner,
 		},
 		{
 			name: 'delete',
