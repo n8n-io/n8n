@@ -28,8 +28,14 @@ import {
 	assertInviteUserErrorResponse,
 } from './shared/utils/users';
 import { mocked } from 'jest-mock';
+import { License } from '@/License';
 
 mockInstance(InternalHooks);
+
+const license = mockInstance(License, {
+	isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(true),
+	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+});
 
 const externalHooks = mockInstance(ExternalHooks);
 const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
@@ -246,10 +252,6 @@ describe('POST /invitations', () => {
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
-	afterEach(() => {
-		jest.restoreAllMocks();
-	});
-
 	test('should fail with invalid payloads', async () => {
 		const invalidPayloads = [
 			randomEmail(),
@@ -301,7 +303,53 @@ describe('POST /invitations', () => {
 		expect(inviteUrl.searchParams.get('inviteeId')).toBe(user.id);
 	});
 
+	test('should create member shell', async () => {
+		mailer.invite.mockResolvedValue({ emailSent: false });
+
+		const response = await ownerAgent
+			.post('/invitations')
+			.send([{ email: randomEmail() }])
+			.expect(200);
+
+		const [result] = response.body.data as UserInvitationResponse[];
+
+		const storedUser = await Container.get(UserRepository).findOneByOrFail({
+			id: result.user.id,
+		});
+
+		assertInvitedUsersOnDb(storedUser);
+	});
+
+	test('should create admin shell if licensed', async () => {
+		mailer.invite.mockResolvedValue({ emailSent: false });
+
+		const response = await ownerAgent
+			.post('/invitations')
+			.send([{ email: randomEmail(), role: 'admin' }])
+			.expect(200);
+
+		const [result] = response.body.data as UserInvitationResponse[];
+
+		const storedUser = await Container.get(UserRepository).findOneByOrFail({
+			id: result.user.id,
+		});
+
+		assertInvitedUsersOnDb(storedUser);
+	});
+
+	test('should fail to create admin shell if not licensed', async () => {
+		license.isAdvancedPermissionsLicensed.mockReturnValue(false);
+		mailer.invite.mockResolvedValue({ emailSent: false });
+
+		await ownerAgent
+			.post('/invitations')
+			.send([{ email: randomEmail(), role: 'admin' }])
+			.expect(403);
+	});
+
 	test('should email invites and create user shells but ignore existing', async () => {
+		externalHooks.run.mockClear();
+
 		mailer.invite.mockResolvedValue({ emailSent: true });
 
 		const globalMemberRole = await getGlobalMemberRole();
