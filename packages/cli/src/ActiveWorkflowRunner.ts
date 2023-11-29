@@ -68,6 +68,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
+import type { Scope } from '@n8n/permissions';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
@@ -270,8 +271,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	/**
 	 * Get the IDs of active workflows from storage.
 	 */
-	async allActiveInStorage(user?: User) {
-		const isFullAccess = !user || user.globalRole.name === 'owner';
+	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
+		const isFullAccess = !options?.user || (await options.user.hasGlobalScope(options.scope));
 
 		const activationErrors = await this.activationErrorsService.getAll();
 
@@ -286,8 +287,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const where = whereClause({
-			user,
+		const where = await whereClause({
+			user: options.user,
+			globalScope: 'workflow:list',
 			entityType: 'workflow',
 		});
 

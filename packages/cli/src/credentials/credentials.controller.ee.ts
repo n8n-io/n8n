@@ -50,7 +50,7 @@ EECredentialsController.get(
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
+		if (!userSharing && !(await req.user.hasGlobalScope('credential:read'))) {
 			throw new UnauthorizedError('Forbidden.');
 		}
 
@@ -82,7 +82,10 @@ EECredentialsController.post(
 		const credentialId = credentials.id;
 		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
-		const sharing = await EECredentials.getSharing(req.user, credentialId);
+		const sharing = await EECredentials.getSharing(req.user, credentialId, {
+			allowGlobalScope: true,
+			globalScope: 'credential:read',
+		});
 		if (!ownsCredential) {
 			if (!sharing) {
 				throw new UnauthorizedError('Forbidden');
