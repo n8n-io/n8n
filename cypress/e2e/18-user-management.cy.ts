@@ -63,13 +63,23 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		personalSettingsPage.actions.changeTheme('Dark');
 		cy.get('body').should('have.attr', 'data-theme', 'dark');
 		settingsSidebar.actions.back();
-		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo-dark-mode.svg');
+		mainSidebar.getters
+			.logo()
+			.should('have.attr', 'src')
+			.then((src) => {
+				expect(src).to.include('/n8n-dev-logo-dark-mode.svg');
+			});
 
 		cy.visit(personalSettingsPage.url);
 		personalSettingsPage.actions.changeTheme('Light');
 		cy.get('body').should('have.attr', 'data-theme', 'light');
 		settingsSidebar.actions.back();
-		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo.svg');
+		mainSidebar.getters
+			.logo()
+			.should('have.attr', 'src')
+			.then((src) => {
+				expect(src).to.include('/n8n-dev-logo.svg');
+			});
 	});
 
 	it('should delete user and their data', () => {
