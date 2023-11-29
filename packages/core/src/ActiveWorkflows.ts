@@ -13,6 +13,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	LoggerProxy as Logger,
 	toCronExpression,
 	WorkflowActivationError,
@@ -177,7 +178,9 @@ export class ActiveWorkflows {
 		for (const cronTime of cronTimes) {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new Error('The polling interval is too short. It has to be at least a minute!');
+				throw new ApplicationError(
+					'The polling interval is too short. It has to be at least a minute!',
+				);
 			}
 
 			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
