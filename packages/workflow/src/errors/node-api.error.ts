@@ -4,7 +4,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import { parseString } from 'xml2js';
-import type { INode, JsonObject, IDataObject, IStatusCodeMessages, Severity } from '..';
+import type {
+	INode,
+	JsonObject,
+	IDataObject,
+	IStatusCodeMessages,
+	Severity,
+	Functionality,
+} from '../Interfaces';
 import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
 
@@ -15,6 +22,7 @@ export interface NodeOperationErrorOptions {
 	itemIndex?: number;
 	severity?: Severity;
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
+	functionality?: Functionality;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -113,6 +121,7 @@ export class NodeApiError extends NodeError {
 			runIndex,
 			itemIndex,
 			severity,
+			functionality,
 			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
@@ -206,6 +215,7 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		);
 
+		if (functionality !== undefined) this.context.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}

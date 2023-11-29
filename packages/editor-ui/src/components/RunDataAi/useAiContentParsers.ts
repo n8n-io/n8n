@@ -6,7 +6,7 @@ interface MemoryMessage {
 	type: string;
 	id: string[];
 	kwargs: {
-		content: string;
+		content: unknown;
 		additional_kwargs: Record<string, unknown>;
 	};
 }
@@ -81,6 +81,7 @@ const outputTypeParsers: {
 		};
 	},
 	[NodeConnectionType.AiTool]: fallbackParser,
+	[NodeConnectionType.AiAgent]: fallbackParser,
 	[NodeConnectionType.AiMemory](execData: IDataObject) {
 		const chatHistory =
 			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
@@ -88,7 +89,23 @@ const outputTypeParsers: {
 			const responseText = chatHistory
 				.map((content: MemoryMessage) => {
 					if (content.type === 'constructor' && content.id?.includes('schema') && content.kwargs) {
+						interface MessageContent {
+							type: string;
+							image_url?: {
+								url: string;
+							};
+						}
 						let message = content.kwargs.content;
+						if (Array.isArray(message)) {
+							const messageContent = message[0] as {
+								type?: string;
+								image_url?: { url: string };
+							};
+							if (messageContent?.type === 'image_url') {
+								message = `![Input image](${messageContent.image_url?.url})`;
+							}
+							message = message as MessageContent[];
+						}
 						if (Object.keys(content.kwargs.additional_kwargs).length) {
 							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
 						}
@@ -120,7 +137,6 @@ const outputTypeParsers: {
 	},
 	[NodeConnectionType.AiOutputParser]: fallbackParser,
 	[NodeConnectionType.AiRetriever]: fallbackParser,
-	[NodeConnectionType.AiVectorRetriever]: fallbackParser,
 	[NodeConnectionType.AiVectorStore](execData: IDataObject) {
 		if (execData.documents) {
 			return {
@@ -189,9 +205,17 @@ export const useAiContentParsers = () => {
 		});
 
 		const parser = outputTypeParsers[endpointType as AllowedEndpointType];
-		if (!parser) return [{ raw: contentJson, parsedContent: null }];
+		if (!parser)
+			return [
+				{
+					raw: contentJson.filter((item): item is IDataObject => item !== undefined),
+					parsedContent: null,
+				},
+			];
 
-		const parsedOutput = contentJson.map((c) => ({ raw: c, parsedContent: parser(c) }));
+		const parsedOutput = contentJson
+			.filter((c): c is IDataObject => c !== undefined)
+			.map((c) => ({ raw: c, parsedContent: parser(c) }));
 		return parsedOutput;
 	};
 

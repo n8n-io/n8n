@@ -59,7 +59,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -91,7 +91,7 @@ export default defineComponent({
 	},
 	async mounted() {
 		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushConnect();
+		this.pushStore.pushConnect();
 
 		try {
 			this.loading = true;
@@ -137,7 +137,7 @@ export default defineComponent({
 		}
 	},
 	beforeUnmount() {
-		this.pushDisconnect();
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),

@@ -3,8 +3,7 @@ import { In, Not } from 'typeorm';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@/ResponseHelper';
+import { RequireGlobalScope, Authorized, Delete, Get, RestController, Patch } from '@/decorators';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
@@ -17,6 +16,9 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized()
 @RestController('/users')
@@ -112,8 +114,8 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
+	@RequireGlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -130,8 +132,8 @@ export class UsersController {
 			: publicUsers;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
+	@RequireGlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userService.findOneOrFail({
 			where: { id: req.params.id },
@@ -144,8 +146,8 @@ export class UsersController {
 		return { link };
 	}
 
-	@Authorized(['global', 'owner'])
 	@Patch('/:id/settings')
+	@RequireGlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -166,6 +168,7 @@ export class UsersController {
 	 */
 	@Authorized(['global', 'owner'])
 	@Delete('/:id')
+	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 

@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
 
     steps:
       - uses: actions/checkout@v3.5.3
@@ -48,7 +48,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
@@ -61,7 +61,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
     steps:
       - uses: actions/checkout@v3.5.3
         with:

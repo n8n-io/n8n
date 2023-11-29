@@ -44,8 +44,11 @@ export default defineComponent({
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
-			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
+			if (!this.credentialTypeName) {
+				return null;
+			}
 
+			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 			if (nodesWithAccess.length) {
 				return nodesWithAccess[0];
 			}

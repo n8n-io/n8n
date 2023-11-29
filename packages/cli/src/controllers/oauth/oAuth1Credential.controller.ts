@@ -8,8 +8,10 @@ import { createHmac } from 'crypto';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
-import { NotFoundError, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { sendErrorResponse } from '@/ResponseHelper';
 import { AbstractOAuthController } from './abstractOAuth.controller';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';

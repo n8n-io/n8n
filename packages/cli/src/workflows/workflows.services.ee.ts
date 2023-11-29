@@ -1,6 +1,5 @@
 import type { DeleteResult, EntityManager } from 'typeorm';
 import { In, Not } from 'typeorm';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
@@ -17,6 +16,8 @@ import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -170,7 +171,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		const previousVersion = await EEWorkflowsService.get({ id: workflowId });
 
 		if (!previousVersion) {
-			throw new ResponseHelper.NotFoundError('Workflow not found');
+			throw new NotFoundError('Workflow not found');
 		}
 
 		const allCredentials = await CredentialsService.getMany(user);
@@ -183,9 +184,9 @@ export class EEWorkflowsService extends WorkflowsService {
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			}
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
 		}

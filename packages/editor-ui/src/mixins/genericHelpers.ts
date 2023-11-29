@@ -2,8 +2,8 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import dateformat from 'dateformat';
 import { VIEWS } from '@/constants';
-import { useToast } from '@/composables';
-import { useSourceControlStore } from '@/stores';
+import { useToast } from '@/composables/useToast';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const genericHelpers = defineComponent({
 	setup() {
