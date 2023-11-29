@@ -120,7 +120,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { ROLE } from '@/utils/userUtils';
 import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({
@@ -177,9 +176,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return hasPermission(['role'], {
-				role: [ROLE.Member, ROLE.Owner],
-			});
+			return hasPermission(['authenticated']);
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;

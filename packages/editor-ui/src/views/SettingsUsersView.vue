@@ -92,7 +92,7 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 		showUMSetupWarning() {
-			return hasPermission(['role'], { role: [ROLE.Default] });
+			return hasPermission(['defaultUser']);
 		},
 		usersListActions(): IUserListAction[] {
 			return [
