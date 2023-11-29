@@ -26,6 +26,7 @@ import type {
 	ExecutionError,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	NodeOperationError,
 	Workflow,
@@ -679,7 +680,7 @@ export async function getWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new Error(
+		throw new ApplicationError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
@@ -691,7 +692,9 @@ export async function getWorkflowData(
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
 		if (workflowData === undefined || workflowData === null) {
-			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
+			throw new ApplicationError('Workflow does not exist.', {
+				extra: { workflowId: workflowInfo.id },
+			});
 		}
 	} else {
 		workflowData = workflowInfo.code ?? null;

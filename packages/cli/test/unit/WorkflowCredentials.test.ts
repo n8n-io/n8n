@@ -51,10 +51,7 @@ describe('WorkflowCredentials', () => {
 	});
 
 	test('Should return an error if credentials cannot be found in the DB', async () => {
-		const credentials = notFoundNode.credentials!.test;
-		const expectedError = new Error(
-			`Could not find credentials for type "test" with ID "${credentials.id}".`,
-		);
+		const expectedError = new Error('Could not find credential.');
 		await expect(WorkflowCredentials([notFoundNode])).rejects.toEqual(expectedError);
 		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 	});

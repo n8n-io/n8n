@@ -20,7 +20,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
@@ -157,7 +157,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 	const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 	if (!valid) {
-		throw new Error(message);
+		throw new ApplicationError(message);
 	}
 
 	if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
