@@ -414,7 +414,7 @@ export async function execute(
 		for (const [index, entry] of mappedValues.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItems: { item: index },
+				pairedItem: { item: index },
 			});
 		}
 		return returnData;
