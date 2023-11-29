@@ -152,6 +152,60 @@ describe('PUT /workflows/:id', () => {
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
 		expect(secondSharedWorkflows).toHaveLength(2);
 	});
+
+	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing by the instance owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id, owner.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
 });
 
 describe('GET /workflows/new', () => {
