@@ -211,9 +211,10 @@ workflowsController.get(
 
 		const shared = await Container.get(SharedWorkflowRepository).findOne({
 			relations,
-			where: whereClause({
+			where: await whereClause({
 				user: req.user,
 				entityType: 'workflow',
+				globalScope: 'workflow:read',
 				entityId: workflowId,
 				roles: ['owner'],
 			}),

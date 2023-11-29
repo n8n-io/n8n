@@ -97,7 +97,6 @@ describe('POST /login', () => {
 		const ownerUser = await createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,
-			isOwner: true,
 		});
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
