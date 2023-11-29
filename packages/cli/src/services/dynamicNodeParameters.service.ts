@@ -183,10 +183,10 @@ export class DynamicNodeParametersService {
 	) {
 		const method = nodeType.methods?.[type]?.[methodName];
 		if (typeof method !== 'function') {
-			throw new ApplicationError(
-				`Node type "${nodeType.description.name}" does not have the method "${methodName}" defined!`,
-				{ tags: { nodeType: nodeType.description.name } },
-			);
+			throw new ApplicationError('Node type does not have method defined', {
+				tags: { nodeType: nodeType.description.name },
+				extra: { methodName },
+			});
 		}
 		return method;
 	}

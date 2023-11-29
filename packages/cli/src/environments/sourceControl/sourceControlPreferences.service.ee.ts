@@ -151,7 +151,7 @@ export class SourceControlPreferencesService {
 		});
 		if (validationResult.length > 0) {
 			throw new ApplicationError('Invalid source control preferences', {
-				extra: { preferences: JSON.stringify(validationResult) },
+				extra: { preferences: validationResult },
 			});
 		}
 		return validationResult;
