@@ -25,6 +25,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 @RestController()
@@ -44,8 +45,8 @@ export class AuthController {
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
-		if (!email) throw new Error('Email is required to log in');
-		if (!password) throw new Error('Password is required to log in');
+		if (!email) throw new ApplicationError('Email is required to log in');
+		if (!password) throw new ApplicationError('Password is required to log in');
 
 		let user: User | undefined;
 

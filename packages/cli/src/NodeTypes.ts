@@ -6,7 +6,7 @@ import type {
 	IVersionedNodeType,
 	LoadedClass,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 import { join, dirname } from 'path';
@@ -30,7 +30,7 @@ export class NodeTypes implements INodeTypes {
 		const nodeType = this.getNode(nodeTypeName);
 
 		if (!nodeType) {
-			throw new Error(`Unknown node type: ${nodeTypeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeTypeName } });
 		}
 
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
