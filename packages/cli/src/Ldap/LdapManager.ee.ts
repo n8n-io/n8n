@@ -1,3 +1,4 @@
+import { ApplicationError } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
 import { LdapSync } from './LdapSync.ee';
 import type { LdapConfig } from './types';
@@ -15,7 +16,7 @@ export class LdapManager {
 		sync: LdapSync;
 	} {
 		if (!this.initialized) {
-			throw new Error('LDAP Manager has not been initialized');
+			throw new ApplicationError('LDAP Manager has not been initialized');
 		}
 		return this.ldap;
 	}

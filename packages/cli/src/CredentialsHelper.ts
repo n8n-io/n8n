@@ -40,6 +40,7 @@ import {
 	RoutingNode,
 	Workflow,
 	ErrorReporterProxy as ErrorReporter,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import type { ICredentialsDb } from '@/Interfaces';
@@ -81,7 +82,9 @@ const mockNodeTypes: INodeTypes = {
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${nodeType}`);
+			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+				tags: { nodeType },
+			});
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
@@ -258,7 +261,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
-			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
+			throw new ApplicationError('Found credential with no ID.', {
+				extra: { credentialName: nodeCredential.name },
+				tags: { credentialType: type },
+			});
 		}
 
 		let credential: CredentialsEntity;
@@ -291,7 +297,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
-			throw new Error(`The credentials of type "${type}" are not known.`);
+			throw new ApplicationError('Unknown credential type', { tags: { credentialType: type } });
 		}
 
 		if (credentialTypeData.extends === undefined) {

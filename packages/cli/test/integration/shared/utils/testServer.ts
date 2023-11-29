@@ -250,6 +250,7 @@ export const setupTestServer = ({
 								Container.get(ActiveWorkflowRunner),
 								Container.get(RS),
 								Container.get(US),
+								Container.get(License),
 							),
 						);
 						break;
@@ -268,6 +269,7 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(EHS),
 								Container.get(USE),
+								Container.get(License),
 							),
 						);
 						break;

@@ -40,7 +40,9 @@ export abstract class Sandbox extends EventEmitter {
 		super();
 	}
 
-	abstract runCodeAllItems(): Promise<INodeExecutionData[]>;
+	abstract runCode(): Promise<unknown>;
+
+	abstract runCodeAllItems(): Promise<INodeExecutionData[] | INodeExecutionData[][]>;
 
 	abstract runCodeEachItem(): Promise<INodeExecutionData | undefined>;
 

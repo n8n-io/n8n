@@ -1,4 +1,4 @@
-import { within } from '@testing-library/dom';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';

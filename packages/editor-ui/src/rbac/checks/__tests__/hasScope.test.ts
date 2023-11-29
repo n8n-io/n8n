@@ -1,6 +1,6 @@
 import { useRBACStore } from '@/stores/rbac.store';
 import { hasScope } from '@/rbac/checks/hasScope';
-import type { HasScopeOptions } from '@n8n/permissions';
+import type { ScopeOptions } from '@n8n/permissions';
 
 vi.mock('@/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(),
@@ -19,7 +19,7 @@ describe('Checks', () => {
 			} as unknown as ReturnType<typeof useRBACStore>);
 
 			const scope = 'workflow:read';
-			const options: HasScopeOptions = { mode: 'allOf' };
+			const options: ScopeOptions = { mode: 'allOf' };
 			const projectId = 'proj123';
 			const resourceType = 'workflow';
 			const resourceId = 'res123';
