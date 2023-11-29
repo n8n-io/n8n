@@ -381,7 +381,8 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
