@@ -5,6 +5,7 @@ vi.mock('@/rbac/checks', () => ({
 	hasRole: vi.fn(),
 	hasScope: vi.fn(),
 	isGuest: vi.fn(),
+	isDefaultUser: vi.fn(),
 	isAuthenticated: vi.fn(),
 	isEnterpriseFeatureEnabled: vi.fn(),
 	isValid: vi.fn(),
@@ -15,13 +16,22 @@ describe('hasPermission()', () => {
 		vi.mocked(checks.hasRole).mockReturnValue(true);
 		vi.mocked(checks.hasScope).mockReturnValue(true);
 		vi.mocked(checks.isGuest).mockReturnValue(true);
+		vi.mocked(checks.isDefaultUser).mockReturnValue(true);
 		vi.mocked(checks.isAuthenticated).mockReturnValue(true);
 		vi.mocked(checks.isEnterpriseFeatureEnabled).mockReturnValue(true);
 		vi.mocked(checks.isValid).mockReturnValue(true);
 
-		expect(hasPermission(['authenticated', 'custom', 'enterprise', 'guest', 'rbac', 'role'])).toBe(
-			true,
-		);
+		expect(
+			hasPermission([
+				'authenticated',
+				'custom',
+				'enterprise',
+				'guest',
+				'rbac',
+				'role',
+				'defaultUser',
+			]),
+		).toBe(true);
 	});
 
 	it('should return false if any permission is invalid', () => {
