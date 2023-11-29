@@ -8,6 +8,7 @@
 				:indent="12"
 				@node-click="onItemClick"
 				:expand-on-click-node="false"
+				data-test-id="lm-chat-logs-tree"
 			>
 				<template #default="{ node, data }">
 					<div
@@ -50,7 +51,11 @@
 					}}
 				</n8n-text>
 			</div>
-			<div v-for="(data, index) in selectedRun" :key="`${data.node}__${data.runIndex}__index`">
+			<div
+				v-for="(data, index) in selectedRun"
+				:key="`${data.node}__${data.runIndex}__index`"
+				data-test-id="lm-chat-logs-entry"
+			>
 				<RunDataAiContent :inputData="data" :contentIndex="index" />
 			</div>
 		</div>
@@ -63,7 +68,8 @@ import { computed, ref, watch } from 'vue';
 import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
-import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';

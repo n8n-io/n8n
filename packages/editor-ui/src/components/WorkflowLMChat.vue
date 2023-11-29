@@ -64,17 +64,12 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs-wrapper">
+				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div class="logs">
-						<run-data-ai v-if="node" :node="node" hide-title slim :key="messages.length" />
-						<div v-else class="no-node-connected">
-							<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-								$locale.baseText('chat.window.noExecution')
-							}}</n8n-text>
-						</div>
+						<run-data-ai :node="node" hide-title slim :key="messages.length" />
 					</div>
 				</div>
 			</div>
@@ -87,6 +82,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
+					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
 				<n8n-button
@@ -97,7 +93,7 @@
 					size="large"
 					icon="comment"
 					type="primary"
-					data-test-id="workflow-chat-button"
+					data-test-id="workflow-chat-send-button"
 				/>
 
 				<n8n-info-tip class="mt-s">
@@ -115,7 +111,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
@@ -131,7 +127,8 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useUIStore, useWorkflowsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
@@ -289,8 +286,10 @@ export default defineComponent({
 
 			if (!chatNode) {
 				this.showError(
-					new Error('Chat viable node(Agent or Chain) could not be found!'),
-					'Chat node not found',
+					new Error(
+						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+					),
+					'Missing AI node',
 				);
 				return;
 			}
@@ -394,6 +393,8 @@ export default defineComponent({
 				return;
 			}
 
+			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
 				executionTime: 0,
@@ -403,7 +404,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									input: message,
+									[inputKey]: message,
 								},
 							},
 						],
@@ -503,9 +504,11 @@ export default defineComponent({
 	display: flex;
 	height: 100%;
 	min-height: 400px;
+	z-index: 9999;
 
 	.logs-wrapper {
-		border: 1px solid #e0e0e0;
+		--node-icon-color: var(--color-text-base);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		overflow-y: auto;
@@ -517,8 +520,8 @@ export default defineComponent({
 		}
 	}
 	.messages {
-		background-color: var(--color-background-base);
-		border: 1px solid #e0e0e0;
+		background-color: var(--color-lm-chat-messages-background);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		width: 100%;
@@ -532,16 +535,17 @@ export default defineComponent({
 			width: 100%;
 
 			.content {
-				border-radius: 10px;
+				border-radius: var(--border-radius-large);
 				line-height: 1.5;
-				margin: 0.5em 1em;
+				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
 				padding: 1em;
 				white-space: pre-wrap;
 				overflow-x: auto;
 
 				&.bot {
-					background-color: #e0d0d0;
+					background-color: var(--color-lm-chat-bot-background);
+					border: 1px solid var(--color-lm-chat-bot-border);
 					float: left;
 
 					.message-options {
@@ -550,7 +554,8 @@ export default defineComponent({
 				}
 
 				&.user {
-					background-color: #d0e0d0;
+					background-color: var(--color-lm-chat-user-background);
+					border: 1px solid var(--color-lm-chat-user-border);
 					float: right;
 					text-align: right;
 

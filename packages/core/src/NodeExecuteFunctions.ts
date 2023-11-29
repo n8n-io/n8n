@@ -3301,9 +3301,11 @@ export function getExecuteFunctions(
 							// Display on the calling node which node has the error
 							throw new NodeOperationError(
 								connectedNode,
-								`Error on node "${connectedNode.name}" which is connected via input "${inputName}"`,
+								`Error in sub-node ${connectedNode.name}`,
 								{
 									itemIndex,
+									functionality: 'configuration-node',
+									description: error.message,
 								},
 							);
 						}

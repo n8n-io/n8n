@@ -1,20 +1,20 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
+import { locale } from 'n8n-design-system';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+
 import type { INodeTranslationHeaders } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
 	normalize,
 	insertOptionsAndValues,
 } from './utils';
-import { locale } from 'n8n-design-system';
-
-import englishBaseText from './locales/en.json';
-import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { useRootStore } from '@/stores';
 
 export const i18nInstance = createI18n({
 	locale: 'en',

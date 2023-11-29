@@ -52,13 +52,15 @@ import type {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
+import { getNodeViewTab } from '@/utils/canvasUtils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';

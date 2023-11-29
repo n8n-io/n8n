@@ -11,6 +11,9 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
 export const EECredentialsController = express.Router();
 
@@ -40,7 +43,7 @@ EECredentialsController.get(
 		)) as CredentialsEntity;
 
 		if (!credential) {
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
 			);
 		}
@@ -48,7 +51,7 @@ EECredentialsController.get(
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError('Forbidden.');
+			throw new UnauthorizedError('Forbidden.');
 		}
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
@@ -82,7 +85,7 @@ EECredentialsController.post(
 		const sharing = await EECredentials.getSharing(req.user, credentialId);
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError('Forbidden');
+				throw new UnauthorizedError('Forbidden');
 			}
 
 			const decryptedData = EECredentials.decrypt(sharing.credentials);
@@ -115,12 +118,12 @@ EECredentialsController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
 		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 		if (!ownsCredential || !credential) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			throw new UnauthorizedError('Forbidden');
 		}
 
 		let amountRemoved: number | null = null;

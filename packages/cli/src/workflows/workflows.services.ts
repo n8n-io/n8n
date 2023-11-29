@@ -6,7 +6,6 @@ import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -34,6 +33,8 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -208,7 +209,7 @@ export class WorkflowsService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
 		}
@@ -220,7 +221,7 @@ export class WorkflowsService {
 			workflow.versionId !== '' &&
 			workflow.versionId !== shared.workflow.versionId
 		) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 				100,
 			);
@@ -330,7 +331,7 @@ export class WorkflowsService {
 		});
 
 		if (updatedWorkflow === null) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
 		}
@@ -368,7 +369,7 @@ export class WorkflowsService {
 				message = message ?? (error as Error).message;
 
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError(message);
+				throw new BadRequestError(message);
 			}
 		}
 

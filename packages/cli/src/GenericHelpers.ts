@@ -11,7 +11,6 @@ import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
 import type { ExecutionPayload, ICredentialsDb, IWorkflowDb } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -20,6 +19,7 @@ import type { UserUpdatePayload } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -109,7 +109,7 @@ export async function validateEntity(
 		.join(' | ');
 
 	if (errorMessages) {
-		throw new ResponseHelper.BadRequestError(errorMessages);
+		throw new BadRequestError(errorMessages);
 	}
 }
 

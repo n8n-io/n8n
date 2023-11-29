@@ -1,4 +1,4 @@
-import { hasExpressionMapping } from '@/utils';
+import { hasExpressionMapping } from '@/utils/nodeTypesUtils';
 
 import type { Resolvable, Segment } from '@/types/expressions';
 
