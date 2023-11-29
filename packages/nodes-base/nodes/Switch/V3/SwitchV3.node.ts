@@ -11,6 +11,7 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;
@@ -34,6 +35,7 @@ export class SwitchV3 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
+			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
 			version: [3],
 			defaults: {
 				name: 'Switch',
@@ -48,14 +50,14 @@ export class SwitchV3 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Expression',
-							value: 'expression',
-							description: 'Expression decides how to route data',
-						},
-						{
 							name: 'Rules',
 							value: 'rules',
-							description: 'Rules decide how to route data',
+							description: 'Build a matching rule for each output',
+						},
+						{
+							name: 'Expression',
+							value: 'expression',
+							description: 'Write an expression to return the output index',
 						},
 					],
 					default: 'rules',
@@ -509,6 +511,24 @@ export class SwitchV3 implements INodeType {
 					description:
 						'The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Option',
+					default: {},
+					options: [
+						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							displayName: 'Send data to all matching outputs',
+							name: 'allMatchingOutputs',
+							type: 'boolean',
+							default: false,
+							description:
+								'Whether to send data to all outputs meeting conditions (and not just the first one)',
+						},
+					],
+				},
 			],
 		};
 	}
@@ -647,6 +667,11 @@ export class SwitchV3 implements INodeType {
 			try {
 				item = items[itemIndex];
 				const rules = this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[];
+				const allMatchingOutputs = this.getNodeParameter(
+					'options.allMatchingOutputs',
+					itemIndex,
+					false,
+				) as boolean;
 				mode = this.getNodeParameter('mode', itemIndex) as string;
 
 				if (mode === 'expression') {
@@ -690,7 +715,10 @@ export class SwitchV3 implements INodeType {
 
 							const ruleIndex = rules.indexOf(ruleData);
 							returnData[ruleIndex].push(item);
-							continue itemLoop;
+
+							if (!allMatchingOutputs) {
+								continue itemLoop;
+							}
 						}
 					}
 
