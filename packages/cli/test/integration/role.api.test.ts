@@ -1,19 +1,16 @@
-import { License } from '@/License';
-
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-import { mockInstance } from '../shared/mocking';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 
 import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 
-const testServer = utils.setupTestServer({ endpointGroups: ['role'] });
-
-const license = mockInstance(License, {
-	isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(true),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+const testServer = utils.setupTestServer({
+	endpointGroups: ['role'],
+	enabledFeatures: ['feat:advancedPermissions'],
 });
+
+const license = testServer.license;
 
 describe('GET /roles', () => {
 	let owner: User;
@@ -46,7 +43,7 @@ describe('GET /roles', () => {
 
 	describe('with advanced permissions licensed', () => {
 		test.each(['owner', 'admin', 'member'])('should return all roles to %s', async (user) => {
-			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
+			license.enable('feat:advancedPermissions');
 
 			const response = await toAgent[user].get('/roles').expect(200);
 
@@ -64,7 +61,7 @@ describe('GET /roles', () => {
 
 	describe('with advanced permissions not licensed', () => {
 		test.each(['owner', 'admin', 'member'])('should return all roles to %s', async (user) => {
-			license.isAdvancedPermissionsLicensed.mockReturnValue(false);
+			license.disable('feat:advancedPermissions');
 
 			const response = await toAgent[user].get('/roles').expect(200);
 

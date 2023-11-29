@@ -6,6 +6,7 @@ import type { Server } from 'http';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb } from '@/Interfaces';
+import type { LicenseMocker } from './license';
 
 type EndpointGroup =
 	| 'me'
@@ -45,6 +46,7 @@ export interface TestServer {
 	authAgentFor: (user: User) => SuperAgentTest;
 	publicApiAgentFor: (user: User) => SuperAgentTest;
 	authlessAgent: SuperAgentTest;
+	license: LicenseMocker;
 }
 
 export type CredentialPayload = {

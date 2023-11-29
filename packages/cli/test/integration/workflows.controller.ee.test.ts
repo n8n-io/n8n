@@ -6,7 +6,6 @@ import type { INode } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
@@ -29,10 +28,6 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const licenseLike = mockInstance(License, {
-	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
@@ -40,6 +35,7 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
 });
+const license = testServer.license;
 
 beforeAll(async () => {
 	const globalOwnerRole = await getGlobalOwnerRole();
@@ -64,7 +60,6 @@ beforeEach(async () => {
 	activeWorkflowRunnerLike.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
-	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 describe('router should switch based on flag', () => {
@@ -419,7 +414,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -468,7 +463,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -942,7 +937,7 @@ describe('getSharedWorkflowIds', () => {
 
 describe('PATCH /workflows/:id - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -1000,7 +995,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -1052,7 +1047,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 
 describe('PATCH /workflows/:id - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -1074,7 +1069,7 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
