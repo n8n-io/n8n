@@ -1,19 +1,21 @@
 export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
 export type Resource =
-	| 'workflow'
-	| 'tag'
-	| 'user'
+	| 'auditLogs'
+	| 'communityPackage'
 	| 'credential'
-	| 'variable'
-	| 'sourceControl'
 	| 'externalSecretsProvider'
 	| 'externalSecret'
 	| 'eventBusEvent'
 	| 'eventBusDestination'
-	| 'orchestration'
-	| 'communityPackage'
 	| 'ldap'
-	| 'saml';
+	| 'logStreaming'
+	| 'orchestration'
+	| 'sourceControl'
+	| 'saml'
+	| 'tag'
+	| 'user'
+	| 'variable'
+	| 'workflow';
 
 export type ResourceScope<
 	R extends Resource,
@@ -22,45 +24,49 @@ export type ResourceScope<
 
 export type WildcardScope = `${Resource}:*` | '*';
 
-export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;
-export type TagScope = ResourceScope<'tag'>;
-export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword'>;
+export type AuditLogsScope = ResourceScope<'auditLogs', 'manage'>;
+export type CommunityPackageScope = ResourceScope<
+	'communityPackage',
+	'install' | 'uninstall' | 'update' | 'list' | 'manage'
+>;
 export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
-export type VariableScope = ResourceScope<'variable'>;
-export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
+export type ExternalSecretScope = ResourceScope<'externalSecret', 'list'>;
 export type ExternalSecretProviderScope = ResourceScope<
 	'externalSecretsProvider',
 	DefaultOperations | 'sync'
 >;
-export type ExternalSecretScope = ResourceScope<'externalSecret', 'list'>;
-export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type EventBusDestinationScope = ResourceScope<
 	'eventBusDestination',
 	DefaultOperations | 'test'
 >;
-export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
-export type CommunityPackageScope = ResourceScope<
-	'communityPackage',
-	'install' | 'uninstall' | 'update' | 'list'
->;
+export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
+export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
+export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
+export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
+export type TagScope = ResourceScope<'tag'>;
+export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword'>;
+export type VariableScope = ResourceScope<'variable'>;
+export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share'>;
 
 export type Scope =
-	| WorkflowScope
-	| TagScope
-	| UserScope
+	| AuditLogsScope
+	| CommunityPackageScope
 	| CredentialScope
-	| VariableScope
-	| SourceControlScope
 	| ExternalSecretProviderScope
 	| ExternalSecretScope
 	| EventBusEventScope
 	| EventBusDestinationScope
-	| OrchestrationScope
-	| CommunityPackageScope
 	| LdapScope
-	| SamlScope;
+	| LogStreamingScope
+	| OrchestrationScope
+	| SamlScope
+	| SourceControlScope
+	| TagScope
+	| UserScope
+	| VariableScope
+	| WorkflowScope;
 
 export type ScopeLevel = 'global' | 'project' | 'resource';
 export type GetScopeLevel<T extends ScopeLevel> = Record<T, Scope[]>;
