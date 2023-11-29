@@ -147,9 +147,9 @@ export class CredentialsService {
 	): Promise<SharedCredentials | null> {
 		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// credentials they don't own.
+		// Omit user from where if the requesting user has relevant
+		// global credential permissions. This allows the user to
+		// access credentials they don't own.
 		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			Object.assign(where, {
 				userId: user.id,

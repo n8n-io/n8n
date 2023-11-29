@@ -50,9 +50,9 @@ export class WorkflowsService {
 	): Promise<SharedWorkflow | null> {
 		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// workflows they don't own.
+		// Omit user from where if the requesting user has relevant
+		// global workflow permissions. This allows the user to
+		// access workflows they don't own.
 		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			where.userId = user.id;
 		}
