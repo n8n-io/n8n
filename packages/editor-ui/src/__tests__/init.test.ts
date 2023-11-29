@@ -4,7 +4,6 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { initializeAuthenticatedFeatures } from '@/init';
-import * as registerModule from '@/hooks/register';
 import type { SpyInstance } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -24,7 +23,6 @@ describe('Init', () => {
 		let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 		let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 		let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-		let hooksSpy: SpyInstance<[], Promise<void>>;
 		let cloudStoreSpy: SpyInstance<[], Promise<void>>;
 		let templatesTestSpy: SpyInstance<[], Promise<void>>;
 		let sourceControlSpy: SpyInstance<[], Promise<void>>;
@@ -45,7 +43,6 @@ describe('Init', () => {
 			vi.mock('@/hooks/register', () => ({
 				initializeCloudHooks: vi.fn(),
 			}));
-			hooksSpy = vi.spyOn(registerModule, 'initializeCloudHooks');
 			cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
 			templatesTestSpy = vi.spyOn(settingsStore, 'testTemplatesEndpoint');
 			sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
@@ -61,7 +58,6 @@ describe('Init', () => {
 				typeof useUsersStore
 			>);
 			await initializeAuthenticatedFeatures();
-			expect(hooksSpy).not.toHaveBeenCalled();
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
 			expect(templatesTestSpy).not.toHaveBeenCalled();
 			expect(sourceControlSpy).not.toHaveBeenCalled();
@@ -72,7 +68,6 @@ describe('Init', () => {
 				typeof useUsersStore
 			>);
 			await initializeAuthenticatedFeatures();
-			expect(hooksSpy).toHaveBeenCalled();
 			expect(cloudStoreSpy).toHaveBeenCalled();
 			expect(templatesTestSpy).toHaveBeenCalled();
 			expect(sourceControlSpy).toHaveBeenCalled();

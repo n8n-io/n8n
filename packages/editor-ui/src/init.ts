@@ -24,6 +24,14 @@ export async function initializeCore() {
 	await settingsStore.initialize();
 	await usersStore.initialize();
 
+	if (settingsStore.isCloudDeployment) {
+		try {
+			await initializeCloudHooks();
+		} catch (e) {
+			console.error('Failed to initialize cloud hooks:', e);
+		}
+	}
+
 	coreInitialized = true;
 }
 
@@ -61,15 +69,11 @@ export async function initializeAuthenticatedFeatures() {
 	}
 
 	if (settingsStore.isCloudDeployment) {
-		const results = await Promise.allSettled([cloudPlanStore.initialize(), initializeCloudHooks()]);
-		results.forEach((result, index) => {
-			if (result.status === 'rejected') {
-				console.error(
-					`Failed to initialize ${index === 0 ? 'cloud plan store' : 'cloud hooks'}:`,
-					result.reason,
-				);
-			}
-		});
+		try {
+			await cloudPlanStore.initialize();
+		} catch (e) {
+			console.error('Failed to initialize cloud plan store:', e);
+		}
 	}
 
 	authenticatedFeaturesInitialized = true;
