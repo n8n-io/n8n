@@ -1,15 +1,18 @@
 import { CredentialsModal, MessageBox } from '../pages/modals';
+import { TemplateCollectionPage } from '../pages/template-collection';
 import { TemplateCredentialSetupPage } from '../pages/template-credential-setup';
 import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
 
 const templateWorkflowPage = new TemplateWorkflowPage();
+const templateCollectionPage = new TemplateCollectionPage();
 const templateCredentialsSetupPage = new TemplateCredentialSetupPage();
 const credentialsModal = new CredentialsModal();
 const messageBox = new MessageBox();
 const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
+const COLLECTION_ID = 1;
 
 describe('Template credentials setup', () => {
 	beforeEach(() => {
@@ -22,6 +25,18 @@ describe('Template credentials setup', () => {
 		templateWorkflowPage.actions.visit(testTemplate.id);
 		templateCredentialsSetupPage.actions.enableFeatureFlag();
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
+
+		templateCredentialsSetupPage.getters
+			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.should('be.visible');
+	});
+
+	it.only('can be opened from template collection page', () => {
+		templateCollectionPage.actions.visit(COLLECTION_ID);
+		templateCredentialsSetupPage.actions.enableFeatureFlag();
+		templateCollectionPage.actions.clickUseWorkflowButton(
+			'Promote new Shopify products on Twitter and Telegram',
+		);
 
 		templateCredentialsSetupPage.getters
 			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
