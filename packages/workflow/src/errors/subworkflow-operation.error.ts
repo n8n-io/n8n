@@ -3,7 +3,7 @@ import { WorkflowOperationError } from './workflow-operation.error';
 export class SubworkflowOperationError extends WorkflowOperationError {
 	description = '';
 
-	cause: { message: string; stack: string };
+	cause: Error;
 
 	constructor(message: string, description: string) {
 		super(message);
@@ -11,6 +11,7 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 		this.description = description;
 
 		this.cause = {
+			name: this.name,
 			message,
 			stack: this.stack as string,
 		};
