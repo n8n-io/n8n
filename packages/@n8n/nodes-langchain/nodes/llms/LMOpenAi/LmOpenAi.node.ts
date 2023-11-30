@@ -192,13 +192,11 @@ export class LmOpenAi implements INodeType {
 					uri = `${options.baseURL}/models`;
 				}
 
-				const data = (
-					await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {
-						method: 'GET',
-						uri,
-						json: true,
-					})
-				).data as Array<{ owned_by: string; id: string }>;
+				const { data } = (await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {
+					method: 'GET',
+					uri,
+					json: true,
+				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
 					if (!model.owned_by?.startsWith('system')) continue;
