@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -26,8 +26,11 @@ export class N8nBinaryLoader {
 
 	private optionsPrefix: string;
 
-	constructor(context: IExecuteFunctions, optionsPrefix = '') {
+	private textSplitter?: TextSplitter;
+
+	constructor(context: IExecuteFunctions, optionsPrefix = '', textSplitter?: TextSplitter) {
 		this.context = context;
+		this.textSplitter = textSplitter;
 		this.optionsPrefix = optionsPrefix;
 	}
 
@@ -49,6 +52,7 @@ export class N8nBinaryLoader {
 		const selectedLoader: keyof typeof SUPPORTED_MIME_TYPES = this.context.getNodeParameter(
 			'loader',
 			itemIndex,
+			'auto',
 		) as keyof typeof SUPPORTED_MIME_TYPES;
 
 		const binaryDataKey = this.context.getNodeParameter('binaryDataKey', itemIndex) as string;
@@ -146,12 +150,8 @@ export class N8nBinaryLoader {
 				loader = new TextLoader(itemBlob);
 		}
 
-		const textSplitter = (await this.context.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
 
-		const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
+		const loadedDoc = this.textSplitter ? await loader.loadAndSplit(this.textSplitter) : await loader.load();
 
 		docs.push(...loadedDoc);
 
