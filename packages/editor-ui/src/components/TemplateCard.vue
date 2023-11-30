@@ -7,6 +7,7 @@
 			!loading && $style.loaded,
 		]"
 		@click="onCardClick"
+		data-test-id="template-card"
 	>
 		<div :class="$style.loading" v-if="loading">
 			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
@@ -39,6 +40,7 @@
 				outline
 				label="Use workflow"
 				@click.stop="onUseWorkflowClick"
+				data-test-id="use-workflow-button"
 			/>
 		</div>
 	</div>
