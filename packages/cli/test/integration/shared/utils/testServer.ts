@@ -20,6 +20,7 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { InternalHooks } from '@/InternalHooks';
+import { LicenseMocker } from '../license';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -83,6 +84,7 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		license: new LicenseMocker(),
 	};
 
 	beforeAll(async () => {
@@ -91,8 +93,11 @@ export const setupTestServer = ({
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
+		testServer.license.mock(Container.get(License));
 		if (enabledFeatures) {
-			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
+			testServer.license.setDefaults({
+				features: enabledFeatures,
+			});
 		}
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
@@ -166,7 +171,7 @@ export const setupTestServer = ({
 						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { handleLdapInit } = await import('@/Ldap/helpers');
 						const { LdapController } = await import('@/controllers/ldap.controller');
-						Container.get(License).isLdapEnabled = () => true;
+						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
 						const { service, sync } = LdapManager.getInstance();
 						registerController(
@@ -310,6 +315,10 @@ export const setupTestServer = ({
 	afterAll(async () => {
 		await testDb.terminate();
 		testServer.httpServer.close();
+	});
+
+	beforeEach(() => {
+		testServer.license.reset();
 	});
 
 	return testServer;
