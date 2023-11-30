@@ -24,9 +24,10 @@ export class EEWorkflowsService extends WorkflowsService {
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, ['workflow', 'role'], {
-			allowGlobalOwner: false,
-		});
+		const sharing = await this.getSharing(user, workflowId, { allowGlobalScope: false }, [
+			'workflow',
+			'role',
+		]);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
 
@@ -38,10 +39,11 @@ export class EEWorkflowsService extends WorkflowsService {
 	static async getSharings(
 		transaction: EntityManager,
 		workflowId: string,
+		relations = ['shared'],
 	): Promise<SharedWorkflow[]> {
 		const workflow = await transaction.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			relations: ['shared'],
+			relations,
 		});
 		return workflow?.shared ?? [];
 	}

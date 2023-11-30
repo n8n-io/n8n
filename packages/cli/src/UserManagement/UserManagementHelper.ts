@@ -10,6 +10,7 @@ import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
+import type { Scope } from '@n8n/permissions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -131,21 +132,22 @@ export function rightDiff<T1, T2>(
  * Build a `where` clause for a TypeORM entity search,
  * checking for member access if the user is not an owner.
  */
-export function whereClause({
+export async function whereClause({
 	user,
 	entityType,
+	globalScope,
 	entityId = '',
 	roles = [],
 }: {
 	user: User;
 	entityType: 'workflow' | 'credentials';
+	globalScope: Scope;
 	entityId?: string;
 	roles?: string[];
-}): WhereClause {
+}): Promise<WhereClause> {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	// TODO: Decide if owner access should be restricted
-	if (user.globalRole.name !== 'owner') {
+	if (!(await user.hasGlobalScope(globalScope))) {
 		where.user = { id: user.id };
 		if (roles?.length) {
 			where.role = { name: In(roles) };

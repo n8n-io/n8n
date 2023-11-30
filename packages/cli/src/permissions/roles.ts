@@ -32,6 +32,7 @@ export const ownerPermissions: Scope[] = [
 	'externalSecretsProvider:list',
 	'externalSecretsProvider:sync',
 	'externalSecret:list',
+	'externalSecret:use',
 	'ldap:manage',
 	'ldap:sync',
 	'logStreaming:manage',
@@ -52,6 +53,7 @@ export const ownerPermissions: Scope[] = [
 	'user:delete',
 	'user:list',
 	'user:resetPassword',
+	'user:changeRole',
 	'variable:create',
 	'variable:read',
 	'variable:update',
@@ -63,6 +65,7 @@ export const ownerPermissions: Scope[] = [
 	'workflow:delete',
 	'workflow:list',
 	'workflow:share',
+	'workflow:execute',
 ];
 export const adminPermissions: Scope[] = ownerPermissions.concat();
 export const memberPermissions: Scope[] = [
