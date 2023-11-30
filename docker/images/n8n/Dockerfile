@@ -9,15 +9,18 @@ ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=stable
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+RUN wget -qO- "https://raw.githubusercontent.com/n8n-io/n8n/n8n@${N8N_VERSION}/packages/cli/package.json" > ./cli_package.json
 
-RUN corepack enable && corepack prepare pnpm@8.9.0 --activate
+RUN apk add --update jq
+RUN corepack enable
 RUN set -eux; \
 	apkArch="$(apk --print-arch)"; \
 	case "$apkArch" in \
 	'armv7') apk --no-cache add --virtual build-dependencies python3 build-base;; \
 	esac && \
-	pnpm install -g sqlite3@5.1.6 && \
-	pnpm install -g --ignore-scripts n8n@${N8N_VERSION}  && \
+	SQLITE_VERSION=$(jq -r '.dependencies.sqlite3 // .devDependencies.sqlite3' ./cli_package.json) && \
+	pnpm install -g sqlite3@$SQLITE_VERSION --prod && \
+	pnpm install -g n8n@${N8N_VERSION} --prod --ignore-scripts  && \
 	case "$apkArch" in \
 	'armv7') apk del build-dependencies;; \
 	esac && \
