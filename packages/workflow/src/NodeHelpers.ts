@@ -338,6 +338,76 @@ export function displayParameter(
 		}
 	}
 
+	if (parameter.displayOptions.showIfGreaterOrEqual) {
+		// All the defined rules have to match to display parameter
+		for (const propertyName of Object.keys(parameter.displayOptions.showIfGreaterOrEqual)) {
+			if (propertyName.charAt(0) === '/') {
+				// Get the value from the root of the node
+				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
+			} else {
+				// Get the value from current level
+				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
+				return true;
+			}
+
+			const targetValue = parameter.displayOptions.showIfGreaterOrEqual[propertyName]!;
+			if (values.length === 0 || values.some((v) => v === undefined || v < targetValue)) {
+				return false;
+			}
+		}
+	}
+
+	if (parameter.displayOptions.showIfLessOrEqual) {
+		// All the defined rules have to match to display parameter
+		for (const propertyName of Object.keys(parameter.displayOptions.showIfLessOrEqual)) {
+			if (propertyName.charAt(0) === '/') {
+				// Get the value from the root of the node
+				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
+			} else {
+				// Get the value from current level
+				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
+				return true;
+			}
+
+			const targetValue = parameter.displayOptions.showIfLessOrEqual[propertyName]!;
+			if (values.length === 0 || values.some((v) => v === undefined || v > targetValue)) {
+				return false;
+			}
+		}
+	}
+
 	if (parameter.displayOptions.hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {

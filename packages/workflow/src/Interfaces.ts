@@ -1147,6 +1147,14 @@ export interface IDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
+	showIfGreaterOrEqual?: {
+		[key: string]: number;
+	};
+
+	showIfLessOrEqual?: {
+		[key: string]: number;
+	};
+
 	hideOnCloud?: boolean;
 }
 
