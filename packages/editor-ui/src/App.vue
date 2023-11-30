@@ -172,7 +172,7 @@ export default defineComponent({
 	},
 	watch: {
 		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
+			if (currentValue && !previousValue && !this.loading) {
 				await this.onAfterAuthenticate();
 			}
 		},
