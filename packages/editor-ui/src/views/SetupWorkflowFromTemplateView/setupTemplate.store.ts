@@ -232,6 +232,34 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		templateId.value = id;
 	};
 
+	const ignoredAutoFillCredentialTypes = new Set([
+		'httpBasicAuth',
+		'httpCustomAuth',
+		'httpDigestAuth',
+		'httpHeaderAuth',
+		'oAuth1Api',
+		'oAuth2Api',
+		'httpQueryAuth',
+	]);
+
+	/**
+	 * Selects initial credentials for the template. Credentials
+	 * need to be loaded before this.
+	 */
+	const setInitialCredentialSelection = () => {
+		for (const credUsage of credentialUsages.value) {
+			if (ignoredAutoFillCredentialTypes.has(credUsage.credentialType)) {
+				continue;
+			}
+
+			const availableCreds = credentialsStore.getCredentialsByType(credUsage.credentialType);
+
+			if (availableCreds.length === 1) {
+				selectedCredentialIdByName.value[credUsage.credentialName] = availableCreds[0].id;
+			}
+		}
+	};
+
 	/**
 	 * Loads the template if it hasn't been loaded yet.
 	 */
@@ -241,6 +269,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		}
 
 		await templatesStore.fetchTemplateById(templateId.value);
+
+		setInitialCredentialSelection();
 	};
 
 	/**
@@ -257,6 +287,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				nodeTypesStore.loadNodeTypesIfNotLoaded(),
 				loadTemplateIfNeeded(),
 			]);
+
+			setInitialCredentialSelection();
 		} finally {
 			isLoading.value = false;
 		}
@@ -341,6 +373,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		skipSetup,
 		init,
 		loadTemplateIfNeeded,
+		setInitialCredentialSelection,
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
