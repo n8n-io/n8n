@@ -7,12 +7,17 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=stable
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable && corepack prepare pnpm@8.9.0 --activate
 RUN set -eux; \
 	apkArch="$(apk --print-arch)"; \
 	case "$apkArch" in \
 	'armv7') apk --no-cache add --virtual build-dependencies python3 build-base;; \
 	esac && \
-	npm install -g --omit=dev n8n@${N8N_VERSION} && \
+	pnpm install -g sqlite3@5.1.6 && \
+	pnpm install -g --ignore-scripts n8n@${N8N_VERSION}  && \
 	case "$apkArch" in \
 	'armv7') apk del build-dependencies;; \
 	esac && \
