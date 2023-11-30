@@ -7,7 +7,7 @@
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRBACStore } from '@/stores/rbac.store';
+import { hasPermission } from './rbac/permissions';
 
 /**
  * Old permissions implementation
@@ -64,7 +64,6 @@ export const parsePermissionsTable = (
 
 export const getCredentialPermissions = (user: IUser | null, credential: ICredentialsResponse) => {
 	const settingsStore = useSettingsStore();
-	const rbacStore = useRBACStore();
 	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
 		EnterpriseEditionFeature.Sharing,
 	);
@@ -78,13 +77,14 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 			name: UserRole.ResourceSharee,
 			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
-		{ name: 'read', test: () => rbacStore.hasScope('credential:read') },
+		{ name: 'read', test: () => hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
 		{
 			name: 'updateSharing',
-			test: (permissions) => !!permissions.isOwner,
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:share' } }) || !!permissions.isOwner,
 		},
 		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
 		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -96,7 +96,6 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 
 export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
-	const rbacStore = useRBACStore();
 	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
 		EnterpriseEditionFeature.Sharing,
 	);
@@ -109,11 +108,13 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		},
 		{
 			name: 'updateSharing',
-			test: (permissions) => !!permissions.isOwner,
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'workflow:share' } }) || !!permissions.isOwner,
 		},
 		{
 			name: 'delete',
-			test: (permissions) => rbacStore.hasScope('workflow:delete') || !!permissions.isOwner,
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'workflow:delete' } }) || !!permissions.isOwner,
 		},
 	];
 
@@ -121,12 +122,11 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 };
 
 export const getVariablesPermissions = (user: IUser | null) => {
-	const rbacStore = useRBACStore();
 	const table: IPermissionsTable = [
-		{ name: 'create', test: () => rbacStore.hasScope('variable:create') },
-		{ name: 'edit', test: () => rbacStore.hasScope('variable:update') },
-		{ name: 'delete', test: () => rbacStore.hasScope('variable:delete') },
-		{ name: 'use', test: () => rbacStore.hasScope('variable:read') },
+		{ name: 'create', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:create' } }) },
+		{ name: 'edit', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:update' } }) },
+		{ name: 'delete', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:delete' } }) },
+		{ name: 'use', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:read' } }) },
 	];
 
 	return parsePermissionsTable(user, table);
