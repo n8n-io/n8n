@@ -282,6 +282,7 @@ export default defineComponent({
 					this.executions[0];
 
 				await this.workflowsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
+				this.workflowsStore.deleteExecution(this.executions[executionIndex]);
 				if (this.temporaryExecution?.id === this.$route.params.executionId) {
 					this.temporaryExecution = null;
 				}
@@ -293,6 +294,7 @@ export default defineComponent({
 						})
 						.catch(() => {});
 					this.workflowsStore.activeWorkflowExecution = nextExecution;
+					await this.setExecutions();
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
@@ -301,7 +303,6 @@ export default defineComponent({
 						params: { name: this.currentWorkflow },
 					});
 				}
-				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
 				this.showError(
