@@ -1,4 +1,4 @@
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
 import { Pinecone } from '@pinecone-database/pinecone';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
@@ -24,16 +24,18 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 
 	const results = [];
 
-	const paths = (
-		await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
-			headers: {
-				Prefer: 'return=representation',
-			},
-			method: 'GET',
-			uri: `${credentials.host}/rest/v1/`,
-			json: true,
-		})
-	).paths as IDataObject;
+	if (typeof credentials.host !== 'string') {
+		throw new ApplicationError('Expected Supabase credentials host to be a string');
+	}
+
+	const { paths } = (await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
+		headers: {
+			Prefer: 'return=representation',
+		},
+		method: 'GET',
+		uri: `${credentials.host}/rest/v1/`,
+		json: true,
+	})) as { paths: IDataObject };
 
 	for (const path of Object.keys(paths)) {
 		//omit introspection path
