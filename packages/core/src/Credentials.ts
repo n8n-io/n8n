@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
-import { ICredentials, jsonParse } from 'n8n-workflow';
+import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
 import { Cipher } from './Cipher';
 
 export class Credentials extends ICredentials {
@@ -31,13 +31,14 @@ export class Credentials extends ICredentials {
 	 */
 	getData(nodeType?: string): ICredentialDataDecryptedObject {
 		if (nodeType && !this.hasNodeAccess(nodeType)) {
-			throw new Error(
-				`The node of type "${nodeType}" does not have access to credentials "${this.name}" of type "${this.type}".`,
-			);
+			throw new ApplicationError('Node does not have access to credential', {
+				tags: { nodeType, credentialType: this.type },
+				extra: { credentialName: this.name },
+			});
 		}
 
 		if (this.data === undefined) {
-			throw new Error('No data is set so nothing can be returned.');
+			throw new ApplicationError('No data is set so nothing can be returned.');
 		}
 
 		const decryptedData = this.cipher.decrypt(this.data);
@@ -45,7 +46,7 @@ export class Credentials extends ICredentials {
 		try {
 			return jsonParse(decryptedData);
 		} catch (e) {
-			throw new Error(
+			throw new ApplicationError(
 				'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 			);
 		}
@@ -56,7 +57,7 @@ export class Credentials extends ICredentials {
 	 */
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error('No credentials were set to save.');
+			throw new ApplicationError('No credentials were set to save.');
 		}
 
 		return {
