@@ -24,7 +24,7 @@ import type {
 	INodeTypeData,
 } from 'n8n-workflow';
 
-import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { Credentials } from '@/Credentials';
 
 import { predefinedNodesTypes } from './constants';
@@ -177,11 +177,11 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	for (const nodeName of nodeNames) {
 		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
 		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);
@@ -218,7 +218,7 @@ export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
-			throw new Error('Workflow data does not contain pinData');
+			throw new ApplicationError('Workflow data does not contain pinData');
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);

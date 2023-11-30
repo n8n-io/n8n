@@ -5,7 +5,7 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ApplicationError, LoggerProxy as Logger } from 'n8n-workflow';
 
 import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
@@ -283,7 +283,7 @@ export class ObjectStoreService {
 
 			this.logger.error(message, { config });
 
-			throw new Error(message, { cause: { error, details: config } });
+			throw new ApplicationError(message, { cause: error, extra: { config } });
 		}
 	}
 }

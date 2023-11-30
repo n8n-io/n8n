@@ -266,7 +266,7 @@ export async function execute(
 		for (const [index, entry] of setData.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItems: { item: index },
+				pairedItem: { item: index },
 			});
 		}
 		return returnData;
