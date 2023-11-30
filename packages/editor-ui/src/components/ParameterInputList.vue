@@ -124,6 +124,7 @@
 					:isReadOnly="isReadOnly"
 					:hideLabel="false"
 					:nodeValues="nodeValues"
+					:entryIndex="entryIndex"
 					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -209,6 +210,10 @@ export default defineComponent({
 		hiddenIssuesInputs: {
 			type: Array as PropType<string[]>,
 			default: () => [],
+		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
 		},
 	},
 	computed: {

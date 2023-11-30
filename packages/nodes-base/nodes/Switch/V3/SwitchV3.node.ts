@@ -483,6 +483,7 @@ export class SwitchV3 implements INodeType {
 								},
 								{
 									displayName: 'Output Key',
+									displayNameIndexed: 'Rename output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',

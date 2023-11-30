@@ -58,6 +58,7 @@
 								:path="getPropertyPath(property.name, index)"
 								:hideDelete="true"
 								:isReadOnly="isReadOnly"
+								:entryIndex="index"
 								@valueChanged="valueChanged"
 							/>
 						</Suspense>

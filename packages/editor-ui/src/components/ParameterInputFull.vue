@@ -1,6 +1,12 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
+		:label="
+			hideLabel
+				? ''
+				: entryIndex !== undefined && parameter?.displayNameIndexed
+				  ? parameter.displayNameIndexed.replace('{{entryIndex}}', String(entryIndex))
+				  : i18n.nodeText().inputLabelDisplayName(parameter, path)
+		"
 		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
@@ -155,6 +161,10 @@ export default defineComponent({
 			default: () => ({
 				size: 'small',
 			}),
+		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
 		},
 	},
 	mounted() {

@@ -1152,6 +1152,7 @@ export interface IDisplayOptions {
 
 export interface INodeProperties {
 	displayName: string;
+	displayNameIndexed?: string;
 	name: string;
 	type: NodePropertyTypes;
 	typeOptions?: INodePropertyTypeOptions;
