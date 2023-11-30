@@ -233,6 +233,20 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	};
 
 	/**
+	 * Selects initial credentials for the template. Credentials
+	 * need to be loaded before this.
+	 */
+	const setInitialCredentialSelection = () => {
+		for (const credUsage of credentialUsages.value) {
+			const availableCreds = credentialsStore.getCredentialsByType(credUsage.credentialType);
+
+			if (availableCreds.length === 1) {
+				selectedCredentialIdByName.value[credUsage.credentialName] = availableCreds[0].id;
+			}
+		}
+	};
+
+	/**
 	 * Loads the template if it hasn't been loaded yet.
 	 */
 	const loadTemplateIfNeeded = async () => {
@@ -241,6 +255,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		}
 
 		await templatesStore.fetchTemplateById(templateId.value);
+
+		setInitialCredentialSelection();
 	};
 
 	/**
@@ -257,6 +273,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				nodeTypesStore.loadNodeTypesIfNotLoaded(),
 				loadTemplateIfNeeded(),
 			]);
+
+			setInitialCredentialSelection();
 		} finally {
 			isLoading.value = false;
 		}
@@ -341,6 +359,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		skipSetup,
 		init,
 		loadTemplateIfNeeded,
+		setInitialCredentialSelection,
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
