@@ -38,8 +38,12 @@ export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
 
 	constructor(node: INode, error: Error | JsonObject) {
-		const message = error instanceof Error ? error.message : '';
-		super(message, { cause: error });
+		if (error instanceof Error) {
+			super(error.message, { cause: error });
+		} else {
+			super('', { errorResponse: error });
+		}
+
 		this.node = node;
 	}
 
