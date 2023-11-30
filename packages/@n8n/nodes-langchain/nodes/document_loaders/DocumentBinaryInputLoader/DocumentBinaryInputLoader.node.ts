@@ -183,7 +183,8 @@ export class DocumentBinaryInputLoader implements INodeType {
 			0,
 		)) as TextSplitter | undefined;
 
-		const processor = new N8nBinaryLoader(this, undefined, textSplitter);
+		const binaryDataKey = this.getNodeParameter('binaryDataKey', 0) as string;
+		const processor = new N8nBinaryLoader(this, undefined, binaryDataKey, textSplitter);
 
 		return {
 			response: logWrapper(processor, this),

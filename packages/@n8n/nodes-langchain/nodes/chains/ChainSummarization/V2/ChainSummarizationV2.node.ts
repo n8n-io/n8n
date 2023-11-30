@@ -98,20 +98,6 @@ export class ChainSummarizationV2 implements INodeType {
 					],
 				},
 				{
-					displayName: 'Input Data Field Name',
-					name: 'binaryDataKey',
-					type: 'string',
-					default: 'data',
-					required: true,
-					description:
-						'The name of the field in the agent or chain’s input that contains the binary file to be processed',
-					displayOptions: {
-						show: {
-							operationMode: ['nodeInputBinary'],
-						},
-					},
-				},
-				{
 					displayName: 'Chunking Strategy',
 					name: 'chunkingMode',
 					noDataExpression: true,
@@ -167,6 +153,19 @@ export class ChainSummarizationV2 implements INodeType {
 					default: {},
 					placeholder: 'Add Option',
 					options: [
+						{
+							displayName: 'Input Data Field Name',
+							name: 'binaryDataKey',
+							type: 'string',
+							default: 'data',
+							description:
+								'The name of the field in the agent or chain’s input that contains the binary file to be processed',
+							displayOptions: {
+								show: {
+									'/operationMode': ['nodeInputBinary'],
+								},
+							},
+						},
 						{
 							displayName: 'Summarization Method',
 							name: 'summarizationMethod',
@@ -346,9 +345,17 @@ export class ChainSummarizationV2 implements INodeType {
 						break;
 				}
 
-				const processor = operationMode === 'nodeInputJson'
-					? new N8nJsonLoader(this, 'options.', textSplitter)
-					: new N8nBinaryLoader(this,'options.', textSplitter);
+				let processor: N8nJsonLoader | N8nBinaryLoader;
+				if (operationMode === 'nodeInputBinary') {
+					const binaryDataKey = this.getNodeParameter('options.binaryDataKey', itemIndex, 'data') as string;
+					processor = new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter);
+				} else {
+					processor = new N8nJsonLoader(this, 'options.', textSplitter);
+				}
+
+				// const processor = operationMode === 'nodeInputJson'
+				// 	? new N8nJsonLoader(this, 'options.', textSplitter)
+				// 	: new N8nBinaryLoader(this,'options.', textSplitter);
 
 				const processedItem = await processor.processItem(item, itemIndex);
 				const response = await chain.call({

@@ -30,12 +30,15 @@ export class N8nBinaryLoader {
 
 	private optionsPrefix: string;
 
+	private binaryDataKey: string;
+
 	private textSplitter?: TextSplitter;
 
-	constructor(context: IExecuteFunctions, optionsPrefix = '', textSplitter?: TextSplitter) {
+	constructor(context: IExecuteFunctions, optionsPrefix = '', binaryDataKey = '', textSplitter?: TextSplitter) {
 		this.context = context;
 		this.textSplitter = textSplitter;
 		this.optionsPrefix = optionsPrefix;
+		this.binaryDataKey = binaryDataKey;
 	}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
@@ -59,15 +62,12 @@ export class N8nBinaryLoader {
 			'auto',
 		) as keyof typeof SUPPORTED_MIME_TYPES;
 
-		const binaryDataKey = this.context.getNodeParameter('binaryDataKey', itemIndex) as string;
 		const docs: Document[] = [];
 		const metadata = getMetadataFiltersValues(this.context, itemIndex);
 
 		if (!item) return [];
 
-		// TODO: Should we support traversing the object to find the binary data?
-		const binaryData = this.context.helpers.assertBinaryData(itemIndex, binaryDataKey);
-
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, this.binaryDataKey)
 		const { mimeType } = binaryData;
 
 		// Check if loader matches the mime-type of the data

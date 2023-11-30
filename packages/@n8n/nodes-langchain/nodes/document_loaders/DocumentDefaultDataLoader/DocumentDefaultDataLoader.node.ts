@@ -262,10 +262,11 @@ export class DocumentDefaultDataLoader implements INodeType {
 			NodeConnectionType.AiTextSplitter,
 			0,
 		)) as TextSplitter | undefined;
+		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex) as string;
 
 		const processor =
 			dataType === 'binary'
-				? new N8nBinaryLoader(this, 'options.', textSplitter)
+				? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
 				: new N8nJsonLoader(this, 'options.', textSplitter);
 
 		return {
