@@ -1,19 +1,33 @@
-import { BasePage } from './base';
-
-export class TemplateCollectionPage extends BasePage {
-	url = '/collections';
-
-	getters = {};
-
-	actions = {
-		visit: (collectionId: number) => {
-			cy.visit(`${this.url}/${collectionId}`);
+export function visitTemplateCollectionPage(withFixture: Fixture) {
+	cy.intercept(
+		'GET',
+		`https://api.n8n.io/api/templates/collections/${testData.ecommerceStarterPack.id}`,
+		{
+			fixture: withFixture.fixture,
 		},
+	).as('getTemplateCollection');
 
-		clickUseWorkflowButton: (workflowTitle: string) => {
-			cy.getByTestId('template-card').contains(workflowTitle).realHover();
+	cy.visit(`/collections/${withFixture.id}`);
 
-			cy.getByTestId('use-workflow-button').find(':visible').click();
-		},
-	};
+	cy.wait('@getTemplateCollection');
 }
+
+export function clickUseWorkflowButtonByTitle(workflowTitle: string) {
+	cy.getByTestId('template-card')
+		.contains('[data-test-id=template-card]', workflowTitle)
+		.realHover({ position: 'center' })
+		.findChildByTestId('use-workflow-button')
+		.click({ force: true });
+}
+
+export type Fixture = {
+	id: number;
+	fixture: string;
+};
+
+export const testData = {
+	ecommerceStarterPack: {
+		id: 1,
+		fixture: 'Ecommerce_starter_pack_template_collection.json',
+	},
+};
