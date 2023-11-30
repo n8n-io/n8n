@@ -215,5 +215,47 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({});
 		});
+
+		test.each([
+			['httpBasicAuth'],
+			['httpCustomAuth'],
+			['httpDigestAuth'],
+			['httpHeaderAuth'],
+			['oAuth1Api'],
+			['oAuth2Api'],
+			['httpQueryAuth'],
+		])('does not auto-select credentials for %s', (credentialType) => {
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.newCredentialType(credentialType)]);
+			credentialsStore.setCredentials([
+				testData.newCredential({
+					name: `${credentialType}Credential`,
+					type: credentialType,
+				}),
+			]);
+
+			const templatesStore = useTemplatesStore();
+			const workflow = testData.newFullOneNodeTemplate({
+				name: 'Test',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				credentials: {
+					[credentialType]: 'Test',
+				},
+				parameters: {},
+				position: [250, 300],
+			});
+			templatesStore.addWorkflows([workflow]);
+
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(workflow.id.toString());
+
+			// Execute
+			setupTemplateStore.setInitialCredentialSelection();
+
+			expect(setupTemplateStore.credentialUsages.length).toBe(1);
+			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({});
+		});
 	});
 });

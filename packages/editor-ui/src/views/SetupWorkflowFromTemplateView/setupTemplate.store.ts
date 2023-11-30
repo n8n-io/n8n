@@ -232,12 +232,26 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		templateId.value = id;
 	};
 
+	const ignoredAutoFillCredentialTypes = new Set([
+		'httpBasicAuth',
+		'httpCustomAuth',
+		'httpDigestAuth',
+		'httpHeaderAuth',
+		'oAuth1Api',
+		'oAuth2Api',
+		'httpQueryAuth',
+	]);
+
 	/**
 	 * Selects initial credentials for the template. Credentials
 	 * need to be loaded before this.
 	 */
 	const setInitialCredentialSelection = () => {
 		for (const credUsage of credentialUsages.value) {
+			if (ignoredAutoFillCredentialTypes.has(credUsage.credentialType)) {
+				continue;
+			}
+
 			const availableCreds = credentialsStore.getCredentialsByType(credUsage.credentialType);
 
 			if (availableCreds.length === 1) {
