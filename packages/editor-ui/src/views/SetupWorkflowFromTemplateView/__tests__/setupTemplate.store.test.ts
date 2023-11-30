@@ -1,10 +1,16 @@
+import { useTemplatesStore } from '@/stores/templates.store';
 import type { IWorkflowTemplateNodeWithCredentials } from '@/utils/templates/templateTransforms';
 import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import {
 	getAppCredentials,
 	getAppsRequiringCredentials,
 	groupNodeCredentialsByName,
+	useSetupTemplateStore,
 } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
+import { setActivePinia } from 'pinia';
+import * as testData from './setupTemplate.store.testData';
+import { createTestingPinia } from '@pinia/testing';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 const objToMap = <T>(obj: Record<string, T>) => {
 	return new Map<string, T>(Object.entries(obj));
@@ -143,6 +149,113 @@ describe('SetupWorkflowFromTemplateView store', () => {
 					],
 				},
 			]);
+		});
+	});
+
+	describe('setInitialCredentialsSelection', () => {
+		beforeEach(() => {
+			setActivePinia(
+				createTestingPinia({
+					stubActions: false,
+				}),
+			);
+		});
+
+		it("selects no credentials when there isn't any available", () => {
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			const templatesStore = useTemplatesStore();
+			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
+
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+
+			// Execute
+			setupTemplateStore.setInitialCredentialSelection();
+
+			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({});
+		});
+
+		it("selects credential when there's only one", () => {
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			credentialsStore.setCredentials([testData.credentialsTelegram1]);
+			const templatesStore = useTemplatesStore();
+			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
+
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+
+			// Execute
+			setupTemplateStore.setInitialCredentialSelection();
+
+			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({
+				telegram_habot: 'YaSKdvEcT1TSFrrr1',
+			});
+		});
+
+		it('selects no credentials when there are more than 1 available', () => {
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			credentialsStore.setCredentials([
+				testData.credentialsTelegram1,
+				testData.credentialsTelegram2,
+			]);
+			const templatesStore = useTemplatesStore();
+			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
+
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+
+			// Execute
+			setupTemplateStore.setInitialCredentialSelection();
+
+			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({});
+		});
+
+		test.each([
+			['httpBasicAuth'],
+			['httpCustomAuth'],
+			['httpDigestAuth'],
+			['httpHeaderAuth'],
+			['oAuth1Api'],
+			['oAuth2Api'],
+			['httpQueryAuth'],
+		])('does not auto-select credentials for %s', (credentialType) => {
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.newCredentialType(credentialType)]);
+			credentialsStore.setCredentials([
+				testData.newCredential({
+					name: `${credentialType}Credential`,
+					type: credentialType,
+				}),
+			]);
+
+			const templatesStore = useTemplatesStore();
+			const workflow = testData.newFullOneNodeTemplate({
+				name: 'Test',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				credentials: {
+					[credentialType]: 'Test',
+				},
+				parameters: {},
+				position: [250, 300],
+			});
+			templatesStore.addWorkflows([workflow]);
+
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(workflow.id.toString());
+
+			// Execute
+			setupTemplateStore.setInitialCredentialSelection();
+
+			expect(setupTemplateStore.credentialUsages.length).toBe(1);
+			expect(setupTemplateStore.selectedCredentialIdByName).toEqual({});
 		});
 	});
 });
