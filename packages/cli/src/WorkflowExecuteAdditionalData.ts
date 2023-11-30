@@ -430,10 +430,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
-						await Container.get(ExecutionRepository).hardDelete({
-							workflowId: this.workflowData.id as string,
-							executionId: this.executionId,
-						});
+						/**
+						 * When manual executions are not being saved, we only soft-delete
+						 * the execution so that the user can access its binary data
+						 * while building their workflow.
+						 *
+						 * The manual execution and its binary data will be hard-deleted
+						 * on the next pruning cycle after the grace period set by
+						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+						 */
+						await Container.get(ExecutionRepository).softDelete(this.executionId);
 
 						return;
 					}
