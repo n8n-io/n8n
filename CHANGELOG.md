@@ -1,3 +1,26 @@
+## [1.18.1](https://github.com/n8n-io/n8n/compare/n8n@1.18.0...n8n@1.18.1) (2023-11-30)
+
+
+### Bug Fixes
+
+* **AWS DynamoDB Node:** Improve error message parsing ([#7793](https://github.com/n8n-io/n8n/issues/7793)) ([192770a](https://github.com/n8n-io/n8n/commit/192770af619b2de4ce618b427fb0d340d5b64a77))
+* **core:** Prevent error messages due to statistics about data loading ([#7824](https://github.com/n8n-io/n8n/issues/7824)) ([c7d600a](https://github.com/n8n-io/n8n/commit/c7d600ab721efbfd2b0c966551d3ff2ab40c786b))
+* **core:** Tighten checks for multi-main setup usage ([#7788](https://github.com/n8n-io/n8n/issues/7788)) ([060987a](https://github.com/n8n-io/n8n/commit/060987a331fbaec38936a614f027fa758e1c83d1))
+* **core:** Use AbortController to notify nodes to abort execution ([#6141](https://github.com/n8n-io/n8n/issues/6141)) ([dbad88d](https://github.com/n8n-io/n8n/commit/dbad88d9c44bcb19b9c021dec397d785ec177311))
+* **editor:** Disable context menu actions in read-only mode ([#7789](https://github.com/n8n-io/n8n/issues/7789)) ([ae25503](https://github.com/n8n-io/n8n/commit/ae255031360be672b8b10f0f9bac9303e0faea67))
+* **editor:** Fix cloud plan data loading on instance ([#7841](https://github.com/n8n-io/n8n/issues/7841)) ([b0039a3](https://github.com/n8n-io/n8n/commit/b0039a3a8b4ccbd9e28595a17f5da2febd580830))
+* **editor:** Fix credential icon for old node type version ([#7843](https://github.com/n8n-io/n8n/issues/7843)) ([9b0e2d1](https://github.com/n8n-io/n8n/commit/9b0e2d1665f7b2408d9c98060df999ffe8243ac9))
+* **editor:** Fix icon for unknown node type ([#7842](https://github.com/n8n-io/n8n/issues/7842)) ([9cd0a75](https://github.com/n8n-io/n8n/commit/9cd0a756bbce932b372078bc05198c0c61324ad0))
+* **editor:** Fix mouse position in workflow previews ([#7853](https://github.com/n8n-io/n8n/issues/7853)) ([83b5e6a](https://github.com/n8n-io/n8n/commit/83b5e6a802174938d942328a834776e34a7817ce))
+* **editor:** Suppress dev server websocket messages in workflow view ([#7808](https://github.com/n8n-io/n8n/issues/7808)) ([8a71178](https://github.com/n8n-io/n8n/commit/8a711784b17396bdb29c097ce4ed69dc43502823))
+* **Google Sheets Node:** Fix issue with paired items not being set correctly ([#7862](https://github.com/n8n-io/n8n/issues/7862)) ([95854db](https://github.com/n8n-io/n8n/commit/95854dbb438bce5cf9b4485f2d6b8ad78a21194c))
+* **Google Sheets Node:** Read operation execute for each item ([#7800](https://github.com/n8n-io/n8n/issues/7800)) ([2563433](https://github.com/n8n-io/n8n/commit/256343392465196b14f1e1b3d3c2360a484ce2ef))
+* **HTTP Request Node:** Enable expressions for binary input data fields ([#7782](https://github.com/n8n-io/n8n/issues/7782)) ([7ec748a](https://github.com/n8n-io/n8n/commit/7ec748ae96291d2185c7be21d2b348f12623cbd1))
+* **Microsoft SQL Node:** Prevent double escaping table name ([#7801](https://github.com/n8n-io/n8n/issues/7801)) ([6a8e7b1](https://github.com/n8n-io/n8n/commit/6a8e7b16cff81ec765b4c7d9da146d3aefb1ef34))
+* **Notion Node:** Fix broken Notion node parameters ([#7864](https://github.com/n8n-io/n8n/issues/7864)) ([940944e](https://github.com/n8n-io/n8n/commit/940944e44bd7a9ba9f57377229aca531ceccfe0c)), closes [#7791](https://github.com/n8n-io/n8n/issues/7791)
+
+
+
 # [1.18.0](https://github.com/n8n-io/n8n/compare/n8n@1.17.0...n8n@1.18.0) (2023-11-22)
 
 
