@@ -107,6 +107,7 @@ export default defineComponent({
 			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
+			role: 'member',
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
@@ -213,6 +214,9 @@ export default defineComponent({
 			if (e.name === 'emails') {
 				this.emails = e.value;
 			}
+			if (e.name === 'role') {
+				this.role = e.value;
+			}
 		},
 		async onSubmit() {
 			try {
@@ -220,7 +224,7 @@ export default defineComponent({
 
 				const emails = this.emails
 					.split(',')
-					.map((email) => ({ email: getEmail(email) }))
+					.map((email) => ({ email: getEmail(email), role: this.role }))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
