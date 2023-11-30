@@ -1,3 +1,12 @@
+## [1.19.3](https://github.com/n8n-io/n8n/compare/n8n@1.19.2...n8n@1.19.3) (2023-11-30)
+
+
+### Bug Fixes
+
+* **editor:** Fix deletion of last execution at execution preview ([#7883](https://github.com/n8n-io/n8n/issues/7883)) ([617ae2b](https://github.com/n8n-io/n8n/commit/617ae2b6b133f25ca61e15db2525ca64e4db3f18))
+
+
+
 ## [1.19.2](https://github.com/n8n-io/n8n/compare/n8n@1.19.1...n8n@1.19.2) (2023-11-29)
 
 
