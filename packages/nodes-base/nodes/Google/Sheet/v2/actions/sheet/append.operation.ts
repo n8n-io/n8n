@@ -136,7 +136,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
-				'@version': [4, 4.1],
+				'@version': [4, 4.1, 4.2],
 			},
 			hide: {
 				...untilSheetSelected,

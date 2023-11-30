@@ -1,4 +1,9 @@
 import { CredentialsModal, MessageBox } from '../pages/modals';
+import {
+	clickUseWorkflowButtonByTitle,
+	visitTemplateCollectionPage,
+	testData,
+} from '../pages/template-collection';
 import { TemplateCredentialSetupPage } from '../pages/template-credential-setup';
 import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
@@ -22,6 +27,16 @@ describe('Template credentials setup', () => {
 		templateWorkflowPage.actions.visit(testTemplate.id);
 		templateCredentialsSetupPage.actions.enableFeatureFlag();
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
+
+		templateCredentialsSetupPage.getters
+			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.should('be.visible');
+	});
+
+	it('can be opened from template collection page', () => {
+		visitTemplateCollectionPage(testData.ecommerceStarterPack);
+		templateCredentialsSetupPage.actions.enableFeatureFlag();
+		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
 
 		templateCredentialsSetupPage.getters
 			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)

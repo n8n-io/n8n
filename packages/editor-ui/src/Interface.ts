@@ -817,10 +817,20 @@ export interface ITemplatesWorkflow {
 	};
 }
 
+export interface ITemplatesWorkflowInfo {
+	nodeCount: number;
+	nodeTypes: {
+		[key: string]: {
+			count: number;
+		};
+	};
+}
+
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
 	categories: ITemplatesCategory[];
+	workflowInfo: ITemplatesWorkflowInfo;
 }
 
 /**
@@ -1010,6 +1020,7 @@ export interface IVersionNode {
 }
 
 export interface ITemplatesNode extends IVersionNode {
+	id: number;
 	categories?: ITemplatesCategory[];
 }
 
