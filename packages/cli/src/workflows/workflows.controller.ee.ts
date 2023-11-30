@@ -59,16 +59,38 @@ EEWorkflowController.put(
 			throw new BadRequestError('Bad request');
 		}
 
-		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
+		const isOwnedRes = await EEWorkflows.isOwned(req.user, workflowId);
+		const { ownsWorkflow } = isOwnedRes;
+		let { workflow } = isOwnedRes;
 
 		if (!ownsWorkflow || !workflow) {
-			throw new UnauthorizedError('Forbidden');
+			workflow = undefined;
+			// Allow owners/admins to share
+			if (await req.user.hasGlobalScope('workflow:share')) {
+				const sharedRes = await EEWorkflows.getSharing(req.user, workflowId, {
+					allowGlobalScope: true,
+					globalScope: 'workflow:share',
+				});
+				workflow = sharedRes?.workflow;
+			}
+			if (!workflow) {
+				throw new UnauthorizedError('Forbidden');
+			}
 		}
+
+		const ownerIds = (
+			await EEWorkflows.getSharings(Db.getConnection().createEntityManager(), workflowId, [
+				'shared',
+				'shared.role',
+			])
+		)
+			.filter((e) => e.role.name === 'owner')
+			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
+			await EEWorkflows.pruneSharings(trx, workflowId, [...ownerIds, ...shareWithIds]);
 
 			const sharings = await EEWorkflows.getSharings(trx, workflowId);
 
@@ -79,7 +101,7 @@ EEWorkflowController.put(
 			);
 
 			if (newShareeIds.length) {
-				await EEWorkflows.share(trx, workflow, newShareeIds);
+				await EEWorkflows.share(trx, workflow!, newShareeIds);
 			}
 		});
 

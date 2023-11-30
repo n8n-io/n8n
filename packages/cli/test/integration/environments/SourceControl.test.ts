@@ -5,7 +5,6 @@ import type { User } from '@db/entities/User';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import Container from 'typedi';
 import config from '@/config';
-import { License } from '@/License';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
@@ -32,7 +31,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
 
-	Container.get(License).isSourceControlLicensed = () => true;
 	Container.get(SourceControlPreferencesService).isSourceControlConnected = () => true;
 });
 

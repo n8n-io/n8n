@@ -69,6 +69,8 @@ import { setPageTitle } from '@/utils/htmlUtils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
+import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
@@ -80,11 +82,13 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
-		collection(): null | ITemplatesCollectionFull {
+		collection(): ITemplatesCollectionFull | null {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
 		collectionId(): string {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 		collectionWorkflows(): Array<ITemplatesWorkflow | ITemplatesWorkflowFull | null> | null {
 			if (!this.collection) {
@@ -116,17 +120,24 @@ export default defineComponent({
 		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
-			const telemetryPayload = {
-				template_id: id,
-				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
-				source: 'collection',
-			};
-			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-				withPostHog: true,
+		async onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
+			if (!isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
+				const telemetryPayload = {
+					template_id: id,
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
+					source: 'collection',
+				};
+				await this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
+				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+					withPostHog: true,
+				});
+			}
+
+			await openTemplateCredentialSetup({
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: event.metaKey || event.ctrlKey,
 			});
-			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
 			if (e.metaKey || e.ctrlKey) {

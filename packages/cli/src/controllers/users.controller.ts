@@ -38,7 +38,6 @@ export class UsersController {
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
-			NO_MEMBER: 'Member cannot change role for any user',
 			MISSING_NEW_ROLE_KEY: 'Expected `newRole` to exist',
 			MISSING_NEW_ROLE_VALUE: 'Expected `newRole` to have `name` and `scope`',
 			NO_USER: 'Target user not found',
@@ -326,13 +325,10 @@ export class UsersController {
 		return { success: true };
 	}
 
-	// @TODO: Add scope check `@RequireGlobalScope('user:changeRole')`
-	// once this has been merged: https://github.com/n8n-io/n8n/pull/7737
-	@Authorized('any')
 	@Patch('/:id/role')
+	@RequireGlobalScope('user:changeRole')
 	async changeRole(req: UserRequest.ChangeRole) {
 		const {
-			NO_MEMBER,
 			MISSING_NEW_ROLE_KEY,
 			MISSING_NEW_ROLE_VALUE,
 			NO_ADMIN_ON_OWNER,
@@ -341,10 +337,6 @@ export class UsersController {
 			NO_OWNER_ON_OWNER,
 			NO_ADMIN_IF_UNLICENSED,
 		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
-
-		if (req.user.globalRole.scope === 'global' && req.user.globalRole.name === 'member') {
-			throw new UnauthorizedError(NO_MEMBER);
-		}
 
 		const { newRole } = req.body;
 

@@ -9,6 +9,8 @@ module.exports = {
 	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
+		'n8n-local-rules/dangerously-use-html-string-missing': 'off',
+
 		// TODO: Remove these
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',
@@ -31,9 +33,7 @@ module.exports = {
 		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'warn',
 		'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
-		'@typescript-eslint/no-unsafe-assignment': 'warn',
 		'@typescript-eslint/no-unsafe-call': 'warn',
-		'@typescript-eslint/no-unsafe-member-access': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
 		'@typescript-eslint/no-unused-expressions': 'warn',
 		'@typescript-eslint/no-unused-vars': 'warn',
@@ -42,7 +42,6 @@ module.exports = {
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
 		'@typescript-eslint/restrict-plus-operands': 'warn',
-		'@typescript-eslint/restrict-template-expressions': 'warn',
 		'@typescript-eslint/unbound-method': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',

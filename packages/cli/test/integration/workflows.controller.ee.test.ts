@@ -6,7 +6,6 @@ import type { INode } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
@@ -20,7 +19,9 @@ import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db
 import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
+import type { Role } from '@/databases/entities/Role';
 
+let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let anotherMember: User;
@@ -29,10 +30,6 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const licenseLike = mockInstance(License, {
-	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
@@ -40,10 +37,11 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
 });
+const license = testServer.license;
 
 beforeAll(async () => {
 	const globalOwnerRole = await getGlobalOwnerRole();
-	const globalMemberRole = await getGlobalMemberRole();
+	globalMemberRole = await getGlobalMemberRole();
 	const credentialOwnerRole = await getCredentialOwnerRole();
 
 	owner = await createUser({ globalRole: globalOwnerRole });
@@ -64,7 +62,6 @@ beforeEach(async () => {
 	activeWorkflowRunnerLike.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
-	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 describe('router should switch based on flag', () => {
@@ -151,6 +148,75 @@ describe('PUT /workflows/:id', () => {
 
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
 		expect(secondSharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing by the instance owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id, owner.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing with self by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const tempUser = await createUser({ globalRole: globalMemberRole });
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [tempUser.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
 	});
 });
 
@@ -419,7 +485,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -468,7 +534,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -942,7 +1008,7 @@ describe('getSharedWorkflowIds', () => {
 
 describe('PATCH /workflows/:id - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -1000,7 +1066,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -1052,7 +1118,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 
 describe('PATCH /workflows/:id - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -1074,7 +1140,7 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
