@@ -78,17 +78,37 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
 		{ name: 'read', test: () => hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) },
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
+		{
+			name: 'save',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:create' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'updateName',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:update' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'updateConnection',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:update' } }) || !!permissions.isOwner,
+		},
 		{
 			name: 'updateSharing',
 			test: (permissions) =>
 				hasPermission(['rbac'], { rbac: { scope: 'credential:share' } }) || !!permissions.isOwner,
 		},
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'use', test: [UserRole.ResourceOwner, UserRole.ResourceSharee] },
+		{
+			name: 'updateNodeAccess',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:update' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'delete',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:delete' } }) || !!permissions.isOwner,
+		},
+		{ name: 'use', test: () => hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) },
 	];
 
 	return parsePermissionsTable(user, table);
