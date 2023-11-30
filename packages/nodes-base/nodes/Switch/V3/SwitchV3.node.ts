@@ -17,15 +17,19 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;
 
 	if (mode === 'expression') {
-		return Array.from({ length: parameters.outputsAmount as number }, (_, i) => ({
+		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
 			type: `${NodeConnectionType.Main}`,
 			displayName: i.toString(),
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.rules as IDataObject[]) ?? [];
-		return rules.map((rule) => {
+		const ruleOutputs = rules.map((rule) => {
 			return { type: `${NodeConnectionType.Main}`, displayName: rule.outputKey };
 		});
+		if ((parameters.options as IDataObject)?.fallbackOutput === 'last') {
+			ruleOutputs.push({ type: `${NodeConnectionType.Main}`, displayName: 'Fallback' });
+		}
+		return ruleOutputs;
 	}
 };
 
@@ -68,21 +72,8 @@ export class SwitchV3 implements INodeType {
 				//         mode:expression
 				// ----------------------------------
 				{
-					displayName: 'Output',
-					name: 'output',
-					type: 'string',
-					displayOptions: {
-						show: {
-							mode: ['expression'],
-						},
-					},
-					default: '',
-					description: 'The index of output to which to send data to',
-				},
-
-				{
-					displayName: 'Outputs Amount',
-					name: 'outputsAmount',
+					displayName: 'Number of Outputs',
+					name: 'numberOutputs',
 					type: 'number',
 					displayOptions: {
 						show: {
@@ -90,7 +81,23 @@ export class SwitchV3 implements INodeType {
 						},
 					},
 					default: 4,
-					description: 'Amount of outputs to create',
+					description: 'How many outputs to create',
+				},
+				{
+					displayName: 'Output Index',
+					name: 'output',
+					type: 'number',
+					validateType: 'number',
+					hint: 'The index to route the item to, starts at 0',
+					displayOptions: {
+						show: {
+							mode: ['expression'],
+						},
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-number
+					default: '={{ $itemIndex }}',
+					description:
+						"The output's index to which send an input item, use expressions to calculate what input item should be routed to which output, expression must return a number",
 				},
 
 				// ----------------------------------
@@ -493,32 +500,32 @@ export class SwitchV3 implements INodeType {
 						},
 					],
 				},
-
-				{
-					displayName: 'Fallback Output Name or ID',
-					name: 'fallbackOutput',
-					type: 'options',
-					displayOptions: {
-						show: {
-							mode: ['rules'],
-						},
-					},
-
-					typeOptions: {
-						loadOptionsDependsOn: ['rules.rules'],
-						loadOptionsMethod: 'getFallbackOutputOptions',
-					},
-					default: -1,
-					description:
-						'The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-				},
 				{
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
 					placeholder: 'Add Option',
 					default: {},
+					displayOptions: {
+						show: {
+							mode: ['rules'],
+						},
+					},
 					options: [
+						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+							displayName: 'Fallback Output',
+							name: 'fallbackOutput',
+							type: 'options',
+							typeOptions: {
+								loadOptionsDependsOn: ['rules.rules', '/rules', '/rules.rules'],
+								loadOptionsMethod: 'getFallbackOutputOptions',
+							},
+							default: 'none',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+							description:
+								'If no rule matches the item will be sent to this output, by default they will be ignored',
+						},
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 							displayName: 'Send data to all matching outputs',
@@ -538,17 +545,30 @@ export class SwitchV3 implements INodeType {
 		loadOptions: {
 			async getFallbackOutputOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rules = (this.getCurrentNodeParameter('rules.rules') as INodeParameters[]) ?? [];
-				const options = rules.map((rule, index) => ({
-					name: `${index} ${rule.outputKey as string}`,
-					value: index,
-				}));
 
-				options.unshift({
-					name: 'None',
-					value: -1,
-				});
+				const outputOptions: INodePropertyOptions[] = [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'None (default)',
+						value: 'none',
+						description: 'Items will be ignored',
+					},
+					{
+						name: 'Last',
+						value: 'last',
+						description: 'Items will be sent to the last, separate, output',
+					},
+				];
 
-				return options;
+				for (const [index, rule] of rules.entries()) {
+					outputOptions.push({
+						name: `Output ${rule.outputKey || index}`,
+						value: index,
+						description: `Items will be sent to the same output as when matched rule ${index + 1}`,
+					});
+				}
+
+				return outputOptions;
 			},
 		},
 	};
@@ -668,17 +688,12 @@ export class SwitchV3 implements INodeType {
 			try {
 				item = items[itemIndex];
 				const rules = this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[];
-				const allMatchingOutputs = this.getNodeParameter(
-					'options.allMatchingOutputs',
-					itemIndex,
-					false,
-				) as boolean;
 				mode = this.getNodeParameter('mode', itemIndex) as string;
 
 				if (mode === 'expression') {
-					const outputsAmount = this.getNodeParameter('outputsAmount', itemIndex) as number;
+					const numberOutputs = this.getNodeParameter('numberOutputs', itemIndex) as number;
 					if (itemIndex === 0) {
-						returnData = new Array(outputsAmount).fill(0).map(() => []);
+						returnData = new Array(numberOutputs).fill(0).map(() => []);
 					}
 					// One expression decides how to route item
 					outputIndex = this.getNodeParameter('output', itemIndex) as number;
@@ -687,8 +702,14 @@ export class SwitchV3 implements INodeType {
 					returnData[outputIndex].push(item);
 				} else if (mode === 'rules') {
 					// Rules decide how to route item
+					const options = this.getNodeParameter('options', itemIndex, {});
+					const fallbackOutput = options.fallbackOutput;
+
 					if (itemIndex === 0) {
 						returnData = new Array(rules.length).fill(0).map(() => []);
+						if (fallbackOutput === 'last') {
+							returnData.push([]);
+						}
 					}
 					const dataType = this.getNodeParameter('dataType', 0) as string;
 
@@ -717,17 +738,19 @@ export class SwitchV3 implements INodeType {
 							const ruleIndex = rules.indexOf(ruleData);
 							returnData[ruleIndex].push(item);
 
-							if (!allMatchingOutputs) {
+							if (!options.allMatchingOutputs) {
 								continue itemLoop;
 							}
 						}
 					}
 
-					// Check if a fallback output got defined and route accordingly
-					outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
-					if (outputIndex !== -1) {
-						checkIndexRange(returnData.length, outputIndex, itemIndex);
-						returnData[outputIndex].push(item);
+					if (fallbackOutput !== 'none') {
+						if (fallbackOutput === 'last') {
+							returnData[returnData.length - 1].push(item);
+							continue;
+						}
+						checkIndexRange(returnData.length, fallbackOutput as number, itemIndex);
+						returnData[fallbackOutput as number].push(item);
 					}
 				}
 			} catch (error) {
