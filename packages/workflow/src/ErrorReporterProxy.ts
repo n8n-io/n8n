@@ -24,7 +24,7 @@ export function init(errorReporter: ErrorReporter) {
 
 const wrap = (e: unknown) => {
 	if (e instanceof Error) return e;
-	if (typeof e === 'string') return new Error(e);
+	if (typeof e === 'string') return new ApplicationError(e);
 	return;
 };
 
