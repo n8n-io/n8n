@@ -7,7 +7,13 @@ import type {
 	INodeType,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeHelpers, LoggerProxy, WorkflowOperationError } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	NodeHelpers,
+	LoggerProxy,
+	WorkflowOperationError,
+	ApplicationError,
+} from 'n8n-workflow';
 
 function findPropertyFromParameterName(
 	parameterName: string,
@@ -41,14 +47,14 @@ function findPropertyFromParameterName(
 			property = findProp(param, property.values);
 			currentParamPath += `.${param}`;
 		} else {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
+			throw new ApplicationError('Could not find property', { extra: { parameterName } });
 		}
 		if (!property) {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
+			throw new ApplicationError('Could not find property', { extra: { parameterName } });
 		}
 	}
 	if (!property) {
-		throw new Error(`Couldn't not find property "${parameterName}"`);
+		throw new ApplicationError('Could not find property', { extra: { parameterName } });
 	}
 
 	return property;
@@ -101,17 +107,16 @@ function extractValueRLC(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid ${modeProp.displayName}.`,
+		throw new ApplicationError(
+			"ERROR: This parameter's value is invalid. Please enter a valid mode.",
+			{ extra: { parameter: property.displayName, modeProp: modeProp.displayName } },
 		);
 	}
 
 	if (modeProp.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				modeProp.extractValue.type as string
-			}"`,
-		);
+		throw new ApplicationError('Property with unknown `extractValue`', {
+			extra: { parameter: parameterName, extractValueType: modeProp.extractValue.type },
+		});
 	}
 
 	const regex = new RegExp(modeProp.extractValue.regex);
@@ -137,17 +142,15 @@ function extractValueOther(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid value.`,
-		);
+		throw new ApplicationError("This parameter's value is invalid", {
+			extra: { parameter: property.displayName },
+		});
 	}
 
 	if (property.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				property.extractValue.type as string
-			}"`,
-		);
+		throw new ApplicationError('Property with unknown `extractValue`', {
+			extra: { parameter: parameterName, extractValueType: property.extractValue.type },
+		});
 	}
 
 	const regex = new RegExp(property.extractValue.regex);

@@ -273,10 +273,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
 		currentlyRunningExecutions: string[],
-		isOwner: boolean,
+		hasGlobalRead: boolean,
 	): Promise<{ count: number; estimated: boolean }> {
 		const dbType = config.getEnv('database.type');
-		if (dbType !== 'postgresdb' || (filters && Object.keys(filters).length > 0) || !isOwner) {
+		if (dbType !== 'postgresdb' || (filters && Object.keys(filters).length > 0) || !hasGlobalRead) {
 			const query = this.createQueryBuilder('execution').andWhere(
 				'execution.workflowId IN (:...accessibleWorkflowIds)',
 				{ accessibleWorkflowIds },

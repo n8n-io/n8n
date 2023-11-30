@@ -28,6 +28,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
+import type { Scope } from '@n8n/permissions';
 import { Logger } from '@/Logger';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -36,19 +37,23 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+export type WorkflowsGetSharedOptions =
+	| { allowGlobalScope: true; globalScope: Scope }
+	| { allowGlobalScope: false };
+
 export class WorkflowsService {
 	static async getSharing(
 		user: User,
 		workflowId: string,
+		options: WorkflowsGetSharedOptions,
 		relations: string[] = ['workflow'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedWorkflow | null> {
 		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// workflows they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		// Omit user from where if the requesting user has relevant
+		// global workflow permissions. This allows the user to
+		// access workflows they don't own.
+		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			where.userId = user.id;
 		}
 
@@ -195,8 +200,9 @@ export class WorkflowsService {
 	): Promise<WorkflowEntity> {
 		const shared = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['workflow', 'role'],
-			where: whereClause({
+			where: await whereClause({
 				user,
+				globalScope: 'workflow:update',
 				entityType: 'workflow',
 				entityId: workflowId,
 				roles,
@@ -476,8 +482,9 @@ export class WorkflowsService {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['workflow', 'role'],
-			where: whereClause({
+			where: await whereClause({
 				user,
+				globalScope: 'workflow:delete',
 				entityType: 'workflow',
 				entityId: workflowId,
 				roles: ['owner'],
