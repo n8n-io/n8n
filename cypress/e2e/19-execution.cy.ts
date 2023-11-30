@@ -1,7 +1,8 @@
 import { v4 as uuid } from 'uuid';
-import { NDV, WorkflowPage as WorkflowPageClass, WorkflowsPage } from '../pages';
+import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 
 const workflowPage = new WorkflowPageClass();
+const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
 
 describe('Execution', () => {
@@ -269,5 +270,18 @@ describe('Execution', () => {
 
 		// Check warning toast (works because Cypress waits enough for the element to show after the http request node has finished)
 		workflowPage.getters.warningToast().should('be.visible');
+	});
+
+	describe('execution preview', () => {
+		it('when deleting the last execution, it should show empty state', () => {
+			workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+			workflowPage.actions.executeWorkflow();
+			executionsTab.actions.switchToExecutionsTab();
+
+			executionsTab.actions.deleteExecutionInPreview();
+
+			executionsTab.getters.successfulExecutionListItems().should('have.length', 0);
+			workflowPage.getters.successToast().contains('Execution deleted');
+		});
 	});
 });
