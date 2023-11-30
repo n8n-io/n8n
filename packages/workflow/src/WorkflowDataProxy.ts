@@ -29,6 +29,7 @@ import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
 import { getGlobalState } from './GlobalState';
+import { ApplicationError } from './errors/application.error';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -190,7 +191,9 @@ export class WorkflowDataProxy {
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
-						throw new Error(`Could not find sibling parameter "${key}" on node "${nodeName}"`);
+						throw new ApplicationError('Could not find sibling parameter on node', {
+							extra: { nodeName, parameter: key },
+						});
 					}
 					returnValue = that.siblingParameters[key];
 				} else {
@@ -300,8 +303,8 @@ export class WorkflowDataProxy {
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
 			if (!taskData.main?.length || taskData.main[0] === null) {
-				// throw new Error(`No data found for item-index: "${itemIndex}"`);
-				throw new ExpressionError('No data found from "main" input.', {
+				// throw new ApplicationError('No data found for item-index', { extra: { itemIndex } });
+				throw new ExpressionError('No data found from `main` input', {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -765,7 +768,7 @@ export class WorkflowDataProxy {
 								if (itemInput >= taskData.source.length) {
 									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
 									// Actual error does not matter as it gets caught below and `null` will be returned
-									throw new Error('Not found');
+									throw new ApplicationError('Not found');
 								}
 
 								return getPairedItem(destinationNodeName, taskData.source[itemInput], item);
