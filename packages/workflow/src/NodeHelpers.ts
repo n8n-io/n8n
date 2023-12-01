@@ -52,6 +52,7 @@ import { deepCopy } from './utils';
 import type { Workflow } from './Workflow';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import { validateFieldType } from './TypeValidation';
+import { ApplicationError } from './errors/application.error';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -420,7 +421,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new Error('The "executionData" is not initialized!');
+		throw new ApplicationError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -428,11 +429,16 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error('The request data of context type "node" the node parameter has to be set!');
+			// @TODO: What does this mean?
+			throw new ApplicationError(
+				'The request data of context type "node" the node parameter has to be set!',
+			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new Error(`The context type "${type}" is not know. Only "flow" and node" are supported!`);
+		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+			extra: { contextType: type },
+		});
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
@@ -534,7 +540,7 @@ export function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error(
+			throw new ApplicationError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -777,9 +783,9 @@ export function getNodeParameters(
 						) as INodePropertyCollection;
 
 						if (nodePropertyOptions === undefined) {
-							throw new Error(
-								`Could not find property option "${itemName}" for "${nodeProperties.name}"`,
-							);
+							throw new ApplicationError('Could not find property option', {
+								extra: { propertyOption: itemName, property: nodeProperties.name },
+							});
 						}
 
 						tempNodePropertiesArray = nodePropertyOptions.values!;
@@ -1058,7 +1064,9 @@ export function getNodeInputs(
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
-		throw new Error(`Could not calculate inputs dynamically for node "${node.name}"`);
+		throw new ApplicationError('Could not calculate inputs dynamically for node', {
+			extra: { nodeName: node.name },
+		});
 	}
 }
 
@@ -1081,7 +1089,9 @@ export function getNodeOutputs(
 				{},
 			) || []) as ConnectionTypes[];
 		} catch (e) {
-			throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+			throw new ApplicationError('Could not calculate outputs dynamically for node', {
+				extra: { nodeName: node.name },
+			});
 		}
 	}
 

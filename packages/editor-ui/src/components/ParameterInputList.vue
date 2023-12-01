@@ -30,7 +30,7 @@
 
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
-				class="parameter-item"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
@@ -158,12 +158,16 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
-import { get, set } from 'lodash-es';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
+import {
+	getMainAuthField,
+	getNodeAuthFields,
+	isAuthRelatedParameter,
+} from '@/utils/nodeTypesUtils';
+import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 
 const FixedCollectionParameter = defineAsyncComponent(

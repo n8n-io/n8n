@@ -17,6 +17,7 @@ import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHisto
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
+import { ApplicationError } from 'n8n-workflow';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -64,7 +65,7 @@ export class LdapSync {
 	 */
 	scheduleRun(): void {
 		if (!this._config.synchronizationInterval) {
-			throw new Error('Interval variable has to be defined');
+			throw new ApplicationError('Interval variable has to be defined');
 		}
 		this.intervalId = setInterval(async () => {
 			await this.run('live');

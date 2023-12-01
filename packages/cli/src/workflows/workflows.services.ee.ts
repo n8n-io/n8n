@@ -1,6 +1,5 @@
 import type { DeleteResult, EntityManager } from 'typeorm';
 import { In, Not } from 'typeorm';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
@@ -12,20 +11,23 @@ import type {
 	WorkflowWithSharingsAndCredentials,
 } from './workflows.types';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, ['workflow', 'role'], {
-			allowGlobalOwner: false,
-		});
+		const sharing = await this.getSharing(user, workflowId, { allowGlobalScope: false }, [
+			'workflow',
+			'role',
+		]);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
 
@@ -37,10 +39,11 @@ export class EEWorkflowsService extends WorkflowsService {
 	static async getSharings(
 		transaction: EntityManager,
 		workflowId: string,
+		relations = ['shared'],
 	): Promise<SharedWorkflow[]> {
 		const workflow = await transaction.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			relations: ['shared'],
+			relations,
 		});
 		return workflow?.shared ?? [];
 	}
@@ -160,7 +163,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				if (credentialId === undefined) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
-					throw new Error('The workflow contains credentials that you do not have access to');
+					throw new ApplicationError(
+						'The workflow contains credentials that you do not have access to',
+					);
 				}
 			});
 		});
@@ -170,7 +175,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		const previousVersion = await EEWorkflowsService.get({ id: workflowId });
 
 		if (!previousVersion) {
-			throw new ResponseHelper.NotFoundError('Workflow not found');
+			throw new NotFoundError('Workflow not found');
 		}
 
 		const allCredentials = await CredentialsService.getMany(user);
@@ -183,9 +188,9 @@ export class EEWorkflowsService extends WorkflowsService {
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			}
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
 		}

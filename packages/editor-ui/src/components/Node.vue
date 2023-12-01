@@ -169,6 +169,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
@@ -176,7 +177,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -185,7 +186,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables';
+import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Node',
@@ -392,7 +393,7 @@ export default defineComponent({
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
-				return nodeExecutionRunData[0].executionStatus ?? '';
+				return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
 			}
 			return '';
 		},
@@ -401,7 +402,7 @@ export default defineComponent({
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
-					if (executionRunData.error) {
+					if (executionRunData?.error) {
 						issues.push(
 							`${executionRunData.error.message}${
 								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
@@ -426,7 +427,10 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
+			return (
+				!this.isConfigurableNode &&
+				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+			);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -482,9 +486,15 @@ export default defineComponent({
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = '--color-danger';
-					returnStyles['border-width'] = '2px';
-					returnStyles['border-style'] = 'solid';
+					// Do not set red border if there is an issue with the configuration node
+					if (
+						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==
+						'configuration-node'
+					) {
+						borderColor = '--color-danger';
+						returnStyles['border-width'] = '2px';
+						returnStyles['border-style'] = 'solid';
+					}
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
@@ -608,6 +618,7 @@ export default defineComponent({
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
+				this.uiStore.isModalActive ||
 				dataItemsCount === 0
 			)
 				return;
@@ -1331,6 +1342,10 @@ export default defineComponent({
 
 	&.jtk-endpoint-connected {
 		z-index: 10;
+	}
+
+	&.add-input-endpoint-error {
+		--endpoint-svg-color: var(--color-danger);
 	}
 
 	.add-input-endpoint-default {

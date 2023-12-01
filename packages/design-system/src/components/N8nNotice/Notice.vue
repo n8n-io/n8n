@@ -66,7 +66,9 @@ export default defineComponent({
 		},
 		sanitizeHtml(text: string): string {
 			return sanitizeHtml(text, {
-				allowedAttributes: { a: ['data-key', 'href', 'target'] },
+				allowedAttributes: {
+					a: ['data-key', 'href', 'target', 'data-action', 'data-action-parameter-connectiontype'],
+				},
 			});
 		},
 		onClick(event: MouseEvent) {

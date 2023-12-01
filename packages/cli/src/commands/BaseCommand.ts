@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
-import { ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { Logger } from '@/Logger';
@@ -127,7 +127,7 @@ export abstract class BaseCommand extends Command {
 		if (!isSelected && !isAvailable) return;
 
 		if (isSelected && !isAvailable) {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
@@ -171,7 +171,7 @@ export abstract class BaseCommand extends Command {
 		const host = config.getEnv('externalStorage.s3.host');
 
 		if (host === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
@@ -182,13 +182,13 @@ export abstract class BaseCommand extends Command {
 		};
 
 		if (bucket.name === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
 			);
 		}
 
 		if (bucket.region === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
 			);
 		}
@@ -199,13 +199,13 @@ export abstract class BaseCommand extends Command {
 		};
 
 		if (credentials.accessKey === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
 			);
 		}
 
 		if (credentials.accessSecret === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
 			);
 		}

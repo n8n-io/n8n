@@ -14,6 +14,7 @@ import type {
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	LoggerProxy as Logger,
 	getCredentialsForNode,
 	getVersionedNodeTypeAll,
@@ -116,8 +117,9 @@ export abstract class DirectoryLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				throw new Error(
-					`"executeSingle" has been removed. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
+				throw new ApplicationError(
+					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead!',
+					{ extra: { nodeName: `${this.packageName}.${nodeName}` } },
 				);
 			}
 		} else {
@@ -156,10 +158,10 @@ export abstract class DirectoryLoader {
 		}
 	}
 
-	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
+	protected loadCredentialFromFile(credentialClassName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
-			tempCredential = loadClassInIsolation(filePath, credentialName);
+			tempCredential = loadClassInIsolation(filePath, credentialClassName);
 
 			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
 			// gets mapped to the authenticate attribute before it is sent to the client.
@@ -170,8 +172,9 @@ export abstract class DirectoryLoader {
 			this.fixIconPath(tempCredential, filePath);
 		} catch (e) {
 			if (e instanceof TypeError) {
-				throw new Error(
-					`Class with name "${credentialName}" could not be found. Please check if the class is named correctly!`,
+				throw new ApplicationError(
+					'Class could not be found. Please check if the class is named correctly.',
+					{ extra: { credentialClassName } },
 				);
 			} else {
 				throw e;
@@ -179,7 +182,7 @@ export abstract class DirectoryLoader {
 		}
 
 		this.known.credentials[tempCredential.name] = {
-			className: credentialName,
+			className: credentialClassName,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
 			supportedNodes: this.nodesByCredential[tempCredential.name],
@@ -366,7 +369,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		try {
 			return jsonParse<T>(fileString);
 		} catch (error) {
-			throw new Error(`Failed to parse JSON from ${filePath}`);
+			throw new ApplicationError('Failed to parse JSON', { extra: { filePath } });
 		}
 	}
 }

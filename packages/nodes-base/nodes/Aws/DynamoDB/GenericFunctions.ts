@@ -37,9 +37,11 @@ export async function awsApiRequest(
 			(await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions)) as string,
 		);
 	} catch (error) {
-		const errorMessage =
+		const statusCode = (error.statusCode || error.cause?.statusCode) as number;
+		let errorMessage =
 			error.response?.body?.message || error.response?.body?.Message || error.message;
-		if (error.statusCode === 403) {
+
+		if (statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
 			} else if (
@@ -51,7 +53,13 @@ export async function awsApiRequest(
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		if (error.cause?.error) {
+			try {
+				errorMessage = JSON.parse(error.cause?.error).message;
+			} catch (ex) {}
+		}
+
+		throw new Error(`AWS error response [${statusCode}]: ${errorMessage}`);
 	}
 }
 

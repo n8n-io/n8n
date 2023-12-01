@@ -6,6 +6,7 @@ import { Container, Service } from 'typedi';
 import config from '@/config';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
+import { ApplicationError } from 'n8n-workflow';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset';
@@ -50,7 +51,7 @@ export class UserManagementMailer {
 	}
 
 	async verifyConnection(): Promise<void> {
-		if (!this.mailer) throw new Error('No mailer configured.');
+		if (!this.mailer) throw new ApplicationError('No mailer configured.');
 
 		return this.mailer.verifyConnection();
 	}

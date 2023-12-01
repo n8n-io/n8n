@@ -101,7 +101,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 export default defineComponent({

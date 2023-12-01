@@ -3,8 +3,7 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { CacheService } from './cache.service';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
-
-class InvalidRoleError extends Error {}
+import { InvalidRoleError } from '@/errors/invalid-role.error';
 
 @Service()
 export class RoleService {
@@ -56,6 +55,10 @@ export class RoleService {
 		{ scope: 'credential', name: 'user' },
 		{ scope: 'workflow', name: 'editor' },
 	];
+
+	listRoles() {
+		return this.roles;
+	}
 
 	private isValid(scope: RoleScopes, name: RoleNames) {
 		return this.roles.some((r) => r.scope === scope && r.name === name);

@@ -30,7 +30,7 @@ import type {
 	CurrentUserResponse,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -43,10 +43,9 @@ import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope, ScopeLevel } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
-const isDefaultUser = (user: IUserResponse | null) =>
-	user?.isPending && user?.globalRole?.name === ROLE.Owner;
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({

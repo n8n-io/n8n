@@ -1,12 +1,13 @@
 import { DateTime } from 'luxon';
 import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import isObject from 'lodash/isObject';
+import { ApplicationError } from './errors';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
 
 	if (!isValidNumber) {
-		throw new Error(`Could not parse '${String(value)}' to number.`);
+		throw new ApplicationError('Failed to parse value to number', { extra: { value } });
 	}
 	return Number(value);
 };
@@ -45,13 +46,15 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		}
 	}
 
-	throw new Error(`Could not parse '${String(value)}' to boolean.`);
+	throw new ApplicationError('Failed to parse value as boolean', {
+		extra: { value },
+	});
 };
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
 	const dateString = String(value).trim();
 
-	// Rely on luxon to parse different date formats, fall back to UTC if timezone is not included
+	// Rely on luxon to parse different date formats
 	const isoDate = DateTime.fromISO(dateString, { setZone: true });
 	if (isoDate.isValid) {
 		return isoDate;
@@ -69,7 +72,7 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 		return sqlDate;
 	}
 
-	throw new Error(`The value "${dateString}" is not a valid date.`);
+	throw new ApplicationError('Value is not a valid date', { extra: { dateString } });
 };
 
 export const tryToParseTime = (value: unknown): string => {
@@ -77,7 +80,7 @@ export const tryToParseTime = (value: unknown): string => {
 		String(value),
 	);
 	if (!isTimeInput) {
-		throw new Error(`The value "${String(value)}" is not a valid time.`);
+		throw new ApplicationError('Value is not a valid time', { extra: { value } });
 	}
 	return String(value);
 };
@@ -96,11 +99,11 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 		}
 
 		if (!Array.isArray(parsed)) {
-			throw new Error(`The value "${String(value)}" is not a valid array.`);
+			throw new ApplicationError('Value is not a valid array', { extra: { value } });
 		}
 		return parsed;
 	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid array.`);
+		throw new ApplicationError('Value is not a valid array', { extra: { value } });
 	}
 };
 
@@ -111,11 +114,11 @@ export const tryToParseObject = (value: unknown): object => {
 	try {
 		const o = JSON.parse(String(value));
 		if (typeof o !== 'object' || Array.isArray(o)) {
-			throw new Error(`The value "${String(value)}" is not a valid object.`);
+			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
 		return o;
 	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid object.`);
+		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
 };
 

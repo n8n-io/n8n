@@ -1099,6 +1099,7 @@ export interface ILoadOptions {
 
 export interface INodePropertyTypeOptions {
 	action?: string; // Supported by: button
+	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1540,6 +1541,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 }
 
 export type ConnectionTypes =
+	| 'ai_agent'
 	| 'ai_chain'
 	| 'ai_document'
 	| 'ai_embedding'
@@ -1554,6 +1556,8 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiAgent = 'ai_agent',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiChain = 'ai_chain',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -2381,6 +2385,7 @@ export interface IN8nUISettings {
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
 		workerView: boolean;
+		advancedPermissions: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2426,3 +2431,4 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Severity = 'warning' | 'error';
+export type Functionality = 'regular' | 'configuration-node';

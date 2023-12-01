@@ -12,7 +12,7 @@ import { Authorized, Get, Middleware, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const assertMethodName: RequestHandler = (req, res, next) => {
 	const { methodName } = req.query as DynamicNodeParametersRequest.BaseRequest['query'];
