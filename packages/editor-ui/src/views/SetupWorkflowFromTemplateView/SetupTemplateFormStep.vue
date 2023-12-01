@@ -118,7 +118,7 @@ const onCredentialDeselected = () => {
 .heading {
 	display: flex;
 	align-items: center;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-2xs);
 }
 
 .headingOrder {
@@ -132,6 +132,8 @@ const onCredentialDeselected = () => {
 
 .description {
 	margin-bottom: var(--spacing-l);
+	font-size: var(--font-size-s);
+	color: var(--color-text-base);
 }
 
 .credentials {
@@ -146,6 +148,7 @@ const onCredentialDeselected = () => {
 
 .credentialOk {
 	margin-left: var(--spacing-2xs);
+	font-size: 24px;
 }
 
 .invisible {

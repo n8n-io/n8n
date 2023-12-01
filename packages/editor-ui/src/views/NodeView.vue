@@ -58,6 +58,7 @@
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:hideActions="pullConnActive"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:workflow="currentWorkflowObject"
 					>
 						<template #custom-tooltip>
 							<span
@@ -693,6 +694,9 @@ export default defineComponent({
 		},
 		isLoading(): boolean {
 			return this.loadingService !== null;
+		},
+		currentWorkflowObject(): Workflow {
+			return this.workflowsStore.getCurrentWorkflow();
 		},
 	},
 	data() {
