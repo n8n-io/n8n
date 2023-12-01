@@ -90,7 +90,7 @@ function parseFilterConditionValues(
 		};
 	}
 
-	if (!parsedRightValue.valid) {
+	if (!parsedRightValue.valid && !operator.singleValue) {
 		return {
 			ok: false,
 			error: new FilterError(
