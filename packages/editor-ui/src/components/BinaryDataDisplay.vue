@@ -26,7 +26,7 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeHelpers } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 export default defineComponent({
 	name: 'BinaryDataDisplay',

@@ -617,7 +617,8 @@ import { searchInObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast, useNodeHelpers } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));

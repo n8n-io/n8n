@@ -173,7 +173,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
-import { useMessage, useNodeHelpers } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'NodeDetailsView',

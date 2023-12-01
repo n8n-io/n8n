@@ -48,7 +48,9 @@ import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n, useNodeHelpers, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
 
 type JsonPathData = {

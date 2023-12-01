@@ -118,7 +118,8 @@ import type {
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useNodeHelpers, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
 import { useUIStore } from '@/stores/ui.store';

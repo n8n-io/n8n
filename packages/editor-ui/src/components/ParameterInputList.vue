@@ -164,7 +164,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
-import { useNodeHelpers } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),

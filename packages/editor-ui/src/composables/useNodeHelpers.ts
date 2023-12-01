@@ -30,7 +30,8 @@ import type {
 	NodePanelType,
 } from '@/Interface';
 
-import { isObject, isString } from '@/utils';
+import { isString } from '@/utils/typeGuards';
+import { isObject } from '@/utils/objectUtils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -57,7 +58,7 @@ export function useNodeHelpers() {
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
-	const { baseText } = useI18n();
+	const i18n = useI18n();
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
@@ -185,7 +186,7 @@ export function useNodeHelpers() {
 		return {
 			credentials: {
 				[credentialType.name]: [
-					baseText('nodeHelpers.credentialsUnset', {
+					i18n.baseText('nodeHelpers.credentialsUnset', {
 						interpolate: {
 							credentialType: credentialType.displayName,
 						},
@@ -306,7 +307,7 @@ export function useNodeHelpers() {
 
 			if (parentNodes.length === 0) {
 				foundIssues[input.type] = [
-					baseText('nodeIssues.input.missing', {
+					i18n.baseText('nodeIssues.input.missing', {
 						interpolate: { inputName: input.displayName || input.type },
 					}),
 				];
@@ -397,7 +398,7 @@ export function useNodeHelpers() {
 				// Credentials are not set
 				if (credentialTypeDescription.required) {
 					foundIssues[credentialTypeDescription.name] = [
-						baseText('nodeIssues.credentials.notSet', {
+						i18n.baseText('nodeIssues.credentials.notSet', {
 							interpolate: { type: localNodeType.displayName },
 						}),
 					];
@@ -439,10 +440,10 @@ export function useNodeHelpers() {
 				);
 				if (nameMatches.length > 1) {
 					foundIssues[credentialTypeDescription.name] = [
-						baseText('nodeIssues.credentials.notIdentified', {
+						i18n.baseText('nodeIssues.credentials.notIdentified', {
 							interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
 						}),
-						baseText('nodeIssues.credentials.notIdentified.hint'),
+						i18n.baseText('nodeIssues.credentials.notIdentified.hint'),
 					];
 					continue;
 				}
@@ -454,10 +455,10 @@ export function useNodeHelpers() {
 
 					if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 						foundIssues[credentialTypeDescription.name] = [
-							baseText('nodeIssues.credentials.doNotExist', {
+							i18n.baseText('nodeIssues.credentials.doNotExist', {
 								interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
 							}),
-							baseText('nodeIssues.credentials.doNotExist.hint'),
+							i18n.baseText('nodeIssues.credentials.doNotExist.hint'),
 						];
 					}
 				}

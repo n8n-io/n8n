@@ -66,7 +66,8 @@ import { deepCopy } from 'n8n-workflow';
 import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeHelpers, useI18n } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useI18n } from '@/composables/useI18n';
 const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 const selectedOption = ref<string | undefined>(undefined);

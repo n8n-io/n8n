@@ -135,8 +135,9 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
-import { useToast, useMessage, useNodeHelpers } from '@/composables';
-
+import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useMessage } from '@/composables/useMessage';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
