@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type { FilterTypeCombinator } from 'n8n-workflow';
 
 interface Props {
