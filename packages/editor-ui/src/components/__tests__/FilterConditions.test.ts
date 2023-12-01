@@ -117,7 +117,7 @@ describe('Filter.vue', () => {
 		expect(
 			conditions[1].querySelector('[data-test-id="filter-operator-select"]')?.querySelector('input')
 				?.value,
-		).toEqual('Not empty');
+		).toEqual('is not empty');
 		expect(conditions[1].querySelector('[data-test-id="filter-condition-right"]')).toBeNull();
 	});
 

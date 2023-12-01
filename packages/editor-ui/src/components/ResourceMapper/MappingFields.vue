@@ -337,10 +337,14 @@ defineExpose({
 						props.showMatchingColumnsSelector,
 					)
 				"
-				:class="['delete-option', 'clickable', 'mt-5xs']"
+				:class="['delete-option', 'mt-5xs']"
 			>
-				<font-awesome-icon
+				<n8n-icon-button
+					type="tertiary"
+					text
+					size="mini"
 					icon="trash"
+					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					:title="
 						locale.baseText('resourceMapper.removeField', {
 							interpolate: {
@@ -348,9 +352,8 @@ defineExpose({
 							},
 						})
 					"
-					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					@click="removeField(field.name)"
-				/>
+				></n8n-icon-button>
 			</div>
 			<div :class="$style.parameterInput">
 				<parameter-input-full

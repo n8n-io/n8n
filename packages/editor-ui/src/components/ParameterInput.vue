@@ -210,6 +210,7 @@
 				v-model="tempValue"
 				ref="inputField"
 				type="datetime"
+				valueFormat="YYYY-MM-DDTHH:mm:ss"
 				:size="inputSize"
 				:modelValue="displayValue"
 				:title="displayTitle"

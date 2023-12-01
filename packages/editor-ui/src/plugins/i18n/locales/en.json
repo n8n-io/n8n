@@ -2315,6 +2315,8 @@
 	"filter.addCondition": "Add condition",
 	"filter.removeCondition": "Remove condition",
 	"filter.maxConditions": "Maximum conditions reached",
+	"filter.condition.resolvedTrue": "This condition is true for item 1",
+	"filter.condition.resolvedFalse": "This condition is false for item 1",
 	"filter.condition.placeholderLeft": "e.g. value1",
 	"filter.condition.placeholderRight": "e.g. value2",
 	"filter.condition.placeholderDate": "e.g. 2023-12-31 00:00:00",

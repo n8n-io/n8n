@@ -91,6 +91,18 @@ export const OPERATORS_BY_ID = {
 		operation: 'notEquals',
 		name: 'filter.operator.notEquals',
 	},
+	'array:empty': {
+		type: 'array',
+		operation: 'empty',
+		name: 'filter.operator.empty',
+		singleValue: true,
+	},
+	'array:notEmpty': {
+		type: 'array',
+		operation: 'notEmpty',
+		name: 'filter.operator.notEmpty',
+		singleValue: true,
+	},
 	'array:contains': {
 		type: 'array',
 		operation: 'contains',

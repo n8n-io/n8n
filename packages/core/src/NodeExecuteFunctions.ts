@@ -2046,12 +2046,9 @@ const validateResourceMapperValue = (
 		}
 
 		if (schemaEntry?.type) {
-			const validationResult = validateFieldType(
-				key,
-				resolvedValue,
-				schemaEntry.type,
-				schemaEntry.options,
-			);
+			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
+				valueOptions: schemaEntry.options,
+			});
 			if (!validationResult.valid) {
 				return { ...validationResult, fieldName: key };
 			} else {
@@ -2112,12 +2109,9 @@ const validateCollection = (
 		for (const key of Object.keys(value)) {
 			if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(
-				key,
-				value[key],
-				validationMap[key].type,
-				validationMap[key].options,
-			);
+			const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+				valueOptions: validationMap[key].options,
+			});
 
 			if (!fieldValidationResult.valid) {
 				throw new ExpressionError(

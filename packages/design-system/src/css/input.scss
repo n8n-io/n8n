@@ -156,6 +156,7 @@
 	}
 
 	@include mixins.e(suffix-inner) {
+		display: inline-flex;
 		pointer-events: all;
 	}
 
