@@ -36,13 +36,11 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	ResourceMapperValue,
-	ValidationResult,
 	ConnectionTypes,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
-	FilterValue,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -51,8 +49,9 @@ import {
 } from './type-guards';
 import { deepCopy } from './utils';
 
-import { DateTime } from 'luxon';
 import type { Workflow } from './Workflow';
+import { validateFilterParameter } from './NodeParameters/FilterParameter';
+import { validateFieldType } from './TypeValidation';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1181,208 +1180,6 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
-// Validates field against the schema and tries to parse it to the correct type
-export const validateFieldType = (
-	fieldName: string,
-	value: unknown,
-	type: FieldType,
-	options?: INodePropertyOptions[],
-): ValidationResult => {
-	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
-	switch (type.toLowerCase()) {
-		case 'string': {
-			try {
-				return { valid: true, newValue: tryToParseString(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'number': {
-			try {
-				return { valid: true, newValue: tryToParseNumber(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'boolean': {
-			try {
-				return { valid: true, newValue: tryToParseBoolean(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'datetime': {
-			try {
-				return { valid: true, newValue: tryToParseDateTime(value) };
-			} catch (e) {
-				const luxonDocsURL =
-					'https://moment.github.io/luxon/api-docs/index.html#datetimefromformat';
-				const errorMessage = `${defaultErrorMessage} <br/><br/> Consider using <a href="${luxonDocsURL}" target="_blank"><code>DateTime.fromFormat</code></a> to work with custom date formats.`;
-				return { valid: false, errorMessage };
-			}
-		}
-		case 'time': {
-			try {
-				return { valid: true, newValue: tryToParseTime(value) };
-			} catch (e) {
-				return {
-					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
-				};
-			}
-		}
-		case 'object': {
-			try {
-				return { valid: true, newValue: tryToParseObject(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'array': {
-			try {
-				return { valid: true, newValue: tryToParseArray(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'options': {
-			const validOptions = options?.map((option) => option.value).join(', ') || '';
-			const isValidOption = options?.some((option) => option.value === value) || false;
-
-			if (!isValidOption) {
-				return {
-					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
-						value,
-					)}'`,
-				};
-			}
-			return { valid: true, newValue: value };
-		}
-		default: {
-			return { valid: true, newValue: value };
-		}
-	}
-};
-
-export const tryToParseNumber = (value: unknown): number => {
-	const isValidNumber = !isNaN(Number(value));
-
-	if (!isValidNumber) {
-		throw new Error(`Could not parse '${String(value)}' to number.`);
-	}
-	return Number(value);
-};
-
-export const tryToParseString = (value: unknown): string => {
-	if (typeof value === 'object') return JSON.stringify(value);
-	if (typeof value === 'undefined') return '';
-	if (
-		typeof value === 'string' ||
-		typeof value === 'bigint' ||
-		typeof value === 'boolean' ||
-		typeof value === 'number'
-	) {
-		return value.toString();
-	}
-
-	return String(value);
-};
-
-export const tryToParseBoolean = (value: unknown): value is boolean => {
-	if (typeof value === 'boolean') {
-		return value;
-	}
-
-	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
-		return value.toLowerCase() === 'true';
-	}
-
-	// If value is not a empty string, try to parse it to a number
-	if (!(typeof value === 'string' && value.trim() === '')) {
-		const num = Number(value);
-		if (num === 0) {
-			return false;
-		} else if (num === 1) {
-			return true;
-		}
-	}
-
-	throw new Error(`Could not parse '${String(value)}' to boolean.`);
-};
-
-export const tryToParseDateTime = (value: unknown): DateTime => {
-	const dateString = String(value).trim();
-
-	// Rely on luxon to parse different date formats
-	const isoDate = DateTime.fromISO(dateString, { setZone: true });
-	if (isoDate.isValid) {
-		return isoDate;
-	}
-	const httpDate = DateTime.fromHTTP(dateString, { setZone: true });
-	if (httpDate.isValid) {
-		return httpDate;
-	}
-	const rfc2822Date = DateTime.fromRFC2822(dateString, { setZone: true });
-	if (rfc2822Date.isValid) {
-		return rfc2822Date;
-	}
-	const sqlDate = DateTime.fromSQL(dateString, { setZone: true });
-	if (sqlDate.isValid) {
-		return sqlDate;
-	}
-
-	throw new Error(`The value "${dateString}" is not a valid date.`);
-};
-
-export const tryToParseTime = (value: unknown): string => {
-	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.test(
-		String(value),
-	);
-	if (!isTimeInput) {
-		throw new Error(`The value "${String(value)}" is not a valid time.`);
-	}
-	return String(value);
-};
-
-export const tryToParseArray = (value: unknown): unknown[] => {
-	try {
-		if (typeof value === 'object' && Array.isArray(value)) {
-			return value;
-		}
-
-		let parsed;
-		try {
-			parsed = JSON.parse(String(value));
-		} catch (e) {
-			parsed = JSON.parse(String(value).replace(/'/g, '"'));
-		}
-
-		if (!Array.isArray(parsed)) {
-			throw new Error(`The value "${String(value)}" is not a valid array.`);
-		}
-		return parsed;
-	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid array.`);
-	}
-};
-
-export const tryToParseObject = (value: unknown): object => {
-	if (value && typeof value === 'object' && !Array.isArray(value)) {
-		return value;
-	}
-	try {
-		const o = JSON.parse(String(value));
-		if (typeof o !== 'object' || Array.isArray(o)) {
-			throw new Error(`The value "${String(value)}" is not a valid object.`);
-		}
-		return o;
-	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid object.`);
-	}
-};
-
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  *
@@ -1438,7 +1235,9 @@ export const validateResourceMapperParameter = (
 			}
 		}
 		if (!fieldValue?.toString().startsWith('=') && field.type) {
-			const validationResult = validateFieldType(field.id, fieldValue, field.type, field.options);
+			const validationResult = validateFieldType(field.id, fieldValue, field.type, {
+				valueOptions: field.options,
+			});
 			if (!validationResult.valid && validationResult.errorMessage) {
 				fieldErrors.push(validationResult.errorMessage);
 			}
@@ -1450,66 +1249,6 @@ export const validateResourceMapperParameter = (
 	return issues;
 };
 
-/*
- * Validates filter value based on type
- *
- */
-export const validateFilterParameter = (
-	nodeProperties: INodeProperties,
-	value: FilterValue,
-): Record<string, string[]> => {
-	const composeErrorMessage = (type: string, field: 'first' | 'second') =>
-		`The value in the ${field} field cannot be converted to a ${type}. This could lead to unwanted results. Please check the value or choose a different logical operator.`;
-
-	return value.conditions.reduce(
-		(issues, condition, index) => {
-			const { type, rightType, singleValue } = condition.operator;
-			const key = `${nodeProperties.name}.${index}`;
-
-			const isLeftValueExpression =
-				typeof condition.leftValue === 'string' && condition.leftValue.startsWith('=');
-			const hasLeftValue =
-				condition.leftValue !== undefined &&
-				condition.leftValue !== null &&
-				condition.leftValue !== '';
-			const checkLeftValue = hasLeftValue && !isLeftValueExpression && type !== 'any';
-
-			const validationResultLeft = checkLeftValue
-				? validateFieldType(nodeProperties.displayName, condition.leftValue, type)
-				: { valid: true };
-
-			const isRightValueExpression =
-				typeof condition.rightValue === 'string' && condition.rightValue.startsWith('=');
-			const hasRightValue =
-				condition.rightValue !== undefined &&
-				condition.rightValue !== null &&
-				condition.rightValue !== '';
-			const safeRightType = rightType ?? type;
-			const checkRightValue =
-				hasRightValue && !isRightValueExpression && !singleValue && safeRightType !== 'any';
-
-			const validationResultRight = checkRightValue
-				? validateFieldType(nodeProperties.displayName, condition.rightValue, safeRightType)
-				: { valid: true };
-
-			if (!validationResultLeft.valid || !validationResultRight.valid) {
-				issues[key] = [];
-			}
-
-			if (!validationResultLeft.valid) {
-				issues[key].push(composeErrorMessage(type, 'first'));
-			}
-
-			if (!validationResultRight.valid) {
-				issues[key].push(composeErrorMessage(type, 'second'));
-			}
-
-			return issues;
-		},
-		{} as Record<string, string[]>,
-	);
-};
-
 export const validateParameter = (
 	nodeProperties: INodeProperties,
 	value: GenericValue,
@@ -1519,12 +1258,9 @@ export const validateParameter = (
 	const options = type === 'options' ? nodeProperties.options : undefined;
 
 	if (!value?.toString().startsWith('=')) {
-		const validationResult = validateFieldType(
-			nodeName,
-			value,
-			type,
-			options as INodePropertyOptions[],
-		);
+		const validationResult = validateFieldType(nodeName, value, type, {
+			valueOptions: options as INodePropertyOptions[],
+		});
 
 		if (!validationResult.valid && validationResult.errorMessage) {
 			return validationResult.errorMessage;

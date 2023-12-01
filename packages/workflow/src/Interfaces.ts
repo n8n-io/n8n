@@ -1143,7 +1143,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export type FilterTypeOptions = Partial<{
-	caseSensitive: boolean | string; // default = false
+	caseSensitive: boolean | string; // default = true
 	leftValue: string; // when set, user can't edit left side of condition
 	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions: number; // default = 10

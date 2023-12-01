@@ -1,4 +1,4 @@
-import { validateFieldType } from '@/NodeHelpers';
+import { validateFieldType } from '@/TypeValidation';
 import type { DateTime } from 'luxon';
 
 const VALID_ISO_DATES = [
@@ -174,16 +174,20 @@ describe('Type Validation', () => {
 
 	it('should validate options properly', () => {
 		expect(
-			validateFieldType('options', 'oranges', 'options', [
-				{ name: 'apples', value: 'apples' },
-				{ name: 'oranges', value: 'oranges' },
-			]).valid,
+			validateFieldType('options', 'oranges', 'options', {
+				valueOptions: [
+					{ name: 'apples', value: 'apples' },
+					{ name: 'oranges', value: 'oranges' },
+				],
+			}).valid,
 		).toEqual(true);
 		expect(
-			validateFieldType('options', 'something else', 'options', [
-				{ name: 'apples', value: 'apples' },
-				{ name: 'oranges', value: 'oranges' },
-			]).valid,
+			validateFieldType('options', 'something else', 'options', {
+				valueOptions: [
+					{ name: 'apples', value: 'apples' },
+					{ name: 'oranges', value: 'oranges' },
+				],
+			}).valid,
 		).toEqual(false);
 	});
 

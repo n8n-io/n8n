@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -29,7 +30,7 @@ export class IfV2 implements INodeType {
 					default: {},
 					typeOptions: {
 						filter: {
-							caseSensitive: '={{$parameter.options.caseSensitive}}',
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: '={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
 						},
 					},
@@ -44,7 +45,7 @@ export class IfV2 implements INodeType {
 						{
 							displayName: 'Ignore Case',
 							description: 'Whether to ignore letter case when evaluating conditions',
-							name: 'caseSensitive',
+							name: 'ignoreCase',
 							type: 'boolean',
 							default: true,
 						},
@@ -67,9 +68,25 @@ export class IfV2 implements INodeType {
 
 		this.getInputData().forEach((item, itemIndex) => {
 			try {
-				const pass = this.getNodeParameter('conditions', itemIndex, false, {
-					extractValue: true,
-				});
+				const options = this.getNodeParameter('options', itemIndex) as {
+					ignoreCase?: boolean;
+					looseTypeValidation?: boolean;
+				};
+				let pass = false;
+				try {
+					pass = this.getNodeParameter('conditions', itemIndex, false, {
+						extractValue: true,
+					}) as boolean;
+				} catch (error) {
+					if (!options.looseTypeValidation) {
+						set(
+							error,
+							'description',
+							"Try to change the operator, switch ON the option 'Less Strict Type Validation', or change the type with an expression",
+						);
+					}
+					throw error;
+				}
 
 				if (item.pairedItem === undefined) {
 					item.pairedItem = { item: itemIndex };

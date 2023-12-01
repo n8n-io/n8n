@@ -1,40 +1,122 @@
 import type { DateTime } from 'luxon';
-import type { FilterConditionValue, FilterOptionsValue, FilterValue } from '../Interfaces';
-import { validateFieldType } from '../NodeHelpers';
+import type {
+	FilterConditionValue,
+	FilterOperatorType,
+	FilterOptionsValue,
+	FilterValue,
+	INodeProperties,
+	ValidationResult,
+} from '../Interfaces';
+import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
+
+type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
+
+class FilterError extends Error {
+	constructor(
+		message: string,
+		readonly description: string,
+	) {
+		super(message);
+	}
+}
+
+function parseSingleFilterValue(
+	value: unknown,
+	type: FilterOperatorType,
+	strict = false,
+): ValidationResult {
+	return type === 'any'
+		? ({ valid: true, newValue: value } as ValidationResult)
+		: validateFieldType('filter', value, type, { strict });
+}
+
+function parseFilterConditionValues(
+	condition: FilterConditionValue,
+	options: FilterOptionsValue,
+	index: number,
+): Result<{ left: unknown; right: unknown }, FilterError> {
+	const strict = options.typeValidation === 'strict';
+	const { operator } = condition;
+	const rightType = operator.rightType ?? operator.type;
+	const parsedLeftValue = parseSingleFilterValue(condition.leftValue, operator.type, strict);
+	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict);
+	const leftValueString = String(condition.leftValue);
+	const rightValueString = String(condition.rightValue);
+	const errorDescription = 'Try to change the operator, or change the type with an expression';
+	const inCondition = `in condition ${index + 1}`;
+
+	if (!parsedLeftValue.valid && !parsedRightValue.valid) {
+		const providedValues = 'The provided values';
+		let types = `'${operator.type}'`;
+		if (rightType !== operator.type) {
+			types = `'${operator.type}' and '${rightType}' respectively`;
+		}
+		if (strict) {
+			return {
+				ok: false,
+				error: new FilterError(
+					`${providedValues} '${leftValueString}' and '${rightValueString}' ${inCondition} are not of the expected type ${types}`,
+					errorDescription,
+				),
+			};
+		}
+
+		return {
+			ok: false,
+			error: new FilterError(
+				`${providedValues} '${leftValueString}' and '${rightValueString}' ${inCondition} cannot be converted to the expected type ${types}`,
+				errorDescription,
+			),
+		};
+	}
+
+	const composeInvalidTypeMessage = (field: 'left' | 'right', type: string, value: string) => {
+		const fieldNumber = field === 'left' ? 1 : 2;
+
+		if (strict) {
+			return `The provided value ${fieldNumber} '${value}' ${inCondition} is not of the expected type '${type}'`;
+		}
+		return `The provided value ${fieldNumber} '${value}' ${inCondition} cannot be converted to the expected type '${type}'`;
+	};
+
+	if (!parsedLeftValue.valid) {
+		return {
+			ok: false,
+			error: new FilterError(
+				composeInvalidTypeMessage('left', operator.type, leftValueString),
+				errorDescription,
+			),
+		};
+	}
+
+	if (!parsedRightValue.valid) {
+		return {
+			ok: false,
+			error: new FilterError(
+				composeInvalidTypeMessage('right', rightType, rightValueString),
+				errorDescription,
+			),
+		};
+	}
+
+	return { ok: true, result: { left: parsedLeftValue.newValue, right: parsedRightValue.newValue } };
+}
 
 export function executeFilterCondition(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,
+	index: number,
 ): boolean {
+	const ignoreCase = !options.caseSensitive;
 	const { operator } = condition;
-	const rightType = operator.rightType ?? operator.type;
-	const parsedLeftValue =
-		operator.type === 'any'
-			? { valid: true, newValue: condition.leftValue }
-			: validateFieldType('filter', condition.leftValue, operator.type);
-	const parsedRightValue =
-		rightType === 'any' || operator.singleValue
-			? { valid: true, newValue: condition.rightValue }
-			: validateFieldType('filter', condition.rightValue, rightType);
+	const parsedValues = parseFilterConditionValues(condition, options, index);
 
-	if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-		return false;
+	if (!parsedValues.ok) {
+		throw parsedValues.error;
 	}
 
-	let leftValue = parsedLeftValue.newValue;
-	let rightValue = parsedRightValue.newValue;
-
-	// Return false when typeChecking=strict and validateFieldType changed the types
-	// DateTime is an exception, strings are allowed to be casted to DateTime
-	if (options.typeValidation !== 'loose') {
-		if (condition.leftValue !== leftValue && operator.type !== 'dateTime') {
-			return false;
-		}
-		if (condition.rightValue !== rightValue && rightType !== 'dateTime') {
-			return false;
-		}
-	}
+	let { left: leftValue, right: rightValue } = parsedValues.result;
 
 	switch (operator.type) {
 		case 'any': {
@@ -50,7 +132,7 @@ export function executeFilterCondition(
 			break;
 		}
 		case 'string': {
-			if (!options.caseSensitive) {
+			if (ignoreCase) {
 				if (typeof leftValue === 'string') {
 					leftValue = leftValue.toLocaleLowerCase();
 				}
@@ -154,12 +236,12 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					if (!options.caseSensitive && typeof rightValue === 'string') {
+					if (ignoreCase && typeof rightValue === 'string') {
 						rightValue = rightValue.toLocaleLowerCase();
 					}
 					return left.includes(rightValue);
 				case 'notContains':
-					if (!options.caseSensitive && typeof rightValue === 'string') {
+					if (ignoreCase && typeof rightValue === 'string') {
 						rightValue = rightValue.toLocaleLowerCase();
 					}
 					return !left.includes(rightValue);
@@ -175,6 +257,10 @@ export function executeFilterCondition(
 					return left.length >= rightNumber;
 				case 'lengthLte':
 					return left.length <= rightNumber;
+				case 'empty':
+					return left.length === 0;
+				case 'notEmpty':
+					return left.length !== 0;
 			}
 		}
 		case 'object': {
@@ -195,13 +281,75 @@ export function executeFilterCondition(
 }
 
 export function executeFilter(value: FilterValue): boolean {
+	const conditionPass = (condition: FilterConditionValue, index: number) =>
+		executeFilterCondition(condition, value.options, index);
+
 	if (value.combinator === 'and') {
-		return value.conditions.every((condition) => executeFilterCondition(condition, value.options));
+		return value.conditions.every(conditionPass);
 	} else if (value.combinator === 'or') {
-		return value.conditions.some((condition) => executeFilterCondition(condition, value.options));
+		return value.conditions.some(conditionPass);
 	}
 
 	LoggerProxy.warn(`Unknown filter combinator "${value.combinator as string}"`);
 
 	return false;
 }
+
+export const validateFilterParameter = (
+	nodeProperties: INodeProperties,
+	value: FilterValue,
+): Record<string, string[]> => {
+	const composeErrorMessage = (type: string, field: 'first' | 'second') =>
+		`The value in the ${field} field cannot be converted to a ${type}. This could lead to unwanted results. Please check the value or choose a different logical operator.`;
+
+	const strict = value.options.typeValidation === 'strict';
+	return value.conditions.reduce(
+		(issues, condition, index) => {
+			const { type, rightType, singleValue } = condition.operator;
+			const key = `${nodeProperties.name}.${index}`;
+
+			const isLeftValueExpression =
+				typeof condition.leftValue === 'string' && condition.leftValue.startsWith('=');
+			const hasLeftValue =
+				condition.leftValue !== undefined &&
+				condition.leftValue !== null &&
+				condition.leftValue !== '';
+			const checkLeftValue = hasLeftValue && !isLeftValueExpression && type !== 'any';
+
+			const validationResultLeft = checkLeftValue
+				? validateFieldType(nodeProperties.displayName, condition.leftValue, type, { strict })
+				: { valid: true };
+
+			const isRightValueExpression =
+				typeof condition.rightValue === 'string' && condition.rightValue.startsWith('=');
+			const hasRightValue =
+				condition.rightValue !== undefined &&
+				condition.rightValue !== null &&
+				condition.rightValue !== '';
+			const safeRightType = rightType ?? type;
+			const checkRightValue =
+				hasRightValue && !isRightValueExpression && !singleValue && safeRightType !== 'any';
+
+			const validationResultRight = checkRightValue
+				? validateFieldType(nodeProperties.displayName, condition.rightValue, safeRightType, {
+						strict,
+				  })
+				: { valid: true };
+
+			if (!validationResultLeft.valid || !validationResultRight.valid) {
+				issues[key] = [];
+			}
+
+			if (!validationResultLeft.valid) {
+				issues[key].push(composeErrorMessage(type, 'first'));
+			}
+
+			if (!validationResultRight.valid) {
+				issues[key].push(composeErrorMessage(type, 'second'));
+			}
+
+			return issues;
+		},
+		{} as Record<string, string[]>,
+	);
+};

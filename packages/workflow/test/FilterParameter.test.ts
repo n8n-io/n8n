@@ -98,50 +98,72 @@ describe('FilterParameter', () => {
 		});
 
 		describe('options.typeValidation', () => {
-			it('should evaluate conditions with strict type validation (=default)', () => {
-				const result = executeFilter(
-					filterFactory({
-						combinator: 'or',
-						conditions: [
-							{
-								id: '1',
-								leftValue: '15',
-								rightValue: 15,
-								operator: { operation: 'equals', type: 'number' },
-							},
-							{
-								id: '2',
-								leftValue: 'true',
-								operator: { operation: 'true', type: 'boolean' },
-							},
-						],
-						options: { typeValidation: 'strict' },
-					}),
-				);
-				expect(result).toBe(false);
+			describe('strict (=default)', () => {
+				it('should throw an error when types are not as expected', () => {
+					expect(() =>
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: '15',
+										rightValue: 15,
+										operator: { operation: 'equals', type: 'number' },
+									},
+								],
+								options: { typeValidation: 'strict' },
+							}),
+						),
+					).toThrowError(
+						"The provided value 1 '15' in condition 1 is not of the expected type 'number'",
+					);
+				});
 			});
 
-			it('should evaluate conditions with loose type validation', () => {
-				const result = executeFilter(
-					filterFactory({
-						combinator: 'and',
-						conditions: [
-							{
-								id: '1',
-								leftValue: '15',
-								rightValue: 15,
-								operator: { operation: 'equals', type: 'number' },
-							},
-							{
-								id: '2',
-								leftValue: 'true',
-								operator: { operation: 'true', type: 'boolean' },
-							},
-						],
-						options: { typeValidation: 'loose' },
-					}),
-				);
-				expect(result).toBe(true);
+			describe('loose', () => {
+				it('should evaluate conditions when type can be converted', () => {
+					const result = executeFilter(
+						filterFactory({
+							combinator: 'and',
+							conditions: [
+								{
+									id: '1',
+									leftValue: '15',
+									rightValue: 15,
+									operator: { operation: 'equals', type: 'number' },
+								},
+								{
+									id: '2',
+									leftValue: 'true',
+									operator: { operation: 'true', type: 'boolean' },
+								},
+							],
+							options: { typeValidation: 'loose' },
+						}),
+					);
+					expect(result).toBe(true);
+				});
+
+				it('should throw an error when types cannot be converted', () => {
+					expect(() =>
+						executeFilter(
+							filterFactory({
+								combinator: 'and',
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'a string',
+										rightValue: 15,
+										operator: { operation: 'equals', type: 'boolean' },
+									},
+								],
+								options: { typeValidation: 'loose' },
+							}),
+						),
+					).toThrowError(
+						"The provided values 'a string' and '15' in condition 1 cannot be converted to the expected type 'boolean'",
+					);
+				});
 			});
 		});
 
@@ -669,9 +691,7 @@ describe('FilterParameter', () => {
 			describe('boolean', () => {
 				it.each([
 					{ left: true, expected: true },
-					{ left: 'true', expected: false },
 					{ left: false, expected: false },
-					{ left: 'false', expected: false },
 				])('boolean:true($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -689,9 +709,7 @@ describe('FilterParameter', () => {
 
 				it.each([
 					{ left: true, expected: false },
-					{ left: 'true', expected: false },
 					{ left: false, expected: true },
-					{ left: 'false', expected: false },
 				])('boolean:false($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -915,7 +933,6 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: {}, expected: true },
 					{ left: { foo: 'bar' }, expected: false },
-					{ left: [], expected: false },
 					{ left: undefined, expected: false },
 					{ left: null, expected: false },
 				])('object:empty($left) === $expected', ({ left, expected }) => {
@@ -936,7 +953,6 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: {}, expected: false },
 					{ left: { foo: 'bar' }, expected: true },
-					{ left: [], expected: false },
 					{ left: undefined, expected: false },
 					{ left: null, expected: false },
 				])('object:notEmpty($left) === $expected', ({ left, expected }) => {
