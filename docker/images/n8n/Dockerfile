@@ -7,8 +7,6 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 RUN set -eux; \
 	apk --no-cache add --virtual build-dependencies python3 build-base && \
 	npm install -g --omit=dev n8n@${N8N_VERSION} && \
-	ls -la /usr/local/lib/node_modules/n8n && \
-	ls -la /usr/local/lib/node_modules/n8n/bin && \
 	apk del build-dependencies build-base  && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/@n8n/chat && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-design-system && \
@@ -19,9 +17,6 @@ RUN set -eux; \
 # Final clean image
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
-RUN ls -la /usr/local/lib/node_modules
-RUN ls -la /usr/local/lib/node_modules/n8n
-RUN ls -la /usr/local/lib/node_modules/n8n/bin/n8n
 RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n
 
 COPY docker-entrypoint.sh /
