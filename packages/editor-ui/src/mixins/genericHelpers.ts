@@ -29,9 +29,6 @@ export const genericHelpers = defineComponent({
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
-		isLoading(): boolean {
-			return this.loadingService !== null;
-		},
 	},
 	methods: {
 		displayTimer(msPassed: number, showMs = false): string {

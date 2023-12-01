@@ -691,6 +691,9 @@ export default defineComponent({
 		instance(): BrowserJsPlumbInstance {
 			return this.canvasStore.jsPlumbInstance;
 		},
+		isLoading(): boolean {
+			return this.loadingService !== null;
+		},
 	},
 	data() {
 		return {
