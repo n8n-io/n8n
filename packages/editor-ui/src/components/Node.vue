@@ -286,15 +286,11 @@ export default defineComponent({
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isConfigNode(): boolean {
-			return this.nodeTypesStore.isConfigNode(
-				this.getCurrentWorkflow(),
-				this.data,
-				this.data?.type ?? '',
-			);
+			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data?.type ?? '');
 		},
 		isConfigurableNode(): boolean {
 			return this.nodeTypesStore.isConfigurableNode(
-				this.getCurrentWorkflow(),
+				this.workflow,
 				this.data,
 				this.data?.type ?? '',
 			);
@@ -349,9 +345,8 @@ export default defineComponent({
 			};
 
 			if (this.node && this.nodeType) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
 				const inputs =
-					NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
+					NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType) ||
 					([] as Array<ConnectionTypes | INodeInputConfiguration>);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
@@ -372,7 +367,7 @@ export default defineComponent({
 				}
 
 				const outputs =
-					NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
+					NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType) ||
 					([] as Array<ConnectionTypes | INodeOutputConfiguration>);
 
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
@@ -634,8 +629,7 @@ export default defineComponent({
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
-				const nodeSubtitle =
-					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+				const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
