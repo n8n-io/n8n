@@ -81,6 +81,7 @@ describe('POST /invitations/:id/accept', () => {
 			globalRole,
 			isPending,
 			apiKey,
+			globalScopes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -93,6 +94,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(globalRole.scope).toBe('global');
 		expect(globalRole.name).toBe('member');
 		expect(apiKey).not.toBeDefined();
+		expect(globalScopes).not.toHaveLength(0);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
