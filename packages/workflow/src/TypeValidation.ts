@@ -125,6 +125,7 @@ export const tryToParseObject = (value: unknown): object => {
 type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
+	parseStrings: boolean;
 }>;
 // Validates field against the schema and tries to parse it to the correct type
 export const validateFieldType = (
@@ -136,9 +137,11 @@ export const validateFieldType = (
 	if (value === null || value === undefined) return { valid: true };
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
+	const parseStrings = options.parseStrings ?? false;
 	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
 		case 'string': {
+			if (!parseStrings) return { valid: true, newValue: value };
 			try {
 				if (strict && typeof value !== 'string') {
 					return { valid: false, errorMessage: defaultErrorMessage };

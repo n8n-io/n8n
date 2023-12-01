@@ -180,7 +180,7 @@ describe('Validation', () => {
 			{
 				name: 'str1',
 				type: 'stringValue',
-				stringValue: 42,
+				stringValue: 42, //validateFieldType does not change the type of string value
 			},
 			{
 				name: 'arr1',
@@ -200,8 +200,8 @@ describe('Validation', () => {
 
 		// value should be type number
 		expect(typeof (result as IDataObject[])[0].numberValue).toEqual('number');
-		// value should be type string
-		expect(typeof (result as IDataObject[])[1].stringValue).toEqual('string');
+		// string value should remain unchanged
+		expect(typeof (result as IDataObject[])[1].stringValue).toEqual('number');
 		// value should be type array
 		expect(typeof (result as IDataObject[])[2].arrayValue).toEqual('object');
 		expect(Array.isArray((result as IDataObject[])[2].arrayValue)).toEqual(true);

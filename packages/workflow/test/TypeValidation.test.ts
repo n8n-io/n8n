@@ -206,4 +206,24 @@ describe('Type Validation', () => {
 		expect(validateFieldType('time', '23:23:', 'time').valid).toEqual(false);
 		expect(validateFieldType('time', '23::23::23', 'time').valid).toEqual(false);
 	});
+
+	describe('options', () => {
+		describe('strict=true', () => {
+			it('should not convert/cast types', () => {
+				const options = { strict: true };
+				expect(validateFieldType('test', '42', 'number', options).valid).toBe(false);
+				expect(validateFieldType('test', 'true', 'boolean', options).valid).toBe(false);
+				expect(validateFieldType('test', [], 'object', options).valid).toBe(false);
+			});
+		});
+
+		describe('parseStrings=true', () => {
+			it('should parse strings from other types', () => {
+				const options = { parseStrings: true };
+				expect(validateFieldType('test', 42, 'string').newValue).toBe(42);
+				expect(validateFieldType('test', 42, 'string', options).newValue).toBe('42');
+				expect(validateFieldType('test', true, 'string', options).newValue).toBe('true');
+			});
+		});
+	});
 });

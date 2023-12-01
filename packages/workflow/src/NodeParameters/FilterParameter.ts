@@ -28,7 +28,7 @@ function parseSingleFilterValue(
 ): ValidationResult {
 	return type === 'any'
 		? ({ valid: true, newValue: value } as ValidationResult)
-		: validateFieldType('filter', value, type, { strict });
+		: validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
 function parseFilterConditionValues(
@@ -317,7 +317,10 @@ export const validateFilterParameter = (
 			const checkLeftValue = hasLeftValue && !isLeftValueExpression && type !== 'any';
 
 			const validationResultLeft = checkLeftValue
-				? validateFieldType(nodeProperties.displayName, condition.leftValue, type, { strict })
+				? validateFieldType(nodeProperties.displayName, condition.leftValue, type, {
+						strict,
+						parseStrings: true,
+				  })
 				: { valid: true };
 
 			const isRightValueExpression =
@@ -333,6 +336,7 @@ export const validateFilterParameter = (
 			const validationResultRight = checkRightValue
 				? validateFieldType(nodeProperties.displayName, condition.rightValue, safeRightType, {
 						strict,
+						parseStrings: true,
 				  })
 				: { valid: true };
 
