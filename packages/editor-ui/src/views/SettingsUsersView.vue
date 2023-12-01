@@ -64,8 +64,9 @@
 			>
 				<template #actions="{ user }">
 					<n8n-select
+						v-if="user.id !== usersStore.currentUserId"
 						:modelValue="user?.globalRole?.name || 'member'"
-						@update:modelValue="($event: IRole) => onRoleChange(user, $event)"
+						@update:modelValue="onRoleChange(user, $event)"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
 					>
@@ -88,7 +89,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IRole, IUser, IUserListAction } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
@@ -139,11 +140,18 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
 					value: 'delete',
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
-					guard: () => this.settingsStore.isBelowUserQuota,
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
+						this.settingsStore.isBelowUserQuota &&
+						!user.isPendingUser &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
@@ -178,7 +186,7 @@ export default defineComponent({
 			];
 		},
 		canUpdateRole(): boolean {
-			return hasPermission(['rbac'], { rbac: { scope: 'user:update' } });
+			return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
 		},
 	},
 	methods: {
