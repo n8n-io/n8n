@@ -3,23 +3,31 @@ import type { IUpdateInformation } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables';
-import type {
-	FilterConditionValue,
-	FilterOperatorType,
-	INodeProperties,
-	NodePropertyTypes,
+import {
+	executeFilterCondition,
+	type FilterOptionsValue,
+	type FilterConditionValue,
+	type FilterOperatorType,
+	type INodeProperties,
+	type NodeParameterValue,
+	type NodePropertyTypes,
 } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
+import { resolveParameter } from '@/mixins/workflowHelpers';
+
+type ConditionResult = 'unknown' | boolean;
 
 interface Props {
 	path: string;
 	condition: FilterConditionValue;
+	options: FilterOptionsValue;
 	issues?: string[];
 	fixedLeftValue?: boolean;
 	canRemove?: boolean;
+	index?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,11 +37,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'operatorChange', value: string): void;
-	(event: 'leftValueChange', value: string): void;
-	(event: 'rightValueChange', value: string): void;
+	(event: 'update', value: FilterConditionValue): void;
 	(event: 'remove'): void;
 }>();
+
+const condition = ref<FilterConditionValue>(props.condition);
 
 function isExpression(value: unknown): boolean {
 	return typeof value === 'string' && value.startsWith('=');
@@ -59,6 +67,24 @@ const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePrope
 	}
 };
 
+const conditionResult = computed<ConditionResult>(() => {
+	try {
+		const resolved = resolveParameter(condition.value as unknown as NodeParameterValue);
+
+		try {
+			return executeFilterCondition(
+				resolved as FilterConditionValue,
+				props.options,
+				props.index ?? 0,
+			);
+		} catch (error) {
+			return false;
+		}
+	} catch (error) {
+		return 'unknown';
+	}
+});
+
 const leftParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
@@ -83,34 +109,45 @@ const rightParameter = computed<INodeProperties>(() => ({
 	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
 }));
 
-const onOperatorChange = (value: string): void => {
-	const { operator } = props.condition;
-	const newOperator: FilterOperator = OPERATORS_BY_ID[value as FilterOperatorId];
-	const typeChanged = operator.type !== newOperator.type;
-
-	if (typeChanged && !isLeftExpression.value) {
-		emit('leftValueChange', '');
-	}
-
-	const rightTypeChanged =
-		(operator.rightType ?? operator.type) !== (newOperator.rightType ?? newOperator.type);
-	if ((rightTypeChanged && !isRightExpression.value) || newOperator.singleValue) {
-		emit('rightValueChange', '');
-	}
-
-	emit('operatorChange', value);
-};
-
 const onLeftValueChange = (update: IUpdateInformation): void => {
-	emit('leftValueChange', update.value as string);
+	condition.value.leftValue = update.value;
 };
 
 const onRightValueChange = (update: IUpdateInformation): void => {
-	emit('rightValueChange', update.value as string);
+	condition.value.rightValue = update.value;
+};
+
+const onOperatorChange = (value: string): void => {
+	const selectedOperator = condition.value.operator;
+	const newOperator: FilterOperator = OPERATORS_BY_ID[value as FilterOperatorId];
+	const typeChanged = selectedOperator.type !== newOperator.type;
+
+	if (typeChanged && !isLeftExpression.value) {
+		condition.value.leftValue = '';
+	}
+
+	const rightType = selectedOperator.rightType ?? selectedOperator.type;
+	const newRightType = newOperator.rightType ?? newOperator.type;
+	const rightTypeChanged = rightType !== newRightType;
+	if ((rightTypeChanged && !isRightExpression.value) || newOperator.singleValue) {
+		condition.value.rightValue = '';
+	}
+
+	condition.value.operator = {
+		type: newOperator.type,
+		operation: newOperator.operation,
+		rightType: newOperator.rightType,
+		singleValue: newOperator.singleValue,
+	};
+	emit('update', condition.value);
 };
 
 const onRemove = (): void => {
 	emit('remove');
+};
+
+const onBlur = (): void => {
+	emit('update', condition.value);
 };
 
 const i18n = useI18n();
@@ -163,6 +200,7 @@ const i18n = useI18n();
 						:class="[$style.input, $style.inputLeft]"
 						data-test-id="filter-condition-left"
 						@update="onLeftValueChange"
+						@blur="onBlur"
 					/>
 					<operator-select
 						:class="$style.select"
@@ -182,12 +220,29 @@ const i18n = useI18n();
 						:class="[$style.input, $style.inputRight]"
 						data-test-id="filter-condition-right"
 						@update="onRightValueChange"
+						@blur="onBlur"
 					/>
 				</div>
 			</template>
 		</n8n-resize-observer>
 
-		<parameter-issues v-if="issues.length > 0" :issues="issues" :class="$style.issues" />
+		<div :class="$style.status">
+			<parameter-issues v-if="issues.length > 0" :issues="issues" />
+
+			<n8n-tooltip :show-after="500" v-else-if="conditionResult === true">
+				<template #content>
+					{{ i18n.baseText('filter.condition.resolvedTrue') }}
+				</template>
+				<n8n-icon icon="check-circle" size="medium" color="success" />
+			</n8n-tooltip>
+
+			<n8n-tooltip :show-after="500" v-else-if="conditionResult === false">
+				<template #content>
+					{{ i18n.baseText('filter.condition.resolvedFalse') }}
+				</template>
+				<n8n-icon icon="times-circle" size="medium" color="danger" />
+			</n8n-tooltip>
+		</div>
 	</div>
 </template>
 
@@ -220,7 +275,7 @@ const i18n = useI18n();
 	width: 100%;
 }
 
-.issues {
+.status {
 	align-self: flex-start;
 	padding-top: var(--spacing-xl);
 }

@@ -16,14 +16,11 @@ import {
 	DEFAULT_FILTER_OPTIONS,
 	DEFAULT_MAX_CONDITIONS,
 	DEFAULT_OPERATOR_VALUE,
-	type FilterOperatorId,
-	OPERATORS_BY_ID,
 } from './constants';
 import { useI18n, useDebounceHelper } from '@/composables';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-import type { FilterOperator } from './types';
 import { v4 as uuid } from 'uuid';
 
 interface Props {
@@ -109,30 +106,15 @@ function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
 }
 
-function onOperatorChanged(index: number, operatorId: string): void {
-	const operator = OPERATORS_BY_ID[operatorId as FilterOperatorId] as FilterOperator;
-
-	state.paramValue.conditions[index].operator = {
-		type: operator.type,
-		operation: operator.operation,
-		rightType: operator.rightType,
-		singleValue: operator.singleValue,
-	};
-}
-
-function onLeftValueChanged(index: number, value: string): void {
-	state.paramValue.conditions[index].leftValue = value;
-}
-
-function onRightValueChanged(index: number, value: string): void {
-	state.paramValue.conditions[index].rightValue = value;
+function onConditionUpdate(index: number, value: FilterConditionValue): void {
+	state.paramValue.conditions[index] = value;
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
 }
 
-function onConditionRemoved(index: number): void {
+function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
 }
 
@@ -165,14 +147,14 @@ function getIssues(index: number): string[] {
 
 					<condition
 						:condition="condition"
+						:index="index"
+						:options="state.paramValue.options"
 						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
 						:canRemove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
-						@operatorChange="(value) => onOperatorChanged(index, value)"
-						@leftValueChange="(value) => onLeftValueChanged(index, value)"
-						@rightValueChange="(value) => onRightValueChanged(index, value)"
-						@remove="() => onConditionRemoved(index)"
+						@update="(value) => onConditionUpdate(index, value)"
+						@remove="() => onConditionRemove(index)"
 					></condition>
 				</div>
 			</div>
