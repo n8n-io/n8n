@@ -23,11 +23,18 @@ const configuredOutputs = (parameters: INodeParameters) => {
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.rules as IDataObject[]) ?? [];
-		const ruleOutputs = rules.map((rule) => {
-			return { type: `${NodeConnectionType.Main}`, displayName: rule.outputKey };
+		const ruleOutputs = rules.map((rule, index) => {
+			return {
+				type: `${NodeConnectionType.Main}`,
+				displayName: rule.outputKey || index.toString(),
+			};
 		});
 		if ((parameters.options as IDataObject)?.fallbackOutput === 'last') {
-			ruleOutputs.push({ type: `${NodeConnectionType.Main}`, displayName: 'Fallback' });
+			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
+			ruleOutputs.push({
+				type: `${NodeConnectionType.Main}`,
+				displayName: renameFallbackOutput || 'Fallback',
+			});
 		}
 		return ruleOutputs;
 	}
@@ -130,7 +137,7 @@ export class SwitchV3 implements INodeType {
 							value: 'string',
 						},
 					],
-					default: 'number',
+					default: 'stirng',
 					description: 'The type of data to route on',
 				},
 
@@ -138,7 +145,7 @@ export class SwitchV3 implements INodeType {
 				//         dataType:boolean
 				// ----------------------------------
 				{
-					displayName: 'Value 1',
+					displayName: 'Value or Expression',
 					name: 'value1',
 					type: 'boolean',
 					displayOptions: {
@@ -147,9 +154,9 @@ export class SwitchV3 implements INodeType {
 							mode: ['rules'],
 						},
 					},
-					default: false,
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-					description: 'The value to compare with the first one',
+					description: 'Use expression to change this value dynamically',
+					default: false,
 				},
 				{
 					displayName: 'Routing Rules',
@@ -191,19 +198,32 @@ export class SwitchV3 implements INodeType {
 									description: 'Operation to decide where the the data should be mapped to',
 								},
 								{
-									displayName: 'Value 2',
+									displayName: 'Compare To',
 									name: 'value2',
 									type: 'boolean',
 									default: false,
 									// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-									description: 'The value to compare with the first one',
+									description:
+										'The value to aply operation to, this value is usualy constant and does not change per item',
+								},
+								{
+									displayName: 'Rename Output',
+									name: 'renameOutput',
+									type: 'boolean',
+									default: false,
 								},
 								{
 									displayName: 'Output Key',
+									displayNameIndexed: 'Output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
 									description: 'The label of output to which to send data to if rule matches',
+									displayOptions: {
+										show: {
+											renameOutput: [true],
+										},
+									},
 								},
 							],
 						},
@@ -214,7 +234,7 @@ export class SwitchV3 implements INodeType {
 				//         dataType:dateTime
 				// ----------------------------------
 				{
-					displayName: 'Value 1',
+					displayName: 'Value or Expression',
 					name: 'value1',
 					type: 'dateTime',
 					displayOptions: {
@@ -224,7 +244,7 @@ export class SwitchV3 implements INodeType {
 						},
 					},
 					default: '',
-					description: 'The value to compare with the second one',
+					description: 'Use expression to change this value dynamically',
 				},
 				{
 					displayName: 'Routing Rules',
@@ -266,18 +286,31 @@ export class SwitchV3 implements INodeType {
 									description: 'Operation to decide where the the data should be mapped to',
 								},
 								{
-									displayName: 'Value 2',
+									displayName: 'Compare To',
 									name: 'value2',
 									type: 'dateTime',
 									default: 0,
-									description: 'The value to compare with the first one',
+									description:
+										'The value to aply operation to, this value is usualy constant and does not change per item',
+								},
+								{
+									displayName: 'Rename Output',
+									name: 'renameOutput',
+									type: 'boolean',
+									default: false,
 								},
 								{
 									displayName: 'Output Key',
+									displayNameIndexed: 'Output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
 									description: 'The label of output to which to send data to if rule matches',
+									displayOptions: {
+										show: {
+											renameOutput: [true],
+										},
+									},
 								},
 							],
 						},
@@ -288,7 +321,7 @@ export class SwitchV3 implements INodeType {
 				//         dataType:number
 				// ----------------------------------
 				{
-					displayName: 'Value 1',
+					displayName: 'Value or Expression',
 					name: 'value1',
 					type: 'number',
 					displayOptions: {
@@ -298,7 +331,7 @@ export class SwitchV3 implements INodeType {
 						},
 					},
 					default: 0,
-					description: 'The value to compare with the second one',
+					description: 'Use expression to change this value dynamically',
 				},
 				{
 					displayName: 'Routing Rules',
@@ -357,18 +390,31 @@ export class SwitchV3 implements INodeType {
 									description: 'Operation to decide where the the data should be mapped to',
 								},
 								{
-									displayName: 'Value 2',
+									displayName: 'Compare To',
 									name: 'value2',
 									type: 'number',
 									default: 0,
-									description: 'The value to compare with the first one',
+									description:
+										'The value to aply operation to, this value is usualy constant and does not change per item',
+								},
+								{
+									displayName: 'Rename Output',
+									name: 'renameOutput',
+									type: 'boolean',
+									default: false,
 								},
 								{
 									displayName: 'Output Key',
+									displayNameIndexed: 'Output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
 									description: 'The label of output to which to send data to if rule matches',
+									displayOptions: {
+										show: {
+											renameOutput: [true],
+										},
+									},
 								},
 							],
 						},
@@ -379,7 +425,7 @@ export class SwitchV3 implements INodeType {
 				//         dataType:string
 				// ----------------------------------
 				{
-					displayName: 'Value 1',
+					displayName: 'Value or Expression',
 					name: 'value1',
 					type: 'string',
 					displayOptions: {
@@ -389,7 +435,7 @@ export class SwitchV3 implements INodeType {
 						},
 					},
 					default: '',
-					description: 'The value to compare with the second one',
+					description: 'Use expression to change this value dynamically',
 				},
 				{
 					displayName: 'Routing Rules',
@@ -464,7 +510,7 @@ export class SwitchV3 implements INodeType {
 									description: 'Operation to decide where the the data should be mapped to',
 								},
 								{
-									displayName: 'Value 2',
+									displayName: 'Compare To',
 									name: 'value2',
 									type: 'string',
 									displayOptions: {
@@ -473,7 +519,8 @@ export class SwitchV3 implements INodeType {
 										},
 									},
 									default: '',
-									description: 'The value to compare with the first one',
+									description:
+										'The value to aply operation to, this value is usualy constant and does not change per item',
 								},
 								{
 									displayName: 'Regex',
@@ -489,12 +536,23 @@ export class SwitchV3 implements INodeType {
 									description: 'The regex which has to match',
 								},
 								{
+									displayName: 'Rename Output',
+									name: 'renameOutput',
+									type: 'boolean',
+									default: false,
+								},
+								{
 									displayName: 'Output Key',
-									displayNameIndexed: 'Rename output {{entryIndex}}',
+									displayNameIndexed: 'Output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
 									description: 'The label of output to which to send data to if rule matches',
+									displayOptions: {
+										show: {
+											renameOutput: [true],
+										},
+									},
 								},
 							],
 						},
@@ -513,6 +571,18 @@ export class SwitchV3 implements INodeType {
 					},
 					options: [
 						{
+							displayName: 'Case Sensitive',
+							name: 'caseSensitive',
+							type: 'boolean',
+							default: true,
+							description: 'Whether to compare case sensitive or not',
+							displayOptions: {
+								show: {
+									'/dataType': ['string'],
+								},
+							},
+						},
+						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Fallback Output',
 							name: 'fallbackOutput',
@@ -525,6 +595,18 @@ export class SwitchV3 implements INodeType {
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 							description:
 								'If no rule matches the item will be sent to this output, by default they will be ignored',
+						},
+						{
+							displayName: 'Rename Fallback Output',
+							name: 'renameFallbackOutput',
+							type: 'string',
+							placeholder: 'e.g. Default',
+							default: '',
+							displayOptions: {
+								show: {
+									fallbackOutput: ['last'],
+								},
+							},
 						},
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -718,6 +800,11 @@ export class SwitchV3 implements INodeType {
 						value1 = convertDateTime(value1);
 					}
 
+					if (dataType === 'string' && options.caseSensitive === false) {
+						value1 = (value1 as string).toLowerCase();
+					}
+
+					let matchFound = false;
 					for (ruleData of rules) {
 						// Check if the values passes
 
@@ -726,12 +813,17 @@ export class SwitchV3 implements INodeType {
 							value2 = convertDateTime(value2);
 						}
 
+						if (dataType === 'string' && options.caseSensitive === false) {
+							value2 = (value2 as string).toLowerCase();
+						}
+
 						compareOperationResult = compareOperationFunctions[ruleData.operation as string](
 							value1,
 							value2,
 						);
 
 						if (compareOperationResult) {
+							matchFound = true;
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(returnData.length, ruleData.output as number, itemIndex);
 
@@ -744,7 +836,7 @@ export class SwitchV3 implements INodeType {
 						}
 					}
 
-					if (fallbackOutput !== 'none') {
+					if (fallbackOutput !== 'none' && !matchFound) {
 						if (fallbackOutput === 'last') {
 							returnData[returnData.length - 1].push(item);
 							continue;
