@@ -16,7 +16,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 
@@ -162,7 +162,7 @@ function onBackButton() {
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
 					:content="activeViewStack.info"
-					theme="info"
+					theme="warning"
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />

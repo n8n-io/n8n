@@ -398,7 +398,8 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
+import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -417,9 +418,11 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+
+type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -525,14 +528,14 @@ export default defineComponent({
 					{
 						text: 'Today', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							picker.$emit('pick', new Date());
 						},
 					},
 					{
 						text: 'Yesterday', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
 							picker.$emit('pick', date);
@@ -541,7 +544,7 @@ export default defineComponent({
 					{
 						text: 'A week ago', // TODO
 
-						onClick(picker: any) {
+						onClick(picker: Picker) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
 							picker.$emit('pick', date);

@@ -48,6 +48,7 @@ import { deepCopy } from './utils';
 
 import { DateTime } from 'luxon';
 import type { Workflow } from './Workflow';
+import { ApplicationError } from './errors/application.error';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -236,7 +237,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const specialNodeParameters: INodeProperties[] = [
+const commonPollingParameters: INodeProperties[] = [
 	{
 		displayName: 'Poll Times',
 		name: 'pollTimes',
@@ -252,12 +253,28 @@ const specialNodeParameters: INodeProperties[] = [
 	},
 ];
 
+const commonCORSParameters: INodeProperties[] = [
+	{
+		displayName: 'Allowed Origins (CORS)',
+		name: 'allowedOrigins',
+		type: 'string',
+		default: '*',
+		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+	},
+];
+
 /**
  * Apply special parameters which should be added to nodeTypes depending on their type or configuration
  */
 export function applySpecialNodeParameters(nodeType: INodeType): void {
-	if (nodeType.description.polling === true) {
-		nodeType.description.properties.unshift(...specialNodeParameters);
+	const { properties, polling, supportsCORS } = nodeType.description;
+	if (polling) {
+		properties.unshift(...commonPollingParameters);
+	}
+	if (nodeType.webhook && supportsCORS) {
+		const optionsProperty = properties.find(({ name }) => name === 'options');
+		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		else properties.push(...commonCORSParameters);
 	}
 }
 
@@ -400,7 +417,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new Error('The "executionData" is not initialized!');
+		throw new ApplicationError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -408,11 +425,16 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error('The request data of context type "node" the node parameter has to be set!');
+			// @TODO: What does this mean?
+			throw new ApplicationError(
+				'The request data of context type "node" the node parameter has to be set!',
+			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new Error(`The context type "${type}" is not know. Only "flow" and node" are supported!`);
+		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+			extra: { contextType: type },
+		});
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
@@ -514,7 +536,7 @@ export function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error(
+			throw new ApplicationError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -757,9 +779,9 @@ export function getNodeParameters(
 						) as INodePropertyCollection;
 
 						if (nodePropertyOptions === undefined) {
-							throw new Error(
-								`Could not find property option "${itemName}" for "${nodeProperties.name}"`,
-							);
+							throw new ApplicationError('Could not find property option', {
+								extra: { propertyOption: itemName, property: nodeProperties.name },
+							});
 						}
 
 						tempNodePropertiesArray = nodePropertyOptions.values!;
@@ -1038,7 +1060,9 @@ export function getNodeInputs(
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
-		throw new Error(`Could not calculate inputs dynamically for node "${node.name}"`);
+		throw new ApplicationError('Could not calculate inputs dynamically for node', {
+			extra: { nodeName: node.name },
+		});
 	}
 }
 
@@ -1061,7 +1085,9 @@ export function getNodeOutputs(
 				{},
 			) || []) as ConnectionTypes[];
 		} catch (e) {
-			throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+			throw new ApplicationError('Could not calculate outputs dynamically for node', {
+				extra: { nodeName: node.name },
+			});
 		}
 	}
 
@@ -1242,7 +1268,7 @@ export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
 
 	if (!isValidNumber) {
-		throw new Error(`Could not parse '${String(value)}' to number.`);
+		throw new ApplicationError('Failed to parse value to number', { extra: { value } });
 	}
 	return Number(value);
 };
@@ -1266,7 +1292,9 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		}
 	}
 
-	throw new Error(`Could not parse '${String(value)}' to boolean.`);
+	throw new ApplicationError('Failed to parse value as boolean', {
+		extra: { value },
+	});
 };
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
@@ -1290,7 +1318,7 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 		return sqlDate;
 	}
 
-	throw new Error(`The value "${dateString}" is not a valid date.`);
+	throw new ApplicationError('Value is not a valid date', { extra: { dateString } });
 };
 
 export const tryToParseTime = (value: unknown): string => {
@@ -1298,7 +1326,7 @@ export const tryToParseTime = (value: unknown): string => {
 		String(value),
 	);
 	if (!isTimeInput) {
-		throw new Error(`The value "${String(value)}" is not a valid time.`);
+		throw new ApplicationError('Value is not a valid time', { extra: { value } });
 	}
 	return String(value);
 };
@@ -1317,11 +1345,11 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 		}
 
 		if (!Array.isArray(parsed)) {
-			throw new Error(`The value "${String(value)}" is not a valid array.`);
+			throw new ApplicationError('Value is not a valid array', { extra: { value } });
 		}
 		return parsed;
 	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid array.`);
+		throw new ApplicationError('Value is not a valid array', { extra: { value } });
 	}
 };
 
@@ -1332,11 +1360,11 @@ export const tryToParseObject = (value: unknown): object => {
 	try {
 		const o = JSON.parse(String(value));
 		if (typeof o !== 'object' || Array.isArray(o)) {
-			throw new Error(`The value "${String(value)}" is not a valid object.`);
+			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
 		return o;
 	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid object.`);
+		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
 };
 

@@ -6,12 +6,14 @@ import { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '../../shared/mocking';
+import { RoleService } from '@/services/role.service';
 
 describe('UserService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
 
 	mockInstance(Logger);
 	const repository = mockInstance(UserRepository);
+	mockInstance(RoleService);
 	const service = Container.get(UserService);
 	const testUser = Object.assign(new User(), {
 		id: '1234',

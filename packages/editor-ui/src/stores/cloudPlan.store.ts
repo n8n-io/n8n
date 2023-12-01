@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 
 const DEFAULT_STATE: CloudPlanState = {
+	initialized: false,
 	data: null,
 	usage: null,
 	loadingPlan: false,
@@ -54,7 +55,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const hasCloudPlan = computed(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
+		return usersStore.isInstanceOwner && settingsStore.isCloudDeployment && cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
@@ -67,7 +68,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 				}
 			}
 		} catch (error) {
-			throw new Error(error);
+			throw new Error(error.message);
 		}
 	};
 
@@ -142,17 +143,48 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			if (!userIsTrialing.value) return;
 			await getInstanceCurrentUsage();
 			startPollingInstanceUsageData();
-		} catch {}
+		} catch (e) {
+			throw new Error(e.message);
+		}
 	};
 
 	const fetchUserCloudAccount = async () => {
 		try {
 			await getUserCloudAccount();
-		} catch {}
+		} catch (e) {
+			throw new Error(e.message);
+		}
+	};
+
+	const redirectToDashboard = async () => {
+		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+		const { code } = await getAutoLoginCode();
+		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
+	};
+
+	const initialize = async () => {
+		if (state.initialized) {
+			return;
+		}
+
+		try {
+			await checkForCloudPlanData();
+		} catch (error) {
+			console.warn('Error checking for cloud plan data:', error);
+		}
+
+		try {
+			await fetchUserCloudAccount();
+		} catch (error) {
+			console.warn('Error fetching user cloud account:', error);
+		}
+
+		state.initialized = true;
 	};
 
 	return {
 		state,
+		initialize,
 		getOwnerCurrentPlan,
 		getInstanceCurrentUsage,
 		usageLeft,
@@ -166,5 +198,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
+		redirectToDashboard,
 	};
 });

@@ -45,6 +45,10 @@
 	transform: scaleY(1);
 	transition: var.$md-fade-transition;
 	transform-origin: center top;
+
+	&[data-popper-placement^='top'] {
+		transform-origin: center bottom;
+	}
 }
 .el-zoom-in-top-enter-from,
 .el-zoom-in-top-leave-active {

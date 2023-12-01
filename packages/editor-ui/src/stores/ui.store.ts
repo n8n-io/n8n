@@ -57,9 +57,10 @@ import type {
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -548,7 +549,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		addSelectedNode(node: INodeUi): void {
-			this.selectedNodes.push(node);
+			const isAlreadySelected = this.selectedNodes.some((n) => n.name === node.name);
+			if (!isAlreadySelected) {
+				this.selectedNodes.push(node);
+			}
 		},
 		removeNodeFromSelection(node: INodeUi): void {
 			let index;

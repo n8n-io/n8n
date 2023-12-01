@@ -6,6 +6,7 @@
 		data-test-id="canvas-node"
 		:ref="data.name"
 		:data-name="data.name"
+		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
@@ -13,6 +14,7 @@
 				'node-default': true,
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
+				'menu-open': isContextMenuOpen,
 			}"
 		>
 			<div
@@ -35,7 +37,7 @@
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
 					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
-						<n8n-tooltip placement="bottom">
+						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
@@ -70,6 +72,7 @@
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip
 						placement="top"
+						:show-after="500"
 						:visible="showTriggerNodeTooltip"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
@@ -102,48 +105,22 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div
-					v-touch:tap="deleteNode"
-					class="option"
-					:title="$locale.baseText('node.deleteNode')"
-					data-test-id="delete-node-button"
-				>
-					<font-awesome-icon icon="trash" />
-				</div>
-				<div
-					v-touch:tap="disableNode"
-					class="option"
-					:title="$locale.baseText('node.activateDeactivateNode')"
-					data-test-id="disable-node-button"
-				>
-					<font-awesome-icon :icon="nodeDisabledIcon" />
-				</div>
-				<div
-					v-touch:tap="duplicateNode"
-					class="option"
-					:title="$locale.baseText('node.duplicateNode')"
-					v-if="isDuplicatable"
-					data-test-id="duplicate-node-button"
-				>
-					<font-awesome-icon icon="clone" />
-				</div>
-				<div
-					v-touch:tap="setNodeActive"
-					class="option touch"
-					:title="$locale.baseText('node.editNode')"
-					data-test-id="activate-node-button"
-				>
-					<font-awesome-icon class="execute-icon" icon="cog" />
-				</div>
-				<div
-					v-touch:tap="executeNode"
-					class="option"
-					:title="$locale.baseText('node.executeNode')"
-					v-if="!workflowRunning && !isConfigNode"
+				<n8n-icon-button
 					data-test-id="execute-node-button"
-				>
-					<font-awesome-icon class="execute-icon" icon="play-circle" />
-				</div>
+					type="tertiary"
+					text
+					icon="play"
+					:disabled="workflowRunning || isConfigNode"
+					:title="$locale.baseText('node.executeNode')"
+					@click="executeNode"
+				/>
+				<n8n-icon-button
+					data-test-id="overflow-node-button"
+					type="tertiary"
+					text
+					icon="ellipsis-h"
+					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				/>
 			</div>
 			<div
 				:class="{
@@ -192,6 +169,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
@@ -199,7 +177,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -208,9 +186,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Node',
+	setup() {
+		const contextMenu = useContextMenu();
+		return { contextMenu };
+	},
 	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
@@ -286,7 +269,7 @@ export default defineComponent({
 			}
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isExecuting(): boolean {
 			return this.workflowsStore.isNodeExecuting(this.data.name);
@@ -410,7 +393,7 @@ export default defineComponent({
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
-				return nodeExecutionRunData[0].executionStatus ?? '';
+				return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
 			}
 			return '';
 		},
@@ -419,7 +402,7 @@ export default defineComponent({
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
-					if (executionRunData.error) {
+					if (executionRunData?.error) {
 						issues.push(
 							`${executionRunData.error.message}${
 								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
@@ -444,7 +427,10 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
+			return (
+				!this.isConfigurableNode &&
+				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+			);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -500,9 +486,15 @@ export default defineComponent({
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = '--color-danger';
-					returnStyles['border-width'] = '2px';
-					returnStyles['border-style'] = 'solid';
+					// Do not set red border if there is an issue with the configuration node
+					if (
+						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==
+						'configuration-node'
+					) {
+						borderColor = '--color-danger';
+						returnStyles['border-width'] = '2px';
+						returnStyles['border-style'] = 'solid';
+					}
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
@@ -540,6 +532,13 @@ export default defineComponent({
 				!this.isTriggerNodeTooltipEmpty &&
 				!this.hasIssues &&
 				!this.dragging
+			);
+		},
+		isContextMenuOpen(): boolean {
+			return (
+				this.contextMenu.isOpen.value &&
+				this.contextMenu.target.value.source === 'node-button' &&
+				this.contextMenu.target.value.node.name === this.data?.name
 			);
 		},
 	},
@@ -619,6 +618,7 @@ export default defineComponent({
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
+				this.uiStore.isModalActive ||
 				dataItemsCount === 0
 			)
 				return;
@@ -667,27 +667,6 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
-		async deleteNode() {
-			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
-				button_name: 'delete',
-				workflow_id: this.workflowsStore.workflowId,
-			});
-
-			// Wait a tick else vue causes problems because the data is gone
-			await this.$nextTick();
-			this.$emit('removeNode', this.data.name);
-		},
-		async duplicateNode() {
-			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
-				button_name: 'duplicate',
-				workflow_id: this.workflowsStore.workflowId,
-			});
-			// Wait a tick else vue causes problems because the data is gone
-			await this.$nextTick();
-			this.$emit('duplicateNode', this.data.name);
-		},
 
 		onClick(event: MouseEvent) {
 			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
@@ -714,11 +693,20 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
+		openContextMenu(event: MouseEvent, source: ContextMenuTarget['source']) {
+			if (this.data) {
+				this.contextMenu.open(event, { source, node: this.data });
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" scoped>
+.context-menu {
+	position: absolute;
+}
+
 .node-wrapper {
 	--node-width: 100px;
 	/*
@@ -792,13 +780,11 @@ export default defineComponent({
 		}
 
 		&.touch-active,
-		&:hover {
-			.node-execute {
-				display: initial;
-			}
-
+		&:hover,
+		&.menu-open {
 			.node-options {
-				display: initial;
+				pointer-events: all;
+				opacity: 1;
 			}
 		}
 
@@ -860,19 +846,27 @@ export default defineComponent({
 		}
 
 		.node-options {
-			display: none;
+			--node-options-height: 26px;
+			:deep(.button) {
+				--button-font-color: var(--color-text-light);
+			}
 			position: absolute;
-			top: -25px;
-			left: -10px;
-			width: calc(var(--node-width) + 20px);
-			height: 26px;
-			font-size: 0.9em;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--spacing-2xs);
+			transition: opacity 100ms ease-in;
+			opacity: 0;
+			pointer-events: none;
+			top: calc(-1 * (var(--node-options-height) + var(--spacing-4xs)));
+			left: 0;
+			width: var(--node-width);
+			height: var(--node-options-height);
+			font-size: var(--font-size-s);
 			z-index: 10;
-			color: #aaa;
 			text-align: center;
 
 			.option {
-				width: 28px;
 				display: inline-block;
 
 				&.touch {
@@ -885,8 +879,7 @@ export default defineComponent({
 
 				.execute-icon {
 					position: relative;
-					top: 2px;
-					font-size: 1.2em;
+					font-size: var(----font-size-xl);
 				}
 			}
 
@@ -1349,6 +1342,10 @@ export default defineComponent({
 
 	&.jtk-endpoint-connected {
 		z-index: 10;
+	}
+
+	&.add-input-endpoint-error {
+		--endpoint-svg-color: var(--color-danger);
 	}
 
 	.add-input-endpoint-default {

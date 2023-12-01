@@ -11,7 +11,6 @@ import type { User } from '@db/entities/User';
 import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
 import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
-import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
@@ -20,6 +19,8 @@ import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
+import { InternalHooks } from '@/InternalHooks';
+import { LicenseMocker } from '../license';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -83,6 +84,7 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		license: new LicenseMocker(),
 	};
 
 	beforeAll(async () => {
@@ -91,8 +93,11 @@ export const setupTestServer = ({
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
+		testServer.license.mock(Container.get(License));
 		if (enabledFeatures) {
-			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
+			testServer.license.setDefaults({
+				features: enabledFeatures,
+			});
 		}
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
@@ -129,10 +134,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						const { variablesController } = await import(
-							'@/environments/variables/variables.controller'
+						const { VariablesController } = await import(
+							'@/environments/variables/variables.controller.ee'
 						);
-						app.use(`/${REST_PATH_SEGMENT}/variables`, variablesController);
+						registerController(app, config, Container.get(VariablesController));
 						break;
 
 					case 'license':
@@ -166,7 +171,7 @@ export const setupTestServer = ({
 						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { handleLdapInit } = await import('@/Ldap/helpers');
 						const { LdapController } = await import('@/controllers/ldap.controller');
-						Container.get(License).isLdapEnabled = () => true;
+						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
 						const { service, sync } = LdapManager.getInstance();
 						registerController(
@@ -234,29 +239,42 @@ export const setupTestServer = ({
 							'@db/repositories/sharedWorkflow.repository'
 						);
 						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-						const { ExternalHooks } = await import('@/ExternalHooks');
-						const { JwtService } = await import('@/services/jwt.service');
-						const { RoleService } = await import('@/services/role.service');
 						const { UserService: US } = await import('@/services/user.service');
-						const { UserManagementMailer } = await import(
-							'@/UserManagement/email/UserManagementMailer'
-						);
+						const { ExternalHooks: EH } = await import('@/ExternalHooks');
+						const { RoleService: RS } = await import('@/services/role.service');
 						const { UsersController } = await import('@/controllers/users.controller');
 						registerController(
 							app,
 							config,
 							new UsersController(
-								config,
 								logger,
-								Container.get(ExternalHooks),
+								Container.get(EH),
 								Container.get(InternalHooks),
 								Container.get(SharedCredentialsRepository),
 								Container.get(SharedWorkflowRepository),
 								Container.get(ActiveWorkflowRunner),
-								Container.get(UserManagementMailer),
-								Container.get(JwtService),
-								Container.get(RoleService),
+								Container.get(RS),
 								Container.get(US),
+								Container.get(License),
+							),
+						);
+						break;
+
+					case 'invitations':
+						const { InvitationController } = await import('@/controllers/invitation.controller');
+						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
+						const { UserService: USE } = await import('@/services/user.service');
+
+						registerController(
+							app,
+							config,
+							new InvitationController(
+								config,
+								logger,
+								Container.get(InternalHooks),
+								Container.get(EHS),
+								Container.get(USE),
+								Container.get(License),
 							),
 						);
 						break;
@@ -284,6 +302,11 @@ export const setupTestServer = ({
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
 						registerController(app, config, Container.get(BinaryDataController));
 						break;
+
+					case 'role':
+						const { RoleController } = await import('@/controllers/role.controller');
+						registerController(app, config, Container.get(RoleController));
+						break;
 				}
 			}
 		}
@@ -292,6 +315,10 @@ export const setupTestServer = ({
 	afterAll(async () => {
 		await testDb.terminate();
 		testServer.httpServer.close();
+	});
+
+	beforeEach(() => {
+		testServer.license.reset();
 	});
 
 	return testServer;

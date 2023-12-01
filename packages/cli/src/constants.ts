@@ -21,7 +21,11 @@ export function getN8nPackageJson() {
 	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
 }
 
-export const STARTING_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
+export const STARTING_NODES = [
+	'@n8n/n8n-nodes-langchain.manualChatTrigger',
+	'n8n-nodes-base.start',
+	'n8n-nodes-base.manualTrigger',
+];
 
 export const N8N_VERSION = getN8nPackageJson().version;
 
@@ -81,6 +85,7 @@ export const LICENSE_FEATURES = {
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
+	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
 } as const;
 
 export const LICENSE_QUOTAS = {

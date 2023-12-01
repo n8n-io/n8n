@@ -6,13 +6,6 @@ import validator from 'validator';
 
 import { Get, Post, RestController } from '@/decorators';
 import {
-	BadRequestError,
-	InternalServerError,
-	NotFoundError,
-	UnauthorizedError,
-	UnprocessableRequestError,
-} from '@/ResponseHelper';
-import {
 	getInstanceBaseUrl,
 	hashPassword,
 	validatePassword,
@@ -29,6 +22,11 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -99,7 +97,10 @@ export class PasswordResetController {
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
-			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+			!(
+				(user && (await user.hasGlobalScope('user:resetPassword'))) === true ||
+				user?.settings?.allowSSOManualLogin === true
+			)
 		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',

@@ -19,26 +19,15 @@ import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 
-import {
-	LoadMappingOptions,
-	LoadNodeParameterOptions,
-	LoadNodeListSearch,
-	InstanceSettings,
-} from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import type {
-	INodeCredentials,
-	INodeListSearchResult,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeNameVersion,
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
-	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -57,17 +46,11 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type {
-	CurlHelper,
-	ExecutionRequest,
-	NodeListSearchRequest,
-	NodeParameterOptionsRequest,
-	ResourceMapperRequest,
-	WorkflowRequest,
-} from '@/requests';
+import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
 import { LdapController } from '@/controllers/ldap.controller';
 import { MeController } from '@/controllers/me.controller';
 import { MFAController } from '@/controllers/mfa.controller';
@@ -93,7 +76,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WaitTracker } from '@/WaitTracker';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
@@ -110,7 +92,7 @@ import { License } from './License';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { variablesController } from './environments/variables/variables.controller';
+import { VariablesController } from './environments/variables/variables.controller.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import {
 	isLdapCurrentAuthenticationMethod,
@@ -129,11 +111,15 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
-import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
+import { InvitationController } from './controllers/invitation.controller';
+import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
+import { BadRequestError } from './errors/response-errors/bad-request.error';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 
 const exec = promisify(callbackExec);
 
@@ -155,6 +141,8 @@ export class Server extends AbstractServer {
 	private frontendService?: FrontendService;
 
 	private postHog: PostHogClient;
+
+	private collaborationService: CollaborationService;
 
 	constructor() {
 		super('main');
@@ -233,6 +221,7 @@ export class Server extends AbstractServer {
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
@@ -250,6 +239,7 @@ export class Server extends AbstractServer {
 			.then(async (workflow) =>
 				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
+		this.collaborationService = Container.get(CollaborationService);
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
@@ -259,7 +249,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
-		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MfaService);
 
@@ -278,23 +267,21 @@ export class Server extends AbstractServer {
 				postHog,
 			),
 			Container.get(MeController),
+			Container.get(DynamicNodeParametersController),
 			new NodeTypesController(config, nodeTypes),
 			Container.get(PasswordResetController),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
 				Container.get(SharedCredentialsRepository),
 				Container.get(SharedWorkflowRepository),
 				activeWorkflowRunner,
-				mailer,
-				jwtService,
 				Container.get(RoleService),
 				userService,
-				postHog,
+				Container.get(License),
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -303,6 +290,18 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
+			new InvitationController(
+				config,
+				logger,
+				internalHooks,
+				externalHooks,
+				Container.get(UserService),
+				Container.get(License),
+				postHog,
+			),
+			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
 
 		if (isLdapEnabled()) {
@@ -433,12 +432,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-		// Variables
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
-
-		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
 		try {
@@ -448,170 +441,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/node-parameter-options`,
-			ResponseHelper.send(
-				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
-					}
-					// @ts-ignore
-					if (req.query.loadOptions) {
-						return loadDataInstance.getOptionsViaRequestProperty(
-							// @ts-ignore
-							jsonParse(req.query.loadOptions as string),
-							additionalData,
-						);
-					}
-
-					return [];
-				},
-			),
-		);
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/nodes-list-search`,
-			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const listSearchInstance = new LoadNodeListSearch(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return listSearchInstance.getOptionsViaMethodName(
-							methodName,
-							additionalData,
-							req.query.filter,
-							req.query.paginationToken,
-						);
-					}
-
-					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/get-mapping-fields`,
-			ResponseHelper.send(
-				async (
-					req: ResourceMapperRequest,
-					res: express.Response,
-				): Promise<ResourceMapperFields | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadMappingOptionsInstance = new LoadMappingOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
-						methodName,
-						additionalData,
-					);
-
-					return fields;
-				},
-			),
-		);
-
-		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
 
@@ -619,20 +448,24 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage({
+					user: req.user,
+					scope: 'workflow:list',
+				});
 			}),
 		);
 
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: whereClause({
+					where: await whereClause({
 						user: req.user,
+						globalScope: 'workflow:read',
 						entityType: 'workflow',
 						entityId: workflowId,
 					}),
@@ -644,9 +477,7 @@ export class Server extends AbstractServer {
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.BadRequestError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-					);
+					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 				}
 
 				return this.activeWorkflowRunner.getActivationError(workflowId);
@@ -669,7 +500,7 @@ export class Server extends AbstractServer {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError('Invalid cURL command');
+						throw new BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -802,7 +633,7 @@ export class Server extends AbstractServer {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
@@ -815,7 +646,7 @@ export class Server extends AbstractServer {
 				);
 
 				if (!fullExecutionData) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
@@ -847,7 +678,9 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
+							extra: { jobId: req.params.id },
+						});
 					} else {
 						await queue.stopJob(job);
 					}

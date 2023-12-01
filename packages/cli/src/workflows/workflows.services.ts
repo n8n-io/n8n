@@ -6,7 +6,6 @@ import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -29,24 +28,32 @@ import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
+import type { Scope } from '@n8n/permissions';
 import { Logger } from '@/Logger';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+export type WorkflowsGetSharedOptions =
+	| { allowGlobalScope: true; globalScope: Scope }
+	| { allowGlobalScope: false };
 
 export class WorkflowsService {
 	static async getSharing(
 		user: User,
 		workflowId: string,
+		options: WorkflowsGetSharedOptions,
 		relations: string[] = ['workflow'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedWorkflow | null> {
 		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// workflows they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		// Omit user from where if the requesting user has relevant
+		// global workflow permissions. This allows the user to
+		// access workflows they don't own.
+		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			where.userId = user.id;
 		}
 
@@ -193,8 +200,9 @@ export class WorkflowsService {
 	): Promise<WorkflowEntity> {
 		const shared = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['workflow', 'role'],
-			where: whereClause({
+			where: await whereClause({
 				user,
+				globalScope: 'workflow:update',
 				entityType: 'workflow',
 				entityId: workflowId,
 				roles,
@@ -207,17 +215,19 @@ export class WorkflowsService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
 		}
+
+		const oldState = shared.workflow.active;
 
 		if (
 			!forceSave &&
 			workflow.versionId !== '' &&
 			workflow.versionId !== shared.workflow.versionId
 		) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 				100,
 			);
@@ -255,9 +265,14 @@ export class WorkflowsService {
 
 		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
+		/**
+		 * If the workflow being updated is stored as `active`, remove it from
+		 * active workflows in memory, and re-add it after the update.
+		 *
+		 * If a trigger or poller in the workflow was updated, the new value
+		 * will take effect only on removing and re-adding.
+		 */
 		if (shared.workflow.active) {
-			// When workflow gets saved always remove it as the triggers could have been
-			// changed and so the changes would not take effect
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
@@ -322,7 +337,7 @@ export class WorkflowsService {
 		});
 
 		if (updatedWorkflow === null) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
 		}
@@ -360,8 +375,21 @@ export class WorkflowsService {
 				message = message ?? (error as Error).message;
 
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError(message);
+				throw new BadRequestError(message);
 			}
+		}
+
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		if (multiMainSetup.isEnabled) {
+			await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
+				workflowId,
+				oldState,
+				newState: updatedWorkflow.active,
+				versionId: shared.workflow.versionId,
+			});
 		}
 
 		return updatedWorkflow;
@@ -454,8 +482,9 @@ export class WorkflowsService {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['workflow', 'role'],
-			where: whereClause({
+			where: await whereClause({
 				user,
+				globalScope: 'workflow:delete',
 				entityType: 'workflow',
 				entityId: workflowId,
 				roles: ['owner'],

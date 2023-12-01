@@ -8,6 +8,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	AI_CODE_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -22,10 +23,10 @@ import {
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 import type { INodeInputFilter } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {
@@ -152,6 +153,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			},
 			panelClass: relatedAIView?.properties.panelClass,
 			baseFilter: (i: INodeCreateElement) => {
+				// AI Code node could have any connection type so we don't want to display it
+				// in the compatible connection view as it would be displayed in all of them
+				if (i.key === AI_CODE_NODE_TYPE) return false;
 				const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
 				// TODO: Filtering works currently fine for displaying compatible node when dropping

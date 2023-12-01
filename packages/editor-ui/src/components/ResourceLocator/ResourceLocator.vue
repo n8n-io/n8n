@@ -156,17 +156,12 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	getAppNameFromNodeName,
-	getMainAuthField,
-	hasOnlyListMode,
-	isResourceLocatorValue,
-} from '@/utils';
+import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type {
-	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeListSearchItems,
@@ -688,9 +683,6 @@ export default defineComponent({
 				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
 					| string
 					| undefined;
-				const searchList = this.getPropertyArgument(this.currentMode, 'searchList') as
-					| ILoadOptions
-					| undefined;
 
 				const requestParams: IResourceLocatorReqParams = {
 					nodeTypeAndVersion: {
@@ -699,7 +691,6 @@ export default defineComponent({
 					},
 					path: this.path,
 					methodName: loadOptionsMethod,
-					searchList,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
 					...(params.filter ? { filter: params.filter } : {}),

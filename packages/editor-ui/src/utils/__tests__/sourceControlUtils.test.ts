@@ -1,6 +1,6 @@
 import type { SourceControlStatus } from '@/Interface';
 import { beforeEach } from 'vitest';
-import { aggregateSourceControlFiles } from '@/utils';
+import { aggregateSourceControlFiles } from '@/utils/sourceControlUtils';
 
 describe('sourceControlUtils', () => {
 	describe('aggregateSourceControlFiles()', () => {

@@ -43,7 +43,7 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { RoleService } from './services/role.service';
-import { VariablesService } from './environments/variables/variables.service';
+import { VariablesService } from './environments/variables/variables.service.ee';
 import { Logger } from './Logger';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -415,11 +415,11 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 
 /**
  * Get the IDs of the workflows that have been shared with the user.
- * Returns all IDs if user is global owner (see `whereClause`)
+ * Returns all IDs if user has the 'workflow:read' scope (see `whereClause`)
  */
 export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (user.globalRole?.name !== 'owner') {
+	if (!(await user.hasGlobalScope('workflow:read'))) {
 		where.userId = user.id;
 	}
 	if (roles?.length) {

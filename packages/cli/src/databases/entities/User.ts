@@ -20,8 +20,8 @@ import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
-import { ownerPermissions, memberPermissions } from '@/permissions/roles';
-import { hasScope, type HasScopeOptions, type Scope } from '@n8n/permissions';
+import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
+import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -30,6 +30,7 @@ export const MAX_PASSWORD_LENGTH = 64;
 const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
 	owner: ownerPermissions,
 	member: memberPermissions,
+	admin: adminPermissions,
 };
 
 @Entity()
@@ -137,16 +138,13 @@ export class User extends WithTimestamps implements IUser {
 		return STATIC_SCOPE_MAP[this.globalRole?.name] ?? [];
 	}
 
-	async hasGlobalScope(
-		scope: Scope | Scope[],
-		hasScopeOptions?: HasScopeOptions,
-	): Promise<boolean> {
+	async hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): Promise<boolean> {
 		return hasScope(
 			scope,
 			{
 				global: this.globalScopes,
 			},
-			hasScopeOptions,
+			scopeOptions,
 		);
 	}
 }

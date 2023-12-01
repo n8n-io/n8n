@@ -15,7 +15,8 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 

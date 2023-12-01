@@ -6,6 +6,8 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { mockInstance } from '../../shared/mocking';
+import { memberPermissions, ownerPermissions } from '@/permissions/roles';
+import { hasScope } from '@n8n/permissions';
 
 describe('SharedCredentialsRepository', () => {
 	const entityManager = mockInstance(EntityManager);
@@ -20,8 +22,23 @@ describe('SharedCredentialsRepository', () => {
 		const credentialsId = 'cred_123';
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
-		const owner = mock<User>({ isOwner: true });
-		const member = mock<User>({ isOwner: false, id: 'test' });
+		const owner = mock<User>({
+			isOwner: true,
+			hasGlobalScope: async (scope) => {
+				return hasScope(scope, {
+					global: ownerPermissions,
+				});
+			},
+		});
+		const member = mock<User>({
+			isOwner: false,
+			id: 'test',
+			hasGlobalScope: async (scope) => {
+				return hasScope(scope, {
+					global: memberPermissions,
+				});
+			},
+		});
 
 		beforeEach(() => {
 			jest.resetAllMocks();

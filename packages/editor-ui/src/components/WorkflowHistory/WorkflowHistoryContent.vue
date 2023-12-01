@@ -8,7 +8,7 @@ import type {
 } from '@/types/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 

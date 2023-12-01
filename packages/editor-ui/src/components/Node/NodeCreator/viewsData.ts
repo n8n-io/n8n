@@ -30,8 +30,8 @@ import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 } from '@/constants';
-import { useI18n } from '@/composables';
-import { useNodeTypesStore } from '@/stores';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -316,18 +316,6 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 			},
 		],
 	};
-
-	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes)
-		view.items.push({
-			key: AI_NODE_CREATOR_VIEW,
-			type: 'view',
-			properties: {
-				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-				icon: 'robot',
-				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-			},
-		});
 
 	return view;
 }
