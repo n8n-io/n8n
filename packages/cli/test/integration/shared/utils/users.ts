@@ -14,6 +14,7 @@ export const validateUser = (user: PublicUser) => {
 	expect(user.personalizationAnswers).toBeNull();
 	expect(user.password).toBeUndefined();
 	expect(user.globalRole).toBeDefined();
+	expect(user.globalScopes).not.toHaveLength(0);
 };
 
 export const assertInviteUserSuccessResponse = (data: UserInvitationResponse) => {
