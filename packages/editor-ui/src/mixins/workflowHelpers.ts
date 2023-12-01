@@ -1028,9 +1028,8 @@ export const workflowHelpers = defineComponent({
 				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
-
 				if (
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
+					useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
 					this.usersStore.currentUser
 				) {
 					this.workflowsEEStore.setWorkflowOwnedBy({

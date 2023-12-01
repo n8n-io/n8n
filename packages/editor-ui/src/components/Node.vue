@@ -632,8 +632,7 @@ export default defineComponent({
 			try {
 				const nodeSubtitle = this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
-					this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
-				}
+				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
 				// avoid breaking UI if expression error occurs
 			}
