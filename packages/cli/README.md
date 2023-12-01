@@ -8,7 +8,7 @@ n8n is a free and open [fair-code](http://faircode.io) distributed node-based Wo
 
 ## Contents
 
-<!-- TOC -->
+<!-- T of C -->
 
 - [Demo](#demo)
 - [Getting Started](#getting-started)
