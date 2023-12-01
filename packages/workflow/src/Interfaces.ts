@@ -1137,6 +1137,19 @@ export interface ResourceMapperTypeOptions {
 	};
 }
 
+export type DisplayOption = {
+	_and?: DisplayOption[];
+	_or?: DisplayOption[];
+	_gte?: number;
+	_lte?: number;
+	_gt?: number;
+	_lt?: number;
+	_between?: { from: number; to: number };
+	_startsWith?: string;
+	_endsWith?: string;
+	_contains?: string;
+};
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: NodeParameterValue[] | undefined;

@@ -296,34 +296,37 @@ export function displayParameter(
 		return true;
 	}
 
+	const { show, hide, showIfGreaterOrEqual, showIfLessOrEqual } = parameter.displayOptions;
+
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
-	let value;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const values: any[] = [];
-	if (parameter.displayOptions.show) {
+	const getValues = (propertyName: string) => {
+		let value;
+		if (propertyName.charAt(0) === '/') {
+			// Get the value from the root of the node
+			value = get(nodeValuesRoot, propertyName.slice(1));
+		} else if (propertyName === '@version') {
+			value = node?.typeVersion || 0;
+		} else {
+			// Get the value from current level
+			value = get(nodeValues, propertyName);
+		}
+
+		if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+			value = value.value;
+		}
+
+		if (!Array.isArray(value)) {
+			return [value as NodeParameterValue];
+		} else {
+			return value as NodeParameterValue[];
+		}
+	};
+
+	if (show) {
 		// All the defined rules have to match to display parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+		for (const propertyName of Object.keys(show)) {
+			const values = getValues(propertyName);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
@@ -331,110 +334,57 @@ export function displayParameter(
 
 			if (
 				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
+				!show[propertyName]!.some((v) => values.includes(v as NodeParameterValue))
 			) {
 				return false;
 			}
 		}
 	}
 
-	if (parameter.displayOptions.showIfGreaterOrEqual) {
-		// All the defined rules have to match to display parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.showIfGreaterOrEqual)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+	if (showIfGreaterOrEqual) {
+		for (const propertyName of Object.keys(showIfGreaterOrEqual)) {
+			const values = getValues(propertyName);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
-			const targetValue = parameter.displayOptions.showIfGreaterOrEqual[propertyName]!;
-			if (values.length === 0 || values.some((v) => v === undefined || v < targetValue)) {
+			const targetValue = showIfGreaterOrEqual[propertyName]!;
+			if (
+				values.length === 0 ||
+				values.some((v) => v === undefined || (v as number) < targetValue)
+			) {
 				return false;
 			}
 		}
 	}
 
-	if (parameter.displayOptions.showIfLessOrEqual) {
-		// All the defined rules have to match to display parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.showIfLessOrEqual)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+	if (showIfLessOrEqual) {
+		for (const propertyName of Object.keys(showIfLessOrEqual)) {
+			const values = getValues(propertyName);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
-			const targetValue = parameter.displayOptions.showIfLessOrEqual[propertyName]!;
-			if (values.length === 0 || values.some((v) => v === undefined || v > targetValue)) {
+			const targetValue = showIfLessOrEqual[propertyName]!;
+			if (
+				values.length === 0 ||
+				values.some((v) => v === undefined || (v as number) > targetValue)
+			) {
 				return false;
 			}
 		}
 	}
 
-	if (parameter.displayOptions.hide) {
+	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+		for (const propertyName of Object.keys(hide)) {
+			const values = getValues(propertyName);
 
 			if (
 				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
+				hide[propertyName]!.some((v) => values.includes(v as NodeParameterValue))
 			) {
 				return false;
 			}

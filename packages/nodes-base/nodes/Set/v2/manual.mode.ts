@@ -18,6 +18,24 @@ import type { SetField, SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
+		displayName: 'TEST Show >= 3.2',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			showIfGreaterOrEqual: { '@version': 3.2 },
+		},
+	},
+	{
+		displayName: 'TEST Show <= 3.1',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			showIfLessOrEqual: { '@version': 3.1 },
+		},
+	},
+	{
 		displayName: 'Fields to Set',
 		name: 'fields',
 		placeholder: 'Add Field',
