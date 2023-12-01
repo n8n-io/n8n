@@ -19,6 +19,8 @@ export async function upload(
 		'GET',
 		'/api/v2.1/dtable/app-upload-link/',
 	)) as IUploadLink;
+	const relativePath =
+		uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path;
 
 	// Get the binary data
 	const fileBufferData = await this.helpers.getBinaryDataBuffer(index, dataPropertyName);
@@ -35,8 +37,7 @@ export async function upload(
 			},
 			parent_dir: uploadLink.parent_path,
 			replace: '0',
-			relative_path:
-				uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path,
+			relative_path: relativePath,
 		},
 	};
 
@@ -61,12 +62,10 @@ export async function upload(
 		} as IDataObject;
 		let rowInput = {} as IRowObject;
 
-		const filePath = [
-			`/workspace/${workspaceId}${uploadLink.parent_path}/${uploadLink.img_relative_path}/${uploadAsset[c].name}`,
-		];
+		const filePath = `/workspace/${workspaceId}${uploadLink.parent_path}/${relativePath}/${uploadAsset[c].name}`;
 
 		if (uploadColumnType === 'image') {
-			rowInput[uploadColumn.split(':::')[0]] = filePath;
+			rowInput[uploadColumn.split(':::')[0]] = [filePath];
 		} else if (uploadColumnType === 'file') {
 			rowInput[uploadColumn.split(':::')[0]] = uploadAsset;
 			uploadAsset[c].type = 'file';
