@@ -80,9 +80,13 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		if (process.env.N8N_BINARY_DATA_TTL ?? process.env.N8N_PERSISTED_BINARY_DATA_TTL) {
+		if (
+			process.env.N8N_BINARY_DATA_TTL ??
+			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
+			process.env.EXECUTIONS_DATA_PRUNE_TIMEOUT
+		) {
 			this.logger.warn(
-				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently removes binary data together with executions during pruning.',
+				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL and EXECUTIONS_DATA_PRUNE_TIMEOUT no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.',
 			);
 		}
 
