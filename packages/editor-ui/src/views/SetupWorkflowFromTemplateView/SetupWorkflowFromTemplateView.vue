@@ -120,11 +120,10 @@ onMounted(async () => {
 						<ol v-if="isReady" :class="$style.appCredentialsContainer">
 							<SetupTemplateFormStep
 								:class="$style.appCredential"
-								v-bind:key="credentials.credentialName"
+								:key="credentials.key"
 								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
 								:order="index + 1"
 								:credentials="credentials"
-								:credentialName="credentials.credentialName"
 							/>
 						</ol>
 						<div v-else :class="$style.appCredentialsContainer">
