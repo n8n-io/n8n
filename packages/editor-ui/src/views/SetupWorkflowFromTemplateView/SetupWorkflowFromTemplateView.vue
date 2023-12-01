@@ -143,6 +143,7 @@ onMounted(async () => {
 							:disabled="setupTemplateStore.numCredentialsLeft === 0"
 						>
 							<n8n-button
+								size="large"
 								:label="$locale.baseText('templateSetup.continue.button')"
 								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 								@click="setupTemplateStore.createWorkflow($router)"
@@ -163,7 +164,7 @@ onMounted(async () => {
 .grid {
 	display: grid;
 	grid-template-columns: repeat(12, 1fr);
-	padding: var(--spacing-l) var(--spacing-l) 0;
+	padding: 0 var(--spacing-l);
 	justify-content: center;
 }
 
@@ -191,7 +192,7 @@ onMounted(async () => {
 
 .appCredential:not(:last-of-type) {
 	padding-bottom: var(--spacing-2xl);
-	border-bottom: 1px solid var(--prim-gray-540);
+	border-bottom: 1px solid var(--color-foreground-light);
 }
 
 .actions {
