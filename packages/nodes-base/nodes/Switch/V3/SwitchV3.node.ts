@@ -137,7 +137,7 @@ export class SwitchV3 implements INodeType {
 							value: 'string',
 						},
 					],
-					default: 'stirng',
+					default: 'string',
 					description: 'The type of data to route on',
 				},
 
