@@ -1,15 +1,14 @@
 ## Summary
 Provide details about your pull request and what it adds, fixes, or changes. Photos and videos are recommended.
-
 ...
 
 #### How to test the change:
 1. ...
 
+
 ## Issues fixed
 Include links to Github issue or Community forum post or **Linear ticket**:
 > Important in order to close automatically and provide context to reviewers
-
 ...
 
 
