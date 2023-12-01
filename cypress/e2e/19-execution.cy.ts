@@ -1,7 +1,8 @@
 import { v4 as uuid } from 'uuid';
-import { NDV, WorkflowPage as WorkflowPageClass, WorkflowsPage } from '../pages';
+import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 
 const workflowPage = new WorkflowPageClass();
+const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
 
 describe('Execution', () => {
@@ -114,10 +115,6 @@ describe('Execution', () => {
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -189,10 +186,6 @@ describe('Execution', () => {
 		// Check canvas nodes after 2nd step (waiting node finished its execution and the http request node is about to start)
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 		workflowPage.getters
@@ -269,10 +262,6 @@ describe('Execution', () => {
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -285,5 +274,18 @@ describe('Execution', () => {
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
 		workflowPage.getters.successToast().should('be.visible');
+	});
+
+	describe('execution preview', () => {
+		it('when deleting the last execution, it should show empty state', () => {
+			workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+			workflowPage.actions.executeWorkflow();
+			executionsTab.actions.switchToExecutionsTab();
+
+			executionsTab.actions.deleteExecutionInPreview();
+
+			executionsTab.getters.successfulExecutionListItems().should('have.length', 0);
+			workflowPage.getters.successToast().contains('Execution deleted');
+		});
 	});
 });

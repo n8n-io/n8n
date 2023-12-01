@@ -2,7 +2,9 @@
 import type { ComponentPublicInstance, PropType } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
-import { useI18n, useToast, useCopyToClipboard } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

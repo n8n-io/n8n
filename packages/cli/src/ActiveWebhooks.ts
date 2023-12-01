@@ -6,7 +6,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { WebhookPathAlreadyTakenError } from 'n8n-workflow';
+import { ApplicationError, WebhookPathTakenError } from 'n8n-workflow';
 import * as NodeExecuteFunctions from 'n8n-core';
 
 @Service()
@@ -32,7 +32,9 @@ export class ActiveWebhooks {
 		activation: WorkflowActivateMode,
 	): Promise<void> {
 		if (workflow.id === undefined) {
-			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+			throw new ApplicationError(
+				'Webhooks can only be added for saved workflows as an ID is needed',
+			);
 		}
 		if (webhookData.path.endsWith('/')) {
 			webhookData.path = webhookData.path.slice(0, -1);
@@ -46,7 +48,7 @@ export class ActiveWebhooks {
 
 		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
-			throw new WebhookPathAlreadyTakenError(webhookData.node);
+			throw new WebhookPathTakenError(webhookData.node);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {

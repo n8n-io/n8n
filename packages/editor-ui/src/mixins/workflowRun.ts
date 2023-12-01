@@ -10,7 +10,8 @@ import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 } from 'n8n-workflow';
 
-import { useNodeHelpers, useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 

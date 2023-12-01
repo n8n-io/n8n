@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import { Workflow, NodeOperationError, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -36,10 +36,11 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { IConfig } from '@oclif/config';
+import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -124,8 +125,9 @@ export class Worker extends BaseCommand {
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
 			);
-			throw new Error(
-				`Unable to find data of execution "${executionId}" in database. Aborting execution.`,
+			throw new ApplicationError(
+				'Unable to find data of execution in database. Aborting execution.',
+				{ extra: { executionId } },
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!;
@@ -149,7 +151,7 @@ export class Worker extends BaseCommand {
 					'Worker execution failed because workflow could not be found in database.',
 					{ workflowId, executionId },
 				);
-				throw new Error(`The workflow with the ID "${workflowId}" could not be found`);
+				throw new ApplicationError('Workflow could not be found', { extra: { workflowId } });
 			}
 			staticData = workflowData.staticData;
 		}
@@ -407,13 +409,13 @@ export class Worker extends BaseCommand {
 				try {
 					if (!connection.isInitialized) {
 						// Connection is not active
-						throw new Error('No active database connection!');
+						throw new ApplicationError('No active database connection');
 					}
 					// DB ping
 					await connection.query('SELECT 1');
 				} catch (e) {
 					this.logger.error('No Database connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
+					const error = new ServiceUnavailableError('No Database connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 
@@ -424,7 +426,7 @@ export class Worker extends BaseCommand {
 					await Worker.jobQueue.ping();
 				} catch (e) {
 					this.logger.error('No Redis connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
+					const error = new ServiceUnavailableError('No Redis connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 

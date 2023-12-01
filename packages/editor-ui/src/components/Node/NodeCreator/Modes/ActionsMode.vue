@@ -16,7 +16,7 @@ import {
 } from '@/constants';
 
 import { useUsersStore } from '@/stores/users.store';
-import { runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';

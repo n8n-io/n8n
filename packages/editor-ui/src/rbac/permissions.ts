@@ -2,6 +2,7 @@ import {
 	hasRole,
 	hasScope,
 	isAuthenticated,
+	isDefaultUser,
 	isEnterpriseFeatureEnabled,
 	isGuest,
 	isValid,
@@ -15,6 +16,7 @@ type Permissions = {
 export const permissions: Permissions = {
 	authenticated: isAuthenticated,
 	custom: isValid,
+	defaultUser: isDefaultUser,
 	enterprise: isEnterpriseFeatureEnabled,
 	guest: isGuest,
 	rbac: hasScope,

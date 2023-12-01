@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
-import { Logger } from '@/Logger';
+import type { Logger } from '@/Logger';
 import type { User } from '@db/entities/User';
 
 /**

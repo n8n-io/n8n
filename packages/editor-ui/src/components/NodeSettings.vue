@@ -204,7 +204,7 @@ import { get, set, unset } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';

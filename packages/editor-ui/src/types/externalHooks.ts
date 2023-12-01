@@ -21,7 +21,7 @@ import type {
 	OutputModeChangedEventData,
 	UpdatedWorkflowSettingsEventData,
 	UserSavedCredentialsEventData,
-} from '@/hooks';
+} from '@/hooks/segment';
 import type {
 	INodeCreateElement,
 	INodeUi,
@@ -31,7 +31,7 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 import type { ComponentPublicInstance } from 'vue/dist/vue';
-import type { useWebhooksStore } from '@/stores';
+import type { useWebhooksStore } from '@/stores/webhooks.store';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ExternalHooksMethod<T = any, R = void> {

@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';

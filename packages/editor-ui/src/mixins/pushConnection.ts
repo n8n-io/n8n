@@ -6,7 +6,9 @@ import type {
 } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { useNodeHelpers, useTitleChange, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -18,11 +20,12 @@ import type {
 	IWorkflowBase,
 	SubworkflowOperationError,
 	IExecuteContextData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -272,7 +275,8 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
 					if (isRetry !== true) {
@@ -285,9 +289,16 @@ export const pushConnection = defineComponent({
 
 				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
-				if (pushData.data.status === 'crashed') {
+				if (runDataExecuted.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
 						'pushConnection.executionFailed.message',
+					);
+				} else if (runDataExecuted.status === 'canceled') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'executionsList.showMessage.stopExecution.message',
+						{
+							interpolate: { activeExecutionId },
+						},
 					);
 				}
 
@@ -387,21 +398,59 @@ export const pushConnection = defineComponent({
 							type: 'error',
 							duration: 0,
 						});
-					} else {
+					} else if (
+						runDataExecuted.data.resultData.error?.name === 'NodeOperationError' &&
+						(runDataExecuted.data.resultData.error as NodeOperationError).functionality ===
+							'configuration-node'
+					) {
+						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
 						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
+						if (nodeError.node.name) {
+							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
 
 						this.showMessage({
 							title,
-							message: runDataExecutedErrorMessage,
+							message:
+								(nodeError?.description ?? runDataExecutedErrorMessage) +
+								this.$locale.baseText('pushConnection.executionError.openNode', {
+									interpolate: {
+										node: nodeError.node.name,
+									},
+								}),
 							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,
 						});
+					} else {
+						let title: string;
+						const isManualExecutionCancelled =
+							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
+
+						// Do not show the error message if the workflow got canceled manually
+						if (isManualExecutionCancelled) {
+							this.showMessage({
+								title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
+								type: 'success',
+							});
+						} else {
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+								dangerouslyUseHTMLString: true,
+							});
+						}
 					}
 				} else {
 					// Workflow did execute without a problem

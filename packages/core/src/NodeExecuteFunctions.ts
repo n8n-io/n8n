@@ -38,7 +38,6 @@ import type {
 	BinaryHelperFunctions,
 	ConnectionTypes,
 	ContextType,
-	ExecutionError,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -101,7 +100,7 @@ import {
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeSSLError,
+	NodeSslError,
 	OAuth2GrantType,
 	WorkflowDataProxy,
 	createDeferredPromise,
@@ -113,6 +112,7 @@ import {
 	validateFieldType,
 	ExecutionBaseError,
 	jsonParse,
+	ApplicationError,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -143,7 +143,7 @@ import {
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
-} from './WorkflowExecutionMetadata';
+} from './ExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
 import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
@@ -808,7 +808,7 @@ export async function proxyRequestToAxios(
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
-				throw new NodeSSLError(error);
+				throw new NodeSslError(error);
 			}
 		}
 
@@ -1199,7 +1199,7 @@ export async function requestOAuth2(
 		credentials.grantType === OAuth2GrantType.authorizationCode &&
 		credentials.oauthTokenData === undefined
 	) {
-		throw new Error('OAuth credentials not connected!');
+		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oAuthClient = new ClientOAuth2({
@@ -1219,9 +1219,10 @@ export async function requestOAuth2(
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
-			throw new Error(
-				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-			);
+			throw new ApplicationError('Node does not have credential type', {
+				extra: { nodeName: node.name },
+				tags: { credentialType: credentialsType },
+			});
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
@@ -1303,9 +1304,9 @@ export async function requestOAuth2(
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
 				if (!node.credentials?.[credentialsType]) {
-					throw new Error(
-						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-					);
+					throw new ApplicationError('Node does not have credential type', {
+						extra: { nodeName: node.name, credentialType: credentialsType },
+					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
 				await additionalData.credentialsHelper.updateCredentials(
@@ -1380,9 +1381,10 @@ export async function requestOAuth2(
 
 				// Find the credentials
 				if (!node.credentials?.[credentialsType]) {
-					throw new Error(
-						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-					);
+					throw new ApplicationError('Node does not have credential type', {
+						tags: { credentialType: credentialsType },
+						extra: { nodeName: node.name },
+					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
 
@@ -1427,11 +1429,11 @@ export async function requestOAuth1(
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
-		throw new Error('No credentials were returned!');
+		throw new ApplicationError('No credentials were returned!');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
-		throw new Error('OAuth credentials not connected!');
+		throw new ApplicationError('OAuth credentials not connected!');
 	}
 
 	const oauth = new clientOAuth1({
@@ -1652,7 +1654,7 @@ export function normalizeItems(
 		return executionData;
 
 	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
-		throw new Error('Inconsistent item format');
+		throw new ApplicationError('Inconsistent item format');
 	}
 
 	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
@@ -1672,7 +1674,7 @@ export function normalizeItems(
 	}
 
 	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
-		throw new Error('Inconsistent item format');
+		throw new ApplicationError('Inconsistent item format');
 	}
 
 	return executionData.map((item) => {
@@ -2230,13 +2232,15 @@ export function getNodeParameter(
 ): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
+		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
+			tags: { nodeType: node.type },
+		});
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
 
 	if (value === undefined) {
-		throw new Error(`Could not get parameter "${parameterName}"!`);
+		throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
 	}
 
 	if (options?.rawExpressions) {
@@ -2394,7 +2398,9 @@ const addExecutionDataFunctions = async (
 	currentNodeRunIndex: number,
 ): Promise<void> => {
 	if (connectionType === 'main') {
-		throw new Error(`Setting the ${type} is not supported for the main connection!`);
+		throw new ApplicationError('Setting type is not supported for main connection', {
+			extra: { type },
+		});
 	}
 
 	let taskData: ITaskData | undefined;
@@ -2506,6 +2512,19 @@ const getCommonWorkflowFunctions = (
 	getTimezone: () => getTimezone(workflow),
 
 	prepareOutputData: async (outputData) => [outputData],
+});
+
+const executionCancellationFunctions = (
+	abortSignal?: AbortSignal,
+): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
+	getExecutionCancelSignal: () => abortSignal,
+	onExecutionCancellation: (handler) => {
+		const fn = () => {
+			abortSignal?.removeEventListener('abort', fn);
+			handler();
+		};
+		abortSignal?.addEventListener('abort', fn);
+	},
 });
 
 const getRequestHelperFunctions = (
@@ -2934,7 +2953,7 @@ const getBinaryHelperFunctions = (
 	setBinaryDataBuffer: async (data, binaryData) =>
 		setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
-		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
+		throw new ApplicationError('`copyBinaryFile` has been removed. Please upgrade this node.');
 	},
 });
 
@@ -2971,10 +2990,12 @@ export function getExecutePollFunctions(
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			__emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!');
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!',
+				);
 			},
 			__emitError(error: Error) {
-				throw new Error(
+				throw new ApplicationError(
 					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
 				);
 			},
@@ -3031,10 +3052,14 @@ export function getExecuteTriggerFunctions(
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+				);
 			},
 			emitError: (error: Error): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+				);
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
@@ -3087,10 +3112,12 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
+			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
 				getCredentials(
@@ -3160,7 +3187,9 @@ export function getExecuteFunctions(
 				});
 
 				if (inputConfiguration === undefined) {
-					throw new Error(`The node "${node.name}" does not have an input of type "${inputName}"`);
+					throw new ApplicationError('Node does not have input of type', {
+						extra: { nodeName: node.name, inputName },
+					});
 				}
 
 				if (typeof inputConfiguration === 'string') {
@@ -3186,9 +3215,9 @@ export function getExecuteFunctions(
 						);
 
 						if (!nodeType.supplyData) {
-							throw new Error(
-								`The node "${connectedNode.name}" does not have a "supplyData" method defined!`,
-							);
+							throw new ApplicationError('Node does not have a `supplyData` method defined', {
+								extra: { nodeName: connectedNode.name },
+							});
 						}
 
 						const context = Object.assign({}, this);
@@ -3287,9 +3316,11 @@ export function getExecuteFunctions(
 							// Display on the calling node which node has the error
 							throw new NodeOperationError(
 								connectedNode,
-								`Error on node "${connectedNode.name}" which is connected via input "${inputName}"`,
+								`Error in sub-node ${connectedNode.name}`,
 								{
 									itemIndex,
+									functionality: 'configuration-node',
+									description: error.message,
 								},
 							);
 						}
@@ -3334,12 +3365,15 @@ export function getExecuteFunctions(
 
 				// TODO: Check if nodeType has input with that index defined
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input with given index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (inputData[inputName][inputIndex] === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Value of input was not set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
@@ -3347,7 +3381,7 @@ export function getExecuteFunctions(
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
 					// Should never happen as n8n sets it automatically
-					throw new Error('Source data is missing!');
+					throw new ApplicationError('Source data is missing');
 				}
 				return executeData.source[inputName][inputIndex];
 			},
@@ -3427,7 +3461,7 @@ export function getExecuteFunctions(
 
 			addInputData(
 				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][] | ExecutionError,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
 				let currentNodeRunIndex = 0;
@@ -3458,7 +3492,7 @@ export function getExecuteFunctions(
 			addOutputData(
 				connectionType: ConnectionTypes,
 				currentNodeRunIndex: number,
-				data: INodeExecutionData[][] | ExecutionError,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3512,10 +3546,12 @@ export function getExecuteSingleFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	abortSignal?: AbortSignal,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
+			...executionCancellationFunctions(abortSignal),
 			continueOnFail: () => continueOnFail(node),
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
@@ -3555,21 +3591,23 @@ export function getExecuteSingleFunctions(
 
 				// TODO: Check if nodeType has input with that index defined
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				const allItems = inputData[inputName][inputIndex];
 
 				if (allItems === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Input index was not set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (allItems[itemIndex] === null) {
-					// return [];
-					throw new Error(
-						`Value "${inputIndex}" of input "${inputName}" with itemIndex "${itemIndex}" did not get set!`,
-					);
+					throw new ApplicationError('Value of input with given index was not set', {
+						extra: { inputIndex, inputName, itemIndex },
+					});
 				}
 
 				return allItems[itemIndex];
@@ -3577,7 +3615,7 @@ export function getExecuteSingleFunctions(
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
 					// Should never happen as n8n sets it automatically
-					throw new Error('Source data is missing!');
+					throw new ApplicationError('Source data is missing');
 				}
 				return executeData.source[inputName][inputIndex] as ISourceData;
 			},
@@ -3673,9 +3711,9 @@ export function getLoadOptionsFunctions(
 				if (options?.extractValue) {
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
-						throw new Error(
-							`Node type "${node.type}" is not known so can not return parameter value!`,
-						);
+						throw new ApplicationError('Node type is not known so cannot return parameter value', {
+							tags: { nodeType: node.type },
+						});
 					}
 					returnData = extractValue(
 						returnData,
@@ -3775,7 +3813,7 @@ export function getExecuteHookFunctions(
 			},
 			getWebhookName(): string {
 				if (webhookData === undefined) {
-					throw new Error('Is only supported in webhook functions!');
+					throw new ApplicationError('Only supported in webhook functions');
 				}
 				return webhookData.webhookDescription.name;
 			},
@@ -3800,14 +3838,14 @@ export function getExecuteWebhookFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getBodyData(): IDataObject {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.body;
 			},
 			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
 			getHeaderData(): IncomingHttpHeaders {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.headers;
 			},
@@ -3839,25 +3877,25 @@ export function getExecuteWebhookFunctions(
 			},
 			getParamsData(): object {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.params;
 			},
 			getQueryData(): object {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.query;
 			},
 			getRequestObject(): Request {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest;
 			},
 			getResponseObject(): Response {
 				if (additionalData.httpResponse === undefined) {
-					throw new Error('Response is missing!');
+					throw new ApplicationError('Response is missing');
 				}
 				return additionalData.httpResponse;
 			},

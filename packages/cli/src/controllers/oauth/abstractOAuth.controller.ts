@@ -9,12 +9,13 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import type { ICredentialsDb } from '@/Interfaces';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { OAuthRequest } from '@/requests';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export abstract class AbstractOAuthController {
