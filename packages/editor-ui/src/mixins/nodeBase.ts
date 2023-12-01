@@ -128,7 +128,6 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			// const workflow = this.workflowsStore.getCurrentWorkflow();
 			const inputs: Array<ConnectionTypes | INodeInputConfiguration> =
 				NodeHelpers.getNodeInputs(this.workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
@@ -343,7 +342,6 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			// const workflow = this.workflowsStore.getCurrentWorkflow();
 			this.outputs = NodeHelpers.getNodeOutputs(this.workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
