@@ -168,7 +168,6 @@ export class UsersController {
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
-	@Authorized(['global', 'owner'])
 	@Delete('/:id')
 	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
