@@ -277,7 +277,7 @@ const i18n = useI18n();
 
 .status {
 	align-self: flex-start;
-	padding-top: var(--spacing-xl);
+	padding-top: 30px;
 }
 
 .select {
