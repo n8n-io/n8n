@@ -198,6 +198,7 @@ export function extractValue(
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment
 		throw new NodeOperationError(node, error, { description: get(error, 'description') });
 	}
 }

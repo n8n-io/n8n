@@ -241,8 +241,6 @@ describe('Filter.vue', () => {
 
 		const removeButton = conditions[0].querySelector('[data-test-id="filter-remove-condition"]');
 
-		console.log(removeButton);
-
 		await userEvent.click(removeButton as Element);
 
 		conditions = await findAllByTestId('filter-condition');

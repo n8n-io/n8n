@@ -220,7 +220,6 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
 		nodeTypeVersion(): number | null {
-			console.log(this.node);
 			if (this.node) {
 				return this.node.typeVersion;
 			}
