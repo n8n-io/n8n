@@ -14,7 +14,7 @@ Include links to Github issue or Community forum post or **Linear ticket**:
 
 
 ## Review / Merge checklist
-- [ ] PR title and summary are descriptive. **Remember, the title automatically goes into the changelog. Use `(no-changelog)` otherwise.**
+- [ ] PR title and summary are descriptive. **Remember, the title automatically goes into the changelog. Use `(no-changelog)` otherwise.** ([convetions](./pull_request_title_conventions.md))
 - [ ] [Docs updated](https://github.com/n8n-io/n8n-docs) or follow-up ticket created.
 - [ ] Tests included.
    > A bug is not considered fixed, unless a test is added to prevent it from happening again. A feature is not complete without tests. 
