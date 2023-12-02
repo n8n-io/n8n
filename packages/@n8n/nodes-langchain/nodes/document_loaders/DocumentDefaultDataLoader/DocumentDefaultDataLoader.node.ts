@@ -15,7 +15,7 @@ import { metadataFilterField } from '../../../utils/sharedFields';
 // here only to track where what dependency is sued
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
-import '@gxl/epub-parser'; // for epub
+import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 

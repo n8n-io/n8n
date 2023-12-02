@@ -165,11 +165,15 @@ describe('UI store', () => {
 		const fetchUserCloudAccountSpy = vi
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
+		const getCurrentUsageSpy = vi
+			.spyOn(cloudPlanApi, 'getCurrentUsage')
+			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
 		setupOwnerAndCloudDeployment();
 		await cloudPlanStore.checkForCloudPlanData();
 		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
+		expect(getCurrentUsageSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL');
 		// There should be no email confirmation banner for trialing users
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
@@ -183,10 +187,15 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
+		const getCurrentUsageSpy = vi
+			.spyOn(cloudPlanApi, 'getCurrentUsage')
+			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
+		setupOwnerAndCloudDeployment();
 		await cloudPlanStore.checkForCloudPlanData();
 		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
+		expect(getCurrentUsageSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
 		// There should be no email confirmation banner for trialing users
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');

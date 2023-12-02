@@ -16,7 +16,7 @@ import { getGlobalAdminRole, getGlobalMemberRole, getGlobalOwnerRole } from './r
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	const user: Partial<User> = {
+	const user = Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: await hash(password ?? randomValidPassword(), 10),
 		firstName: firstName ?? randomName(),
@@ -24,7 +24,8 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
 		globalRole,
 		...rest,
-	};
+	});
+	user.computeIsOwner();
 
 	return Container.get(UserRepository).save(user);
 }

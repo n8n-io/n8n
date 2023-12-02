@@ -11,6 +11,8 @@ import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In, Like } from 'typeorm';
 
+import type { Scope } from '@n8n/permissions';
+
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
@@ -27,6 +29,10 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+
+export type CredentialsGetSharedOptions =
+	| { allowGlobalScope: true; globalScope: Scope }
+	| { allowGlobalScope: false };
 
 export class CredentialsService {
 	static async get(
@@ -86,7 +92,7 @@ export class CredentialsService {
 	) {
 		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
 
-		const returnAll = user.globalRole.name === 'owner' && !options.onlyOwn;
+		const returnAll = (await user.hasGlobalScope('credential:list')) && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
@@ -136,15 +142,15 @@ export class CredentialsService {
 	static async getSharing(
 		user: User,
 		credentialId: string,
+		options: CredentialsGetSharedOptions,
 		relations: string[] = ['credentials'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | null> {
 		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		// Omit user from where if the requesting user has relevant
+		// global credential permissions. This allows the user to
+		// access credentials they don't own.
+		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
 			Object.assign(where, {
 				userId: user.id,
 				role: { name: 'owner' },

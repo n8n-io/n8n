@@ -120,11 +120,10 @@ onMounted(async () => {
 						<ol v-if="isReady" :class="$style.appCredentialsContainer">
 							<SetupTemplateFormStep
 								:class="$style.appCredential"
-								v-bind:key="credentials.credentialName"
+								:key="credentials.key"
 								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
 								:order="index + 1"
 								:credentials="credentials"
-								:credentialName="credentials.credentialName"
 							/>
 						</ol>
 						<div v-else :class="$style.appCredentialsContainer">
@@ -144,6 +143,7 @@ onMounted(async () => {
 							:disabled="setupTemplateStore.numCredentialsLeft === 0"
 						>
 							<n8n-button
+								size="large"
 								:label="$locale.baseText('templateSetup.continue.button')"
 								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
 								@click="setupTemplateStore.createWorkflow($router)"
@@ -164,7 +164,7 @@ onMounted(async () => {
 .grid {
 	display: grid;
 	grid-template-columns: repeat(12, 1fr);
-	padding: var(--spacing-l) var(--spacing-l) 0;
+	padding: 0 var(--spacing-l);
 	justify-content: center;
 }
 
@@ -192,7 +192,7 @@ onMounted(async () => {
 
 .appCredential:not(:last-of-type) {
 	padding-bottom: var(--spacing-2xl);
-	border-bottom: 1px solid var(--prim-gray-540);
+	border-bottom: 1px solid var(--color-foreground-light);
 }
 
 .actions {

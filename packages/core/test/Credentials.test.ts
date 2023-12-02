@@ -84,9 +84,7 @@ describe('Credentials', () => {
 				credentials.getData('base.otherNode');
 				expect(true).toBe(false);
 			} catch (e) {
-				expect(e.message).toBe(
-					'The node of type "base.otherNode" does not have access to credentials "testName" of type "testType".',
-				);
+				expect(e.message).toBe('Node does not have access to credential');
 			}
 
 			// Get the data which will be saved in database

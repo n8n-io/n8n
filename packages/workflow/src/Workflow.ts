@@ -51,6 +51,7 @@ import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -113,7 +114,10 @@ export class Workflow {
 				// expression resolution also then when the unknown node
 				// does not get used.
 				continue;
-				// throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
+				// throw new ApplicationError(`Node with unknown node type`, {
+				// 	tags: { nodeType: node.type },
+				// 	extra: { node },
+				// });
 			}
 
 			// Add default values
@@ -312,15 +316,15 @@ export class Workflow {
 			key = 'global';
 		} else if (type === 'node') {
 			if (node === undefined) {
-				throw new Error(
+				throw new ApplicationError(
 					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
 		} else {
-			throw new Error(
-				`The context type "${type}" is not know. Only "global" and node" are supported!`,
-			);
+			throw new ApplicationError('Unknown context type. Only `global` and `node` are supported.', {
+				extra: { contextType: type },
+			});
 		}
 
 		if (this.staticData[key] === undefined) {
@@ -1092,13 +1096,17 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
-			throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
+			throw new ApplicationError('Node with unknown node type', {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+			});
 		}
 
 		if (!nodeType.trigger) {
-			throw new Error(
-				`The node type "${node.type}" of node "${node.name}" does not have a trigger function defined.`,
-			);
+			throw new ApplicationError('Node type does not have a trigger function defined', {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+			});
 		}
 
 		if (mode === 'manual') {
@@ -1169,13 +1177,17 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
-			throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
+			throw new ApplicationError('Node with unknown node type', {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+			});
 		}
 
 		if (!nodeType.poll) {
-			throw new Error(
-				`The node type "${node.type}" of node "${node.name}" does not have a poll function defined.`,
-			);
+			throw new ApplicationError('Node type does not have a poll function defined', {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+			});
 		}
 
 		return nodeType.poll.call(pollFunctions);
@@ -1195,9 +1207,13 @@ export class Workflow {
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
-			throw new Error(`The type of the webhook node "${node.name}" is not known.`);
+			throw new ApplicationError('Unknown node type of webhook node', {
+				extra: { nodeName: node.name },
+			});
 		} else if (nodeType.webhook === undefined) {
-			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
+			throw new ApplicationError('Node does not have any webhooks defined', {
+				extra: { nodeName: node.name },
+			});
 		}
 
 		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
@@ -1241,7 +1257,9 @@ export class Workflow {
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
-			throw new Error(`Node type "${node.type}" is not known so can not run it!`);
+			throw new ApplicationError('Node type is unknown so cannot run it', {
+				tags: { nodeType: node.type },
+			});
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];

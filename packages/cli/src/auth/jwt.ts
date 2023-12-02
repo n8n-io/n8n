@@ -10,6 +10,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { ApplicationError } from 'n8n-workflow';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -70,7 +71,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
 		// When owner hasn't been set up, the default user
 		// won't have email nor password (both equals null)
-		throw new Error('Invalid token content');
+		throw new ApplicationError('Invalid token content');
 	}
 	return user;
 }

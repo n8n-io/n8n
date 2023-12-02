@@ -97,7 +97,10 @@ export class PasswordResetController {
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
-			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+			!(
+				(user && (await user.hasGlobalScope('user:resetPassword'))) === true ||
+				user?.settings?.allowSSOManualLogin === true
+			)
 		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',

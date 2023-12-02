@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type { BinaryFileType, JsonObject } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -77,7 +78,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+			throw new ApplicationError(options.errorMessage);
 		}
 
 		throw error;

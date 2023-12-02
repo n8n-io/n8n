@@ -817,10 +817,20 @@ export interface ITemplatesWorkflow {
 	};
 }
 
+export interface ITemplatesWorkflowInfo {
+	nodeCount: number;
+	nodeTypes: {
+		[key: string]: {
+			count: number;
+		};
+	};
+}
+
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
 	categories: ITemplatesCategory[];
+	workflowInfo: ITemplatesWorkflowInfo;
 }
 
 /**
@@ -1010,6 +1020,7 @@ export interface IVersionNode {
 }
 
 export interface ITemplatesNode extends IVersionNode {
+	id: number;
 	categories?: ITemplatesCategory[];
 }
 
@@ -1754,7 +1765,8 @@ export type CloudUpdateLinkSourceType =
 	| 'usage_page'
 	| 'settings-users'
 	| 'variables'
-	| 'community-nodes';
+	| 'community-nodes'
+	| 'workflow-history';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1770,7 +1782,8 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables'
-	| 'upgrade-community-nodes';
+	| 'upgrade-community-nodes'
+	| 'upgrade-workflow-history';
 
 export type N8nBanners = {
 	[key in BannerName]: {
