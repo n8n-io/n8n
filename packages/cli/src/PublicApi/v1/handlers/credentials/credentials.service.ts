@@ -1,5 +1,10 @@
 import { Credentials } from 'n8n-core';
-import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	DisplayCondition,
+	IDataObject,
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -186,7 +191,8 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		if (property.displayOptions?.show) {
 			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
 			const displayOptionsValues = property.displayOptions.show[dependantName];
-			let dependantValue: string | number | boolean = '';
+			//TODO: check if this will work witt DisplayCondition
+			let dependantValue: DisplayCondition | string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
 				dependantValue = displayOptionsValues[0];

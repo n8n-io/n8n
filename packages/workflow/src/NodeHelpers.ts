@@ -42,6 +42,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
+	DisplayCondition,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -278,6 +279,90 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 	}
 }
 
+const getPropertyValues = (
+	nodeValues: INodeParameters,
+	propertyName: string,
+	node: INode | null,
+	nodeValuesRoot: INodeParameters,
+) => {
+	let value;
+	if (propertyName.charAt(0) === '/') {
+		// Get the value from the root of the node
+		value = get(nodeValuesRoot, propertyName.slice(1));
+	} else if (propertyName === '@version') {
+		value = node?.typeVersion || 0;
+	} else {
+		// Get the value from current level
+		value = get(nodeValues, propertyName);
+	}
+
+	if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+		value = value.value;
+	}
+
+	if (!Array.isArray(value)) {
+		return [value as NodeParameterValue];
+	} else {
+		return value as NodeParameterValue[];
+	}
+};
+
+const checkConditions = (
+	conditions: Array<NodeParameterValue | DisplayCondition>,
+	actualValues: NodeParameterValue[],
+) => {
+	return conditions.some((condition) => {
+		if (
+			condition &&
+			typeof condition === 'object' &&
+			condition._cnd &&
+			Object.keys(condition).length === 1
+		) {
+			const [key, targetValue] = Object.entries(condition._cnd)[0];
+
+			return actualValues.every((propertyValue) => {
+				if (key === 'eq') {
+					return isEqual(propertyValue, targetValue);
+				}
+				if (key === 'not') {
+					return !isEqual(propertyValue, targetValue);
+				}
+				if (key === 'gte') {
+					return (propertyValue as number) >= targetValue;
+				}
+				if (key === 'lte') {
+					return (propertyValue as number) <= targetValue;
+				}
+				if (key === 'gt') {
+					return (propertyValue as number) > targetValue;
+				}
+				if (key === 'lt') {
+					return (propertyValue as number) < targetValue;
+				}
+				if (key === 'between') {
+					const { from, to } = targetValue as { from: number; to: number };
+					return (propertyValue as number) >= from && (propertyValue as number) <= to;
+				}
+				if (key === 'includes') {
+					return (propertyValue as string).includes(targetValue);
+				}
+				if (key === 'startsWith') {
+					return (propertyValue as string).startsWith(targetValue);
+				}
+				if (key === 'endsWith') {
+					return (propertyValue as string).endsWith(targetValue);
+				}
+				if (key === 'regex') {
+					return new RegExp(targetValue as string).test(propertyValue as string);
+				}
+				return false;
+			});
+		}
+
+		return actualValues.includes(condition as NodeParameterValue);
+	});
+};
+
 /**
  * Returns if the parameter should be displayed or not
  *
@@ -296,82 +381,20 @@ export function displayParameter(
 		return true;
 	}
 
-	const { show, hide, showIfGreaterOrEqual, showIfLessOrEqual } = parameter.displayOptions;
+	const { show, hide } = parameter.displayOptions;
 
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
-
-	const getValues = (propertyName: string) => {
-		let value;
-		if (propertyName.charAt(0) === '/') {
-			// Get the value from the root of the node
-			value = get(nodeValuesRoot, propertyName.slice(1));
-		} else if (propertyName === '@version') {
-			value = node?.typeVersion || 0;
-		} else {
-			// Get the value from current level
-			value = get(nodeValues, propertyName);
-		}
-
-		if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-			value = value.value;
-		}
-
-		if (!Array.isArray(value)) {
-			return [value as NodeParameterValue];
-		} else {
-			return value as NodeParameterValue[];
-		}
-	};
 
 	if (show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(show)) {
-			const values = getValues(propertyName);
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
-			if (
-				values.length === 0 ||
-				!show[propertyName]!.some((v) => values.includes(v as NodeParameterValue))
-			) {
-				return false;
-			}
-		}
-	}
-
-	if (showIfGreaterOrEqual) {
-		for (const propertyName of Object.keys(showIfGreaterOrEqual)) {
-			const values = getValues(propertyName);
-
-			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
-				return true;
-			}
-
-			const targetValue = showIfGreaterOrEqual[propertyName]!;
-			if (
-				values.length === 0 ||
-				values.some((v) => v === undefined || (v as number) < targetValue)
-			) {
-				return false;
-			}
-		}
-	}
-
-	if (showIfLessOrEqual) {
-		for (const propertyName of Object.keys(showIfLessOrEqual)) {
-			const values = getValues(propertyName);
-
-			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
-				return true;
-			}
-
-			const targetValue = showIfLessOrEqual[propertyName]!;
-			if (
-				values.length === 0 ||
-				values.some((v) => v === undefined || (v as number) > targetValue)
-			) {
+			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
 				return false;
 			}
 		}
@@ -380,12 +403,9 @@ export function displayParameter(
 	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(hide)) {
-			const values = getValues(propertyName);
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
-			if (
-				values.length !== 0 &&
-				hide[propertyName]!.some((v) => values.includes(v as NodeParameterValue))
-			) {
+			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
 			}
 		}

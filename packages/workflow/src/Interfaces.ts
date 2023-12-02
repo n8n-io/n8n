@@ -1137,35 +1137,26 @@ export interface ResourceMapperTypeOptions {
 	};
 }
 
-export type DisplayOption = {
-	_and?: DisplayOption[];
-	_or?: DisplayOption[];
-	_gte?: number;
-	_lte?: number;
-	_gt?: number;
-	_lt?: number;
-	_between?: { from: number; to: number };
-	_startsWith?: string;
-	_endsWith?: string;
-	_contains?: string;
-};
+export type DisplayCondition =
+	| { _cnd: { eq: NodeParameterValue } }
+	| { _cnd: { not: NodeParameterValue } }
+	| { _cnd: { gte: number | string } }
+	| { _cnd: { lte: number | string } }
+	| { _cnd: { gt: number | string } }
+	| { _cnd: { lt: number | string } }
+	| { _cnd: { between: { from: number | string; to: number | string } } }
+	| { _cnd: { startsWith: string } }
+	| { _cnd: { endsWith: string } }
+	| { _cnd: { includes: string } }
+	| { _cnd: { regex: string } };
 
 export interface IDisplayOptions {
 	hide?: {
-		[key: string]: NodeParameterValue[] | undefined;
+		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 	show?: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		'@version'?: number[];
-		[key: string]: NodeParameterValue[] | undefined;
-	};
-
-	showIfGreaterOrEqual?: {
-		[key: string]: number;
-	};
-
-	showIfLessOrEqual?: {
-		[key: string]: number;
+		'@version'?: Array<number | DisplayCondition>;
+		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
 	hideOnCloud?: boolean;
