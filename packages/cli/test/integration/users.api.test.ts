@@ -18,14 +18,10 @@ import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { License } from '@/License';
-import { mockInstance } from '../shared/mocking';
 
-const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
-
-const license = mockInstance(License, {
-	isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(true),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+const testServer = utils.setupTestServer({
+	endpointGroups: ['users'],
+	enabledFeatures: ['feat:advancedPermissions'],
 });
 
 describe('GET /users', () => {
@@ -528,7 +524,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote member to admin if not licensed', async () => {
-			license.isAdvancedPermissionsLicensed.mockReturnValueOnce(false);
+			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },
@@ -634,7 +630,7 @@ describe('PATCH /users/:id/role', () => {
 		});
 
 		test('should fail to promote member to admin if not licensed', async () => {
-			license.isAdvancedPermissionsLicensed.mockReturnValueOnce(false);
+			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
 				newRole: { scope: 'global', name: 'admin' },

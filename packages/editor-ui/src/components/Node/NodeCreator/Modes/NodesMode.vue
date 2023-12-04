@@ -16,7 +16,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
-import { transformNodeType } from '../utils';
+import { flattenCreateElements, transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
@@ -71,6 +71,7 @@ function onSelected(item: INodeCreateElement) {
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
+			sections: item.properties.sections,
 		});
 
 		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
@@ -160,7 +161,8 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	return item;
 }
 
-function baseSubcategoriesFilter(item: INodeCreateElement) {
+function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
+	if (item.type === 'section') return item.children.every(baseSubcategoriesFilter);
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
@@ -180,10 +182,10 @@ function arrowLeft() {
 }
 
 function onKeySelect(activeItemId: string) {
-	const mergedItems = [
-		...(activeViewStack.value.items || []),
-		...(globalSearchItemsDiff.value || []),
-	];
+	const mergedItems = flattenCreateElements([
+		...(activeViewStack.value.items ?? []),
+		...(globalSearchItemsDiff.value ?? []),
+	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;

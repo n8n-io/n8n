@@ -4,10 +4,14 @@ import type {
 	SubcategorizedNodeTypes,
 	SimplifiedNodeType,
 	INodeCreateElement,
+	SectionCreateElement,
 } from '@/Interface';
 import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
+
 import { sublimeSearch } from '@/utils/sortUtils';
+import { i18n } from '@/plugins/i18n';
+import type { NodeViewItemSection } from './viewsData';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -72,6 +76,45 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 			{ key: 'properties.codex.alias', weight: 1 },
 		]) || []
 	).map(({ item }) => item);
+
+	return result;
+}
+
+export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
+	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
+}
+
+export function groupItemsInSections(
+	items: INodeCreateElement[],
+	sections: NodeViewItemSection[],
+): INodeCreateElement[] {
+	const itemsBySection = items.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
+		const section = sections.find((s) => s.items.includes(item.key));
+		const key = section?.key ?? 'other';
+		acc[key] = [...(acc[key] ?? []), item];
+		return acc;
+	}, {});
+
+	const result: SectionCreateElement[] = sections
+		.map(
+			(section): SectionCreateElement => ({
+				type: 'section',
+				key: section.key,
+				title: section.title,
+				children: itemsBySection[section.key],
+			}),
+		)
+		.concat({
+			type: 'section',
+			key: 'other',
+			title: i18n.baseText('nodeCreator.sectionNames.other'),
+			children: itemsBySection.other,
+		})
+		.filter((section) => section.children);
+
+	if (result.length <= 1) {
+		return items;
+	}
 
 	return result;
 }

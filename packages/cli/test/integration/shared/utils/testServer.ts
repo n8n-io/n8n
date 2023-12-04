@@ -68,6 +68,7 @@ export const setupTestServer = ({
 	endpointGroups,
 	applyAuth = true,
 	enabledFeatures,
+	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -97,6 +98,7 @@ export const setupTestServer = ({
 		if (enabledFeatures) {
 			testServer.license.setDefaults({
 				features: enabledFeatures,
+				quotas,
 			});
 		}
 
