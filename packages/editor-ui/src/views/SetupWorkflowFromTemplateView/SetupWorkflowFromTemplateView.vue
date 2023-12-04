@@ -38,15 +38,6 @@ const skipSetupUrl = computed(() => {
 	return resolvedRoute.fullPath;
 });
 
-const buttonTooltip = computed(() => {
-	const numLeft = setupTemplateStore.numCredentialsLeft;
-
-	return i18n.baseText('templateSetup.continue.tooltip', {
-		adjustToNumber: numLeft,
-		interpolate: { numLeft: numLeft.toString() },
-	});
-});
-
 //#endregion Computed
 
 //#region Watchers
@@ -137,19 +128,14 @@ onMounted(async () => {
 							$locale.baseText('templateSetup.skip')
 						}}</n8n-link>
 
-						<n8n-tooltip
+						<n8n-button
 							v-if="isReady"
-							:content="buttonTooltip"
-							:disabled="setupTemplateStore.numCredentialsLeft === 0"
-						>
-							<n8n-button
-								size="large"
-								:label="$locale.baseText('templateSetup.continue.button')"
-								:disabled="setupTemplateStore.numCredentialsLeft > 0 || setupTemplateStore.isSaving"
-								@click="setupTemplateStore.createWorkflow($router)"
-								data-test-id="continue-button"
-							/>
-						</n8n-tooltip>
+							size="large"
+							:label="$locale.baseText('templateSetup.continue.button')"
+							:disabled="setupTemplateStore.isSaving"
+							@click="setupTemplateStore.createWorkflow($router)"
+							data-test-id="continue-button"
+						/>
 						<div v-else>
 							<n8n-loading variant="button" />
 						</div>
