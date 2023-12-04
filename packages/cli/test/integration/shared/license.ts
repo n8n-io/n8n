@@ -3,7 +3,7 @@ import type { License } from '@/License';
 
 export interface LicenseMockDefaults {
 	features?: BooleanLicenseFeature[];
-	quota?: Partial<{ [K in NumericLicenseFeature]: number }>;
+	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 }
 
 export class LicenseMocker {
@@ -28,7 +28,7 @@ export class LicenseMocker {
 	setDefaults(defaults: LicenseMockDefaults) {
 		this._defaultFeatures = new Set(defaults.features ?? []);
 		this._defaultQuotas = new Map(
-			Object.entries(defaults.quota ?? {}) as Array<[NumericLicenseFeature, number]>,
+			Object.entries(defaults.quotas ?? {}) as Array<[NumericLicenseFeature, number]>,
 		);
 	}
 
