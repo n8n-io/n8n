@@ -9,6 +9,7 @@ import type {
 	INodeTypes,
 	INodeType,
 } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
 
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
@@ -95,7 +96,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new Error('Malformed URL');
+		if (!url.hostname) throw new ApplicationError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {

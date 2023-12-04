@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -8,7 +8,11 @@ import { DocxLoader } from 'langchain/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { N8nEPubLoader } from './EpubLoader';
+import { EPubLoader } from 'langchain/document_loaders/fs/epub';
+import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
+
 import { getMetadataFiltersValues } from './helpers';
 
 const SUPPORTED_MIME_TYPES = {
@@ -58,11 +62,7 @@ export class N8nBinaryLoader {
 		if (!item) return [];
 
 		// TODO: Should we support traversing the object to find the binary data?
-		const binaryData = item.binary?.[binaryDataKey] as IBinaryData;
-
-		if (!binaryData) {
-			throw new NodeOperationError(this.context.getNode(), 'No binary data set.');
-		}
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, binaryDataKey);
 
 		const { mimeType } = binaryData;
 
@@ -92,10 +92,18 @@ export class N8nBinaryLoader {
 			);
 		}
 
-		const bufferData = await this.context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-		const itemBlob = new Blob([new Uint8Array(bufferData)], { type: mimeType });
+		let filePathOrBlob: string | Blob;
+		if (binaryData.id) {
+			filePathOrBlob = this.context.helpers.getBinaryPath(binaryData.id);
+		} else {
+			filePathOrBlob = new Blob([Buffer.from(binaryData.data, BINARY_ENCODING)], {
+				type: mimeType,
+			});
+		}
 
-		let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
+		let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
+		let cleanupTmpFile: DirectoryResult["cleanup"] | undefined = undefined;
+
 		switch (mimeType) {
 			case 'application/pdf':
 				const splitPages = this.context.getNodeParameter(
@@ -103,7 +111,7 @@ export class N8nBinaryLoader {
 					itemIndex,
 					false,
 				) as boolean;
-				loader = new PDFLoader(itemBlob, {
+				loader = new PDFLoader(filePathOrBlob, {
 					splitPages,
 				});
 				break;
@@ -119,19 +127,39 @@ export class N8nBinaryLoader {
 					',',
 				) as string;
 
-				loader = new CSVLoader(itemBlob, {
+				loader = new CSVLoader(filePathOrBlob, {
 					column: column ?? undefined,
 					separator,
 				});
 				break;
 			case 'application/epub+zip':
-				loader = new N8nEPubLoader(Buffer.from(bufferData));
+				// EPubLoader currently does not accept Blobs https://github.com/langchain-ai/langchainjs/issues/1623
+				let filePath: string;
+				if (filePathOrBlob instanceof Blob) {
+					const tmpFileData = await tmpFile({ prefix: 'epub-loader-' });
+					cleanupTmpFile = tmpFileData.cleanup;
+					try {
+						const bufferData = await filePathOrBlob.arrayBuffer();
+						await pipeline(
+							[new Uint8Array(bufferData)],
+							createWriteStream(tmpFileData.path),
+						);
+						loader = new EPubLoader(tmpFileData.path);
+						break
+					} catch (error) {
+						await cleanupTmpFile();
+						throw new NodeOperationError(this.context.getNode(), error as Error);
+					}
+				} else {
+					filePath = filePathOrBlob;
+				}
+				loader = new EPubLoader(filePath);
 				break;
 			case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-				loader = new DocxLoader(itemBlob);
+				loader = new DocxLoader(filePathOrBlob);
 				break;
 			case 'text/plain':
-				loader = new TextLoader(itemBlob);
+				loader = new TextLoader(filePathOrBlob);
 				break;
 			case 'application/json':
 				const pointers = this.context.getNodeParameter(
@@ -140,10 +168,10 @@ export class N8nBinaryLoader {
 					'',
 				) as string;
 				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-				loader = new JSONLoader(itemBlob, pointersArray);
+				loader = new JSONLoader(filePathOrBlob, pointersArray);
 				break;
 			default:
-				loader = new TextLoader(itemBlob);
+				loader = new TextLoader(filePathOrBlob);
 		}
 
 		const textSplitter = (await this.context.getInputConnectionData(
@@ -162,6 +190,10 @@ export class N8nBinaryLoader {
 					...metadata,
 				};
 			});
+		}
+
+		if (cleanupTmpFile) {
+			await cleanupTmpFile();
 		}
 		return docs;
 	}

@@ -220,9 +220,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				this.currentSessionId = `templates-${Date.now()}`;
 			}
 		},
-		async fetchTemplateById(
-			templateId: string,
-		): Promise<ITemplatesWorkflow | ITemplatesWorkflowFull> {
+		async fetchTemplateById(templateId: string): Promise<ITemplatesWorkflowFull> {
 			const settingsStore = useSettingsStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
 			const versionCli: string = settingsStore.versionCli;

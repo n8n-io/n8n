@@ -86,7 +86,7 @@ describe('createChat()', () => {
 				expect.objectContaining({
 					method: 'POST',
 					headers: {},
-					body: expect.stringMatching(/"action":"loadPreviousSession"/),
+					body: expect.stringContaining('"action":"loadPreviousSession"') as unknown,
 					mode: 'cors',
 					cache: 'no-cache',
 				}),
@@ -160,7 +160,7 @@ describe('createChat()', () => {
 					expect.objectContaining({
 						method: 'POST',
 						headers: {},
-						body: expect.stringMatching(/"action":"sendMessage"/),
+						body: expect.stringMatching(/"action":"sendMessage"/) as unknown,
 						mode: 'cors',
 						cache: 'no-cache',
 					}),
