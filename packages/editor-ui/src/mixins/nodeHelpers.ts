@@ -91,6 +91,7 @@ export const nodeHelpers = defineComponent({
 		// Updates all the issues on all the nodes
 		refreshNodeIssues(): void {
 			const nodes = this.workflowsStore.allNodes;
+			const workflow = this.workflowsStore.getCurrentWorkflow();
 			let nodeType: INodeTypeDescription | null;
 			let foundNodeIssues: INodeIssues | null;
 
@@ -99,7 +100,7 @@ export const nodeHelpers = defineComponent({
 					return;
 				}
 				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				foundNodeIssues = this.getNodeIssues(nodeType, node);
+				foundNodeIssues = this.getNodeIssues(nodeType, node, workflow);
 				if (foundNodeIssues !== null) {
 					node.issues = foundNodeIssues;
 				}
@@ -110,6 +111,7 @@ export const nodeHelpers = defineComponent({
 		getNodeIssues(
 			nodeType: INodeTypeDescription | null,
 			node: INodeUi,
+			workflow: Workflow,
 			ignoreIssues?: string[],
 		): INodeIssues | null {
 			const pinDataNodeNames = Object.keys(this.workflowsStore.getPinData || {});
@@ -147,7 +149,6 @@ export const nodeHelpers = defineComponent({
 					}
 				}
 
-				const workflow = this.workflowsStore.getCurrentWorkflow();
 				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
 				if (nodeIssues === null) {
 					nodeIssues = nodeInputIssues;
