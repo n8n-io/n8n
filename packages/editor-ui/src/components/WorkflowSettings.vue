@@ -381,6 +381,8 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -478,6 +480,9 @@ export default defineComponent({
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
+		},
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(this.currentUser, this.workflow);
 		},
 	},
 	async mounted() {
@@ -584,8 +589,6 @@ export default defineComponent({
 			};
 		},
 		async loadWorkflowCallerPolicyOptions() {
-			const currentUserIsOwner = this.workflow.ownedBy?.id === this.currentUser?.id;
-
 			this.workflowCallerPolicyOptions = [
 				{
 					key: 'none',
@@ -597,7 +600,7 @@ export default defineComponent({
 						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
 						{
 							interpolate: {
-								owner: currentUserIsOwner
+								owner: this.workflowPermissions.isOwner
 									? this.$locale.baseText(
 											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
 									  )
