@@ -692,6 +692,9 @@ export default defineComponent({
 		instance(): BrowserJsPlumbInstance {
 			return this.canvasStore.jsPlumbInstance;
 		},
+		isLoading(): boolean {
+			return this.loadingService !== null;
+		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();
 		},
@@ -2697,10 +2700,6 @@ export default defineComponent({
 
 				this.dropPrevented = true;
 				this.workflowsStore.addConnection({ connection: connectionData });
-				this.uiStore.stateIsDirty = true;
-				if (!this.suspendRecordingDetachedConnections) {
-					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
-				}
 
 				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
 					NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
@@ -2742,8 +2741,14 @@ export default defineComponent({
 					}
 				}
 				this.dropPrevented = false;
-				this.updateNodesInputIssues();
-				this.resetEndpointsErrors();
+				if (!this.isLoading) {
+					this.uiStore.stateIsDirty = true;
+					if (!this.suspendRecordingDetachedConnections) {
+						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
+					}
+					this.updateNodesInputIssues();
+					this.resetEndpointsErrors();
+				}
 			} catch (e) {
 				console.error(e);
 			}
