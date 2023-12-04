@@ -45,6 +45,9 @@ import {
 	IF_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
+	HELPERS_SUBCATEGORY,
+	RSS_READ_NODE_TYPE,
+	EMAIL_SEND_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -356,6 +359,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: 'App Regular Nodes',
 					icon: 'globe',
+					forceIncludeNodes: [RSS_READ_NODE_TYPE, EMAIL_SEND_NODE_TYPE],
 				},
 			},
 			{
@@ -373,7 +377,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						},
 						{
 							key: 'addOrRemove',
-							title: i18n.baseText('nodeCreator.sectionNames.addOrRemove'),
+							title: i18n.baseText('nodeCreator.sectionNames.transform.addOrRemove'),
 							items: [
 								FILTER_NODE_TYPE,
 								REMOVE_DUPLICATES_NODE_TYPE,
@@ -383,12 +387,12 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						},
 						{
 							key: 'combine',
-							title: i18n.baseText('nodeCreator.sectionNames.combine'),
+							title: i18n.baseText('nodeCreator.sectionNames.transform.combine'),
 							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
 						},
 						{
 							key: 'convert',
-							title: i18n.baseText('nodeCreator.sectionNames.convert'),
+							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
 							items: [HTML_NODE_TYPE, MARKDOWN_NODE_TYPE, XML_NODE_TYPE, CRYPTO_NODE_TYPE],
 						},
 					],
@@ -421,10 +425,10 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 			},
 			{
 				type: 'subcategory',
-				key: ADVANCED_SUBCATEGORY,
+				key: HELPERS_SUBCATEGORY,
 				category: CORE_NODES_CATEGORY,
 				properties: {
-					title: ADVANCED_SUBCATEGORY,
+					title: HELPERS_SUBCATEGORY,
 					icon: 'toolbox',
 					sections: [
 						{
