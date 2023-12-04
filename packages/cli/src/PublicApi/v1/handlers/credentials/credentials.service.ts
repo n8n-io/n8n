@@ -202,12 +202,75 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			}
 
 			if (!resolveProperties.includes(dependantName)) {
+				let conditionalValue;
+				if (typeof dependantValue === 'object' && dependantValue._cnd) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
+
+					if (key === 'eq') {
+						conditionalValue = {
+							const: [targetValue],
+						};
+					} else if (key === 'not') {
+						conditionalValue = {
+							not: {
+								const: [targetValue],
+							},
+						};
+					} else if (key === 'gt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMinimum: [targetValue],
+						};
+					} else if (key === 'gte') {
+						conditionalValue = {
+							type: 'number',
+							minimum: [targetValue],
+						};
+					} else if (key === 'lt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMaximum: [targetValue],
+						};
+					} else if (key === 'lte') {
+						conditionalValue = {
+							type: 'number',
+							maximum: [targetValue],
+						};
+					} else if (key === 'startsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `^${targetValue}`,
+						};
+					} else if (key === 'endsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}$`,
+						};
+					} else if (key === 'includes') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else if (key === 'regex') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else {
+						conditionalValue = {
+							enum: [dependantValue],
+						};
+					}
+				} else {
+					conditionalValue = {
+						enum: [dependantValue],
+					};
+				}
 				propertyRequiredDependencies[dependantName] = {
 					if: {
 						properties: {
-							[dependantName]: {
-								enum: [dependantValue],
-							},
+							[dependantName]: conditionalValue,
 						},
 					},
 					then: {
