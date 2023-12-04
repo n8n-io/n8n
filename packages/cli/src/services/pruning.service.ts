@@ -180,7 +180,7 @@ export class PruningService {
 
 		if (executionIds.length === 0) {
 			this.logger.debug('[Pruning] Found no executions to hard-delete');
-			return undefined;
+			return this.rates.hardDeletion;
 		}
 
 		try {
