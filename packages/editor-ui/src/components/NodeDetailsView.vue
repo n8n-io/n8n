@@ -669,7 +669,7 @@ export default defineComponent({
 				}, 1);
 			}
 
-			if (this.outputPanelEditMode.enabled) {
+			if (this.outputPanelEditMode.enabled && this.activeNode) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
@@ -681,13 +681,10 @@ export default defineComponent({
 
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
-
-					if (this.activeNode) {
-						try {
-							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
-						} catch (error) {
-							console.error(error);
-						}
+					try {
+						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+					} catch (error) {
+						console.error(error);
 					}
 				}
 
