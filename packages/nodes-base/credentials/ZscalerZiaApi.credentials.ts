@@ -1,10 +1,11 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	INodeProperties,
+import {
+	ApplicationError,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 export class ZscalerZiaApi implements ICredentialType {
@@ -120,7 +121,9 @@ export class ZscalerZiaApi implements ICredentialType {
 			?.find((entry) => entry.includes('JSESSIONID'));
 
 		if (!cookie) {
-			throw new Error('No cookie returned. Please check your credentials.');
+			throw new ApplicationError('No cookie returned. Please check your credentials.', {
+				level: 'warning',
+			});
 		}
 
 		return { cookie };

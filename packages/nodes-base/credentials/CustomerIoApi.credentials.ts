@@ -1,8 +1,9 @@
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	IHttpRequestOptions,
-	INodeProperties,
+import {
+	ApplicationError,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type IHttpRequestOptions,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 export class CustomerIoApi implements ICredentialType {
@@ -76,7 +77,7 @@ export class CustomerIoApi implements ICredentialType {
 				Authorization: `Bearer ${credentials.appApiKey as string}`,
 			});
 		} else {
-			throw new Error('Unknown way of authenticating');
+			throw new ApplicationError('Unknown way of authenticating', { level: 'warning' });
 		}
 
 		return requestOptions;

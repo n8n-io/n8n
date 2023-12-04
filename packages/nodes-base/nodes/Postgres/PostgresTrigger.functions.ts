@@ -1,9 +1,10 @@
-import type {
-	ITriggerFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodeListSearchItems,
+import {
+	type ITriggerFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+	type INodeListSearchItems,
+	ApplicationError,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
@@ -26,7 +27,7 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
 
 	if (channelName.includes('-')) {
-		throw new Error('Channel name cannot contain hyphens (-)');
+		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	return { functionName, triggerName, channelName };
@@ -63,7 +64,7 @@ export async function pgTriggerFunction(
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
 	if (channelName.includes('-')) {
-		throw new Error('Channel name cannot contain hyphens (-)');
+		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	const replaceIfExists = additionalFields.replaceIfExists ?? false;
@@ -78,7 +79,7 @@ export async function pgTriggerFunction(
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (error) {
 		if ((error as Error).message.includes('near "-"')) {
-			throw new Error('Names cannot contain hyphens (-)');
+			throw new ApplicationError('Names cannot contain hyphens (-)', { level: 'warning' });
 		}
 		throw error;
 	}
@@ -132,7 +133,7 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 			[schema.value],
 		);
 	} catch (error) {
-		throw new Error(error as string);
+		throw new ApplicationError(error as string);
 	}
 	const results: INodeListSearchItems[] = (tableList as IDataObject[]).map((s) => ({
 		name: s.table_name as string,

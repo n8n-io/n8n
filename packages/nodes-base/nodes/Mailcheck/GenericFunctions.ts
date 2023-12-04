@@ -1,11 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IWebhookFunctions,
+import {
+	ApplicationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type IWebhookFunctions,
 } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
@@ -44,8 +45,9 @@ export async function mailCheckApiRequest(
 	} catch (error) {
 		if (error.response?.body?.message) {
 			// Try to return the error prettier
-			throw new Error(
+			throw new ApplicationError(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
+				{ level: 'warning' },
 			);
 		}
 		throw error;
