@@ -775,11 +775,7 @@ async function executeWorkflow(
 	let data;
 	try {
 		await PermissionChecker.check(workflow, additionalData.userId);
-		await PermissionChecker.checkSubworkflowExecutePolicy(
-			workflow,
-			additionalData.userId,
-			options.parentWorkflowId,
-		);
+		await PermissionChecker.checkSubworkflowExecutePolicy(workflow, options.parentWorkflowId!);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks

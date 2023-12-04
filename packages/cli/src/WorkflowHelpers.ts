@@ -175,8 +175,7 @@ export async function executeErrorWorkflow(
 		try {
 			await PermissionChecker.checkSubworkflowExecutePolicy(
 				workflowInstance,
-				runningUser.id,
-				workflowErrorData.workflow.id,
+				workflowErrorData.workflow.id!,
 			);
 		} catch (error) {
 			const initialNode = workflowInstance.getStartNode();

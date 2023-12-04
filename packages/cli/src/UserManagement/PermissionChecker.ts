@@ -76,11 +76,7 @@ export class PermissionChecker {
 		});
 	}
 
-	static async checkSubworkflowExecutePolicy(
-		subworkflow: Workflow,
-		userId: string,
-		parentWorkflowId?: string,
-	) {
+	static async checkSubworkflowExecutePolicy(subworkflow: Workflow, parentWorkflowId: string) {
 		/**
 		 * Important considerations: both the current workflow and the parent can have empty IDs.
 		 * This happens when a user is executing an unsaved workflow manually running a workflow
@@ -101,15 +97,18 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
+		const parentWorkflowOwner =
+			await Container.get(OwnershipService).getWorkflowOwnerCached(parentWorkflowId);
+
 		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
 			subworkflow.id,
 		);
 
 		const errorToThrow = new SubworkflowOperationError(
 			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
-			subworkflowOwner.id === userId
+			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`,
 		);
 
 		if (policy === 'none') {
@@ -130,10 +129,8 @@ export class PermissionChecker {
 			}
 		}
 
-		if (policy === 'workflowsFromSameOwner') {
-			if (subworkflowOwner?.id !== userId) {
-				throw errorToThrow;
-			}
+		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
+			throw errorToThrow;
 		}
 	}
 
