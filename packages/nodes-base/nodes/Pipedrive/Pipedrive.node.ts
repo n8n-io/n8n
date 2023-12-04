@@ -3943,10 +3943,12 @@ export class Pipedrive implements INodeType {
 						});
 					} else if (field.is_subfield) {
 						const parentField = data.find((f:any) => f.id === field.parent_id);
-						returnData.push({
-							name: `${parentField.name} > ${field.name}`,
-							value: field.key,
-						});
+						if (parentField) {
+							returnData.push({
+								name: `${parentField.name} > ${field.name}`,
+								value: field.key,
+							});
+						}
 					}
 				}
 
