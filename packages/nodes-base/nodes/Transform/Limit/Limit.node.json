@@ -14,6 +14,6 @@
 	},
 	"alias": ["Limit", "Remove", "Slice", "Transform", "Array", "List", "Item"],
 	"subcategories": {
-		"Core Nodes": ["Helpers", "Data Transformation"]
+		"Core Nodes": ["Data Transformation"]
 	}
 }
