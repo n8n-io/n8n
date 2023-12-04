@@ -29,6 +29,23 @@ import {
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	SET_NODE_TYPE,
+	CODE_NODE_TYPE,
+	DATETIME_NODE_TYPE,
+	FILTER_NODE_TYPE,
+	REMOVE_DUPLICATES_NODE_TYPE,
+	SPLIT_OUT_NODE_TYPE,
+	LIMIT_NODE_TYPE,
+	SUMMARIZE_NODE_TYPE,
+	AGGREGATE_NODE_TYPE,
+	MERGE_NODE_TYPE,
+	HTML_NODE_TYPE,
+	MARKDOWN_NODE_TYPE,
+	XML_NODE_TYPE,
+	CRYPTO_NODE_TYPE,
+	IF_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -342,15 +359,33 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: TRANSFORM_DATA_SUBCATEGORY,
 					icon: 'pen',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: HELPERS_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: HELPERS_SUBCATEGORY,
-					icon: 'toolbox',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [SET_NODE_TYPE, CODE_NODE_TYPE, DATETIME_NODE_TYPE],
+						},
+						{
+							key: 'addOrRemove',
+							title: i18n.baseText('nodeCreator.sectionNames.addOrRemove'),
+							items: [
+								FILTER_NODE_TYPE,
+								REMOVE_DUPLICATES_NODE_TYPE,
+								SPLIT_OUT_NODE_TYPE,
+								LIMIT_NODE_TYPE,
+							],
+						},
+						{
+							key: 'combine',
+							title: i18n.baseText('nodeCreator.sectionNames.combine'),
+							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
+						},
+						{
+							key: 'convert',
+							title: i18n.baseText('nodeCreator.sectionNames.convert'),
+							items: [HTML_NODE_TYPE, MARKDOWN_NODE_TYPE, XML_NODE_TYPE, CRYPTO_NODE_TYPE],
+						},
+					],
 				},
 			},
 			{
@@ -360,6 +395,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: FLOWS_CONTROL_SUBCATEGORY,
 					icon: 'code-branch',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
+						},
+					],
 				},
 			},
 			{
@@ -369,6 +411,22 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: FILES_SUBCATEGORY,
 					icon: 'file-alt',
+				},
+			},
+			{
+				type: 'subcategory',
+				key: ADVANCED_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: ADVANCED_SUBCATEGORY,
+					icon: 'toolbox',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, CODE_NODE_TYPE],
+						},
+					],
 				},
 			},
 		],
