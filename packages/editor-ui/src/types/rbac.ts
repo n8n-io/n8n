@@ -5,6 +5,7 @@ import type { IRole } from '@/Interface';
 export type AuthenticatedPermissionOptions = {};
 export type CustomPermissionOptions<C = {}> = RBACPermissionCheck<C>;
 export type DefaultUserMiddlewareOptions = {};
+export type InstanceOwnerMiddlewareOptions = {};
 export type EnterprisePermissionOptions = {
 	feature?: EnterpriseEditionFeature | EnterpriseEditionFeature[];
 	mode?: 'oneOf' | 'allOf';
@@ -23,6 +24,7 @@ export type PermissionType =
 	| 'authenticated'
 	| 'custom'
 	| 'defaultUser'
+	| 'instanceOwner'
 	| 'enterprise'
 	| 'guest'
 	| 'rbac'
@@ -31,6 +33,7 @@ export type PermissionTypeOptions = {
 	authenticated: AuthenticatedPermissionOptions;
 	custom: CustomPermissionOptions;
 	defaultUser: DefaultUserMiddlewareOptions;
+	instanceOwner: InstanceOwnerMiddlewareOptions;
 	enterprise: EnterprisePermissionOptions;
 	guest: GuestPermissionOptions;
 	rbac: RBACPermissionOptions;
