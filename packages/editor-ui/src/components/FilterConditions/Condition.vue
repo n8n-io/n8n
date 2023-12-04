@@ -233,14 +233,14 @@ const i18n = useI18n();
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedTrue') }}
 				</template>
-				<n8n-icon icon="check-circle" size="medium" color="success" />
+				<n8n-icon icon="check-circle" size="medium" color="text-light" />
 			</n8n-tooltip>
 
 			<n8n-tooltip :show-after="500" v-else-if="conditionResult === false">
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedFalse') }}
 				</template>
-				<n8n-icon icon="times-circle" size="medium" color="danger" />
+				<n8n-icon icon="times-circle" size="medium" color="text-light" />
 			</n8n-tooltip>
 		</div>
 	</div>

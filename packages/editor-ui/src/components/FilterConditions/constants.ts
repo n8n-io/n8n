@@ -170,7 +170,7 @@ export const OPERATORS = Object.values(OPERATORS_BY_ID);
 export type FilterOperatorId = keyof typeof OPERATORS_BY_ID;
 
 export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
-	OPERATORS_BY_ID['string:equals'];
+	OPERATORS_BY_ID['boolean:true'];
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
