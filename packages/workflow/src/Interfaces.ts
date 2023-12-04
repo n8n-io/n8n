@@ -1161,6 +1161,18 @@ export interface IDisplayOptions {
 
 	hideOnCloud?: boolean;
 }
+export interface ICredentialsDisplayOptions {
+	hide?: {
+		[key: string]: NodeParameterValue[] | undefined;
+	};
+	show?: {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		'@version'?: number[];
+		[key: string]: NodeParameterValue[] | undefined;
+	};
+
+	hideOnCloud?: boolean;
+}
 
 export interface INodeProperties {
 	displayName: string;
@@ -1390,7 +1402,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
-	displayOptions?: IDisplayOptions;
+	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
 

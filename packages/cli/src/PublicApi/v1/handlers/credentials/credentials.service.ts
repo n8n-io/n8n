@@ -191,7 +191,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		if (property.displayOptions?.show) {
 			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
 			const displayOptionsValues = property.displayOptions.show[dependantName];
-			//TODO: check if this will work witt DisplayCondition
 			let dependantValue: DisplayCondition | string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
