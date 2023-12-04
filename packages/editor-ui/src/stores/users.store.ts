@@ -137,7 +137,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {

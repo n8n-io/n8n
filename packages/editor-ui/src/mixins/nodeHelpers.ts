@@ -38,12 +38,13 @@ import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
+import { useUsersStore } from '@/stores/users.store';
 
 export const nodeHelpers = defineComponent({
 	computed: {
@@ -53,7 +54,6 @@ export const nodeHelpers = defineComponent({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
-			useUsersStore,
 			useRootStore,
 		),
 	},
@@ -475,11 +475,13 @@ export const nodeHelpers = defineComponent({
 					}
 
 					if (nameMatches.length === 0) {
-						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
 
-						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
+						if (
+							!isCredentialUsedInWorkflow &&
+							!hasPermission(['rbac'], { rbac: { scope: 'credential:read' } })
+						) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
