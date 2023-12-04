@@ -39,22 +39,36 @@ const searchPlaceholder = computed(() =>
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
+function getDefaultActiveIndex(search: string = ''): number {
+	if (activeViewStack.value.activeIndex) {
+		return activeViewStack.value.activeIndex;
+	}
+
+	if (activeViewStack.value.mode === 'actions') {
+		// For actions, set the active focus to the first action, not category
+		return 1;
+	} else if (activeViewStack.value.sections) {
+		// For sections, set the active focus to the first node, not section (unless searching)
+		return search ? 0 : 1;
+	}
+
+	return 0;
+}
+
 function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
-		void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+		void setActiveItemIndex(getDefaultActiveIndex(value));
 	}
 }
 
 function onTransitionEnd() {
-	// For actions, set the active focus to the first action, not category
-	const newStackIndex = activeViewStack.value.mode === 'actions' ? 1 : 0;
-	void setActiveItemIndex(activeViewStack.value.activeIndex || 0 || newStackIndex);
+	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
 onMounted(() => {
 	attachKeydownEvent();
-	void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+	void setActiveItemIndex(getDefaultActiveIndex());
 });
 
 onUnmounted(() => {
