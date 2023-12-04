@@ -227,10 +227,6 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return overrides;
 	});
 
-	const numCredentialsLeft = computed(() => {
-		return credentialUsages.value.length - Object.keys(selectedCredentialIdByKey.value).length;
-	});
-
 	//#endregion Getters
 
 	//#region Actions
@@ -375,7 +371,6 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		template,
 		credentialUsages,
 		selectedCredentialIdByKey,
-		numCredentialsLeft,
 		credentialOverrides,
 		createWorkflow,
 		skipSetup,

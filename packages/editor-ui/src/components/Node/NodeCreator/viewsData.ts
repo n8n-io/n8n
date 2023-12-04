@@ -10,7 +10,6 @@ import {
 	TRANSFORM_DATA_SUBCATEGORY,
 	FILES_SUBCATEGORY,
 	FLOWS_CONTROL_SUBCATEGORY,
-	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
@@ -53,6 +52,12 @@ import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+export interface NodeViewItemSection {
+	key: string;
+	title: string;
+	items: string[];
+}
+
 export interface NodeViewItem {
 	key: string;
 	type: string;
@@ -66,6 +71,7 @@ export interface NodeViewItem {
 		connectionType?: NodeConnectionType;
 		panelClass?: string;
 		group?: string[];
+		sections?: NodeViewItemSection[];
 		description?: string;
 		forceIncludeNodes?: string[];
 	};
