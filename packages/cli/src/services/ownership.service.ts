@@ -5,7 +5,6 @@ import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
 import type { ListQuery } from '@/requests';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { ApplicationError } from 'n8n-workflow';
 
 @Service()
@@ -45,7 +44,9 @@ export class OwnershipService {
 	addOwnedByAndSharedWith(
 		rawCredential: ListQuery.Credentials.WithSharing,
 	): ListQuery.Credentials.WithOwnedByAndSharedWith;
-	addOwnedByAndSharedWith(rawEntity: ListQuery.Workflow.WithSharing | CredentialsEntity) {
+	addOwnedByAndSharedWith(
+		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
+	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
 		const { shared, ...rest } = rawEntity;
 
 		const entity = rest as
