@@ -22,7 +22,6 @@ import type { User } from '@db/entities/User';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['users'],
 	enabledFeatures: ['feat:advancedPermissions'],
-	quotas: { 'quota:users': -1 },
 });
 
 describe('GET /users', () => {
