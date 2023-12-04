@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { hasRole } from '@/rbac/checks';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),

@@ -23,6 +23,10 @@ import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { Logger } from '@/Logger';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const EEWorkflowController = express.Router();
 
@@ -52,19 +56,41 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
-		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
+		const isOwnedRes = await EEWorkflows.isOwned(req.user, workflowId);
+		const { ownsWorkflow } = isOwnedRes;
+		let { workflow } = isOwnedRes;
 
 		if (!ownsWorkflow || !workflow) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			workflow = undefined;
+			// Allow owners/admins to share
+			if (await req.user.hasGlobalScope('workflow:share')) {
+				const sharedRes = await EEWorkflows.getSharing(req.user, workflowId, {
+					allowGlobalScope: true,
+					globalScope: 'workflow:share',
+				});
+				workflow = sharedRes?.workflow;
+			}
+			if (!workflow) {
+				throw new UnauthorizedError('Forbidden');
+			}
 		}
+
+		const ownerIds = (
+			await EEWorkflows.getSharings(Db.getConnection().createEntityManager(), workflowId, [
+				'shared',
+				'shared.role',
+			])
+		)
+			.filter((e) => e.role.name === 'owner')
+			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
+			await EEWorkflows.pruneSharings(trx, workflowId, [...ownerIds, ...shareWithIds]);
 
 			const sharings = await EEWorkflows.getSharings(trx, workflowId);
 
@@ -75,7 +101,7 @@ EEWorkflowController.put(
 			);
 
 			if (newShareeIds.length) {
-				await EEWorkflows.share(trx, workflow, newShareeIds);
+				await EEWorkflows.share(trx, workflow!, newShareeIds);
 			}
 		});
 
@@ -101,13 +127,12 @@ EEWorkflowController.get(
 		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
 
 		if (!workflow) {
-			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(
+		if (!userSharing && !(await req.user.hasGlobalScope('workflow:read'))) {
+			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
@@ -156,7 +181,7 @@ EEWorkflowController.post(
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
 		}
@@ -181,7 +206,7 @@ EEWorkflowController.post(
 
 		if (!savedWorkflow) {
 			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.InternalServerError(
+			throw new InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}

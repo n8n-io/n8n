@@ -5,7 +5,7 @@ import type { AppCredentials } from '@/views/SetupWorkflowFromTemplateView/setup
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { storeToRefs } from 'pinia';
 import { formatList } from '@/utils/formatters/listFormatter';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 const store = useSetupTemplateStore();
@@ -22,9 +22,15 @@ const appNodeCounts = computed(() => {
 </script>
 
 <template>
-	<n8n-notice theme="info">
+	<n8n-notice :class="$style.notice" theme="info">
 		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
 			<span v-html="appNodeCounts" />
 		</i18n-t>
 	</n8n-notice>
 </template>
+
+<style lang="scss" module>
+.notice {
+	margin-top: 0;
+}
+</style>

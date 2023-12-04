@@ -9,7 +9,7 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import type { OAuth2GrantType } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { ApplicationError, jsonParse, jsonStringify } from 'n8n-workflow';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 import { AbstractOAuthController } from './abstractOAuth.controller';
@@ -255,7 +255,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			errorMessage,
 		});
 		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
-			throw new Error(errorMessage);
+			throw new ApplicationError(errorMessage);
 		}
 		return decoded;
 	}

@@ -936,9 +936,11 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: 'none',
@@ -959,10 +961,12 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: 'anyFilter',
@@ -976,10 +980,12 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: {},
@@ -999,10 +1005,12 @@ export function getSearchFilters(resource: string) {
 			type: 'notice',
 			displayOptions: {
 				show: {
-					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: '',
@@ -1013,10 +1021,12 @@ export function getSearchFilters(resource: string) {
 			type: 'string',
 			displayOptions: {
 				show: {
-					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
+				},
+				hide: {
+					'@version': [1],
 				},
 			},
 			default: '',

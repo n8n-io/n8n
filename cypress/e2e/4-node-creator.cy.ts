@@ -34,7 +34,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 3);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
@@ -101,8 +101,8 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').type('{rightarrow}');
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
-		// Navigate to rename action which should be the 4th item
-		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{rightarrow}');
+		// The 1st trigger is selected, up 1x to the collapsable header, up 2x to the last action (rename)
+		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{uparrow}{rightarrow}');
 		NDVModal.getters.parameterInput('operation').find('input').should('have.value', 'Rename');
 	});
 

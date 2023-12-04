@@ -1,6 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
 import { Container } from 'typedi';
-import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -21,6 +20,7 @@ let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
 const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
+const license = testServer.license;
 
 beforeAll(async () => {
 	globalOwnerRole = await getGlobalOwnerRole();
@@ -79,7 +79,7 @@ describe('POST /login', () => {
 	});
 
 	test('should throw AuthError for non-owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const password = 'testpassword';
 		const member = await createUser({
 			password,
@@ -93,11 +93,10 @@ describe('POST /login', () => {
 	});
 
 	test('should not throw AuthError for owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const ownerUser = await createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,
-			isOwner: true,
 		});
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
@@ -316,7 +315,7 @@ describe('GET /resolve-signup-token', () => {
 	});
 
 	test('should return 403 if user quota reached', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const memberShell = await createUserShell(globalMemberRole);
 
 		const response = await authOwnerAgent

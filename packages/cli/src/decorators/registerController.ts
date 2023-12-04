@@ -8,6 +8,7 @@ import {
 	CONTROLLER_BASE_PATH,
 	CONTROLLER_LICENSE_FEATURES,
 	CONTROLLER_MIDDLEWARES,
+	CONTROLLER_REQUIRED_SCOPES,
 	CONTROLLER_ROUTES,
 } from './constants';
 import type {
@@ -17,10 +18,13 @@ import type {
 	LicenseMetadata,
 	MiddlewareMetadata,
 	RouteMetadata,
+	ScopeMetadata,
 } from './types';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import Container from 'typedi';
 import { License } from '@/License';
+import type { Scope } from '@n8n/permissions';
+import { ApplicationError } from 'n8n-workflow';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -55,6 +59,23 @@ export const createLicenseMiddleware =
 		return next();
 	};
 
+export const createGlobalScopeMiddleware =
+	(scopes: Scope[]): RequestHandler =>
+	async ({ user }: AuthenticatedRequest, res, next) => {
+		if (scopes.length === 0) {
+			return next();
+		}
+
+		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+
+		const hasScopes = await user.hasGlobalScope(scopes);
+		if (!hasScopes) {
+			return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+		}
+
+		return next();
+	};
+
 const authFreeRoutes: string[] = [];
 
 export const canSkipAuth = (method: string, path: string): boolean =>
@@ -67,7 +88,9 @@ export const registerController = (app: Application, config: Config, cObj: objec
 		| string
 		| undefined;
 	if (!controllerBasePath)
-		throw new Error(`${controllerClass.name} is missing the RestController decorator`);
+		throw new ApplicationError('Controller is missing the RestController decorator', {
+			extra: { controllerName: controllerClass.name },
+		});
 
 	const authRoles = Reflect.getMetadata(CONTROLLER_AUTH_ROLES, controllerClass) as
 		| AuthRoleMetadata
@@ -76,6 +99,10 @@ export const registerController = (app: Application, config: Config, cObj: objec
 	const licenseFeatures = Reflect.getMetadata(CONTROLLER_LICENSE_FEATURES, controllerClass) as
 		| LicenseMetadata
 		| undefined;
+	const requiredScopes = Reflect.getMetadata(CONTROLLER_REQUIRED_SCOPES, controllerClass) as
+		| ScopeMetadata
+		| undefined;
+
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
 		const restBasePath = config.getEnv('endpoints.rest');
@@ -89,13 +116,15 @@ export const registerController = (app: Application, config: Config, cObj: objec
 
 		routes.forEach(
 			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
-				const authRole = authRoles && (authRoles[handlerName] ?? authRoles['*']);
-				const features = licenseFeatures && (licenseFeatures[handlerName] ?? licenseFeatures['*']);
+				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
+				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
+				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
 				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
 				router[method](
 					path,
 					...(authRole ? [createAuthMiddleware(authRole)] : []),
 					...(features ? [createLicenseMiddleware(features)] : []),
+					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
 					...controllerMiddlewares,
 					...routeMiddlewares,
 					usesTemplates ? handler : send(handler),

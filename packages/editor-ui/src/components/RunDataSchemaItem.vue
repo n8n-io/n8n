@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
-import { checkExhaustive, highlightText, sanitizeHtml, shorten } from '@/utils';
+import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
+import { checkExhaustive } from '@/utils/typeGuards';
+import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
 type Props = {

@@ -25,6 +25,7 @@ import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
 import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
 import { getGlobalState } from './GlobalState';
+import { ApplicationError } from './errors/application.error';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -75,7 +76,7 @@ export class Expression {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new Error('invalid DateTime');
+			throw new ApplicationError('invalid DateTime');
 		}
 
 		let result = '';
@@ -310,12 +311,12 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new Error('invalid syntax');
+			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
 
 			if (returnValue.name === 'DateTime')
-				throw new Error('this is a DateTime, please access its methods');
+				throw new ApplicationError('this is a DateTime, please access its methods');
 
-			throw new Error('this is a function, please add ()');
+			throw new ApplicationError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -339,14 +340,14 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new Error('invalid syntax');
+			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new Error(match.groups.msg);
+				throw new ApplicationError(match.groups.msg);
 			}
 		} finally {
 			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });

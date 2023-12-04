@@ -6,6 +6,7 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 export const vitestConfig = defineVitestConfig({
 	test: {
+		silent: true,
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['./src/__tests__/setup.ts'],
@@ -14,7 +15,7 @@ export const vitestConfig = defineVitestConfig({
 					coverage: {
 						enabled: true,
 						provider: 'v8',
-						reporter: require('../../jest.config.js').coverageReporters,
+						reporter: process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary',
 						all: true,
 					},
 			  }

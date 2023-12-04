@@ -176,6 +176,7 @@ export class FrontendService {
 				binaryDataS3: false,
 				workflowHistory: false,
 				workerView: false,
+				advancedPermissions: false,
 			},
 			mfa: {
 				enabled: false,
@@ -265,6 +266,7 @@ export class FrontendService {
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
 			workerView: this.license.isWorkerViewLicensed(),
+			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

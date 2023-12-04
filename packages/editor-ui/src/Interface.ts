@@ -51,7 +51,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils';
+import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -817,10 +817,20 @@ export interface ITemplatesWorkflow {
 	};
 }
 
+export interface ITemplatesWorkflowInfo {
+	nodeCount: number;
+	nodeTypes: {
+		[key: string]: {
+			count: number;
+		};
+	};
+}
+
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
 	categories: ITemplatesCategory[];
+	workflowInfo: ITemplatesWorkflowInfo;
 }
 
 /**
@@ -892,6 +902,7 @@ export interface SubcategoryItemProps {
 	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
+	sections?: string[];
 }
 export interface ViewItemProps {
 	title: string;
@@ -937,6 +948,13 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: SubcategoryItemProps;
 }
+
+export interface SectionCreateElement extends CreateElementBase {
+	type: 'section';
+	title: string;
+	children: INodeCreateElement[];
+}
+
 export interface ViewCreateElement extends CreateElementBase {
 	type: 'view';
 	properties: ViewItemProps;
@@ -958,6 +976,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| SectionCreateElement
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement;
@@ -1010,6 +1029,7 @@ export interface IVersionNode {
 }
 
 export interface ITemplatesNode extends IVersionNode {
+	id: number;
 	categories?: ITemplatesCategory[];
 }
 
@@ -1269,6 +1289,7 @@ export type NodeCreatorOpenSource =
 	| 'tab'
 	| 'node_connection_action'
 	| 'node_connection_drop'
+	| 'notice_error_message'
 	| 'add_node_button';
 
 export interface INodeCreatorState {
@@ -1310,12 +1331,14 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface INodeTypesState {
-	nodeTypes: {
-		[nodeType: string]: {
-			[version: number]: INodeTypeDescription;
-		};
+export type NodeTypesByTypeNameAndVersion = {
+	[nodeType: string]: {
+		[version: number]: INodeTypeDescription;
 	};
+};
+
+export interface INodeTypesState {
+	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
 export interface ITemplateState {
@@ -1751,7 +1774,8 @@ export type CloudUpdateLinkSourceType =
 	| 'usage_page'
 	| 'settings-users'
 	| 'variables'
-	| 'community-nodes';
+	| 'community-nodes'
+	| 'workflow-history';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1767,7 +1791,8 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables'
-	| 'upgrade-community-nodes';
+	| 'upgrade-community-nodes'
+	| 'upgrade-workflow-history';
 
 export type N8nBanners = {
 	[key in BannerName]: {

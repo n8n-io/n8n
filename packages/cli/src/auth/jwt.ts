@@ -4,11 +4,13 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
-import * as ResponseHelper from '@/ResponseHelper';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { ApplicationError } from 'n8n-workflow';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -26,7 +28,7 @@ export function issueJWT(user: User): JwtToken {
 		!user.isOwner &&
 		!isWithinUsersLimit
 	) {
-		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')
@@ -63,13 +65,13 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	// currently only LDAP users during synchronization
 	// can be set to disabled
 	if (user?.disabled) {
-		throw new ResponseHelper.AuthError('Unauthorized');
+		throw new AuthError('Unauthorized');
 	}
 
 	if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
 		// When owner hasn't been set up, the default user
 		// won't have email nor password (both equals null)
-		throw new Error('Invalid token content');
+		throw new ApplicationError('Invalid token content');
 	}
 	return user;
 }

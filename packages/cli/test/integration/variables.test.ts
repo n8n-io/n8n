@@ -3,10 +3,8 @@ import type { SuperAgentTest } from 'supertest';
 import type { Variables } from '@db/entities/Variables';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
-import { License } from '@/License';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 
-import { mockInstance } from '../shared/mocking';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
@@ -14,14 +12,8 @@ import { createOwner, createUser } from './shared/db/users';
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-const licenseLike = {
-	isFeatureEnabled: jest.fn().mockReturnValue(true),
-	isVariablesEnabled: () => licenseLike.isFeatureEnabled(),
-	getVariablesLimit: jest.fn().mockReturnValue(-1),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-};
-
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
+const license = testServer.license;
 
 async function createVariable(key: string, value: string) {
 	const result = await Container.get(VariablesRepository).save({
@@ -50,18 +42,21 @@ async function getVariableById(id: string) {
 }
 
 beforeAll(async () => {
-	mockInstance(License, licenseLike);
-
 	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
+
+	license.setDefaults({
+		features: ['feat:variables'],
+		// quota: {
+		// 	'quota:maxVariables': -1,
+		// },
+	});
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['Variables']);
-	licenseLike.isFeatureEnabled.mockReturnValue(true);
-	licenseLike.getVariablesLimit.mockReturnValue(-1);
 });
 
 // ----------------------------------------
@@ -159,7 +154,7 @@ describe('POST /variables', () => {
 	});
 
 	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
-		licenseLike.isFeatureEnabled.mockReturnValue(false);
+		license.disable('feat:variables');
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);
 		expect(response.body.data?.key).not.toBe(toCreate.key);
@@ -178,7 +173,7 @@ describe('POST /variables', () => {
 	});
 
 	test('should not fail if variable limit not reached', async () => {
-		licenseLike.getVariablesLimit.mockReturnValue(5);
+		license.setQuota('quota:maxVariables', 5);
 		let i = 1;
 		let toCreate = generatePayload(i);
 		while (i < 3) {
@@ -193,7 +188,7 @@ describe('POST /variables', () => {
 	});
 
 	test('should fail if variable limit reached', async () => {
-		licenseLike.getVariablesLimit.mockReturnValue(5);
+		license.setQuota('quota:maxVariables', 5);
 		let i = 1;
 		let toCreate = generatePayload(i);
 		while (i < 6) {

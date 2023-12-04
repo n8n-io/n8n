@@ -33,7 +33,7 @@ import { defineComponent } from 'vue';
 
 import type { ITag } from '@/Interface';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';

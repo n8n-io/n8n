@@ -10,7 +10,7 @@ import Container, { Service } from 'typedi';
 
 import { Logger } from '@/Logger';
 
-import { jsonParse, type IDataObject } from 'n8n-workflow';
+import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
 import {
 	EXTERNAL_SECRETS_INITIAL_BACKOFF,
 	EXTERNAL_SECRETS_MAX_BACKOFF,
@@ -90,7 +90,7 @@ export class ExternalSecretsManager {
 		try {
 			return jsonParse(decryptedData);
 		} catch (e) {
-			throw new Error(
+			throw new ApplicationError(
 				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 			);
 		}

@@ -1,6 +1,6 @@
 import { ElNotification as Notification } from 'element-plus';
 import type { NotificationInstance, NotificationOptions, MessageBoxState } from 'element-plus';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from './useI18n';
