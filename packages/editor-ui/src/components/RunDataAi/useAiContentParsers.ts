@@ -88,7 +88,7 @@ const outputTypeParsers: {
 		if (Array.isArray(chatHistory)) {
 			const responseText = chatHistory
 				.map((content: MemoryMessage) => {
-					if (content.type === 'constructor' && content.id?.includes('schema') && content.kwargs) {
+					if (content.type === 'constructor' && content.id?.includes('messages') && content.kwargs) {
 						interface MessageContent {
 							type: string;
 							image_url?: {

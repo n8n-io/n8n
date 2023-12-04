@@ -75,7 +75,7 @@ export class ChainSummarizationV2 implements INodeType {
 					noDataExpression: true,
 					type: 'options',
 					description: 'How to pass data into the summarization chain',
-					default: 'nodeInput',
+					default: 'nodeInputJson',
 					options: [
 						{
 							name: 'Use JSON node input',
