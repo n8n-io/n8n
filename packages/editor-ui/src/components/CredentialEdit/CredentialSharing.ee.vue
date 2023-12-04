@@ -114,13 +114,12 @@ export default defineComponent({
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
 					(sharee: IUser) => sharee.id === user.id,
 				);
 				const isOwner = this.credentialData.ownedBy.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser && !isOwner;
+				return !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): IUser[] {
