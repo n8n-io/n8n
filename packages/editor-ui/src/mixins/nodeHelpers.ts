@@ -38,12 +38,13 @@ import { isObject } from '@/utils/objectUtils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
+import { useUsersStore } from '@/stores/users.store';
 
 export const nodeHelpers = defineComponent({
 	computed: {
@@ -53,7 +54,6 @@ export const nodeHelpers = defineComponent({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
-			useUsersStore,
 			useRootStore,
 		),
 	},
@@ -91,6 +91,7 @@ export const nodeHelpers = defineComponent({
 		// Updates all the issues on all the nodes
 		refreshNodeIssues(): void {
 			const nodes = this.workflowsStore.allNodes;
+			const workflow = this.workflowsStore.getCurrentWorkflow();
 			let nodeType: INodeTypeDescription | null;
 			let foundNodeIssues: INodeIssues | null;
 
@@ -99,7 +100,7 @@ export const nodeHelpers = defineComponent({
 					return;
 				}
 				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				foundNodeIssues = this.getNodeIssues(nodeType, node);
+				foundNodeIssues = this.getNodeIssues(nodeType, node, workflow);
 				if (foundNodeIssues !== null) {
 					node.issues = foundNodeIssues;
 				}
@@ -110,6 +111,7 @@ export const nodeHelpers = defineComponent({
 		getNodeIssues(
 			nodeType: INodeTypeDescription | null,
 			node: INodeUi,
+			workflow: Workflow,
 			ignoreIssues?: string[],
 		): INodeIssues | null {
 			const pinDataNodeNames = Object.keys(this.workflowsStore.getPinData || {});
@@ -147,7 +149,6 @@ export const nodeHelpers = defineComponent({
 					}
 				}
 
-				const workflow = this.workflowsStore.getCurrentWorkflow();
 				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
 				if (nodeIssues === null) {
 					nodeIssues = nodeInputIssues;
@@ -475,11 +476,13 @@ export const nodeHelpers = defineComponent({
 					}
 
 					if (nameMatches.length === 0) {
-						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
 
-						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
+						if (
+							!isCredentialUsedInWorkflow &&
+							!hasPermission(['rbac'], { rbac: { scope: 'credential:read' } })
+						) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },

@@ -92,7 +92,7 @@ describe('Template credentials setup', () => {
 	it('can create credentials and workflow from the template', () => {
 		templateCredentialsSetupPage.actions.visit(testTemplate.id);
 
-		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
+		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
 
 		templateCredentialsSetupPage.getters.createAppCredentialsButton('Shopify').click();
 		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
