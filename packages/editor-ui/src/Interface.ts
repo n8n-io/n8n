@@ -902,6 +902,7 @@ export interface SubcategoryItemProps {
 	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
+	sections?: string[];
 }
 export interface ViewItemProps {
 	title: string;
@@ -947,6 +948,13 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: SubcategoryItemProps;
 }
+
+export interface SectionCreateElement extends CreateElementBase {
+	type: 'section';
+	title: string;
+	children: INodeCreateElement[];
+}
+
 export interface ViewCreateElement extends CreateElementBase {
 	type: 'view';
 	properties: ViewItemProps;
@@ -968,6 +976,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| SectionCreateElement
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement;
