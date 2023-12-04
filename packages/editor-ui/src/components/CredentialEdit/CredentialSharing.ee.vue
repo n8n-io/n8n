@@ -42,7 +42,11 @@
 				}}
 			</n8n-info-tip>
 			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.reader') }}
+				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
+					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
+						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}
+					</template>
+				</i18n-t>
 			</n8n-info-tip>
 			<n8n-user-select
 				v-if="credentialPermissions.updateSharing"
@@ -132,6 +136,11 @@ export default defineComponent({
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
+		},
+		isCredentialSharedWithCurrentUser(): boolean {
+			return (this.credentialData.sharedWith || []).some((sharee: IUser) => {
+				return sharee.id === this.usersStore.currentUser?.id;
+			});
 		},
 	},
 	methods: {
