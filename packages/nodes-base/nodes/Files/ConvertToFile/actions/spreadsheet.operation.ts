@@ -14,13 +14,13 @@ export const operations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
 		placeholder: 'e.g data',
-		description: 'Name of the binary property to which to write the data of the file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	{
 		displayName: 'Options',
@@ -39,14 +39,14 @@ export const properties: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Whether compression will be applied or not',
+				description: 'Whether to reduce the output file size',
 			},
 			{
 				displayName: 'File Name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				description: 'File name to set in binary data',
+				description: 'Name of the output file',
 			},
 			{
 				displayName: 'Header Row',
@@ -66,6 +66,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: 'Sheet',
 				description: 'Name of the sheet to create in the spreadsheet',
+				placeholder: 'e.g. mySheet',
 			},
 		],
 	},

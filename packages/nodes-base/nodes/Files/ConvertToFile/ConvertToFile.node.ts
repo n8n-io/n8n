@@ -15,7 +15,7 @@ export class ConvertToFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Convert to File',
 		name: 'convertToFile',
-		icon: 'fa:file-import',
+		icon: 'file:convertToFile.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Convert JSON data to binary data',
@@ -36,50 +36,51 @@ export class ConvertToFile implements INodeType {
 						name: 'Convert to CSV',
 						value: 'csv',
 						action: 'Convert to CSV',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description: 'Transform input data into a CSV file, with each item as a row',
 					},
 					{
 						name: 'Convert to HTML',
 						value: 'html',
 						action: 'Convert to HTML',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description:
+							'Transform input data into a table in an HTML file, with each item as a row',
 					},
 					{
 						name: 'Convert to iCal',
 						value: 'iCal',
 						action: 'Convert to iCal',
-						description: 'Converts each item to an iCal event',
+						description: 'Converts each item to an ICS event file',
 					},
 					{
 						name: 'Convert to JSON',
 						value: 'toJson',
 						action: 'Convert to JSON',
-						description:
-							'Converts all input data to a single file, or each item to a separate file',
+						description: 'Transform input data into a single or multiple JSON files',
 					},
 					{
 						name: 'Convert to ODS',
 						value: 'ods',
 						action: 'Convert to ODS',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description: 'Transform input data into an ODS file, with each item as a row',
 					},
 					{
 						name: 'Convert to RTF',
 						value: 'rtf',
 						action: 'Convert to RTF',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description:
+							'Transform input data into a table in an RTF file, with each item as a row',
 					},
 					{
 						name: 'Convert to XLS',
 						value: 'xls',
 						action: 'Convert to XLS',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description: 'Transform input data into an Excel file, with each item as a row',
 					},
 					{
 						name: 'Convert to XLSX',
 						value: 'xlsx',
 						action: 'Convert to XLSX',
-						description: 'Converts all input data to a single file, each item will represent a row',
+						description: 'Transform input data into an Excel file, with each item as a row',
 					},
 					{
 						name: 'Move Base64 String to File',

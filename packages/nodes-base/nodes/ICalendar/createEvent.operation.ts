@@ -84,7 +84,7 @@ export const description: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
-								placeholder: 'name@email.com',
+								placeholder: 'e.g. name@email.com',
 								required: true,
 								default: '',
 							},
@@ -122,7 +122,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d">spec</a>).',
+					'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook. <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d">More info</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -135,7 +135,8 @@ export const description: INodeProperties[] = [
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				description: 'The name of the file to be generated. Default value is event.ics.',
+				placeholder: 'e.g. event.ics',
+				description: 'The name of the file to be generated. Default name is event.ics.',
 			},
 			{
 				displayName: 'Geolocation',
@@ -207,7 +208,7 @@ export const description: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
-								placeholder: 'name@email.com',
+								placeholder: 'e.g. name@email.com',
 								default: '',
 								required: true,
 							},

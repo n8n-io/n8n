@@ -9,23 +9,23 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Property',
-		name: 'binaryPropertyName',
-		type: 'string',
-		default: 'data',
-		required: true,
-		placeholder: 'e.g data',
-		description: 'Name of the binary property to which to write the data of the file',
-	},
-	{
-		displayName: 'Source Property',
+		displayName: 'Base64 Input Field',
 		name: 'sourceProperty',
 		type: 'string',
 		default: '',
 		required: true,
 		placeholder: 'e.g data',
 		description:
-			'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
+			"The name of the input field that contains the base64 string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
+	},
+	{
+		displayName: 'Put Output File in Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		placeholder: 'e.g data',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	{
 		displayName: 'Options',
@@ -65,7 +65,8 @@ export const properties: INodeProperties[] = [
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				description: 'File name to set in binary data',
+				placeholder: 'e.g. myFile',
+				description: 'Name of the output file',
 			},
 			{
 				displayName: 'MIME Type',
@@ -73,6 +74,8 @@ export const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'e.g text/plain',
+				description:
+					'The MIME type of the output file. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">Common MIME types</a>.',
 			},
 		],
 	},
