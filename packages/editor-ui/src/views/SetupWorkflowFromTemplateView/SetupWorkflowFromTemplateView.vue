@@ -101,44 +101,42 @@ onMounted(async () => {
 
 		<template #content>
 			<div :class="$style.grid">
-				<div :class="$style.gridContent">
-					<div :class="$style.notice" data-test-id="info-callout">
-						<AppsRequiringCredsNotice v-if="isReady" />
-						<n8n-loading v-else variant="p" />
-					</div>
+				<div :class="$style.notice" data-test-id="info-callout">
+					<AppsRequiringCredsNotice v-if="isReady" />
+					<n8n-loading v-else variant="p" />
+				</div>
 
-					<div>
-						<ol v-if="isReady" :class="$style.appCredentialsContainer">
-							<SetupTemplateFormStep
-								:class="$style.appCredential"
-								:key="credentials.key"
-								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
-								:order="index + 1"
-								:credentials="credentials"
-							/>
-						</ol>
-						<div v-else :class="$style.appCredentialsContainer">
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-						</div>
-					</div>
-
-					<div :class="$style.actions">
-						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
-							$locale.baseText('templateSetup.skip')
-						}}</n8n-link>
-
-						<n8n-button
-							v-if="isReady"
-							size="large"
-							:label="$locale.baseText('templateSetup.continue.button')"
-							:disabled="setupTemplateStore.isSaving"
-							@click="setupTemplateStore.createWorkflow($router)"
-							data-test-id="continue-button"
+				<div>
+					<ol v-if="isReady" :class="$style.appCredentialsContainer">
+						<SetupTemplateFormStep
+							:class="$style.appCredential"
+							:key="credentials.key"
+							v-for="(credentials, index) in setupTemplateStore.credentialUsages"
+							:order="index + 1"
+							:credentials="credentials"
 						/>
-						<div v-else>
-							<n8n-loading variant="button" />
-						</div>
+					</ol>
+					<div v-else :class="$style.appCredentialsContainer">
+						<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+						<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+					</div>
+				</div>
+
+				<div :class="$style.actions">
+					<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
+						$locale.baseText('templateSetup.skip')
+					}}</n8n-link>
+
+					<n8n-button
+						v-if="isReady"
+						size="large"
+						:label="$locale.baseText('templateSetup.continue.button')"
+						:disabled="setupTemplateStore.isSaving"
+						@click="setupTemplateStore.createWorkflow($router)"
+						data-test-id="continue-button"
+					/>
+					<div v-else>
+						<n8n-loading variant="button" />
 					</div>
 				</div>
 			</div>
@@ -148,22 +146,11 @@ onMounted(async () => {
 
 <style lang="scss" module>
 .grid {
-	display: grid;
-	grid-template-columns: repeat(12, 1fr);
-	padding: 0 var(--spacing-l);
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
 	justify-content: center;
-}
-
-.gridContent {
-	grid-column: 3 / span 8;
-
-	@media (max-width: 800px) {
-		grid-column: 3 / span 8;
-	}
-
-	@media (max-width: 640px) {
-		grid-column: 2 / span 10;
-	}
+	max-width: 768px;
 }
 
 .notice {
