@@ -18,6 +18,7 @@ export const description: INodeProperties[] = [
 		name: 'title',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. New Event',
 	},
 	{
 		displayName: 'Start',

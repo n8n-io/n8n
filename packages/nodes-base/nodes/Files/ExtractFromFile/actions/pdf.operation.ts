@@ -25,27 +25,12 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				typeOptions: { password: true },
-				default: '',
-				description: 'Prowide password, if the PDF is encrypted',
-			},
-			{
 				displayName: 'Join Pages',
 				name: 'joinPages',
 				type: 'boolean',
 				default: true,
 				description:
 					'Whether to join the text from all pages or return an array of text from each page',
-			},
-			{
-				displayName: 'Max Pages',
-				name: 'maxPages',
-				type: 'number',
-				default: 0,
-				description: 'Maximum number of pages to include',
 			},
 			{
 				displayName: 'Keep Source',
@@ -66,6 +51,21 @@ export const properties: INodeProperties[] = [
 						value: 'both',
 					},
 				],
+			},
+			{
+				displayName: 'Max Pages',
+				name: 'maxPages',
+				type: 'number',
+				default: 0,
+				description: 'Maximum number of pages to include',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+				description: 'Prowide password, if the PDF is encrypted',
 			},
 		],
 	},

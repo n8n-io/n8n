@@ -23,14 +23,13 @@ export const operationProperty: INodeProperties = {
 };
 
 export const binaryProperty: INodeProperties = {
-	displayName: 'File Property',
+	displayName: 'Input Binary Field',
 	name: 'binaryPropertyName',
 	type: 'string',
 	default: 'data',
 	required: true,
 	placeholder: '',
-	description:
-		'Name of the binary property from which to read the binary data of the spreadsheet file',
+	hint: 'The name of the input field containing the file data to be processed',
 	displayOptions: {
 		show: {
 			operation: ['fromFile'],
@@ -167,13 +166,6 @@ export const fromFileOptions: INodeProperties = {
 	},
 	options: [
 		{
-			displayName: 'Header Row',
-			name: 'headerRow',
-			type: 'boolean',
-			default: true,
-			description: 'Whether the first row of the file contains the header names',
-		},
-		{
 			displayName: 'Delimiter',
 			name: 'delimiter',
 			type: 'string',
@@ -183,31 +175,8 @@ export const fromFileOptions: INodeProperties = {
 				},
 			},
 			default: ',',
-			description: 'Set the field delimiter',
-		},
-		{
-			displayName: 'Starting Line',
-			name: 'fromLine',
-			type: 'number',
-			displayOptions: {
-				show: {
-					'/fileFormat': ['csv'],
-				},
-			},
-			default: 0,
-			description: 'Start handling records from the requested line number',
-		},
-		{
-			displayName: 'Max Number of Rows to Load',
-			name: 'maxRowCount',
-			type: 'number',
-			displayOptions: {
-				show: {
-					'/fileFormat': ['csv'],
-				},
-			},
-			default: -1,
-			description: 'Stop handling records after the requested number of rows are read',
+			placeholder: 'e.g. ,',
+			description: 'Set the field delimiter, usually a comma',
 		},
 		{
 			displayName: 'Exclude Byte Order Mark (BOM)',
@@ -223,19 +192,48 @@ export const fromFileOptions: INodeProperties = {
 				'Whether to detect and exclude the byte-order-mark from the CSV Input if present',
 		},
 		{
+			displayName: 'Header Row',
+			name: 'headerRow',
+			type: 'boolean',
+			default: true,
+			description: 'Whether the first row of the file contains the header names',
+		},
+		{
 			displayName: 'Include Empty Cells',
 			name: 'includeEmptyCells',
 			type: 'boolean',
 			default: false,
 			description:
-				'Whether to include empty cells when reading from file, they will be filled with an empty string',
+				'Whether to include empty cells when reading from file. They will be filled with an empty string.',
+		},
+		{
+			displayName: 'Max Number of Rows to Load',
+			name: 'maxRowCount',
+			type: 'number',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			default: -1,
+			placeholder: 'e.g. 10',
+			description:
+				'Stop handling records after the requested number of rows are read. Use -1 if you want to load all rows.',
+		},
+		{
+			displayName: 'Range',
+			name: 'range',
+			type: 'string',
+			default: '',
+			description:
+				'The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style notation range.',
 		},
 		{
 			displayName: 'RAW Data',
 			name: 'rawData',
 			type: 'boolean',
 			default: false,
-			description: 'Whether the data should be returned RAW instead of parsed',
+			description: 'Whether to return RAW data, instead of parsing it',
 		},
 		{
 			displayName: 'Read As String',
@@ -244,23 +242,29 @@ export const fromFileOptions: INodeProperties = {
 			default: false,
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description:
-				'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong',
-		},
-		{
-			displayName: 'Range',
-			name: 'range',
-			type: 'string',
-			default: '',
-			description:
-				'The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style bounded range.',
+				'In some cases and file formats, it is necessary to read as string to ensure special characters are interpreted correctly',
 		},
 		{
 			displayName: 'Sheet Name',
 			name: 'sheetName',
 			type: 'string',
 			default: 'Sheet',
+			placeholder: 'e.g. mySheet',
 			description:
-				'Name of the sheet to read from in the spreadsheet (if supported). If not set, the first one gets chosen.',
+				'Name of the sheet to read from in the spreadsheet (if supported). If not set, the first one will be chosen.',
+		},
+		{
+			displayName: 'Starting Line',
+			name: 'fromLine',
+			type: 'number',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			default: 0,
+			placeholder: 'e.g. 0',
+			description: 'Start handling records from the requested line number. Starts at 0.',
 		},
 	],
 };

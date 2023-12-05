@@ -18,22 +18,22 @@ import iconv from 'iconv-lite';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
 		placeholder: 'e.g data',
-		description: 'Name of the binary property from which to extract the data',
+		hint: 'The name of the input field containing the file data to be processed',
 	},
 	{
-		displayName: 'Destination Key',
+		displayName: 'Destination Output Field',
 		name: 'destinationKey',
 		type: 'string',
 		default: 'data',
 		required: true,
 		placeholder: 'e.g data',
-		description: 'The name of the JSON key to which extracted data would be written',
+		description: 'The name of the output field that will contain the extracted data',
 	},
 	{
 		displayName: 'Options',
@@ -61,7 +61,7 @@ export const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to strip the BOM from the file,this could help in an environment where the presence of the BOM is causing issues or inconsistencies',
+					'Whether to strip the BOM (Byte Order Mark) from the file, this could help in an environment where the presence of the BOM is causing issues or inconsistencies',
 			},
 			{
 				displayName: 'Keep Source',

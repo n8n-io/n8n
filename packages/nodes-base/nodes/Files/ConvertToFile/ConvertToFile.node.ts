@@ -36,20 +36,19 @@ export class ConvertToFile implements INodeType {
 						name: 'Convert to CSV',
 						value: 'csv',
 						action: 'Convert to CSV',
-						description: 'Transform input data into a CSV file, with each item as a row',
+						description: 'Transform input data into a CSV file',
 					},
 					{
 						name: 'Convert to HTML',
 						value: 'html',
 						action: 'Convert to HTML',
-						description:
-							'Transform input data into a table in an HTML file, with each item as a row',
+						description: 'Transform input data into a table in an HTML file',
 					},
 					{
 						name: 'Convert to iCal',
 						value: 'iCal',
 						action: 'Convert to iCal',
-						description: 'Converts each item to an ICS event file',
+						description: 'Converts each input item to an ICS event file',
 					},
 					{
 						name: 'Convert to JSON',
@@ -61,33 +60,31 @@ export class ConvertToFile implements INodeType {
 						name: 'Convert to ODS',
 						value: 'ods',
 						action: 'Convert to ODS',
-						description: 'Transform input data into an ODS file, with each item as a row',
+						description: 'Transform input data into an ODS file',
 					},
 					{
 						name: 'Convert to RTF',
 						value: 'rtf',
 						action: 'Convert to RTF',
-						description:
-							'Transform input data into a table in an RTF file, with each item as a row',
+						description: 'Transform input data into a table in an RTF file',
 					},
 					{
 						name: 'Convert to XLS',
 						value: 'xls',
 						action: 'Convert to XLS',
-						description: 'Transform input data into an Excel file, with each item as a row',
+						description: 'Transform input data into an Excel file',
 					},
 					{
 						name: 'Convert to XLSX',
 						value: 'xlsx',
 						action: 'Convert to XLSX',
-						description: 'Transform input data into an Excel file, with each item as a row',
+						description: 'Transform input data into an Excel file',
 					},
 					{
 						name: 'Move Base64 String to File',
 						value: 'toBinary',
 						action: 'Move base64 string to file',
-						description:
-							'Specify a property in the item that contains a base64 string to be converted into a file',
+						description: 'Convert a base64-encoded string into its original file format',
 					},
 				],
 				default: 'csv',
