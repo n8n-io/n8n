@@ -82,10 +82,6 @@ export class CredentialsService {
 		return findManyOptions;
 	}
 
-	private static addOwnedByAndSharedWith(credentials: CredentialsEntity[]) {
-		return credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c));
-	}
-
 	static async getMany(
 		user: User,
 		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
@@ -98,7 +94,9 @@ export class CredentialsService {
 		if (returnAll) {
 			const credentials = await Container.get(CredentialsRepository).find(findManyOptions);
 
-			return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
+			return isDefaultSelect
+				? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
+				: credentials;
 		}
 
 		const ids = await this.getAccessibleCredentials(user.id);
@@ -108,7 +106,9 @@ export class CredentialsService {
 			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
-		return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
+		return isDefaultSelect
+			? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
+			: credentials;
 	}
 
 	/**
