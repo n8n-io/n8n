@@ -121,7 +121,7 @@ export default defineComponent({
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
 					(sharee: IUser) => sharee.id === user.id,
 				);
-				const isOwner = this.credentialData.ownedBy.id === user.id;
+				const isOwner = this.credentialData.ownedBy?.id === user.id;
 
 				return !isAlreadySharedWithUser && !isOwner;
 			});
