@@ -2722,7 +2722,7 @@ export default defineComponent({
 						NodeViewUtils.addConnectionTestData(
 							info.source,
 							info.target,
-							'canvas' in info.connection.connector
+							info.connection?.connector?.hasOwnProperty('canvas')
 								? (info.connection.connector.canvas as HTMLElement)
 								: undefined,
 						);
