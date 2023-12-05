@@ -93,6 +93,12 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			error = new Error(errorObject.message as string);
 		}
 
+		if ('description' in errorObject) {
+			// @ts-expect-error Error descriptions are surfaced by the UI but
+			// not all backend errors account for this property yet.
+			error.description = errorObject.description as string;
+		}
+
 		if ('stack' in errorObject) {
 			// If there's a 'stack' property, set it on the new Error instance.
 			error.stack = errorObject.stack as string;

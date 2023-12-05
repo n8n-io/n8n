@@ -16,6 +16,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../shared/mocking';
 import {
 	randomCredentialPayload as randomCred,
+	randomName,
 	randomPositiveDigit,
 } from '../integration/shared/random';
 import * as testDb from '../integration/shared/testDb';
@@ -29,6 +30,8 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { LicenseMocker } from '../integration/shared/license';
 import { License } from '@/License';
+import { generateNanoId } from '@/databases/utils/generators';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 function createSubworkflow({ policy }: { policy: WorkflowSettings.CallerPolicy }) {
 	return new Workflow({
@@ -246,7 +249,29 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	const nonOwnerUser = new User();
 	nonOwnerUser.id = uuid();
 
+	let parentWorkflow: WorkflowEntity;
+
+	beforeAll(() => {
+		parentWorkflow = Container.get(WorkflowRepository).create({
+			id: generateNanoId(),
+			name: randomName(),
+			active: false,
+			connections: {},
+			nodes: [
+				{
+					name: '',
+					typeVersion: 1,
+					type: 'n8n-nodes-base.executeWorkflow',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+	});
+
 	test('sets default policy from environment when subworkflow has none', async () => {
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		config.set('workflows.callerPolicyDefaultOption', 'none');
 		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValue(fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
@@ -259,11 +284,13 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			id: '2',
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, 'some-parent-workflow-id'),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
 	test('if sharing is disabled, ensures that workflows are owned by same user and reject running workflows belonging to another user even if setting allows execution', async () => {
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValueOnce(fakeUser);
 		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValueOnce(nonOwnerUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
@@ -279,7 +306,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			},
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 
 		// Check description
@@ -295,7 +322,8 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	});
 
 	test('should throw if allowed list does not contain parent workflow id', async () => {
-		const invalidParentWorkflowId = uuid();
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		jest
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
@@ -313,11 +341,13 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			},
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, invalidParentWorkflowId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
 	test('sameOwner passes when both workflows are owned by the same user', async () => {
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockImplementation(async () => fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
 
@@ -329,12 +359,13 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			id: '2',
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid()),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).resolves.not.toThrow();
 	});
 
 	test('workflowsFromAList works when the list contains the parent id', async () => {
-		const workflowId = uuid();
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		jest
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
@@ -348,15 +379,17 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			id: '2',
 			settings: {
 				callerPolicy: 'workflowsFromAList',
-				callerIds: `123,456,bcdef,  ${workflowId}`,
+				callerIds: `123,456,bcdef,  ${parentWorkflow.id}`,
 			},
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, workflowId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).resolves.not.toThrow();
 	});
 
 	test('should not throw when workflow policy is set to any', async () => {
+		await Container.get(WorkflowRepository).save(parentWorkflow);
+
 		jest
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
@@ -373,7 +406,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			},
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id),
 		).resolves.not.toThrow();
 	});
 
@@ -399,6 +432,8 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		});
 
 		test('should allow if both workflows are owned by the same user', async () => {
+			await Container.get(WorkflowRepository).save(parentWorkflow);
+
 			const bothWorkflowsOwner = Container.get(UserRepository).create({ id: uuid() });
 
 			ownershipService.getWorkflowOwnerCached.mockResolvedValueOnce(bothWorkflowsOwner); // parent workflow
@@ -406,7 +441,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 
 			const subworkflow = createSubworkflow({ policy: 'workflowsFromSameOwner' });
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
+			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
 		});
