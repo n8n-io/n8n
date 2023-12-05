@@ -12,7 +12,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export = {
 	deleteExecution: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -42,7 +42,7 @@ export = {
 		},
 	],
 	getExecution: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -71,7 +71,7 @@ export = {
 		},
 	],
 	getExecutions: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
