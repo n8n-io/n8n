@@ -241,8 +241,8 @@ export class ChainSummarizationV2 implements INodeType {
 							name: 'refinePrompt',
 							type: 'string',
 							displayOptions: {
-								show: {
-									'/options.summarizationMethod': ['refine'],
+								hide: {
+									'/options.summarizationMethod': ['stuff', 'map_reduce'],
 								},
 							},
 							default: REFINE_PROMPT_TEMPLATE,
@@ -256,8 +256,8 @@ export class ChainSummarizationV2 implements INodeType {
 							name: 'refineQuestionPrompt',
 							type: 'string',
 							displayOptions: {
-								show: {
-									'/options.summarizationMethod': ['refine'],
+								hide: {
+									'/options.summarizationMethod': ['stuff', 'map_reduce'],
 								},
 							},
 							default: DEFAULT_PROMPT_TEMPLATE,
@@ -352,10 +352,6 @@ export class ChainSummarizationV2 implements INodeType {
 				} else {
 					processor = new N8nJsonLoader(this, 'options.', textSplitter);
 				}
-
-				// const processor = operationMode === 'nodeInputJson'
-				// 	? new N8nJsonLoader(this, 'options.', textSplitter)
-				// 	: new N8nBinaryLoader(this,'options.', textSplitter);
 
 				const processedItem = await processor.processItem(item, itemIndex);
 				const response = await chain.call({
