@@ -20,7 +20,7 @@ export class RemoveDuplicates implements INodeType {
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
-		description: 'Remove extra items that are similar',
+		description: 'Delete items with matching field values',
 		defaults: {
 			name: 'Remove Duplicates',
 		},
