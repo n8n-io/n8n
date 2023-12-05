@@ -63,10 +63,9 @@ describe('POST /login', () => {
 			globalRole,
 			apiKey,
 			globalScopes,
-            mfaSecret,
+			mfaSecret,
 			mfaRecoveryCodes,
 		} = response.body.data;
-	
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
