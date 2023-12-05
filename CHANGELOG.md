@@ -1,3 +1,12 @@
+## [1.19.5](https://github.com/n8n-io/n8n/compare/n8n@1.19.4...n8n@1.19.5) (2023-12-05)
+
+
+### Bug Fixes
+
+* **core:** Allow grace period for binary data deletion after manual execution ([#7889](https://github.com/n8n-io/n8n/issues/7889)) ([cf2b70a](https://github.com/n8n-io/n8n/commit/cf2b70aee9f110cdf626809f38be8fbafc44d9af))
+
+
+
 ## [1.19.4](https://github.com/n8n-io/n8n/compare/n8n@1.19.3...n8n@1.19.4) (2023-12-01)
 
 
