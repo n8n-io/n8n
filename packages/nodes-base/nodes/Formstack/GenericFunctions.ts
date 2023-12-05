@@ -7,7 +7,7 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
@@ -136,7 +136,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new ApplicationError('No data got returned', { level: 'warning' });
 	}
 	const returnData: INodePropertyOptions[] = [];
 	for (const baseData of responseData.items) {
@@ -160,7 +160,7 @@ export async function getFields(
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'fields');
 
 	if (responseData.items === undefined) {
-		throw new Error('No form fields meta data got returned');
+		throw new ApplicationError('No form fields meta data got returned', { level: 'warning' });
 	}
 
 	const fields = responseData.items as IFormstackFieldDefinitionType[];
@@ -185,7 +185,7 @@ export async function getSubmission(
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'data');
 
 	if (responseData.items === undefined) {
-		throw new Error('No form fields meta data got returned');
+		throw new ApplicationError('No form fields meta data got returned', { level: 'warning' });
 	}
 
 	return responseData.items as IFormstackSubmissionFieldContainer[];

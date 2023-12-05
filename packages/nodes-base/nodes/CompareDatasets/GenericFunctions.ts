@@ -1,4 +1,4 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
 
 import difference from 'lodash/difference';
 import get from 'lodash/get';
@@ -102,8 +102,9 @@ function compareItems(
 						skippedFieldsWithDotNotation.length &&
 						(typeof input1 !== 'object' || typeof input2 !== 'object')
 					) {
-						throw new Error(
+						throw new ApplicationError(
 							`The field \'${key}\' in item ${i} is not an object. It is not possible to use dot notation.`,
+							{ level: 'warning' },
 						);
 					}
 
