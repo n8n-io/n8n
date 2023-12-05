@@ -1,10 +1,10 @@
-import {
-	type ITriggerFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeListSearchResult,
-	type INodeListSearchItems,
-	ApplicationError,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';

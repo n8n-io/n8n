@@ -1,14 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
-import {
-	type IBinaryKeyData,
-	type IDataObject,
-	type IExecuteFunctions,
-	type IPollFunctions,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	ApplicationError,
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	IPollFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 import { flattenOutput } from '../helpers/utils';
 

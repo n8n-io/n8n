@@ -1,9 +1,9 @@
-import {
-	ApplicationError,
-	type ICredentialDataDecryptedObject,
-	type ICredentialType,
-	type IHttpRequestOptions,
-	type INodeProperties,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class CustomerIoApi implements ICredentialType {

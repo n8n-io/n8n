@@ -1,12 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import {
-	ApplicationError,
-	type IDataObject,
-	type IExecuteFunctions,
-	type IHookFunctions,
-	type ILoadOptionsFunctions,
-	type IWebhookFunctions,
+import { ApplicationError } from 'n8n-workflow';
+
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(

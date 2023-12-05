@@ -1,10 +1,10 @@
-import {
-	ApplicationError,
-	type GenericValue,
-	type IBinaryKeyData,
-	type IDataObject,
-	type INodeExecutionData,
-	type IPairedItemData,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	GenericValue,
+	IBinaryKeyData,
+	IDataObject,
+	INodeExecutionData,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import assign from 'lodash/assign';

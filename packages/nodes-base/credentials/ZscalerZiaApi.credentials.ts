@@ -1,11 +1,11 @@
-import {
-	ApplicationError,
-	type IAuthenticateGeneric,
-	type ICredentialDataDecryptedObject,
-	type ICredentialTestRequest,
-	type ICredentialType,
-	type IHttpRequestHelper,
-	type INodeProperties,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestHelper,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ZscalerZiaApi implements ICredentialType {

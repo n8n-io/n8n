@@ -1,11 +1,11 @@
 import type { OptionsWithUri } from 'request';
 
-import {
-	ApplicationError,
-	type IDataObject,
-	type IExecuteFunctions,
-	type ILoadOptionsFunctions,
-	type IPollFunctions,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IPollFunctions,
 } from 'n8n-workflow';
 
 import get from 'lodash/get';
