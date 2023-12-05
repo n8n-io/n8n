@@ -7,7 +7,7 @@ import type {
 	INodeExecutionData,
 	GenericValue,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
@@ -62,8 +62,9 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 	if (Array.isArray(fields)) {
 		return fields;
 	}
-	throw new Error(
+	throw new ApplicationError(
 		`The \'${fieldName}\' parameter must be a string of fields separated by commas or an array of strings.`,
+		{ level: 'warning' },
 	);
 };
 

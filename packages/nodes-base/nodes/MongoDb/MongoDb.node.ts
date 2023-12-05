@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -80,7 +80,9 @@ export class MongoDb implements INodeType {
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-						throw new Error(`Database "${database}" does not exist`);
+						throw new ApplicationError(`Database "${database}" does not exist`, {
+							level: 'warning',
+						});
 					}
 					await client.close();
 				} catch (error) {
