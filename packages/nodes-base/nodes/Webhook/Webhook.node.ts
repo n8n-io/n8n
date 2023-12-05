@@ -126,10 +126,14 @@ export class Webhook extends Node {
 		}
 
 		const nodeVersion = context.getNode().typeVersion;
-		if (nodeVersion > 1 && !req.body && req.rawBody && !options.rawBody) {
+		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
 				return await this.handleBinaryData(context);
 			} catch (error) {}
+		}
+
+		if (options.rawBody && !req.rawBody) {
+			await req.readRawBody();
 		}
 
 		const response: INodeExecutionData = {
@@ -142,7 +146,7 @@ export class Webhook extends Node {
 			binary: options.rawBody
 				? {
 						data: {
-							data: req.rawBody.toString(BINARY_ENCODING),
+							data: (req.rawBody ?? '').toString(BINARY_ENCODING),
 							mimeType: req.contentType ?? 'application/json',
 						},
 				  }

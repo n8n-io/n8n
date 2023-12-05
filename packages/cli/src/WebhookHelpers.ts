@@ -344,7 +344,19 @@ export async function executeWebhook(
 					});
 				});
 			} else {
-				await parseBody(req);
+				if (nodeVersion > 1) {
+					if (
+						contentType?.startsWith('application/json') ||
+						contentType?.startsWith('text/plain') ||
+						contentType?.startsWith('application/x-www-form-urlencoded') ||
+						contentType?.endsWith('/xml') ||
+						contentType?.endsWith('+xml')
+					) {
+						await parseBody(req);
+					}
+				} else {
+					await parseBody(req);
+				}
 			}
 		}
 
