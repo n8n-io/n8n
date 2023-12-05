@@ -11,12 +11,10 @@ import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
-	IExternalHooks,
 	INodeUi,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
 } from '@/Interface';
-import type { Telemetry } from '@/plugins/telemetry';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
 import type {
