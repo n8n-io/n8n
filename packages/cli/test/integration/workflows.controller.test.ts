@@ -211,7 +211,13 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
 					versionId: any(String),
-					ownedBy: { id: owner.id },
+					ownedBy: {
+						id: owner.id,
+						email: any(String),
+						firstName: any(String),
+						lastName: any(String),
+					},
+					sharedWith: [],
 				}),
 				objectContaining({
 					id: any(String),
@@ -221,7 +227,13 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [],
 					versionId: any(String),
-					ownedBy: { id: owner.id },
+					ownedBy: {
+						id: owner.id,
+						email: any(String),
+						firstName: any(String),
+						lastName: any(String),
+					},
+					sharedWith: [],
 				}),
 			]),
 		});
@@ -231,7 +243,7 @@ describe('GET /workflows', () => {
 		);
 
 		expect(found.nodes).toBeUndefined();
-		expect(found.sharedWith).toBeUndefined();
+		expect(found.sharedWith).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
@@ -412,8 +424,26 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					{ id: any(String), ownedBy: { id: owner.id } },
-					{ id: any(String), ownedBy: { id: owner.id } },
+					{
+						id: any(String),
+						ownedBy: {
+							id: owner.id,
+							email: any(String),
+							firstName: any(String),
+							lastName: any(String),
+						},
+						sharedWith: [],
+					},
+					{
+						id: any(String),
+						ownedBy: {
+							id: owner.id,
+							email: any(String),
+							firstName: any(String),
+							lastName: any(String),
+						},
+						sharedWith: [],
+					},
 				]),
 			});
 		});
