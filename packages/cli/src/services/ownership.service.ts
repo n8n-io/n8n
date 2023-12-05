@@ -4,9 +4,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
-import type { Credentials, ListQuery } from '@/requests';
-import type { Role } from '@db/entities/Role';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { ListQuery } from '@/requests';
 import { ApplicationError } from 'n8n-workflow';
 
 @Service()
@@ -40,37 +38,33 @@ export class OwnershipService {
 		return sharedWorkflow.user;
 	}
 
-	addOwnedBy(
-		workflow: ListQuery.Workflow.WithSharing,
-		workflowOwnerRole: Role,
-	): ListQuery.Workflow.WithOwnership {
-		const { shared, ...rest } = workflow;
+	addOwnedByAndSharedWith(
+		rawWorkflow: ListQuery.Workflow.WithSharing,
+	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+	addOwnedByAndSharedWith(
+		rawCredential: ListQuery.Credentials.WithSharing,
+	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+	addOwnedByAndSharedWith(
+		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
+	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
+		const { shared, ...rest } = rawEntity;
 
-		const ownerId = shared?.find((s) => s.roleId.toString() === workflowOwnerRole.id)?.userId;
+		const entity = rest as
+			| ListQuery.Workflow.WithOwnedByAndSharedWith
+			| ListQuery.Credentials.WithOwnedByAndSharedWith;
 
-		return Object.assign(rest, {
-			ownedBy: ownerId ? { id: ownerId } : null,
-		});
-	}
-
-	addOwnedByAndSharedWith(_credential: CredentialsEntity): Credentials.WithOwnedByAndSharedWith {
-		const { shared, ...rest } = _credential;
-
-		const credential = rest as Credentials.WithOwnedByAndSharedWith;
-
-		credential.ownedBy = null;
-		credential.sharedWith = [];
+		Object.assign(entity, { ownedBy: null, sharedWith: [] });
 
 		shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
 			if (role.name === 'owner') {
-				credential.ownedBy = { id, email, firstName, lastName };
+				entity.ownedBy = { id, email, firstName, lastName };
 			} else {
-				credential.sharedWith.push({ id, email, firstName, lastName });
+				entity.sharedWith.push({ id, email, firstName, lastName });
 			}
 		});
 
-		return credential;
+		return entity;
 	}
 }
