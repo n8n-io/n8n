@@ -12,7 +12,7 @@ export function createPage({
 	};
 	initialMessages: string[];
 	mode: 'test' | 'production';
-	authentication: 'none' | 'basicAuth' | 'headerAuth';
+	authentication: 'none' | 'basicAuth' | 'n8nAuth';
 }) {
 	return `<doctype html>
 	<html lang="en">
@@ -29,7 +29,7 @@ export function createPage({
 
 				(async function () {
 					const authentication = '${authentication}';
-					if (authentication === 'headerAuth') {
+					if (authentication === 'n8nAuth') {
 						try {
 							const response = await fetch('/rest/login', {
 									method: 'GET'

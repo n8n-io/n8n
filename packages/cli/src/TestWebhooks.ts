@@ -9,6 +9,7 @@ import {
 	type WorkflowActivateMode,
 	type WorkflowExecuteMode,
 	ApplicationError,
+	IRunData,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
@@ -198,6 +199,7 @@ export class TestWebhooks implements IWebhookManager {
 	async needsWebhookData(
 		workflowData: IWorkflowDb,
 		workflow: Workflow,
+		runData: IRunData,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -237,6 +239,10 @@ export class TestWebhooks implements IWebhookManager {
 				webhookData.path,
 				webhookData.webhookId,
 			)}|${workflowData.id}`;
+
+			if (runData && webhookData.node in runData) {
+				return false;
+			}
 
 			activatedKey.push(key);
 

@@ -1,11 +1,13 @@
-import type {
-	IDataObject,
-	IWebhookFunctions,
-	IWebhookResponseData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IDataObject,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { pick } from 'lodash';
+import type { BaseChatMemory } from 'langchain/memory';
 import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
 
@@ -22,7 +24,26 @@ export class ChatTrigger implements INodeType {
 		defaults: {
 			name: 'Chat Trigger',
 		},
-		inputs: [],
+		// TODO: This will be reworked, so we also have to update then here
+		supportsCORS: true,
+		maxNodes: 1,
+		inputs: `={{ (() => {
+			if (!['hostedChat', 'webhook'].includes($parameter.mode)) {
+				return [];
+			}
+			if ($parameter.options?.loadPreviousSession !== 'memory') {
+				return [];
+			}
+
+			return [
+				{
+					displayName: 'Memory',
+					maxConnections: 1,
+					type: '${NodeConnectionType.AiMemory}',
+					required: true,
+				}
+			];
+		 })() }}`,
 		outputs: ['main'],
 		credentials: [
 			{
@@ -47,7 +68,7 @@ export class ChatTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: 'responseNode',
+				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
 			},
@@ -70,14 +91,20 @@ export class ChatTrigger implements INodeType {
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						mode: ['testChat'],
+					},
+				},
 				options: [
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
 					},
 					{
-						name: 'Header Auth',
-						value: 'headerAuth',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'n8n Auth',
+						value: 'n8nAuth',
 					},
 					{
 						name: 'None',
@@ -88,20 +115,74 @@ export class ChatTrigger implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
+				displayName: 'The chat will only be accessible to authenticated n8n users',
+				name: 'notice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						authentication: ['n8nAuth'],
+					},
+				},
+				default: '',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Open Chat and execute workflow',
+				name: 'openChat',
+				type: 'button',
+				typeOptions: {
+					action: 'openChat',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Hosted Chat',
+						value: 'hostedChat',
+						description: 'Make webhook and Chat-Website available',
+					},
+					// TODO: Reminder, if we change value of "testChat" also update in ChatEmbedModal.vue. Delete this line before merge!
+					{
+						name: 'Test Chat',
+						value: 'testChat',
+						description: 'Only use to test with the debug Chat',
+					},
+					{
+						name: 'Webhook',
+						value: 'webhook',
+						description: 'Make webhook available',
+					},
+				],
+				default: 'testChat',
+			},
+			{
 				displayName: 'Initial Messages',
 				name: 'initialMessages',
 				type: 'string',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat'],
+					},
+				},
 				typeOptions: {
 					rows: 3,
 				},
-				placeholder: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
-				default: '',
+				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
 			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat', 'webhook'],
+					},
+				},
 				placeholder: 'Add Field',
 				default: {},
 				options: [
@@ -109,6 +190,11 @@ export class ChatTrigger implements INodeType {
 						displayName: 'Input Placeholder',
 						name: 'inputPlaceholder',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
 						default: 'Type your question..',
 						placeholder: 'e.g. Type your message here',
 						description: 'Shown as placeholder text in the chat input field',
@@ -116,14 +202,56 @@ export class ChatTrigger implements INodeType {
 					{
 						displayName: 'Load Previous Session',
 						name: 'loadPreviousSession',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to support the request to load messages of a previous session',
+						type: 'options',
+						options: [
+							// TODO: Think about how options should be called
+							{
+								name: 'Not Supported',
+								value: 'notSupported',
+								description: 'Loading of previous sessions is not supported',
+							},
+							{
+								name: 'From Memory',
+								value: 'memory',
+								description: 'Load sessions from memory',
+							},
+							{
+								name: 'Manually',
+								value: 'manually',
+								description: 'Manually return session messages',
+							},
+						],
+						default: 'notSupported',
+						description: 'If loading messages of a previous session should be supported',
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [
+							{
+								name: 'When Last Node Finishes',
+								value: 'lastNode',
+								description: 'Returns data of the last-executed node',
+							},
+							{
+								name: "Using 'Respond to Webhook' Node",
+								value: 'responseNode',
+								description: 'Response defined in that node',
+							},
+						],
+						default: 'lastNode',
+						description: 'When and how to respond to the webhook',
 					},
 					{
 						displayName: 'Start Conversation Button Text',
 						name: 'getStarted',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
 						default: 'New Conversation',
 						placeholder: 'e.g. New Conversation',
 						description: 'Shown at the start of the chat, in the middle of the chat window',
@@ -132,6 +260,11 @@ export class ChatTrigger implements INodeType {
 						displayName: 'Subtitle',
 						name: 'subtitle',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
 						default: "Start a chat. We're here to help you 24/7.",
 						placeholder: "e.g. We're here for you",
 						description: 'Shown at the top of the chat, under the title',
@@ -140,6 +273,11 @@ export class ChatTrigger implements INodeType {
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
 						default: 'Hi there! 👋',
 						placeholder: 'e.g. Welcome',
 						description: 'Shown at the top of the chat',
@@ -150,71 +288,92 @@ export class ChatTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const webhookName = this.getWebhookName();
-		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 		const res = this.getResponseObject();
 
-		try {
-			await validateAuth(this);
-		} catch (error) {
-			if (error) {
-				res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
-				res.end(error.message);
-				return { noWebhookResponse: true };
-			}
-			throw error;
-		}
-
-		const options = this.getNodeParameter('options', {}) as {
-			getStarted?: string;
-			inputPlaceholder?: string;
-			loadPreviousSession?: boolean;
-			subtitle?: string;
-			title?: string;
-		};
-
-		// Show the chat on GET request
-		if (webhookName === 'setup') {
-			const webhookUrlRaw = this.getNodeWebhookUrl('default') as string;
-			const webhookUrl =
-				mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
-			const authentication = this.getNodeParameter('authentication') as
-				| 'none'
-				| 'basicAuth'
-				| 'headerAuth';
-			const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
-			const initialMessages = initialMessagesRaw
-				.split('\n')
-				.filter((line) => line)
-				.map((line) => line.trim());
-			const instanceId = this.getInstanceId();
-
-			const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
-
-			const page = createPage({
-				i18n: {
-					en: i18nConfig,
-				},
-				initialMessages,
-				webhookUrl,
-				mode,
-				instanceId,
-				authentication,
-			});
-
-			res.status(200).send(page).end();
+		const nodeMode = this.getNodeParameter('mode', 'testChat') as string;
+		if (nodeMode === 'testChat') {
+			res.status(404).end();
 			return {
 				noWebhookResponse: true,
 			};
 		}
 
+		const webhookName = this.getWebhookName();
+		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = this.getBodyData() ?? {};
 
-		if (options.loadPreviousSession !== true && bodyData.action === 'loadPreviousSession') {
-			// If messages of a previous session should not be loaded, simply return an empty array
-			return {
-				webhookResponse: { data: [] },
-			};
+		const options = this.getNodeParameter('options', {}) as {
+			getStarted?: string;
+			inputPlaceholder?: string;
+			loadPreviousSession?: 'manually' | 'memory' | 'notSupported';
+			subtitle?: string;
+			title?: string;
+		};
+
+		if (nodeMode === 'hostedChat') {
+			try {
+				await validateAuth(this);
+			} catch (error) {
+				if (error) {
+					res.writeHead(error.responseCode, { 'www-authenticate': 'Basic realm="Webhook"' });
+					res.end(error.message);
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
+
+			// Show the chat on GET request
+			if (webhookName === 'setup') {
+				const webhookUrlRaw = this.getNodeWebhookUrl('default') as string;
+				const webhookUrl =
+					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
+				const authentication = this.getNodeParameter('authentication') as
+					| 'none'
+					| 'basicAuth'
+					| 'n8nAuth';
+				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
+				const initialMessages = initialMessagesRaw
+					.split('\n')
+					.filter((line) => line)
+					.map((line) => line.trim());
+				const instanceId = this.getInstanceId();
+
+				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
+
+				const page = createPage({
+					i18n: {
+						en: i18nConfig,
+					},
+					initialMessages,
+					webhookUrl,
+					mode,
+					instanceId,
+					authentication,
+				});
+
+				res.status(200).send(page).end();
+				return {
+					noWebhookResponse: true,
+				};
+			}
+		}
+
+		if (bodyData.action === 'loadPreviousSession') {
+			if (options?.loadPreviousSession === 'memory') {
+				const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+					| BaseChatMemory
+					| undefined;
+				const messages = await memory?.chatHistory.getMessages();
+
+				return {
+					webhookResponse: { data: messages },
+				};
+			} else if (options?.loadPreviousSession === 'notSupported') {
+				// If messages of a previous session should not be loaded, simply return an empty array
+				return {
+					webhookResponse: { data: [] },
+				};
+			}
 		}
 
 		const returnData: IDataObject = {};

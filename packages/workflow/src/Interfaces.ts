@@ -922,6 +922,11 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	getInputConnectionData(
+		inputName: ConnectionTypes,
+		itemIndex: number,
+		inputIndex?: number,
+	): Promise<unknown>;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -1315,7 +1320,7 @@ export interface SupplyData {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData>;
+	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;

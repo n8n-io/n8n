@@ -227,6 +227,7 @@ import {
 	EnterpriseEditionFeature,
 	REGULAR_NODE_CREATOR_VIEW,
 	NODE_CREATOR_OPEN_SOURCES,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
@@ -676,8 +677,13 @@ export default defineComponent({
 			return this.triggerNodes.length > 0;
 		},
 		containsChatNodes(): boolean {
-			return !!this.nodes.find(
-				(node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
+			return (
+				!this.executionWaitingForWebhook &&
+				!!this.nodes.find(
+					(node) =>
+						[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
+						node.disabled !== true,
+				)
 			);
 		},
 		isExecutionDisabled(): boolean {
@@ -4269,7 +4275,7 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			if (message?.data?.includes('"command"')) {
+			if (typeof message?.data === 'string' && message?.data?.includes('"command"')) {
 				try {
 					const json = JSON.parse(message.data);
 					if (json && json.command === 'openWorkflow') {

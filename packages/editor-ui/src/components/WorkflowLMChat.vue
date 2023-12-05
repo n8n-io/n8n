@@ -119,6 +119,7 @@ import {
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
 	CHAT_EMBED_MODAL_KEY,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -128,11 +129,12 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IUser } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
@@ -236,18 +238,17 @@ export default defineComponent({
 		},
 
 		setConnectedNode() {
-			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
-			);
+			const triggerNode = this.getTriggerNode();
 
-			if (!triggerNode.length) {
+			if (!triggerNode) {
 				this.showError(
 					new Error('Chat Trigger Node could not be found!'),
 					'Trigger Node not found',
 				);
 				return;
 			}
+			const workflow = this.getCurrentWorkflow();
+
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
@@ -278,7 +279,7 @@ export default defineComponent({
 
 				const parentNodes = workflow.getParentNodes(node.name);
 				const isChatChild = parentNodes.some(
-					(parentNodeName) => parentNodeName === triggerNode[0].name,
+					(parentNodeName) => parentNodeName === triggerNode.name,
 				);
 
 				return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
@@ -301,7 +302,7 @@ export default defineComponent({
 
 			const workflow = this.getCurrentWorkflow();
 			const connectedMemoryInputs =
-				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
+				workflow.connectionsByDestinationNode[this.connectedNode.name][NodeConnectionType.AiMemory];
 			if (!connectedMemoryInputs) return [];
 
 			const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
@@ -322,7 +323,7 @@ export default defineComponent({
 						response?: {
 							chat_history?: unknown[];
 						};
-					} => get(data, 'data.memory.0.0.json')!,
+					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
 				)
 				?.find((data) =>
 					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
@@ -372,8 +373,8 @@ export default defineComponent({
 
 		getTriggerNode(): INode | null {
 			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
+			const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);
 
 			if (!triggerNode.length) {
@@ -393,7 +394,14 @@ export default defineComponent({
 				return;
 			}
 
-			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+			// TODO: This has to be cleaned up. Both should send the input via the same key
+			let inputKey = 'message';
+			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) {
+				inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+			}
+
+			const usersStore = useUsersStore();
+			const currentUser = usersStore.currentUser ?? ({} as IUser);
 
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
@@ -404,6 +412,8 @@ export default defineComponent({
 						[
 							{
 								json: {
+									sessionId: `manual-${currentUser.id || 'unknown'}`,
+									action: 'sendMessage',
 									[inputKey]: message,
 								},
 							},

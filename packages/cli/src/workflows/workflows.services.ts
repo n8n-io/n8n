@@ -432,6 +432,7 @@ export class WorkflowsService {
 			const needsWebhook = await Container.get(TestWebhooks).needsWebhookData(
 				workflowData,
 				workflow,
+				runData,
 				additionalData,
 				EXECUTION_MODE,
 				ACTIVATION_MODE,

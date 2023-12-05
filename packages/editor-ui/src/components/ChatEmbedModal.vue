@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
-import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '../constants';
+import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
@@ -43,11 +43,30 @@ const tabs = ref([
 const currentTab = ref('cdn');
 
 const webhookNode = computed(() => {
-	return workflowsStore.workflow.nodes.find((node) => node.type === WEBHOOK_NODE_TYPE);
+	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
+		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
+		if (node) {
+			// This has to be kept up-to-date with the mode in the Chat-Trigger node
+			if (type === CHAT_TRIGGER_NODE_TYPE && node.parameters.mode === 'testChat') {
+				continue;
+			}
+
+			return {
+				type,
+				node,
+			};
+		}
+	}
+
+	return null;
 });
 
 const webhookUrl = computed(() => {
-	return `${rootStore.getWebhookUrl}${webhookNode.value ? `/${webhookNode.value.webhookId}` : ''}`;
+	const url = `${rootStore.getWebhookUrl}${
+		webhookNode.value ? `/${webhookNode.value.node.webhookId}` : ''
+	}`;
+
+	return webhookNode.value?.type === CHAT_TRIGGER_NODE_TYPE ? `${url}/chat` : url;
 });
 
 function indentLines(code: string, indent: string = '	') {
