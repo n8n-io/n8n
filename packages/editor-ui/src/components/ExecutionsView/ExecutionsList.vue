@@ -445,7 +445,14 @@ export default defineComponent({
 						})
 						.catch(() => {});
 				} else if (this.executions.length === 0) {
-					this.$router.push({ name: VIEWS.EXECUTION_HOME }).catch(() => {});
+					this.$router
+						.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: {
+								name: this.currentWorkflow,
+							},
+						})
+						.catch(() => {});
 					this.workflowsStore.activeWorkflowExecution = null;
 				}
 			}
