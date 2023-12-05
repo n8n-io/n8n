@@ -23,7 +23,7 @@ import { Container } from 'typedi';
 
 export = {
 	createCredential: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		validCredentialType,
 		validCredentialsProperties,
 		async (
@@ -47,7 +47,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (
 			req: CredentialRequest.Delete,
 			res: express.Response,
@@ -55,7 +55,7 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (req.user.globalRole.name !== 'owner') {
+			if (!['owner', 'admin'].includes(req.user.globalRole.name)) {
 				const shared = await getSharedCredentials(req.user.id, credentialId, [
 					'credentials',
 					'role',
@@ -78,7 +78,7 @@ export = {
 	],
 
 	getCredentialType: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { credentialTypeName } = req.params;
 
