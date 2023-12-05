@@ -655,9 +655,10 @@ export default defineComponent({
 			}
 
 			if (
-				typeof this.activeNodeType?.outputs === 'string' ||
-				typeof this.activeNodeType?.inputs === 'string' ||
-				this.redrawRequired
+				this.activeNode &&
+				(typeof this.activeNodeType?.outputs === 'string' ||
+					typeof this.activeNodeType?.inputs === 'string' ||
+					this.redrawRequired)
 			) {
 				// TODO: We should keep track of if it actually changed and only do if required
 				// Whenever a node with custom inputs and outputs gets closed redraw it in case
@@ -668,7 +669,7 @@ export default defineComponent({
 				}, 1);
 			}
 
-			if (this.outputPanelEditMode.enabled) {
+			if (this.outputPanelEditMode.enabled && this.activeNode) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
@@ -680,13 +681,10 @@ export default defineComponent({
 
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
-
-					if (this.activeNode) {
-						try {
-							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
-						} catch (error) {
-							console.error(error);
-						}
+					try {
+						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+					} catch (error) {
+						console.error(error);
 					}
 				}
 
