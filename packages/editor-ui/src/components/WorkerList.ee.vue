@@ -21,7 +21,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { externalHooks } from '@/mixins/externalHooks';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -38,7 +37,7 @@ import WorkerCard from './Workers/WorkerCard.ee.vue';
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
+	mixins: [pushConnection, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
 	props: {
@@ -47,11 +46,13 @@ export default defineComponent({
 			default: true,
 		},
 	},
-	setup() {
+	setup(props, ctx) {
 		const i18n = useI18n();
 		return {
 			i18n,
 			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	data() {

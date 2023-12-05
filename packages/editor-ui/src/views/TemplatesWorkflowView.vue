@@ -70,6 +70,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
 import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -78,6 +79,13 @@ export default defineComponent({
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
@@ -109,7 +117,7 @@ export default defineComponent({
 				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
 					withPostHog: true,
 				});
-				await this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+				await this.externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 			}
 
 			await openTemplateCredentialSetup({

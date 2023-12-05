@@ -62,11 +62,9 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
 
 export default defineComponent({
 	name: 'VariableSelectorItem',
-	mixins: [externalHooks],
 	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
 	mounted() {
 		if (this.extended) return;

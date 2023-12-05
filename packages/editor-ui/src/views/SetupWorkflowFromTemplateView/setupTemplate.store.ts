@@ -28,6 +28,8 @@ import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -300,25 +302,23 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Skips the setup and goes directly to the workflow view.
 	 */
-	const skipSetup = async (opts: {
-		$externalHooks: IExternalHooks;
-		$telemetry: Telemetry;
-		$router: Router;
-	}) => {
-		const { $externalHooks, $telemetry, $router } = opts;
+	const skipSetup = async ({ router }: { router: Router }) => {
+		const externalHooks = useExternalHooks();
+		const telemetry = useTelemetry();
+
 		const telemetryPayload = {
 			source: 'workflow',
 			template_id: templateId.value,
 			wf_template_repo_session_id: templatesStore.currentSessionId,
 		};
 
-		await $externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-		$telemetry.track('User inserted workflow template', telemetryPayload, {
+		await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
+		telemetry.track('User inserted workflow template', telemetryPayload, {
 			withPostHog: true,
 		});
 
 		// Replace the URL so back button doesn't come back to this setup view
-		await $router.replace({
+		await router.replace({
 			name: VIEWS.TEMPLATE_IMPORT,
 			params: { id: templateId.value },
 		});
