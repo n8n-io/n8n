@@ -8,13 +8,13 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let uiStore: ReturnType<typeof useUIStore>;
-let usersStore: ReturnType<typeof useUsersStore>;
+let rbacStore: ReturnType<typeof useRBACStore>;
 
 const renderComponent = createComponentRenderer(MainSidebarSourceControl);
 
@@ -28,8 +28,8 @@ describe('MainSidebarSourceControl', () => {
 			},
 		});
 
-		usersStore = useUsersStore(pinia);
-		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
+		rbacStore = useRBACStore(pinia);
+		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
@@ -38,7 +38,7 @@ describe('MainSidebarSourceControl', () => {
 	});
 
 	it('should render nothing when not instance owner', async () => {
-		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
 		const { container } = renderComponent({ pinia, props: { isCollapsed: false } });
 		expect(container).toBeEmptyDOMElement();
 	});

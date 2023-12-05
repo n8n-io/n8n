@@ -23,7 +23,6 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
@@ -150,7 +149,7 @@ export class WorkflowsService {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.role', 'shared.user');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);
@@ -178,16 +177,14 @@ export class WorkflowsService {
 			findManyOptions,
 		)) as [ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[], number];
 
-		if (!hasSharing(workflows)) return { workflows, count };
-
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-
-		return {
-			workflows: workflows.map((w) =>
-				Container.get(OwnershipService).addOwnedBy(w, workflowOwnerRole),
-			),
-			count,
-		};
+		return hasSharing(workflows)
+			? {
+					workflows: workflows.map((w) =>
+						Container.get(OwnershipService).addOwnedByAndSharedWith(w),
+					),
+					count,
+			  }
+			: { workflows, count };
 	}
 
 	static async update(

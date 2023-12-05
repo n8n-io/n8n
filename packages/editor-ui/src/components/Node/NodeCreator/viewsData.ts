@@ -36,6 +36,12 @@ import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+export interface NodeViewItemSection {
+	key: string;
+	title: string;
+	items: string[];
+}
+
 export interface NodeViewItem {
 	key: string;
 	type: string;
@@ -49,6 +55,7 @@ export interface NodeViewItem {
 		connectionType?: NodeConnectionType;
 		panelClass?: string;
 		group?: string[];
+		sections?: NodeViewItemSection[];
 		description?: string;
 		forceIncludeNodes?: string[];
 	};
@@ -342,6 +349,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: TRANSFORM_DATA_SUBCATEGORY,
 					icon: 'pen',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [],
+						},
+					],
 				},
 			},
 			{
