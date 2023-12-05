@@ -45,22 +45,21 @@ import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast, useExternalHooks } from '@/composables';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useRootStore,
-	useTemplatesStore,
-	useNodeTypesStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-	useUsageStore,
-	usePushConnectionStore,
-} from '@/stores';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useToast } from '@/composables/useToast';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
 import { initializeAuthenticatedFeatures } from '@/init';
 
 export default defineComponent({
@@ -93,7 +92,6 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
-			usePushConnectionStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -122,7 +120,6 @@ export default defineComponent({
 		void initializeAuthenticatedFeatures();
 
 		void runExternalHook('app.mount');
-		this.pushStore.pushConnect();
 		this.loading = false;
 	},
 	watch: {

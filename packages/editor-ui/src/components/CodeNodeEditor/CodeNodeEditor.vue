@@ -60,7 +60,8 @@ import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore, usePostHog } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { CODE_PLACEHOLDERS } from './constants';
@@ -68,7 +69,7 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 import AskAI from './AskAI/AskAI.vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'code-node-editor',

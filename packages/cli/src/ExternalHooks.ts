@@ -10,6 +10,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class ExternalHooks implements IExternalHooksClass {
@@ -71,12 +72,13 @@ export class ExternalHooks implements IExternalHooksClass {
 
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
-				} catch (error) {
-					throw new Error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						`Problem loading external hook file "${hookFilePath}": ${error.message}`,
-						{ cause: error as Error },
-					);
+				} catch (e) {
+					const error = e instanceof Error ? e : new Error(`${e}`);
+
+					throw new ApplicationError('Problem loading external hook file', {
+						extra: { errorMessage: error.message, hookFilePath },
+						cause: error,
+					});
 				}
 			}
 		}

@@ -62,8 +62,8 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IUserListAction } from '@/Interface';
-import { useToast } from '@/composables';
+import type { IRole, IUser, IUserListAction } from '@/Interface';
+import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -71,7 +71,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
-import { ROLE } from '@/utils';
+import { ROLE } from '@/utils/userUtils';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
@@ -92,7 +92,7 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 		showUMSetupWarning() {
-			return hasPermission(['role'], { role: [ROLE.Default] });
+			return hasPermission(['defaultUser']);
 		},
 		usersListActions(): IUserListAction[] {
 			return [
@@ -132,6 +132,21 @@ export default defineComponent({
 						this.settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
 				},
 			];
+		},
+		userRoles(): Array<{ value: IRole; label: string }> {
+			return [
+				{
+					value: ROLE.Member,
+					label: this.$locale.baseText('auth.roles.member'),
+				},
+				{
+					value: ROLE.Admin,
+					label: this.$locale.baseText('auth.roles.admin'),
+				},
+			];
+		},
+		canUpdateRole(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'user:update' } });
 		},
 	},
 	methods: {
@@ -219,6 +234,9 @@ export default defineComponent({
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+		},
+		async onRoleChange(user: IUser, name: IRole) {
+			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });
 		},
 	},
 });

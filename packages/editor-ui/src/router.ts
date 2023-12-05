@@ -8,13 +8,13 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import { ROLE, runExternalHook } from '@/utils';
-import { useSettingsStore } from './stores/settings.store';
-import { useTemplatesStore } from './stores/templates.store';
+import { runExternalHook } from '@/utils/externalHooks';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSSOStore } from './stores/sso.store';
+import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
@@ -42,6 +42,8 @@ const SigninView = async () => import('./views/SigninView.vue');
 const SignupView = async () => import('./views/SignupView.vue');
 const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
 const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+const SetupWorkflowFromTemplateView = async () =>
+	import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
 const CredentialsView = async () => import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
@@ -106,6 +108,28 @@ export const routes = [
 		name: VIEWS.TEMPLATE,
 		components: {
 			default: TemplatesWorkflowView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			telemetry: {
+				getProperties(route: RouteLocation) {
+					const templatesStore = useTemplatesStore();
+					return {
+						template_id: route.params.id,
+						wf_template_repo_session_id: templatesStore.currentSessionId,
+					};
+				},
+			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/templates/:id/setup',
+		name: VIEWS.TEMPLATE_SETUP,
+		components: {
+			default: SetupWorkflowFromTemplateView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -381,10 +405,7 @@ export const routes = [
 			default: SetupView,
 		},
 		meta: {
-			middleware: ['role'],
-			middlewareOptions: {
-				role: [ROLE.Default],
-			},
+			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -455,10 +476,7 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
-					middlewareOptions: {
-						role: [ROLE.Owner, ROLE.Member],
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -476,9 +494,11 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: ['user:create', 'user:update'],
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -521,9 +541,11 @@ export const routes = [
 					settingsView: SettingsSourceControl,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'sourceControl:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -542,9 +564,11 @@ export const routes = [
 					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:update'],
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -563,13 +587,15 @@ export const routes = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
 							return !settingsStore.isDesktopDeployment;
 						},
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'saml:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -588,9 +614,11 @@ export const routes = [
 					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'logStreaming:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
@@ -614,9 +642,11 @@ export const routes = [
 					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: ['communityPackage:list', 'communityPackage:update'],
+						},
 						custom: () => {
 							const settingsStore = useSettingsStore();
 							return settingsStore.isCommunityNodesFeatureEnabled;
@@ -652,9 +682,11 @@ export const routes = [
 					settingsView: SettingsLdapView,
 				},
 				meta: {
-					middleware: ['authenticated', 'role'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'ldap:manage',
+						},
 					},
 				},
 			},
@@ -665,12 +697,14 @@ export const routes = [
 					settingsView: SettingsAuditLogs,
 				},
 				meta: {
-					middleware: ['authenticated', 'role', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						custom: () => {
 							return !!useStorage('audit-logs').value;
 						},
-						role: [ROLE.Owner],
+						rbac: {
+							scope: 'auditLogs:manage',
+						},
 					},
 					telemetry: {
 						pageCategory: 'settings',

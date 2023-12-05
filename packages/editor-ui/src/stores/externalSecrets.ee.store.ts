@@ -5,13 +5,13 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as externalSecretsApi from '@/api/externalSecrets.ee';
 import { connectProvider } from '@/api/externalSecrets.ee';
-import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 import type { ExternalSecretsProvider } from '@/Interface';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
+	const rbacStore = useRBACStore();
 
 	const state = reactive({
 		providers: [] as ExternalSecretsProvider[],
@@ -65,7 +65,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	});
 
 	async function fetchAllSecrets() {
-		if (usersStore.isInstanceOwner) {
+		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
 				state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
 			} catch (error) {

@@ -145,7 +145,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';

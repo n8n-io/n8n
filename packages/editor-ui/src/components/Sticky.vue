@@ -108,7 +108,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isNumber, isString } from '@/utils';
+import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -122,7 +122,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useContextMenu } from '@/composables';
+import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',

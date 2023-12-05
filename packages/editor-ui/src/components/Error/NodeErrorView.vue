@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ getErrorMessage() }}</div>
+			<div class="error-message" v-text="getErrorMessage()" />
 			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
@@ -122,11 +122,16 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
+import type {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -170,6 +175,18 @@ export default defineComponent({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				return sanitizeHtml(
+					this.error.description +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
 			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
@@ -182,6 +199,20 @@ export default defineComponent({
 		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				const baseErrorMessageSubNode = this.$locale.baseText('nodeErrorView.errorSubNode', {
+					interpolate: { node: this.error.node.name },
+				});
+				return baseErrorMessageSubNode;
+			}
+
+			if (this.error.message === this.error.description) {
+				return baseErrorMessage;
+			}
 			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}

@@ -149,6 +149,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		isConnectionOpen,
 		addEventListener,
 		pushConnect,
+		pushDisconnect,
 		send,
 	};
 });

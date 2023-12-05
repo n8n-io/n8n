@@ -1,7 +1,7 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
-import { setGlobalState } from 'n8n-workflow';
+import { ApplicationError, setGlobalState } from 'n8n-workflow';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
@@ -53,7 +53,7 @@ if (!inE2ETests && !inTest) {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
-						throw new Error(`The file "${fileName}" could not be found.`);
+						throw new ApplicationError('File not found', { extra: { fileName } });
 					}
 					throw error;
 				}

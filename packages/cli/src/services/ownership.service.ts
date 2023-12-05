@@ -7,6 +7,7 @@ import { UserService } from './user.service';
 import type { Credentials, ListQuery } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class OwnershipService {
@@ -27,7 +28,7 @@ export class OwnershipService {
 
 		const workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 
-		if (!workflowOwnerRole) throw new Error('Failed to find workflow owner role');
+		if (!workflowOwnerRole) throw new ApplicationError('Failed to find workflow owner role');
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
 			where: { workflowId, roleId: workflowOwnerRole.id },

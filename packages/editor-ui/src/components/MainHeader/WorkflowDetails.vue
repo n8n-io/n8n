@@ -167,23 +167,24 @@ import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { MessageBoxInputData } from 'element-plus';
-import {
-	useUIStore,
-	useSettingsStore,
-	useWorkflowsStore,
-	useRootStore,
-	useTagsStore,
-	useUsersStore,
-	useUsageStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { genericHelpers } from '@/mixins/genericHelpers';
+import { hasPermission } from '@/rbac/permissions';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -247,10 +248,7 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		currentUserIsOwner(): boolean {
-			return this.usersStore.currentUser?.isOwner ?? false;
-		},
-		contextBasedTranslationKeys(): NestedRecord<string> {
+		contextBasedTranslationKeys() {
 			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isWorkflowActive(): boolean {
@@ -298,7 +296,7 @@ export default defineComponent({
 			].includes(this.$route.name || '');
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+			return getWorkflowPermissions(this.currentUser, this.workflow);
 		},
 		workflowMenuItems(): Array<{}> {
 			const actions = [
@@ -330,7 +328,7 @@ export default defineComponent({
 				);
 			}
 
-			if (this.currentUserIsOwner) {
+			if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
 				actions.push({
 					id: WORKFLOW_MENU_ACTIONS.PUSH,
 					label: this.$locale.baseText('menuActions.push'),
@@ -338,8 +336,7 @@ export default defineComponent({
 						!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
 						!this.onWorkflowPage ||
 						this.onExecutionsTab ||
-						this.readOnlyEnv ||
-						!this.currentUserIsOwner,
+						this.readOnlyEnv,
 				});
 			}
 

@@ -3,7 +3,6 @@ import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
 import { License } from '@/License';
-import { AuthError, InternalServerError } from '@/ResponseHelper';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
@@ -21,6 +20,9 @@ import type { SamlConfiguration } from './types/requests';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
