@@ -15,6 +15,7 @@ import {
 	randomInteger,
 	randomName,
 } from '../../integration/shared/random';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 const wfOwnerRole = () =>
 	Object.assign(new Role(), {
@@ -94,7 +95,7 @@ describe('OwnershipService', () => {
 	});
 
 	describe('addOwnedByAndSharedWith()', () => {
-		test('should add ownedBy and sharedWith to credential', async () => {
+		test('should add `ownedBy` and `sharedWith` to credential', async () => {
 			const owner = mockUser();
 			const editor = mockUser();
 
@@ -106,6 +107,36 @@ describe('OwnershipService', () => {
 			] as SharedCredentials[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
+
+			expect(ownedBy).toStrictEqual({
+				id: owner.id,
+				email: owner.email,
+				firstName: owner.firstName,
+				lastName: owner.lastName,
+			});
+
+			expect(sharedWith).toStrictEqual([
+				{
+					id: editor.id,
+					email: editor.email,
+					firstName: editor.firstName,
+					lastName: editor.lastName,
+				},
+			]);
+		});
+
+		test('should add `ownedBy` and `sharedWith` to workflow', async () => {
+			const owner = mockUser();
+			const editor = mockUser();
+
+			const workflow = new WorkflowEntity();
+
+			workflow.shared = [
+				{ role: mockCredRole('owner'), user: owner },
+				{ role: mockCredRole('editor'), user: editor },
+			] as SharedWorkflow[];
+
+			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(workflow);
 
 			expect(ownedBy).toStrictEqual({
 				id: owner.id,

@@ -5,7 +5,7 @@ import type {
 	IPollFunctions,
 	INode,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
 import get from 'lodash/get';
 import { apiRequest } from '../transport';
@@ -226,7 +226,9 @@ export class GoogleSheet {
 		}
 
 		if (requests.length === 0) {
-			throw new Error('Must specify at least one column or row to add');
+			throw new ApplicationError('Must specify at least one column or row to add', {
+				level: 'warning',
+			});
 		}
 
 		const response = await apiRequest.call(
