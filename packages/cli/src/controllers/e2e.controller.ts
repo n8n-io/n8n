@@ -49,6 +49,7 @@ type ResetRequest = Request<
 	{
 		owner: UserSetupPayload;
 		members: UserSetupPayload[];
+		admin: UserSetupPayload;
 	}
 >;
 
@@ -103,7 +104,7 @@ export class E2EController {
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
-		await this.setupUserManagement(req.body.owner, req.body.members);
+		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
 	@Post('/push')
@@ -160,19 +161,27 @@ export class E2EController {
 		}
 	}
 
-	private async setupUserManagement(owner: UserSetupPayload, members: UserSetupPayload[]) {
+	private async setupUserManagement(
+		owner: UserSetupPayload,
+		members: UserSetupPayload[],
+		admin: UserSetupPayload,
+	) {
 		const roles: Array<[Role['name'], Role['scope']]> = [
 			['owner', 'global'],
 			['member', 'global'],
+			['admin', 'global'],
 			['owner', 'workflow'],
 			['owner', 'credential'],
+			['admin', 'workflow'],
+			['admin', 'credential'],
 			['user', 'credential'],
 			['editor', 'workflow'],
 		];
 
-		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }] = await this.roleRepo.save(
-			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-		);
+		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }, { id: globalAdminRoleId }] =
+			await this.roleRepo.save(
+				roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
+			);
 
 		const instanceOwner = {
 			id: uuid(),
@@ -188,9 +197,16 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
+		const adminUser = {
+			id: uuid(),
+			...admin,
+			password: await hashPassword(admin.password),
+			globalRoleId: globalAdminRoleId,
+		};
+
 		const users = [];
 
-		users.push(instanceOwner);
+		users.push(instanceOwner, adminUser);
 
 		for (const { password, ...payload } of members) {
 			users.push(
