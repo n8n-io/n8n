@@ -46,7 +46,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			isDragging: false,
 			type: '',
 			data: '',
-			canDrop: false,
+			activeTargetId: null,
 			stickyPosition: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
@@ -94,7 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return this.draggable.data;
 		},
 		canDraggableDrop(): boolean {
-			return this.draggable.canDrop;
+			return this.draggable.activeTargetId !== null;
 		},
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
@@ -191,7 +191,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: true,
 				type,
 				data,
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
@@ -200,15 +200,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
 		setDraggableStickyPos(position: XYPosition | null): void {
 			this.draggable.stickyPosition = position;
 		},
-		setDraggableCanDrop(canDrop: boolean): void {
-			this.draggable.canDrop = canDrop;
+		setDraggableTargetId(id: string | null): void {
+			this.draggable.activeTargetId = id;
 		},
 		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
 			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };
