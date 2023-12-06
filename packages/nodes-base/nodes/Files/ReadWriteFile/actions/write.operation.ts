@@ -37,7 +37,8 @@ export const properties: INodeProperties[] = [
 				name: 'append',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to append to an existing file',
+				description:
+					"Whether to append to an existing file. While it's commonly used with text files, it's not limited to them, however, it wouldn't be applicable for file types that have a specific structure like most binary formats.",
 			},
 		],
 	},

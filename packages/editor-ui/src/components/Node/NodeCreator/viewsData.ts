@@ -29,6 +29,8 @@ import {
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	CONVERT_TO_FILE_NODE_TYPE,
+	EXTRACT_FROM_FILE_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -383,6 +385,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: FILES_SUBCATEGORY,
 					icon: 'file-alt',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [CONVERT_TO_FILE_NODE_TYPE, EXTRACT_FROM_FILE_NODE_TYPE],
+						},
+					],
 				},
 			},
 		],

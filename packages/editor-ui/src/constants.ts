@@ -157,6 +157,8 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
+export const EXTRACT_FROM_FILE_NODE_TYPE = 'n8n-nodes-base.extractFromFile';
+export const CONVERT_TO_FILE_NODE_TYPE = 'n8n-nodes-base.convertToFile';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
