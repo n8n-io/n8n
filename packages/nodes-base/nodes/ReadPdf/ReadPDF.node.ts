@@ -25,7 +25,7 @@ export class ReadPDF implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'File Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

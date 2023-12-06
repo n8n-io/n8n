@@ -9,13 +9,13 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
 		placeholder: 'e.g data',
-		description: 'Name of the binary property from which to extract the data',
+		hint: 'The name of the input binary field containing the file to be extracted',
 	},
 	{
 		displayName: 'Options',

@@ -279,7 +279,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'File Property',
+				displayName: 'Put Output File in Field',
 				displayOptions: {
 					show: {
 						operation: ['download'],
@@ -288,7 +288,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the output binary field to put the file in',
 				required: true,
 			},
 
@@ -375,7 +375,7 @@ export class Ftp implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'File Property',
+				displayName: 'Input Binary Field',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -385,7 +385,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the input binary field containing the file to be written',
 				required: true,
 			},
 			{

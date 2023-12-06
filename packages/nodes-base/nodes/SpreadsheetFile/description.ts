@@ -83,7 +83,7 @@ export const toFileProperties: INodeProperties[] = [
 		description: 'The format of the file to save the data as',
 	},
 	{
-		displayName: 'File Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -94,8 +94,7 @@ export const toFileProperties: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description:
-			'Name of the binary property in which to save the binary data of the spreadsheet file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 ];
 

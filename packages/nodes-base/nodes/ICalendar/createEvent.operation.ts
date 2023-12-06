@@ -46,11 +46,12 @@ export const description: INodeProperties[] = [
 		description: 'Whether the event lasts all day or not',
 	},
 	{
-		displayName: 'File Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
+		hint: 'The name of the output binary field to put the file in',
 		description: 'The field that your iCalendar file will be available under in the output',
 	},
 	{
