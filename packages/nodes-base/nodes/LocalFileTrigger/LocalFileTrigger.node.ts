@@ -180,6 +180,14 @@ export class LocalFileTrigger implements INodeType {
 						default: -1,
 						description: 'How deep into the folder structure to watch for changes',
 					},
+					{
+						displayName: 'Use Polling',
+						name: 'usePolling',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to use polling for watching. Typically necessary to successfully watch files over a network.',
+					},
 				],
 			},
 		],
@@ -206,6 +214,7 @@ export class LocalFileTrigger implements INodeType {
 			depth: [-1, undefined].includes(options.depth as number)
 				? undefined
 				: (options.depth as number),
+			usePolling: options.usePolling as boolean,
 		});
 
 		const executeTrigger = (event: string, pathString: string) => {
