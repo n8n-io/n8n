@@ -147,7 +147,6 @@ import type {
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
@@ -175,10 +174,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { useMessage } from '@/composables/useMessage';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
+	mixins: [nodeHelpers, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -198,12 +198,15 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props),
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -467,7 +470,7 @@ export default defineComponent({
 				this.avgInputRowHeight = 0;
 
 				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
-				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
+				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
@@ -691,7 +694,7 @@ export default defineComponent({
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
