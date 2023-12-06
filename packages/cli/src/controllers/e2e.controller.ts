@@ -172,8 +172,6 @@ export class E2EController {
 			['admin', 'global'],
 			['owner', 'workflow'],
 			['owner', 'credential'],
-			['admin', 'workflow'],
-			['admin', 'credential'],
 			['user', 'credential'],
 			['editor', 'workflow'],
 		];
