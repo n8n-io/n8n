@@ -60,7 +60,7 @@ export class ChainSummarizationV2 implements INodeType {
 			...baseDescription,
 			version: [2],
 			defaults: {
-				name: 'Summarization Chain V2',
+				name: 'Summarization Chain',
 				color: '#909298',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -78,16 +78,16 @@ export class ChainSummarizationV2 implements INodeType {
 					default: 'nodeInputJson',
 					options: [
 						{
-							name: 'Use JSON node input',
+							name: 'Use node input (JSON)',
 							value: 'nodeInputJson',
 							description:
-								'Summarize the data coming into this node from the previous one',
+								'Summarize the JSON data coming into this node from the previous one',
 						},
 						{
-							name: 'Use bianry node input',
+							name: 'Use node input (binary)',
 							value: 'nodeInputBinary',
 							description:
-								'Summarize the data coming into this node from the previous one',
+								'Summarize the binary data coming into this node from the previous one',
 						},
 						{
 							name: 'Use document loader',
@@ -123,7 +123,7 @@ export class ChainSummarizationV2 implements INodeType {
 					}
 				},
 				{
-					displayName: 'Chunk Size',
+					displayName: 'Characters Per Chunk',
 					name: 'chunkSize',
 					description: 'Controls the max size (in terms of number of characters) of the final document chunk',
 					type: 'number',
@@ -135,7 +135,7 @@ export class ChainSummarizationV2 implements INodeType {
 					}
 				},
 				{
-					displayName: 'Chunk Overlap',
+					displayName: 'Chunk Overlap (Characters)',
 					name: 'chunkOverlap',
 					type: 'number',
 					description: 'Specifies how much characters overlap there should be between chunks',
@@ -167,105 +167,127 @@ export class ChainSummarizationV2 implements INodeType {
 							},
 						},
 						{
-							displayName: 'Summarization Method',
-							name: 'summarizationMethod',
-							type: 'options',
-							description: 'The type of summarization to run',
-							default: 'map_reduce',
+							displayName: 'Summarization Method and Prompts',
+							name: 'summarizationMethodAndPrompts',
+							type: 'fixedCollection',
+							default: {
+								values: {
+									summarizationMethod: 'map_reduce',
+									prompt: DEFAULT_PROMPT_TEMPLATE,
+									combineMapPrompt: DEFAULT_PROMPT_TEMPLATE,
+								}
+							},
+							placeholder: 'Add Option',
+							typeOptions: {},
 							options: [
 								{
-									name: 'Map Reduce (Recommended)',
-									value: 'map_reduce',
-									description:
-										'Summarize each document (or chunk) individually, then summarize those summaries',
-								},
-								{
-									name: 'Refine',
-									value: 'refine',
-									description:
-										'Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat.',
-								},
-								{
-									name: 'Stuff',
-									value: 'stuff',
-									description: 'Pass all documents (or chunks) at once. Ideal for small datasets.',
-								},
-							],
-						},
-						{
-							displayName: 'Final Prompt to Combine',
-							name: 'combineMapPrompt',
-							type: 'string',
-							hint: 'The prompt to combine individual summaries',
-							displayOptions: {
-								hide: {
-									'/options.summarizationMethod': ['stuff', 'refine'],
-								},
-							},
-							default: DEFAULT_PROMPT_TEMPLATE,
-							typeOptions: {
-								rows: 6,
-							},
-						},
-						{
-							displayName: 'Individual Summary Prompt',
-							name: 'prompt',
-							type: 'string',
-							default: DEFAULT_PROMPT_TEMPLATE,
-							hint: 'The prompt to summarize an individual document (or chunk)',
-							displayOptions: {
-								hide: {
-									'/options.summarizationMethod': ['stuff', 'refine'],
-								},
-							},
-							typeOptions: {
-								rows: 6,
-							},
-						},
-						{
-							displayName: 'Prompt',
-							name: 'prompt',
-							type: 'string',
-							default: DEFAULT_PROMPT_TEMPLATE,
-							displayOptions: {
-								show: {
-									'/options.summarizationMethod': ['stuff'],
-								},
-							},
-							typeOptions: {
-								rows: 6,
-							},
-						},
-						{
-							displayName: 'Subsequent (Refine) Prompt',
-							name: 'refinePrompt',
-							type: 'string',
-							displayOptions: {
-								hide: {
-									'/options.summarizationMethod': ['stuff', 'map_reduce'],
-								},
-							},
-							default: REFINE_PROMPT_TEMPLATE,
-							hint: 'The prompt to refine the summary based on the next document (or chunk)',
-							typeOptions: {
-								rows: 6,
-							},
-						},
-						{
-							displayName: 'Initial Prompt',
-							name: 'refineQuestionPrompt',
-							type: 'string',
-							displayOptions: {
-								hide: {
-									'/options.summarizationMethod': ['stuff', 'map_reduce'],
-								},
-							},
-							default: DEFAULT_PROMPT_TEMPLATE,
-							hint: 'The prompt for the first document (or chunk)',
-							typeOptions: {
-								rows: 6,
-							},
-						},
+									name: 'values',
+									displayName: 'Values',
+									values: [
+										{
+											displayName: 'Summarization Method',
+											name: 'summarizationMethod',
+											type: 'options',
+											description: 'The type of summarization to run',
+											default: 'map_reduce',
+											options: [
+												{
+													name: 'Map Reduce (Recommended)',
+													value: 'map_reduce',
+													description:
+														'Summarize each document (or chunk) individually, then summarize those summaries',
+												},
+												{
+													name: 'Refine',
+													value: 'refine',
+													description:
+														'Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat.',
+												},
+												{
+													name: 'Stuff',
+													value: 'stuff',
+													description: 'Pass all documents (or chunks) at once. Ideal for small datasets.',
+												},
+											],
+										},
+										{
+											displayName: 'Final Prompt to Combine',
+											name: 'combineMapPrompt',
+											type: 'string',
+											hint: 'The prompt to combine individual summaries',
+											displayOptions: {
+												hide: {
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'refine'],
+												},
+											},
+											default: DEFAULT_PROMPT_TEMPLATE,
+											typeOptions: {
+												rows: 9,
+											},
+										},
+										{
+											displayName: 'Individual Summary Prompt',
+											name: 'prompt',
+											type: 'string',
+											default: DEFAULT_PROMPT_TEMPLATE,
+											hint: 'The prompt to summarize an individual document (or chunk)',
+											displayOptions: {
+												hide: {
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'refine'],
+												},
+											},
+											typeOptions: {
+												rows: 9,
+											},
+										},
+										{
+											displayName: 'Prompt',
+											name: 'prompt',
+											type: 'string',
+											default: DEFAULT_PROMPT_TEMPLATE,
+											displayOptions: {
+												hide: {
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['refine', 'map_reduce'],
+												},
+											},
+											typeOptions: {
+												rows: 9,
+											},
+										},
+										{
+											displayName: 'Subsequent (Refine) Prompt',
+											name: 'refinePrompt',
+											type: 'string',
+											displayOptions: {
+												hide: {
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'map_reduce'],
+												},
+											},
+											default: REFINE_PROMPT_TEMPLATE,
+											hint: 'The prompt to refine the summary based on the next document (or chunk)',
+											typeOptions: {
+												rows: 9,
+											},
+										},
+										{
+											displayName: 'Initial Prompt',
+											name: 'refineQuestionPrompt',
+											type: 'string',
+											displayOptions: {
+												hide: {
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'map_reduce'],
+												},
+											},
+											default: DEFAULT_PROMPT_TEMPLATE,
+											hint: 'The prompt for the first document (or chunk)',
+											typeOptions: {
+												rows: 9,
+											},
+										},
+									]
+								}
+							]
+						}
 					],
 				},
 			],
@@ -277,8 +299,6 @@ export class ChainSummarizationV2 implements INodeType {
 		const operationMode = this.getNodeParameter('operationMode', 0, 'nodeInputJson') as 'nodeInputJson' | 'nodeInputBinary' |'documentLoader';
 		const chunkingMode = this.getNodeParameter('chunkingMode', 0, 'simple') as 'simple' | 'advanced';
 
-		// const type = this.getNodeParameter('options.type', 0) as 'map_reduce' | 'stuff' | 'refine';
-
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
@@ -289,16 +309,19 @@ export class ChainSummarizationV2 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const summarizationMethod = this.getNodeParameter('options.summarizationMethod', itemIndex, 'map_reduce') as 'map_reduce' | 'stuff' | 'refine';
-
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
+			const summarizationMethodAndPrompts = this.getNodeParameter('options.summarizationMethodAndPrompts.values', itemIndex, {}) as {
 				prompt?: string;
 				refineQuestionPrompt?: string;
 				refinePrompt?: string;
+				summarizationMethod: 'map_reduce' | 'stuff' | 'refine';
 				combineMapPrompt?: string;
 			};
 
-			const chainArgs = getChainPromptsArgs(summarizationMethod, options)
+			const chainArgs = getChainPromptsArgs(
+				summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
+				summarizationMethodAndPrompts
+			)
+
 			const chain = loadSummarizationChain(model, chainArgs);
 			const item = items[itemIndex];
 

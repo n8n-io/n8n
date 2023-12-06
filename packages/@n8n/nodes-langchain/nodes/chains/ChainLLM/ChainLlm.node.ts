@@ -239,7 +239,7 @@ export class ChainLlm implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
-			getTemplateNoticeField(1951),
+			getTemplateNoticeField(1978),
 			{
 				displayName: 'Prompt',
 				name: 'prompt',
