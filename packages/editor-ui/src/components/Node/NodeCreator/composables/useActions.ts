@@ -16,6 +16,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
+	OPEN_AI_ASSISTANT_NODE_TYPE,
 	QA_CHAIN_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -180,14 +181,15 @@ export const useActions = () => {
 	}
 	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
 		const { allNodes } = useWorkflowsStore();
-		const { openSource } = useNodeCreatorStore();
+
 
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
 			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
+			OPEN_AI_ASSISTANT_NODE_TYPE,
 		]
-		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
+
 		const isChatTriggerMissing = allNodes.find((node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) === undefined;
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 
