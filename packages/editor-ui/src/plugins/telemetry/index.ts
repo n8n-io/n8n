@@ -99,7 +99,7 @@ export class Telemetry {
 	track(
 		event: string,
 		properties?: ITelemetryTrackProperties,
-		{ withPostHog } = { withPostHog: false },
+		{ withPostHog, withAppCues } = { withPostHog: false, withAppCues },
 	) {
 		if (!this.rudderStack) return;
 
@@ -112,6 +112,10 @@ export class Telemetry {
 
 		if (withPostHog) {
 			usePostHog().capture(event, updatedProperties);
+		}
+
+		if (withAppCues && window.Appcues) {
+			window.Appcues.track(event, updatedProperties);
 		}
 	}
 
