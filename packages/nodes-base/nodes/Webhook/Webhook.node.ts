@@ -273,21 +273,8 @@ export class Webhook extends Node {
 		try {
 			await pipeline(req, createWriteStream(binaryFile.path));
 
-			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			const fileName = req.contentDisposition?.filename ?? uuid();
-
-			const binaryData = await context.nodeHelpers.copyBinaryFile(
-				binaryFile.path,
-				fileName,
-				req.contentType ?? 'application/octet-stream',
-			);
-
 			const returnItem: INodeExecutionData = {
-				binary: binaryData.data
-					? {
-							[binaryPropertyName]: binaryData,
-					  }
-					: {},
+				binary: {},
 				json: {
 					headers: req.headers,
 					params: req.params,
@@ -295,6 +282,20 @@ export class Webhook extends Node {
 					body: {},
 				},
 			};
+
+			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+			const fileName = req.contentDisposition?.filename ?? uuid();
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
+				binaryFile.path,
+				fileName,
+				req.contentType ?? 'application/octet-stream',
+			);
+
+			if (!binaryData.data) {
+				return { workflowData: [[returnItem]] };
+			}
+
+			returnItem.binary![binaryPropertyName] = binaryData;
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {
