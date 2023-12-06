@@ -20,7 +20,6 @@ export class ExtractFromFile implements INodeType {
 		description: 'Convert binary data to JSON',
 		defaults: {
 			name: 'Extract From File',
-			color: '#999999',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -18,7 +18,6 @@ export class ReadWriteFile implements INodeType {
 		description: 'Read or write files from the computer that runs n8n',
 		defaults: {
 			name: 'Read/Write Files from Disk',
-			color: '#999999',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

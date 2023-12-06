@@ -21,7 +21,6 @@ export class ConvertToFile implements INodeType {
 		description: 'Convert JSON data to binary data',
 		defaults: {
 			name: 'Convert to File',
-			color: '#999999',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
