@@ -3150,6 +3150,7 @@ export function getExecuteFunctions(
 						parentWorkflowId: workflow.id?.toString(),
 						inputData,
 						parentWorkflowSettings: workflow.settings,
+						node,
 					})
 					.then(async (result) =>
 						Container.get(BinaryDataService).duplicateBinaryData(

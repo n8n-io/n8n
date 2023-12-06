@@ -5,7 +5,13 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeOperationError,
+	jsonParse,
+	validateFieldType,
+	ApplicationError,
+} from 'n8n-workflow';
 
 import set from 'lodash/set';
 import get from 'lodash/get';
@@ -101,7 +107,9 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new Error(`The include option "${options.include}" is not known!`);
+			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+				level: 'warning',
+			});
 	}
 
 	for (const key of Object.keys(newFields)) {

@@ -1,33 +1,32 @@
-import { computed, nextTick, ref } from 'vue';
-import { defineStore } from 'pinia';
-import { v4 as uuid } from 'uuid';
-import type {
-	NodeConnectionType,
-	INodeCreateElement,
-	NodeFilterType,
-	SimplifiedNodeType,
-} from '@/Interface';
+import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
 	AI_CODE_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
+import { defineStore } from 'pinia';
+import { v4 as uuid } from 'uuid';
+import { computed, nextTick, ref } from 'vue';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { useKeyboardNavigation } from './useKeyboardNavigation';
 import {
-	transformNodeType,
-	subcategorizeItems,
-	sortNodeCreateElements,
+	flattenCreateElements,
+	groupItemsInSections,
 	searchNodes,
+	sortNodeCreateElements,
+	subcategorizeItems,
+	transformNodeType,
 } from '../utils';
-import { useI18n } from '@/composables/useI18n';
 
-import type { INodeInputFilter } from 'n8n-workflow';
+import type { NodeViewItem, NodeViewItemSection } from '@/components/Node/NodeCreator/viewsData';
+import { AINodesView } from '@/components/Node/NodeCreator/viewsData';
+import { useI18n } from '@/composables/useI18n';
+import { useKeyboardNavigation } from './useKeyboardNavigation';
+
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
+import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
 
 interface ViewStack {
 	uuid?: string;
@@ -55,6 +54,7 @@ interface ViewStack {
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
+	sections?: NodeViewItemSection[];
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -72,7 +72,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (stack.search && searchBaseItems.value) {
 			const searchBase =
-				searchBaseItems.value.length > 0 ? searchBaseItems.value : stack.baselineItems;
+				searchBaseItems.value.length > 0
+					? searchBaseItems.value
+					: flattenCreateElements(stack.baselineItems ?? []);
 
 			return extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 		}
@@ -83,10 +85,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack) return {};
 
+		const flatBaselineItems = flattenCreateElements(stack.baselineItems ?? []);
+
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: (stack.baselineItems || []).length > 8 || stack?.hasSearch,
+			hasSearch: flatBaselineItems.length > 8 || stack?.hasSearch,
 		};
 	});
 
@@ -113,6 +117,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			return !activeStackItems.value.find((activeItem) => activeItem.key === item.key);
 		});
 	});
+
+	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
 
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
@@ -182,10 +188,19 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		let stackItems =
-			stack?.items ??
-			subcategorizeItems(nodeCreatorStore.mergedNodes)[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ??
-			[];
+		let stackItems = stack?.items ?? [];
+
+		if (!stack?.items) {
+			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
+			const itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			const sections = stack.sections;
+
+			if (sections) {
+				stackItems = groupItemsInSections(itemsInSubcategory, sections);
+			} else {
+				stackItems = itemsInSubcategory;
+			}
+		}
 
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched

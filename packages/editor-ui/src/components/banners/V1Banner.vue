@@ -1,15 +1,17 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useUIStore } from '@/stores/ui.store';
 
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 
 async function dismissPermanently() {
 	await uiStore.dismissBanner('V1', 'permanent');
 }
+
+const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 </script>
 
 <template>
@@ -17,7 +19,7 @@ async function dismissPermanently() {
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a
-				v-if="usersStore.isInstanceOwner"
+				v-if="hasOwnerPermission"
 				:class="$style.link"
 				@click="dismissPermanently"
 				data-test-id="banner-confirm-v1"

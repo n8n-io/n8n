@@ -19,9 +19,13 @@ import type {
 import type { Telemetry } from '@/plugins/telemetry';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import type { IWorkflowTemplateNodeWithCredentials } from '@/utils/templates/templateTransforms';
+import type {
+	TemplateCredentialKey,
+	IWorkflowTemplateNodeWithCredentials,
+} from '@/utils/templates/templateTransforms';
 import {
 	hasNodeCredentials,
+	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
 
@@ -37,6 +41,11 @@ export type RequiredCredentials = {
 };
 
 export type CredentialUsages = {
+	/**
+	 * Key is a combination of the credential name and the credential type name,
+	 * e.g. "twitter-twitterOAuth1Api"
+	 */
+	key: TemplateCredentialKey;
 	credentialName: string;
 	credentialType: string;
 	nodeTypeName: string;
@@ -65,30 +74,32 @@ export const getNodesRequiringCredentials = (
 	return template.workflow.nodes.filter(hasNodeCredentials);
 };
 
-export const groupNodeCredentialsByName = (nodes: IWorkflowTemplateNodeWithCredentials[]) => {
-	const credentialsByName = new Map<string, CredentialUsages>();
+export const groupNodeCredentialsByKey = (nodes: IWorkflowTemplateNodeWithCredentials[]) => {
+	const credentialsByTypeName = new Map<TemplateCredentialKey, CredentialUsages>();
 
 	for (const node of nodes) {
 		const normalizedCreds = normalizeTemplateNodeCredentials(node.credentials);
 		for (const credentialType in normalizedCreds) {
 			const credentialName = normalizedCreds[credentialType];
+			const key = keyFromCredentialTypeAndName(credentialType, credentialName);
 
-			let credentialUsages = credentialsByName.get(credentialName);
+			let credentialUsages = credentialsByTypeName.get(key);
 			if (!credentialUsages) {
 				credentialUsages = {
+					key,
 					nodeTypeName: node.type,
 					credentialName,
 					credentialType,
 					usedBy: [],
 				};
-				credentialsByName.set(credentialName, credentialUsages);
+				credentialsByTypeName.set(key, credentialUsages);
 			}
 
 			credentialUsages.usedBy.push(node);
 		}
 	}
 
-	return credentialsByName;
+	return credentialsByTypeName;
 };
 
 export const getAppCredentials = (
@@ -154,8 +165,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	 * Credentials user has selected from the UI. Map from credential
 	 * name in the template to the credential ID.
 	 */
-	const selectedCredentialIdByName = ref<
-		Record<CredentialUsages['credentialName'], ICredentialsResponse['id']>
+	const selectedCredentialIdByKey = ref<
+		Record<CredentialUsages['key'], ICredentialsResponse['id']>
 	>({});
 
 	//#endregion State
@@ -185,12 +196,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return nodeType ? getAppNameFromNodeName(nodeType.displayName) : nodeTypeName;
 	};
 
-	const credentialsByName = computed(() => {
-		return groupNodeCredentialsByName(nodesRequiringCredentialsSorted.value);
+	const credentialsByKey = computed(() => {
+		return groupNodeCredentialsByKey(nodesRequiringCredentialsSorted.value);
 	});
 
 	const credentialUsages = computed(() => {
-		return Array.from(credentialsByName.value.values());
+		return Array.from(credentialsByKey.value.values());
 	});
 
 	const appCredentials = computed(() => {
@@ -198,30 +209,22 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	});
 
 	const credentialOverrides = computed(() => {
-		const overrides: Record<string, INodeCredentialsDetails> = {};
+		const overrides: Record<TemplateCredentialKey, INodeCredentialsDetails> = {};
 
-		for (const credentialNameInTemplate of Object.keys(selectedCredentialIdByName.value)) {
-			const credentialId = selectedCredentialIdByName.value[credentialNameInTemplate];
-			if (!credentialId) {
-				continue;
-			}
-
+		for (const [key, credentialId] of Object.entries(selectedCredentialIdByKey.value)) {
 			const credential = credentialsStore.getCredentialById(credentialId);
 			if (!credential) {
 				continue;
 			}
 
-			overrides[credentialNameInTemplate] = {
+			// Object.entries fails to give the more accurate key type
+			overrides[key as TemplateCredentialKey] = {
 				id: credentialId,
 				name: credential.name,
 			};
 		}
 
 		return overrides;
-	});
-
-	const numCredentialsLeft = computed(() => {
-		return credentialUsages.value.length - Object.keys(selectedCredentialIdByName.value).length;
 	});
 
 	//#endregion Getters
@@ -255,7 +258,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			const availableCreds = credentialsStore.getCredentialsByType(credUsage.credentialType);
 
 			if (availableCreds.length === 1) {
-				selectedCredentialIdByName.value[credUsage.credentialName] = availableCreds[0].id;
+				selectedCredentialIdByKey.value[credUsage.key] = availableCreds[0].id;
 			}
 		}
 	};
@@ -279,7 +282,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	const init = async () => {
 		isLoading.value = true;
 		try {
-			selectedCredentialIdByName.value = {};
+			selectedCredentialIdByKey.value = {};
 
 			await Promise.all([
 				credentialsStore.fetchAllCredentials(),
@@ -349,26 +352,26 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		}
 	};
 
-	const setSelectedCredentialId = (credentialName: string, credentialId: string) => {
-		selectedCredentialIdByName.value[credentialName] = credentialId;
+	const setSelectedCredentialId = (credentialKey: TemplateCredentialKey, credentialId: string) => {
+		selectedCredentialIdByKey.value[credentialKey] = credentialId;
 	};
 
-	const unsetSelectedCredential = (credentialName: string) => {
-		delete selectedCredentialIdByName.value[credentialName];
+	const unsetSelectedCredential = (credentialKey: TemplateCredentialKey) => {
+		delete selectedCredentialIdByKey.value[credentialKey];
 	};
 
 	//#endregion Actions
 
 	return {
-		credentialsByName,
+		credentialsByKey,
 		isLoading,
 		isSaving,
 		appCredentials,
 		nodesRequiringCredentialsSorted,
 		template,
 		credentialUsages,
-		selectedCredentialIdByName,
-		numCredentialsLeft,
+		selectedCredentialIdByKey,
+		credentialOverrides,
 		createWorkflow,
 		skipSetup,
 		init,
