@@ -1,5 +1,5 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
+import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import config from '@/config';
@@ -78,8 +78,8 @@ export class PermissionChecker {
 
 	static async checkSubworkflowExecutePolicy(
 		subworkflow: Workflow,
-		userId: string,
-		parentWorkflowId?: string,
+		parentWorkflowId: string,
+		node?: INode,
 	) {
 		/**
 		 * Important considerations: both the current workflow and the parent can have empty IDs.
@@ -101,15 +101,22 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
+		const parentWorkflowOwner =
+			await Container.get(OwnershipService).getWorkflowOwnerCached(parentWorkflowId);
+
 		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
 			subworkflow.id,
 		);
 
-		const errorToThrow = new SubworkflowOperationError(
-			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
-			subworkflowOwner.id === userId
+		const description =
+			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+
+		const errorToThrow = new WorkflowOperationError(
+			`Target workflow ID ${subworkflow.id} may not be called`,
+			node,
+			description,
 		);
 
 		if (policy === 'none') {
@@ -130,10 +137,8 @@ export class PermissionChecker {
 			}
 		}
 
-		if (policy === 'workflowsFromSameOwner') {
-			if (subworkflowOwner?.id !== userId) {
-				throw errorToThrow;
-			}
+		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
+			throw errorToThrow;
 		}
 	}
 
