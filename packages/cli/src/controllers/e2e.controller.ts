@@ -16,6 +16,7 @@ import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
+import { CacheService } from '@/services/cache.service';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -49,6 +50,7 @@ type ResetRequest = Request<
 	{
 		owner: UserSetupPayload;
 		members: UserSetupPayload[];
+		admin: UserSetupPayload;
 	}
 >;
 
@@ -92,6 +94,7 @@ export class E2EController {
 		private userRepo: UserRepository,
 		private workflowRunner: ActiveWorkflowRunner,
 		private mfaService: MfaService,
+		private cacheService: CacheService,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -103,7 +106,8 @@ export class E2EController {
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
-		await this.setupUserManagement(req.body.owner, req.body.members);
+		await this.resetCache();
+		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
 	@Post('/push')
@@ -160,19 +164,25 @@ export class E2EController {
 		}
 	}
 
-	private async setupUserManagement(owner: UserSetupPayload, members: UserSetupPayload[]) {
+	private async setupUserManagement(
+		owner: UserSetupPayload,
+		members: UserSetupPayload[],
+		admin: UserSetupPayload,
+	) {
 		const roles: Array<[Role['name'], Role['scope']]> = [
 			['owner', 'global'],
 			['member', 'global'],
+			['admin', 'global'],
 			['owner', 'workflow'],
 			['owner', 'credential'],
 			['user', 'credential'],
 			['editor', 'workflow'],
 		];
 
-		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }] = await this.roleRepo.save(
-			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-		);
+		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }, { id: globalAdminRoleId }] =
+			await this.roleRepo.save(
+				roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
+			);
 
 		const instanceOwner = {
 			id: uuid(),
@@ -188,9 +198,16 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
+		const adminUser = {
+			id: uuid(),
+			...admin,
+			password: await hashPassword(admin.password),
+			globalRoleId: globalAdminRoleId,
+		};
+
 		const users = [];
 
-		users.push(instanceOwner);
+		users.push(instanceOwner, adminUser);
 
 		for (const { password, ...payload } of members) {
 			users.push(
@@ -211,5 +228,9 @@ export class E2EController {
 		);
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
+	}
+
+	private async resetCache() {
+		await this.cacheService.reset();
 	}
 }
