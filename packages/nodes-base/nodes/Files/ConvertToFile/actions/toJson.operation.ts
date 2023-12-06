@@ -40,23 +40,25 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Encoding',
-				name: 'encoding',
-				type: 'options',
-				options: encodeDecodeOptions,
-				default: 'utf8',
-				description: 'Set the encoding of the data stream',
-			},
-			{
-				displayName: 'Add BOM',
+				displayName: 'Add Byte Order Mark (BOM)',
 				name: 'addBOM',
 				type: 'boolean',
 				default: false,
+				description:
+					'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
 				displayOptions: {
 					show: {
 						encoding: ['utf8', 'cesu8', 'ucs2'],
 					},
 				},
+			},
+			{
+				displayName: 'Encoding',
+				name: 'encoding',
+				type: 'options',
+				options: encodeDecodeOptions,
+				default: 'utf8',
+				description: 'Choose the character set that would be used to encode the data',
 			},
 			{
 				displayName: 'File Name',

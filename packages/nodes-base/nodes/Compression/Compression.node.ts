@@ -88,13 +88,27 @@ export class Compression implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['compress', 'decompress'],
+						operation: ['compress'],
 					},
 				},
 				placeholder: 'e.g. data,data2,data3',
-				hint: 'The name of the input fields containing the files to compress or decompress',
+				hint: 'The name of the input binary field(s) containing the file to be written',
 				description:
 					'To process more than one file, use a comma-separated list of the binary fields names',
+			},
+			{
+				displayName: 'IPut Output File in Field',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['decompress'],
+					},
+				},
+				placeholder: 'e.g. data,data2,data3',
+				hint: 'The name of the output binary field to put the decompressed file in',
 			},
 			{
 				displayName: 'Output Format',

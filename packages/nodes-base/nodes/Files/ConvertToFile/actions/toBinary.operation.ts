@@ -35,6 +35,19 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Add Byte Order Mark (BOM)',
+				description:
+					'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
+				name: 'addBOM',
+				displayOptions: {
+					show: {
+						encoding: ['utf8', 'cesu8', 'ucs2'],
+					},
+				},
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Data Is Base64',
 				name: 'dataIsBase64',
 				type: 'boolean',
@@ -47,18 +60,12 @@ export const properties: INodeProperties[] = [
 				type: 'options',
 				options: encodeDecodeOptions,
 				default: 'utf8',
-				description: 'Set the encoding of the data stream',
-			},
-			{
-				displayName: 'Add BOM',
-				name: 'addBOM',
+				description: 'Choose the character set that would be used to encode the data',
 				displayOptions: {
-					show: {
-						encoding: ['utf8', 'cesu8', 'ucs2'],
+					hide: {
+						dataIsBase64: [true],
 					},
 				},
-				type: 'boolean',
-				default: false,
 			},
 			{
 				displayName: 'File Name',

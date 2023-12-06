@@ -10,11 +10,11 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			operation: ['iCal'],
 		},
 	},
-	createEvent.description.filter((property) => property.name !== 'binaryPropertyName'),
+	createEvent.description,
 );
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
-	const returnData: INodeExecutionData[] = [];
+	const returnData = await createEvent.execute.call(this, items);
 
 	return returnData;
 }
