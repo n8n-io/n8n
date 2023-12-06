@@ -1,5 +1,5 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import config from '@/config';
@@ -11,8 +11,6 @@ import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 export class PermissionChecker {
 	/**
@@ -78,7 +76,11 @@ export class PermissionChecker {
 		});
 	}
 
-	static async checkSubworkflowExecutePolicy(subworkflow: Workflow, parentWorkflowId: string) {
+	static async checkSubworkflowExecutePolicy(
+		subworkflow: Workflow,
+		parentWorkflowId: string,
+		node?: INode,
+	) {
 		/**
 		 * Important considerations: both the current workflow and the parent can have empty IDs.
 		 * This happens when a user is executing an unsaved workflow manually running a workflow
@@ -106,24 +108,6 @@ export class PermissionChecker {
 			subworkflow.id,
 		);
 
-		let parentWorkflow: WorkflowEntity;
-
-		try {
-			parentWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
-				where: { id: parentWorkflowId },
-			});
-		} catch (error) {
-			throw new ApplicationError('Failed to find parent workflow', { extra: { parentWorkflowId } });
-		}
-
-		const executeWorkflowNode = Object.values(parentWorkflow.nodes).find(
-			(node) => node.type === 'n8n-nodes-base.executeWorkflow',
-		);
-
-		if (!executeWorkflowNode) {
-			throw new ApplicationError('Failed to find `executeWorkflow` node');
-		}
-
 		const description =
 			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
@@ -131,7 +115,7 @@ export class PermissionChecker {
 
 		const errorToThrow = new WorkflowOperationError(
 			`Target workflow ID ${subworkflow.id} may not be called`,
-			executeWorkflowNode,
+			node,
 			description,
 		);
 
