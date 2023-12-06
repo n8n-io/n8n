@@ -1,4 +1,4 @@
-import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage, WorkflowPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 
@@ -46,7 +46,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	it('should properly render UM settings page for instance owners', () => {
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		// All items in user list should be there
-		usersSettingsPage.getters.userListItems().should('have.length', 3);
+		usersSettingsPage.getters.userListItems().should('have.length', 4);
 		// List item for current user should have the `Owner` badge
 		usersSettingsPage.getters
 			.userItem(INSTANCE_OWNER.email)
@@ -55,6 +55,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		// Other users list items should contain action pop-up list
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[0].email).should('exist');
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_ADMIN.email).should('exist');
 	});
 
 	it('should be able to change theme', () => {
