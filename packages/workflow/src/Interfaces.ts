@@ -1888,6 +1888,7 @@ export interface IWorkflowExecuteAdditionalData {
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: {
+			node?: INode;
 			parentWorkflowId?: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;
