@@ -1,3 +1,35 @@
+# [1.20.0](https://github.com/n8n-io/n8n/compare/n8n@1.19.0...n8n@1.20.0) (2023-12-06)
+
+
+### Bug Fixes
+
+* **AWS DynamoDB Node:** Improve error message parsing ([#7793](https://github.com/n8n-io/n8n/issues/7793)) ([5ba5ed8](https://github.com/n8n-io/n8n/commit/5ba5ed8e3c8ba2f909859bde129d92576fbda46f))
+* **core:** Allow grace period for binary data deletion after manual execution ([#7889](https://github.com/n8n-io/n8n/issues/7889)) ([61d8aeb](https://github.com/n8n-io/n8n/commit/61d8aebeaf6487269b252b353fdf16dcb67f41ff))
+* **core:** Consolidate ownership and sharing data on workflows and credentials ([#7920](https://github.com/n8n-io/n8n/issues/7920)) ([38b88b9](https://github.com/n8n-io/n8n/commit/38b88b946bab67dc1a964bb3c980a627d4a32595))
+* **core:** Fix hard deletes stopping if database query throws ([#7848](https://github.com/n8n-io/n8n/issues/7848)) ([46dd4d3](https://github.com/n8n-io/n8n/commit/46dd4d3105db3a15c81903ae81c9bbb21a45397b))
+* **core:** Make sure mfa secret and recovery codes are not returned on login ([#7936](https://github.com/n8n-io/n8n/issues/7936)) ([f5502cc](https://github.com/n8n-io/n8n/commit/f5502cc628f6b348f7fe3325b96ec9dc3360beaf)), closes [/github.com/n8n-io/n8n/pull/6994/files#diff-95a87cb029a3d26e6722df2e68132453fc254fc1f4540cbdaa95cfdbda1893deL91](https://github.com//github.com/n8n-io/n8n/pull/6994/files/issues/diff-95a87cb029a3d26e6722df2e68132453fc254fc1f4540cbdaa95cfdbda1893deL91) [4#a39f9e5ba64a48b58a71d81c837e8227](https://github.com/4/issues/a39f9e5ba64a48b58a71d81c837e8227) [4#f6a177d32bde4b57ae2da0b8e454](https://github.com/4/issues/f6a177d32bde4b57ae2da0b8e454) [4#fef2d36ab02247e1a0f65a74f6fb534](https://github.com/4/issues/fef2d36ab02247e1a0f65a74f6fb534)
+* **editor:** Fix deletion of last execution at execution preview ([#7883](https://github.com/n8n-io/n8n/issues/7883)) ([ce2d388](https://github.com/n8n-io/n8n/commit/ce2d388f059c0bb32d27f4b29e901d1a70083610))
+* **editor:** Replace isInstanceOwner checks with scopes where applicable ([#7858](https://github.com/n8n-io/n8n/issues/7858)) ([132d691](https://github.com/n8n-io/n8n/commit/132d691cbf983f60293c7423de0077fb7c97e0af))
+* **Google Sheets Node:** Fix issue with paired items not being set correctly ([#7862](https://github.com/n8n-io/n8n/issues/7862)) ([5207a2f](https://github.com/n8n-io/n8n/commit/5207a2fe5210e40d3b2aedd95182a18e497c72ab))
+* **Notion Node:** Fix broken Notion node parameters ([#7864](https://github.com/n8n-io/n8n/issues/7864)) ([51d1f5b](https://github.com/n8n-io/n8n/commit/51d1f5b82070542d45c3d57387343959a3f0abb2)), closes [#7791](https://github.com/n8n-io/n8n/issues/7791)
+
+
+### Features
+
+* **BambooHR Node:** Add support for Only Current on company reports ([#7878](https://github.com/n8n-io/n8n/issues/7878)) ([4175801](https://github.com/n8n-io/n8n/commit/4175801c90ad4f744d1a7c331d4fb20891ed2e9e))
+* **core:** Allow admin creation ([#7837](https://github.com/n8n-io/n8n/issues/7837)) ([476806e](https://github.com/n8n-io/n8n/commit/476806ebb0f31f656992fb67aba37116f10e1475))
+* **editor:** Add sections to create node panel ([#7831](https://github.com/n8n-io/n8n/issues/7831)) ([39fa8d2](https://github.com/n8n-io/n8n/commit/39fa8d21bbee5d870b2620ec65401a5ca134c4f1))
+* **editor:** Open template credential setup from collection ([#7882](https://github.com/n8n-io/n8n/issues/7882)) ([627ddb9](https://github.com/n8n-io/n8n/commit/627ddb91fb6c00796671a1f72f59a251cd89004d))
+* **editor:** Select credentials in template setup if theres only one ([#7879](https://github.com/n8n-io/n8n/issues/7879)) ([fe3417a](https://github.com/n8n-io/n8n/commit/fe3417a615534a01cb0c7b5e8f47bc18abd5cd4d))
+
+
+### Performance Improvements
+
+* **editor:** Improve node rendering performance when opening large workflows ([#7904](https://github.com/n8n-io/n8n/issues/7904)) ([a8049a0](https://github.com/n8n-io/n8n/commit/a8049a0def21506ebf4fb1d3b69ae28ec35fdc21)), closes [#7901](https://github.com/n8n-io/n8n/issues/7901) [4#a39f9e5ba64a48b58a71d81c837e8227](https://github.com/4/issues/a39f9e5ba64a48b58a71d81c837e8227) [4#f6a177d32bde4b57ae2da0b8e454](https://github.com/4/issues/f6a177d32bde4b57ae2da0b8e454) [4#fef2d36ab02247e1a0f65a74f6fb534](https://github.com/4/issues/fef2d36ab02247e1a0f65a74f6fb534)
+* **editor:** Improve performance when opening large workflows with node issues ([#7901](https://github.com/n8n-io/n8n/issues/7901)) ([4bd7ae2](https://github.com/n8n-io/n8n/commit/4bd7ae29f7c82b8817420e617a123024147c6c70))
+
+
+
 # [1.19.0](https://github.com/n8n-io/n8n/compare/n8n@1.18.0...n8n@1.19.0) (2023-11-29)
 
 
