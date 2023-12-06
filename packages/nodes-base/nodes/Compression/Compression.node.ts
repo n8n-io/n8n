@@ -50,7 +50,7 @@ export class Compression implements INodeType {
 		icon: 'fa:file-archive',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
@@ -92,12 +92,12 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: 'e.g. data,data2,data3',
-				hint: 'The name of the input binary field(s) containing the file to be written',
+				hint: 'The name of the input binary field(s) containing the file(s) to be compressed',
 				description:
 					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
-				displayName: 'IPut Output File in Field',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -107,7 +107,7 @@ export class Compression implements INodeType {
 						operation: ['decompress'],
 					},
 				},
-				placeholder: 'e.g. data,data2,data3',
+				placeholder: 'e.g. data',
 				hint: 'The name of the output binary field to put the decompressed file in',
 			},
 			{
@@ -128,9 +128,35 @@ export class Compression implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['compress'],
+						'@version': [1],
 					},
 				},
-				description: 'Format of the output file',
+				description: 'Format of the output',
+			},
+			{
+				displayName: 'Output Format',
+				name: 'outputFormat',
+				type: 'options',
+				default: 'zip',
+				options: [
+					{
+						name: 'Gzip',
+						value: 'gzip',
+					},
+					{
+						name: 'Zip',
+						value: 'zip',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['compress'],
+					},
+					hide: {
+						'@version': [1],
+					},
+				},
+				description: 'Format of the output',
 			},
 			{
 				displayName: 'File Name',
@@ -158,7 +184,39 @@ export class Compression implements INodeType {
 						operation: ['compress'],
 					},
 				},
-				placeholder: '',
+				hint: 'The name of the output binary field to put the file in',
+			},
+			{
+				displayName: 'File Name',
+				name: 'fileName',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. data.txt',
+				displayOptions: {
+					show: {
+						operation: ['compress'],
+						outputFormat: ['gzip'],
+					},
+					hide: {
+						'@version': [1],
+					},
+				},
+				description: 'Name of the output file',
+			},
+			{
+				displayName: 'Put Output File in Field',
+				name: 'binaryPropertyOutput',
+				type: 'string',
+				default: 'data',
+				displayOptions: {
+					show: {
+						outputFormat: ['gzip'],
+						operation: ['compress'],
+					},
+					hide: {
+						'@version': [1],
+					},
+				},
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
@@ -171,6 +229,7 @@ export class Compression implements INodeType {
 					show: {
 						operation: ['compress'],
 						outputFormat: ['gzip'],
+						'@version': [1],
 					},
 				},
 				description: 'Prefix to add to the gzip file',
@@ -196,6 +255,7 @@ export class Compression implements INodeType {
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -257,14 +317,21 @@ export class Compression implements INodeType {
 				}
 
 				if (operation === 'compress') {
-					const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', 0)
+					let binaryPropertyNameIndex = 0;
+					if (nodeVersion > 1) {
+						binaryPropertyNameIndex = i;
+					}
+
+					const binaryPropertyNames = this.getNodeParameter(
+						'binaryPropertyName',
+						binaryPropertyNameIndex,
+					)
 						.split(',')
 						.map((key) => key.trim());
 
 					const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
 
 					const zipData: fflate.Zippable = {};
-
 					const binaryObject: IBinaryKeyData = {};
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
@@ -279,26 +346,53 @@ export class Compression implements INodeType {
 								},
 							];
 						} else if (outputFormat === 'gzip') {
-							const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
+							let outputPrefix;
+							let fileName;
+							let binaryProperty;
+							let filePath;
+
+							if (nodeVersion > 1) {
+								outputPrefix = this.getNodeParameter('binaryPropertyOutput', i, 'data');
+								binaryProperty = `${outputPrefix}${index ? index : ''}`;
+
+								fileName = this.getNodeParameter('fileName', i, '') as string;
+								if (!fileName) {
+									fileName = binaryData.fileName?.split('.')[0];
+								} else {
+									fileName = fileName.replace('.gz', '').replace('.gzip', '');
+								}
+
+								const fileExtension = binaryData.fileExtension
+									? `.${binaryData.fileExtension.toLowerCase()}`
+									: '';
+								filePath = `${fileName}${fileExtension}.gz`;
+							} else {
+								outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
+								binaryProperty = `${outputPrefix}${index}`;
+								fileName = binaryData.fileName?.split('.')[0];
+								filePath = `${fileName}.gzip`;
+							}
 
 							const data = await gzip(binaryDataBuffer);
 
-							const fileName = binaryData.fileName?.split('.')[0];
-
-							binaryObject[`${outputPrefix}${index}`] = await this.helpers.prepareBinaryData(
+							binaryObject[binaryProperty] = await this.helpers.prepareBinaryData(
 								Buffer.from(data),
-								`${fileName}.gzip`,
+								filePath,
 							);
 						}
 					}
 
 					if (outputFormat === 'zip') {
-						const fileName = this.getNodeParameter('fileName', 0) as string;
-
-						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0);
-
+						let zipOptionsIndex = 0;
+						if (nodeVersion > 1) {
+							zipOptionsIndex = i;
+						}
+						const fileName = this.getNodeParameter('fileName', zipOptionsIndex) as string;
+						const binaryPropertyOutput = this.getNodeParameter(
+							'binaryPropertyOutput',
+							zipOptionsIndex,
+						);
 						const buffer = await zip(zipData);
-
 						const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
 
 						returnData.push({

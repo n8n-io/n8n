@@ -1,9 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import glob from 'fast-glob';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -23,6 +22,30 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			{
+				displayName: 'File Extension',
+				name: 'fileExtension',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. zip',
+				description: 'Extension of the file in the output binary',
+			},
+			{
+				displayName: 'File Name',
+				name: 'fileName',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. data.zip',
+				description: 'Name of the file in the output binary',
+			},
+			{
+				displayName: 'Mime Type',
+				name: 'mimeType',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. application/zip',
+				description: 'Mime type of the file in the output binary',
+			},
 			{
 				displayName: 'Put Output File in Field',
 				name: 'dataPropertyName',
@@ -50,11 +73,13 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
-			const dataPropertyName = this.getNodeParameter(
-				'options.dataPropertyName',
-				itemIndex,
-				'data',
-			) as string;
+			const options = this.getNodeParameter('options', itemIndex, {});
+
+			let dataPropertyName = 'data';
+
+			if (options.dataPropertyName) {
+				dataPropertyName = options.dataPropertyName as string;
+			}
 
 			const files = await glob(fileSelector);
 
@@ -62,6 +87,19 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			for (const filePath of files) {
 				const stream = await this.helpers.createReadStream(filePath);
 				const binaryData = await this.helpers.prepareBinaryData(stream, filePath);
+
+				if (options.fileName !== undefined) {
+					binaryData.fileName = options.fileName as string;
+				}
+
+				if (options.fileExtension !== undefined) {
+					binaryData.fileExtension = options.fileExtension as string;
+				}
+
+				if (options.mimeType !== undefined) {
+					binaryData.mimeType = options.mimeType as string;
+				}
+
 				newItems.push({
 					binary: {
 						[dataPropertyName]: binaryData,
