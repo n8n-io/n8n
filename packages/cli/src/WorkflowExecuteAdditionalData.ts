@@ -93,6 +93,12 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			error = new Error(errorObject.message as string);
 		}
 
+		if ('description' in errorObject) {
+			// @ts-expect-error Error descriptions are surfaced by the UI but
+			// not all backend errors account for this property yet.
+			error.description = errorObject.description as string;
+		}
+
 		if ('stack' in errorObject) {
 			// If there's a 'stack' property, set it on the new Error instance.
 			error.stack = errorObject.stack as string;
@@ -724,6 +730,7 @@ async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: {
+		node?: INode;
 		parentWorkflowId?: string;
 		inputData?: INodeExecutionData[];
 		parentExecutionId?: string;
@@ -777,8 +784,8 @@ async function executeWorkflow(
 		await PermissionChecker.check(workflow, additionalData.userId);
 		await PermissionChecker.checkSubworkflowExecutePolicy(
 			workflow,
-			additionalData.userId,
-			options.parentWorkflowId,
+			options.parentWorkflowId!,
+			options.node,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
