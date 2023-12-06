@@ -77,7 +77,11 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 			name: UserRole.ResourceSharee,
 			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
-		{ name: 'read', test: () => hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) },
+		{
+			name: 'read',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) || !!permissions.isOwner,
+		},
 		{
 			name: 'save',
 			test: (permissions) =>
@@ -106,7 +110,11 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 			test: (permissions) =>
 				hasPermission(['rbac'], { rbac: { scope: 'credential:delete' } }) || !!permissions.isOwner,
 		},
-		{ name: 'use', test: () => hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) },
+		{
+			name: 'use',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) || !!permissions.isOwner,
+		},
 	];
 
 	return parsePermissionsTable(user, table);
