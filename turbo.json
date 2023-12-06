@@ -13,9 +13,13 @@
 		"lint": {},
 		"lintfix": {},
 		"test": {},
-		"watch": {},
+		"watch": {
+			"cache": false,
+			"persistent": true
+		},
 		"dev": {
-			"cache": false
+			"cache": false,
+			"persistent": true
 		}
 	}
 }
