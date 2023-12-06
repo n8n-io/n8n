@@ -41,14 +41,17 @@ export const properties: INodeProperties[] = [
 					{
 						name: 'JSON',
 						value: 'json',
+						description: 'Include JSON data of the input item',
 					},
 					{
 						name: 'Binary',
 						value: 'binary',
+						description: 'Include binary data of the input item',
 					},
 					{
 						name: 'Both',
 						value: 'both',
+						description: 'Include both JSON and binary data of the input item',
 					},
 				],
 			},

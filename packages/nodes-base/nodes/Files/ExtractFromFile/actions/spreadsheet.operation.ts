@@ -20,6 +20,25 @@ export const description: INodeProperties[] = fromFile.description
 				if (['delimiter', 'fromLine', 'maxRowCount', 'enableBOM'].includes(option.name)) {
 					newOption = { ...option, displayOptions: { show: { '/operation': ['csv'] } } };
 				}
+				if (option.name === 'sheetName') {
+					newOption = {
+						...option,
+						displayOptions: { show: { '/operation': ['ods', 'xls', 'xlsx'] } },
+						description: 'Name of the sheet to read from in the spreadsheet',
+					};
+				}
+				if (option.name === 'range') {
+					newOption = {
+						...option,
+						displayOptions: { show: { '/operation': ['ods', 'xls', 'xlsx'] } },
+					};
+				}
+				if (['includeEmptyCells', 'headerRow'].includes(option.name)) {
+					newOption = {
+						...option,
+						displayOptions: { show: { '/operation': ['ods', 'xls', 'xlsx', 'csv', 'html'] } },
+					};
+				}
 				return newOption;
 			});
 		}
