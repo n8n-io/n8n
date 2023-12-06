@@ -16,6 +16,7 @@ import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
+import { CacheService } from '@/services/cache.service';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -93,6 +94,7 @@ export class E2EController {
 		private userRepo: UserRepository,
 		private workflowRunner: ActiveWorkflowRunner,
 		private mfaService: MfaService,
+		private cacheService: CacheService,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -104,6 +106,7 @@ export class E2EController {
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
+		await this.resetCache();
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
@@ -225,5 +228,9 @@ export class E2EController {
 		);
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
+	}
+
+	private async resetCache() {
+		await this.cacheService.reset();
 	}
 }
