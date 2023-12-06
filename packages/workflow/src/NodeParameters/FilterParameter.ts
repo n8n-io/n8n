@@ -12,7 +12,14 @@ import * as LoggerProxy from '../LoggerProxy';
 
 type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
-class FilterError extends Error {
+type FilterConditionMetadata = {
+	index: number;
+	unresolvedExpressions: boolean;
+	itemIndex: number;
+	errorFormat: 'full' | 'inline';
+};
+
+export class FilterError extends Error {
 	constructor(
 		message: string,
 		readonly description: string,
@@ -26,7 +33,7 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any'
+	return type === 'any' || value === null || value === undefined || value === ''
 		? ({ valid: true, newValue: value } as ValidationResult)
 		: validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
@@ -34,19 +41,34 @@ function parseSingleFilterValue(
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,
-	index: number,
+	metadata: Partial<FilterConditionMetadata>,
 ): Result<{ left: unknown; right: unknown }, FilterError> {
+	const index = metadata.index ?? 0;
+	const itemIndex = metadata.itemIndex ?? 0;
+	const errorFormat = metadata.errorFormat ?? 'full';
 	const strict = options.typeValidation === 'strict';
 	const { operator } = condition;
 	const rightType = operator.rightType ?? operator.type;
 	const parsedLeftValue = parseSingleFilterValue(condition.leftValue, operator.type, strict);
 	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict);
+	const leftValid =
+		parsedLeftValue.valid ||
+		(metadata.unresolvedExpressions &&
+			typeof condition.leftValue === 'string' &&
+			condition.leftValue.startsWith('='));
+	const rightValid =
+		parsedRightValue.valid ||
+		!!operator.singleValue ||
+		(metadata.unresolvedExpressions &&
+			typeof condition.rightValue === 'string' &&
+			condition.rightValue.startsWith('='));
 	const leftValueString = String(condition.leftValue);
 	const rightValueString = String(condition.rightValue);
 	const errorDescription = 'Try to change the operator, or change the type with an expression';
-	const inCondition = `in condition ${index + 1}`;
+	const inCondition = errorFormat === 'full' ? ` in condition ${index + 1} ` : ' ';
+	const itemSuffix = `[item ${itemIndex}]`;
 
-	if (!parsedLeftValue.valid && !parsedRightValue.valid) {
+	if (!leftValid && !rightValid) {
 		const providedValues = 'The provided values';
 		let types = `'${operator.type}'`;
 		if (rightType !== operator.type) {
@@ -56,7 +78,7 @@ function parseFilterConditionValues(
 			return {
 				ok: false,
 				error: new FilterError(
-					`${providedValues} '${leftValueString}' and '${rightValueString}' ${inCondition} are not of the expected type ${types}`,
+					`${providedValues} '${leftValueString}' and '${rightValueString}'${inCondition}are not of the expected type ${types} ${itemSuffix}`,
 					errorDescription,
 				),
 			};
@@ -65,7 +87,7 @@ function parseFilterConditionValues(
 		return {
 			ok: false,
 			error: new FilterError(
-				`${providedValues} '${leftValueString}' and '${rightValueString}' ${inCondition} cannot be converted to the expected type ${types}`,
+				`${providedValues} '${leftValueString}' and '${rightValueString}'${inCondition}cannot be converted to the expected type ${types} ${itemSuffix}`,
 				errorDescription,
 			),
 		};
@@ -75,12 +97,12 @@ function parseFilterConditionValues(
 		const fieldNumber = field === 'left' ? 1 : 2;
 
 		if (strict) {
-			return `The provided value ${fieldNumber} '${value}' ${inCondition} is not of the expected type '${type}'`;
+			return `The provided value ${fieldNumber} '${value}'${inCondition}is not of the expected type '${type}' ${itemSuffix}`;
 		}
-		return `The provided value ${fieldNumber} '${value}' ${inCondition} cannot be converted to the expected type '${type}'`;
+		return `The provided value ${fieldNumber} '${value}'${inCondition}cannot be converted to the expected type '${type}' ${itemSuffix}`;
 	};
 
-	if (!parsedLeftValue.valid) {
+	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
@@ -90,7 +112,7 @@ function parseFilterConditionValues(
 		};
 	}
 
-	if (!parsedRightValue.valid && !operator.singleValue) {
+	if (!rightValid) {
 		return {
 			ok: false,
 			error: new FilterError(
@@ -105,12 +127,12 @@ function parseFilterConditionValues(
 
 export function executeFilterCondition(
 	condition: FilterConditionValue,
-	options: FilterOptionsValue,
-	index: number,
+	filterOptions: FilterOptionsValue,
+	metadata: Partial<FilterConditionMetadata> = {},
 ): boolean {
-	const ignoreCase = !options.caseSensitive;
+	const ignoreCase = !filterOptions.caseSensitive;
 	const { operator } = condition;
-	const parsedValues = parseFilterConditionValues(condition, options, index);
+	const parsedValues = parseFilterConditionValues(condition, filterOptions, metadata);
 
 	if (!parsedValues.ok) {
 		throw parsedValues.error;
@@ -118,19 +140,14 @@ export function executeFilterCondition(
 
 	let { left: leftValue, right: rightValue } = parsedValues.result;
 
+	const exists = leftValue !== undefined && leftValue !== null;
+	if (condition.operator.operation === 'exists') {
+		return exists;
+	} else if (condition.operator.operation === 'notExists') {
+		return !exists;
+	}
+
 	switch (operator.type) {
-		case 'any': {
-			const exists = leftValue !== undefined && leftValue !== null;
-
-			switch (condition.operator.operation) {
-				case 'exists':
-					return exists;
-				case 'notExists':
-					return !exists;
-			}
-
-			break;
-		}
 		case 'string': {
 			if (ignoreCase) {
 				if (typeof leftValue === 'string') {
@@ -280,9 +297,15 @@ export function executeFilterCondition(
 	return false;
 }
 
-export function executeFilter(value: FilterValue): boolean {
+type ExecuteFilterOptions = {
+	itemIndex?: number;
+};
+export function executeFilter(
+	value: FilterValue,
+	{ itemIndex }: ExecuteFilterOptions = {},
+): boolean {
 	const conditionPass = (condition: FilterConditionValue, index: number) =>
-		executeFilterCondition(condition, value.options, index);
+		executeFilterCondition(condition, value.options, { index, itemIndex });
 
 	if (value.combinator === 'and') {
 		return value.conditions.every(conditionPass);
@@ -299,57 +322,20 @@ export const validateFilterParameter = (
 	nodeProperties: INodeProperties,
 	value: FilterValue,
 ): Record<string, string[]> => {
-	const composeErrorMessage = (type: string, field: 'first' | 'second') =>
-		`The value in the ${field} field cannot be converted to a ${type}. This could lead to unwanted results. Please check the value or choose a different logical operator.`;
-
-	const strict = value.options.typeValidation === 'strict';
 	return value.conditions.reduce(
 		(issues, condition, index) => {
-			const { type, rightType, singleValue } = condition.operator;
 			const key = `${nodeProperties.name}.${index}`;
 
-			const isLeftValueExpression =
-				typeof condition.leftValue === 'string' && condition.leftValue.startsWith('=');
-			const hasLeftValue =
-				condition.leftValue !== undefined &&
-				condition.leftValue !== null &&
-				condition.leftValue !== '';
-			const checkLeftValue = hasLeftValue && !isLeftValueExpression && type !== 'any';
-
-			const validationResultLeft = checkLeftValue
-				? validateFieldType(nodeProperties.displayName, condition.leftValue, type, {
-						strict,
-						parseStrings: true,
-				  })
-				: { valid: true };
-
-			const isRightValueExpression =
-				typeof condition.rightValue === 'string' && condition.rightValue.startsWith('=');
-			const hasRightValue =
-				condition.rightValue !== undefined &&
-				condition.rightValue !== null &&
-				condition.rightValue !== '';
-			const safeRightType = rightType ?? type;
-			const checkRightValue =
-				hasRightValue && !isRightValueExpression && !singleValue && safeRightType !== 'any';
-
-			const validationResultRight = checkRightValue
-				? validateFieldType(nodeProperties.displayName, condition.rightValue, safeRightType, {
-						strict,
-						parseStrings: true,
-				  })
-				: { valid: true };
-
-			if (!validationResultLeft.valid || !validationResultRight.valid) {
-				issues[key] = [];
-			}
-
-			if (!validationResultLeft.valid) {
-				issues[key].push(composeErrorMessage(type, 'first'));
-			}
-
-			if (!validationResultRight.valid) {
-				issues[key].push(composeErrorMessage(type, 'second'));
+			try {
+				parseFilterConditionValues(condition, value.options, {
+					index,
+					unresolvedExpressions: true,
+					errorFormat: 'inline',
+				});
+			} catch (error) {
+				if (error instanceof FilterError) {
+					issues[key].push(error.message);
+				}
 			}
 
 			return issues;

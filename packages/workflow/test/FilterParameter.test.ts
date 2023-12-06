@@ -168,21 +168,20 @@ describe('FilterParameter', () => {
 		});
 
 		describe('operators', () => {
-			describe('any', () => {
+			describe('exists', () => {
 				it.each([
 					{ left: '', expected: true },
 					{ left: null, expected: false },
 					{ left: undefined, expected: false },
-					{ left: 0, expected: true },
-					{ left: false, expected: true },
-				])('any:exists($left) === $expected', ({ left, expected }) => {
+					{ left: 'foo', expected: true },
+				])('string:exists($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
 								{
 									id: '1',
 									leftValue: left as string,
-									operator: { operation: 'exists', type: 'any' },
+									operator: { operation: 'exists', type: 'string' },
 								},
 							],
 						}),
@@ -194,16 +193,15 @@ describe('FilterParameter', () => {
 					{ left: '', expected: false },
 					{ left: null, expected: true },
 					{ left: undefined, expected: true },
-					{ left: 0, expected: false },
-					{ left: false, expected: false },
-				])('any:notExists($left) === $expected', ({ left, expected }) => {
+					{ left: 'foo', expected: false },
+				])('string:notExists($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
 								{
 									id: '1',
 									leftValue: left as string,
-									operator: { operation: 'notExists', type: 'any' },
+									operator: { operation: 'notExists', type: 'string' },
 								},
 							],
 						}),

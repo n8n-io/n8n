@@ -2272,7 +2272,7 @@ export function getNodeParameter(
 
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType);
+		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined

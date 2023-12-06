@@ -20,7 +20,7 @@ describe('If Node (filter component)', () => {
 		ndv.getters
 			.filterConditionOperator(FILTER_PARAM_NAME)
 			.find('input')
-			.should('have.value', 'exists');
+			.should('have.value', 'is equal to');
 
 		// Add
 		ndv.actions.addFilterCondition(FILTER_PARAM_NAME);

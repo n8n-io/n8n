@@ -128,6 +128,7 @@ function extractValueFilter(
 	value: NodeParameterValueType | object,
 	property: INodeProperties,
 	parameterName: string,
+	itemIndex: number,
 ): NodeParameterValueType | object {
 	if (!isFilterValue(value)) {
 		return value;
@@ -139,7 +140,7 @@ function extractValueFilter(
 		);
 	}
 
-	return executeFilter(value);
+	return executeFilter(value, { itemIndex });
 }
 
 function extractValueOther(
@@ -181,6 +182,7 @@ export function extractValue(
 	parameterName: string,
 	node: INode,
 	nodeType: INodeType,
+	itemIndex = 0,
 ): NodeParameterValueType | object {
 	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
 	try {
@@ -194,7 +196,7 @@ export function extractValue(
 		if (property.type === 'resourceLocator') {
 			return extractValueRLC(value, property, parameterName);
 		} else if (property.type === 'filter') {
-			return extractValueFilter(value, property, parameterName);
+			return extractValueFilter(value, property, parameterName, itemIndex);
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {

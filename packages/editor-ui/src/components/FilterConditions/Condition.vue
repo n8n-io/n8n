@@ -3,6 +3,7 @@ import type { IUpdateInformation } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
+import { DateTime } from 'luxon';
 import {
 	executeFilterCondition,
 	type FilterOptionsValue,
@@ -11,14 +12,18 @@ import {
 	type INodeProperties,
 	type NodeParameterValue,
 	type NodePropertyTypes,
+	FilterError,
+	validateFieldType,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-
-type ConditionResult = 'unknown' | boolean;
+type ConditionResult =
+	| { status: 'resolve_error' }
+	| { status: 'validation_error'; error: string }
+	| { status: 'success'; result: boolean };
 
 interface Props {
 	path: string;
@@ -43,17 +48,11 @@ const emit = defineEmits<{
 
 const condition = ref<FilterConditionValue>(props.condition);
 
-function isExpression(value: unknown): boolean {
-	return typeof value === 'string' && value.startsWith('=');
-}
-
 const operatorId = computed<FilterOperatorId>(() => {
 	const { type, operation } = props.condition.operator;
 	return `${type}:${operation}` as FilterOperatorId;
 });
-const operator = computed<FilterOperator>(() => OPERATORS_BY_ID[operatorId.value]);
-const isLeftExpression = computed(() => isExpression(props.condition.leftValue));
-const isRightExpression = computed(() => isExpression(props.condition.rightValue));
+const operator = computed(() => OPERATORS_BY_ID[operatorId.value] as FilterOperator);
 
 const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePropertyTypes => {
 	switch (operatorType) {
@@ -69,31 +68,53 @@ const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePrope
 
 const conditionResult = computed<ConditionResult>(() => {
 	try {
-		const resolved = resolveParameter(condition.value as unknown as NodeParameterValue);
+		const resolved = resolveParameter(
+			condition.value as unknown as NodeParameterValue,
+		) as FilterConditionValue;
 
+		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
+			return { status: 'resolve_error' };
+		}
 		try {
-			return executeFilterCondition(
-				resolved as FilterConditionValue,
-				props.options,
-				props.index ?? 0,
-			);
+			const result = executeFilterCondition(resolved, props.options, {
+				index: props.index ?? 0,
+				errorFormat: 'inline',
+			});
+			return { status: 'success', result };
 		} catch (error) {
-			return false;
+			let errorMessage = i18n.baseText('parameterInput.error');
+
+			if (error instanceof FilterError) {
+				errorMessage = `${error.message}.\n${error.description}`;
+			}
+			return {
+				status: 'validation_error',
+				error: errorMessage,
+			};
 		}
 	} catch (error) {
-		return 'unknown';
+		return { status: 'resolve_error' };
 	}
 });
+
+const allIssues = computed(() => {
+	if (conditionResult.value.status === 'validation_error') {
+		return [conditionResult.value.error];
+	}
+
+	return props.issues;
+});
+
+const now = computed(() => DateTime.now().toISO());
 
 const leftParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
 	default: '',
-	placeholder: i18n.baseText(
+	placeholder:
 		operator.value.type === 'dateTime'
-			? 'filter.condition.placeholderDate'
-			: 'filter.condition.placeholderLeft',
-	),
+			? now.value
+			: i18n.baseText('filter.condition.placeholderLeft'),
 	type: operatorTypeToNodePropType(operator.value.type),
 }));
 
@@ -101,11 +122,10 @@ const rightParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
 	default: '',
-	placeholder: i18n.baseText(
+	placeholder:
 		operator.value.type === 'dateTime'
-			? 'filter.condition.placeholderDate'
-			: 'filter.condition.placeholderRight',
-	),
+			? now.value
+			: i18n.baseText(i18n.baseText('filter.condition.placeholderRight')),
 	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
 }));
 
@@ -117,20 +137,26 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 	condition.value.rightValue = update.value;
 };
 
+const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
+	return (
+		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
+		value
+	);
+};
+
 const onOperatorChange = (value: string): void => {
-	const selectedOperator = condition.value.operator;
-	const newOperator: FilterOperator = OPERATORS_BY_ID[value as FilterOperatorId];
-	const typeChanged = selectedOperator.type !== newOperator.type;
-
-	if (typeChanged && !isLeftExpression.value) {
-		condition.value.leftValue = '';
-	}
-
-	const rightType = selectedOperator.rightType ?? selectedOperator.type;
+	const newOperator = OPERATORS_BY_ID[value as FilterOperatorId] as FilterOperator;
+	const rightType = operator.value.rightType ?? operator.value.type;
 	const newRightType = newOperator.rightType ?? newOperator.type;
+	const leftTypeChanged = operator.value.type !== newOperator.type;
 	const rightTypeChanged = rightType !== newRightType;
-	if ((rightTypeChanged && !isRightExpression.value) || newOperator.singleValue) {
-		condition.value.rightValue = '';
+
+	// Try to convert left & right values to operator type
+	if (leftTypeChanged) {
+		condition.value.leftValue = convertToType(condition.value.leftValue, newOperator.type);
+	}
+	if (rightTypeChanged && !newOperator.singleValue) {
+		condition.value.rightValue = convertToType(condition.value.rightValue, newRightType);
 	}
 
 	condition.value.operator = {
@@ -157,7 +183,7 @@ const i18n = useI18n();
 	<div
 		:class="{
 			[$style.wrapper]: true,
-			[$style.hasIssues]: issues.length > 0,
+			[$style.hasIssues]: allIssues.length > 0,
 		}"
 		data-test-id="filter-condition"
 	>
@@ -194,6 +220,7 @@ const i18n = useI18n();
 						hideLabel
 						hideHint
 						isSingleLine
+						:key="leftParameter.type"
 						:parameter="leftParameter"
 						:value="condition.leftValue"
 						:path="`${path}.left`"
@@ -213,6 +240,7 @@ const i18n = useI18n();
 						hideLabel
 						hideHint
 						isSingleLine
+						:key="rightParameter.type"
 						:optionsPosition="bp === 'default' ? 'top' : 'bottom'"
 						:parameter="rightParameter"
 						:value="condition.rightValue"
@@ -227,16 +255,22 @@ const i18n = useI18n();
 		</n8n-resize-observer>
 
 		<div :class="$style.status">
-			<parameter-issues v-if="issues.length > 0" :issues="issues" />
+			<parameter-issues v-if="allIssues.length > 0" :issues="allIssues" />
 
-			<n8n-tooltip :show-after="500" v-else-if="conditionResult === true">
+			<n8n-tooltip
+				:show-after="500"
+				v-else-if="conditionResult.status === 'success' && conditionResult.result === true"
+			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedTrue') }}
 				</template>
 				<n8n-icon :class="$style.statusIcon" icon="check-circle" size="medium" color="text-light" />
 			</n8n-tooltip>
 
-			<n8n-tooltip :show-after="500" v-else-if="conditionResult === false">
+			<n8n-tooltip
+				:show-after="500"
+				v-else-if="conditionResult.status === 'success' && conditionResult.result === false"
+			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedFalse') }}
 				</template>
@@ -318,6 +352,7 @@ const i18n = useI18n();
 }
 
 .remove {
+	--button-font-color: var(--color-text-light);
 	position: absolute;
 	left: 0;
 	top: var(--spacing-l);

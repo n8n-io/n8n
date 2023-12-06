@@ -11,14 +11,14 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptionsValue = {
 };
 
 export const OPERATORS_BY_ID = {
-	'any:exists': {
-		type: 'any',
+	'string:exists': {
+		type: 'string',
 		operation: 'exists',
 		name: 'filter.operator.exists',
 		singleValue: true,
 	},
-	'any:notExists': {
-		type: 'any',
+	'string:notExists': {
+		type: 'string',
 		operation: 'notExists',
 		name: 'filter.operator.notExists',
 		singleValue: true,
@@ -49,12 +49,36 @@ export const OPERATORS_BY_ID = {
 	},
 	'string:regex': { type: 'string', operation: 'regex', name: 'filter.operator.regex' },
 	'string:notRegex': { type: 'string', operation: 'notRegex', name: 'filter.operator.notRegex' },
+	'number:exists': {
+		type: 'number',
+		operation: 'exists',
+		name: 'filter.operator.exists',
+		singleValue: true,
+	},
+	'number:notExists': {
+		type: 'number',
+		operation: 'notExists',
+		name: 'filter.operator.notExists',
+		singleValue: true,
+	},
 	'number:equals': { type: 'number', operation: 'equals', name: 'filter.operator.equals' },
 	'number:notEquals': { type: 'number', operation: 'notEquals', name: 'filter.operator.notEquals' },
 	'number:gt': { type: 'number', operation: 'gt', name: 'filter.operator.gt' },
 	'number:lt': { type: 'number', operation: 'lt', name: 'filter.operator.lt' },
 	'number:gte': { type: 'number', operation: 'gte', name: 'filter.operator.gte' },
 	'number:lte': { type: 'number', operation: 'lte', name: 'filter.operator.lte' },
+	'dateTime:exists': {
+		type: 'dateTime',
+		operation: 'exists',
+		name: 'filter.operator.exists',
+		singleValue: true,
+	},
+	'dateTime:notExists': {
+		type: 'dateTime',
+		operation: 'notExists',
+		name: 'filter.operator.notExists',
+		singleValue: true,
+	},
 	'dateTime:equals': { type: 'dateTime', operation: 'equals', name: 'filter.operator.equals' },
 	'dateTime:notEquals': {
 		type: 'dateTime',
@@ -73,6 +97,18 @@ export const OPERATORS_BY_ID = {
 		operation: 'beforeOrEquals',
 		name: 'filter.operator.beforeOrEquals',
 	},
+	'boolean:exists': {
+		type: 'boolean',
+		operation: 'exists',
+		name: 'filter.operator.exists',
+		singleValue: true,
+	},
+	'boolean:notExists': {
+		type: 'boolean',
+		operation: 'notExists',
+		name: 'filter.operator.notExists',
+		singleValue: true,
+	},
 	'boolean:true': {
 		type: 'boolean',
 		operation: 'true',
@@ -90,6 +126,18 @@ export const OPERATORS_BY_ID = {
 		type: 'boolean',
 		operation: 'notEquals',
 		name: 'filter.operator.notEquals',
+	},
+	'array:exists': {
+		type: 'array',
+		operation: 'exists',
+		name: 'filter.operator.exists',
+		singleValue: true,
+	},
+	'array:notExists': {
+		type: 'array',
+		operation: 'notExists',
+		name: 'filter.operator.notExists',
+		singleValue: true,
 	},
 	'array:empty': {
 		type: 'array',
@@ -150,6 +198,18 @@ export const OPERATORS_BY_ID = {
 		operation: 'lengthLte',
 		name: 'filter.operator.lengthLte',
 		rightType: 'number',
+	},
+	'object:exists': {
+		type: 'object',
+		operation: 'exists',
+		name: 'filter.operator.exists',
+		singleValue: true,
+	},
+	'object:notExists': {
+		type: 'object',
+		operation: 'notExists',
+		name: 'filter.operator.notExists',
+		singleValue: true,
 	},
 	'object:empty': {
 		type: 'object',
