@@ -89,8 +89,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		},
 		{
 			name: 'updateName',
-			test: (permissions) =>
-				hasPermission(['rbac'], { rbac: { scope: 'credential:update' } }) || !!permissions.isOwner,
+			test: (permissions) => !!permissions.isOwner,
 		},
 		{
 			name: 'updateConnection',
