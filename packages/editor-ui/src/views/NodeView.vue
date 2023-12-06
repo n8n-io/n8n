@@ -4734,23 +4734,24 @@ export default defineComponent({
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
 			action: ({ connectiontype, node }: { connectiontype: NodeConnectionType; node: string }) => {
-				this.onToggleNodeCreator({
-					source: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-					createNodeActive: true,
-					nodeCreatorView: AI_NODE_CREATOR_VIEW,
 				});
+				const nodeName = node ?? this.ndvStore.activeNodeName;
+				const nodeData = nodeName
+					? this.workflowsStore.getNodeByName(nodeName)
+					: null;
 
 				this.ndvStore.activeNodeName = null;
-				// Select the node so that the node creator knows which node to connect to
-				const nodeData = this.workflowsStore.getNodeByName(node);
+				this.redrawNode(node);
+				// Wait UI to update
 				if (connectiontype && nodeData) {
-					this.insertNodeAfterSelected({
+					setTimeout(() => this.insertNodeAfterSelected({
 						index: 0,
 						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
 						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
 						outputType: connectiontype,
 						sourceId: nodeData.id,
-					});
+						nodeCreatorView: AI_NODE_CREATOR_VIEW,
+					}), 0);
 				}
 			},
 		});
@@ -4952,7 +4953,7 @@ export default defineComponent({
 				&.connection-drag-scope-active-connection-target {
 					// Apply style to compatible output endpoints
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
-						transform: scale(2) rotate(45deg);
+						transform: scale(1.5) rotate(45deg);
 					}
 
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
@@ -4981,7 +4982,7 @@ export default defineComponent({
 					// Apply style to dragged compatible output endpoint
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						&.jtk-dragging {
-							transform: scale(2) rotate(45deg);
+							transform: scale(1.5) rotate(45deg);
 						}
 
 						// Apply style to non-dragged compatible input endpoints
