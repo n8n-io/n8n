@@ -9,16 +9,16 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { N8nInstanceType } from '@/Interfaces';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { N8nInstanceType, IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
+import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 
 export abstract class AbstractServer {
 	protected logger: Logger;

@@ -179,9 +179,8 @@ export const objectOperations: INodeProperties[] = [
 								// Set the headers
 								if (!requestOptions.headers) requestOptions.headers = {};
 								requestOptions.headers['Content-Length'] = body.getLengthSync();
-								requestOptions.headers[
-									'Content-Type'
-								] = `multipart/related; boundary=${body.getBoundary()}`;
+								requestOptions.headers['Content-Type'] =
+									`multipart/related; boundary=${body.getBoundary()}`;
 
 								// Return the request data
 								requestOptions.body = body;

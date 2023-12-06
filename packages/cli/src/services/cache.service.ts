@@ -3,7 +3,7 @@ import config from '@/config';
 import { caching } from 'cache-manager';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
-import { jsonStringify } from 'n8n-workflow';
+import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
 
@@ -80,21 +80,21 @@ export class CacheService extends EventEmitter {
 	 * @param options.refreshTtl Optional ttl for the refreshFunction's set call
 	 * @param options.fallbackValue Optional value returned is cache is not hit and refreshFunction is not provided
 	 */
-	async get(
+	async get<T = unknown>(
 		key: string,
 		options: {
-			fallbackValue?: unknown;
-			refreshFunction?: (key: string) => Promise<unknown>;
+			fallbackValue?: T;
+			refreshFunction?: (key: string) => Promise<T>;
 			refreshTtl?: number;
 		} = {},
-	): Promise<unknown> {
+	): Promise<T | undefined> {
 		if (!key || key.length === 0) {
 			return;
 		}
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
 			this.emit(this.metricsCounterEvents.cacheHit);
-			return value;
+			return value as T;
 		}
 		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunction) {
@@ -161,7 +161,9 @@ export class CacheService extends EventEmitter {
 			this.emit(this.metricsCounterEvents.cacheUpdate);
 			const refreshValues: unknown[] = await options.refreshFunctionMany(keys);
 			if (keys.length !== refreshValues.length) {
-				throw new Error('refreshFunctionMany must return the same number of values as keys');
+				throw new ApplicationError(
+					'refreshFunctionMany must return the same number of values as keys',
+				);
 			}
 			const newKV: Array<[string, unknown]> = [];
 			for (let i = 0; i < keys.length; i++) {
@@ -191,7 +193,7 @@ export class CacheService extends EventEmitter {
 		}
 		if (this.isRedisCache()) {
 			if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
-				throw new Error('Value is not cacheable');
+				throw new ApplicationError('Value is not cacheable');
 			}
 		}
 		await this.cache?.store.set(key, value, ttl);
@@ -215,7 +217,7 @@ export class CacheService extends EventEmitter {
 		if (this.isRedisCache()) {
 			nonNullValues.forEach(([_key, value]) => {
 				if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
-					throw new Error('Value is not cacheable');
+					throw new ApplicationError('Value is not cacheable');
 				}
 			});
 		}
@@ -301,7 +303,7 @@ export class CacheService extends EventEmitter {
 			}
 			return map;
 		}
-		throw new Error(
+		throw new ApplicationError(
 			'Keys and values do not match, this should not happen and appears to result from some cache corruption.',
 		);
 	}

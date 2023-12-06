@@ -23,7 +23,8 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -135,19 +136,21 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
-	try {
-		const json = JSON.parse(data);
-		if (json.command === 'n8nReady') {
-			ready.value = true;
-		} else if (json.command === 'openNDV') {
-			nodeViewDetailsOpened.value = true;
-		} else if (json.command === 'closeNDV') {
-			nodeViewDetailsOpened.value = false;
-		} else if (json.command === 'error') {
-			emit('close');
+	if (data?.includes('"command"')) {
+		try {
+			const json = JSON.parse(data);
+			if (json.command === 'n8nReady') {
+				ready.value = true;
+			} else if (json.command === 'openNDV') {
+				nodeViewDetailsOpened.value = true;
+			} else if (json.command === 'closeNDV') {
+				nodeViewDetailsOpened.value = false;
+			} else if (json.command === 'error') {
+				emit('close');
+			}
+		} catch (e) {
+			console.error(e);
 		}
-	} catch (e) {
-		console.error(e);
 	}
 };
 const onDocumentScroll = () => {

@@ -40,7 +40,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export default defineComponent({
 	name: 'InlineExpressionEditorOutput',
@@ -119,8 +119,8 @@ export default defineComponent({
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
 							: segment.resolved
-							? (segment.resolved as any).toString().length
-							: 0;
+							  ? segment.resolved.toString().length
+							  : 0;
 					segment.to = cursor;
 					return segment;
 				})

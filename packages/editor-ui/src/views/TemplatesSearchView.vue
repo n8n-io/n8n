@@ -10,8 +10,11 @@
 				<div :class="$style.button">
 					<n8n-button
 						size="large"
-						:label="$locale.baseText('templates.newButton')"
-						@click="openNewWorkflow"
+						type="secondary"
+						element="a"
+						:href="creatorHubUrl"
+						:label="$locale.baseText('templates.shareWorkflow')"
+						target="_blank"
 					/>
 				</div>
 			</div>
@@ -89,14 +92,14 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
@@ -132,6 +135,7 @@ export default defineComponent({
 			search: '',
 			searchEventToTrack: null as null | ISearchEvent,
 			errorLoadingWorkflows: false,
+			creatorHubUrl: CREATOR_HUB_URL as string,
 		};
 	},
 	computed: {
@@ -223,10 +227,6 @@ export default defineComponent({
 				);
 				this.searchEventToTrack = null;
 			}
-		},
-		openNewWorkflow() {
-			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;

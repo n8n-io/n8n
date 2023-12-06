@@ -7,8 +7,9 @@
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
-		:nodeTypeName="nodeType ? nodeType.displayName : ''"
+		:nodeTypeName="nodeName ?? nodeType?.displayName ?? ''"
 		:showTooltip="showTooltip"
+		:tooltipPosition="tooltipPosition"
 		:badge="badge"
 		@click="(e) => $emit('click')"
 	></n8n-node-icon>
@@ -52,6 +53,14 @@ export default defineComponent({
 		showTooltip: {
 			type: Boolean,
 			default: false,
+		},
+		tooltipPosition: {
+			type: String,
+			default: 'top',
+		},
+		nodeName: {
+			type: String,
+			required: false,
 		},
 	},
 	computed: {

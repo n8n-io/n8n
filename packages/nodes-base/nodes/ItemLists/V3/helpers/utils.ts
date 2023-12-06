@@ -5,8 +5,9 @@ import type {
 	IBinaryData,
 	INode,
 	INodeExecutionData,
+	GenericValue,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
@@ -61,8 +62,9 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 	if (Array.isArray(fields)) {
 		return fields;
 	}
-	throw new Error(
+	throw new ApplicationError(
 		`The \'${fieldName}\' parameter must be a string of fields separated by commas or an array of strings.`,
+		{ level: 'warning' },
 	);
 };
 
@@ -146,4 +148,23 @@ export function addBinariesToItem(
 	}
 
 	return newItem;
+}
+
+export function typeToNumber(value: GenericValue): number {
+	if (typeof value === 'object') {
+		if (Array.isArray(value)) return 9;
+		if (value === null) return 10;
+		if (value instanceof Date) return 11;
+	}
+	const types = {
+		_string: 1,
+		_number: 2,
+		_bigint: 3,
+		_boolean: 4,
+		_symbol: 5,
+		_undefined: 6,
+		_object: 7,
+		_function: 8,
+	};
+	return types[`_${typeof value}`];
 }

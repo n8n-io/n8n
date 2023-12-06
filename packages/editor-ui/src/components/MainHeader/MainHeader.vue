@@ -30,7 +30,9 @@ import {
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useUIStore, useNDVStore, useSourceControlStore } from '@/stores';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -90,11 +92,6 @@ export default defineComponent({
 	mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
-		// Initialize the push connection
-		this.pushConnect();
-	},
-	beforeUnmount() {
-		this.pushDisconnect();
 	},
 	watch: {
 		$route(to, from) {

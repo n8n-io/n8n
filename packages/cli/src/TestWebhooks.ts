@@ -1,13 +1,14 @@
 import type express from 'express';
 import { Service } from 'typedi';
 
-import type {
-	IWebhookData,
-	IWorkflowExecuteAdditionalData,
-	IHttpRequestMethods,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
+import {
+	type IWebhookData,
+	type IWorkflowExecuteAdditionalData,
+	type IHttpRequestMethods,
+	type Workflow,
+	type WorkflowActivateMode,
+	type WorkflowExecuteMode,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
@@ -15,12 +16,14 @@ import type {
 	IResponseCallbackData,
 	IWebhookManager,
 	IWorkflowDb,
+	WebhookAccessControlOptions,
 	WebhookRequest,
 } from '@/Interfaces';
 import { Push } from '@/push';
-import * as ResponseHelper from '@/ResponseHelper';
+import { NodeTypes } from '@/NodeTypes';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { webhookNotFoundErrorMessage } from './utils';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
@@ -38,8 +41,9 @@ export class TestWebhooks implements IWebhookManager {
 	} = {};
 
 	constructor(
-		private activeWebhooks: ActiveWebhooks,
-		private push: Push,
+		private readonly activeWebhooks: ActiveWebhooks,
+		private readonly push: Push,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		activeWebhooks.testWebhooks = true;
 	}
@@ -77,7 +81,7 @@ export class TestWebhooks implements IWebhookManager {
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				const methods = await this.getWebhookMethods(path);
-				throw new ResponseHelper.NotFoundError(
+				throw new NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod, methods),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
@@ -105,7 +109,7 @@ export class TestWebhooks implements IWebhookManager {
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
 			const methods = await this.getWebhookMethods(path);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod, methods),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
@@ -118,7 +122,7 @@ export class TestWebhooks implements IWebhookManager {
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise(async (resolve, reject) => {
@@ -161,20 +165,30 @@ export class TestWebhooks implements IWebhookManager {
 		});
 	}
 
-	/**
-	 * Gets all request methods associated with a single test webhook
-	 */
 	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path),
-				WEBHOOK_TEST_UNREGISTERED_HINT,
-			);
+			throw new NotFoundError(webhookNotFoundErrorMessage(path), WEBHOOK_TEST_UNREGISTERED_HINT);
 		}
 
 		return webhookMethods;
+	}
+
+	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		const webhookKey = Object.keys(this.testWebhookData).find(
+			(key) => key.includes(path) && key.startsWith(httpMethod),
+		);
+		if (!webhookKey) return;
+
+		const { workflow } = this.testWebhookData[webhookKey];
+		const webhookNode = Object.values(workflow.nodes).find(
+			({ type, parameters, typeVersion }) =>
+				parameters?.path === path &&
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
+		);
+		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
 
 	/**
@@ -202,7 +216,9 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		if (workflow.id === undefined) {
-			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+			throw new ApplicationError(
+				'Webhooks can only be added for saved workflows as an ID is needed',
+			);
 		}
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)

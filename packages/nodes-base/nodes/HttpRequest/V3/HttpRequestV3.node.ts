@@ -536,7 +536,6 @@ export class HttpRequestV3 implements INodeType {
 									displayName: 'Input Data Field Name',
 									name: 'inputDataFieldName',
 									type: 'string',
-									noDataExpression: true,
 									displayOptions: {
 										show: {
 											parameterType: ['formBinaryData'],
@@ -636,7 +635,6 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Input Data Field Name',
 					name: 'inputDataFieldName',
 					type: 'string',
-					noDataExpression: true,
 					displayOptions: {
 						show: {
 							sendBody: [true],

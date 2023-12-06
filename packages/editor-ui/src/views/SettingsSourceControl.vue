@@ -2,8 +2,12 @@
 import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM } from '@/constants';
-import { useUIStore, useSourceControlStore } from '@/stores';
-import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
 import CopyInput from '@/components/CopyInput.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { SshKeyTypes } from '@/Interface';

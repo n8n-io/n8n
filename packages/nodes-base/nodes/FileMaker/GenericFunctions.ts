@@ -5,7 +5,7 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
@@ -81,7 +81,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 		} else {
 			message = error.message;
 		}
-		throw new Error(message);
+		throw new ApplicationError(message, { level: 'warning' });
 	}
 }
 

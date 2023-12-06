@@ -30,6 +30,7 @@ import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.v
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
@@ -50,7 +51,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useRBACStore),
 		isCreateEnabled(): boolean {
 			return (this.tags || []).length === 0 || this.createEnabled;
 		},
@@ -70,7 +71,7 @@ export default defineComponent({
 						disable: disabled && tag.id !== this.deleteId && tag.id !== this.updateId,
 						update: disabled && tag.id === this.updateId,
 						delete: disabled && tag.id === this.deleteId,
-						canDelete: this.usersStore.canUserDeleteTags,
+						canDelete: this.rbacStore.hasScope('tag:delete'),
 					}),
 				);
 

@@ -11,8 +11,6 @@ import '@fontsource/open-sans/latin-400.css';
 import '@fontsource/open-sans/latin-600.css';
 import '@fontsource/open-sans/latin-700.css';
 
-import './hooks/init';
-
 import App from '@/App.vue';
 import router from './router';
 

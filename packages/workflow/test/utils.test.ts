@@ -1,3 +1,4 @@
+import { ApplicationError } from '@/errors/application.error';
 import { jsonParse, jsonStringify, deepCopy, isObjectEmpty, fileTypeFromMimeType } from '@/utils';
 
 describe('isObjectEmpty', () => {
@@ -58,7 +59,11 @@ describe('isObjectEmpty', () => {
 		const { calls } = keySpy.mock;
 
 		const assertCalls = (count: number) => {
-			if (calls.length !== count) throw new Error(`Object.keys was called ${calls.length} times`);
+			if (calls.length !== count) {
+				throw new ApplicationError('`Object.keys()` was called an unexpected number of times', {
+					extra: { times: calls.length },
+				});
+			}
 		};
 
 		assertCalls(0);

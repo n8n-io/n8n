@@ -130,7 +130,6 @@ import {
 	faTerminal,
 	faThLarge,
 	faThumbtack,
-	faTruckMonster,
 	faTimes,
 	faTimesCircle,
 	faToolbox,
@@ -316,7 +315,6 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faGem);
 		addIcon(faXmark);
 		addIcon(faDownload);
-		addIcon(faTruckMonster);
 
 		app.component('font-awesome-icon', FontAwesomeIcon);
 	},

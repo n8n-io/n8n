@@ -26,7 +26,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { runExternalHook } from '@/utils';
+import { runExternalHook } from '@/utils/externalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 

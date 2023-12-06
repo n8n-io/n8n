@@ -39,6 +39,7 @@ declare global {
 				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
 			): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
+			push(type: string, data: unknown): void;
 			shouldNotHaveConsoleErrors(): void;
 		}
 	}

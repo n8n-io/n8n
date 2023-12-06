@@ -2,7 +2,6 @@ import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
 
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import type {
@@ -15,6 +14,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
+import { ConflictError } from './errors/response-errors/conflict.error';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
@@ -43,11 +44,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 
 		if (!execution) {
-			throw new ResponseHelper.NotFoundError(`The execution "${executionId} does not exist.`);
+			throw new NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
 		if (execution.finished || execution.data.resultData.error) {
-			throw new ResponseHelper.ConflictError(`The execution "${executionId} has finished already.`);
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -79,12 +80,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		try {
 			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
 		} catch (error) {
-			throw new ResponseHelper.NotFoundError('Could not find workflow');
+			throw new NotFoundError('Could not find workflow');
 		}
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
@@ -103,7 +104,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
 			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
-			throw new ResponseHelper.NotFoundError(errorMessage);
+			throw new NotFoundError(errorMessage);
 		}
 
 		const runExecutionData = execution.data;

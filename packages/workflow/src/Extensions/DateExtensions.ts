@@ -1,4 +1,4 @@
-import { ExpressionExtensionError } from './../ExpressionError';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 import { DateTime } from 'luxon';
 import type {
@@ -220,24 +220,21 @@ endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
 	description: 'Transforms a date to the last possible moment that lies within the month.',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-endOfMonth',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-endOfMonth',
 };
 
 isDst.doc = {
 	name: 'isDst',
 	returnType: 'boolean',
 	description: 'Checks if a Date is within Daylight Savings Time.',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isDst',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isDst',
 };
 
 isWeekend.doc = {
 	name: 'isWeekend',
 	returnType: 'boolean',
 	description: 'Checks if the Date falls on a Saturday or Sunday.',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isWeekend',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isWeekend',
 };
 
 beginningOf.doc = {
@@ -245,8 +242,7 @@ beginningOf.doc = {
 	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
 	returnType: 'Date',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-beginningOf',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',
 };
 
 extract.doc = {
@@ -254,8 +250,7 @@ extract.doc = {
 	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
 	returnType: 'number',
 	args: [{ name: 'datePart?', type: 'DurationUnit' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-extract',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-extract',
 };
 
 format.doc = {
@@ -263,8 +258,7 @@ format.doc = {
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
 	args: [{ name: 'fmt', type: 'TimeFormat' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-format',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
 
 isBetween.doc = {
@@ -275,8 +269,7 @@ isBetween.doc = {
 		{ name: 'date1', type: 'Date|string' },
 		{ name: 'date2', type: 'Date|string' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isBetween',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isBetween',
 };
 
 isInLast.doc = {
@@ -287,8 +280,7 @@ isInLast.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isInLast',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isInLast',
 };
 
 minus.doc = {
@@ -299,8 +291,7 @@ minus.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-minus',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-minus',
 };
 
 plus.doc = {
@@ -311,8 +302,7 @@ plus.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-plus',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-plus',
 };
 
 export const dateExtensions: ExtensionMap = {
