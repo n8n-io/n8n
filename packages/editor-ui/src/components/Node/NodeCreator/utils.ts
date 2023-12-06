@@ -59,7 +59,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 
 export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
-		if (a.type !== 'node' || b.type !== 'node') return -1;
+		if (a.type !== 'node' || b.type !== 'node') return 0;
 		const displayNameA = a.properties?.displayName?.toLowerCase() || a.key;
 		const displayNameB = b.properties?.displayName?.toLowerCase() || b.key;
 
