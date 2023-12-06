@@ -68,6 +68,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -77,11 +78,14 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props),
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -222,10 +226,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 
-			void this.$externalHooks().run(
-				'settingsCommunityNodesView.openInstallModal',
-				telemetryPayload,
-			);
+			void this.externalHooks.run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},
