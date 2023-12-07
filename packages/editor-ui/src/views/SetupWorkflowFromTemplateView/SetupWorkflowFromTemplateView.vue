@@ -129,14 +129,21 @@ onMounted(async () => {
 						i18n.baseText('templateSetup.skip')
 					}}</n8n-link>
 
-					<n8n-button
+					<n8n-tooltip
 						v-if="isReady"
-						size="large"
-						:label="i18n.baseText('templateSetup.continue.button')"
-						:disabled="setupTemplateStore.isSaving"
-						@click="setupTemplateStore.createWorkflow({ router })"
-						data-test-id="continue-button"
-					/>
+						:content="i18n.baseText('templateSetup.continue.button.fillRemaining')"
+						:disabled="setupTemplateStore.numFilledCredentials > 0"
+					>
+						<n8n-button
+							size="large"
+							:label="i18n.baseText('templateSetup.continue.button')"
+							:disabled="
+								setupTemplateStore.isSaving || setupTemplateStore.numFilledCredentials === 0
+							"
+							@click="setupTemplateStore.createWorkflow({ router })"
+							data-test-id="continue-button"
+						/>
+					</n8n-tooltip>
 					<div v-else>
 						<n8n-loading variant="button" />
 					</div>
