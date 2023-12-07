@@ -99,7 +99,7 @@ describe('FilterParameter', () => {
 
 		describe('options.typeValidation', () => {
 			describe('strict (=default)', () => {
-				it('should throw an error when types are not as expected', () => {
+				it('should throw an error when types are not as expected (primitives)', () => {
 					expect(() =>
 						executeFilter(
 							filterFactory({
@@ -107,7 +107,7 @@ describe('FilterParameter', () => {
 									{
 										id: '1',
 										leftValue: '15',
-										rightValue: 15,
+										rightValue: true,
 										operator: { operation: 'equals', type: 'number' },
 									},
 								],
@@ -115,7 +115,46 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided value 1 '15' in condition 1 is not of the expected type 'number'",
+						"The provided values '15' and 'true' in condition 1 are not of the expected type 'number' [item 0]",
+					);
+				});
+
+				it('should throw an error when types are not as expected (arrays)', () => {
+					expect(() =>
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: '[]',
+										rightValue: 0,
+										operator: { operation: 'lengthEquals', type: 'array', rightType: 'number' },
+									},
+								],
+								options: { typeValidation: 'strict' },
+							}),
+						),
+					).toThrowError(
+						"The provided value 1 '[]' in condition 1 is not of the expected type 'array' [item 0]",
+					);
+				});
+
+				it('should throw an error when types are not as expected (objects)', () => {
+					expect(() =>
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: '{}',
+										operator: { operation: 'empty', type: 'object', singleValue: true },
+									},
+								],
+								options: { typeValidation: 'strict' },
+							}),
+						),
+					).toThrowError(
+						"The provided value 1 '{}' in condition 1 is not of the expected type 'object' [item 0]",
 					);
 				});
 			});

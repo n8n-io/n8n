@@ -157,7 +157,7 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
+import Conditions from '@/components/FilterConditions/FilterConditions.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -185,7 +185,7 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
-		FilterConditions,
+		FilterConditions: Conditions,
 	},
 	props: {
 		nodeValues: {

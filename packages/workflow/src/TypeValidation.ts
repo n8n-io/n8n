@@ -202,6 +202,9 @@ export const validateFieldType = (
 			}
 		}
 		case 'array': {
+			if (strict && !Array.isArray(value)) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 			try {
 				return { valid: true, newValue: tryToParseArray(value) };
 			} catch (e) {
