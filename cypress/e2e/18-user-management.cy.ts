@@ -61,71 +61,65 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_ADMIN.email).should('exist');
 	});
 
-	describe('Advanced Permissions', () => {
-		before(() => {
-			cy.enableFeature('advancedPermissions');
-		});
+	it('should be able to change user role to Admin and back', () => {
+		cy.enableFeature('advancedPermissions');
 
-		after(() => {
-			cy.disableFeature('advancedPermissions');
-		});
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 
-		it('should be able to change user role to Admin and back', () => {
-			usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
+		// Change role from Member to Admin
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
+			.find('input')
+			.should('contain.value', 'Member');
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
+		getVisibleSelect().find('li').contains('Admin').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
+			.find('input')
+			.should('contain.value', 'Admin');
 
-			// Change role from Member to Admin
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_MEMBERS[0].email)
-				.find('input')
-				.should('contain.value', 'Member');
-			usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
-			getVisibleSelect().find('li').contains('Admin').click();
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_MEMBERS[0].email)
-				.find('input')
-				.should('contain.value', 'Admin');
+		usersSettingsPage.actions.loginAndVisit(
+			INSTANCE_MEMBERS[0].email,
+			INSTANCE_MEMBERS[0].password,
+			true,
+		);
 
-			usersSettingsPage.actions.loginAndVisit(
-				INSTANCE_MEMBERS[0].email,
-				INSTANCE_MEMBERS[0].password,
-				true,
-			);
+		// Change role from Admin to Member, then back to Admin
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_ADMIN.email)
+			.find('input')
+			.should('contain.value', 'Admin');
 
-			// Change role from Admin to Member, then back to Admin
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_ADMIN.email)
-				.find('input')
-				.should('contain.value', 'Admin');
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
+		getVisibleSelect().find('li').contains('Member').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_ADMIN.email)
+			.find('input')
+			.should('contain.value', 'Member');
 
-			usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
-			getVisibleSelect().find('li').contains('Member').click();
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_ADMIN.email)
-				.find('input')
-				.should('contain.value', 'Member');
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, false);
+		usersSettingsPage.actions.loginAndVisit(
+			INSTANCE_MEMBERS[0].email,
+			INSTANCE_MEMBERS[0].password,
+			true,
+		);
 
-			usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, false);
-			usersSettingsPage.actions.loginAndVisit(
-				INSTANCE_MEMBERS[0].email,
-				INSTANCE_MEMBERS[0].password,
-				true,
-			);
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
+		getVisibleSelect().find('li').contains('Admin').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_ADMIN.email)
+			.find('input')
+			.should('contain.value', 'Admin');
 
-			usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
-			getVisibleSelect().find('li').contains('Admin').click();
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_ADMIN.email)
-				.find('input')
-				.should('contain.value', 'Admin');
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, true);
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
+		getVisibleSelect().find('li').contains('Member').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
+			.find('input')
+			.should('contain.value', 'Member');
 
-			usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, true);
-			usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
-			getVisibleSelect().find('li').contains('Member').click();
-			usersSettingsPage.getters
-				.userRoleSelect(INSTANCE_MEMBERS[0].email)
-				.find('input')
-				.should('contain.value', 'Member');
-		});
+		cy.disableFeature('advancedPermissions');
 	});
 
 	it('should be able to change theme', () => {
