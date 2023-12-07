@@ -304,15 +304,14 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		const externalHooks = useExternalHooks();
 		const telemetry = useTelemetry();
 
-		const telemetryPayload = {
+		await externalHooks.run('templatesWorkflowView.openWorkflow', {
 			source: 'workflow',
 			template_id: templateId.value,
 			wf_template_repo_session_id: templatesStore.currentSessionId,
-		};
+		});
 
-		await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-		telemetry.track('User inserted workflow template', telemetryPayload, {
-			withPostHog: true,
+		telemetry.track('User closed cred setup', {
+			completed: false,
 		});
 
 		// Replace the URL so back button doesn't come back to this setup view
@@ -325,7 +324,10 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Creates a workflow from the template and navigates to the workflow view.
 	 */
-	const createWorkflow = async ($router: Router) => {
+	const createWorkflow = async (opts: { router: Router }) => {
+		const { router } = opts;
+		const telemetry = useTelemetry();
+
 		if (!template.value) {
 			return;
 		}
@@ -340,8 +342,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflowsStore,
 			);
 
+			telemetry.track('User closed cred setup', {
+				completed: true,
+			});
+
 			// Replace the URL so back button doesn't come back to this setup view
-			await $router.replace({
+			await router.replace({
 				name: VIEWS.WORKFLOW,
 				params: { name: createdWorkflow.id },
 			});
