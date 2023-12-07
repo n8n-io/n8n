@@ -51,7 +51,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -159,10 +158,6 @@ export interface INodeTypesMaxCount {
 		max: number;
 		nodeNames: string[];
 	};
-}
-
-export interface IExternalHooks {
-	run: typeof runExternalHook;
 }
 
 export interface INodeTranslationHeaders {
