@@ -31,7 +31,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.activeSubcategory().should('not.have.text', 'On app event');
 	});
 
-	it.only('should search for nodes', () => {
+	it('should search for nodes', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
