@@ -287,7 +287,6 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -310,10 +309,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [externalHooks, genericHelpers, executionHelpers],
+	mixins: [genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
@@ -327,10 +327,12 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
+		const externalHooks = useExternalHooks();
 
 		return {
 			i18n,
 			telemetry,
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 		};
@@ -368,7 +370,7 @@ export default defineComponent({
 	async created() {
 		await this.loadWorkflows();
 
-		void this.$externalHooks().run('executionsList.openDialog');
+		void this.externalHooks.run('executionsList.openDialog');
 		this.telemetry.track('User opened Executions log', {
 			workflow_id: this.workflowsStore.workflowId,
 		});

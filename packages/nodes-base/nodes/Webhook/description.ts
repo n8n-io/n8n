@@ -202,6 +202,7 @@ export const optionsProperty: INodeProperties = {
 			displayOptions: {
 				show: {
 					'/httpMethod': ['PATCH', 'PUT', 'POST'],
+					'@version': [1],
 				},
 			},
 			default: false,
@@ -212,15 +213,28 @@ export const optionsProperty: INodeProperties = {
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
-			required: true,
 			displayOptions: {
 				show: {
 					binaryData: [true],
+					'@version': [1],
 				},
 			},
 			hint: 'The name of the output binary field to put the file in',
 			description:
 				'If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it',
+		},
+		{
+			displayName: 'Binary Property',
+			name: 'binaryPropertyName',
+			type: 'string',
+			default: 'data',
+			displayOptions: {
+				hide: {
+					'@version': [1],
+				},
+			},
+			description:
+				'Name of the binary property to write the data of the received file to, only relevant if binary data is received',
 		},
 		{
 			displayName: 'Ignore Bots',
@@ -249,6 +263,9 @@ export const optionsProperty: INodeProperties = {
 			name: 'rawBody',
 			type: 'boolean',
 			displayOptions: {
+				show: {
+					'@version': [1],
+				},
 				hide: {
 					binaryData: [true],
 					noResponseBody: [true],
@@ -257,6 +274,19 @@ export const optionsProperty: INodeProperties = {
 			default: false,
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description: 'Raw body (binary)',
+		},
+		{
+			displayName: 'Raw Body',
+			name: 'rawBody',
+			type: 'boolean',
+			displayOptions: {
+				hide: {
+					noResponseBody: [true],
+					'@version': [1],
+				},
+			},
+			default: false,
+			description: 'Whether to return the raw body',
 		},
 		{
 			displayName: 'Response Data',

@@ -59,7 +59,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { runExternalHook } from '@/utils/externalHooks';
 import { initializeAuthenticatedFeatures } from '@/init';
 
 export default defineComponent({
@@ -119,7 +118,7 @@ export default defineComponent({
 		void this.checkForNewVersions();
 		void initializeAuthenticatedFeatures();
 
-		void runExternalHook('app.mount');
+		void useExternalHooks().run('app.mount');
 		this.loading = false;
 	},
 	watch: {

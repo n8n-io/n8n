@@ -91,7 +91,6 @@ import type {
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
-import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
 
@@ -99,7 +98,6 @@ const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default defineComponent({
 	name: 'parameter-input-full',
-	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,
