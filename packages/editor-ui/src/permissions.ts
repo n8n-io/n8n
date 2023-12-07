@@ -88,31 +88,18 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 				hasPermission(['rbac'], { rbac: { scope: 'credential:create' } }) || !!permissions.isOwner,
 		},
 		{
-			name: 'updateName',
+			name: 'update',
 			test: (permissions) => !!permissions.isOwner,
 		},
 		{
-			name: 'updateConnection',
-			test: (permissions) => !!permissions.isOwner,
-		},
-		{
-			name: 'updateSharing',
+			name: 'share',
 			test: (permissions) =>
 				hasPermission(['rbac'], { rbac: { scope: 'credential:share' } }) || !!permissions.isOwner,
-		},
-		{
-			name: 'updateNodeAccess',
-			test: (permissions) => !!permissions.isOwner,
 		},
 		{
 			name: 'delete',
 			test: (permissions) =>
 				hasPermission(['rbac'], { rbac: { scope: 'credential:delete' } }) || !!permissions.isOwner,
-		},
-		{
-			name: 'use',
-			test: (permissions) =>
-				hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) || !!permissions.isOwner,
 		},
 	];
 
