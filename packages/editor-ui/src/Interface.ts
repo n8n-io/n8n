@@ -106,7 +106,7 @@ declare global {
 		Cypress: unknown;
 		Appcues?: {
 			track(event: string, properties?: ITelemetryTrackProperties): void;
-		}
+		};
 	}
 }
 

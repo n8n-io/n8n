@@ -151,11 +151,14 @@ describe('telemetry', () => {
 			telemetry.track(event, properties, options);
 
 			expect(trackFunction).toHaveBeenCalledTimes(1);
-			expect(trackFunction).toHaveBeenCalledWith(event, { ...properties, version_cli: MOCK_VERSION_CLI });
+			expect(trackFunction).toHaveBeenCalledWith(event, {
+				...properties,
+				version_cli: MOCK_VERSION_CLI,
+			});
 		});
 
 		it('should call Rudderstack track method with correct parameters and withAppCues option set to true', () => {
-			window.Appcues = { track: () => { } };
+			window.Appcues = { track: () => {} };
 			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
 			const appCuesTrackFunction = vi.spyOn(window.Appcues, 'track');
 
@@ -166,8 +169,14 @@ describe('telemetry', () => {
 			telemetry.track(event, properties, options);
 
 			expect(trackFunction).toHaveBeenCalledTimes(1);
-			expect(trackFunction).toHaveBeenCalledWith(event, { ...properties, version_cli: MOCK_VERSION_CLI });
-			expect(appCuesTrackFunction).toHaveBeenCalledWith(event, { ...properties, version_cli: MOCK_VERSION_CLI });
+			expect(trackFunction).toHaveBeenCalledWith(event, {
+				...properties,
+				version_cli: MOCK_VERSION_CLI,
+			});
+			expect(appCuesTrackFunction).toHaveBeenCalledWith(event, {
+				...properties,
+				version_cli: MOCK_VERSION_CLI,
+			});
 		});
 	});
 });

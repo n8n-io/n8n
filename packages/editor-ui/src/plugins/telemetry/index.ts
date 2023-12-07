@@ -99,7 +99,7 @@ export class Telemetry {
 	track(
 		event: string,
 		properties?: ITelemetryTrackProperties,
-		options: { withPostHog?: boolean, withAppCues?: boolean } = {},
+		options: { withPostHog?: boolean; withAppCues?: boolean } = {},
 	) {
 		if (!this.rudderStack) return;
 
