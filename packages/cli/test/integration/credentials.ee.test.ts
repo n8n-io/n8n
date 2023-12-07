@@ -2,7 +2,7 @@ import type { SuperAgentTest } from 'supertest';
 import { In } from 'typeorm';
 import type { IUser } from 'n8n-workflow';
 
-import type { Credentials } from '@/requests';
+import type { ListQuery } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -99,10 +99,10 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
 		const ownerCredential = response.body.data.find(
-			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === owner.id,
+			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === owner.id,
 		);
 		const memberCredential = response.body.data.find(
-			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === member1.id,
+			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === member1.id,
 		);
 
 		validateMainCredentialData(ownerCredential);
@@ -540,7 +540,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 });
 
-function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
