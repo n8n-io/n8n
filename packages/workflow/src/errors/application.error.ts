@@ -14,7 +14,7 @@ export class ApplicationError extends Error {
 
 	readonly extra?: Event['extra'];
 
-	packageName?: string;
+	readonly packageName?: string;
 
 	constructor(
 		message: string,
