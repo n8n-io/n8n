@@ -12,6 +12,7 @@ import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/set
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import type { IWorkflowTemplateNode } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 // Props
 const props = defineProps({
@@ -29,6 +30,7 @@ const props = defineProps({
 const setupTemplateStore = useSetupTemplateStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 //#region Computed
 
@@ -66,6 +68,20 @@ const onCredentialDeselected = () => {
 	setupTemplateStore.unsetSelectedCredential(props.credentials.key);
 };
 
+const onCredentialModalOpened = () => {
+	telemetry.track(
+		'User opened Credential modal',
+		{
+			source: 'cred_setup',
+			credentialType: props.credentials.credentialType,
+			new_credential: !selectedCredentialId.value,
+		},
+		{
+			withPostHog: true,
+		},
+	);
+};
+
 //#endregion Methods
 </script>
 
@@ -98,6 +114,7 @@ const onCredentialDeselected = () => {
 				:selectedCredentialId="selectedCredentialId"
 				@credential-selected="onCredentialSelected"
 				@credential-deselected="onCredentialDeselected"
+				@credential-modal-opened="onCredentialModalOpened"
 			/>
 
 			<IconSuccess
