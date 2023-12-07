@@ -91,11 +91,11 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 			return value;
 		}
 
-		let parsed;
+		let parsed: unknown[];
 		try {
-			parsed = JSON.parse(String(value));
+			parsed = JSON.parse(String(value)) as unknown[];
 		} catch (e) {
-			parsed = JSON.parse(String(value).replace(/'/g, '"'));
+			parsed = JSON.parse(String(value).replace(/'/g, '"')) as unknown[];
 		}
 
 		if (!Array.isArray(parsed)) {
@@ -112,7 +112,7 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		const o = JSON.parse(String(value));
+		const o = JSON.parse(String(value)) as object;
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
