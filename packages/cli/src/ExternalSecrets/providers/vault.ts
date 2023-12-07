@@ -412,6 +412,7 @@ export class VaultProvider extends SecretsProvider {
 				if (k === 'id') {
 					return '********';
 				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				return v;
 			})}`,
 		);
