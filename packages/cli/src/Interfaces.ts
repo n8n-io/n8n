@@ -476,6 +476,7 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataStreamMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
@@ -540,6 +541,11 @@ export type PushDataConsoleMessage = {
 type PushDataWorkerStatusMessage = {
 	data: IPushDataWorkerStatusMessage;
 	type: 'sendWorkerStatusMessage';
+};
+
+type PushDataStreamMessage = {
+	data: IPushDataStreamMessage;
+	type: 'sendStreamMessage';
 };
 
 type PushDataReloadNodeType = {
@@ -638,6 +644,11 @@ export interface IPushDataConsoleMessage {
 export interface IPushDataWorkerStatusMessage {
 	workerId: string;
 	status: IPushDataWorkerStatusPayload;
+}
+
+export interface IPushDataStreamMessage {
+	source: string;
+	response: string;
 }
 
 export interface IPushDataWorkerStatusPayload {

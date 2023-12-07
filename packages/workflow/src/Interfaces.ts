@@ -381,7 +381,7 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
-export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
+export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse | Readable;
 
 export interface INodeTypeNameVersion {
 	name: string;
@@ -799,6 +799,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
+		sendResponseToUi(response: IExecuteResponsePromiseData): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
 		// TODO: Make this one then only available in the new config one
@@ -900,6 +901,7 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	sendResponseToUi(response: IExecuteResponsePromiseData): void;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &

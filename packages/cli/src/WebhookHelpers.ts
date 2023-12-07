@@ -196,7 +196,7 @@ export function getWorkflowWebhooks(
 export function encodeWebhookResponse(
 	response: IExecuteResponsePromiseData,
 ): IExecuteResponsePromiseData {
-	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
+	if (typeof response === 'object' && 'body' in response && Buffer.isBuffer(response.body)) {
 		response.body = {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),

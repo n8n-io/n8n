@@ -152,6 +152,13 @@ export class LmOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Streaming Mode',
+						name: 'streaming',
+						default: false,
+						description: 'Whether to stream back partial results as they become available',
+						type: 'boolean',
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						default: 60000,
@@ -223,6 +230,7 @@ export class LmOpenAi implements INodeType {
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			presencePenalty?: number;
+			streaming?: boolean;
 			temperature?: number;
 			timeout?: number;
 			maxRetries?: number;

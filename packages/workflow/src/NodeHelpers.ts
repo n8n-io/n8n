@@ -1060,6 +1060,8 @@ export function getNodeInputs(
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
+		console.log('error');
+		console.log(e);
 		throw new ApplicationError('Could not calculate inputs dynamically for node', {
 			extra: { nodeName: node.name },
 		});

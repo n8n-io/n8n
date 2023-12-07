@@ -1,9 +1,12 @@
+import type { Readable } from 'stream';
 import {
 	type ITriggerFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type ITriggerResponse,
 	NodeConnectionType,
+	createDeferredPromise,
+	IExecuteResponsePromiseData,
 } from 'n8n-workflow';
 
 export class ManualChatTrigger implements INodeType {
@@ -58,7 +61,16 @@ export class ManualChatTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const manualTriggerFunction = async () => {
-			this.emit([this.helpers.returnJsonArray([{}])]);
+			const responsePromise = await createDeferredPromise<IExecuteResponsePromiseData>();
+			this.emit([this.helpers.returnJsonArray([{}])], responsePromise);
+
+			const streamResponse = (await responsePromise.promise()) as Readable;
+
+			for await (const chunk of streamResponse) {
+				console.log('chunk2:', chunk);
+			}
+
+			// this.sendResponseToUi('asdf');
 		};
 
 		return {

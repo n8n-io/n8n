@@ -1,3 +1,4 @@
+import { Readable } from 'stream';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -22,6 +23,8 @@ import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage } from 'langchain/schema';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+// import type { IterableReadableStream } from 'langchain/dist/util/stream';
+import type { LLMResult } from 'langchain/schema';
 
 interface MessagesTemplate {
 	type: string;
@@ -134,11 +137,72 @@ async function createSimpleLLMChain(
 	llm: BaseLanguageModel,
 	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
-): Promise<string[]> {
+	stream = false,
+	// ): Promise<string[] | IterableReadableStream<unknown>> {
+): Promise<string[] | Readable> {
+	console.log('createSimpleLLMChain: 2');
 	const chain = new LLMChain({
 		llm,
 		prompt,
 	});
+
+	if (stream) {
+		console.log('createSimpleLLMChain: 2');
+
+		// For some reason we seem to have to create an own stream if we want
+		// to receive the chunks as they arrive. If not, only the combined result
+		// will be returned in the end
+		const streamResponse = new Readable({ encoding: 'utf8' });
+		streamResponse._read = function () {};
+		chain
+			.stream(
+				{ query },
+				{
+					callbacks: [
+						{
+							handleLLMNewToken(token: string) {
+								streamResponse.push(token);
+							},
+							handleLLMEnd(output: LLMResult, runId: string) {
+								console.log('--- Stream end ---');
+								streamResponse.push(null);
+								// console.log({ token });
+							},
+							handleChainEnd() {
+								console.log('--- Chain end ---');
+								// streamResponse.push(null);
+							},
+						},
+					],
+				},
+			)
+			.catch((error) => {
+				console.log('ERROR');
+				console.log(error);
+				streamResponse.push(null);
+			});
+
+		// streamResponse.on('data', (chunk) => {
+		// 	console.log('bbbb');
+		// 	console.log('-> ', chunk.toString());
+		// });
+
+		return streamResponse;
+
+		// return chain.stream(
+		// 	{ query },
+		// 	{
+		// 		callbacks: [
+		// 			{
+		// 				handleLLMNewToken(token: string) {
+		// 					console.log({ token });
+		// 				},
+		// 			},
+		// 		],
+		// 	},
+		// );
+	}
+
 	const response = (await chain.call({
 		query,
 		signal: context.getExecutionCancelSignal(),
@@ -154,7 +218,20 @@ async function getChain(
 	llm: BaseLanguageModel,
 	outputParsers: BaseOutputParser[],
 	messages?: MessagesTemplate[],
-): Promise<unknown[]> {
+	stream = false,
+	// ): Promise<unknown[] | IterableReadableStream<unknown>> {
+): Promise<unknown[] | Readable> {
+	console.log('getChain');
+	// const llm = (await context.getInputConnectionData(
+	// 	NodeConnectionType.AiLanguageModel,
+	// 	0,
+	// )) as BaseLanguageModel;
+
+	// const outputParsers = (await context.getInputConnectionData(
+	// 	NodeConnectionType.AiOutputParser,
+	// 	0,
+	// )) as BaseOutputParser[];
+
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = await getChainPromptTemplate(
 		context,
 		itemIndex,
@@ -164,8 +241,13 @@ async function getChain(
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
+		console.log('-----1--------');
 		return createSimpleLLMChain(context, llm, query, chatTemplate);
 	}
+
+	console.log('-----2--------');
+	console.log(llm);
+	// console.log(llm.streaming);
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser
 	const combinedOutputParser =
@@ -183,6 +265,12 @@ async function getChain(
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
+
+	// TODO: Has to get added here again but correctly
+	// if (stream) {
+	// 	console.log('return stream');
+	// 	return chain.stream({ query });
+	// }
 
 	const response = (await chain.invoke({ query })) as string | string[];
 
@@ -398,6 +486,24 @@ export class ChainLlm implements INodeType {
 					},
 				],
 			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Streaming Mode',
+						name: 'streaming',
+						default: false,
+						description: 'Whether to stream back partial results as they become available',
+						type: 'boolean',
+					},
+				],
+			},
 		],
 	};
 
@@ -424,13 +530,58 @@ export class ChainLlm implements INodeType {
 				[],
 			) as MessagesTemplate[];
 
+			const options = this.getNodeParameter('options', itemIndex, {}) as {
+				streaming?: boolean;
+			};
+
 			if (prompt === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
+			const stream = !!options.streaming;
 
+			// const responses = getChain(this, prompt, messages, stream) as Promise<unknown[]>;
 			const responses = await getChain(this, itemIndex, prompt, llm, outputParsers, messages);
 
-			responses.forEach((response) => {
+			if (stream) {
+				console.log('stream result');
+				// console.log(responses);
+				// console.log(typeof responses);
+				// console.log(responses.constructor.name);
+				// Maybe call a stream response function here, in this case it would maybe just return an empty result and the workflow would continue
+
+				// responses.on('data', (chunk: string) => {
+				// 	console.log('Chunk1:', chunk);
+				// });
+
+				this.sendResponse(responses as Readable);
+
+				let responseText = '';
+				for await (const chunk of responses) {
+					console.log('chunk:', chunk);
+					responseText += chunk;
+				}
+
+				console.log('END');
+
+				return [
+					[
+						{
+							json: {
+								response: {
+									text: responseText.trim(),
+								},
+							},
+						},
+					],
+				];
+			}
+
+			console.log('NO stream result');
+
+			// return [];
+
+			// responses.forEach((response) => {
+			(responses as unknown[]).forEach((response) => {
 				let data: IDataObject;
 				if (typeof response === 'string') {
 					data = {

@@ -253,6 +253,7 @@ export class LmChatOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 				  }
 				: undefined,
+			streaming: true,
 		});
 
 		return {

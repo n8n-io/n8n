@@ -3061,6 +3061,26 @@ export function getExecuteTriggerFunctions(
 					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
 				);
 			},
+
+			// TODO: Currently defined twice
+			sendResponseToUi(response: IExecuteResponsePromiseData): void {
+				if (mode !== 'manual') {
+					return;
+				}
+				try {
+					if (additionalData.sendDataToUI) {
+						additionalData.sendDataToUI('sendStreamMessage', {
+							source: node.name,
+							response,
+						});
+					}
+				} catch (error) {
+					Logger.warn(
+						`There was a problem sending response from node "${node.name}" to UI: ${error.message}`,
+					);
+				}
+			},
+
 			getMode: () => mode,
 			getActivationMode: () => activation,
 			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
@@ -3457,6 +3477,25 @@ export function getExecuteFunctions(
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+			},
+
+			// TODO: Currently defined twice
+			sendResponseToUi(response: IExecuteResponsePromiseData): void {
+				if (mode !== 'manual') {
+					return;
+				}
+				try {
+					if (additionalData.sendDataToUI) {
+						additionalData.sendDataToUI('sendStreamMessage', {
+							source: node.name,
+							response,
+						});
+					}
+				} catch (error) {
+					Logger.warn(
+						`There was a problem sending response from node "${node.name}" to UI: ${error.message}`,
+					);
+				}
 			},
 
 			addInputData(
