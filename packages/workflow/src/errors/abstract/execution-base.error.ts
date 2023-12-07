@@ -1,4 +1,4 @@
-import type { Functionality, IDataObject, JsonObject, Severity } from '../../Interfaces';
+import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
 import { ApplicationError } from '../application.error';
 
 interface ExecutionBaseErrorOptions {
@@ -18,8 +18,6 @@ export abstract class ExecutionBaseError extends ApplicationError {
 	context: IDataObject = {};
 
 	lineNumber: number | undefined;
-
-	severity: Severity = 'error';
 
 	functionality: Functionality = 'regular';
 
