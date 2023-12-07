@@ -928,7 +928,11 @@ export default defineComponent({
 						data: credentialDetails,
 					});
 				}
-				if (this.isSharedWithChanged && credentialDetails.sharedWith) {
+				if (
+					this.credentialPermissions.share &&
+					this.isSharedWithChanged &&
+					credentialDetails.sharedWith
+				) {
 					credential = await this.credentialsStore.setCredentialSharedWith({
 						credentialId: credentialDetails.id,
 						sharedWith: credentialDetails.sharedWith,
