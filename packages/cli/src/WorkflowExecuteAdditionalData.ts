@@ -410,9 +410,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') !== 'default') {
-					await restoreBinaryDataId(fullRunData, this.executionId);
-				}
+				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
