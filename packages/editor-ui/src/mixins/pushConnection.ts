@@ -5,7 +5,6 @@ import type {
 	IPushDataExecutionFinished,
 } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
@@ -39,6 +38,7 @@ import { defineComponent } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const pushConnection = defineComponent({
 	setup() {
@@ -52,7 +52,7 @@ export const pushConnection = defineComponent({
 			void this.pushMessageReceived(message);
 		});
 	},
-	mixins: [externalHooks, nodeHelpers, workflowHelpers],
+	mixins: [nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
@@ -518,7 +518,7 @@ export const pushConnection = defineComponent({
 						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
-				void this.$externalHooks().run('pushConnection.executionFinished', {
+				void useExternalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,

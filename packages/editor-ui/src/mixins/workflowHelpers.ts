@@ -47,7 +47,6 @@ import type {
 
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
@@ -68,6 +67,7 @@ import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -474,7 +474,7 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [externalHooks, nodeHelpers, genericHelpers],
+	mixins: [nodeHelpers, genericHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -912,7 +912,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -1077,7 +1077,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;

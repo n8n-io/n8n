@@ -68,6 +68,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -91,7 +92,10 @@ export default defineComponent({
 		};
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 		};
@@ -586,7 +590,7 @@ export default defineComponent({
 
 			this.tagsStore.upsertTags(tags);
 
-			void this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+			void this.externalHooks.run('workflow.open', { workflowId, workflowName: data.name });
 			this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
