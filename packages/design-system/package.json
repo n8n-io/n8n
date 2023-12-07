@@ -14,6 +14,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
+    "dev": "pnpm run storybook",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
     "typecheck": "vue-tsc --declaration --emitDeclarationOnly",

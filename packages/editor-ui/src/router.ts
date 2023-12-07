@@ -8,7 +8,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import { runExternalHook } from '@/utils/externalHooks';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -828,7 +828,7 @@ router.afterEach((to, from) => {
 	 * Run external hooks
 	 */
 
-	void runExternalHook('main.routeChange', { from, to });
+	void useExternalHooks().run('main.routeChange', { from, to });
 
 	/**
 	 * Track current view for telemetry

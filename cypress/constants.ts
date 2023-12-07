@@ -12,6 +12,13 @@ export const INSTANCE_OWNER = {
 	lastName: randLastName(),
 };
 
+export const INSTANCE_ADMIN = {
+	email: 'admin@n8n.io',
+	password: DEFAULT_USER_PASSWORD,
+	firstName: randFirstName(),
+	lastName: randLastName(),
+};
+
 export const INSTANCE_MEMBERS = [
 	{
 		email: 'rebecca@n8n.io',

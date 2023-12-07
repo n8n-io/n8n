@@ -7,10 +7,11 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
 import { isEmpty } from '@/utils/typesUtils';
-import { runExternalHook } from '@/utils/externalHooks';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
 import { useDataSchema } from '@/composables/useDataSchema';
+
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;
@@ -59,7 +60,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		void runExternalHook('runDataJson.onDragEnd', telemetryPayload);
+		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
