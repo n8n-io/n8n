@@ -407,6 +407,14 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.status !== 200 || !resp.data.data) {
 			return [null, resp];
 		}
+		this.logger.debug(
+			`[External Secrets] Token info ${JSON.stringify(resp.data, (k, v) => {
+				if (k === 'id') {
+					return '********';
+				}
+				return v;
+			})}`,
+		);
 		return [resp.data.data, resp];
 	}
 
@@ -415,6 +423,9 @@ export class VaultProvider extends SecretsProvider {
 		kvVersion: string,
 		path: string,
 	): Promise<[string, IDataObject] | null> {
+		this.logger.debug(
+			`[External Secrets] Getting kv secrets from ${mountPath}${path}, version ${kvVersion}`,
+		);
 		let listPath = mountPath;
 		if (kvVersion === '2') {
 			listPath += 'metadata/';
@@ -427,6 +438,7 @@ export class VaultProvider extends SecretsProvider {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				method: 'LIST' as any,
 			});
+			this.logger.debug(`[External Secrets] List response ${JSON.stringify(listResp.data)}`);
 		} catch {
 			return null;
 		}
@@ -444,6 +456,9 @@ export class VaultProvider extends SecretsProvider {
 						secretPath += path + key;
 						try {
 							const secretResp = await this.#http.get<VaultResponse<IDataObject>>(secretPath);
+							this.logger.debug(
+								`[External Secrets] Secret response ${JSON.stringify(secretResp.data)}`,
+							);
 							return [
 								key,
 								kvVersion === '2'
@@ -460,10 +475,12 @@ export class VaultProvider extends SecretsProvider {
 				.filter((v) => v !== null) as Array<[string, IDataObject]>,
 		);
 		const name = path.substring(0, path.length - 1);
+		this.logger.debug(`[External Secrets] Got kv secrets from ${name} ${JSON.stringify(data)}`);
 		return [name, data];
 	}
 
 	async update(): Promise<void> {
+		this.logger.debug('[External Secrets] Updating Vault secrets');
 		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
 
 		const kvs = Object.entries(mounts.data.data).filter(([, v]) => v.type === 'kv');
@@ -481,6 +498,7 @@ export class VaultProvider extends SecretsProvider {
 				)
 			).filter((v) => v !== null) as Array<[string, IDataObject]>,
 		);
+		this.logger.debug('[External Secrets] Secrets List ' + JSON.stringify(secrets));
 		this.cachedSecrets = secrets;
 	}
 
