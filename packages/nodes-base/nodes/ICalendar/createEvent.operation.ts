@@ -28,6 +28,7 @@ export const description: INodeProperties[] = [
 		required: true,
 		description:
 			'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
+		validateType: 'dateTime',
 	},
 	{
 		displayName: 'End',
@@ -37,6 +38,7 @@ export const description: INodeProperties[] = [
 		required: true,
 		description:
 			'Date and time at which the event ends. (For all-day events, the time will be ignored.).',
+		hint: 'If not set, will be equal to the start date',
 	},
 	{
 		displayName: 'All Day',
@@ -273,8 +275,17 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			const title = this.getNodeParameter('title', i) as string;
 			const allDay = this.getNodeParameter('allDay', i) as boolean;
 
-			const start = this.getNodeParameter('start', i) as string;
+			let start = this.getNodeParameter('start', i) as string;
 			let end = this.getNodeParameter('end', i) as string;
+
+			if (!start) {
+				start = new Date().toISOString();
+			}
+
+			if (!end) {
+				end = start;
+			}
+
 			end = allDay ? moment(end).utc().add(1, 'day').format() : end;
 
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -335,6 +346,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				},
 			});
 		} catch (error) {
+			const errorDescription = error.description;
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
@@ -346,7 +358,10 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+			throw new NodeOperationError(this.getNode(), error, {
+				itemIndex: i,
+				description: errorDescription,
+			});
 		}
 	}
 

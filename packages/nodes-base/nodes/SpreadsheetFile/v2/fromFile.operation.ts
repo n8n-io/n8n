@@ -207,8 +207,8 @@ export async function execute(
 				}
 			}
 		} catch (error) {
-			let errorDescription;
-			if (fileExtension !== fileFormat) {
+			let errorDescription = error.description;
+			if (fileExtension && fileExtension !== fileFormat) {
 				error.message = `The file selected in 'Input Binary Field' is not in ${fileFormat} format`;
 				errorDescription = `Try to change the operation or select a ${fileFormat} file in 'Input Binary Field'`;
 			}
