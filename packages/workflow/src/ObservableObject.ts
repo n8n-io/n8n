@@ -16,6 +16,8 @@ export function create(
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	depth = depth || 0;
 
+	// Make all the children of target also observable
+
 	for (const key in target) {
 		if (typeof target[key] === 'object' && target[key] !== null) {
 			target[key] = create(
