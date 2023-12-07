@@ -968,20 +968,46 @@ export async function getBinaryStream(binaryDataId: string, chunkSize?: number):
 }
 
 export function assertBinaryData(
+	workflow: Workflow,
 	inputData: ITaskDataConnections,
 	node: INode,
 	itemIndex: number,
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(node, 'No binary data exists on item!', {
-			itemIndex,
-		});
-	}
+	console.log('assertBinaryData: 1');
+	let binaryPropertyData: IBinaryData | undefined;
+	if (workflow.settings.binaryMode === 'combined') {
+		console.log('assertBinaryData: 2, combined');
+		const binaryData = get(inputData.main[inputIndex]![itemIndex]!.json, propertyName);
+		if (
+			!binaryData ||
+			typeof binaryData !== 'object' ||
+			!('@type' in binaryData) ||
+			binaryData['@type'] !== 'binary'
+		) {
+			throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+				itemIndex,
+			});
+		}
 
-	const binaryPropertyData = binaryKeyData[propertyName];
+		binaryPropertyData = binaryData.data as IBinaryData;
+	} else {
+		console.log('assertBinaryData: 3, separate');
+
+		// binaryMode: separate
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+
+		if (binaryKeyData === undefined) {
+			throw new NodeOperationError(node, 'No binary data exists on item!', {
+				itemIndex,
+			});
+		}
+
+		binaryPropertyData = binaryKeyData[propertyName];
+	}
+	// get()
+
 	if (binaryPropertyData === undefined) {
 		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
 			itemIndex,
@@ -995,12 +1021,22 @@ export function assertBinaryData(
  * Returns binary data buffer for given item index and property name.
  */
 export async function getBinaryDataBuffer(
+	workflow: Workflow,
 	inputData: ITaskDataConnections,
+	node: INode,
 	itemIndex: number,
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = assertBinaryData(
+		workflow,
+		inputData,
+		node,
+		itemIndex,
+		propertyName,
+		inputIndex,
+	);
+
 	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -3519,9 +3555,9 @@ export function getExecuteFunctions(
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
-					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+					assertBinaryData(workflow, inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+					getBinaryDataBuffer(workflow, inputData, node, itemIndex, propertyName, 0),
 
 				returnJsonArray,
 				normalizeItems,
@@ -3663,9 +3699,9 @@ export function getExecuteSingleFunctions(
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>
-					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
+					assertBinaryData(workflow, inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+					getBinaryDataBuffer(workflow, inputData, node, itemIndex, propertyName, inputIndex),
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);

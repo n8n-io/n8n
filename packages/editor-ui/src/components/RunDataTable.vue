@@ -122,6 +122,12 @@
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 							v-html="highlightSearchTerm(data)"
 						/>
+						<span
+							v-else-if="isBinary(data)"
+							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+						>
+							<BinaryData :data="data"></BinaryData>
+						</span>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
 								<span
@@ -169,6 +175,7 @@ import Draggable from './Draggable.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import BinaryData from './BinaryData.vue';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
@@ -179,7 +186,7 @@ type DraggableRef = InstanceType<typeof Draggable>;
 export default defineComponent({
 	name: 'run-data-table',
 	mixins: [externalHooks],
-	components: { Draggable, MappingPill },
+	components: { BinaryData, Draggable, MappingPill },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -433,6 +440,9 @@ export default defineComponent({
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
+		},
+		isBinary(data: unknown): boolean {
+			return !!data && typeof data === 'object' && '@type' in data && data['@type'] === 'binary';
 		},
 		isSimple(data: unknown): boolean {
 			return (

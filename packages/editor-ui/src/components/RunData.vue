@@ -1371,11 +1371,12 @@ export default defineComponent({
 			);
 		},
 		isDownloadable(index: number, key: string): boolean {
-			const { mimeType, fileName } = this.binaryData[index][key];
-			return !!(mimeType && fileName);
+			const { mimeType, fileExtension, fileName } = this.binaryData[index][key];
+			return !!(mimeType && (fileExtension ?? fileName));
 		},
 		async downloadBinaryData(index: number, key: string) {
-			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
+			const { id, data, fileExtension, mimeType } = this.binaryData[index][key];
+			const fileName = this.binaryData[index][key].fileName ?? 'unknown';
 
 			if (id) {
 				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName, mimeType);

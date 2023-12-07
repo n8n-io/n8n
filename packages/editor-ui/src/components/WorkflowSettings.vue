@@ -40,6 +40,31 @@
 
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.binaryMode') + ':' }}
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.binaryMode"
+							placeholder="Select Binary Mode"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-binary-mode"
+						>
+							<n8n-option
+								v-for="option in binaryModeOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
@@ -435,6 +460,10 @@ export default defineComponent({
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string; value: string }>,
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
+			binaryModeOptions: [
+				{ key: 'separate', value: 'separate (legacy)' },
+				{ key: 'combined', value: 'combined (recommended)' },
+			] as Array<{ key: string; value: string }>,
 			executionOrderOptions: [
 				{ key: 'v0', value: 'v0 (legacy)' },
 				{ key: 'v1', value: 'v1 (recommended)' },
@@ -442,6 +471,7 @@ export default defineComponent({
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
+			binaryMode: 'separate',
 			executionOrder: 'v0',
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
@@ -555,6 +585,9 @@ export default defineComponent({
 		}
 		if (workflowSettings.executionOrder === undefined) {
 			workflowSettings.executionOrder = 'v0';
+		}
+		if (workflowSettings.binaryMode === undefined) {
+			workflowSettings.binaryMode = 'separate';
 		}
 
 		this.workflowSettings = workflowSettings;

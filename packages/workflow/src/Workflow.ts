@@ -42,6 +42,7 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 	ConnectionTypes,
+	BinaryObject,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -1226,6 +1227,36 @@ export class Workflow {
 		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}
 
+	convertResponseData(responseData: IRunNodeResponse): IRunNodeResponse {
+		// this.settings.binaryMode = 'combined';
+
+		console.log('convertResponseData: 1');
+		if (!this.settings.binaryMode || this.settings.binaryMode === 'separate') {
+			console.log('convertResponseData: 2');
+			return responseData;
+		}
+		console.log('convertResponseData: 3');
+
+		if (responseData.data?.length) {
+			responseData.data.forEach((outputData) => {
+				outputData.forEach((item) => {
+					if (item.binary) {
+						for (const key of Object.keys(item.binary)) {
+							// TODO: Later allow dot-notation, no idea what should happen right now if it already exists
+							item.json[key] = {
+								// eslint-disable-next-line @typescript-eslint/naming-convention
+								'@type': 'binary',
+								data: item.binary[key],
+							} as unknown as BinaryObject;
+						}
+						item.binary = undefined;
+					}
+				});
+			});
+		}
+		return responseData;
+	}
+
 	/**
 	 * Executes the given node.
 	 *
@@ -1250,9 +1281,9 @@ export class Workflow {
 				if (inputData.main[0] === null) {
 					return { data: undefined };
 				}
-				return { data: [inputData.main[0]] };
+				return this.convertResponseData({ data: [inputData.main[0]] });
 			}
-			return { data: undefined };
+			return this.convertResponseData({ data: undefined });
 		}
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1287,7 +1318,7 @@ export class Workflow {
 
 			if (connectionInputData.length === 0) {
 				// No data for node so return
-				return { data: undefined };
+				return this.convertResponseData({ data: undefined });
 			}
 		}
 
@@ -1333,7 +1364,7 @@ export class Workflow {
 				nodeType instanceof Node
 					? await nodeType.execute(context)
 					: await nodeType.execute.call(context);
-			return { data };
+			return this.convertResponseData({ data });
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1344,10 +1375,10 @@ export class Workflow {
 					mode,
 					'manual',
 				);
-				return { data: await nodeType.poll.call(thisArgs) };
+				return this.convertResponseData({ data: await nodeType.poll.call(thisArgs) });
 			}
 			// In any other mode pass data through as it already contains the result of the poll
-			return { data: inputData.main as INodeExecutionData[][] };
+			return this.convertResponseData({ data: inputData.main as INodeExecutionData[][] });
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
@@ -1360,7 +1391,7 @@ export class Workflow {
 				);
 
 				if (triggerResponse === undefined) {
-					return { data: null };
+					return this.convertResponseData({ data: null });
 				}
 
 				if (triggerResponse.manualTriggerFunction !== undefined) {
@@ -1381,16 +1412,16 @@ export class Workflow {
 				}
 
 				if (response.length === 0) {
-					return { data: null, closeFunction };
+					return this.convertResponseData({ data: null, closeFunction });
 				}
 
-				return { data: response, closeFunction };
+				return this.convertResponseData({ data: response, closeFunction });
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
-			return { data: inputData.main as INodeExecutionData[][] };
+			return this.convertResponseData({ data: inputData.main as INodeExecutionData[][] });
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
-			return { data: inputData.main as INodeExecutionData[][] };
+			return this.convertResponseData({ data: inputData.main as INodeExecutionData[][] });
 		} else {
 			// For nodes which have routing information on properties
 
@@ -1403,7 +1434,7 @@ export class Workflow {
 				mode,
 			);
 
-			return {
+			return this.convertResponseData({
 				data: await routingNode.runNode(
 					inputData,
 					runIndex,
@@ -1413,7 +1444,7 @@ export class Workflow {
 					undefined,
 					abortSignal,
 				),
-			};
+			});
 		}
 	}
 }

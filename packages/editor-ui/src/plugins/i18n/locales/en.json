@@ -1864,6 +1864,7 @@
 	"workflowRun.showError.title": "Problem running workflow",
 	"workflowRun.showMessage.message": "Please fix them before executing",
 	"workflowRun.showMessage.title": "Workflow has issues",
+	"workflowSettings.binaryMode": "Binary Mode",
 	"workflowSettings.callerIds": "IDs of workflows that can call this one",
 	"workflowSettings.callerIds.placeholder": "e.g. 14, 18",
 	"workflowSettings.callerPolicy": "This workflow can be called by",

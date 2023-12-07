@@ -1005,12 +1005,32 @@ export interface INodeExecutionData {
 		| NodeOperationError
 		| number
 		| undefined;
-	json: IDataObject;
+	// data?: DataMixedObject;
+	// json: IDataObject;
+	json: DataMixedObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	index?: number;
 }
+
+export interface BinaryObject {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'@type': 'binary';
+	data: IBinaryData;
+}
+
+export interface DataMixedObject {
+	[key: string]: GenericValue | DataMixedObject | GenericValue[] | DataMixedObject[] | BinaryObject;
+}
+// export interface INodeExecutionDataNew {
+// 	data: DataObject;
+// 	error?: NodeApiError | NodeOperationError;
+// 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+// 	index?: number;
+// }
+
+// export type INodeExecutionData = INodeExecutionDataOld | INodeExecutionDataNew;
 
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
@@ -1955,6 +1975,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	binaryMode?: 'separate' | 'combined';
 }
 
 export interface WorkflowFEMeta {

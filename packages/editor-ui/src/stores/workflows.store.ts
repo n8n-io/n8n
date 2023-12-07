@@ -90,6 +90,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	connections: {},
 	nodes: [],
 	settings: {
+		binaryMode: 'combined',
 		executionOrder: 'v1',
 	},
 	tags: [],
