@@ -83,6 +83,7 @@ export const workflowRun = defineComponent({
 
 			try {
 				// Check first if the workflow has any issues before execute it
+				await this.refreshNodeIssues();
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
