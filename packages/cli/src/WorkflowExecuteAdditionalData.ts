@@ -625,6 +625,21 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				// send tracking and event log events, but don't wait for them
 				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
 			},
+			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject) {
+				const externalHooks = Container.get(ExternalHooks);
+				if (externalHooks.exists('workflow.postExecute')) {
+					try {
+						await externalHooks.run('workflow.postExecute', [
+							fullRunData,
+							this.workflowData,
+							this.executionId,
+						]);
+					} catch (error) {
+						ErrorReporter.error(error);
+						console.error('There was a problem running hook "workflow.postExecute"', error);
+					}
+				}
+			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
@@ -1014,6 +1029,7 @@ export function getWorkflowHooksWorkerExecuter(
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
+
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
