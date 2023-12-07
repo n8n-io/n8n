@@ -287,7 +287,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 	});
 
 	describe('overridden caller policy', () => {
-		test('if no sharing, policy becomes workflows-from-same-owner', async () => {
+		test('if no sharing, should override policy to workflows-from-same-owner', async () => {
 			license.disable('feat:sharing');
 
 			const parentWorkflow = createParentWorkflow();
