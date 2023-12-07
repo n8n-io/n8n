@@ -2538,6 +2538,7 @@ export default defineComponent({
 				if (this.pullConnActiveNodeName) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
 					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
+					const overrideTargetEndpoint = connection?.connector?.overrideTargetEndpoint as Endpoint | null;
 
 					if (sourceNode) {
 						const isTarget = connection.parameters.connection === 'target';
@@ -2546,7 +2547,14 @@ export default defineComponent({
 						const outputIndex = connection.parameters.index;
 						NodeViewUtils.resetConnectionAfterPull(connection);
 						await this.$nextTick();
-						this.connectTwoNodes(sourceNodeName, outputIndex, targetNodeName, 0, connectionType);
+
+						this.connectTwoNodes(
+							sourceNodeName,
+							outputIndex,
+							targetNodeName,
+							overrideTargetEndpoint?.parameters?.index ?? 0,
+							connectionType
+						);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = false;
 					}
@@ -2927,63 +2935,6 @@ export default defineComponent({
 				console.error(e);
 			}
 		},
-		/**
-		 * Calculates the intersecting distances of the mouse event coordinates with the given element's boundaries,
-		 * adjusted by the specified offset.
-		 *
-		 * @param {Element} element - The DOM element to check against.
-		 * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
-		 * @param {number} offset - Offset to adjust the element's boundaries.
-		 * @returns { {x: number | null, y: number | null} | null } Object containing intersecting distances along x and y axes or null if no intersection.
-		 */
-		calculateElementIntersection(
-			element: Element,
-			mouseEvent: MouseEvent | TouchEvent,
-			offset: number,
-		): { x: number | null; y: number | null } | null {
-			const { top, left, right, bottom } = element.getBoundingClientRect();
-			const [x, y] = NodeViewUtils.getMousePosition(mouseEvent);
-
-			let intersectX: number | null = null;
-			let intersectY: number | null = null;
-
-			if (x >= left - offset && x <= right + offset) {
-				intersectX = Math.min(x - (left - offset), right + offset - x);
-			}
-			if (y >= top - offset && y <= bottom + offset) {
-				intersectY = Math.min(y - (top - offset), bottom + offset - y);
-			}
-
-			if (intersectX === null && intersectY === null) return null;
-
-			return { x: intersectX, y: intersectY };
-		},
-		/**
-		 * Checks if the mouse event coordinates intersect with the given element's boundaries,
-		 * adjusted by the specified offset.
-		 *
-		 * @param {Element} element - The DOM element to check against.
-		 * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
-		 * @param {number} offset - Offset to adjust the element's boundaries.
-		 * @returns {boolean} True if the mouse coordinates intersect with the element.
-		 */
-		isElementIntersection(
-			element: Element,
-			mouseEvent: MouseEvent | TouchEvent,
-			offset: number,
-		): boolean {
-			const intersection = this.calculateElementIntersection(element, mouseEvent, offset);
-
-			if (intersection === null) {
-				return false;
-			}
-
-			const isWithinVerticalBounds = intersection.y !== null;
-			const isWithinHorizontalBounds = intersection.x !== null;
-
-			return isWithinVerticalBounds && isWithinHorizontalBounds;
-		},
-
 		onConnectionDrag(connection: Connection) {
 			// The overlays are visible by default so we need to hide the midpoint arrow
 			// manually
@@ -2992,6 +2943,7 @@ export default defineComponent({
 				this.pullConnActiveNodeName = null;
 				this.pullConnActive = true;
 				this.canvasStore.newNodeInsertPosition = null;
+				NodeViewUtils.hideConnectionActions(connection);
 				NodeViewUtils.resetConnection(connection);
 
 				const scope = connection.scope as ConnectionTypes;
@@ -3024,8 +2976,8 @@ export default defineComponent({
 							if (element.classList.contains('jtk-floating-endpoint')) {
 								return false;
 							}
-							const isEndpointIntersect = this.isElementIntersection(element, e, 50);
-							const isNodeElementIntersect = this.isElementIntersection(endpoint.element, e, 30);
+							const isEndpointIntersect = NodeViewUtils.isElementIntersection(element, e, 50);
+							const isNodeElementIntersect = NodeViewUtils.isElementIntersection(endpoint.element, e, 30);
 
 							if (isEndpointIntersect || isNodeElementIntersect) {
 								const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
@@ -3042,8 +2994,8 @@ export default defineComponent({
 							return false;
 						})
 						.sort((a, b) => {
-							const aEndpointIntersect = this.calculateElementIntersection(a, e, 50);
-							const bEndpointIntersect = this.calculateElementIntersection(b, e, 50);
+							const aEndpointIntersect = NodeViewUtils.calculateElementIntersection(a, e, 50);
+							const bEndpointIntersect = NodeViewUtils.calculateElementIntersection(b, e, 50);
 
 							// If both intersections are null, treat them as equal
 							if (!aEndpointIntersect?.y && !bEndpointIntersect?.y) {
@@ -3062,7 +3014,8 @@ export default defineComponent({
 						const intersectingEndpoint = intersectingEndpoints[0];
 						const endpoint = intersectingEndpoint.jtk.endpoint as Endpoint;
 						const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
-						this.pullConnActiveNodeName = node.name;
+
+						this.pullConnActiveNodeName = node?.name ?? null;
 
 						NodeViewUtils.showDropConnectionState(connection, endpoint);
 					} else {

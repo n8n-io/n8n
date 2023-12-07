@@ -1,11 +1,11 @@
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
+	INodeTypeBaseDescription,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 	IDataObject,
-	type INodeTypeBaseDescription,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { loadSummarizationChain } from 'langchain/chains';
