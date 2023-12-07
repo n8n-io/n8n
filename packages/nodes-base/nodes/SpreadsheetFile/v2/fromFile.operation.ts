@@ -66,13 +66,16 @@ export async function execute(
 	fileFormatProperty = 'fileFormat',
 ) {
 	const returnData: INodeExecutionData[] = [];
+	let fileExtension;
+	let fileFormat;
 
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const options = this.getNodeParameter('options', i, {});
-			let fileFormat = this.getNodeParameter(fileFormatProperty, i, {});
+			fileFormat = this.getNodeParameter(fileFormatProperty, i, '');
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+			fileExtension = binaryData.fileExtension;
 
 			let rows: unknown[] = [];
 
@@ -113,8 +116,12 @@ export async function execute(
 						stream.pipe(parser);
 					});
 				} else {
-					parser.write(binaryData.data, BINARY_ENCODING);
-					parser.end();
+					await new Promise((resolve, reject) => {
+						parser.write(binaryData.data, BINARY_ENCODING);
+						parser.end();
+						parser.on('end', resolve);
+						parser.on('error', reject);
+					});
 				}
 			} else {
 				let workbook: WorkBook;
@@ -200,6 +207,11 @@ export async function execute(
 				}
 			}
 		} catch (error) {
+			let errorDescription;
+			if (fileExtension !== fileFormat) {
+				error.message = `The file selected in 'Input Binary Field' is not in ${fileFormat} format`;
+				errorDescription = `Try to change the operation or select a ${fileFormat} file in 'Input Binary Field'`;
+			}
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
@@ -211,7 +223,10 @@ export async function execute(
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+			throw new NodeOperationError(this.getNode(), error, {
+				itemIndex: i,
+				description: errorDescription,
+			});
 		}
 	}
 

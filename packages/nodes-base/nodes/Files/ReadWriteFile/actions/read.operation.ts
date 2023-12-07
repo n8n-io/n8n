@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import glob from 'fast-glob';
 import { updateDisplayOptions } from '@utils/utilities';
+import { errorMapper } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -69,10 +69,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
+	let fileSelector;
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
+			fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {});
 
 			let dataPropertyName = 'data';
@@ -120,10 +121,14 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData.push(...newItems);
 		} catch (error) {
+			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
+				filePath: fileSelector,
+				operation: 'read',
+			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
-						error: error.message,
+						error: nodeOperatioinError.message,
 					},
 					pairedItem: {
 						item: itemIndex,
@@ -131,7 +136,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex });
+			throw nodeOperatioinError;
 		}
 	}
 

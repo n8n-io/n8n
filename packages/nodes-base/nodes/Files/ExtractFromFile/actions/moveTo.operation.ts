@@ -154,6 +154,12 @@ export async function execute(
 
 			returnData.push(newItem);
 		} catch (error) {
+			let errorDescription;
+			if (error.message.includes('Unexpected token')) {
+				error.message = "The file selected in 'Input Binary Field' is not in JSON format";
+				errorDescription =
+					"Try to change the operation or select a JSON file in 'Input Binary Field'";
+			}
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
@@ -165,7 +171,10 @@ export async function execute(
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex });
+			throw new NodeOperationError(this.getNode(), error, {
+				itemIndex,
+				description: errorDescription,
+			});
 		}
 	}
 

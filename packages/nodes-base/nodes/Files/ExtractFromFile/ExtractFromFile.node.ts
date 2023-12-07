@@ -106,7 +106,7 @@ export class ExtractFromFile implements INodeType {
 		let returnData: INodeExecutionData[] = [];
 
 		if (spreadsheet.operations.includes(operation)) {
-			returnData = await spreadsheet.execute.call(this, items, operation);
+			returnData = await spreadsheet.execute.call(this, items, 'operation');
 		}
 
 		if (['binaryToPropery', 'fromJson', 'text'].includes(operation)) {

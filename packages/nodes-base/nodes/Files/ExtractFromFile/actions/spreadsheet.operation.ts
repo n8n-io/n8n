@@ -48,8 +48,12 @@ export const description: INodeProperties[] = fromFile.description
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
-	operation: string,
+	fileFormatProperty: string,
 ) {
-	const returnData: INodeExecutionData[] = await fromFile.execute.call(this, items, operation);
+	const returnData: INodeExecutionData[] = await fromFile.execute.call(
+		this,
+		items,
+		fileFormatProperty,
+	);
 	return returnData;
 }

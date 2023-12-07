@@ -1,9 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
 import type { Readable } from 'stream';
 
 import { updateDisplayOptions } from '@utils/utilities';
+import { errorMapper } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -54,12 +55,13 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
+	let fileName;
 
 	let item: INodeExecutionData;
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
-			const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+			fileName = this.getNodeParameter('fileName', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const flag: string = options.append ? 'a' : 'w';
 
@@ -98,10 +100,14 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData.push(newItem);
 		} catch (error) {
+			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
+				filePath: fileName,
+				operation: 'write',
+			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
-						error: error.message,
+						error: nodeOperatioinError.message,
 					},
 					pairedItem: {
 						item: itemIndex,
@@ -109,7 +115,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex });
+			throw nodeOperatioinError;
 		}
 	}
 
