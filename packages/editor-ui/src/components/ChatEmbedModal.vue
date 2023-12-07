@@ -57,9 +57,10 @@ function indentLines(code: string, indent: string = '	') {
 		.join('\n');
 }
 
+const importCode = 'import';
 const commonCode = computed(() => ({
-	import: `import '@n8n/chat/style.css';
-import { createChat } from '@n8n/chat';`,
+	import: `${importCode} '@n8n/chat/style.css';
+${importCode} { createChat } from '@n8n/chat';`,
 	createChat: `createChat({
 	webhookUrl: '${webhookUrl.value}'
 });`,
@@ -69,7 +70,7 @@ import { createChat } from '@n8n/chat';`,
 const cdnCode = computed(
 	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
 <script type="module">
-import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
+${importCode} { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 ${commonCode.value.createChat}
 </${'script'}>`,
@@ -77,7 +78,7 @@ ${commonCode.value.createChat}
 
 const vueCode = computed(
 	() => `<script lang="ts" setup>
-import { onMounted } from 'vue';
+${importCode} { onMounted } from 'vue';
 ${commonCode.value.import}
 
 onMounted(() => {
@@ -87,7 +88,7 @@ ${indentLines(commonCode.value.createChat)}
 );
 
 const reactCode = computed(
-	() => `import { useEffect } from 'react';
+	() => `${importCode} { useEffect } from 'react';
 ${commonCode.value.import}
 
 export const App = () => {
