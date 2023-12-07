@@ -43,10 +43,11 @@ export const initErrorHandling = async () => {
 			return null;
 
 		if (originalException instanceof ApplicationError) {
-			const { level, extra } = originalException;
+			const { level, extra, tags } = originalException;
 			if (level === 'warning') return null;
 			event.level = level;
 			if (extra) event.extra = { ...event.extra, ...extra };
+			if (tags) event.tags = { ...event.tags, ...tags };
 		}
 
 		if (!event.exception) return null;
