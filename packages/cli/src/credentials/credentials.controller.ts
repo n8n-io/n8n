@@ -168,7 +168,7 @@ credentialsController.patch(
 
 		if (sharing.role.name !== 'owner' && !(await req.user.hasGlobalScope('credential:update'))) {
 			Container.get(Logger).info(
-				'Attempt to delete credential blocked due to lack of permissions',
+				'Attempt to update credential blocked due to lack of permissions',
 				{
 					credentialId,
 					userId: req.user.id,
