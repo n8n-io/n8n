@@ -28,7 +28,7 @@ export function getSpreadsheetId(
 		throw new NodeOperationError(
 			node,
 			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
-			{ severity: 'warning' },
+			{ level: 'warning' },
 		);
 	}
 	if (documentIdType === 'url') {
