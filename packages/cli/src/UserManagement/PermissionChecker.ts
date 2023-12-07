@@ -72,7 +72,7 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
-			severity: 'warning',
+			level: 'warning',
 		});
 	}
 
@@ -151,7 +151,7 @@ export class PermissionChecker {
 					if (!cred.id) {
 						throw new NodeOperationError(node, 'Node uses invalid credential', {
 							description: 'Please recreate the credential.',
-							severity: 'warning',
+							level: 'warning',
 						});
 					}
 
