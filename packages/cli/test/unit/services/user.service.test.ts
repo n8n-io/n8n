@@ -50,22 +50,29 @@ describe('UserService', () => {
 		});
 
 		it('should add scopes if requested', async () => {
-			const scopeless = await userService.toPublic(commonMockUser, { withScopes: false });
-
 			const scoped = await userService.toPublic(commonMockUser, { withScopes: true });
+			const unscoped = await userService.toPublic(commonMockUser);
 
-			expect(Array.isArray(scopeless.globalScopes)).toBe(false);
-			expect(Array.isArray(scoped.globalScopes)).toBe(true);
+			expect(scoped.globalScopes).toEqual([]);
+			expect(unscoped.globalScopes).toBeUndefined();
 		});
 
 		it('should add invite URL if requested', async () => {
-			const mockUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new User(), { id: uuid() });
+			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
 
-			const withUrl = await userService.toPublic(mockUser, { withInviteUrl: true });
-			const withoutUrl = await userService.toPublic(mockUser, { withInviteUrl: false });
+			const withoutUrl = await userService.toPublic(secondUser);
+			const withUrl = await userService.toPublic(secondUser, {
+				withInviteUrl: true,
+				inviterId: firstUser.id,
+			});
 
-			expect(typeof withUrl.inviteAcceptUrl === 'string').toBe(true);
 			expect(withoutUrl.inviteAcceptUrl).toBeUndefined();
+
+			const url = new URL(withUrl.inviteAcceptUrl ?? '');
+
+			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
+			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
 		});
 	});
 
