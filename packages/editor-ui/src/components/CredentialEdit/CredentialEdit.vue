@@ -224,6 +224,7 @@ export default defineComponent({
 			selectedCredential: '',
 			requiredCredentials: false, // Are credentials required or optional for the node
 			hasUserSpecifiedName: false,
+			isOnlySharedWithChanged: false,
 		};
 	},
 	async mounted() {
@@ -663,6 +664,7 @@ export default defineComponent({
 		},
 		onNodeAccessChange({ name, value }: { name: string; value: boolean }) {
 			this.hasUnsavedChanges = true;
+			this.isOnlySharedWithChanged = false;
 
 			if (value) {
 				this.nodeAccess = {
@@ -683,6 +685,7 @@ export default defineComponent({
 				...this.credentialData,
 				sharedWith: sharees,
 			};
+			this.isOnlySharedWithChanged = true;
 			this.hasUnsavedChanges = true;
 		},
 
@@ -691,6 +694,7 @@ export default defineComponent({
 			if (this.credentialData[name] === value) return;
 
 			this.hasUnsavedChanges = true;
+			this.isOnlySharedWithChanged = false;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
 
@@ -722,6 +726,7 @@ export default defineComponent({
 		onNameEdit(text: string) {
 			this.hasUnsavedChanges = true;
 			this.hasUserSpecifiedName = true;
+			this.isOnlySharedWithChanged = false;
 			this.credentialName = text;
 		},
 
@@ -920,10 +925,18 @@ export default defineComponent({
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = await this.credentialsStore.updateCredential({
-					id: this.credentialId,
-					data: credentialDetails,
-				});
+				if (this.isOnlySharedWithChanged && credentialDetails.sharedWith) {
+					credential = await this.credentialsStore.setCredentialSharedWith({
+						credentialId: credentialDetails.id,
+						sharedWith: credentialDetails.sharedWith,
+					});
+					this.isOnlySharedWithChanged = false;
+				} else {
+					credential = await this.credentialsStore.updateCredential({
+						id: this.credentialId,
+						data: credentialDetails,
+					});
+				}
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.showError(
