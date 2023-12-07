@@ -37,13 +37,7 @@ const i18n = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
-				<el-tag
-					v-if="tag"
-					:class="$style.tag"
-					size="small"
-					round
-					type="success"
-				>
+				<el-tag v-if="tag" :class="$style.tag" size="small" round type="success">
 					{{ tag }}
 				</el-tag>
 				<font-awesome-icon

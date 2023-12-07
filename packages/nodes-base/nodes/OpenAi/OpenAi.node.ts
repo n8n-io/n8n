@@ -29,7 +29,8 @@ export class OpenAi implements INodeType {
 		},
 		properties: [
 			{
-				displayName: 'For more advanced uses, consider using an <a data-action="openSelectiveNodeCreator" data-action-parameter-creatorview="AI">advanced AI</a> node',
+				displayName:
+					'For more advanced uses, consider using an <a data-action="openSelectiveNodeCreator" data-action-parameter-creatorview="AI">advanced AI</a> node',
 				name: 'noticeAdvanceAi',
 				type: 'notice',
 				default: '',

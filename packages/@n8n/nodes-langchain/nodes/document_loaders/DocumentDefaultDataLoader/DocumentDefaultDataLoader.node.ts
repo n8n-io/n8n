@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { TextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { metadataFilterField } from '../../../utils/sharedFields';
@@ -18,7 +19,6 @@ import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import type { TextSplitter } from 'langchain/text_splitter';
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
