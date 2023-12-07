@@ -18,7 +18,7 @@ import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { TextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from 'langchain/text_splitter';
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -258,7 +258,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
-		const textSplitter =  (await this.getInputConnectionData(
+		const textSplitter = (await this.getInputConnectionData(
 			NodeConnectionType.AiTextSplitter,
 			0,
 		)) as TextSplitter | undefined;

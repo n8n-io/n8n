@@ -1,5 +1,5 @@
-import { SummarizationChainParams } from "langchain/chains";
-import { PromptTemplate } from "langchain/prompts";
+import type { SummarizationChainParams } from 'langchain/chains';
+import { PromptTemplate } from 'langchain/prompts';
 
 interface ChainTypeOptions {
 	combineMapPrompt?: string;
@@ -8,7 +8,10 @@ interface ChainTypeOptions {
 	refineQuestionPrompt?: string;
 }
 
-export function getChainPromptsArgs(type: 'stuff' | 'map_reduce' | 'refine', options: ChainTypeOptions) {
+export function getChainPromptsArgs(
+	type: 'stuff' | 'map_reduce' | 'refine',
+	options: ChainTypeOptions,
+) {
 	const chainArgs: SummarizationChainParams = {
 		type,
 	};

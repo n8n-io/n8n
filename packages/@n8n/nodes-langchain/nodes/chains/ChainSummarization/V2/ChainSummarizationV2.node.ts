@@ -1,55 +1,57 @@
-import {
-	NodeConnectionType,
+import { NodeConnectionType } from 'n8n-workflow';
+import type {
+	IDataObject,
+	type INodeTypeBaseDescription,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	INodeTypeBaseDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Document } from 'langchain/document';
+import type { TextSplitter } from 'langchain/text_splitter';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../../utils/sharedFields';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 import { getChainPromptsArgs } from '../helpers';
-import { RecursiveCharacterTextSplitter, TextSplitter } from 'langchain/text_splitter';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
 	const inputs = [
-		{ displayName: "", type: NodeConnectionType.Main },
+		{ displayName: '', type: NodeConnectionType.Main },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
 			type: NodeConnectionType.AiLanguageModel,
 			required: true,
 		},
-	]
+	];
 
 	if (operationMode === 'documentLoader') {
 		inputs.push({
-			displayName: "Document",
+			displayName: 'Document',
 			type: NodeConnectionType.AiDocument,
 			required: true,
-			maxConnections: 1
-		})
-		return inputs
+			maxConnections: 1,
+		});
+		return inputs;
 	}
 
 	if (chunkingMode === 'advanced') {
 		inputs.push({
-			displayName: "Text Splitter",
+			displayName: 'Text Splitter',
 			type: NodeConnectionType.AiTextSplitter,
-			required: false, maxConnections: 1
-		})
-		return inputs
+			required: false,
+			maxConnections: 1,
+		});
+		return inputs;
 	}
-	return inputs
+	return inputs;
 }
 
 export class ChainSummarizationV2 implements INodeType {
@@ -78,22 +80,19 @@ export class ChainSummarizationV2 implements INodeType {
 					default: 'nodeInputJson',
 					options: [
 						{
-							name: 'Use node input (JSON)',
+							name: 'Use Node Input (JSON)',
 							value: 'nodeInputJson',
-							description:
-								'Summarize the JSON data coming into this node from the previous one',
+							description: 'Summarize the JSON data coming into this node from the previous one',
 						},
 						{
-							name: 'Use node input (binary)',
+							name: 'Use Node Input (Binary)',
 							value: 'nodeInputBinary',
-							description:
-								'Summarize the binary data coming into this node from the previous one',
+							description: 'Summarize the binary data coming into this node from the previous one',
 						},
 						{
-							name: 'Use document loader',
+							name: 'Use Document Loader',
 							value: 'documentLoader',
-							description:
-								'Use a loader sub-node with more configuration options',
+							description: 'Use a loader sub-node with more configuration options',
 						},
 					],
 				},
@@ -106,33 +105,33 @@ export class ChainSummarizationV2 implements INodeType {
 					default: 'simple',
 					options: [
 						{
-							name: 'Simple (define below)',
+							name: 'Simple (Define Below)',
 							value: 'simple',
 						},
 						{
 							name: 'Advanced',
 							value: 'advanced',
-							description:
-								'Use a splitter sub-node with more configuration options',
+							description: 'Use a splitter sub-node with more configuration options',
 						},
 					],
 					displayOptions: {
 						show: {
 							'/operationMode': ['nodeInputJson', 'nodeInputBinary'],
 						},
-					}
+					},
 				},
 				{
 					displayName: 'Characters Per Chunk',
 					name: 'chunkSize',
-					description: 'Controls the max size (in terms of number of characters) of the final document chunk',
+					description:
+						'Controls the max size (in terms of number of characters) of the final document chunk',
 					type: 'number',
 					default: 1000,
 					displayOptions: {
 						show: {
 							'/chunkingMode': ['simple'],
 						},
-					}
+					},
 				},
 				{
 					displayName: 'Chunk Overlap (Characters)',
@@ -144,7 +143,7 @@ export class ChainSummarizationV2 implements INodeType {
 						show: {
 							'/chunkingMode': ['simple'],
 						},
-					}
+					},
 				},
 				{
 					displayName: 'Options',
@@ -175,7 +174,7 @@ export class ChainSummarizationV2 implements INodeType {
 									summarizationMethod: 'map_reduce',
 									prompt: DEFAULT_PROMPT_TEMPLATE,
 									combineMapPrompt: DEFAULT_PROMPT_TEMPLATE,
-								}
+								},
 							},
 							placeholder: 'Add Option',
 							typeOptions: {},
@@ -206,7 +205,8 @@ export class ChainSummarizationV2 implements INodeType {
 												{
 													name: 'Stuff',
 													value: 'stuff',
-													description: 'Pass all documents (or chunks) at once. Ideal for small datasets.',
+													description:
+														'Pass all documents (or chunks) at once. Ideal for small datasets.',
 												},
 											],
 										},
@@ -217,7 +217,10 @@ export class ChainSummarizationV2 implements INodeType {
 											hint: 'The prompt to combine individual summaries',
 											displayOptions: {
 												hide: {
-													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'refine'],
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
+														'stuff',
+														'refine',
+													],
 												},
 											},
 											default: DEFAULT_PROMPT_TEMPLATE,
@@ -233,7 +236,10 @@ export class ChainSummarizationV2 implements INodeType {
 											hint: 'The prompt to summarize an individual document (or chunk)',
 											displayOptions: {
 												hide: {
-													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'refine'],
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
+														'stuff',
+														'refine',
+													],
 												},
 											},
 											typeOptions: {
@@ -247,7 +253,10 @@ export class ChainSummarizationV2 implements INodeType {
 											default: DEFAULT_PROMPT_TEMPLATE,
 											displayOptions: {
 												hide: {
-													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['refine', 'map_reduce'],
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
+														'refine',
+														'map_reduce',
+													],
 												},
 											},
 											typeOptions: {
@@ -260,7 +269,10 @@ export class ChainSummarizationV2 implements INodeType {
 											type: 'string',
 											displayOptions: {
 												hide: {
-													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'map_reduce'],
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
+														'stuff',
+														'map_reduce',
+													],
 												},
 											},
 											default: REFINE_PROMPT_TEMPLATE,
@@ -275,7 +287,10 @@ export class ChainSummarizationV2 implements INodeType {
 											type: 'string',
 											displayOptions: {
 												hide: {
-													'/options.summarizationMethodAndPrompts.values.summarizationMethod': ['stuff', 'map_reduce'],
+													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
+														'stuff',
+														'map_reduce',
+													],
 												},
 											},
 											default: DEFAULT_PROMPT_TEMPLATE,
@@ -284,32 +299,40 @@ export class ChainSummarizationV2 implements INodeType {
 												rows: 9,
 											},
 										},
-									]
-								}
-							]
-						}
+									],
+								},
+							],
+						},
 					],
 				},
 			],
 		};
-	};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Summarization Chain V2');
-		const operationMode = this.getNodeParameter('operationMode', 0, 'nodeInputJson') as 'nodeInputJson' | 'nodeInputBinary' |'documentLoader';
-		const chunkingMode = this.getNodeParameter('chunkingMode', 0, 'simple') as 'simple' | 'advanced';
+		const operationMode = this.getNodeParameter('operationMode', 0, 'nodeInputJson') as
+			| 'nodeInputJson'
+			| 'nodeInputBinary'
+			| 'documentLoader';
+		const chunkingMode = this.getNodeParameter('chunkingMode', 0, 'simple') as
+			| 'simple'
+			| 'advanced';
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const summarizationMethodAndPrompts = this.getNodeParameter('options.summarizationMethodAndPrompts.values', itemIndex, {}) as {
+			const summarizationMethodAndPrompts = this.getNodeParameter(
+				'options.summarizationMethodAndPrompts.values',
+				itemIndex,
+				{},
+			) as {
 				prompt?: string;
 				refineQuestionPrompt?: string;
 				refinePrompt?: string;
@@ -319,8 +342,8 @@ export class ChainSummarizationV2 implements INodeType {
 
 			const chainArgs = getChainPromptsArgs(
 				summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
-				summarizationMethodAndPrompts
-			)
+				summarizationMethodAndPrompts,
+			);
 
 			const chain = loadSummarizationChain(model, chainArgs);
 			const item = items[itemIndex];
@@ -329,13 +352,17 @@ export class ChainSummarizationV2 implements INodeType {
 
 			// Use dedicated document loader input to load documents
 			if (operationMode === 'documentLoader') {
-				const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-					| N8nJsonLoader
-					| Array<Document<Record<string, unknown>>>;
+				const documentInput = (await this.getInputConnectionData(
+					NodeConnectionType.AiDocument,
+					0,
+				)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
 
-				const isN8nLoader = documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader
+				const isN8nLoader =
+					documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader;
 
-				processedDocuments = isN8nLoader ? await documentInput.processItem(item, itemIndex) : documentInput;
+				processedDocuments = isN8nLoader
+					? await documentInput.processItem(item, itemIndex)
+					: documentInput;
 
 				const response = await chain.call({
 					input_documents: processedDocuments,
@@ -359,7 +386,7 @@ export class ChainSummarizationV2 implements INodeType {
 
 					// In advanced mode user can connect text splitter node so we just retrieve it
 					case 'advanced':
-						textSplitter =  (await this.getInputConnectionData(
+						textSplitter = (await this.getInputConnectionData(
 							NodeConnectionType.AiTextSplitter,
 							0,
 						)) as TextSplitter | undefined;
@@ -370,7 +397,11 @@ export class ChainSummarizationV2 implements INodeType {
 
 				let processor: N8nJsonLoader | N8nBinaryLoader;
 				if (operationMode === 'nodeInputBinary') {
-					const binaryDataKey = this.getNodeParameter('options.binaryDataKey', itemIndex, 'data') as string;
+					const binaryDataKey = this.getNodeParameter(
+						'options.binaryDataKey',
+						itemIndex,
+						'data',
+					) as string;
 					processor = new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter);
 				} else {
 					processor = new N8nJsonLoader(this, 'options.', textSplitter);
@@ -383,7 +414,6 @@ export class ChainSummarizationV2 implements INodeType {
 				returnData.push({ json: { response } });
 			}
 		}
-
 
 		return this.prepareOutputData(returnData);
 	}

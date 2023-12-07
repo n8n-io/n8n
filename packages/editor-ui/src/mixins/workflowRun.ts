@@ -113,7 +113,9 @@ export const workflowRun = defineComponent({
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`);
+								errorMessages.push(
+									`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`,
+								);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);

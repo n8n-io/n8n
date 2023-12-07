@@ -908,6 +908,7 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
+	tag?: string;
 }
 export interface LabelItemProps {
 	key: string;

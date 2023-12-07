@@ -229,7 +229,7 @@ export default defineComponent({
 					this.$locale.baseText('chat.window.chat.emptyChatMessage'),
 				);
 				return;
-			};
+			}
 			this.messages.push({
 				text: message,
 				sender: 'user',
@@ -487,7 +487,10 @@ export default defineComponent({
 		scrollToLatestMessage() {
 			const containerRef = this.$refs.messageContainer as HTMLElement[] | undefined;
 			if (containerRef) {
-				containerRef[containerRef.length - 1].scrollIntoView({ behavior: "smooth", block: "start"  });
+				containerRef[containerRef.length - 1]?.scrollIntoView({
+					behavior: 'smooth',
+					block: 'start',
+				});
 			}
 		},
 		closeDialog() {

@@ -229,7 +229,6 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	NODE_CREATOR_OPEN_SOURCES,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
@@ -2547,13 +2546,7 @@ export default defineComponent({
 						const outputIndex = connection.parameters.index;
 						NodeViewUtils.resetConnectionAfterPull(connection);
 						await this.$nextTick();
-						this.connectTwoNodes(
-							sourceNodeName,
-							outputIndex,
-							targetNodeName,
-							0,
-							connectionType,
-						);
+						this.connectTwoNodes(sourceNodeName, outputIndex, targetNodeName, 0, connectionType);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = false;
 					}
@@ -2902,7 +2895,8 @@ export default defineComponent({
 					const sourceNode = this.workflowsStore.getNodeById(info.connection.parameters.nodeId);
 					const sourceNodeName = sourceNode.name;
 					const outputIndex = info.connection.parameters.index;
-					const overrideTargetEndpoint = info.connection.connector.overrideTargetEndpoint as Endpoint | null;
+					const overrideTargetEndpoint = info.connection.connector
+						.overrideTargetEndpoint as Endpoint | null;
 
 					if (connectionInfo) {
 						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
@@ -2942,7 +2936,11 @@ export default defineComponent({
 		 * @param {number} offset - Offset to adjust the element's boundaries.
 		 * @returns { {x: number | null, y: number | null} | null } Object containing intersecting distances along x and y axes or null if no intersection.
 		 */
-		calculateElementIntersection(element: Element, mouseEvent: MouseEvent | TouchEvent, offset: number): { x: number | null, y: number | null } | null {
+		calculateElementIntersection(
+			element: Element,
+			mouseEvent: MouseEvent | TouchEvent,
+			offset: number,
+		): { x: number | null; y: number | null } | null {
 			const { top, left, right, bottom } = element.getBoundingClientRect();
 			const [x, y] = NodeViewUtils.getMousePosition(mouseEvent);
 
@@ -2950,10 +2948,10 @@ export default defineComponent({
 			let intersectY: number | null = null;
 
 			if (x >= left - offset && x <= right + offset) {
-					intersectX = Math.min(x - (left - offset), (right + offset) - x);
+				intersectX = Math.min(x - (left - offset), right + offset - x);
 			}
 			if (y >= top - offset && y <= bottom + offset) {
-					intersectY = Math.min(y - (top - offset), (bottom + offset) - y);
+				intersectY = Math.min(y - (top - offset), bottom + offset - y);
 			}
 
 			if (intersectX === null && intersectY === null) return null;
@@ -2969,17 +2967,21 @@ export default defineComponent({
 		 * @param {number} offset - Offset to adjust the element's boundaries.
 		 * @returns {boolean} True if the mouse coordinates intersect with the element.
 		 */
-		isElementIntersection(element: Element, mouseEvent: MouseEvent | TouchEvent, offset: number): boolean {
-				const intersection = this.calculateElementIntersection(element, mouseEvent, offset);
+		isElementIntersection(
+			element: Element,
+			mouseEvent: MouseEvent | TouchEvent,
+			offset: number,
+		): boolean {
+			const intersection = this.calculateElementIntersection(element, mouseEvent, offset);
 
-				if (intersection === null) {
-					return false;
-				}
+			if (intersection === null) {
+				return false;
+			}
 
-				const isWithinVerticalBounds = intersection.y !== null;
-				const isWithinHorizontalBounds = intersection.x !== null;
+			const isWithinVerticalBounds = intersection.y !== null;
+			const isWithinHorizontalBounds = intersection.x !== null;
 
-				return isWithinVerticalBounds && isWithinHorizontalBounds;
+			return isWithinVerticalBounds && isWithinHorizontalBounds;
 		},
 
 		onConnectionDrag(connection: Connection) {
@@ -2993,21 +2995,22 @@ export default defineComponent({
 				NodeViewUtils.resetConnection(connection);
 
 				const scope = connection.scope as ConnectionTypes;
-				const scopedEndpoints = Array.from(document.querySelectorAll(`[data-jtk-scope-${scope}=true]`))
+				const scopedEndpoints = Array.from(
+					document.querySelectorAll(`[data-jtk-scope-${scope}=true]`),
+				);
 				const connectionType = connection.parameters.connection;
 				const requiredType = connectionType === 'source' ? 'target' : 'source';
 
-				const filteredEndpoints = scopedEndpoints
-					.filter((el) => {
-						const endpoint = el.jtk.endpoint as Endpoint;
-						if (!endpoint) return false;
+				const filteredEndpoints = scopedEndpoints.filter((el) => {
+					const endpoint = el.jtk.endpoint as Endpoint;
+					if (!endpoint) return false;
 
-						// Prevent snapping(but not connecting) to the same node
-						const isSameNode = endpoint.parameters.nodeId === connection.parameters.nodeId;
-						const endpointType = endpoint.parameters.connection;
+					// Prevent snapping(but not connecting) to the same node
+					const isSameNode = endpoint.parameters.nodeId === connection.parameters.nodeId;
+					const endpointType = endpoint.parameters.connection;
 
-						return !isSameNode && endpointType === requiredType
-					})
+					return !isSameNode && endpointType === requiredType;
+				});
 
 				const onMouseMove = (e: MouseEvent | TouchEvent) => {
 					if (!connection) {
@@ -3030,7 +3033,7 @@ export default defineComponent({
 								if (node) {
 									const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-									if (!nodeType) return false
+									if (!nodeType) return false;
 
 									return true;
 								}
@@ -3048,12 +3051,12 @@ export default defineComponent({
 							}
 
 							// If one intersection is null, sort the non-null one first
-							if (!aEndpointIntersect || !aEndpointIntersect.y) return 1;
-							if (!bEndpointIntersect || !bEndpointIntersect.y) return -1;
+							if (!aEndpointIntersect?.y) return 1;
+							if (!bEndpointIntersect?.y) return -1;
 
 							// Otherwise, sort by ascending Y distance
 							return bEndpointIntersect.y - aEndpointIntersect.y;
-						})
+						});
 
 					if (intersectingEndpoints.length > 0) {
 						const intersectingEndpoint = intersectingEndpoints[0];
@@ -3063,7 +3066,6 @@ export default defineComponent({
 
 						NodeViewUtils.showDropConnectionState(connection, endpoint);
 					} else {
-
 						NodeViewUtils.showPullConnectionState(connection);
 						this.pullConnActiveNodeName = null;
 					}
@@ -4531,17 +4533,14 @@ export default defineComponent({
 			// If the last added node has multiple inputs, move them down
 			if (lastNodeInputs.length > 1) {
 				lastNodeInputs.slice(1).forEach((node, index) => {
-					const nodeUi = this.workflowsStore.getNodeByName(node.name)
+					const nodeUi = this.workflowsStore.getNodeByName(node.name);
 					if (!nodeUi) return;
 
 					this.onMoveNode({
 						nodeName: nodeUi.name,
-						position: [
-							nodeUi.position[0],
-							nodeUi.position[1] + (100 * (index +1))
-						]
-					})
-				})
+						position: [nodeUi.position[0], nodeUi.position[1] + 100 * (index + 1)],
+					});
+				});
 			}
 		},
 
@@ -4792,25 +4791,29 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: ({ connectiontype, node }: { connectiontype: NodeConnectionType; node: string }) => {
+			action: ({ connectiontype, node, creatorview }: { connectiontype: NodeConnectionType; node: string; creatorview?: string }) => {
 				const nodeName = node ?? this.ndvStore.activeNodeName;
-				const nodeData = nodeName
-					? this.workflowsStore.getNodeByName(nodeName)
-					: null;
+				const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
 
 				this.ndvStore.activeNodeName = null;
 				this.redrawNode(node);
-				// Wait UI to update
-				if (connectiontype && nodeData) {
-					setTimeout(() => this.insertNodeAfterSelected({
-						index: 0,
-						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-						outputType: connectiontype,
-						sourceId: nodeData.id,
-						nodeCreatorView: AI_NODE_CREATOR_VIEW,
-					}), 0);
-				}
+				// Wait for UI to update
+				setTimeout(() => {
+					if (creatorview) {
+						this.onToggleNodeCreator({
+							createNodeActive: true,
+							nodeCreatorView: creatorview,
+						})
+					} else if (connectiontype && nodeData) {
+						this.insertNodeAfterSelected({
+							index: 0,
+							endpointUuid: `${nodeData.id}-input${connectiontype}0`,
+							eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+							outputType: connectiontype,
+							sourceId: nodeData.id,
+						})
+					}
+				}, 0);
 			},
 		});
 

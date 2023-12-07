@@ -1,10 +1,10 @@
 import {
 	NodeConnectionType,
+	type INodeTypeBaseDescription,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import type { SummarizationChainParams } from 'langchain/chains';
@@ -159,7 +159,7 @@ export class ChainSummarizationV1 implements INodeType {
 				},
 			],
 		};
-	};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Vector Store QA Chain');

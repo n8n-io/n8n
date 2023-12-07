@@ -182,18 +182,18 @@ export const useActions = () => {
 	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
 		const { allNodes } = useWorkflowsStore();
 
-
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
 			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
-		]
+		];
 
-		const isChatTriggerMissing = allNodes.find((node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) === undefined;
+		const isChatTriggerMissing =
+			allNodes.find((node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) === undefined;
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 
-		return isCompatibleNode && isChatTriggerMissing
+		return isCompatibleNode && isChatTriggerMissing;
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {

@@ -3,7 +3,6 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { ChainSummarizationV1 } from './V1/ChainSummarizationV1.node';
 import { ChainSummarizationV2 } from './V2/ChainSummarizationV2.node';
-// import { SwitchV2 } from './V2/SwitchV2.node';
 
 export class ChainSummarization extends VersionedNodeType {
 	constructor() {

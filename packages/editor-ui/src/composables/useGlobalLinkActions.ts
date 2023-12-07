@@ -2,7 +2,7 @@
  * Creates event listeners for `data-action` attribute to allow for actions to be called from locale without using
  * unsafe onclick attribute
  */
-import { reactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { reactive, computed, onMounted, onUnmounted } from 'vue';
 import { globalLinkActionsEventBus } from '@/event-bus';
 
 const state = reactive({

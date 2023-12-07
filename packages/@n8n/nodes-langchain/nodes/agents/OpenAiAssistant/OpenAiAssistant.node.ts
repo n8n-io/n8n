@@ -64,11 +64,11 @@ export class OpenAiAssistant implements INodeType {
 				default: 'existing',
 				options: [
 					{
-						name: 'Use new assistant',
+						name: 'Use New Assistant',
 						value: 'new',
 					},
 					{
-						name: 'Use existing assistant',
+						name: 'Use Existing Assistant',
 						value: 'existing',
 					},
 				],
@@ -248,11 +248,12 @@ export class OpenAiAssistant implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/> ',
+				displayName:
+					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
 				name: 'noticeTools',
 				type: 'notice',
 				typeOptions: {
-					noticeTheme: 'info'
+					noticeTheme: 'info',
 				},
 				displayOptions: { show: { '/nativeTools': ['retrieval'] } },
 				default: '',

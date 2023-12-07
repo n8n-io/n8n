@@ -192,21 +192,21 @@ async function getChain(
 function getInputs(parameters: IDataObject) {
 	const hasOutputParser = parameters?.hasOutputParser;
 	const inputs = [
-		{ displayName: "", type: NodeConnectionType.Main },
+		{ displayName: '', type: NodeConnectionType.Main },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
 			type: NodeConnectionType.AiLanguageModel,
 			required: true,
 		},
-	]
+	];
 
 	// If `hasOutputParser` is undefined it must be version 1.1 or earlier so we
 	// always add the output parser input
 	if (hasOutputParser === undefined || hasOutputParser === true) {
-		inputs.push({ displayName: "Output Parser", type: NodeConnectionType.AiOutputParser })
+		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
 	}
-	return inputs
+	return inputs;
 }
 
 export class ChainLlm implements INodeType {
@@ -405,7 +405,7 @@ export class ChainLlm implements INodeType {
 				],
 			},
 			{
-				displayName: 'Require specific output format',
+				displayName: 'Require Specific Output Format',
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
@@ -422,7 +422,7 @@ export class ChainLlm implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						'hasOutputParser': [true],
+						hasOutputParser: [true],
 					},
 				},
 			},
