@@ -104,6 +104,9 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+		Appcues?: {
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+		};
 	}
 }
 
