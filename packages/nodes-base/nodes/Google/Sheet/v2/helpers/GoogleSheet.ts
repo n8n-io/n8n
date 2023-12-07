@@ -137,7 +137,7 @@ export class GoogleSheet {
 
 		if (!foundItem?.properties?.title) {
 			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 
