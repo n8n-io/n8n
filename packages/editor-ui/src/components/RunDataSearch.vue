@@ -37,7 +37,7 @@ const documentKeyHandler = (event: KeyboardEvent) => {
 		event.target instanceof HTMLInputElement ||
 		event.target instanceof HTMLTextAreaElement ||
 		event.target instanceof HTMLSelectElement ||
-		(event.target as HTMLElement)?.getAttribute('contentEditable') === 'true';
+		(event.target as HTMLElement)?.getAttribute?.('contentEditable') === 'true';
 
 	if (event.key === '/' && props.isAreaActive && !isTargetFormElementOrEditable) {
 		inputRef.value?.focus();
