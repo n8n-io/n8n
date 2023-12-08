@@ -85,6 +85,8 @@ export class MemoryXata implements INodeType {
 				apiKey: credentials.apiKey as string,
 			}),
 			memoryKey: 'chat_history',
+			inputKey: 'input',
+			outputKey: 'output',
 			returnMessages: true,
 		});
 		return {

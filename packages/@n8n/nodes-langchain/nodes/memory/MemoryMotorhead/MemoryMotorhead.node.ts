@@ -68,6 +68,8 @@ export class MemoryMotorhead implements INodeType {
 			url: `${credentials.host as string}/motorhead`,
 			clientId: credentials.clientId as string,
 			apiKey: credentials.apiKey as string,
+			inputKey: 'input',
+			outputKey: 'output',
 			memoryKey: 'chat_history',
 			returnMessages: true,
 		});
