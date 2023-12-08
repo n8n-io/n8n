@@ -1143,7 +1143,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 			}
 
-			this.updateNodeParameterIssues(this.node);
+			this.nodeHelpers.updateNodeParameterIssues(this.node);
 
 			if (this.hasPinData) {
 				this.unsetPinData(this.node, source);
