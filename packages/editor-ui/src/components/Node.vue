@@ -904,9 +904,6 @@ export default defineComponent({
 		--node-width: 75px;
 		--node-height: 75px;
 
-		& [class*='node-wrapper--connection-type'] {
-			--configurable-node-options: -10px;
-		}
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -974,7 +971,6 @@ export default defineComponent({
 		);
 		--configurable-node-icon-offset: 40px;
 		--configurable-node-icon-size: 30px;
-		--configurable-node-options: -10px;
 
 		.node-description {
 			top: calc(50%);
@@ -1002,7 +998,7 @@ export default defineComponent({
 			}
 
 			.node-options {
-				left: var(--configurable-node-options, 65px);
+				left: 0;
 				height: 25px;
 			}
 
