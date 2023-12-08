@@ -247,4 +247,18 @@ describe('WorkflowPreview', () => {
 			expect(emitted()).toEqual({});
 		});
 	});
+
+	it('should not do anything if no "command" is sent in the message and the `includes` method cannot be applied to the data', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage(null, '*');
+
+		await waitFor(() => {
+			expect(console.error).not.toHaveBeenCalled();
+			expect(emitted()).toEqual({});
+		});
+	});
 });

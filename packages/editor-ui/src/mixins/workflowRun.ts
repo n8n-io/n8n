@@ -83,6 +83,7 @@ export const workflowRun = defineComponent({
 
 			try {
 				// Check first if the workflow has any issues before execute it
+				this.refreshNodeIssues();
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
@@ -112,7 +113,9 @@ export const workflowRun = defineComponent({
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
+								errorMessages.push(
+									`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`,
+								);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);

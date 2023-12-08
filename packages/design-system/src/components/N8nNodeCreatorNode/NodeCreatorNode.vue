@@ -2,12 +2,14 @@
 import { useI18n } from '@/composables/useI18n';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nTooltip from '../N8nTooltip';
+import { ElTag } from 'element-plus';
 
 export interface Props {
 	active?: boolean;
 	isAi?: boolean;
 	isTrigger?: boolean;
 	description?: string;
+	tag?: string;
 	title: string;
 	showActionArrow?: boolean;
 }
@@ -35,6 +37,9 @@ const i18n = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
+				<el-tag v-if="tag" :class="$style.tag" size="small" round type="success">
+					{{ tag }}
+				</el-tag>
 				<font-awesome-icon
 					icon="bolt"
 					v-if="isTrigger"
@@ -82,7 +87,9 @@ const i18n = useI18n();
 .creatorNode:hover .panelIcon {
 	color: var(--action-arrow-color-hover, var(--color-text-light));
 }
-
+.tag {
+	margin-left: var(--spacing-2xs);
+}
 .panelIcon {
 	flex-grow: 1;
 	display: flex;
