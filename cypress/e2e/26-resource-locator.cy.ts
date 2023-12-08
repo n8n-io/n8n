@@ -16,7 +16,7 @@ describe('Resource Locator', () => {
 
 	it('should render both RLC components in google sheets', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocator('sheetName').should('be.visible');
 		ndv.getters
@@ -31,7 +31,7 @@ describe('Resource Locator', () => {
 
 	it('should show appropriate error when credentials are not set', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocatorInput('documentId').click();
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
@@ -39,7 +39,7 @@ describe('Resource Locator', () => {
 
 	it('should show appropriate error when credentials are not valid', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		// Add oAuth credentials
 		getVisibleSelect().find('li').last().click();
@@ -54,7 +54,7 @@ describe('Resource Locator', () => {
 
 	it('should reset resource locator when dependent field is changed', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.actions.setRLCValue('documentId', '123');
 		ndv.actions.setRLCValue('sheetName', '123');
 		ndv.actions.setRLCValue('documentId', '321');

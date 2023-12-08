@@ -316,7 +316,7 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
@@ -410,7 +410,7 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('js');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Code');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Item Lists');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('fi');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Filter');

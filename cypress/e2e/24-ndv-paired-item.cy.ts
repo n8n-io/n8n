@@ -19,7 +19,7 @@ describe('NDV', () => {
 
 		workflowPage.actions.executeWorkflow();
 
-		workflowPage.actions.openNode('Item Lists');
+		workflowPage.actions.openNode('Sort');
 
 		ndv.getters.inputPanel().contains('6 items').should('exist');
 		ndv.getters.outputPanel().contains('6 items').should('exist');
@@ -92,7 +92,7 @@ describe('NDV', () => {
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
-		ndv.actions.selectInputNode('Item Lists');
+		ndv.actions.selectInputNode('Sort');
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
 

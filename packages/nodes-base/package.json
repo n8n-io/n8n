@@ -784,7 +784,13 @@
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
       "dist/nodes/Zoom/Zoom.node.js",
-      "dist/nodes/Zulip/Zulip.node.js"
+      "dist/nodes/Zulip/Zulip.node.js",
+      "dist/nodes/Transform/Aggregate/Aggregate.node.js",
+      "dist/nodes/Transform/Limit/Limit.node.js",
+      "dist/nodes/Transform/RemoveDuplicates/RemoveDuplicates.node.js",
+      "dist/nodes/Transform/SplitOut/SplitOut.node.js",
+      "dist/nodes/Transform/Sort/Sort.node.js",
+      "dist/nodes/Transform/Summarize/Summarize.node.js"
     ]
   },
   "devDependencies": {
