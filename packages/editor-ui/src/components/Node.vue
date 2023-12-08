@@ -6,6 +6,7 @@
 		data-test-id="canvas-node"
 		:ref="data.name"
 		:data-name="data.name"
+		:data-node-type="nodeType?.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div class="select-background" v-show="isSelected"></div>
@@ -1013,7 +1014,7 @@ export default defineComponent({
 			}
 		}
 
-		&[data-name='Chat Trigger'] {
+		&[data-node-type='@n8n/n8n-nodes-langchain.chatTrigger'] {
 			--configurable-node-min-input-count: 1;
 			--configurable-node-input-width: 176px;
 		}
