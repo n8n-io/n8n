@@ -151,7 +151,7 @@ export default defineComponent({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
+		if (this.template && this.template.full) {
 			this.loading = false;
 			return;
 		}

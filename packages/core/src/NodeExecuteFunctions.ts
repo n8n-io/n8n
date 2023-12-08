@@ -3282,6 +3282,8 @@ export function getExecuteFunctions(
 						try {
 							return await nodeType.supplyData.call(context, itemIndex);
 						} catch (error) {
+							// Propagate errors from sub-nodes
+							if (error.functionality === 'configuration-node') throw error;
 							if (!(error instanceof ExecutionBaseError)) {
 								error = new NodeOperationError(connectedNode, error, {
 									itemIndex,

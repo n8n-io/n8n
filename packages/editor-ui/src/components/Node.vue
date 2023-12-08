@@ -906,9 +906,6 @@ export default defineComponent({
 		--node-width: 75px;
 		--node-height: 75px;
 
-		& [class*='node-wrapper--connection-type'] {
-			--configurable-node-options: -10px;
-		}
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -976,7 +973,6 @@ export default defineComponent({
 		);
 		--configurable-node-icon-offset: 40px;
 		--configurable-node-icon-size: 30px;
-		--configurable-node-options: -10px;
 
 		.node-description {
 			top: calc(50%);
@@ -1004,7 +1000,7 @@ export default defineComponent({
 			}
 
 			.node-options {
-				left: var(--configurable-node-options, 65px);
+				left: 0;
 				height: 25px;
 			}
 
@@ -1053,12 +1049,6 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: hsla(
-			var(--color-foreground-base-h),
-			60%,
-			var(--color-foreground-base-l),
-			80%
-		);
 	}
 }
 
@@ -1442,7 +1432,7 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-label-length='medium'] {
+	&.node-connection-type-main[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;

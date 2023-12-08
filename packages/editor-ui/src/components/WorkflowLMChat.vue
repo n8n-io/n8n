@@ -16,11 +16,12 @@
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
-				<div class="messages ignore-key-press" ref="messagesContainer">
+				<div class="messages ignore-key-press">
 					<div
 						v-for="message in messages"
 						:key="`${message.executionId}__${message.sender}`"
 						:class="['message', message.sender]"
+						ref="messageContainer"
 					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
@@ -80,21 +81,29 @@
 					v-model="currentMessage"
 					class="message-input"
 					type="textarea"
+					:minlength="1"
 					ref="inputField"
+					m
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
 					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
-				<n8n-button
-					@click.stop="sendChatMessage(currentMessage)"
-					class="send-button"
-					:loading="isLoading"
-					:label="$locale.baseText('chat.window.chat.sendButtonText')"
-					size="large"
-					icon="comment"
-					type="primary"
-					data-test-id="workflow-chat-send-button"
-				/>
+				<n8n-tooltip :disabled="currentMessage.length > 0">
+					<n8n-button
+						@click.stop="sendChatMessage(currentMessage)"
+						class="send-button"
+						:disabled="currentMessage === ''"
+						:loading="isLoading"
+						:label="$locale.baseText('chat.window.chat.sendButtonText')"
+						size="large"
+						icon="comment"
+						type="primary"
+						data-test-id="workflow-chat-send-button"
+					/>
+					<template #content>
+						{{ $locale.baseText('chat.window.chat.provideMessage') }}
+					</template>
+				</n8n-tooltip>
 
 				<n8n-info-tip class="mt-s">
 					{{ $locale.baseText('chatEmbed.infoTip.description') }}
@@ -218,25 +227,22 @@ export default defineComponent({
 			}
 		},
 		async sendChatMessage(message: string) {
+			if (this.currentMessage.trim() === '') {
+				this.showError(
+					new Error(this.$locale.baseText('chat.window.chat.provideMessage')),
+					this.$locale.baseText('chat.window.chat.emptyChatMessage'),
+				);
+				return;
+			}
 			this.messages.push({
 				text: message,
 				sender: 'user',
 			} as ChatMessage);
 
 			this.currentMessage = '';
-
+			await this.$nextTick();
+			this.scrollToLatestMessage();
 			await this.startWorkflowWithMessage(message);
-
-			// Scroll to bottom
-			const containerRef = this.$refs.messagesContainer as HTMLElement | undefined;
-			if (containerRef) {
-				// Wait till message got added else it will not scroll correctly
-				await this.$nextTick();
-				containerRef.scrollTo({
-					top: containerRef.scrollHeight,
-					behavior: 'smooth',
-				});
-			}
 		},
 
 		setConnectedNode() {
@@ -477,9 +483,19 @@ export default defineComponent({
 
 					void this.$nextTick(() => {
 						that.setNode();
+						this.scrollToLatestMessage();
 					});
 				}
 			}, 500);
+		},
+		scrollToLatestMessage() {
+			const containerRef = this.$refs.messageContainer as HTMLElement[] | undefined;
+			if (containerRef) {
+				containerRef[containerRef.length - 1]?.scrollIntoView({
+					behavior: 'smooth',
+					block: 'start',
+				});
+			}
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
