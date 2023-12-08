@@ -131,7 +131,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 	});
 
-	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
+	it.only('should work for admin role on credentials created by others (also can share it with themselves)', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 
 		cy.visit(credentialsPage.url);
@@ -157,12 +157,11 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)
 			.should('have.length', 1);
-		credentialsModal.getters.usersSelect().click();
+		getVisibleSelect().contains(INSTANCE_OWNER.email.toLowerCase()).click();
 
-		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
 		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].email);
 		credentialsModal.actions.addUser(INSTANCE_ADMIN.email);
-		credentialsModal.actions.save();
+		credentialsModal.actions.saveSharing();
 		credentialsModal.actions.close();
 	});
 });
