@@ -238,8 +238,9 @@ import {
 import { copyPaste } from '@/mixins/copyPaste';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
+
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -386,7 +387,6 @@ export default defineComponent({
 		workflowHelpers,
 		workflowRun,
 		debounceHelper,
-		nodeHelpers,
 		pinData,
 	],
 	components: {
@@ -404,11 +404,13 @@ export default defineComponent({
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
+		const nodeHelpers = useNodeHelpers();
 
 		return {
 			locale,
 			contextMenu,
 			dataSchema,
+			nodeHelpers,
 			externalHooks,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -871,7 +873,7 @@ export default defineComponent({
 		},
 		clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
-			this.updateNodesExecutionIssues();
+			this.nodeHelpers.updateNodesExecutionIssues();
 		},
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
 			let saved = await this.saveCurrentWorkflow();
@@ -1442,7 +1444,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.disableNodes(nodes, true);
+			this.nodeHelpers.disableNodes(nodes, true);
 		},
 
 		togglePinNodes(nodes: INode[], source: PinDataSource) {
@@ -2758,7 +2760,7 @@ export default defineComponent({
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
-					this.updateNodesInputIssues();
+					this.nodeHelpers.updateNodesInputIssues();
 					this.resetEndpointsErrors();
 				}
 			} catch (e) {
@@ -2932,7 +2934,7 @@ export default defineComponent({
 					this.historyStore.pushCommandToUndo(removeCommand);
 				}
 
-				void this.updateNodesInputIssues();
+				void this.nodeHelpers.updateNodesInputIssues();
 			} catch (e) {
 				console.error(e);
 			}
@@ -3998,7 +4000,7 @@ export default defineComponent({
 			}
 
 			// Add the node issues at the end as the node-connections are required
-			void this.refreshNodeIssues();
+			void this.nodeHelpers.refreshNodeIssues();
 
 			// Now it can draw again
 			this.instance?.setSuspendDrawing(false, true);
@@ -4551,7 +4553,7 @@ export default defineComponent({
 		onRevertEnableToggle({ nodeName, isDisabled }: { nodeName: string; isDisabled: boolean }) {
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (node) {
-				this.disableNodes([node]);
+				this.nodeHelpers.disableNodes([node]);
 			}
 		},
 		onPageShow(e: PageTransitionEvent) {
