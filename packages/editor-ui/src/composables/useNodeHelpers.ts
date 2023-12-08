@@ -92,6 +92,7 @@ export function useNodeHelpers() {
 
 	function refreshNodeIssues(): void {
 		const nodes = workflowsStore.allNodes;
+		const workflow = workflowsStore.getCurrentWorkflow();
 		let nodeType: INodeTypeDescription | null;
 		let foundNodeIssues: INodeIssues | null;
 
@@ -99,7 +100,7 @@ export function useNodeHelpers() {
 			if (node.disabled === true) return;
 
 			nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			foundNodeIssues = getNodeIssues(nodeType, node);
+			foundNodeIssues = getNodeIssues(nodeType, node, workflow);
 			if (foundNodeIssues !== null) {
 				node.issues = foundNodeIssues;
 			}
@@ -109,6 +110,7 @@ export function useNodeHelpers() {
 	function getNodeIssues(
 		nodeType: INodeTypeDescription | null,
 		node: INodeUi,
+		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
 		const pinDataNodeNames = Object.keys(workflowsStore.getPinData ?? {});
@@ -146,7 +148,6 @@ export function useNodeHelpers() {
 				}
 			}
 
-			const workflow = workflowsStore.getCurrentWorkflow();
 			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
 			if (nodeIssues === null) {
 				nodeIssues = nodeInputIssues;
@@ -223,8 +224,7 @@ export function useNodeHelpers() {
 			workflowsStore.setNodeIssue({
 				node: node.name,
 				type: 'execution',
-				// value: hasNodeExecutionIssues(node) ? true : null,
-				value: hasNodeExecutionIssues(node),
+				value: hasNodeExecutionIssues(node) ? true : null,
 			});
 		}
 	}
