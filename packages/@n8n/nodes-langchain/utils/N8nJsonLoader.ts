@@ -1,11 +1,10 @@
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { CharacterTextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
@@ -16,8 +15,11 @@ export class N8nJsonLoader {
 
 	private optionsPrefix: string;
 
-	constructor(context: IExecuteFunctions, optionsPrefix = '') {
+	private textSplitter?: TextSplitter;
+
+	constructor(context: IExecuteFunctions, optionsPrefix = '', textSplitter?: TextSplitter) {
 		this.context = context;
+		this.textSplitter = textSplitter;
 		this.optionsPrefix = optionsPrefix;
 	}
 
@@ -46,11 +48,6 @@ export class N8nJsonLoader {
 			'',
 		) as string;
 		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-
-		const textSplitter = (await this.context.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as CharacterTextSplitter | undefined;
 		const metadata = getMetadataFiltersValues(this.context, itemIndex) ?? [];
 
 		if (!item) return [];
@@ -81,8 +78,8 @@ export class N8nJsonLoader {
 			throw new NodeOperationError(this.context.getNode(), 'Document loader is not initialized');
 		}
 
-		const docs = textSplitter
-			? await documentLoader.loadAndSplit(textSplitter)
+		const docs = this.textSplitter
+			? await documentLoader.loadAndSplit(this.textSplitter)
 			: await documentLoader.load();
 
 		if (metadata) {

@@ -113,6 +113,7 @@
 					@mouseenter="showTriggerMissingToltip(true)"
 					@mouseleave="showTriggerMissingToltip(false)"
 					@click="onRunContainerClick"
+					v-if="!isManualChatOnly"
 				>
 					<keyboard-shortcut-tooltip
 						:label="runButtonText"
@@ -675,6 +676,9 @@ export default defineComponent({
 		},
 		containsTrigger(): boolean {
 			return this.triggerNodes.length > 0;
+		},
+		isManualChatOnly(): boolean {
+			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		containsChatNodes(): boolean {
 			return !!this.nodes.find(
@@ -2526,28 +2530,35 @@ export default defineComponent({
 					.catch((e) => {});
 			}
 		},
-		onEventConnectionAbort(connection: Connection) {
+		async onEventConnectionAbort(connection: Connection) {
 			try {
 				if (this.dropPrevented) {
 					this.dropPrevented = false;
 					return;
 				}
-
 				if (this.pullConnActiveNodeName) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
+					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
+					const overrideTargetEndpoint = connection?.connector
+						?.overrideTargetEndpoint as Endpoint | null;
+
 					if (sourceNode) {
-						const sourceNodeName = sourceNode.name;
+						const isTarget = connection.parameters.connection === 'target';
+						const sourceNodeName = isTarget ? this.pullConnActiveNodeName : sourceNode.name;
+						const targetNodeName = isTarget ? sourceNode.name : this.pullConnActiveNodeName;
 						const outputIndex = connection.parameters.index;
+						NodeViewUtils.resetConnectionAfterPull(connection);
+						await this.$nextTick();
 
 						this.connectTwoNodes(
 							sourceNodeName,
 							outputIndex,
-							this.pullConnActiveNodeName,
-							0,
-							NodeConnectionType.Main,
+							targetNodeName,
+							overrideTargetEndpoint?.parameters?.index ?? 0,
+							connectionType,
 						);
 						this.pullConnActiveNodeName = null;
-						this.dropPrevented = true;
+						this.dropPrevented = false;
 					}
 					return;
 				}
@@ -2894,6 +2905,8 @@ export default defineComponent({
 					const sourceNode = this.workflowsStore.getNodeById(info.connection.parameters.nodeId);
 					const sourceNodeName = sourceNode.name;
 					const outputIndex = info.connection.parameters.index;
+					const overrideTargetEndpoint = info.connection.connector
+						.overrideTargetEndpoint as Endpoint | null;
 
 					if (connectionInfo) {
 						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
@@ -2902,7 +2915,7 @@ export default defineComponent({
 						sourceNodeName,
 						outputIndex,
 						this.pullConnActiveNodeName,
-						0,
+						overrideTargetEndpoint?.parameters?.index ?? 0,
 						NodeConnectionType.Main,
 					);
 					this.pullConnActiveNodeName = null;
@@ -2932,58 +2945,86 @@ export default defineComponent({
 				this.pullConnActiveNodeName = null;
 				this.pullConnActive = true;
 				this.canvasStore.newNodeInsertPosition = null;
+				NodeViewUtils.hideConnectionActions(connection);
 				NodeViewUtils.resetConnection(connection);
 
-				const nodes = [...document.querySelectorAll('.node-wrapper')];
+				const scope = connection.scope as ConnectionTypes;
+				const scopedEndpoints = Array.from(
+					document.querySelectorAll(`[data-jtk-scope-${scope}=true]`),
+				);
+				const connectionType = connection.parameters.connection;
+				const requiredType = connectionType === 'source' ? 'target' : 'source';
+
+				const filteredEndpoints = scopedEndpoints.filter((el) => {
+					const endpoint = el.jtk.endpoint as Endpoint;
+					if (!endpoint) return false;
+
+					// Prevent snapping(but not connecting) to the same node
+					const isSameNode = endpoint.parameters.nodeId === connection.parameters.nodeId;
+					const endpointType = endpoint.parameters.connection;
+
+					return !isSameNode && endpointType === requiredType;
+				});
 
 				const onMouseMove = (e: MouseEvent | TouchEvent) => {
 					if (!connection) {
 						return;
 					}
 
-					const element = document.querySelector('.jtk-endpoint.jtk-drag-hover');
-					if (element) {
-						const endpoint = element.jtk.endpoint;
-						NodeViewUtils.showDropConnectionState(connection, endpoint);
-						return;
-					}
+					const intersectingEndpoints = filteredEndpoints
+						.filter((element: Element) => {
+							const endpoint = element.jtk.endpoint as Endpoint;
 
-					const inputMargin = 24;
-					const intersecting = nodes.find((element: Element) => {
-						const { top, left, right, bottom } = element.getBoundingClientRect();
-						const [x, y] = NodeViewUtils.getMousePosition(e);
-						if (top <= y && bottom >= y && left - inputMargin <= x && right >= x) {
-							const nodeName = (element as HTMLElement).dataset.name as string;
-							const node = this.workflowsStore.getNodeByName(nodeName);
-							if (node) {
-								const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+							if (element.classList.contains('jtk-floating-endpoint')) {
+								return false;
+							}
+							const isEndpointIntersect = NodeViewUtils.isElementIntersection(element, e, 50);
+							const isNodeElementIntersect = NodeViewUtils.isElementIntersection(
+								endpoint.element,
+								e,
+								30,
+							);
 
-								const workflow = this.getCurrentWorkflow();
-								const workflowNode = workflow.getNode(nodeName);
-								const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+							if (isEndpointIntersect || isNodeElementIntersect) {
+								const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
 
-								if (nodeType && inputs.length === 1) {
-									this.pullConnActiveNodeName = node.name;
-									const endpointUUID = this.getInputEndpointUUID(
-										nodeName,
-										connection.parameters.type,
-										0,
-									);
-									if (endpointUUID) {
-										const endpoint = this.instance?.getEndpoint(endpointUUID);
+								if (node) {
+									const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-										NodeViewUtils.showDropConnectionState(connection, endpoint);
+									if (!nodeType) return false;
 
-										return true;
-									}
+									return true;
 								}
 							}
-						}
 
-						return false;
-					});
+							return false;
+						})
+						.sort((a, b) => {
+							const aEndpointIntersect = NodeViewUtils.calculateElementIntersection(a, e, 50);
+							const bEndpointIntersect = NodeViewUtils.calculateElementIntersection(b, e, 50);
 
-					if (!intersecting) {
+							// If both intersections are null, treat them as equal
+							if (!aEndpointIntersect?.y && !bEndpointIntersect?.y) {
+								return 0;
+							}
+
+							// If one intersection is null, sort the non-null one first
+							if (!aEndpointIntersect?.y) return 1;
+							if (!bEndpointIntersect?.y) return -1;
+
+							// Otherwise, sort by ascending Y distance
+							return bEndpointIntersect.y - aEndpointIntersect.y;
+						});
+
+					if (intersectingEndpoints.length > 0) {
+						const intersectingEndpoint = intersectingEndpoints[0];
+						const endpoint = intersectingEndpoint.jtk.endpoint as Endpoint;
+						const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
+
+						this.pullConnActiveNodeName = node?.name ?? null;
+
+						NodeViewUtils.showDropConnectionState(connection, endpoint);
+					} else {
 						NodeViewUtils.showPullConnectionState(connection);
 						this.pullConnActiveNodeName = null;
 					}
@@ -4444,6 +4485,23 @@ export default defineComponent({
 					NodeConnectionType.Main,
 				);
 			}
+
+			const lastAddedNode = this.nodes[this.nodes.length - 1];
+			const workflow = this.getCurrentWorkflow();
+			const lastNodeInputs = workflow.getParentNodesByDepth(lastAddedNode.name, 1);
+
+			// If the last added node has multiple inputs, move them down
+			if (lastNodeInputs.length > 1) {
+				lastNodeInputs.slice(1).forEach((node, index) => {
+					const nodeUi = this.workflowsStore.getNodeByName(node.name);
+					if (!nodeUi) return;
+
+					this.onMoveNode({
+						nodeName: nodeUi.name,
+						position: [nodeUi.position[0], nodeUi.position[1] + 100 * (index + 1)],
+					});
+				});
+			}
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
@@ -4691,25 +4749,37 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: ({ connectiontype, node }: { connectiontype: NodeConnectionType; node: string }) => {
-				this.onToggleNodeCreator({
-					source: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-					createNodeActive: true,
-					nodeCreatorView: AI_NODE_CREATOR_VIEW,
-				});
+			action: async ({
+				connectiontype,
+				node,
+				creatorview,
+			}: {
+				connectiontype: NodeConnectionType;
+				node: string;
+				creatorview?: string;
+			}) => {
+				const nodeName = node ?? this.ndvStore.activeNodeName;
+				const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
 
 				this.ndvStore.activeNodeName = null;
-				// Select the node so that the node creator knows which node to connect to
-				const nodeData = this.workflowsStore.getNodeByName(node);
-				if (connectiontype && nodeData) {
-					this.insertNodeAfterSelected({
-						index: 0,
-						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-						outputType: connectiontype,
-						sourceId: nodeData.id,
-					});
-				}
+				await this.redrawNode(node);
+				// Wait for UI to update
+				setTimeout(() => {
+					if (creatorview) {
+						this.onToggleNodeCreator({
+							createNodeActive: true,
+							nodeCreatorView: creatorview,
+						});
+					} else if (connectiontype && nodeData) {
+						this.insertNodeAfterSelected({
+							index: 0,
+							endpointUuid: `${nodeData.id}-input${connectiontype}0`,
+							eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+							outputType: connectiontype,
+							sourceId: nodeData.id,
+						});
+					}
+				}, 0);
 			},
 		});
 
@@ -4910,14 +4980,14 @@ export default defineComponent({
 				&.connection-drag-scope-active-connection-target {
 					// Apply style to compatible output endpoints
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
-						transform: scale(1.375) rotate(45deg);
+						transform: scale(1.5) rotate(45deg);
 					}
 
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						// Apply style to dragged compatible input endpoint
 						&.jtk-dragging {
 							.add-input-endpoint-default {
-								transform: translate(-4px, -4px) scale(1.375);
+								transform: translate(-5px, -5px) scale(1.5);
 							}
 						}
 
@@ -4939,7 +5009,7 @@ export default defineComponent({
 					// Apply style to dragged compatible output endpoint
 					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						&.jtk-dragging {
-							transform: scale(1.375) rotate(45deg);
+							transform: scale(1.5) rotate(45deg);
 						}
 
 						// Apply style to non-dragged compatible input endpoints
@@ -4951,7 +5021,7 @@ export default defineComponent({
 					// Apply style to compatible output endpoints
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						.add-input-endpoint-default {
-							transform: translate(-4px, -4px) scale(1.375);
+							transform: translate(-5px, -5px) scale(1.5);
 						}
 					}
 
