@@ -157,6 +157,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)
 			.should('have.length', 1);
+		credentialsModal.getters.usersSelect().click();
 
 		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
 		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].email);
