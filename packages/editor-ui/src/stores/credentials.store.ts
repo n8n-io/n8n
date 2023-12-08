@@ -303,14 +303,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 						credentialId: credential.id,
 						ownedBy: data.ownedBy,
 					});
-
-					const usersStore = useUsersStore();
-					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						await this.setCredentialSharedWith({
-							credentialId: credential.id,
-							sharedWith: data.sharedWith,
-						});
-					}
 				}
 			} else {
 				this.upsertCredential(credential);
@@ -365,7 +357,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				ownedBy: payload.ownedBy,
 			};
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string }) {
+		async setCredentialSharedWith(payload: {
+			sharedWith: IUser[];
+			credentialId: string;
+		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
@@ -376,6 +371,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					sharedWith: payload.sharedWith,
 				};
 			}
+			return this.credentials[payload.credentialId];
 		},
 		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
 			this.credentials[payload.credentialId] = {
