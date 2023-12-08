@@ -330,7 +330,7 @@ const config = (module.exports = {
 			{
 				selector: 'import',
 				format: ['camelCase', 'PascalCase'],
-			}
+			},
 		],
 
 		// ----------------------------------
@@ -360,6 +360,7 @@ const config = (module.exports = {
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+
 		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
@@ -369,6 +370,8 @@ const config = (module.exports = {
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
+		'n8n-local-rules/no-plain-errors': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
@@ -469,6 +472,7 @@ const config = (module.exports = {
 		{
 			files: ['test/**/*.ts', 'src/__tests__/*.ts'],
 			rules: {
+				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':
 					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 

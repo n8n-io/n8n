@@ -353,6 +353,49 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-plain-errors': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Only `ApplicationError` (from the `workflow` package) or its child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
+				recommended: 'error',
+			},
+			messages: {
+				useApplicationError:
+					'Throw an `ApplicationError` (from the `workflow` package) or its child classes.',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				ThrowStatement(node) {
+					if (!node.argument) return;
+
+					const isNewError =
+						node.argument.type === 'NewExpression' && node.argument.callee.name === 'Error';
+
+					const isNewlessError =
+						node.argument.type === 'CallExpression' && node.argument.callee.name === 'Error';
+
+					if (isNewError || isNewlessError) {
+						return context.report({
+							messageId: 'useApplicationError',
+							node,
+							fix: (fixer) =>
+								fixer.replaceText(
+									node,
+									`throw new ApplicationError(${node.argument.arguments
+										.map((arg) => arg.raw)
+										.join(', ')})`,
+								),
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>
