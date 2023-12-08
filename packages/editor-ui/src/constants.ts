@@ -159,6 +159,17 @@ export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
 export const EXTRACT_FROM_FILE_NODE_TYPE = 'n8n-nodes-base.extractFromFile';
 export const CONVERT_TO_FILE_NODE_TYPE = 'n8n-nodes-base.convertToFile';
+export const DATETIME_NODE_TYPE = 'n8n-nodes-base.dateTime';
+export const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
+export const SPLIT_OUT_NODE_TYPE = 'n8n-nodes-base.splitOut';
+export const LIMIT_NODE_TYPE = 'n8n-nodes-base.limit';
+export const SUMMARIZE_NODE_TYPE = 'n8n-nodes-base.summarize';
+export const AGGREGATE_NODE_TYPE = 'n8n-nodes-base.aggregate';
+export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
+export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
+export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
+export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
+export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -513,6 +524,7 @@ export const enum EnterpriseEditionFeature {
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
 	WorkerView = 'workerView',
+	AdvancedPermissions = 'advancedPermissions',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

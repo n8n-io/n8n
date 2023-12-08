@@ -1767,6 +1767,7 @@ export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType):
 			Object.values(object.nodeVersions)
 				.map((element) => {
 					element.description.name = object.description.name;
+					element.description.codex = object.description.codex;
 					return element;
 				})
 				.reverse(),

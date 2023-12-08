@@ -16,7 +16,7 @@ export class Filter implements INodeType {
 		icon: 'fa:filter',
 		group: ['transform'],
 		version: 1,
-		description: 'Filter out incoming items based on given conditions',
+		description: 'Remove items matching a condition',
 		defaults: {
 			name: 'Filter',
 			color: '#229eff',

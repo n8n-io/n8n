@@ -117,7 +117,7 @@ export class SourceControlService {
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
-			throw Error(`Failed to disconnect from source control: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to disconnect from source control', { cause: error });
 		}
 	}
 
