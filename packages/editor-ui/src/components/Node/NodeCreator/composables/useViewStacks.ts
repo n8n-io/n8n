@@ -222,7 +222,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		// Sort only if non-root view
 		if (!stack.items) {
-			sortNodeCreateElements(stackItems);
+			stackItems = sortNodeCreateElements(stackItems);
 		}
 
 		updateCurrentViewStack({ baselineItems: stackItems });
