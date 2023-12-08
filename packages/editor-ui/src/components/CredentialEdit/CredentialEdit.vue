@@ -17,7 +17,7 @@
 					<InlineNameEdit
 						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.updateName || !credentialType"
+						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
 						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
@@ -224,6 +224,7 @@ export default defineComponent({
 			selectedCredential: '',
 			requiredCredentials: false, // Are credentials required or optional for the node
 			hasUserSpecifiedName: false,
+			isSharedWithChanged: false,
 		};
 	},
 	async mounted() {
@@ -683,6 +684,7 @@ export default defineComponent({
 				...this.credentialData,
 				sharedWith: sharees,
 			};
+			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
 		},
 
@@ -920,10 +922,23 @@ export default defineComponent({
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = await this.credentialsStore.updateCredential({
-					id: this.credentialId,
-					data: credentialDetails,
-				});
+				if (this.credentialPermissions.update) {
+					credential = await this.credentialsStore.updateCredential({
+						id: this.credentialId,
+						data: credentialDetails,
+					});
+				}
+				if (
+					this.credentialPermissions.share &&
+					this.isSharedWithChanged &&
+					credentialDetails.sharedWith
+				) {
+					credential = await this.credentialsStore.setCredentialSharedWith({
+						credentialId: credentialDetails.id,
+						sharedWith: credentialDetails.sharedWith,
+					});
+					this.isSharedWithChanged = false;
+				}
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.showError(

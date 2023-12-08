@@ -522,6 +522,7 @@ export const enum EnterpriseEditionFeature {
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
 	WorkerView = 'workerView',
+	AdvancedPermissions = 'advancedPermissions',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
