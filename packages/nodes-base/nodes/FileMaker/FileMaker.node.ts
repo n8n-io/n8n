@@ -625,6 +625,8 @@ export class FileMaker implements INodeType {
 
 				const fields = await getFields.call(this);
 
+				if (!Array.isArray(fields)) return [];
+
 				for (const field of fields) {
 					returnData.push({
 						name: field.name,

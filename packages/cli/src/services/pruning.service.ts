@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import { LessThanOrEqual, IsNull, Not, In, Brackets } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
 import type { FindOptionsWhere } from 'typeorm';
+import { Brackets, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
-import { TIME, inTest } from '@/constants';
+import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
@@ -80,10 +80,15 @@ export class PruningService {
 	private scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
 		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
-		this.hardDeletionTimeout = setTimeout(
-			async () => this.hardDeleteOnPruningCycle(),
-			this.rates.hardDeletion,
-		);
+		this.hardDeletionTimeout = setTimeout(() => {
+			this.hardDeleteOnPruningCycle()
+				.then((rate) => this.scheduleHardDeletion(rate))
+				.catch((error) => {
+					this.scheduleHardDeletion(1 * TIME.SECOND);
+					// Error will be handled by the global uncaught error handler
+					throw error;
+				});
+		}, rateMs);
 
 		this.logger.debug(`[Pruning] Hard-deletion scheduled for next ${when}`);
 	}
@@ -149,6 +154,7 @@ export class PruningService {
 
 	/**
 	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
+	 * @return Delay in ms after which the next cycle should be started
 	 */
 	private async hardDeleteOnPruningCycle() {
 		const date = new Date();
@@ -174,8 +180,7 @@ export class PruningService {
 
 		if (executionIds.length === 0) {
 			this.logger.debug('[Pruning] Found no executions to hard-delete');
-			this.scheduleHardDeletion();
-			return;
+			return this.rates.hardDeletion;
 		}
 
 		try {
@@ -201,7 +206,6 @@ export class PruningService {
 		 */
 		const isHighVolume = executionIds.length >= this.hardDeletionBatchSize;
 		const rate = isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
-
-		this.scheduleHardDeletion(rate);
+		return rate;
 	}
 }

@@ -32,7 +32,7 @@ import type {
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -240,7 +240,9 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	for (const credentialName of credentialNames) {
 		const loadInfo = knownCredentials[credentialName];
 		if (!loadInfo) {
-			throw new Error(`Unknown credential type: ${credentialName}`);
+			throw new ApplicationError(`Unknown credential type: ${credentialName}`, {
+				level: 'warning',
+			});
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
@@ -251,11 +253,11 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	const nodeNames = nodes.map((n) => n.type);
 	for (const nodeName of nodeNames) {
 		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
 		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
@@ -283,7 +285,7 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 				}
 			});
 
-			throw new Error(`Data for node "${nodeName}" is missing!`);
+			throw new ApplicationError(`Data for node "${nodeName}" is missing!`, { level: 'warning' });
 		}
 		const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
 			if (nodeData.data === undefined) {
@@ -354,7 +356,7 @@ export const workflowToTests = (workflowFiles: string[]) => {
 			}
 		});
 		if (workflowData.pinData === undefined) {
-			throw new Error('Workflow data does not contain pinData');
+			throw new ApplicationError('Workflow data does not contain pinData', { level: 'warning' });
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);

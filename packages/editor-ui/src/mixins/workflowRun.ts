@@ -11,7 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
-import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -20,9 +19,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { FORM_TRIGGER_NODE_TYPE } from '@/constants';
 import { openPopUpWindow } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const workflowRun = defineComponent({
-	mixins: [externalHooks, workflowHelpers],
+	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
@@ -125,7 +125,7 @@ export const workflowRun = defineComponent({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						void this.$externalHooks().run('workflowRun.runError', {
+						void useExternalHooks().run('workflowRun.runError', {
 							errorMessages,
 							nodeName: options.destinationNode,
 						});
@@ -287,7 +287,7 @@ export const workflowRun = defineComponent({
 					}
 				}
 
-				await this.$externalHooks().run('workflowRun.runWorkflow', {
+				await useExternalHooks().run('workflowRun.runWorkflow', {
 					nodeName: options.destinationNode,
 					source: options.source,
 				});

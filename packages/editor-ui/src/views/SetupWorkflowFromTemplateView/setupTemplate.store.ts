@@ -11,12 +11,10 @@ import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
-	IExternalHooks,
 	INodeUi,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
 } from '@/Interface';
-import type { Telemetry } from '@/plugins/telemetry';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
 import type {
@@ -28,6 +26,8 @@ import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -227,6 +227,10 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return overrides;
 	});
 
+	const numFilledCredentials = computed(() => {
+		return Object.keys(selectedCredentialIdByKey.value).length;
+	});
+
 	//#endregion Getters
 
 	//#region Actions
@@ -300,25 +304,22 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Skips the setup and goes directly to the workflow view.
 	 */
-	const skipSetup = async (opts: {
-		$externalHooks: IExternalHooks;
-		$telemetry: Telemetry;
-		$router: Router;
-	}) => {
-		const { $externalHooks, $telemetry, $router } = opts;
-		const telemetryPayload = {
+	const skipSetup = async ({ router }: { router: Router }) => {
+		const externalHooks = useExternalHooks();
+		const telemetry = useTelemetry();
+
+		await externalHooks.run('templatesWorkflowView.openWorkflow', {
 			source: 'workflow',
 			template_id: templateId.value,
 			wf_template_repo_session_id: templatesStore.currentSessionId,
-		};
+		});
 
-		await $externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-		$telemetry.track('User inserted workflow template', telemetryPayload, {
-			withPostHog: true,
+		telemetry.track('User closed cred setup', {
+			completed: false,
 		});
 
 		// Replace the URL so back button doesn't come back to this setup view
-		await $router.replace({
+		await router.replace({
 			name: VIEWS.TEMPLATE_IMPORT,
 			params: { id: templateId.value },
 		});
@@ -327,7 +328,10 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Creates a workflow from the template and navigates to the workflow view.
 	 */
-	const createWorkflow = async ($router: Router) => {
+	const createWorkflow = async (opts: { router: Router }) => {
+		const { router } = opts;
+		const telemetry = useTelemetry();
+
 		if (!template.value) {
 			return;
 		}
@@ -342,8 +346,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflowsStore,
 			);
 
+			telemetry.track('User closed cred setup', {
+				completed: true,
+			});
+
 			// Replace the URL so back button doesn't come back to this setup view
-			await $router.replace({
+			await router.replace({
 				name: VIEWS.WORKFLOW,
 				params: { name: createdWorkflow.id },
 			});
@@ -372,6 +380,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		credentialUsages,
 		selectedCredentialIdByKey,
 		credentialOverrides,
+		numFilledCredentials,
 		createWorkflow,
 		skipSetup,
 		init,
