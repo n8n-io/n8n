@@ -722,14 +722,6 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	Logger.debug(
-		'Proxying request to axios',
-		// {
-		// 	originalConfig: configObject,
-		// 	parsedConfig: axiosConfig,
-		// }
-	);
-
 	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
@@ -1528,7 +1520,7 @@ export async function httpRequestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1722,7 +1714,7 @@ export async function requestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1881,7 +1873,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials defined!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1892,7 +1884,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1917,14 +1909,14 @@ export async function getCredentials(
 			// Credentials are required so error
 			if (!node.credentials) {
 				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
-					severity: 'warning',
+					level: 'warning',
 				});
 			}
 			if (!node.credentials[type]) {
 				throw new NodeOperationError(
 					node,
 					`Node does not have any credentials set for "${type}"!`,
-					{ severity: 'warning' },
+					{ level: 'warning' },
 				);
 			}
 		} else {
@@ -2903,7 +2895,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			throw error.code === 'ENOENT'
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
-						severity: 'warning',
+						level: 'warning',
 				  })
 				: error;
 		}
@@ -2911,7 +2903,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 		return createReadStream(filePath);
@@ -2924,7 +2916,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	async writeContentToFile(filePath, content, flag) {
 		if (isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 		return fsWriteFile(filePath, content, { encoding: 'binary', flag });
@@ -3290,6 +3282,8 @@ export function getExecuteFunctions(
 						try {
 							return await nodeType.supplyData.call(context, itemIndex);
 						} catch (error) {
+							// Propagate errors from sub-nodes
+							if (error.functionality === 'configuration-node') throw error;
 							if (!(error instanceof ExecutionBaseError)) {
 								error = new NodeOperationError(connectedNode, error, {
 									itemIndex,

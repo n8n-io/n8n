@@ -15,7 +15,7 @@ export class WorkflowOperationError extends ExecutionBaseError {
 
 	constructor(message: string, node?: INode, description?: string) {
 		super(message, { cause: undefined });
-		this.severity = 'warning';
+		this.level = 'warning';
 		this.name = this.constructor.name;
 		if (description) this.description = description;
 		this.node = node;

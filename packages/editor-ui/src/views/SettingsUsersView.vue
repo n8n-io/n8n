@@ -35,6 +35,15 @@
 				@click:button="goToUpgrade"
 			/>
 		</div>
+		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+			<i18n-t keypath="settings.users.advancedPermissions.warning">
+				<template #link>
+					<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+						{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+					</n8n-link>
+				</template>
+			</i18n-t>
+		</n8n-notice>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
@@ -52,7 +61,25 @@
 				@copyPasswordResetLink="onCopyPasswordResetLink"
 				@allowSSOManualLogin="onAllowSSOManualLogin"
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
-			/>
+			>
+				<template #actions="{ user }">
+					<n8n-select
+						v-if="user.id !== usersStore.currentUserId"
+						:modelValue="user?.globalRole?.name || 'member'"
+						@update:modelValue="onRoleChange(user, $event)"
+						:disabled="!canUpdateRole"
+						data-test-id="user-role-select"
+					>
+						<n8n-option
+							v-for="role in userRoles"
+							:key="role.value"
+							:value="role.value"
+							:label="role.label"
+							:disabled="role.disabled"
+						/>
+					</n8n-select>
+				</template>
+			</n8n-users-list>
 		</div>
 	</div>
 </template>
@@ -62,7 +89,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IRole, IUser, IUserListAction } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
@@ -113,11 +140,18 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
 					value: 'delete',
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
-					guard: () => this.settingsStore.isBelowUserQuota,
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
+						this.settingsStore.isBelowUserQuota &&
+						!user.isPendingUser &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
@@ -133,7 +167,12 @@ export default defineComponent({
 				},
 			];
 		},
-		userRoles(): Array<{ value: IRole; label: string }> {
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
+		},
+		userRoles(): Array<{ value: IRole; label: string; disabled?: boolean }> {
 			return [
 				{
 					value: ROLE.Member,
@@ -142,11 +181,12 @@ export default defineComponent({
 				{
 					value: ROLE.Admin,
 					label: this.$locale.baseText('auth.roles.admin'),
+					disabled: !this.isAdvancedPermissionsEnabled,
 				},
 			];
 		},
 		canUpdateRole(): boolean {
-			return hasPermission(['rbac'], { rbac: { scope: 'user:update' } });
+			return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
 		},
 	},
 	methods: {
@@ -234,6 +274,9 @@ export default defineComponent({
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+		},
+		goToUpgradeAdvancedPermissions() {
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
 		async onRoleChange(user: IUser, name: IRole) {
 			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });

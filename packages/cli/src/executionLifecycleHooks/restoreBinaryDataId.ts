@@ -1,12 +1,16 @@
 import Container from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { BinaryData } from 'n8n-core';
+import config from '@/config';
 
 /**
  * Whenever the execution ID is not available to the binary data service at the
  * time of writing a binary data file, its name is missing the execution ID.
  * This function restores the ID in the file name and run data reference.
+ *
+ * This edge case can happen only for a Webhook node that accepts binary data,
+ * when the binary data manager is set to persist this binary data.
  *
  * ```txt
  * filesystem-v2:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
@@ -16,7 +20,18 @@ import type { BinaryData } from 'n8n-core';
  * s3:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
  * ```
  */
-export async function restoreBinaryDataId(run: IRun, executionId: string) {
+export async function restoreBinaryDataId(
+	run: IRun,
+	executionId: string,
+	workflowExecutionMode: WorkflowExecuteMode,
+) {
+	if (
+		workflowExecutionMode !== 'webhook' ||
+		config.getEnv('binaryDataManager.mode') === 'default'
+	) {
+		return;
+	}
+
 	const { runData } = run.data.resultData;
 
 	const promises = Object.keys(runData).map(async (nodeName) => {

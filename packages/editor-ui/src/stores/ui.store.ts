@@ -71,6 +71,7 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
+import { useUsersStore } from './users.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -373,6 +374,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
+				const { isInstanceOwner } = useUsersStore();
 
 				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
