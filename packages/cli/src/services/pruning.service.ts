@@ -9,6 +9,7 @@ import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { jsonStringify } from 'n8n-workflow';
 
 @Service()
 export class PruningService {
@@ -85,8 +86,13 @@ export class PruningService {
 				.then((rate) => this.scheduleHardDeletion(rate))
 				.catch((error) => {
 					this.scheduleHardDeletion(1 * TIME.SECOND);
-					// Error will be handled by the global uncaught error handler
-					throw error;
+
+					const errorMessage =
+						error instanceof Error
+							? error.message
+							: jsonStringify(error, { replaceCircularRefs: true });
+
+					this.logger.error('[Pruning] Failed to hard-delete executions', { errorMessage });
 				});
 		}, rateMs);
 
