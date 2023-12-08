@@ -136,21 +136,22 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
-	if (data?.includes('"command"')) {
-		try {
-			const json = JSON.parse(data);
-			if (json.command === 'n8nReady') {
-				ready.value = true;
-			} else if (json.command === 'openNDV') {
-				nodeViewDetailsOpened.value = true;
-			} else if (json.command === 'closeNDV') {
-				nodeViewDetailsOpened.value = false;
-			} else if (json.command === 'error') {
-				emit('close');
-			}
-		} catch (e) {
-			console.error(e);
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
+	try {
+		const json = JSON.parse(data);
+		if (json.command === 'n8nReady') {
+			ready.value = true;
+		} else if (json.command === 'openNDV') {
+			nodeViewDetailsOpened.value = true;
+		} else if (json.command === 'closeNDV') {
+			nodeViewDetailsOpened.value = false;
+		} else if (json.command === 'error') {
+			emit('close');
 		}
+	} catch (e) {
+		console.error(e);
 	}
 };
 const onDocumentScroll = () => {

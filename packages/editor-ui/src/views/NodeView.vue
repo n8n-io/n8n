@@ -4312,58 +4312,59 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			if (message?.data?.includes('"command"')) {
-				try {
-					const json = JSON.parse(message.data);
-					if (json && json.command === 'openWorkflow') {
-						try {
-							await this.importWorkflowExact(json);
-							this.isExecutionPreview = false;
-						} catch (e) {
-							if (window.top) {
-								window.top.postMessage(
-									JSON.stringify({
-										command: 'error',
-										message: this.$locale.baseText('openWorkflow.workflowImportError'),
-									}),
-									'*',
-								);
-							}
-							this.showMessage({
-								title: this.$locale.baseText('openWorkflow.workflowImportError'),
-								message: (e as Error).message,
-								type: 'error',
-							});
-						}
-					} else if (json && json.command === 'openExecution') {
-						try {
-							// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
-							// so everything it needs has to be sent using post messages and passed down to child components
-							this.isProductionExecutionPreview = json.executionMode !== 'manual';
-
-							await this.openExecution(json.executionId);
-							this.isExecutionPreview = true;
-						} catch (e) {
-							if (window.top) {
-								window.top.postMessage(
-									JSON.stringify({
-										command: 'error',
-										message: this.$locale.baseText('nodeView.showError.openExecution.title'),
-									}),
-									'*',
-								);
-							}
-							this.showMessage({
-								title: this.$locale.baseText('nodeView.showError.openExecution.title'),
-								message: (e as Error).message,
-								type: 'error',
-							});
-						}
-					} else if (json?.command === 'setActiveExecution') {
-						this.workflowsStore.activeWorkflowExecution = json.execution;
-					}
-				} catch (e) {}
+			if (!message?.data?.includes?.('"command"')) {
+				return;
 			}
+			try {
+				const json = JSON.parse(message.data);
+				if (json && json.command === 'openWorkflow') {
+					try {
+						await this.importWorkflowExact(json);
+						this.isExecutionPreview = false;
+					} catch (e) {
+						if (window.top) {
+							window.top.postMessage(
+								JSON.stringify({
+									command: 'error',
+									message: this.$locale.baseText('openWorkflow.workflowImportError'),
+								}),
+								'*',
+							);
+						}
+						this.showMessage({
+							title: this.$locale.baseText('openWorkflow.workflowImportError'),
+							message: (e as Error).message,
+							type: 'error',
+						});
+					}
+				} else if (json && json.command === 'openExecution') {
+					try {
+						// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
+						// so everything it needs has to be sent using post messages and passed down to child components
+						this.isProductionExecutionPreview = json.executionMode !== 'manual';
+
+						await this.openExecution(json.executionId);
+						this.isExecutionPreview = true;
+					} catch (e) {
+						if (window.top) {
+							window.top.postMessage(
+								JSON.stringify({
+									command: 'error',
+									message: this.$locale.baseText('nodeView.showError.openExecution.title'),
+								}),
+								'*',
+							);
+						}
+						this.showMessage({
+							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
+							message: (e as Error).message,
+							type: 'error',
+						});
+					}
+				} else if (json?.command === 'setActiveExecution') {
+					this.workflowsStore.activeWorkflowExecution = json.execution;
+				}
+			} catch (e) {}
 		},
 		async onImportWorkflowDataEvent(data: IDataObject) {
 			await this.importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
