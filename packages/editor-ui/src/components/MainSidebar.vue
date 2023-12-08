@@ -121,6 +121,7 @@ import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -130,11 +131,14 @@ export default defineComponent({
 		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -349,7 +353,7 @@ export default defineComponent({
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', {
+			void this.externalHooks.run('mainSidebar.mounted', {
 				userRef: this.$refs.user as Element,
 			});
 		}

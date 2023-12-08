@@ -236,7 +236,6 @@ import {
 	TIME,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -367,6 +366,7 @@ import {
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -381,7 +381,6 @@ export default defineComponent({
 	name: 'NodeView',
 	mixins: [
 		copyPaste,
-		externalHooks,
 		genericHelpers,
 		moveNodeWorkflow,
 		workflowHelpers,
@@ -400,7 +399,8 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
@@ -409,6 +409,7 @@ export default defineComponent({
 			locale,
 			contextMenu,
 			dataSchema,
+			externalHooks,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -417,7 +418,7 @@ export default defineComponent({
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -781,7 +782,7 @@ export default defineComponent({
 				session_id: this.ndvStore.sessionId,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
-			void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
+			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
 			void this.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
@@ -789,7 +790,7 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
-			void this.$externalHooks().run('nodeView.onOpenChat', telemetryPayload);
+			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
 		async onRunWorkflow() {
@@ -802,7 +803,7 @@ export default defineComponent({
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
-				void this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
+				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
 			await this.runWorkflow({});
@@ -956,7 +957,7 @@ export default defineComponent({
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = false;
-			void this.$externalHooks().run('execution.open', {
+			void this.externalHooks.run('execution.open', {
 				workflowId: data.workflowData.id,
 				workflowName: data.workflowData.name,
 				executionId,
@@ -1036,7 +1037,7 @@ export default defineComponent({
 
 			let data: IWorkflowTemplate | undefined;
 			try {
-				void this.$externalHooks().run('template.requested', { templateId });
+				void this.externalHooks.run('template.requested', { templateId });
 				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
@@ -1061,7 +1062,7 @@ export default defineComponent({
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = true;
 
-			void this.$externalHooks().run('template.open', {
+			void this.externalHooks.run('template.open', {
 				templateId,
 				templateName: data.name,
 				workflow: data.workflow,
@@ -1112,7 +1113,7 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			void this.$externalHooks().run('workflow.open', {
+			void this.externalHooks.run('workflow.open', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 			});
@@ -1197,7 +1198,7 @@ export default defineComponent({
 			if (e.key === 'Escape') {
 				this.createNodeActive = false;
 				if (this.activeNode) {
-					void this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+					void this.externalHooks.run('dataDisplay.nodeEditingFinished');
 					this.ndvStore.activeNodeName = null;
 				}
 
@@ -2262,7 +2263,7 @@ export default defineComponent({
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
-				void this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
 				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
@@ -3223,6 +3224,7 @@ export default defineComponent({
 								},
 								{
 									withPostHog: true,
+									withAppCues: true,
 								},
 							);
 						}
@@ -3601,7 +3603,7 @@ export default defineComponent({
 					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
-				void this.$externalHooks().run('node.deleteNode', { node });
+				void this.externalHooks.run('node.deleteNode', { node });
 				this.$telemetry.track('User deleted node', {
 					node_type: node.type,
 					workflow_id: this.workflowsStore.workflowId,
@@ -4401,7 +4403,7 @@ export default defineComponent({
 			}
 
 			if (createNodeActive) this.nodeCreatorStore.setOpenSource(source);
-			void this.$externalHooks().run('nodeView.createNodeActiveChanged', {
+			void this.externalHooks.run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
 				createNodeActive,
@@ -4650,9 +4652,7 @@ export default defineComponent({
 		});
 
 		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
-		void this.$externalHooks()
-			.run('nodeView.mount')
-			.catch((e) => {});
+		void this.externalHooks.run('nodeView.mount').catch((e) => {});
 
 		if (
 			this.currentUser?.personalizationAnswers !== null &&

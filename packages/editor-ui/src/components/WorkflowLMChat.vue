@@ -135,6 +135,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IUser } from '@/Interface';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
@@ -162,11 +163,14 @@ export default defineComponent({
 		Modal,
 		RunDataAi,
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -489,7 +493,7 @@ export default defineComponent({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
 		},
