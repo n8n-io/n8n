@@ -67,7 +67,14 @@ export default defineComponent({
 		sanitizeHtml(text: string): string {
 			return sanitizeHtml(text, {
 				allowedAttributes: {
-					a: ['data-key', 'href', 'target', 'data-action', 'data-action-parameter-connectiontype'],
+					a: [
+						'data-key',
+						'href',
+						'target',
+						'data-action',
+						'data-action-parameter-connectiontype',
+						'data-action-parameter-creatorview',
+					],
 				},
 			});
 		},

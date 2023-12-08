@@ -10,9 +10,14 @@ import type {
 	LabelCreateElement,
 } from '@/Interface';
 import {
+	AGENT_NODE_TYPE,
+	BASIC_CHAIN_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
+	OPEN_AI_ASSISTANT_NODE_TYPE,
+	QA_CHAIN_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -33,6 +38,12 @@ import { sortNodeCreateElements, transformNodeType } from '../utils';
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const instance = getCurrentInstance();
+
+	const singleNodeOpenSources = [
+		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+	];
 
 	const actionsCategoryLocales = computed(() => {
 		return {
@@ -156,11 +167,6 @@ export const useActions = () => {
 		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
-		const singleNodeOpenSources = [
-			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-		];
 
 		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
 		// then we do not want to append the manual trigger
@@ -172,6 +178,22 @@ export const useActions = () => {
 			isTriggerPanel &&
 			!onlyStickyNodes
 		);
+	}
+	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
+		const { allNodes } = useWorkflowsStore();
+
+		const COMPATIBLE_CHAT_NODES = [
+			QA_CHAIN_NODE_TYPE,
+			AGENT_NODE_TYPE,
+			BASIC_CHAIN_NODE_TYPE,
+			OPEN_AI_ASSISTANT_NODE_TYPE,
+		];
+
+		const isChatTriggerMissing =
+			allNodes.find((node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) === undefined;
+		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
+
+		return isCompatibleNode && isChatTriggerMissing;
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
@@ -188,7 +210,13 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependManualTrigger(addedNodes)) {
+		if (shouldPrependChatTrigger(addedNodes)) {
+			addedNodes.unshift({ type: MANUAL_CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true });
+			connections.push({
+				from: { nodeIndex: 0 },
+				to: { nodeIndex: 1 },
+			});
+		} else if (shouldPrependManualTrigger(addedNodes)) {
 			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },
