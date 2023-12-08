@@ -163,7 +163,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
-import { externalHooks } from '@/mixins/externalHooks';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -171,7 +171,6 @@ interface NodeAccessMap {
 
 export default defineComponent({
 	name: 'CredentialEdit',
-	mixins: [externalHooks],
 	components: {
 		CredentialSharing,
 		CredentialConfig,
@@ -199,6 +198,7 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 
 		return {
+			externalHooks: useExternalHooks(),
 			...useToast(),
 			...useMessage(),
 			nodeHelpers,
@@ -268,7 +268,7 @@ export default defineComponent({
 			}
 		}
 
-		await this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
 			activeNode: this.ndvStore.activeNode,
@@ -878,7 +878,7 @@ export default defineComponent({
 				}
 
 				this.$telemetry.track('User saved credentials', trackProperties);
-				await this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
+				await this.externalHooks.run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
@@ -901,7 +901,7 @@ export default defineComponent({
 				return null;
 			}
 
-			await this.$externalHooks().run('credential.saved', {
+			await this.externalHooks.run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: true,
@@ -935,7 +935,7 @@ export default defineComponent({
 				return null;
 			}
 
-			await this.$externalHooks().run('credential.saved', {
+			await this.externalHooks.run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: false,

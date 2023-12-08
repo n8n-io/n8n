@@ -63,11 +63,11 @@ export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
-	setup(props) {
+	setup(props, ctx) {
 		return {
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props),
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	computed: {

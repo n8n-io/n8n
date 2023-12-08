@@ -156,7 +156,6 @@ import {
 	NOT_DUPLICATABE_NODE_TYPES,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
@@ -186,16 +185,18 @@ import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'Node',
 	setup() {
 		const contextMenu = useContextMenu();
+		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
 
-		return { contextMenu, nodeHelpers };
+		return { contextMenu, externalHooks, nodeHelpers };
 	},
-	mixins: [externalHooks, nodeBase, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,

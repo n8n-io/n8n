@@ -8,6 +8,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
+import { hasPermission } from '@/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -55,13 +56,13 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const hasCloudPlan = computed(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return usersStore.isInstanceOwner && settingsStore.isCloudDeployment && cloudUserId;
+		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		try {
-			if (useUsersStore().isInstanceOwner) {
+			if (hasPermission(['instanceOwner'])) {
 				await usersStore.fetchUserCloudAccount();
 				if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
 					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');

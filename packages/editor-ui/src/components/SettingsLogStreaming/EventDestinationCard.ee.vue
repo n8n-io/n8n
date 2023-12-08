@@ -25,7 +25,7 @@
 
 				<el-switch
 					class="mr-s"
-					:disabled="!isInstanceOwner"
+					:disabled="readonly"
 					:modelValue="nodeParameters.enabled"
 					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
@@ -84,7 +84,7 @@ export default defineComponent({
 			required: true,
 			default: deepCopy(defaultMessageEventBusDestinationOptions),
 		},
-		isInstanceOwner: Boolean,
+		readonly: Boolean,
 	},
 	mounted() {
 		this.nodeParameters = Object.assign(
@@ -105,7 +105,7 @@ export default defineComponent({
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
 			];
-			if (this.isInstanceOwner) {
+			if (!this.readonly) {
 				actions.push({
 					label: this.$locale.baseText('workflows.item.delete'),
 					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
