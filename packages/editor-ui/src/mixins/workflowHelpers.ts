@@ -614,7 +614,9 @@ export const workflowHelpers = defineComponent({
 						typeUnknown: true,
 					};
 				} else {
-					nodeIssues = useNodeHelpers().getNodeIssues(nodeType.description, node, workflow, ['execution']);
+					nodeIssues = useNodeHelpers().getNodeIssues(nodeType.description, node, workflow, [
+						'execution',
+					]);
 				}
 
 				if (nodeIssues !== null) {

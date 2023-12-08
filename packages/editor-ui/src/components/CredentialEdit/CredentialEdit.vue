@@ -581,7 +581,12 @@ export default defineComponent({
 				return true;
 			}
 
-			return this.nodeHelpers.displayParameter(this.credentialData as INodeParameters, parameter, '', null);
+			return this.nodeHelpers.displayParameter(
+				this.credentialData as INodeParameters,
+				parameter,
+				'',
+				null,
+			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
 			const credentialTypeData = this.credentialsStore.getCredentialTypeByName(name);

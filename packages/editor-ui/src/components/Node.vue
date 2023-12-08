@@ -631,7 +631,9 @@ export default defineComponent({
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
-				const nodeSubtitle = this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+				const nodeSubtitle =
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) ||
+					'';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {

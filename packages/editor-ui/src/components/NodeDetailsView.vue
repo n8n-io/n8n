@@ -472,14 +472,18 @@ export default defineComponent({
 
 				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
 				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
+					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
+						node,
+						this.activeNodeType,
+						this.getCurrentWorkflow(),
+					),
 				});
 
 				setTimeout(() => {
 					if (this.activeNode) {
 						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 							this.activeNode.name,
-						) ;
+						);
 
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -494,8 +498,7 @@ export default defineComponent({
 								: this.ndvStore.inputPanelDisplayMode,
 							selected_view_outputs: this.ndvStore.outputPanelDisplayMode,
 							input_connectors: this.parentNodes.length,
-							output_connectors:
-								outgoingConnections && outgoingConnections.main && outgoingConnections.main.length,
+							output_connectors: outgoingConnections?.main?.length,
 							input_displayed_run_index: this.inputRun,
 							output_displayed_run_index: this.outputRun,
 							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,

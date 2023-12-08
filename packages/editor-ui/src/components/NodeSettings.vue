@@ -231,7 +231,7 @@ export default defineComponent({
 
 		return {
 			externalHooks,
-			nodeHelpers
+			nodeHelpers,
 		};
 	},
 	computed: {
