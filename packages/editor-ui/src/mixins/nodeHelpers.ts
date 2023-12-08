@@ -446,7 +446,7 @@ export const nodeHelpers = defineComponent({
 						.getCredentialsByType(credentialTypeDescription.name)
 						.filter((credential: ICredentialsResponse) => {
 							const permissions = getCredentialPermissions(currentUser, credential);
-							return permissions.use;
+							return permissions.read;
 						});
 
 					if (userCredentials === null) {

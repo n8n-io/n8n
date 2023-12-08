@@ -157,5 +157,11 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)
 			.should('have.length', 1);
+
+		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].email);
+		credentialsModal.actions.addUser(INSTANCE_ADMIN.email);
+		credentialsModal.actions.save();
+		credentialsModal.actions.close();
 	});
 });

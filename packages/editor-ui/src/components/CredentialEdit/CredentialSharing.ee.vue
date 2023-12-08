@@ -34,7 +34,7 @@
 			<n8n-info-tip v-if="credentialPermissions.isOwner" :bold="false" class="mb-s">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="!credentialPermissions.updateSharing" :bold="false" class="mb-s">
+			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
@@ -49,7 +49,7 @@
 				</i18n-t>
 			</n8n-info-tip>
 			<n8n-user-select
-				v-if="credentialPermissions.updateSharing"
+				v-if="credentialPermissions.share"
 				class="mb-s"
 				size="large"
 				:users="usersList"
@@ -66,7 +66,7 @@
 				:actions="usersListActions"
 				:users="sharedWithList"
 				:currentUserId="usersStore.currentUser.id"
-				:readonly="!credentialPermissions.updateSharing"
+				:readonly="!credentialPermissions.share"
 				@delete="onRemoveSharee"
 			/>
 		</div>

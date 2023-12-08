@@ -7,7 +7,7 @@ export type ReportingOptions = {
 } & Pick<Event, 'tags' | 'extra'>;
 
 export class ApplicationError extends Error {
-	readonly level: Level;
+	level: Level;
 
 	readonly tags?: Event['tags'];
 
