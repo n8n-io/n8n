@@ -16,6 +16,8 @@ import unset from 'lodash/unset';
 
 import iconv from 'iconv-lite';
 
+import { icsCalendarToObject } from 'ts-ics';
+
 export const properties: INodeProperties[] = [
 	{
 		displayName: 'Input Binary Field',
@@ -92,7 +94,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text'],
+		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs'],
 	},
 };
 
@@ -137,7 +139,15 @@ export async function execute(
 			}
 
 			if (operation === 'fromJson') {
-				convertedValue = jsonParse(convertedValue);
+				if (convertedValue === '') {
+					convertedValue = {};
+				} else {
+					convertedValue = jsonParse(convertedValue);
+				}
+			}
+
+			if (operation === 'fromIcs') {
+				convertedValue = icsCalendarToObject(convertedValue as string);
 			}
 
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;

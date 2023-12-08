@@ -263,12 +263,20 @@ export const description: INodeProperties[] = [
 				default: '',
 				description: 'URL associated with event',
 			},
+			{
+				displayName: 'Use Workflow Timezone',
+				name: 'useWorkflowTimezone',
+				type: 'boolean',
+				default: false,
+				description: "Whether to use the workflow timezone set in node's settings or UTC",
+			},
 		],
 	},
 ];
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
+	const workflowTimezone = this.getTimezone();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -278,10 +286,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			let start = this.getNodeParameter('start', i) as string;
 			let end = this.getNodeParameter('end', i) as string;
 
-			if (!start) {
-				start = new Date().toISOString();
-			}
-
 			if (!end) {
 				end = start;
 			}
@@ -289,7 +293,13 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			end = allDay ? moment(end).utc().add(1, 'day').format() : end;
 
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-			const additionalFields = this.getNodeParameter('additionalFields', i);
+			const options = this.getNodeParameter('additionalFields', i);
+
+			if (options.useWorkflowTimezone) {
+				start = moment(start).tz(workflowTimezone).format();
+				end = moment(end).tz(workflowTimezone).format();
+				delete options.useWorkflowTimezone;
+			}
 
 			let fileName = 'event.ics';
 
@@ -303,8 +313,8 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				.splice(0, allDay ? 3 : 6) as ics.DateArray;
 			eventEnd[1]++;
 
-			if (additionalFields.fileName) {
-				fileName = additionalFields.fileName as string;
+			if (options.fileName) {
+				fileName = options.fileName as string;
 			}
 
 			const data: ics.EventAttributes = {
@@ -315,25 +325,22 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				endInputType: 'utc',
 			};
 
-			if (additionalFields.geolocationUi) {
-				data.geo = (additionalFields.geolocationUi as IDataObject)
-					.geolocationValues as ics.GeoCoordinates;
-				delete additionalFields.geolocationUi;
+			if (options.geolocationUi) {
+				data.geo = (options.geolocationUi as IDataObject).geolocationValues as ics.GeoCoordinates;
+				delete options.geolocationUi;
 			}
 
-			if (additionalFields.organizerUi) {
-				data.organizer = (additionalFields.organizerUi as IDataObject)
-					.organizerValues as ics.Person;
-				delete additionalFields.organizerUi;
+			if (options.organizerUi) {
+				data.organizer = (options.organizerUi as IDataObject).organizerValues as ics.Person;
+				delete options.organizerUi;
 			}
 
-			if (additionalFields.attendeesUi) {
-				data.attendees = (additionalFields.attendeesUi as IDataObject)
-					.attendeeValues as ics.Attendee[];
-				delete additionalFields.attendeesUi;
+			if (options.attendeesUi) {
+				data.attendees = (options.attendeesUi as IDataObject).attendeeValues as ics.Attendee[];
+				delete options.attendeesUi;
 			}
 
-			Object.assign(data, additionalFields);
+			Object.assign(data, options);
 			const buffer = Buffer.from((await createEvent(data)) as string);
 			const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, 'text/calendar');
 			returnData.push({
