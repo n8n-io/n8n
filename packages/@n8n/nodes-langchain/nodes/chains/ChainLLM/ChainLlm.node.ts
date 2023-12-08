@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -105,7 +105,9 @@ async function getChainPromptTemplate(
 
 				if (!messageClass) {
 					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-					throw new Error(`Invalid message type "${message.type}"`);
+					throw new ApplicationError('Invalid message type', {
+						extra: { messageType: message.type },
+					});
 				}
 
 				if (messageClass === HumanMessagePromptTemplate && message.messageType !== 'text') {
