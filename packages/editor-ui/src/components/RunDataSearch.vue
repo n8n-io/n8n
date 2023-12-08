@@ -26,7 +26,6 @@ const locale = useI18n();
 const inputRef = ref<HTMLInputElement | null>(null);
 const maxWidth = ref(INITIAL_WIDTH);
 const opened = ref(false);
-const focused = ref(false);
 const placeholder = computed(() =>
 	props.paneType === 'input'
 		? locale.baseText('ndv.search.placeholder.input')
@@ -34,11 +33,13 @@ const placeholder = computed(() =>
 );
 
 const documentKeyHandler = (event: KeyboardEvent) => {
-	const isTargetAnyFormElement =
+	const isTargetFormElementOrEditable =
 		event.target instanceof HTMLInputElement ||
 		event.target instanceof HTMLTextAreaElement ||
-		event.target instanceof HTMLSelectElement;
-	if (event.key === '/' && !focused.value && props.isAreaActive && !isTargetAnyFormElement) {
+		event.target instanceof HTMLSelectElement ||
+		(event.target as HTMLElement)?.getAttribute?.('contentEditable') === 'true';
+
+	if (event.key === '/' && props.isAreaActive && !isTargetFormElementOrEditable) {
 		inputRef.value?.focus();
 		inputRef.value?.select();
 	}
@@ -49,13 +50,11 @@ const onSearchUpdate = (value: string) => {
 };
 const onFocus = () => {
 	opened.value = true;
-	focused.value = true;
 	maxWidth.value = '30%';
 	inputRef.value?.select();
 	emit('focus');
 };
 const onBlur = () => {
-	focused.value = false;
 	if (!props.modelValue) {
 		opened.value = false;
 		maxWidth.value = INITIAL_WIDTH;
