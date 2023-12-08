@@ -607,7 +607,7 @@ export const workflowHelpers = defineComponent({
 						typeUnknown: true,
 					};
 				} else {
-					nodeIssues = this.nodeHelpers.getNodeIssues(nodeType.description, node, workflow, ['execution']);
+					nodeIssues = useNodeHelpers().getNodeIssues(nodeType.description, node, workflow, ['execution']);
 				}
 
 				if (nodeIssues !== null) {
@@ -709,7 +709,7 @@ export const workflowHelpers = defineComponent({
 					const saveCredentials: INodeCredentials = {};
 					for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
 						if (
-							this.nodeHelpers.hasProxyAuth(node) ||
+							useNodeHelpers().hasProxyAuth(node) ||
 							Object.keys(node.parameters).includes('genericAuthType')
 						) {
 							saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
@@ -718,7 +718,7 @@ export const workflowHelpers = defineComponent({
 
 						const credentialTypeDescription = nodeType.credentials
 							// filter out credentials with same name in different node versions
-							.filter((c) => this.nodeHelpers.displayParameter(node.parameters, c, '', node))
+							.filter((c) => useNodeHelpers().displayParameter(node.parameters, c, '', node))
 							.find((c) => c.name === nodeCredentialTypeName);
 
 						if (credentialTypeDescription === undefined) {
@@ -727,7 +727,7 @@ export const workflowHelpers = defineComponent({
 						}
 
 						if (
-							!this.nodeHelpers.displayParameter(
+							!useNodeHelpers().displayParameter(
 								node.parameters,
 								credentialTypeDescription,
 								'',

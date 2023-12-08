@@ -156,6 +156,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
 import {
 	getNodeAuthOptions,
 	getNodeCredentialForSelectedAuthType,
@@ -296,6 +298,7 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
+			useNodeTypesStore,
 		),
 		activeNodeType(): INodeTypeDescription | null {
 			const activeNode = this.ndvStore.activeNode;
@@ -577,7 +580,7 @@ export default defineComponent({
 				return true;
 			}
 
-			return this.displayParameter(this.credentialData as INodeParameters, parameter, '', null);
+			return this.nodeHelpers.displayParameter(this.credentialData as INodeParameters, parameter, '', null);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
 			const credentialTypeData = this.credentialsStore.getCredentialTypeByName(name);

@@ -395,6 +395,7 @@ import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -427,7 +428,11 @@ type Picker = { $emit: (arg0: string, arg1: Date) => void };
 export default defineComponent({
 	name: 'parameter-input',
 	mixins: [workflowHelpers, debounceHelper],
+	components: {
+		CodeNodeEditor,
+		HtmlEditor,
 		SqlEditor,
+		ExpressionEdit,
 		ExpressionParameterInput,
 		CredentialsSelect,
 		ParameterIssues,
