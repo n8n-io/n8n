@@ -2538,7 +2538,8 @@ export default defineComponent({
 				if (this.pullConnActiveNodeName) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
 					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
-					const overrideTargetEndpoint = connection?.connector?.overrideTargetEndpoint as Endpoint | null;
+					const overrideTargetEndpoint = connection?.connector
+						?.overrideTargetEndpoint as Endpoint | null;
 
 					if (sourceNode) {
 						const isTarget = connection.parameters.connection === 'target';
@@ -2553,7 +2554,7 @@ export default defineComponent({
 							outputIndex,
 							targetNodeName,
 							overrideTargetEndpoint?.parameters?.index ?? 0,
-							connectionType
+							connectionType,
 						);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = false;
@@ -2977,7 +2978,11 @@ export default defineComponent({
 								return false;
 							}
 							const isEndpointIntersect = NodeViewUtils.isElementIntersection(element, e, 50);
-							const isNodeElementIntersect = NodeViewUtils.isElementIntersection(endpoint.element, e, 30);
+							const isNodeElementIntersect = NodeViewUtils.isElementIntersection(
+								endpoint.element,
+								e,
+								30,
+							);
 
 							if (isEndpointIntersect || isNodeElementIntersect) {
 								const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
@@ -4744,19 +4749,27 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: ({ connectiontype, node, creatorview }: { connectiontype: NodeConnectionType; node: string; creatorview?: string }) => {
+			action: async ({
+				connectiontype,
+				node,
+				creatorview,
+			}: {
+				connectiontype: NodeConnectionType;
+				node: string;
+				creatorview?: string;
+			}) => {
 				const nodeName = node ?? this.ndvStore.activeNodeName;
 				const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
 
 				this.ndvStore.activeNodeName = null;
-				this.redrawNode(node);
+				await this.redrawNode(node);
 				// Wait for UI to update
 				setTimeout(() => {
 					if (creatorview) {
 						this.onToggleNodeCreator({
 							createNodeActive: true,
 							nodeCreatorView: creatorview,
-						})
+						});
 					} else if (connectiontype && nodeData) {
 						this.insertNodeAfterSelected({
 							index: 0,
@@ -4764,7 +4777,7 @@ export default defineComponent({
 							eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
 							outputType: connectiontype,
 							sourceId: nodeData.id,
-						})
+						});
 					}
 				}, 0);
 			},

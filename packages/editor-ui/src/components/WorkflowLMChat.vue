@@ -433,7 +433,7 @@ export default defineComponent({
 				return;
 			}
 
-			await this.waitForExecution(response.executionId);
+			this.waitForExecution(response.executionId);
 		},
 		extractResponseMessage(responseData?: IDataObject) {
 			if (!responseData) return '<NO RESPONSE FOUND>';
