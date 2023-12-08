@@ -42,6 +42,7 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',

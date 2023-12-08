@@ -50,6 +50,12 @@ export class ExtractFromFile implements INodeType {
 						description: 'Transform a JSON file into output items',
 					},
 					{
+						name: 'Extract From ICS',
+						value: 'fromIcs',
+						action: 'Extract from ICS',
+						description: 'Transform a ICS file into output items',
+					},
+					{
 						name: 'Extract From ODS',
 						value: 'ods',
 						action: 'Extract from ODS',
@@ -106,10 +112,10 @@ export class ExtractFromFile implements INodeType {
 		let returnData: INodeExecutionData[] = [];
 
 		if (spreadsheet.operations.includes(operation)) {
-			returnData = await spreadsheet.execute.call(this, items, operation);
+			returnData = await spreadsheet.execute.call(this, items, 'operation');
 		}
 
-		if (['binaryToPropery', 'fromJson', 'text'].includes(operation)) {
+		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs'].includes(operation)) {
 			returnData = await moveTo.execute.call(this, items, operation);
 		}
 

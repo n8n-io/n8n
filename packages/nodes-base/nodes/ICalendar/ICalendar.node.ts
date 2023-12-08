@@ -10,6 +10,7 @@ import * as createEvent from './createEvent.operation';
 
 export class ICalendar implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'iCalendar',
 		name: 'iCal',
 		icon: 'fa:calendar',

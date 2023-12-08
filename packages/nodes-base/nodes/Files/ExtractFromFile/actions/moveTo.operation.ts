@@ -16,6 +16,8 @@ import unset from 'lodash/unset';
 
 import iconv from 'iconv-lite';
 
+import { icsCalendarToObject } from 'ts-ics';
+
 export const properties: INodeProperties[] = [
 	{
 		displayName: 'Input Binary Field',
@@ -92,7 +94,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text'],
+		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs'],
 	},
 };
 
@@ -137,7 +139,15 @@ export async function execute(
 			}
 
 			if (operation === 'fromJson') {
-				convertedValue = jsonParse(convertedValue);
+				if (convertedValue === '') {
+					convertedValue = {};
+				} else {
+					convertedValue = jsonParse(convertedValue);
+				}
+			}
+
+			if (operation === 'fromIcs') {
+				convertedValue = icsCalendarToObject(convertedValue as string);
 			}
 
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
@@ -154,6 +164,12 @@ export async function execute(
 
 			returnData.push(newItem);
 		} catch (error) {
+			let errorDescription;
+			if (error.message.includes('Unexpected token')) {
+				error.message = "The file selected in 'Input Binary Field' is not in JSON format";
+				errorDescription =
+					"Try to change the operation or select a JSON file in 'Input Binary Field'";
+			}
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
@@ -165,7 +181,10 @@ export async function execute(
 				});
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex });
+			throw new NodeOperationError(this.getNode(), error, {
+				itemIndex,
+				description: errorDescription,
+			});
 		}
 	}
 
