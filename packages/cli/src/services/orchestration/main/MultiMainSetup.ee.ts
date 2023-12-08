@@ -63,41 +63,45 @@ export class MultiMainSetup extends SingleMainSetup {
 	}
 
 	private async checkLeader() {
-		if (!this.redisPublisher.redisClient) return;
-
 		const leaderId = await this.redisPublisher.get(this.leaderKey);
 
-		if (!leaderId) {
-			this.logger.debug('Leadership vacant, attempting to become leader...');
-			await this.tryBecomeLeader();
+		if (leaderId === this.id) {
+			this.logger.debug(`[Instance ID ${this.id}] Leader is this instance`);
+
+			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
 		}
 
-		if (this.isLeader) {
-			this.logger.debug(`Leader is this instance "${this.id}"`);
+		if (leaderId && leaderId !== this.id) {
+			this.logger.debug(`[Instance ID ${this.id}] Leader is other instance "${leaderId}"`);
 
-			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
-		} else {
-			this.logger.debug(`Leader is other instance "${leaderId}"`);
+			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
+				this.emit('leadershipChange', leaderId); // stop triggers, pruning, etc.
+
+				config.set('multiMainSetup.instanceType', 'follower');
+			}
+
+			return;
+		}
+
+		if (!leaderId) {
+			this.logger.debug(
+				`[Instance ID ${this.id}] Leadership vacant, attempting to become leader...`,
+			);
 
 			config.set('multiMainSetup.instanceType', 'follower');
+
+			await this.tryBecomeLeader();
 		}
 	}
 
 	private async tryBecomeLeader() {
-		if (
-			config.getEnv('multiMainSetup.instanceType') === 'leader' ||
-			!this.redisPublisher.redisClient
-		) {
-			return;
-		}
-
 		// this can only succeed if leadership is currently vacant
 		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(this.leaderKey, this.id);
 
 		if (keySetSuccessfully) {
-			this.logger.debug(`Leader is now this instance "${this.id}"`);
+			this.logger.debug(`[Instance ID ${this.id}] Leader is now this instance`);
 
 			config.set('multiMainSetup.instanceType', 'leader');
 
