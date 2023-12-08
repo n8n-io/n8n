@@ -12,6 +12,15 @@
 		:eventBus="modalBus"
 	>
 		<template #content>
+			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+				<i18n-t keypath="settings.users.advancedPermissions.warning">
+					<template #link>
+						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+						</n8n-link>
+					</template>
+				</i18n-t>
+			</n8n-notice>
 			<div v-if="showInviteUrls">
 				<n8n-users-list :users="invitedUsers">
 					<template #actions="{ user }">
@@ -58,10 +67,11 @@ import { useToast } from '@/composables/useToast';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
-import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils/userUtils';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
@@ -97,6 +107,7 @@ export default defineComponent({
 			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
+			role: 'member',
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
@@ -132,6 +143,11 @@ export default defineComponent({
 							value: ROLE.Member,
 							label: this.$locale.baseText('auth.roles.member'),
 						},
+						{
+							value: ROLE.Admin,
+							label: this.$locale.baseText('auth.roles.admin'),
+							disabled: !this.isAdvancedPermissionsEnabled,
+						},
 					],
 					capitalize: true,
 				},
@@ -139,7 +155,7 @@ export default defineComponent({
 		];
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore),
 		emailsCount(): number {
 			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
 		},
@@ -167,6 +183,11 @@ export default defineComponent({
 				  )
 				: [];
 		},
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
+		},
 	},
 	methods: {
 		validateEmails(value: string | number | boolean | null | undefined) {
@@ -193,6 +214,9 @@ export default defineComponent({
 			if (e.name === 'emails') {
 				this.emails = e.value;
 			}
+			if (e.name === 'role') {
+				this.role = e.value;
+			}
 		},
 		async onSubmit() {
 			try {
@@ -200,7 +224,7 @@ export default defineComponent({
 
 				const emails = this.emails
 					.split(',')
-					.map((email) => ({ email: getEmail(email) }))
+					.map((email) => ({ email: getEmail(email), role: this.role }))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
@@ -307,6 +331,9 @@ export default defineComponent({
 				this.copyToClipboard(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
+		},
+		goToUpgradeAdvancedPermissions() {
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
 	},
 });

@@ -119,7 +119,7 @@ export async function prepareCustomFields(
 
 			return customFields;
 		} else if (customFieldsJson) {
-			throw Error('customFieldsJson value is invalid');
+			throw new ApplicationError('customFieldsJson value is invalid', { level: 'warning' });
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
