@@ -68,8 +68,6 @@ export class MultiMainSetup extends SingleMainSetup {
 		if (leaderId === this.id) {
 			this.logger.debug(`[Instance ID ${this.id}] Leader is this instance`);
 
-			config.set('multiMainSetup.instanceType', 'leader');
-
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
@@ -78,7 +76,11 @@ export class MultiMainSetup extends SingleMainSetup {
 		if (leaderId && leaderId !== this.id) {
 			this.logger.debug(`[Instance ID ${this.id}] Leader is other instance "${leaderId}"`);
 
-			config.set('multiMainSetup.instanceType', 'follower');
+			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
+				this.emit('leadershipChange', leaderId); // stop triggers, pruning, etc.
+
+				config.set('multiMainSetup.instanceType', 'follower');
+			}
 
 			return;
 		}
