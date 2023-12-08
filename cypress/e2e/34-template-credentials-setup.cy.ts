@@ -92,12 +92,16 @@ describe('Template credentials setup', () => {
 	it('can create credentials and workflow from the template', () => {
 		templateCredentialsSetupPage.actions.visit(testTemplate.id);
 
-		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
+		// Continue button should be disabled if no credentials are created
+		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
 
 		templateCredentialsSetupPage.getters.createAppCredentialsButton('Shopify').click();
 		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
 		credentialsModal.actions.save(false);
 		credentialsModal.actions.close();
+
+		// Continue button should be enabled if at least one has been created
+		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
 
 		templateCredentialsSetupPage.getters.createAppCredentialsButton('X (Formerly Twitter)').click();
 		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
