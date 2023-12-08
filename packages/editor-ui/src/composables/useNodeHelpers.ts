@@ -42,6 +42,7 @@ import { useI18n } from './useI18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { getCredentialPermissions } from '@/permissions';
+import { hasPermission } from '@/rbac/permissions';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -449,11 +450,13 @@ export function useNodeHelpers() {
 				}
 
 				if (nameMatches.length === 0) {
-					const isInstanceOwner = usersStore.isInstanceOwner;
 					const isCredentialUsedInWorkflow =
 						workflowsStore.usedCredentials?.[selectedCredentials.id as string];
 
-					if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
+					if (
+						!isCredentialUsedInWorkflow &&
+						!hasPermission(['rbac'], { rbac: { scope: 'credential:read' } })
+					) {
 						foundIssues[credentialTypeDescription.name] = [
 							i18n.baseText('nodeIssues.credentials.doNotExist', {
 								interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
