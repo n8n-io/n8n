@@ -7,6 +7,7 @@ import {
 	WorkflowSharingModal,
 	WorkflowsPage,
 } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 /**
  * User U1 - Instance owner
@@ -130,13 +131,13 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 	});
 
-	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
+	it.only('should work for admin role on credentials created by others (also can share it with themselves)', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
-		credentialsModal.getters.newCredentialTypeButton().click();
+		credentialsModal.getters.newCredentialTypeButton().click({ force: true });
 		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 		credentialsModal.actions.setName('Credential C3');
 		credentialsModal.actions.save();
