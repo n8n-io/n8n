@@ -1012,6 +1012,11 @@ export default defineComponent({
 				left: -67px;
 			}
 		}
+
+		&[data-name='Chat Trigger'] {
+			--configurable-node-min-input-count: 1;
+			--configurable-node-input-width: 176px;
+		}
 	}
 
 	&--trigger .node-default .node-box {
