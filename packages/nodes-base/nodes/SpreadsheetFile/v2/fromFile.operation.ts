@@ -116,12 +116,8 @@ export async function execute(
 						stream.pipe(parser);
 					});
 				} else {
-					await new Promise((resolve, reject) => {
-						parser.write(binaryData.data, BINARY_ENCODING);
-						parser.end();
-						parser.on('end', resolve);
-						parser.on('error', reject);
-					});
+					parser.write(binaryData.data, BINARY_ENCODING);
+					parser.end();
 				}
 			} else {
 				let workbook: WorkBook;
