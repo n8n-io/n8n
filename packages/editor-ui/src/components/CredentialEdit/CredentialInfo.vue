@@ -9,7 +9,7 @@
 			<el-col :span="16">
 				<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
 					<el-checkbox
-						v-if="credentialPermissions.updateNodeAccess"
+						v-if="credentialPermissions.update"
 						:label="
 							$locale.headerText({
 								key: `headers.${shortNodeType(node)}.displayName`,

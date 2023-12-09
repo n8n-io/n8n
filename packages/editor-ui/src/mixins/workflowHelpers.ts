@@ -47,8 +47,8 @@ import type {
 
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
@@ -474,11 +474,13 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [nodeHelpers, genericHelpers],
+	mixins: [genericHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useToast(),
 			...useMessage(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -572,7 +574,8 @@ export const workflowHelpers = defineComponent({
 						workflow.nodes[nodeName].disabled !== true &&
 						workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE
 					) {
-						checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						const childNodes = workflow.getChildNodes(nodeName);
+						checkWebhook = [nodeName, ...checkWebhook, ...childNodes];
 					}
 				}
 
@@ -582,8 +585,14 @@ export const workflowHelpers = defineComponent({
 					// If no webhook nodes got found try to find another trigger node
 					const startNode = workflow.getStartNode();
 					if (startNode !== undefined) {
-						checkNodes = workflow.getChildNodes(startNode.name);
-						checkNodes.push(startNode.name);
+						checkNodes = [...workflow.getChildNodes(startNode.name), startNode.name];
+
+						// For the short-listed checkNodes, we also need to check them for any
+						// connected sub-nodes
+						for (const nodeName of checkNodes) {
+							const childNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+							checkNodes.push(...childNodes);
+						}
 					}
 				}
 			}
@@ -605,7 +614,9 @@ export const workflowHelpers = defineComponent({
 						typeUnknown: true,
 					};
 				} else {
-					nodeIssues = this.getNodeIssues(nodeType.description, node, workflow, ['execution']);
+					nodeIssues = useNodeHelpers().getNodeIssues(nodeType.description, node, workflow, [
+						'execution',
+					]);
 				}
 
 				if (nodeIssues !== null) {
@@ -707,7 +718,7 @@ export const workflowHelpers = defineComponent({
 					const saveCredentials: INodeCredentials = {};
 					for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
 						if (
-							this.hasProxyAuth(node) ||
+							useNodeHelpers().hasProxyAuth(node) ||
 							Object.keys(node.parameters).includes('genericAuthType')
 						) {
 							saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
@@ -716,7 +727,7 @@ export const workflowHelpers = defineComponent({
 
 						const credentialTypeDescription = nodeType.credentials
 							// filter out credentials with same name in different node versions
-							.filter((c) => this.displayParameter(node.parameters, c, '', node))
+							.filter((c) => useNodeHelpers().displayParameter(node.parameters, c, '', node))
 							.find((c) => c.name === nodeCredentialTypeName);
 
 						if (credentialTypeDescription === undefined) {
@@ -724,7 +735,14 @@ export const workflowHelpers = defineComponent({
 							continue;
 						}
 
-						if (!this.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+						if (
+							!useNodeHelpers().displayParameter(
+								node.parameters,
+								credentialTypeDescription,
+								'',
+								node,
+							)
+						) {
 							// Credential should not be displayed so do also not save
 							continue;
 						}
@@ -1019,9 +1037,8 @@ export const workflowHelpers = defineComponent({
 				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
-
 				if (
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
+					useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
 					this.usersStore.currentUser
 				) {
 					this.workflowsEEStore.setWorkflowOwnedBy({

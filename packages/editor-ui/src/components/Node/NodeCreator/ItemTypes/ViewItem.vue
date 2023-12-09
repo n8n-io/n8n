@@ -2,6 +2,7 @@
 	<n8n-node-creator-node
 		:class="$style.view"
 		:title="view.title"
+		:tag="view.tag"
 		:isTrigger="false"
 		:description="view.description"
 		:showActionArrow="true"

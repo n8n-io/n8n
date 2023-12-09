@@ -722,14 +722,6 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	Logger.debug(
-		'Proxying request to axios',
-		// {
-		// 	originalConfig: configObject,
-		// 	parsedConfig: axiosConfig,
-		// }
-	);
-
 	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
@@ -2619,6 +2611,8 @@ async function getInputConnectionData(
 			try {
 				return await nodeType.supplyData.call(context, itemIndex);
 			} catch (error) {
+				// Propagate errors from sub-nodes
+				if (error.functionality === 'configuration-node') throw error;
 				if (!(error instanceof ExecutionBaseError)) {
 					error = new NodeOperationError(connectedNode, error, {
 						itemIndex,

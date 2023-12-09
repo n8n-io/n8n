@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { TextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { metadataFilterField } from '../../../utils/sharedFields';
@@ -257,11 +258,16 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
+		const textSplitter = (await this.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as TextSplitter | undefined;
+		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
 		const processor =
 			dataType === 'binary'
-				? new N8nBinaryLoader(this, 'options.')
-				: new N8nJsonLoader(this, 'options.');
+				? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
+				: new N8nJsonLoader(this, 'options.', textSplitter);
 
 		return {
 			response: logWrapper(processor, this),
