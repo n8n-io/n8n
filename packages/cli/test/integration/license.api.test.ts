@@ -60,7 +60,7 @@ describe('POST /license/activate', () => {
 		await authMemberAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(403, { code: 403, message: NON_OWNER_ACTIVATE_RENEW_MESSAGE });
+			.expect(403, UNAUTHORIZED_RESPONSE);
 	});
 
 	test('errors out properly', async () => {
@@ -82,9 +82,7 @@ describe('POST /license/renew', () => {
 	});
 
 	test('does not work for regular users', async () => {
-		await authMemberAgent
-			.post('/license/renew')
-			.expect(403, { code: 403, message: NON_OWNER_ACTIVATE_RENEW_MESSAGE });
+		await authMemberAgent.post('/license/renew').expect(403, UNAUTHORIZED_RESPONSE);
 	});
 
 	test('errors out properly', async () => {
@@ -131,6 +129,6 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const NON_OWNER_ACTIVATE_RENEW_MESSAGE = 'Only an instance owner may activate or renew a license';
+const UNAUTHORIZED_RESPONSE = { status: 'error', message: 'Unauthorized' };
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';

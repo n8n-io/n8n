@@ -86,13 +86,13 @@ describe('License', () => {
 	});
 
 	test('check if feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -110,7 +110,7 @@ describe('License', () => {
 	});
 
 	test('check management jwt', async () => {
-		await license.getManagementJwt();
+		license.getManagementJwt();
 
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
