@@ -17,7 +17,7 @@
 						data-test-id="use-template-button"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openTemplateSetup(template.id, $event)"
+						@click="openTemplateSetup(templateId, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
@@ -63,13 +63,14 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
-import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import type { ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { setPageTitle } from '@/utils/htmlUtils';
-import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
 import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -79,13 +80,22 @@ export default defineComponent({
 		TemplatesView,
 		WorkflowPreview,
 	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
+	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
-		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
-			return this.templatesStore.getTemplateById(this.templateId);
+		template(): ITemplatesWorkflowFull | null {
+			return this.templatesStore.getFullTemplateById(this.templateId);
 		},
 		templateId() {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 	},
 	data() {
@@ -96,35 +106,25 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		openTemplateSetup(id: string, e: PointerEvent) {
-			const telemetryPayload = {
-				source: 'workflow',
-				template_id: id,
-				wf_template_repo_session_id: this.templatesStore.currentSessionId,
-			};
+		async openTemplateSetup(id: string, e: PointerEvent) {
+			if (!isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
+				const telemetryPayload = {
+					source: 'workflow',
+					template_id: id,
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
+				};
 
-			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-				withPostHog: true,
-			});
-
-			if (isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
-				if (e.metaKey || e.ctrlKey) {
-					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
-					window.open(route.href, '_blank');
-					return;
-				} else {
-					void this.$router.push({ name: VIEWS.TEMPLATE_SETUP, params: { id } });
-				}
-			} else {
-				if (e.metaKey || e.ctrlKey) {
-					const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-					window.open(route.href, '_blank');
-					return;
-				} else {
-					void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-				}
+				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+					withPostHog: true,
+				});
+				await this.externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 			}
+
+			await openTemplateCredentialSetup({
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: e.metaKey || e.ctrlKey,
+			});
 		},
 		onHidePreview() {
 			this.showPreview = false;
@@ -151,7 +151,7 @@ export default defineComponent({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
+		if (this.template && this.template.full) {
 			this.loading = false;
 			return;
 		}

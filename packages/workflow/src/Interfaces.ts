@@ -1888,6 +1888,7 @@ export interface IWorkflowExecuteAdditionalData {
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: {
+			node?: INode;
 			parentWorkflowId?: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;
@@ -2335,6 +2336,7 @@ export interface IN8nUISettings {
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
 		workerView: boolean;
+		advancedPermissions: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2379,5 +2381,4 @@ export type BannerName =
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
 
-export type Severity = 'warning' | 'error';
 export type Functionality = 'regular' | 'configuration-node';

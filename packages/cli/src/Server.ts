@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -281,6 +281,7 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				Container.get(RoleService),
 				userService,
+				Container.get(License),
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -296,6 +297,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				externalHooks,
 				Container.get(UserService),
+				Container.get(License),
 				postHog,
 			),
 			Container.get(VariablesController),
@@ -446,7 +448,10 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage({
+					user: req.user,
+					scope: 'workflow:list',
+				});
 			}),
 		);
 
@@ -458,8 +463,9 @@ export class Server extends AbstractServer {
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: whereClause({
+					where: await whereClause({
 						user: req.user,
+						globalScope: 'workflow:read',
 						entityType: 'workflow',
 						entityId: workflowId,
 					}),
@@ -672,7 +678,9 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
+							extra: { jobId: req.params.id },
+						});
 					} else {
 						await queue.stopJob(job);
 					}

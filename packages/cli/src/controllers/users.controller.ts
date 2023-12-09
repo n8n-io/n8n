@@ -19,6 +19,7 @@ import { Logger } from '@/Logger';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { License } from '@/License';
 
 @Authorized()
 @RestController('/users')
@@ -32,17 +33,18 @@ export class UsersController {
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
+		private readonly license: License,
 	) {}
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
-			NO_MEMBER: 'Member cannot change role for any user',
 			MISSING_NEW_ROLE_KEY: 'Expected `newRole` to exist',
 			MISSING_NEW_ROLE_VALUE: 'Expected `newRole` to have `name` and `scope`',
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
 			NO_USER_TO_OWNER: 'Cannot promote user to global owner',
+			NO_ADMIN_IF_UNLICENSED: 'Admin role is not available without a license',
 		},
 	} as const;
 
@@ -124,7 +126,9 @@ export class UsersController {
 		const users = await this.userService.findMany(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
+			users.map(async (u) =>
+				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			),
 		);
 
 		return listQueryOptions
@@ -166,7 +170,6 @@ export class UsersController {
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
-	@Authorized(['global', 'owner'])
 	@Delete('/:id')
 	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
@@ -323,24 +326,18 @@ export class UsersController {
 		return { success: true };
 	}
 
-	// @TODO: Add scope check `@RequireGlobalScope('user:changeRole')`
-	// once this has been merged: https://github.com/n8n-io/n8n/pull/7737
-	@Authorized('any')
 	@Patch('/:id/role')
+	@RequireGlobalScope('user:changeRole')
 	async changeRole(req: UserRequest.ChangeRole) {
 		const {
-			NO_MEMBER,
 			MISSING_NEW_ROLE_KEY,
 			MISSING_NEW_ROLE_VALUE,
 			NO_ADMIN_ON_OWNER,
 			NO_USER_TO_OWNER,
 			NO_USER,
 			NO_OWNER_ON_OWNER,
+			NO_ADMIN_IF_UNLICENSED,
 		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
-
-		if (req.user.globalRole.scope === 'global' && req.user.globalRole.name === 'member') {
-			throw new UnauthorizedError(NO_MEMBER);
-		}
 
 		const { newRole } = req.body;
 
@@ -362,6 +359,14 @@ export class UsersController {
 
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
+		}
+
+		if (
+			newRole.scope === 'global' &&
+			newRole.name === 'admin' &&
+			!this.license.isAdvancedPermissionsLicensed()
+		) {
+			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
 		}
 
 		if (

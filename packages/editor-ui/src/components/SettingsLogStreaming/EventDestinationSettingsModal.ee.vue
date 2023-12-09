@@ -45,7 +45,7 @@
 							@click="sendTestEvent"
 							data-test-id="destination-test-button"
 						/>
-						<template v-if="isInstanceOwner">
+						<template v-if="canManageLogStreaming">
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="$locale.baseText('settings.log-streaming.delete')"
@@ -117,7 +117,7 @@
 								:parameters="webhookDescription"
 								:hideDelete="true"
 								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:isReadOnly="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
@@ -127,7 +127,7 @@
 								:parameters="syslogDescription"
 								:hideDelete="true"
 								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:isReadOnly="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
@@ -137,7 +137,7 @@
 								:parameters="sentryDescription"
 								:hideDelete="true"
 								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:isReadOnly="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
@@ -156,7 +156,7 @@
 								:destinationId="destination.id"
 								@input="onInput"
 								@change="valueChanged"
-								:readonly="!isInstanceOwner"
+								:readonly="!canManageLogStreaming"
 							/>
 						</div>
 					</div>
@@ -194,7 +194,7 @@ import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import {
 	webhookModalDescription,
@@ -252,12 +252,11 @@ export default defineComponent({
 			headerLabel: this.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
-			isInstanceOwner: false,
 			LOG_STREAM_MODAL_KEY,
 		};
 	},
 	computed: {
-		...mapStores(useUIStore, useUsersStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
 		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
 			const options: Array<{ value: string; label: BaseTextKey }> = [];
 			for (const t of Object.values(MessageEventBusDestinationTypeNames)) {
@@ -306,9 +305,11 @@ export default defineComponent({
 			}
 			return items;
 		},
+		canManageLogStreaming(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
+		},
 	},
 	mounted() {
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		this.setupNode(
 			Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination),
 		);

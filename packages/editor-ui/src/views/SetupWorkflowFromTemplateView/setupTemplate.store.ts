@@ -11,19 +11,23 @@ import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
-	IExternalHooks,
 	INodeUi,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
 } from '@/Interface';
-import type { Telemetry } from '@/plugins/telemetry';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import type { IWorkflowTemplateNodeWithCredentials } from '@/utils/templates/templateTransforms';
+import type {
+	TemplateCredentialKey,
+	IWorkflowTemplateNodeWithCredentials,
+} from '@/utils/templates/templateTransforms';
 import {
 	hasNodeCredentials,
+	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -37,6 +41,11 @@ export type RequiredCredentials = {
 };
 
 export type CredentialUsages = {
+	/**
+	 * Key is a combination of the credential name and the credential type name,
+	 * e.g. "twitter-twitterOAuth1Api"
+	 */
+	key: TemplateCredentialKey;
 	credentialName: string;
 	credentialType: string;
 	nodeTypeName: string;
@@ -65,30 +74,32 @@ export const getNodesRequiringCredentials = (
 	return template.workflow.nodes.filter(hasNodeCredentials);
 };
 
-export const groupNodeCredentialsByName = (nodes: IWorkflowTemplateNodeWithCredentials[]) => {
-	const credentialsByName = new Map<string, CredentialUsages>();
+export const groupNodeCredentialsByKey = (nodes: IWorkflowTemplateNodeWithCredentials[]) => {
+	const credentialsByTypeName = new Map<TemplateCredentialKey, CredentialUsages>();
 
 	for (const node of nodes) {
 		const normalizedCreds = normalizeTemplateNodeCredentials(node.credentials);
 		for (const credentialType in normalizedCreds) {
 			const credentialName = normalizedCreds[credentialType];
+			const key = keyFromCredentialTypeAndName(credentialType, credentialName);
 
-			let credentialUsages = credentialsByName.get(credentialName);
+			let credentialUsages = credentialsByTypeName.get(key);
 			if (!credentialUsages) {
 				credentialUsages = {
+					key,
 					nodeTypeName: node.type,
 					credentialName,
 					credentialType,
 					usedBy: [],
 				};
-				credentialsByName.set(credentialName, credentialUsages);
+				credentialsByTypeName.set(key, credentialUsages);
 			}
 
 			credentialUsages.usedBy.push(node);
 		}
 	}
 
-	return credentialsByName;
+	return credentialsByTypeName;
 };
 
 export const getAppCredentials = (
@@ -154,8 +165,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	 * Credentials user has selected from the UI. Map from credential
 	 * name in the template to the credential ID.
 	 */
-	const selectedCredentialIdByName = ref<
-		Record<CredentialUsages['credentialName'], ICredentialsResponse['id']>
+	const selectedCredentialIdByKey = ref<
+		Record<CredentialUsages['key'], ICredentialsResponse['id']>
 	>({});
 
 	//#endregion State
@@ -185,12 +196,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return nodeType ? getAppNameFromNodeName(nodeType.displayName) : nodeTypeName;
 	};
 
-	const credentialsByName = computed(() => {
-		return groupNodeCredentialsByName(nodesRequiringCredentialsSorted.value);
+	const credentialsByKey = computed(() => {
+		return groupNodeCredentialsByKey(nodesRequiringCredentialsSorted.value);
 	});
 
 	const credentialUsages = computed(() => {
-		return Array.from(credentialsByName.value.values());
+		return Array.from(credentialsByKey.value.values());
 	});
 
 	const appCredentials = computed(() => {
@@ -198,20 +209,16 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	});
 
 	const credentialOverrides = computed(() => {
-		const overrides: Record<string, INodeCredentialsDetails> = {};
+		const overrides: Record<TemplateCredentialKey, INodeCredentialsDetails> = {};
 
-		for (const credentialNameInTemplate of Object.keys(selectedCredentialIdByName.value)) {
-			const credentialId = selectedCredentialIdByName.value[credentialNameInTemplate];
-			if (!credentialId) {
-				continue;
-			}
-
+		for (const [key, credentialId] of Object.entries(selectedCredentialIdByKey.value)) {
 			const credential = credentialsStore.getCredentialById(credentialId);
 			if (!credential) {
 				continue;
 			}
 
-			overrides[credentialNameInTemplate] = {
+			// Object.entries fails to give the more accurate key type
+			overrides[key as TemplateCredentialKey] = {
 				id: credentialId,
 				name: credential.name,
 			};
@@ -220,8 +227,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return overrides;
 	});
 
-	const numCredentialsLeft = computed(() => {
-		return credentialUsages.value.length - Object.keys(selectedCredentialIdByName.value).length;
+	const numFilledCredentials = computed(() => {
+		return Object.keys(selectedCredentialIdByKey.value).length;
 	});
 
 	//#endregion Getters
@@ -230,6 +237,34 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 
 	const setTemplateId = (id: string) => {
 		templateId.value = id;
+	};
+
+	const ignoredAutoFillCredentialTypes = new Set([
+		'httpBasicAuth',
+		'httpCustomAuth',
+		'httpDigestAuth',
+		'httpHeaderAuth',
+		'oAuth1Api',
+		'oAuth2Api',
+		'httpQueryAuth',
+	]);
+
+	/**
+	 * Selects initial credentials for the template. Credentials
+	 * need to be loaded before this.
+	 */
+	const setInitialCredentialSelection = () => {
+		for (const credUsage of credentialUsages.value) {
+			if (ignoredAutoFillCredentialTypes.has(credUsage.credentialType)) {
+				continue;
+			}
+
+			const availableCreds = credentialsStore.getCredentialsByType(credUsage.credentialType);
+
+			if (availableCreds.length === 1) {
+				selectedCredentialIdByKey.value[credUsage.key] = availableCreds[0].id;
+			}
+		}
 	};
 
 	/**
@@ -241,6 +276,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		}
 
 		await templatesStore.fetchTemplateById(templateId.value);
+
+		setInitialCredentialSelection();
 	};
 
 	/**
@@ -249,7 +286,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	const init = async () => {
 		isLoading.value = true;
 		try {
-			selectedCredentialIdByName.value = {};
+			selectedCredentialIdByKey.value = {};
 
 			await Promise.all([
 				credentialsStore.fetchAllCredentials(),
@@ -257,6 +294,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				nodeTypesStore.loadNodeTypesIfNotLoaded(),
 				loadTemplateIfNeeded(),
 			]);
+
+			setInitialCredentialSelection();
 		} finally {
 			isLoading.value = false;
 		}
@@ -265,25 +304,22 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Skips the setup and goes directly to the workflow view.
 	 */
-	const skipSetup = async (opts: {
-		$externalHooks: IExternalHooks;
-		$telemetry: Telemetry;
-		$router: Router;
-	}) => {
-		const { $externalHooks, $telemetry, $router } = opts;
-		const telemetryPayload = {
+	const skipSetup = async ({ router }: { router: Router }) => {
+		const externalHooks = useExternalHooks();
+		const telemetry = useTelemetry();
+
+		await externalHooks.run('templatesWorkflowView.openWorkflow', {
 			source: 'workflow',
 			template_id: templateId.value,
 			wf_template_repo_session_id: templatesStore.currentSessionId,
-		};
+		});
 
-		await $externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-		$telemetry.track('User inserted workflow template', telemetryPayload, {
-			withPostHog: true,
+		telemetry.track('User closed cred setup', {
+			completed: false,
 		});
 
 		// Replace the URL so back button doesn't come back to this setup view
-		await $router.replace({
+		await router.replace({
 			name: VIEWS.TEMPLATE_IMPORT,
 			params: { id: templateId.value },
 		});
@@ -292,7 +328,10 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	/**
 	 * Creates a workflow from the template and navigates to the workflow view.
 	 */
-	const createWorkflow = async ($router: Router) => {
+	const createWorkflow = async (opts: { router: Router }) => {
+		const { router } = opts;
+		const telemetry = useTelemetry();
+
 		if (!template.value) {
 			return;
 		}
@@ -307,8 +346,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflowsStore,
 			);
 
+			telemetry.track('User closed cred setup', {
+				completed: true,
+			});
+
 			// Replace the URL so back button doesn't come back to this setup view
-			await $router.replace({
+			await router.replace({
 				name: VIEWS.WORKFLOW,
 				params: { name: createdWorkflow.id },
 			});
@@ -317,30 +360,32 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		}
 	};
 
-	const setSelectedCredentialId = (credentialName: string, credentialId: string) => {
-		selectedCredentialIdByName.value[credentialName] = credentialId;
+	const setSelectedCredentialId = (credentialKey: TemplateCredentialKey, credentialId: string) => {
+		selectedCredentialIdByKey.value[credentialKey] = credentialId;
 	};
 
-	const unsetSelectedCredential = (credentialName: string) => {
-		delete selectedCredentialIdByName.value[credentialName];
+	const unsetSelectedCredential = (credentialKey: TemplateCredentialKey) => {
+		delete selectedCredentialIdByKey.value[credentialKey];
 	};
 
 	//#endregion Actions
 
 	return {
-		credentialsByName,
+		credentialsByKey,
 		isLoading,
 		isSaving,
 		appCredentials,
 		nodesRequiringCredentialsSorted,
 		template,
 		credentialUsages,
-		selectedCredentialIdByName,
-		numCredentialsLeft,
+		selectedCredentialIdByKey,
+		credentialOverrides,
+		numFilledCredentials,
 		createWorkflow,
 		skipSetup,
 		init,
 		loadTemplateIfNeeded,
+		setInitialCredentialSelection,
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,

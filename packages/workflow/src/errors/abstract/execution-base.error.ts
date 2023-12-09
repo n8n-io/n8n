@@ -1,17 +1,17 @@
-import type { Functionality, IDataObject, JsonObject, Severity } from '../../Interfaces';
+import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
 import { ApplicationError } from '../application.error';
 
 interface ExecutionBaseErrorOptions {
-	cause?: Error | JsonObject;
+	cause?: Error;
+	errorResponse?: JsonObject;
 }
 
 export abstract class ExecutionBaseError extends ApplicationError {
 	description: string | null | undefined;
 
-	/**
-	 * @tech_debt Ensure `cause` can only be `Error` or `undefined`
-	 */
-	cause: Error | JsonObject | undefined;
+	cause?: Error;
+
+	errorResponse?: JsonObject;
 
 	timestamp: number;
 
@@ -19,11 +19,9 @@ export abstract class ExecutionBaseError extends ApplicationError {
 
 	lineNumber: number | undefined;
 
-	severity: Severity = 'error';
-
 	functionality: Functionality = 'regular';
 
-	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
+	constructor(message: string, { cause, errorResponse }: ExecutionBaseErrorOptions = {}) {
 		const options = cause instanceof Error ? { cause } : {};
 		super(message, options);
 
@@ -35,6 +33,8 @@ export abstract class ExecutionBaseError extends ApplicationError {
 		} else if (cause && !(cause instanceof Error)) {
 			this.cause = cause;
 		}
+
+		if (errorResponse) this.errorResponse = errorResponse;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

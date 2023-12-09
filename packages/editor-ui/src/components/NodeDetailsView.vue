@@ -146,9 +146,6 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -174,11 +171,13 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
+	mixins: [workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -198,12 +197,17 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+
 		return {
+			externalHooks,
+			nodeHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props),
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -467,15 +471,19 @@ export default defineComponent({
 				this.avgInputRowHeight = 0;
 
 				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
-				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
+				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
+					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
+						node,
+						this.activeNodeType,
+						this.getCurrentWorkflow(),
+					),
 				});
 
 				setTimeout(() => {
 					if (this.activeNode) {
 						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 							this.activeNode.name,
-						) as INodeConnections;
+						);
 
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -490,8 +498,7 @@ export default defineComponent({
 								: this.ndvStore.inputPanelDisplayMode,
 							selected_view_outputs: this.ndvStore.outputPanelDisplayMode,
 							input_connectors: this.parentNodes.length,
-							output_connectors:
-								outgoingConnections && outgoingConnections.main && outgoingConnections.main.length,
+							output_connectors: outgoingConnections?.main?.length,
 							input_displayed_run_index: this.inputRun,
 							output_displayed_run_index: this.outputRun,
 							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
@@ -655,9 +662,10 @@ export default defineComponent({
 			}
 
 			if (
-				typeof this.activeNodeType?.outputs === 'string' ||
-				typeof this.activeNodeType?.inputs === 'string' ||
-				this.redrawRequired
+				this.activeNode &&
+				(typeof this.activeNodeType?.outputs === 'string' ||
+					typeof this.activeNodeType?.inputs === 'string' ||
+					this.redrawRequired)
 			) {
 				// TODO: We should keep track of if it actually changed and only do if required
 				// Whenever a node with custom inputs and outputs gets closed redraw it in case
@@ -668,7 +676,7 @@ export default defineComponent({
 				}, 1);
 			}
 
-			if (this.outputPanelEditMode.enabled) {
+			if (this.outputPanelEditMode.enabled && this.activeNode) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
@@ -680,20 +688,17 @@ export default defineComponent({
 
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
-
-					if (this.activeNode) {
-						try {
-							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
-						} catch (error) {
-							console.error(error);
-						}
+					try {
+						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+					} catch (error) {
+						console.error(error);
 					}
 				}
 
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,

@@ -1,6 +1,6 @@
 import { flags } from '@oclif/command';
 import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
@@ -24,7 +24,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
-		throw new Error(
+		throw new ApplicationError(
 			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
 		);
 	}
@@ -35,7 +35,7 @@ function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IW
 			!Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
 			!Object.prototype.hasOwnProperty.call(workflow, 'connections')
 		) {
-			throw new Error('File does not seem to contain valid workflows.');
+			throw new ApplicationError('File does not seem to contain valid workflows.');
 		}
 	}
 }
@@ -217,7 +217,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
 
 		if (!ownerWorkflowRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		this.ownerWorkflowRole = ownerWorkflowRole;
@@ -244,7 +244,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			(await Container.get(UserRepository).findOneBy({ globalRoleId: ownerGlobalRole?.id }));
 
 		if (!owner) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return owner;
@@ -254,7 +254,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		const user = await Container.get(UserRepository).findOneBy({ id: userId });
 
 		if (!user) {
-			throw new Error(`Failed to find user with ID ${userId}`);
+			throw new ApplicationError('Failed to find user', { extra: { userId } });
 		}
 
 		return user;

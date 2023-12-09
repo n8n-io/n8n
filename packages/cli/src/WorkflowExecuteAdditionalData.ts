@@ -26,6 +26,7 @@ import type {
 	ExecutionError,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	NodeOperationError,
 	Workflow,
@@ -90,6 +91,12 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 
 		if (error === undefined) {
 			error = new Error(errorObject.message as string);
+		}
+
+		if ('description' in errorObject) {
+			// @ts-expect-error Error descriptions are surfaced by the UI but
+			// not all backend errors account for this property yet.
+			error.description = errorObject.description as string;
 		}
 
 		if ('stack' in errorObject) {
@@ -403,9 +410,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') !== 'default') {
-					await restoreBinaryDataId(fullRunData, this.executionId);
-				}
+				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
@@ -429,10 +434,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
-						await Container.get(ExecutionRepository).hardDelete({
-							workflowId: this.workflowData.id as string,
-							executionId: this.executionId,
-						});
+						/**
+						 * When manual executions are not being saved, we only soft-delete
+						 * the execution so that the user can access its binary data
+						 * while building their workflow.
+						 *
+						 * The manual execution and its binary data will be hard-deleted
+						 * on the next pruning cycle after the grace period set by
+						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+						 */
+						await Container.get(ExecutionRepository).softDelete(this.executionId);
 
 						return;
 					}
@@ -612,6 +623,21 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				// send tracking and event log events, but don't wait for them
 				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
 			},
+			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject) {
+				const externalHooks = Container.get(ExternalHooks);
+				if (externalHooks.exists('workflow.postExecute')) {
+					try {
+						await externalHooks.run('workflow.postExecute', [
+							fullRunData,
+							this.workflowData,
+							this.executionId,
+						]);
+					} catch (error) {
+						ErrorReporter.error(error);
+						console.error('There was a problem running hook "workflow.postExecute"', error);
+					}
+				}
+			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
@@ -679,7 +705,7 @@ export async function getWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new Error(
+		throw new ApplicationError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
@@ -691,7 +717,9 @@ export async function getWorkflowData(
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
 		if (workflowData === undefined || workflowData === null) {
-			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
+			throw new ApplicationError('Workflow does not exist.', {
+				extra: { workflowId: workflowInfo.id },
+			});
 		}
 	} else {
 		workflowData = workflowInfo.code ?? null;
@@ -715,6 +743,7 @@ async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: {
+		node?: INode;
 		parentWorkflowId?: string;
 		inputData?: INodeExecutionData[];
 		parentExecutionId?: string;
@@ -768,8 +797,8 @@ async function executeWorkflow(
 		await PermissionChecker.check(workflow, additionalData.userId);
 		await PermissionChecker.checkSubworkflowExecutePolicy(
 			workflow,
-			additionalData.userId,
-			options.parentWorkflowId,
+			options.parentWorkflowId!,
+			options.node,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -998,6 +1027,7 @@ export function getWorkflowHooksWorkerExecuter(
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
+
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 

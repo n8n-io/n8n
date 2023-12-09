@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import { Workflow, NodeOperationError, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -125,8 +125,9 @@ export class Worker extends BaseCommand {
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
 			);
-			throw new Error(
-				`Unable to find data of execution "${executionId}" in database. Aborting execution.`,
+			throw new ApplicationError(
+				'Unable to find data of execution in database. Aborting execution.',
+				{ extra: { executionId } },
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!;
@@ -150,7 +151,7 @@ export class Worker extends BaseCommand {
 					'Worker execution failed because workflow could not be found in database.',
 					{ workflowId, executionId },
 				);
-				throw new Error(`The workflow with the ID "${workflowId}" could not be found`);
+				throw new ApplicationError('Workflow could not be found', { extra: { workflowId } });
 			}
 			staticData = workflowData.staticData;
 		}
@@ -408,7 +409,7 @@ export class Worker extends BaseCommand {
 				try {
 					if (!connection.isInitialized) {
 						// Connection is not active
-						throw new Error('No active database connection!');
+						throw new ApplicationError('No active database connection');
 					}
 					// DB ping
 					await connection.query('SELECT 1');

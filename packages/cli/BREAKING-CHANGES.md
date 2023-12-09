@@ -31,6 +31,24 @@ const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
 const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
 ```
 
+### What changed?
+
+The env vars `N8N_BINARY_DATA_TTL` and `EXECUTIONS_DATA_PRUNE_TIMEOUT` no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.
+
+### When is action necessary?
+
+If using these flags, remove them from your settings and be mindful of the new behavior.
+
+## 1.6.0
+
+### What changed?
+
+The env var `N8N_PERSISTED_BINARY_DATA_TTL` no longer has any effect and can be removed. This legacy flag was originally introduced to support ephemeral executions (see [details](https://github.com/n8n-io/n8n/pull/7046)), which are no longer supported.
+
+### When is action necessary?
+
+If using this flag, remove it from your settings.
+
 ## 1.5.0
 
 ### What changed?

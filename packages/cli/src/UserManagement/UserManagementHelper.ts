@@ -10,7 +10,9 @@ import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
+import type { Scope } from '@n8n/permissions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ApplicationError } from 'n8n-workflow';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
@@ -94,14 +96,15 @@ export const hashPassword = async (validPassword: string): Promise<string> =>
 export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
 	try {
 		return await compare(plaintext, hashed);
-	} catch (error) {
+	} catch (e) {
+		const error = e instanceof Error ? e : new Error(`${e}`);
+
 		if (error instanceof Error && error.message.includes('Invalid salt version')) {
 			error.message +=
 				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		throw new Error(error);
+		throw new ApplicationError(error.message, { cause: error });
 	}
 }
 
@@ -129,21 +132,22 @@ export function rightDiff<T1, T2>(
  * Build a `where` clause for a TypeORM entity search,
  * checking for member access if the user is not an owner.
  */
-export function whereClause({
+export async function whereClause({
 	user,
 	entityType,
+	globalScope,
 	entityId = '',
 	roles = [],
 }: {
 	user: User;
 	entityType: 'workflow' | 'credentials';
+	globalScope: Scope;
 	entityId?: string;
 	roles?: string[];
-}): WhereClause {
+}): Promise<WhereClause> {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	// TODO: Decide if owner access should be restricted
-	if (user.globalRole.name !== 'owner') {
+	if (!(await user.hasGlobalScope(globalScope))) {
 		where.user = { id: user.id };
 		if (roles?.length) {
 			where.role = { name: In(roles) };

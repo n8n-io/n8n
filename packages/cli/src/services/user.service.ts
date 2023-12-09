@@ -14,7 +14,7 @@ import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
@@ -123,9 +123,15 @@ export class UserService {
 
 	async toPublic(
 		user: User,
-		options?: { withInviteUrl?: boolean; posthog?: PostHogClient; withScopes?: boolean },
+		options?: {
+			withInviteUrl?: boolean;
+			inviterId?: string;
+			posthog?: PostHogClient;
+			withScopes?: boolean;
+		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, apiKey, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } =
+			user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -135,30 +141,34 @@ export class UserService {
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
-		if (options?.withScopes) {
-			publicUser.globalScopes = user.globalScopes;
+		if (options?.withInviteUrl && !options?.inviterId) {
+			throw new ApplicationError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && publicUser.isPending) {
-			publicUser = this.addInviteUrl(publicUser, user.id);
+		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
+		if (options?.withScopes) {
+			publicUser.globalScopes = user.globalScopes;
+		}
+
 		return publicUser;
 	}
 
-	private addInviteUrl(user: PublicUser, inviterId: string) {
+	private addInviteUrl(inviterId: string, invitee: PublicUser) {
 		const url = new URL(getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', user.id);
+		url.searchParams.set('inviteeId', invitee.id);
 
-		user.inviteAcceptUrl = url.toString();
+		invitee.inviteAcceptUrl = url.toString();
 
-		return user;
+		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -238,18 +248,19 @@ export class UserService {
 		);
 	}
 
-	public async inviteMembers(owner: User, emails: string[]) {
+	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
 		const memberRole = await this.roleService.findGlobalMemberRole();
+		const adminRole = await this.roleService.findGlobalAdminRole();
 
 		const existingUsers = await this.findMany({
-			where: { email: In(emails) },
+			where: { email: In(attributes.map(({ email }) => email)) },
 			relations: ['globalRole'],
 			select: ['email', 'password', 'id'],
 		});
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
-		const toCreateUsers = emails.filter((email) => !existUsersEmails.includes(email));
+		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
 
 		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
 
@@ -264,10 +275,10 @@ export class UserService {
 		try {
 			await this.getManager().transaction(async (transactionManager) =>
 				Promise.all(
-					toCreateUsers.map(async (email) => {
+					toCreateUsers.map(async ({ email, role }) => {
 						const newUser = Object.assign(new User(), {
 							email,
-							globalRole: memberRole,
+							globalRole: role === 'member' ? memberRole : adminRole,
 						});
 						const savedUser = await transactionManager.save<User>(newUser);
 						createdUsers.set(email, savedUser.id);
@@ -285,6 +296,6 @@ export class UserService {
 
 		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
 
-		return { usersInvited, usersCreated: toCreateUsers };
+		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 }

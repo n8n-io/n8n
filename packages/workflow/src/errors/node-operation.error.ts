@@ -1,4 +1,4 @@
-import type { INode } from '..';
+import type { INode, JsonObject } from '..';
 import type { NodeOperationErrorOptions } from './node-api.error';
 import { NodeError } from './abstract/node.error';
 
@@ -8,14 +8,18 @@ import { NodeError } from './abstract/node.error';
 export class NodeOperationError extends NodeError {
 	lineNumber: number | undefined;
 
-	constructor(node: INode, error: Error | string, options: NodeOperationErrorOptions = {}) {
+	constructor(
+		node: INode,
+		error: Error | string | JsonObject,
+		options: NodeOperationErrorOptions = {},
+	) {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
 		super(node, error);
 
 		if (options.message) this.message = options.message;
-		if (options.severity) this.severity = options.severity;
+		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
