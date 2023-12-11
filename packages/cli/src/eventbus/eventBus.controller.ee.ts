@@ -9,17 +9,17 @@ import {
 	MessageEventBusDestinationSyslog,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { BadRequestError } from '@/ResponseHelper';
 import type {
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
+import { RestController, Get, Post, Delete, Authorized, RequireGlobalScope } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 // ----------------------------------------
 // TypeGuards
@@ -59,6 +59,7 @@ export class EventBusControllerEE {
 	// ----------------------------------------
 
 	@Get('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@RequireGlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
 			return eventBus.findDestination(req.query.id);
@@ -67,8 +68,8 @@ export class EventBusControllerEE {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
 	@Post('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@RequireGlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
 		let result: MessageEventBusDestination | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
@@ -112,6 +113,7 @@ export class EventBusControllerEE {
 	}
 
 	@Get('/testmessage', { middlewares: [logStreamingLicensedMiddleware] })
+	@RequireGlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
 			return eventBus.testDestination(req.query.id);
@@ -119,8 +121,8 @@ export class EventBusControllerEE {
 		return false;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Delete('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@RequireGlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest): Promise<DeleteResult | undefined> {
 		if (isWithIdString(req.query)) {
 			return eventBus.removeDestination(req.query.id);

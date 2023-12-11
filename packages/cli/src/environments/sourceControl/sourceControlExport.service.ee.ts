@@ -6,7 +6,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
@@ -23,7 +23,7 @@ import {
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { VariablesService } from '../variables/variables.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
@@ -138,7 +138,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -168,7 +168,9 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', {
+				cause: error,
+			});
 		}
 	}
 
@@ -208,7 +210,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -280,7 +282,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

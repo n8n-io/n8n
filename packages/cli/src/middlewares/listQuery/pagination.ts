@@ -3,6 +3,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import { Pagination } from './dtos/pagination.dto';
 import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
+import { ApplicationError } from 'n8n-workflow';
 
 export const paginationListQueryMiddleware: RequestHandler = (
 	req: ListQuery.Request,
@@ -13,7 +14,7 @@ export const paginationListQueryMiddleware: RequestHandler = (
 
 	try {
 		if (!rawTake && req.query.skip) {
-			throw new Error('Please specify `take` when using `skip`');
+			throw new ApplicationError('Please specify `take` when using `skip`');
 		}
 
 		if (!rawTake) return next();

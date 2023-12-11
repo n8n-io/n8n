@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -486,7 +486,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new Error('Wrong execution status - cannot proceed');
+								throw new ApplicationError('Wrong execution status - cannot proceed');
 							}
 						});
 					}

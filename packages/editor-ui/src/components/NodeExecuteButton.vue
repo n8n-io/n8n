@@ -37,7 +37,9 @@ import { pinData } from '@/mixins/pinData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	inheritAttrs: false,
@@ -67,12 +69,15 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	computed: {
@@ -240,7 +245,7 @@ export default defineComponent({
 						session_id: this.ndvStore.sessionId,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
 					await this.runWorkflow({
 						destinationNode: this.nodeName,

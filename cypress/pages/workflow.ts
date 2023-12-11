@@ -2,7 +2,6 @@ import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
-import Chainable = Cypress.Chainable;
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -48,6 +47,7 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
 		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -71,6 +71,7 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
 		workflowSettingsErrorWorkflowSelect: () => cy.getByTestId('workflow-settings-error-workflow'),

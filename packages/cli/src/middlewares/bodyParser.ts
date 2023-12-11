@@ -7,7 +7,7 @@ import { Parser as XmlParser } from 'xml2js';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
-import { UnprocessableRequestError } from '@/ResponseHelper';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const xmlParser = new XmlParser({
 	async: true,

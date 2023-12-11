@@ -74,15 +74,18 @@ import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson, highlightText, isString, sanitizeHtml, shorten } from '@/utils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { isString } from '@/utils/typeGuards';
+import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
+import { shorten } from '@/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/constants';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const RunDataJsonActions = defineAsyncComponent(
 	async () => import('@/components/RunDataJsonActions.vue'),
@@ -90,7 +93,6 @@ const RunDataJsonActions = defineAsyncComponent(
 
 export default defineComponent({
 	name: 'run-data-json',
-	mixins: [externalHooks],
 	components: {
 		VueJsonPretty,
 		Draggable,
@@ -130,11 +132,14 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		const selectedJsonPath = ref(nonExistingJsonPath);
 		const draggingPath = ref<null | string>(null);
 		const displayMode = ref('json');
 
 		return {
+			externalHooks,
 			selectedJsonPath,
 			draggingPath,
 			displayMode,
@@ -187,7 +192,7 @@ export default defineComponent({
 			};
 
 			setTimeout(() => {
-				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
+				void this.externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},

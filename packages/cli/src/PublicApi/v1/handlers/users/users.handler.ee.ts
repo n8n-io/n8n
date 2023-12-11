@@ -15,7 +15,7 @@ import { InternalHooks } from '@/InternalHooks';
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		authorize(['owner']),
+		authorize(['owner', 'admin']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -41,7 +41,7 @@ export = {
 	getUsers: [
 		validLicenseWithUserQuota,
 		validCursor,
-		authorize(['owner']),
+		authorize(['owner', 'admin']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false } = req.query;
 

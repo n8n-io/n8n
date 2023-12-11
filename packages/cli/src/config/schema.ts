@@ -91,6 +91,12 @@ export const schema = {
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
+			poolSize: {
+				doc: 'PostgresDB Pool Size',
+				format: Number,
+				default: 2,
+				env: 'DB_POSTGRESDB_POOL_SIZE',
+			},
 
 			ssl: {
 				enabled: {

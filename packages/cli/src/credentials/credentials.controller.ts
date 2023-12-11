@@ -14,6 +14,8 @@ import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
 export const credentialsController = express.Router();
 credentialsController.use('/', EECredentialsController);
@@ -57,12 +59,15 @@ credentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);
+		const sharing = await CredentialsService.getSharing(
+			req.user,
+			credentialId,
+			{ allowGlobalScope: true, globalScope: 'credential:read' },
+			['credentials'],
+		);
 
 		if (!sharing) {
-			throw new ResponseHelper.NotFoundError(
-				`Credential with ID "${credentialId}" could not be found.`,
-			);
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
 
 		const { credentials: credential } = sharing;
@@ -92,7 +97,10 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
+		const sharing = await CredentialsService.getSharing(req.user, credentials.id, {
+			allowGlobalScope: true,
+			globalScope: 'credential:read',
+		});
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
@@ -135,7 +143,15 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsDb> => {
 		const { id: credentialId } = req.params;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(
+			req.user,
+			credentialId,
+			{
+				allowGlobalScope: true,
+				globalScope: 'credential:update',
+			},
+			['credentials', 'role'],
+		);
 
 		if (!sharing) {
 			Container.get(Logger).info(
@@ -145,9 +161,20 @@ credentialsController.patch(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
+		}
+
+		if (sharing.role.name !== 'owner' && !(await req.user.hasGlobalScope('credential:update'))) {
+			Container.get(Logger).info(
+				'Attempt to update credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
+			throw new UnauthorizedError('You can only update credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;
@@ -165,9 +192,7 @@ credentialsController.patch(
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
-			throw new ResponseHelper.NotFoundError(
-				`Credential ID "${credentialId}" could not be found to be updated.`,
-			);
+			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
@@ -187,7 +212,15 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(
+			req.user,
+			credentialId,
+			{
+				allowGlobalScope: true,
+				globalScope: 'credential:delete',
+			},
+			['credentials', 'role'],
+		);
 
 		if (!sharing) {
 			Container.get(Logger).info(
@@ -197,9 +230,20 @@ credentialsController.delete(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);
+		}
+
+		if (sharing.role.name !== 'owner' && !(await req.user.hasGlobalScope('credential:delete'))) {
+			Container.get(Logger).info(
+				'Attempt to delete credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
+			throw new UnauthorizedError('You can only remove credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;

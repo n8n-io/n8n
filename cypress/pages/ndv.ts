@@ -81,6 +81,8 @@ export class NDV extends BasePage {
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
 		searchInput: () => cy.getByTestId('ndv-search'),
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
+		nodeVersion: () => cy.getByTestId('node-version'),
+		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
 	};
 
 	actions = {
@@ -224,6 +226,10 @@ export class NDV extends BasePage {
 				delay,
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+		},
+
+		openSettings: () => {
+			this.getters.nodeSettingsTab().click();
 		},
 	};
 }

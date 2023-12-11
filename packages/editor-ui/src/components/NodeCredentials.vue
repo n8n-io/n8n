@@ -118,8 +118,8 @@ import type {
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -136,7 +136,7 @@ import {
 	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
 	isRequiredCredential,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -144,7 +144,7 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 
 export default defineComponent({
 	name: 'NodeCredentials',
-	mixins: [genericHelpers, nodeHelpers],
+	mixins: [genericHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -170,8 +170,11 @@ export default defineComponent({
 		TitledList,
 	},
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -291,8 +294,6 @@ export default defineComponent({
 			});
 		},
 		credentialTypesNodeDescription(): INodeCredentialDescription[] {
-			const node = this.node;
-
 			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
 
 			if (credType) return [credType];
@@ -346,10 +347,13 @@ export default defineComponent({
 			let options: CredentialDropdownOption[] = [];
 			types.forEach((type) => {
 				options = options.concat(
-					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
-						...option,
-						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
-					})),
+					this.credentialsStore.allUsableCredentialsByType[type].map(
+						(option: ICredentialsResponse) =>
+							({
+								...option,
+								typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
+							}) as CredentialDropdownOption,
+					),
 				);
 			});
 			return options;
@@ -430,7 +434,7 @@ export default defineComponent({
 			this.$telemetry.track('User selected credential from node modal', {
 				credential_type: credentialType,
 				node_type: this.node.type,
-				...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
+				...(this.nodeHelpers.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
 				workflow_id: this.workflowsStore.workflowId,
 				credential_id: credentialId,
 			});
@@ -458,7 +462,7 @@ export default defineComponent({
 					invalid: oldCredentials,
 					type: selectedCredentialsType,
 				});
-				this.updateNodesCredentialsIssues();
+				this.nodeHelpers.updateNodesCredentialsIssues();
 				this.showMessage({
 					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
 					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
@@ -509,7 +513,12 @@ export default defineComponent({
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
+			return this.nodeHelpers.displayParameter(
+				this.node.parameters,
+				credentialTypeDescription,
+				'',
+				this.node,
+			);
 		},
 
 		getIssues(credentialTypeName: string): string[] {

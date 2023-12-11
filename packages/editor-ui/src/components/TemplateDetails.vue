@@ -45,12 +45,14 @@
 		</template-details-block>
 	</div>
 </template>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { abbreviateNumber, filterTemplateNodes } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';

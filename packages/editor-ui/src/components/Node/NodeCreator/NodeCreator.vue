@@ -30,7 +30,8 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
-import { useCredentialsStore, useUIStore } from '@/stores';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 
 export interface Props {

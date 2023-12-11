@@ -16,8 +16,8 @@ import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 } from 'n8n-workflow';
 
-import { useToast } from '@/composables';
-import { externalHooks } from '@/mixins/externalHooks';
+import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
@@ -26,13 +26,17 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const workflowRun = defineComponent({
-	mixins: [externalHooks, workflowHelpers],
+	mixins: [workflowHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -89,6 +93,7 @@ export const workflowRun = defineComponent({
 
 			try {
 				// Check first if the workflow has any issues before execute it
+				this.nodeHelpers.refreshNodeIssues();
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
@@ -118,7 +123,9 @@ export const workflowRun = defineComponent({
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
+								errorMessages.push(
+									`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`,
+								);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);
@@ -131,7 +138,7 @@ export const workflowRun = defineComponent({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						void this.$externalHooks().run('workflowRun.runError', {
+						void useExternalHooks().run('workflowRun.runError', {
 							errorMessages,
 							nodeName: options.destinationNode,
 						});
@@ -268,7 +275,7 @@ export const workflowRun = defineComponent({
 					},
 				};
 				this.workflowsStore.setWorkflowExecutionData(executionData);
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
@@ -308,7 +315,7 @@ export const workflowRun = defineComponent({
 					}
 				}
 
-				await this.$externalHooks().run('workflowRun.runWorkflow', {
+				await useExternalHooks().run('workflowRun.runWorkflow', {
 					nodeName: options.destinationNode,
 					source: options.source,
 				});

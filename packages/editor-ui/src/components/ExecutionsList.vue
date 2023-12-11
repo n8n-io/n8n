@@ -287,11 +287,13 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useToast, useMessage, useI18n, useTelemetry } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -304,12 +306,14 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isEmpty, setPageTitle } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [externalHooks, genericHelpers, executionHelpers],
+	mixins: [genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
@@ -323,10 +327,12 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
+		const externalHooks = useExternalHooks();
 
 		return {
 			i18n,
 			telemetry,
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 		};
@@ -364,7 +370,7 @@ export default defineComponent({
 	async created() {
 		await this.loadWorkflows();
 
-		void this.$externalHooks().run('executionsList.openDialog');
+		void this.externalHooks.run('executionsList.openDialog');
 		this.telemetry.track('User opened Executions log', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
