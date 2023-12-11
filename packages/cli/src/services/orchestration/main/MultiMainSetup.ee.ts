@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
+import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
@@ -78,6 +79,10 @@ export class MultiMainSetup extends SingleMainSetup {
 
 			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
 				this.emit('leadershipChange', leaderId); // stop triggers, pruning, etc.
+
+				EventReporter.report('[Multi-main setup] Leader failed to renew leader key', {
+					level: 'info',
+				});
 
 				config.set('multiMainSetup.instanceType', 'follower');
 			}
