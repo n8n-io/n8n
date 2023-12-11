@@ -135,8 +135,9 @@ function extractValueFilter(
 	}
 
 	if (property.extractValue?.type) {
-		throw new Error(
+		throw new ApplicationError(
 			`Property "${parameterName}" has an invalid extractValue type. Filter parameters only support extractValue: true`,
+			{ extra: { parameter: parameterName } },
 		);
 	}
 
