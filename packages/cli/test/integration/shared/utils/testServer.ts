@@ -309,6 +309,11 @@ export const setupTestServer = ({
 						const { RoleController } = await import('@/controllers/role.controller');
 						registerController(app, config, Container.get(RoleController));
 						break;
+
+					case 'debug':
+						const { DebugController } = await import('@/controllers/debug.controller');
+						registerController(app, config, Container.get(DebugController));
+						break;
 				}
 			}
 		}

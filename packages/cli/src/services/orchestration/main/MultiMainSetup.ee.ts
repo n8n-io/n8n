@@ -28,6 +28,10 @@ export class MultiMainSetup extends SingleMainSetup {
 		return !this.isLeader;
 	}
 
+	get instanceId() {
+		return this.id;
+	}
+
 	setLicensed(newState: boolean) {
 		this.isLicensed = newState;
 	}
