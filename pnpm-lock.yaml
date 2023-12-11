@@ -725,9 +725,6 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.2
         version: 2.4.2
-      '@types/better-sqlite3':
-        specifier: ^7.6.8
-        version: 7.6.8
       '@types/compression':
         specifier: 1.0.1
         version: 1.0.1
@@ -9060,12 +9057,6 @@ packages:
 
   /@types/bcryptjs@2.4.2:
     resolution: {integrity: sha512-LiMQ6EOPob/4yUL66SZzu6Yh77cbzJFYll+ZfaPiPPFswtIlA/Fs1MzdKYA7JApHU49zQTbJGX3PDmCpIdDBRQ==}
-    dev: true
-
-  /@types/better-sqlite3@7.6.8:
-    resolution: {integrity: sha512-ASndM4rdGrzk7iXXqyNC4fbwt4UEjpK0i3j4q4FyeQrLAthfB6s7EF135ZJE0qQxtKIMFwmyT6x0switET7uIw==}
-    dependencies:
-      '@types/node': 18.16.16
     dev: true
 
   /@types/bluebird@3.5.37:
