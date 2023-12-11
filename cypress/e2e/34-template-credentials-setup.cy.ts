@@ -4,12 +4,11 @@ import {
 	visitTemplateCollectionPage,
 	testData,
 } from '../pages/template-collection';
-import { TemplateCredentialSetupPage } from '../pages/template-credential-setup';
+import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
 import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
 
 const templateWorkflowPage = new TemplateWorkflowPage();
-const templateCredentialsSetupPage = new TemplateCredentialSetupPage();
 const credentialsModal = new CredentialsModal();
 const messageBox = new MessageBox();
 const workflowPage = new WorkflowPage();
@@ -25,7 +24,8 @@ describe('Template credentials setup', () => {
 
 	it('can be opened from template workflow page', () => {
 		templateWorkflowPage.actions.visit(testTemplate.id);
-		templateCredentialsSetupPage.actions.enableFeatureFlag();
+		templateWorkflowPage.getters.useTemplateButton().should('be.visible');
+		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
 
 		templateCredentialsSetupPage.getters
@@ -35,7 +35,7 @@ describe('Template credentials setup', () => {
 
 	it('can be opened from template collection page', () => {
 		visitTemplateCollectionPage(testData.ecommerceStarterPack);
-		templateCredentialsSetupPage.actions.enableFeatureFlag();
+		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
 		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
 
 		templateCredentialsSetupPage.getters
@@ -44,7 +44,7 @@ describe('Template credentials setup', () => {
 	});
 
 	it('can be opened with a direct url', () => {
-		templateCredentialsSetupPage.actions.visit(testTemplate.id);
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
 			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
@@ -52,7 +52,7 @@ describe('Template credentials setup', () => {
 	});
 
 	it('has all the elements on page', () => {
-		templateCredentialsSetupPage.actions.visit(testTemplate.id);
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
 			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
@@ -83,14 +83,14 @@ describe('Template credentials setup', () => {
 	});
 
 	it('can skip template creation', () => {
-		templateCredentialsSetupPage.actions.visit(testTemplate.id);
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters.skipLink().click();
 		workflowPage.getters.canvasNodes().should('have.length', 3);
 	});
 
 	it('can create credentials and workflow from the template', () => {
-		templateCredentialsSetupPage.actions.visit(testTemplate.id);
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		// Continue button should be disabled if no credentials are created
 		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
