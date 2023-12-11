@@ -2,10 +2,8 @@ import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { Role } from '@db/entities/Role';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { CacheService } from '@/services/cache.service';
 import { User } from '@db/entities/User';
 import { RoleService } from '@/services/role.service';
-import { UserService } from '@/services/user.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { mockInstance } from '../../shared/mocking';
@@ -16,6 +14,8 @@ import {
 	randomName,
 } from '../../integration/shared/random';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { mock } from 'jest-mock-extended';
 
 const wfOwnerRole = () =>
 	Object.assign(new Role(), {
@@ -31,26 +31,33 @@ const mockCredRole = (name: 'owner' | 'editor'): Role =>
 		id: randomInteger(),
 	});
 
+const mockInstanceOwnerRole = () =>
+	Object.assign(new Role(), {
+		scope: 'global',
+		name: 'owner',
+		id: randomInteger(),
+	});
+
 const mockCredential = (): CredentialsEntity =>
 	Object.assign(new CredentialsEntity(), randomCredentialPayload());
 
-const mockUser = (): User =>
+const mockUser = (attributes?: Partial<User>): User =>
 	Object.assign(new User(), {
 		id: randomInteger(),
 		email: randomEmail(),
 		firstName: randomName(),
 		lastName: randomName(),
+		...attributes,
 	});
 
 describe('OwnershipService', () => {
-	const cacheService = mockInstance(CacheService);
 	const roleService = mockInstance(RoleService);
-	const userService = mockInstance(UserService);
+	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
-		cacheService,
-		userService,
+		mock(),
+		userRepository,
 		roleService,
 		sharedWorkflowRepository,
 	);
@@ -172,6 +179,20 @@ describe('OwnershipService', () => {
 			});
 
 			expect(sharedWith).toHaveLength(0);
+		});
+	});
+
+	describe('getInstanceOwner()', () => {
+		test('should find owner using global owner role ID', async () => {
+			const instanceOwnerRole = mockInstanceOwnerRole();
+			roleService.findGlobalOwnerRole.mockResolvedValue(instanceOwnerRole);
+
+			await ownershipService.getInstanceOwner();
+
+			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
+				where: { globalRoleId: instanceOwnerRole.id },
+				relations: ['globalRole'],
+			});
 		});
 	});
 });
