@@ -7,11 +7,11 @@ import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -98,7 +98,7 @@ export class Execute extends BaseCommand {
 
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
-		const user = await getInstanceOwner();
+		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [startingNode.name],
