@@ -3,7 +3,7 @@ import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
 import { License } from '@/License';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
@@ -106,7 +106,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.lastName = attributes.lastName;
 	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
 	// generates a password that is not used or known to the user
-	user.password = await hashPassword(generatePassword());
+	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
 	authIdentity.user = user;
