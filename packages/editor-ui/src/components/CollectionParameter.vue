@@ -36,12 +36,9 @@
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="
-								isNodePropertyCollection(item)
-									? i18n.nodeText().collectionOptionDisplayName(parameter, item, path)
-									: item.name
-							"
+							:label="getParameterOptionLabel(item)"
 							:value="item.name"
+							data-test-id="collection-parameter-option"
 						>
 						</n8n-option>
 					</n8n-select>
@@ -93,10 +90,21 @@ const getPlaceholderText = computed(() => {
 		i18n.baseText('collectionParameter.choose')
 	);
 });
+
 function isNodePropertyCollection(
 	object: INodePropertyOptions | INodeProperties | INodePropertyCollection,
 ): object is INodePropertyCollection {
 	return 'values' in object;
+}
+
+function getParameterOptionLabel(
+	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): string {
+	if (isNodePropertyCollection(item)) {
+		return i18n.nodeText().collectionOptionDisplayName(props.parameter, item, props.path);
+	}
+
+	return 'displayName' in item ? item.displayName : item.name;
 }
 
 function displayNodeParameter(parameter: INodeProperties) {
