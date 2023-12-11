@@ -14,6 +14,8 @@ const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
 
+export type PosthogStore = ReturnType<typeof usePostHog>;
+
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
@@ -37,6 +39,13 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
+	};
+
+	/**
+	 * Checks if the given feature flag is enabled. Should only be used for boolean flags
+	 */
+	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
+		return featureFlags.value?.[experiment] === true;
 	};
 
 	if (!window.featureFlags) {
@@ -181,6 +190,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
 		reset,
