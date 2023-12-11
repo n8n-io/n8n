@@ -344,7 +344,7 @@ export class ChatTrigger implements INodeType {
 					| 'none'
 					| 'basicAuth'
 					| 'n8nAuth';
-				const showWelcomeScreen = this.getNodeParameter('showWelcomeScreen') as boolean;
+				const showWelcomeScreen = this.getNodeParameter('showWelcomeScreen', false) as boolean;
 				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 				const initialMessages = initialMessagesRaw
 					.split('\n')
