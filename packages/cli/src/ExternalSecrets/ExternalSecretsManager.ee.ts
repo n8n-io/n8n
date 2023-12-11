@@ -173,7 +173,6 @@ export class ExternalSecretsManager {
 	}
 
 	async updateSecrets() {
-		this.logger.info('Updating secrets');
 		if (!this.license.isExternalSecretsEnabled()) {
 			return;
 		}
