@@ -234,11 +234,6 @@ export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
-		id: 'any',
-		name: 'filter.operatorGroup.basic',
-		children: OPERATORS.filter((operator) => operator.type === 'any'),
-	},
-	{
 		id: 'string',
 		name: 'filter.operatorGroup.string',
 		icon: 'font',

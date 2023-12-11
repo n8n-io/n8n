@@ -46,6 +46,8 @@ const emit = defineEmits<{
 	(event: 'remove'): void;
 }>();
 
+const i18n = useI18n();
+
 const condition = ref<FilterConditionValue>(props.condition);
 
 const operatorId = computed<FilterOperatorId>(() => {
@@ -125,7 +127,7 @@ const rightParameter = computed<INodeProperties>(() => ({
 	placeholder:
 		operator.value.type === 'dateTime'
 			? now.value
-			: i18n.baseText(i18n.baseText('filter.condition.placeholderRight')),
+			: i18n.baseText('filter.condition.placeholderRight'),
 	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
 }));
 
@@ -138,6 +140,8 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 };
 
 const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
+	if (type === 'any') return value;
+
 	return (
 		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
 		value
@@ -175,8 +179,6 @@ const onRemove = (): void => {
 const onBlur = (): void => {
 	emit('update', condition.value);
 };
-
-const i18n = useI18n();
 </script>
 
 <template>
