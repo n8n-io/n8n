@@ -8,7 +8,6 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { Scope } from '@n8n/permissions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -16,17 +15,6 @@ import { ApplicationError } from 'n8n-workflow';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
-}
-
-export async function getInstanceOwner() {
-	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-	return Container.get(UserRepository).findOneOrFail({
-		relations: ['globalRole'],
-		where: {
-			globalRoleId: globalOwnerRole.id,
-		},
-	});
 }
 
 /**
