@@ -31,7 +31,7 @@ export function createPage({
 
 				(async function () {
 					const authentication = '${authentication}';
-					let metadata: Record<string, unknown> = {};
+					let metadata;
 					if (authentication === 'n8nAuth') {
 						try {
 							const response = await fetch('/rest/login', {
@@ -60,7 +60,7 @@ export function createPage({
 						mode: 'fullscreen',
 						webhookUrl: '${webhookUrl}',
 						showWelcomeScreen: ${showWelcomeScreen},
-						metadata,
+						metadata: metadata,
 						webhookConfig: {
 							headers: {
 								'Content-Type': 'application/json',
