@@ -110,7 +110,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				webhook.httpMethod === req.method &&
 				webhook.path === (suffix ?? '') &&
 				webhook.webhookDescription.restartWebhook === true &&
-				webhook.webhookDescription.isForm === this.includeForms,
+				(webhook.webhookDescription.isForm || false) === this.includeForms,
 		);
 
 		if (webhookData === undefined) {
