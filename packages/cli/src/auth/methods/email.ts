@@ -1,5 +1,5 @@
 import type { User } from '@db/entities/User';
-import { compareHash } from '@/UserManagement/UserManagementHelper';
+import { PasswordService } from '@/services/password.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { isLdapLoginEnabled } from '@/Ldap/helpers';
@@ -15,7 +15,7 @@ export const handleEmailLogin = async (
 		relations: ['globalRole', 'authIdentities'],
 	});
 
-	if (user?.password && (await compareHash(password, user.password))) {
+	if (user?.password && (await Container.get(PasswordService).compare(password, user.password))) {
 		return user;
 	}
 

@@ -5,11 +5,8 @@ import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 
 import { Get, Post, RestController } from '@/decorators';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { PasswordService } from '@/services/password.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '@/auth/jwt';
@@ -45,6 +42,7 @@ export class PasswordResetController {
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
 		private readonly license: License,
+		private readonly passwordService: PasswordService,
 	) {}
 
 	/**
@@ -204,7 +202,7 @@ export class PasswordResetController {
 			throw new BadRequestError('Missing user ID or password or reset password token');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordService.validate(password);
 
 		const user = await this.userService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
@@ -219,7 +217,7 @@ export class PasswordResetController {
 			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
-		const passwordHash = await hashPassword(validPassword);
+		const passwordHash = await this.passwordService.hash(validPassword);
 
 		await this.userService.update(user.id, { password: passwordHash });
 
