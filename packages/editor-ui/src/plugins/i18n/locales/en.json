@@ -1492,6 +1492,7 @@
 	"settings.log-streaming.eventGroup.n8n.user": "User",
 	"settings.log-streaming.eventGroup.n8n.node": "Node Executions",
 	"settings.log-streaming.eventGroup.n8n.node.info": "Will send step-wise execution events every time a node executes. Please note that this can lead to a high frequency of logged events and is probably not suitable for general use.",
+	"settings.log-streaming.eventGroup.n8n.worker": "Worker",
 	"settings.log-streaming.$$AbstractMessageEventBusDestination": "Generic",
 	"settings.log-streaming.$$MessageEventBusDestinationWebhook": "Webhook",
 	"settings.log-streaming.$$MessageEventBusDestinationSentry": "Sentry",
