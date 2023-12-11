@@ -1,0 +1,49 @@
+diff --git a/driver/sqlite-abstract/AbstractSqliteQueryRunner.js b/driver/sqlite-abstract/AbstractSqliteQueryRunner.js
+index 5482484855d65166af9456442dffe6f84ec18613..ae1c5c44c71d49c06cb71880b394a8256a463a7a 100644
+--- a/driver/sqlite-abstract/AbstractSqliteQueryRunner.js
++++ b/driver/sqlite-abstract/AbstractSqliteQueryRunner.js
+@@ -66,6 +66,8 @@ class AbstractSqliteQueryRunner extends BaseQueryRunner_1.BaseQueryRunner {
+             this.isTransactionActive = false;
+             throw err;
+         }
++        const callsite = require('callsites')().find((c) => c.getFileName().includes('dist/'));
++        const origin = callsite && [callsite.getFileName(), callsite.getLineNumber()].join(':')
+         if (this.transactionDepth === 0) {
+             if (isolationLevel) {
+                 if (isolationLevel === "READ UNCOMMITTED") {
+@@ -76,8 +78,13 @@ class AbstractSqliteQueryRunner extends BaseQueryRunner_1.BaseQueryRunner {
+                 }
+             }
+             await this.query("BEGIN TRANSACTION");
++            console.log('Transaction started', origin);
++            this.txTimer = setTimeout(() => {
++                console.log('Transaction open for longer than a second', origin);
++            }, 1000);
+         }
+         else {
++            console.log('Nested Transaction started', origin);
+             await this.query(`SAVEPOINT typeorm_${this.transactionDepth}`);
+         }
+         this.transactionDepth += 1;
+@@ -97,6 +104,10 @@ class AbstractSqliteQueryRunner extends BaseQueryRunner_1.BaseQueryRunner {
+         else {
+             await this.query("COMMIT");
+             this.isTransactionActive = false;
++            if (this.txTimer) {
++                clearTimeout(this.txTimer);
++                this.txTimer = undefined;
++            }
+         }
+         this.transactionDepth -= 1;
+         await this.broadcaster.broadcast("AfterTransactionCommit");
+@@ -115,6 +126,10 @@ class AbstractSqliteQueryRunner extends BaseQueryRunner_1.BaseQueryRunner {
+         else {
+             await this.query("ROLLBACK");
+             this.isTransactionActive = false;
++            if (this.txTimer) {
++                clearTimeout(this.txTimer);
++                this.txTimer = undefined;
++            }
+         }
+         this.transactionDepth -= 1;
+         await this.broadcaster.broadcast("AfterTransactionRollback");
