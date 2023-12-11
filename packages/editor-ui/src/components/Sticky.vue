@@ -12,6 +12,7 @@
 				'sticky-default': true,
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
+				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
 		>
@@ -349,6 +350,10 @@ export default defineComponent({
 				display: flex;
 				cursor: pointer;
 			}
+		}
+
+		&.is-read-only {
+			pointer-events: none;
 		}
 
 		.sticky-options {

@@ -59,6 +59,7 @@
 						:hideActions="pullConnActive"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						:workflow="currentWorkflowObject"
+						:disablePointerEvents="!canOpenNDV"
 					>
 						<template #custom-tooltip>
 							<span
@@ -743,6 +744,7 @@ export default defineComponent({
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
 			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
+			canOpenNDV: true,
 		};
 	},
 	methods: {
@@ -4324,6 +4326,7 @@ export default defineComponent({
 				if (json && json.command === 'openWorkflow') {
 					try {
 						await this.importWorkflowExact(json);
+						this.canOpenNDV = json.canOpenNDV ?? true;
 						this.isExecutionPreview = false;
 					} catch (e) {
 						if (window.top) {
@@ -4348,6 +4351,7 @@ export default defineComponent({
 						this.isProductionExecutionPreview = json.executionMode !== 'manual';
 
 						await this.openExecution(json.executionId);
+						this.canOpenNDV = json.canOpenNDV ?? true;
 						this.isExecutionPreview = true;
 					} catch (e) {
 						if (window.top) {

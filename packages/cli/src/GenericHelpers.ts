@@ -8,17 +8,14 @@ import type {
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
 import { Container } from 'typedi';
-import { Like } from 'typeorm';
 import config from '@/config';
-import type { ExecutionPayload, ICredentialsDb, IWorkflowDb } from '@/Interfaces';
+import type { ExecutionPayload, IWorkflowDb } from '@/Interfaces';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 /**
@@ -41,58 +38,6 @@ export function getBaseUrl(): string {
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
-}
-
-/**
- * Generate a unique name for a workflow or credentials entity.
- *
- * - If the name does not yet exist, it returns the requested name.
- * - If the name already exists once, it returns the requested name suffixed with 2.
- * - If the name already exists more than once with suffixes, it looks for the max suffix
- * and returns the requested name with max suffix + 1.
- */
-
-export async function generateUniqueName(
-	requestedName: string,
-	entityType: 'workflow' | 'credentials',
-) {
-	const findConditions = {
-		select: ['name' as const],
-		where: {
-			name: Like(`${requestedName}%`),
-		},
-	};
-
-	const found: Array<WorkflowEntity | ICredentialsDb> =
-		entityType === 'workflow'
-			? await Container.get(WorkflowRepository).find(findConditions)
-			: await Container.get(CredentialsRepository).find(findConditions);
-
-	// name is unique
-	if (found.length === 0) {
-		return requestedName;
-	}
-
-	const maxSuffix = found.reduce((acc, { name }) => {
-		const parts = name.split(`${requestedName} `);
-
-		if (parts.length > 2) return acc;
-
-		const suffix = Number(parts[1]);
-
-		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
-			acc = Math.ceil(suffix);
-		}
-
-		return acc;
-	}, 0);
-
-	// name is duplicate but no numeric suffixes exist yet
-	if (maxSuffix === 0) {
-		return `${requestedName} 2`;
-	}
-
-	return `${requestedName} ${maxSuffix + 1}`;
 }
 
 export async function validateEntity(
