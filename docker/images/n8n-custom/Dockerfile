@@ -29,6 +29,14 @@ ARG N8N_RELEASE_TYPE=dev
 COPY --from=builder /home/node /usr/local/lib/node_modules/n8n
 RUN ln -s /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n
 
+COPY docker/images/n8n-custom/SqliteDriver.js /usr/local/lib/node_modules/n8n/node_modules/typeorm/driver/sqlite/SqliteDriver.js
+COPY docker/images/n8n-custom/SqliteQueryRunner.js /usr/local/lib/node_modules/n8n/node_modules/typeorm/driver/sqlite/SqliteQueryRunner.js
+COPY docker/images/n8n-custom/AbstractSqliteQueryRunner.js /usr/local/lib/node_modules/n8n/node_modules/typeorm/driver/sqlite-abstract/AbstractSqliteQueryRunner.js
+
+COPY docker/images/n8n-custom/SqliteDriver.js /usr/local/lib/node_modules/n8n/packages/cli/node_modules/typeorm/driver/sqlite/SqliteDriver.js
+COPY docker/images/n8n-custom/SqliteQueryRunner.js /usr/local/lib/node_modules/n8n/packages/cli/node_modules/typeorm/driver/sqlite/SqliteQueryRunner.js
+COPY docker/images/n8n-custom/AbstractSqliteQueryRunner.js /usr/local/lib/node_modules/n8n/packages/cli/node_modules/typeorm/driver/sqlite-abstract/AbstractSqliteQueryRunner.js
+
 COPY docker/images/n8n/docker-entrypoint.sh /
 
 RUN \

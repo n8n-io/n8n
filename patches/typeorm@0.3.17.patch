@@ -1,0 +1,237 @@
+diff --git a/driver/sqlite/SqliteDriver.js b/driver/sqlite/SqliteDriver.js
+index 5a3500c138f0f7cb9756be5cfbde1b69418f2eee..8f5479deb5f58821b392224bec8c86c1ba079d36 100644
+--- a/driver/sqlite/SqliteDriver.js
++++ b/driver/sqlite/SqliteDriver.js
+@@ -9,6 +9,99 @@ const SqliteQueryRunner_1 = require("./SqliteQueryRunner");
+ const PlatformTools_1 = require("../../platform/PlatformTools");
+ const AbstractSqliteDriver_1 = require("../sqlite-abstract/AbstractSqliteDriver");
+ const PathUtils_1 = require("../../util/PathUtils");
++
++
++// Array of last 50 queries
++class LastQueries {
++	constructor() {
++		this.lastQueries = []
++	}
++
++	add(query) {
++		this.lastQueries.push(query)
++		if (this.lastQueries.length > 50) {
++			this.lastQueries.shift()
++		}
++	}
++
++	get() {
++		return this.lastQueries
++	}
++
++	print() {
++		console.log("Last queries:")
++		this.lastQueries.forEach((query, index) => {
++			console.log(index + ": " + query)
++		})
++	}
++}
++
++class TrxState {
++	constructor() {
++		this.trxLevel = 0
++		this.trxStartTime = 0
++		this.first10AfterBegin = []
++		this.lastQueries = new LastQueries()
++		this.slowLogged = false;
++	}
++
++	onQuery(query) {
++		if (query.includes("BEGIN")) {
++			this.log("QUERY:", query)
++			this.trxLevel++
++			this.trxStartTime = Date.now()
++			this.first10AfterBegin = []
++			this.slowLogged = false;
++		}
++		else if (query.includes("COMMIT")) {
++			this.log("QUERY:", query)
++			this.trxLevel--
++			this.trxStartTime = 0
++			this.first10AfterBegin = []
++		}
++		else if (query.includes("ROLLBACK")) {
++						this.log("QUERY:", query)
++						this.trxLevel--
++			this.trxStartTime = 0
++			this.first10AfterBegin = []
++		}
++		else if (query.includes("SAVEPOINT")) {
++						this.log("QUERY:", query)
++						this.trxLevel++
++		}
++		else if (query.includes("RELEASE SAVEPOINT")) {
++						this.log("QUERY:", query)
++						this.trxLevel--
++		}
++
++		if (this.trxLevel > 0 && this.first10AfterBegin.length < 10) {
++			this.first10AfterBegin.push(query)
++		}
++
++		if (this.trxStartTime > 0 && Date.now() - this.trxStartTime > 5000) {
++			this.log("Transaction is open for more than 5 seconds")
++			if (!this.slowLogged) {
++				this.log("First 10 queries after BEGIN:")
++				this.first10AfterBegin.forEach((query, index) => {
++					this.log(index + ": " + query)
++				})
++
++				lastQueries.print()
++			}
++
++			// process.exit(0)
++			this.slowLogged = true;
++		}
++	}
++
++	log(...args) {
++		console.log(new Date().toISOString(), "[AFTER]", ...args)
++	}
++}
++
++const trxState = new TrxState()
++
++
+ /**
+  * Organizes communication with sqlite DBMS.
+  */
+@@ -103,6 +196,17 @@ class SqliteDriver extends AbstractSqliteDriver_1.AbstractSqliteDriver {
+                 });
+             }
+         });
++
++        console.log("DB connection OPEN")
++        databaseConnection.on("profile", (query, time) => {
++            trxState.onQuery(query)
++
++            if (time > 1000) {
++                console.log("Query: " + query + " took " + time + "ms");
++            }
++        })
++
++
+         // Internal function to run a command on the connection and fail if an error occured.
+         function run(line) {
+             return new Promise((ok, fail) => {
+diff --git a/driver/sqlite/SqliteQueryRunner.js b/driver/sqlite/SqliteQueryRunner.js
+index 998a7592eef948396b92aef81a43447630014376..288b907636d338dca9e0a50e43422d23118cf98a 100644
+--- a/driver/sqlite/SqliteQueryRunner.js
++++ b/driver/sqlite/SqliteQueryRunner.js
+@@ -7,6 +7,102 @@ const AbstractSqliteQueryRunner_1 = require("../sqlite-abstract/AbstractSqliteQu
+ const Broadcaster_1 = require("../../subscriber/Broadcaster");
+ const ConnectionIsNotSetError_1 = require("../../error/ConnectionIsNotSetError");
+ const QueryResult_1 = require("../../query-runner/QueryResult");
++
++
++
++
++// Array of last 50 queries
++class LastQueries {
++	constructor() {
++		this.lastQueries = []
++	}
++
++	add(query) {
++		this.lastQueries.push(query)
++		if (this.lastQueries.length > 50) {
++			this.lastQueries.shift()
++		}
++	}
++
++	get() {
++		return this.lastQueries
++	}
++
++	print() {
++		console.log("Last queries:")
++		this.lastQueries.forEach((query, index) => {
++			console.log(index + ": " + query)
++		})
++	}
++}
++
++class TrxState {
++	constructor() {
++		this.trxLevel = 0
++		this.trxStartTime = 0
++		this.first10AfterBegin = []
++		this.lastQueries = new LastQueries()
++		this.slowLogged = false;
++	}
++
++	onQuery(query) {
++		if (query.includes("BEGIN")) {
++			this.log("QUERY:", query)
++			this.trxLevel++
++			this.trxStartTime = Date.now()
++			this.first10AfterBegin = []
++			this.slowLogged = false;
++		}
++		else if (query.includes("COMMIT")) {
++			this.log("QUERY:", query)
++			this.trxLevel--
++			this.trxStartTime = 0
++			this.first10AfterBegin = []
++		}
++		else if (query.includes("ROLLBACK")) {
++						this.log("QUERY:", query)
++						this.trxLevel--
++			this.trxStartTime = 0
++			this.first10AfterBegin = []
++		}
++		else if (query.includes("SAVEPOINT")) {
++						this.log("QUERY:", query)
++						this.trxLevel++
++		}
++		else if (query.includes("RELEASE SAVEPOINT")) {
++						this.log("QUERY:", query)
++						this.trxLevel--
++		}
++
++		if (this.trxLevel > 0 && this.first10AfterBegin.length < 10) {
++			this.first10AfterBegin.push(query)
++		}
++
++		if (this.trxStartTime > 0 && Date.now() - this.trxStartTime > 5000) {
++			this.log("Transaction is open for more than 5 seconds")
++			if (!this.slowLogged) {
++				this.log("First 10 queries after BEGIN:")
++				this.first10AfterBegin.forEach((query, index) => {
++					this.log(index + ": " + query)
++				})
++
++				lastQueries.print()
++			}
++
++			// process.exit(0)
++			this.slowLogged = true;
++		}
++	}
++
++	log(...args) {
++		console.log(new Date().toISOString(), "[BEFORE]", ...args)
++	}
++}
++
++
++const trxState = new TrxState()
++
++
+ /**
+  * Runs queries on a single sqlite database connection.
+  *
+@@ -55,6 +151,7 @@ class SqliteQueryRunner extends AbstractSqliteQueryRunner_1.AbstractSqliteQueryR
+             const isDeleteQuery = query.startsWith("DELETE ");
+             const isUpdateQuery = query.startsWith("UPDATE ");
+             const execute = async () => {
++                trxState.onQuery(query)
+                 if (isInsertQuery || isDeleteQuery || isUpdateQuery) {
+                     await databaseConnection.run(query, parameters, handler);
+                 }

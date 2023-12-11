@@ -22,6 +22,9 @@ RUN set -eux; \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm -f && \
 	rm -rf /root/.npm
 
+COPY SqliteDriver.js /usr/local/lib/node_modules/n8n/node_modules/typeorm/driver/sqlite/SqliteDriver.js
+COPY SqliteQueryRunner.js /usr/local/lib/node_modules/n8n/node_modules/typeorm/driver/sqlite/SqliteQueryRunner.js
+
 COPY docker-entrypoint.sh /
 
 RUN \

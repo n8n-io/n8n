@@ -99,6 +99,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n_io/license-sdk": "2.7.2",
     "@oclif/command": "1.8.18",
@@ -152,7 +153,6 @@
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
     "n8n-nodes-base": "workspace:*",
-    "@n8n/n8n-nodes-langchain": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "3.3.6",
     "nodemailer": "6.8.0",
