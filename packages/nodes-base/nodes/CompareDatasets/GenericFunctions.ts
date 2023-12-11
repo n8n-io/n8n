@@ -259,11 +259,8 @@ export function findMatches(
 
 	if (disableDotNotation && skipFields.some((field) => field.includes('.'))) {
 		const fieldToSkip = skipFields.find((field) => field.includes('.'));
-		throw new Error(
-			`Dot notation is disabled, but field to skip comparing '${
-				fieldToSkip as string
-			}' contains dot`,
-		);
+		const msg = `Dot notation is disabled, but field to skip comparing '${fieldToSkip}' contains dot`;
+		throw new ApplicationError(msg, { level: 'warning' });
 	}
 
 	const filteredData = {
@@ -403,16 +400,18 @@ export function findMatches(
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
 	if (data.length === 1 && data[0].field1 === '' && data[0].field2 === '') {
-		throw new Error(
+		throw new ApplicationError(
 			'You need to define at least one pair of fields in "Fields to Match" to match on',
+			{ level: 'warning' },
 		);
 	}
 	for (const [index, pair] of data.entries()) {
 		if (pair.field1 === '' || pair.field2 === '') {
-			throw new Error(
+			throw new ApplicationError(
 				`You need to define both fields in "Fields to Match" for pair ${index + 1},
 				 field 1 = '${pair.field1}'
 				 field 2 = '${pair.field2}'`,
+				{ level: 'warning' },
 			);
 		}
 	}
@@ -447,7 +446,10 @@ export function checkInputAndThrowError(
 			return get(entry.json, field, undefined) !== undefined;
 		});
 		if (!isPresent) {
-			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
+			throw new ApplicationError(
+				`Field '${field}' is not present in any of items in '${inputLabel}'`,
+				{ level: 'warning' },
+			);
 		}
 	}
 	return input;

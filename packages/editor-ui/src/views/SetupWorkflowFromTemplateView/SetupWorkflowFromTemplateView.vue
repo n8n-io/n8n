@@ -8,19 +8,17 @@ import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import TemplatesView from '../TemplatesView.vue';
 import { VIEWS } from '@/constants';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 // Store
 const setupTemplateStore = useSetupTemplateStore();
 const i18n = useI18n();
-const $telemetry = useTelemetry();
-const $externalHooks = useExternalHooks();
+const telemetry = useTelemetry();
 
 // Router
 const route = useRoute();
-const $router = useRouter();
+const router = useRouter();
 
 //#region Computed
 
@@ -31,7 +29,7 @@ const title = computed(() => setupTemplateStore.template?.name ?? 'unknown');
 const isReady = computed(() => !setupTemplateStore.isLoading);
 
 const skipSetupUrl = computed(() => {
-	const resolvedRoute = $router.resolve({
+	const resolvedRoute = router.resolve({
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: templateId.value },
 	});
@@ -55,25 +53,24 @@ const onSkipSetup = async (event: MouseEvent) => {
 	event.preventDefault();
 
 	await setupTemplateStore.skipSetup({
-		$externalHooks,
-		$telemetry,
-		$router,
+		router,
 	});
 };
 
 const skipIfTemplateHasNoCreds = async () => {
 	const isTemplateLoaded = !!setupTemplateStore.template;
 	if (!isTemplateLoaded) {
-		return;
+		return false;
 	}
 
 	if (setupTemplateStore.credentialUsages.length === 0) {
 		await setupTemplateStore.skipSetup({
-			$externalHooks,
-			$telemetry,
-			$router,
+			router,
 		});
+		return true;
 	}
+
+	return false;
 };
 
 //#endregion Methods
@@ -84,7 +81,12 @@ setupTemplateStore.setTemplateId(templateId.value);
 
 onMounted(async () => {
 	await setupTemplateStore.init();
-	await skipIfTemplateHasNoCreds();
+	const wasSkipped = await skipIfTemplateHasNoCreds();
+	if (!wasSkipped) {
+		telemetry.track('User opened cred setup', undefined, {
+			withPostHog: true,
+		});
+	}
 });
 
 //#endregion Lifecycle hooks
@@ -94,7 +96,7 @@ onMounted(async () => {
 	<TemplatesView :goBackEnabled="true">
 		<template #header>
 			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
-				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
+				>{{ i18n.baseText('templateSetup.title', { interpolate: { name: title } }) }}
 			</n8n-heading>
 			<n8n-loading v-else variant="h1" />
 		</template>
@@ -124,17 +126,24 @@ onMounted(async () => {
 
 				<div :class="$style.actions">
 					<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
-						$locale.baseText('templateSetup.skip')
+						i18n.baseText('templateSetup.skip')
 					}}</n8n-link>
 
-					<n8n-button
+					<n8n-tooltip
 						v-if="isReady"
-						size="large"
-						:label="$locale.baseText('templateSetup.continue.button')"
-						:disabled="setupTemplateStore.isSaving"
-						@click="setupTemplateStore.createWorkflow($router)"
-						data-test-id="continue-button"
-					/>
+						:content="i18n.baseText('templateSetup.continue.button.fillRemaining')"
+						:disabled="setupTemplateStore.numFilledCredentials > 0"
+					>
+						<n8n-button
+							size="large"
+							:label="i18n.baseText('templateSetup.continue.button')"
+							:disabled="
+								setupTemplateStore.isSaving || setupTemplateStore.numFilledCredentials === 0
+							"
+							@click="setupTemplateStore.createWorkflow({ router })"
+							data-test-id="continue-button"
+						/>
+					</n8n-tooltip>
 					<div v-else>
 						<n8n-loading variant="button" />
 					</div>

@@ -70,6 +70,7 @@ import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 import AskAI from './AskAI/AskAI.vue';
 import { useMessage } from '@/composables/useMessage';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export default defineComponent({
 	name: 'code-node-editor',
@@ -156,7 +157,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useRootStore, usePostHog),
+		...mapStores(useRootStore, usePostHog, useSettingsStore),
 		aiEnabled(): boolean {
 			const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
 				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,

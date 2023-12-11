@@ -16,7 +16,7 @@ import {
 } from '@/constants';
 
 import { useUsersStore } from '@/stores/users.store';
-import { runExternalHook } from '@/utils/externalHooks';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -170,7 +170,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	void runExternalHook('nodeCreateList.onViewActions', trackingPayload);
+	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
@@ -191,7 +191,7 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0].key;
-	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', {
+	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });

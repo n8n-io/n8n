@@ -119,7 +119,7 @@
 				</div>
 
 				<div
-					v-if="isCustomApiCallSelected(nodeValues)"
+					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
@@ -201,9 +201,6 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash-es';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
@@ -215,10 +212,11 @@ import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 export default defineComponent({
 	name: 'NodeSettings',
-	mixins: [externalHooks, nodeHelpers],
 	components: {
 		NodeTitle,
 		NodeCredentials,
@@ -226,6 +224,15 @@ export default defineComponent({
 		NodeSettingsTabs,
 		NodeWebhooks,
 		NodeExecuteButton,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+			nodeHelpers,
+		};
 	},
 	computed: {
 		...mapStores(
@@ -673,10 +680,10 @@ export default defineComponent({
 
 			if (node) {
 				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				this.nodeHelpers.updateNodeCredentialIssues(node);
 			}
 
-			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
@@ -775,7 +782,7 @@ export default defineComponent({
 						}
 					}
 
-					void this.$externalHooks().run('nodeSettings.valueChanged', {
+					void this.externalHooks.run('nodeSettings.valueChanged', {
 						parameterPath,
 						newValue,
 						parameters: this.parameters,
@@ -807,8 +814,8 @@ export default defineComponent({
 
 					this.workflowsStore.setNodeParameters(updateInformation);
 
-					this.updateNodeParameterIssuesByName(node.name);
-					this.updateNodeCredentialIssuesByName(node.name);
+					this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+					this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
 				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
@@ -883,15 +890,15 @@ export default defineComponent({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				void this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.externalHooks.run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,
 					oldNodeParameters,
 				});
 
-				this.updateNodeParameterIssuesByName(node.name);
-				this.updateNodeCredentialIssuesByName(node.name);
+				this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+				this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
 				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
@@ -1054,7 +1061,7 @@ export default defineComponent({
 		this.setNodeValues();
 		this.eventBus?.on('openSettings', this.openSettings);
 
-		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);

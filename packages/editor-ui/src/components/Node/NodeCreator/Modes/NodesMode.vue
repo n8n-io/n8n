@@ -162,7 +162,7 @@ function subcategoriesMapper(item: INodeCreateElement) {
 }
 
 function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
-	if (item.type === 'section') return item.children.every(baseSubcategoriesFilter);
+	if (item.type === 'section') return true;
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');

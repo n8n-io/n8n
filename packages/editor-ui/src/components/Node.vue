@@ -156,12 +156,9 @@ import {
 	NOT_DUPLICATABE_NODE_TYPES,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
-
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -187,14 +184,19 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'Node',
 	setup() {
 		const contextMenu = useContextMenu();
-		return { contextMenu };
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+
+		return { contextMenu, externalHooks, nodeHelpers };
 	},
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
@@ -629,7 +631,9 @@ export default defineComponent({
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
-				const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
+				const nodeSubtitle =
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) ||
+					'';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
@@ -638,7 +642,7 @@ export default defineComponent({
 		},
 		disableNode() {
 			if (this.data !== null) {
-				this.disableNodes([this.data]);
+				this.nodeHelpers.disableNodes([this.data]);
 				this.historyStore.pushCommandToUndo(
 					new EnableNodeToggleCommand(
 						this.data.name,
@@ -904,9 +908,6 @@ export default defineComponent({
 		--node-width: 75px;
 		--node-height: 75px;
 
-		& [class*='node-wrapper--connection-type'] {
-			--configurable-node-options: -10px;
-		}
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -974,7 +975,6 @@ export default defineComponent({
 		);
 		--configurable-node-icon-offset: 40px;
 		--configurable-node-icon-size: 30px;
-		--configurable-node-options: -10px;
 
 		.node-description {
 			top: calc(50%);
@@ -1002,7 +1002,7 @@ export default defineComponent({
 			}
 
 			.node-options {
-				left: var(--configurable-node-options, 65px);
+				left: 0;
 				height: 25px;
 			}
 
@@ -1051,12 +1051,6 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: hsla(
-			var(--color-foreground-base-h),
-			60%,
-			var(--color-foreground-base-l),
-			80%
-		);
 	}
 }
 
@@ -1440,7 +1434,7 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-label-length='medium'] {
+	&.node-connection-type-main[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;

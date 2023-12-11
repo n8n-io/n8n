@@ -304,14 +304,20 @@ export async function executeWebhook(
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
-	const binaryData = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		'={{$parameter["options"]["binaryData"]}}',
-		executionMode,
-		additionalKeys,
-		undefined,
-		false,
-	);
+	let binaryData;
+
+	const nodeVersion = workflowStartNode.typeVersion;
+	if (nodeVersion === 1) {
+		// binaryData option is removed in versions higher than 1
+		binaryData = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			'={{$parameter["options"]["binaryData"]}}',
+			executionMode,
+			additionalKeys,
+			undefined,
+			false,
+		);
+	}
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
@@ -321,6 +327,7 @@ export async function executeWebhook(
 		let webhookResultData: IWebhookResponseData;
 
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
+		// always falsy for versions higher than 1
 		if (!binaryData) {
 			const { contentType, encoding } = req;
 			if (contentType === 'multipart/form-data') {
@@ -337,7 +344,19 @@ export async function executeWebhook(
 					});
 				});
 			} else {
-				await parseBody(req);
+				if (nodeVersion > 1) {
+					if (
+						contentType?.startsWith('application/json') ||
+						contentType?.startsWith('text/plain') ||
+						contentType?.startsWith('application/x-www-form-urlencoded') ||
+						contentType?.endsWith('/xml') ||
+						contentType?.endsWith('+xml')
+					) {
+						await parseBody(req);
+					}
+				} else {
+					await parseBody(req);
+				}
 			}
 		}
 

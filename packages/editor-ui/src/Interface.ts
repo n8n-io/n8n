@@ -51,7 +51,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -105,6 +104,9 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+		Appcues?: {
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+		};
 	}
 }
 
@@ -159,10 +161,6 @@ export interface INodeTypesMaxCount {
 		max: number;
 		nodeNames: string[];
 	};
-}
-
-export interface IExternalHooks {
-	run: typeof runExternalHook;
 }
 
 export interface INodeTranslationHeaders {
@@ -908,6 +906,7 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
+	tag?: string;
 }
 export interface LabelItemProps {
 	key: string;
@@ -1792,7 +1791,8 @@ export type UTMCampaign =
 	| 'upgrade-users'
 	| 'upgrade-variables'
 	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history';
+	| 'upgrade-workflow-history'
+	| 'upgrade-advanced-permissions';
 
 export type N8nBanners = {
 	[key in BannerName]: {

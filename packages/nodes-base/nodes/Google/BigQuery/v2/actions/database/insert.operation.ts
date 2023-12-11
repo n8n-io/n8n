@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName:
-			"In this mode, make sure the incoming data fields are named the same as the columns in BigQuery. (Use a 'set' node before this node to change them if required.)",
+			"In this mode, make sure the incoming data fields are named the same as the columns in BigQuery. (Use an 'Edit Fields' node before this node to change them if required.)",
 		name: 'info',
 		type: 'notice',
 		default: '',

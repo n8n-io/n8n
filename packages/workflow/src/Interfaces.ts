@@ -2431,5 +2431,4 @@ export type BannerName =
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
 
-export type Severity = 'warning' | 'error';
 export type Functionality = 'regular' | 'configuration-node';

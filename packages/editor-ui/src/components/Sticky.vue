@@ -104,9 +104,7 @@
 import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
@@ -126,7 +124,7 @@ import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
+	mixins: [nodeBase, workflowHelpers],
 	setup() {
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
@@ -139,6 +137,7 @@ export default defineComponent({
 				colorPopoverTrigger.value?.click();
 			}
 		});
+
 		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	props: {
