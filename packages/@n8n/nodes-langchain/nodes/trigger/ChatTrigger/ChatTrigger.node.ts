@@ -319,6 +319,7 @@ export class ChatTrigger implements INodeType {
 			getStarted?: string;
 			inputPlaceholder?: string;
 			loadPreviousSession?: 'manually' | 'memory' | 'notSupported';
+			showWelcomeScreen?: boolean;
 			subtitle?: string;
 			title?: string;
 		};
@@ -344,7 +345,6 @@ export class ChatTrigger implements INodeType {
 					| 'none'
 					| 'basicAuth'
 					| 'n8nAuth';
-				const showWelcomeScreen = this.getNodeParameter('showWelcomeScreen', false) as boolean;
 				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 				const initialMessages = initialMessagesRaw
 					.split('\n')
@@ -358,7 +358,7 @@ export class ChatTrigger implements INodeType {
 					i18n: {
 						en: i18nConfig,
 					},
-					showWelcomeScreen,
+					showWelcomeScreen: options.showWelcomeScreen,
 					initialMessages,
 					webhookUrl,
 					mode,
