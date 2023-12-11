@@ -28,9 +28,9 @@ export default defineComponent({
 		collection: {
 			type: Object,
 		},
-		showItemCount :{
+		showItemCount: {
 			type: Boolean,
-			default: false,
+			default: true,
 		},
 	},
 	components: {
