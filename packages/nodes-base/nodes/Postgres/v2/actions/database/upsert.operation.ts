@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',

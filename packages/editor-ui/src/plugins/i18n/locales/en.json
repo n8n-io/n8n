@@ -1271,7 +1271,7 @@
 	"resourceLocator.openResource": "Open in {appName}",
 	"resourceLocator.search.placeholder": "Search...",
 	"resourceLocator.url.placeholder": "Enter URL...",
-	"resourceMapper.autoMappingNotice": "In this mode, make sure the incoming data fields are named the same as the {fieldWord} in {serviceName}. (Use a 'set' node before this node to change them if required.)",
+	"resourceMapper.autoMappingNotice": "In this mode, make sure the incoming data fields are named the same as the {fieldWord} in {serviceName}. (Use an 'Edit Fields' node before this node to change them if required.)",
 	"resourceMapper.mappingMode.label": "Mapping Column Mode",
 	"resourceMapper.mappingMode.defineBelow.name": "Map Each Column Manually",
 	"resourceMapper.mappingMode.defineBelow.description": "Set the value for each {fieldWord}",
