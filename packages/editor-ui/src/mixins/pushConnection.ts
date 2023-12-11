@@ -376,6 +376,7 @@ export const pushConnection = defineComponent({
 									eventData.is_pinned = !!workflow.getPinDataOfNode(node.name);
 									eventData.mode = node.parameters.mode;
 									eventData.node_type = node.type;
+									eventData.node_version = node.typeVersion;
 									eventData.operation = node.parameters.operation;
 									eventData.resource = node.parameters.resource;
 								}
