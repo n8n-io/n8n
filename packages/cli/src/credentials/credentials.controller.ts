@@ -2,7 +2,6 @@ import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
 import { EECredentialsController } from './credentials.controller.ee';
@@ -16,6 +15,7 @@ import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NamingService } from '@/services/naming.service';
 
 export const credentialsController = express.Router();
 credentialsController.use('/', EECredentialsController);
@@ -38,14 +38,11 @@ credentialsController.get(
  */
 credentialsController.get(
 	'/new',
-	ResponseHelper.send(async (req: CredentialRequest.NewName): Promise<{ name: string }> => {
-		const { name: newName } = req.query;
+	ResponseHelper.send(async (req: CredentialRequest.NewName) => {
+		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
 
 		return {
-			name: await GenericHelpers.generateUniqueName(
-				newName ?? config.getEnv('credentials.defaultName'),
-				'credentials',
-			),
+			name: await Container.get(NamingService).getUniqueCredentialName(requestedName),
 		};
 	}),
 );
