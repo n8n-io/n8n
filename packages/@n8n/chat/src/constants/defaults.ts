@@ -8,7 +8,10 @@ export const defaultOptions: ChatOptions = {
 	},
 	target: '#n8n-chat',
 	mode: 'window',
+	chatInputKey: 'chat_input',
+	chatHistoryKey: 'chat_history',
 	defaultLanguage: 'en',
+	showWelcomeScreen: false,
 	initialMessages: ['Hi there! 👋', 'My name is Nathan. How can I assist you today?'],
 	i18n: {
 		en: {

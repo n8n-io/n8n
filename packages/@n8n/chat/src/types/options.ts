@@ -6,8 +6,12 @@ export interface ChatOptions {
 	};
 	target?: string | Element;
 	mode?: 'window' | 'fullscreen';
+	showWelcomeScreen?: boolean;
+	chatInputKey?: string;
+	chatHistoryKey?: string;
 	defaultLanguage?: 'en';
 	initialMessages?: string[];
+	metadata?: Record<string, unknown>;
 	i18n: Record<
 		string,
 		{

@@ -22,7 +22,19 @@
 		},
 		{
 			"parameters": {
-				"text": "={{ $json.message }}",
+				"sessionKey": "={{ $json.chat_history }}"
+			},
+			"id": "b416df7b-4802-462f-8f74-f0a71dc4c0be",
+			"name": "Window Buffer Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1,
+			"position": [
+				340,
+				540
+			]
+		},
+		{
+			"parameters": {
 				"options": {}
 			},
 			"id": "4de25807-a2ef-4453-900e-e00e0021ecdc",
@@ -42,28 +54,15 @@
 					"loadPreviousSession": "memory"
 				}
 			},
-			"id": "4b4c44d2-ccaf-4f84-9bf5-732c240d2ba5",
+			"id": "5a9612ae-51c1-4be2-bd8b-8556872d1149",
 			"name": "Chat Trigger",
 			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
 			"typeVersion": 1,
 			"position": [
-				360,
+				340,
 				300
 			],
-			"webhookId": "5fd32aa8-acc7-489c-ae37-a7ef4232026d"
-		},
-		{
-			"parameters": {
-				"sessionKey": "={{ $json.sessionId }}"
-			},
-			"id": "b416df7b-4802-462f-8f74-f0a71dc4c0be",
-			"name": "Window Buffer Memory",
-			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-			"typeVersion": 1,
-			"position": [
-				360,
-				540
-			]
+			"webhookId": "f406671e-c954-4691-b39a-66c90aa2f103"
 		}
 	],
 	"pinData": {},
@@ -79,6 +78,22 @@
 				]
 			]
 		},
+		"Window Buffer Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					},
+					{
+						"node": "Chat Trigger",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
 		"Chat Trigger": {
 			"main": [
 				[
@@ -89,29 +104,13 @@
 					}
 				]
 			]
-		},
-		"Window Buffer Memory": {
-			"ai_memory": [
-				[
-					{
-						"node": "Chat Trigger",
-						"type": "ai_memory",
-						"index": 0
-					},
-					{
-						"node": "AI Agent",
-						"type": "ai_memory",
-						"index": 0
-					}
-				]
-			]
 		}
 	},
 	"active": true,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "bfa9bcfd-9d9d-4603-9503-052c2818c75e",
+	"versionId": "f05aa63b-fabc-4016-8412-1d4c1d89b81a",
 	"id": "zaBHnDtj22BzEQ6K",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"

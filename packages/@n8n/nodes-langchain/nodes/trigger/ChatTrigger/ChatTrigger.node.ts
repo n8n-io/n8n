@@ -63,14 +63,14 @@ export class ChatTrigger implements INodeType {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
-				ndvHideUrl: true,
+				// ndvHideUrl: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
-				ndvHideMethod: true,
+				// ndvHideMethod: true,
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
@@ -244,17 +244,30 @@ export class ChatTrigger implements INodeType {
 						description: 'When and how to respond to the webhook',
 					},
 					{
-						displayName: 'Start Conversation Button Text',
-						name: 'getStarted',
-						type: 'string',
+						displayName: 'Show Welcome Screen',
+						name: 'showWelcomeScreen',
+						type: 'boolean',
 						displayOptions: {
 							show: {
 								'/mode': ['hostedChat'],
 							},
 						},
+						default: false,
+						description: 'Whether to show the welcome screen at the start of the chat',
+					},
+					{
+						displayName: 'Start Conversation Button Text',
+						name: 'getStarted',
+						type: 'string',
+						displayOptions: {
+							show: {
+								showWelcomeScreen: [true],
+								'/mode': ['hostedChat'],
+							},
+						},
 						default: 'New Conversation',
 						placeholder: 'e.g. New Conversation',
-						description: 'Shown at the start of the chat, in the middle of the chat window',
+						description: 'Shown as part of the welcome screen, in the middle of the chat window',
 					},
 					{
 						displayName: 'Subtitle',
@@ -376,11 +389,7 @@ export class ChatTrigger implements INodeType {
 			}
 		}
 
-		const returnData: IDataObject = {};
-		returnData.sessionId = bodyData.sessionId;
-		returnData.action = bodyData.action;
-		returnData.message = bodyData.message;
-
+		const returnData: IDataObject = { ...bodyData };
 		const webhookResponse: IDataObject = { status: 200 };
 		return {
 			webhookResponse,
