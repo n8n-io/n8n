@@ -7,7 +7,6 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
@@ -17,6 +16,7 @@ import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache.service';
+import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -95,6 +95,7 @@ export class E2EController {
 		private workflowRunner: ActiveWorkflowRunner,
 		private mfaService: MfaService,
 		private cacheService: CacheService,
+		private readonly passwordUtility: PasswordUtility,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -187,7 +188,7 @@ export class E2EController {
 		const instanceOwner = {
 			id: uuid(),
 			...owner,
-			password: await hashPassword(owner.password),
+			password: await this.passwordUtility.hash(owner.password),
 			globalRoleId: globalOwnerRoleId,
 		};
 
@@ -201,7 +202,7 @@ export class E2EController {
 		const adminUser = {
 			id: uuid(),
 			...admin,
-			password: await hashPassword(admin.password),
+			password: await this.passwordUtility.hash(admin.password),
 			globalRoleId: globalAdminRoleId,
 		};
 
@@ -214,7 +215,7 @@ export class E2EController {
 				this.userRepo.create({
 					id: uuid(),
 					...payload,
-					password: await hashPassword(password),
+					password: await this.passwordUtility.hash(password),
 					globalRoleId: globalMemberRoleId,
 				}),
 			);
