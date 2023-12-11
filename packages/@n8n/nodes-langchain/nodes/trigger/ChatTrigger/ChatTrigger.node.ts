@@ -63,14 +63,14 @@ export class ChatTrigger implements INodeType {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
-				// ndvHideUrl: true,
+				ndvHideUrl: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
-				// ndvHideMethod: true,
+				ndvHideMethod: true,
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
@@ -344,6 +344,7 @@ export class ChatTrigger implements INodeType {
 					| 'none'
 					| 'basicAuth'
 					| 'n8nAuth';
+				const showWelcomeScreen = this.getNodeParameter('showWelcomeScreen') as boolean;
 				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 				const initialMessages = initialMessagesRaw
 					.split('\n')
@@ -357,6 +358,7 @@ export class ChatTrigger implements INodeType {
 					i18n: {
 						en: i18nConfig,
 					},
+					showWelcomeScreen,
 					initialMessages,
 					webhookUrl,
 					mode,

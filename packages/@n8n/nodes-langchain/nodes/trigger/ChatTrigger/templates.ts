@@ -1,12 +1,14 @@
 export function createPage({
 	instanceId,
 	webhookUrl,
+	showWelcomeScreen,
 	i18n: { en },
 	initialMessages,
 	authentication,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
+	showWelcomeScreen?: boolean;
 	i18n: {
 		en: Record<string, string>;
 	};
@@ -29,6 +31,7 @@ export function createPage({
 
 				(async function () {
 					const authentication = '${authentication}';
+					let metadata: Record<string, unknown> = {};
 					if (authentication === 'n8nAuth') {
 						try {
 							const response = await fetch('/rest/login', {
@@ -38,6 +41,15 @@ export function createPage({
 							if (response.status !== 200) {
 								throw new Error('Not logged in');
 							}
+
+							metadata = {
+								user: {
+									id: response.data.id,
+									firstName: response.data.firstName,
+									lastName: response.data.lastName,
+									email: response.data.email,
+								},
+							};
 						} catch (error) {
 							window.location.href = '/signin';
 							return;
@@ -47,6 +59,8 @@ export function createPage({
 					createChat({
 						mode: 'fullscreen',
 						webhookUrl: '${webhookUrl}',
+						showWelcomeScreen: ${showWelcomeScreen},
+						metadata,
 						webhookConfig: {
 							headers: {
 								'Content-Type': 'application/json',
