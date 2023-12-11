@@ -305,8 +305,12 @@ export const workflowRun = defineComponent({
 							testUrl = `${this.rootStore.getFormTestUrl}/${webhookPath}`;
 						}
 
-						if (node.type === WAIT_NODE_TYPE && runWorkflowApiResponse.executionId) {
-							const { webhookSuffix } = node.parameters.options as IDataObject;
+						if (
+							node.type === WAIT_NODE_TYPE &&
+							node.parameters.resume === 'form' &&
+							runWorkflowApiResponse.executionId
+						) {
+							const { webhookSuffix } = (node.parameters.options || {}) as IDataObject;
 							const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
 							testUrl = `${this.rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 						}

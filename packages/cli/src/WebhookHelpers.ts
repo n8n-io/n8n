@@ -558,7 +558,7 @@ export async function executeWebhook(
 						if (
 							nodeType.description.name === 'formTrigger' &&
 							headers.location &&
-							responseCode === 301
+							String(responseCode).startsWith('3')
 						) {
 							responseCode = 200;
 							data = {

@@ -166,11 +166,6 @@ export class RespondToWebhook implements INodeType {
 						},
 						default: 200,
 						description: 'The HTTP Response code to return. Defaults to 200.',
-						displayOptions: {
-							hide: {
-								'/responseWith': ['redirect'],
-							},
-						},
 					},
 					{
 						displayName: 'Response Headers',
@@ -277,7 +272,7 @@ export class RespondToWebhook implements INodeType {
 			}
 		} else if (respondWith == 'redirect') {
 			headers.location = this.getNodeParameter('redirectURL', 0) as string;
-			statusCode = 301;
+			statusCode = (options.responseCode as number) ?? 307;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),
