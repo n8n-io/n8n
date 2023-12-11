@@ -8,6 +8,7 @@ export async function loadPreviousSession(sessionId: string, options: ChatOption
 		{
 			action: 'loadPreviousSession',
 			[options.chatHistoryKey as string]: sessionId,
+			...(options.metadata ? { metadata: options.metadata } : {}),
 		},
 		{
 			headers: options.webhookConfig?.headers,

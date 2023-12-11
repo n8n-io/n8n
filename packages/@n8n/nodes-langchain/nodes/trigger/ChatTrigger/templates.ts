@@ -42,12 +42,13 @@ export function createPage({
 								throw new Error('Not logged in');
 							}
 
+							const responseData = await response.json();
 							metadata = {
 								user: {
-									id: response.data.id,
-									firstName: response.data.firstName,
-									lastName: response.data.lastName,
-									email: response.data.email,
+									id: responseData.data.id,
+									firstName: responseData.data.firstName,
+									lastName: responseData.data.lastName,
+									email: responseData.data.email,
 								},
 							};
 						} catch (error) {
