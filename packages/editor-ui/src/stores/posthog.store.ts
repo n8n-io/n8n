@@ -65,7 +65,7 @@ export const usePostHog = defineStore('posthog', () => {
 			},
 
 			getVariant,
-			getAll: () => featureFlags.value || {},
+			getAll: () => featureFlags.value ?? {},
 		};
 	}
 
@@ -89,6 +89,25 @@ export const usePostHog = defineStore('posthog', () => {
 			...overrides.value,
 		};
 	};
+
+	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		const variant = featFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+			name,
+			variant,
+		});
+
+		trackedDemoExp.value[name] = variant;
+	};
+
+	const trackExperiments = (featFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {
@@ -141,25 +160,6 @@ export const usePostHog = defineStore('posthog', () => {
 				trackExperimentsDebounced(featureFlags.value);
 			});
 		}
-	};
-
-	const trackExperiments = (featureFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	};
-	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
-
-	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
-		const variant = featureFlags[name];
-		if (!variant || trackedDemoExp.value[name] === variant) {
-			return;
-		}
-
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
-
-		trackedDemoExp.value[name] = variant;
 	};
 
 	const capture = (event: string, properties: IDataObject) => {
