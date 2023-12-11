@@ -16,7 +16,7 @@ import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache.service';
-import { PasswordService } from '@/services/password.service';
+import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -95,7 +95,7 @@ export class E2EController {
 		private workflowRunner: ActiveWorkflowRunner,
 		private mfaService: MfaService,
 		private cacheService: CacheService,
-		private readonly passwordService: PasswordService,
+		private readonly passwordUtility: PasswordUtility,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -188,7 +188,7 @@ export class E2EController {
 		const instanceOwner = {
 			id: uuid(),
 			...owner,
-			password: await this.passwordService.hash(owner.password),
+			password: await this.passwordUtility.hash(owner.password),
 			globalRoleId: globalOwnerRoleId,
 		};
 
@@ -202,7 +202,7 @@ export class E2EController {
 		const adminUser = {
 			id: uuid(),
 			...admin,
-			password: await this.passwordService.hash(admin.password),
+			password: await this.passwordUtility.hash(admin.password),
 			globalRoleId: globalAdminRoleId,
 		};
 
@@ -215,7 +215,7 @@ export class E2EController {
 				this.userRepo.create({
 					id: uuid(),
 					...payload,
-					password: await this.passwordService.hash(password),
+					password: await this.passwordUtility.hash(password),
 					globalRoleId: globalMemberRoleId,
 				}),
 			);

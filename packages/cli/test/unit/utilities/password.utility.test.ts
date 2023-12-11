@@ -1,4 +1,4 @@
-import { PasswordService } from '@/services/password.service';
+import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 
 function toComponents(hash: string) {
@@ -12,13 +12,13 @@ function toComponents(hash: string) {
 	return match.groups;
 }
 
-describe('PasswordService', () => {
-	const passwordService = Container.get(PasswordService);
+describe('PasswordUtility', () => {
+	const passwordUtility = Container.get(PasswordUtility);
 
 	describe('hash()', () => {
 		test('should hash a plaintext password', async () => {
 			const plaintext = 'abcd1234X';
-			const hashed = await passwordService.hash(plaintext);
+			const hashed = await passwordUtility.hash(plaintext);
 
 			const { version, costFactor, salt, hashedPassword } = toComponents(hashed);
 
@@ -32,18 +32,18 @@ describe('PasswordService', () => {
 	describe('compare()', () => {
 		test('should return true on match', async () => {
 			const plaintext = 'abcd1234X';
-			const hashed = await passwordService.hash(plaintext);
+			const hashed = await passwordUtility.hash(plaintext);
 
-			const isMatch = await passwordService.compare(plaintext, hashed);
+			const isMatch = await passwordUtility.compare(plaintext, hashed);
 
 			expect(isMatch).toBe(true);
 		});
 
 		test('should return false on mismatch', async () => {
 			const secondPlaintext = 'abcd1234Y';
-			const hashed = await passwordService.hash('abcd1234X');
+			const hashed = await passwordUtility.hash('abcd1234X');
 
-			const isMatch = await passwordService.compare(secondPlaintext, hashed);
+			const isMatch = await passwordUtility.compare(secondPlaintext, hashed);
 
 			expect(isMatch).toBe(false);
 		});
@@ -51,7 +51,7 @@ describe('PasswordService', () => {
 
 	describe('validate()', () => {
 		test('should throw on empty password', () => {
-			const check = () => passwordService.validate();
+			const check = () => passwordUtility.validate();
 
 			expect(check).toThrowError('Password is mandatory');
 		});
@@ -59,7 +59,7 @@ describe('PasswordService', () => {
 		test('should return same password if valid', () => {
 			const validPassword = 'abcd1234X';
 
-			const validated = passwordService.validate(validPassword);
+			const validated = passwordUtility.validate(validPassword);
 
 			expect(validated).toBe(validPassword);
 		});
@@ -67,7 +67,7 @@ describe('PasswordService', () => {
 		test('should require at least one uppercase letter', () => {
 			const invalidPassword = 'abcd1234';
 
-			const failingCheck = () => passwordService.validate(invalidPassword);
+			const failingCheck = () => passwordUtility.validate(invalidPassword);
 
 			expect(failingCheck).toThrowError('Password must contain at least 1 uppercase letter.');
 		});
@@ -76,11 +76,11 @@ describe('PasswordService', () => {
 			const validPassword = 'abcd1234X';
 			const invalidPassword = 'abcdEFGH';
 
-			const validated = passwordService.validate(validPassword);
+			const validated = passwordUtility.validate(validPassword);
 
 			expect(validated).toBe(validPassword);
 
-			const check = () => passwordService.validate(invalidPassword);
+			const check = () => passwordUtility.validate(invalidPassword);
 
 			expect(check).toThrowError('Password must contain at least 1 number.');
 		});
@@ -88,7 +88,7 @@ describe('PasswordService', () => {
 		test('should require a minimum length of 8 characters', () => {
 			const invalidPassword = 'a'.repeat(7);
 
-			const check = () => passwordService.validate(invalidPassword);
+			const check = () => passwordUtility.validate(invalidPassword);
 
 			expect(check).toThrowError('Password must be 8 to 64 characters long.');
 		});
@@ -96,7 +96,7 @@ describe('PasswordService', () => {
 		test('should require a maximum length of 64 characters', () => {
 			const invalidPassword = 'a'.repeat(65);
 
-			const check = () => passwordService.validate(invalidPassword);
+			const check = () => passwordUtility.validate(invalidPassword);
 
 			expect(check).toThrowError('Password must be 8 to 64 characters long.');
 		});

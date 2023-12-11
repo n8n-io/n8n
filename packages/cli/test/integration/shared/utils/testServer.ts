@@ -21,7 +21,7 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { SetupProps, TestServer } from '../types';
 import { InternalHooks } from '@/InternalHooks';
 import { LicenseMocker } from '../license';
-import { PasswordService } from '@/services/password.service';
+import { PasswordUtility } from '@/services/password.utility';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -230,7 +230,7 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(SettingsRepository),
 								Container.get(UserService),
-								Container.get(PasswordService),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;
@@ -279,7 +279,7 @@ export const setupTestServer = ({
 								Container.get(EHS),
 								Container.get(USE),
 								Container.get(License),
-								Container.get(PasswordService),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;

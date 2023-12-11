@@ -1,13 +1,13 @@
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Service } from 'typedi';
+import { Service as Utility } from 'typedi';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import {
 	MAX_PASSWORD_CHAR_LENGTH as maxLength,
 	MIN_PASSWORD_CHAR_LENGTH as minLength,
 } from '@/constants';
 
-@Service()
-export class PasswordService {
+@Utility()
+export class PasswordUtility {
 	async hash(plaintext: string) {
 		const SALT_ROUNDS = 10;
 		const salt = genSaltSync(SALT_ROUNDS);

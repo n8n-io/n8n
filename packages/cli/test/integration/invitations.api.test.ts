@@ -2,7 +2,7 @@ import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
-import { PasswordService } from '@/services/password.service';
+import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 
 import Container from 'typedi';
@@ -239,7 +239,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(storedMember.lastName).not.toBe(memberData.lastName);
 		expect(storedMember.password).not.toBe(memberData.password);
 
-		const comparisonResult = await Container.get(PasswordService).compare(
+		const comparisonResult = await Container.get(PasswordUtility).compare(
 			member.password,
 			storedMember.password,
 		);

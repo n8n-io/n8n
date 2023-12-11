@@ -14,7 +14,7 @@ import { License } from '@/License';
 import { mockInstance } from '../../shared/mocking';
 import { badPasswords } from '../shared/testData';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { PasswordService } from '@/services/password.service';
+import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 
 describe('OwnerController', () => {
@@ -29,7 +29,7 @@ describe('OwnerController', () => {
 		internalHooks,
 		settingsRepository,
 		userService,
-		Container.get(PasswordService),
+		Container.get(PasswordUtility),
 	);
 
 	describe('setupOwner', () => {
