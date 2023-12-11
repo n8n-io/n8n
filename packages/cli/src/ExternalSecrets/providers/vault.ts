@@ -440,7 +440,8 @@ export class VaultProvider extends SecretsProvider {
 				method: 'LIST' as any,
 			});
 			this.logger.debug(`[External Secrets] List response ${JSON.stringify(listResp.data)}`);
-		} catch {
+		} catch (e) {
+			this.logger.debug(`[External Secrets] List response for ${mountPath}${path} : ${e}`);
 			return null;
 		}
 		const data = Object.fromEntries(
@@ -455,6 +456,7 @@ export class VaultProvider extends SecretsProvider {
 							secretPath += 'data/';
 						}
 						secretPath += path + key;
+						this.logger.debug(`[External Secrets] Getting secrets from ${secretPath}`);
 						try {
 							const secretResp = await this.#http.get<VaultResponse<IDataObject>>(secretPath);
 							this.logger.debug(
@@ -466,7 +468,8 @@ export class VaultProvider extends SecretsProvider {
 									? (secretResp.data.data.data as IDataObject)
 									: secretResp.data.data,
 							];
-						} catch {
+						} catch (e) {
+							this.logger.debug(`[External Secrets] Secret response for ${secretPath} : ${e}`);
 							return null;
 						}
 					}),
