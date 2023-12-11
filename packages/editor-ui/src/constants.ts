@@ -128,6 +128,9 @@ export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
+export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
+export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -523,6 +526,7 @@ export const enum EnterpriseEditionFeature {
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
 	WorkerView = 'workerView',
+	AdvancedPermissions = 'advancedPermissions',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

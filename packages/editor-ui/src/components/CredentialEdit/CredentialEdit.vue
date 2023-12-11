@@ -17,7 +17,7 @@
 					<InlineNameEdit
 						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.updateName || !credentialType"
+						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
 						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
@@ -135,10 +135,9 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useMessage } from '@/composables/useMessage';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
@@ -157,6 +156,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
 import {
 	getNodeAuthOptions,
 	getNodeCredentialForSelectedAuthType,
@@ -172,7 +173,6 @@ interface NodeAccessMap {
 
 export default defineComponent({
 	name: 'CredentialEdit',
-	mixins: [nodeHelpers],
 	components: {
 		CredentialSharing,
 		CredentialConfig,
@@ -197,10 +197,13 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			externalHooks: useExternalHooks(),
 			...useToast(),
 			...useMessage(),
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -224,6 +227,7 @@ export default defineComponent({
 			selectedCredential: '',
 			requiredCredentials: false, // Are credentials required or optional for the node
 			hasUserSpecifiedName: false,
+			isSharedWithChanged: false,
 		};
 	},
 	async mounted() {
@@ -295,6 +299,7 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
+			useNodeTypesStore,
 		),
 		activeNodeType(): INodeTypeDescription | null {
 			const activeNode = this.ndvStore.activeNode;
@@ -576,7 +581,12 @@ export default defineComponent({
 				return true;
 			}
 
-			return this.displayParameter(this.credentialData as INodeParameters, parameter, '', null);
+			return this.nodeHelpers.displayParameter(
+				this.credentialData as INodeParameters,
+				parameter,
+				'',
+				null,
+			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
 			const credentialTypeData = this.credentialsStore.getCredentialTypeByName(name);
@@ -683,6 +693,7 @@ export default defineComponent({
 				...this.credentialData,
 				sharedWith: sharees,
 			};
+			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
 		},
 
@@ -920,10 +931,23 @@ export default defineComponent({
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = await this.credentialsStore.updateCredential({
-					id: this.credentialId,
-					data: credentialDetails,
-				});
+				if (this.credentialPermissions.update) {
+					credential = await this.credentialsStore.updateCredential({
+						id: this.credentialId,
+						data: credentialDetails,
+					});
+				}
+				if (
+					this.credentialPermissions.share &&
+					this.isSharedWithChanged &&
+					credentialDetails.sharedWith
+				) {
+					credential = await this.credentialsStore.setCredentialSharedWith({
+						credentialId: credentialDetails.id,
+						sharedWith: credentialDetails.sharedWith,
+					});
+					this.isSharedWithChanged = false;
+				}
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.showError(
@@ -942,7 +966,7 @@ export default defineComponent({
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name
-			this.updateNodesCredentialsIssues();
+			this.nodeHelpers.updateNodesCredentialsIssues();
 
 			return credential;
 		},
@@ -989,7 +1013,7 @@ export default defineComponent({
 
 			this.isDeleting = false;
 			// Now that the credentials were removed check if any nodes used them
-			this.updateNodesCredentialsIssues();
+			this.nodeHelpers.updateNodesCredentialsIssues();
 			this.credentialData = {};
 
 			this.showMessage({

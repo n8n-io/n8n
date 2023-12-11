@@ -52,5 +52,6 @@ module.exports = {
 		'vue/no-side-effects-in-computed-properties': 'warn',
 		'vue/no-v-text-v-html-on-component': 'warn',
 		'vue/return-in-computed-property': 'warn',
+		'n8n-local-rules/no-plain-errors': 'off',
 	},
 };
