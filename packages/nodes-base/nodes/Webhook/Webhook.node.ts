@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
+import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -126,12 +127,7 @@ export class Webhook extends Node {
 		}
 
 		const nodeVersion = context.getNode().typeVersion;
-		if (
-			nodeVersion > 1 &&
-			['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase()) &&
-			!req.body &&
-			!options.rawBody
-		) {
+		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
 				return await this.handleBinaryData(context);
 			} catch (error) {}
@@ -290,19 +286,22 @@ export class Webhook extends Node {
 				},
 			};
 
-			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			const fileName = req.contentDisposition?.filename ?? uuid();
-			const binaryData = await context.nodeHelpers.copyBinaryFile(
-				binaryFile.path,
-				fileName,
-				req.contentType ?? 'application/octet-stream',
-			);
+			const stats = await stat(binaryFile.path);
+			if (stats.size) {
+				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const fileName = req.contentDisposition?.filename ?? uuid();
+				const binaryData = await context.nodeHelpers.copyBinaryFile(
+					binaryFile.path,
+					fileName,
+					req.contentType ?? 'application/octet-stream',
+				);
 
-			if (!binaryData.data) {
-				return { workflowData: [[returnItem]] };
+				if (!binaryData.data) {
+					return { workflowData: [[returnItem]] };
+				}
+
+				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
-
-			returnItem.binary = { [binaryPropertyName]: binaryData };
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {
