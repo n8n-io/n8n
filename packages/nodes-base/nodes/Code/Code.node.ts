@@ -33,6 +33,106 @@ export class Code implements INodeType {
 		parameterPane: 'wide',
 		properties: [
 			{
+				displayName: 'Map Output Items to Input Items',
+				name: 'mapOutput',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+					},
+				},
+			},
+			{
+				displayName: 'Maping Type',
+				name: 'mapingType',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+						mapOutput: [true],
+					},
+				},
+				options: [
+					{
+						name: 'Map by Index',
+						value: 'byIndex',
+						description: 'Each output item will be mapped to the input item with the same index',
+					},
+					{
+						name: 'Map to First Item',
+						value: 'toFirstItem',
+						description: 'All output items will be mapped to the first input item',
+					},
+					{
+						name: 'Map by Field',
+						value: 'byField',
+						description:
+							'Each output item will be mapped to the input item with the same field(s) value',
+					},
+				],
+				default: 'byIndex',
+			},
+			{
+				displayName: 'Fields to Match',
+				name: 'fieldsToMatch',
+				type: 'fixedCollection',
+				isNodeSetting: true,
+				placeholder: 'Add Fields to Match',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Input Item Field',
+								name: 'inputItemField',
+								type: 'string',
+								default: '',
+								requiresDataPath: 'single',
+							},
+							{
+								displayName: 'Output Item Field',
+								name: 'outputItemField',
+								type: 'string',
+								default: '',
+								requiresDataPath: 'single',
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+						mapOutput: [true],
+						mapingType: ['byField'],
+					},
+				},
+			},
+			{
+				displayName: 'Fallback Index',
+				name: 'fallbackIndex',
+				type: 'number',
+				isNodeSetting: true,
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+						mapOutput: [true],
+						mapingType: ['byField', 'byIndex'],
+					},
+				},
+			},
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -50,6 +150,19 @@ export class Code implements INodeType {
 					},
 				],
 				default: 'runOnceForAllItems',
+			},
+			{
+				displayName:
+					"Consider specifying the mapping of output items to input items in this node's settings (cog icon). This allows you to use the <pre>$('Node Name').item</pre> syntax in further nodes expressions and helps prevent errors related to <strong>pairedItems</strong>.",
+				name: 'mapOutputWarning',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+						mapOutput: [false],
+					},
+				},
 			},
 			{
 				displayName: 'Language',
@@ -101,11 +214,14 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
+		let InputLength = 0;
+
 		const getSandbox = (index = 0) => {
 			const code = this.getNodeParameter(codeParameterName, index) as string;
 			const context = getSandboxContext.call(this, index);
 			if (nodeMode === 'runOnceForAllItems') {
 				context.items = context.$input.all();
+				InputLength = context.items.length;
 			} else {
 				context.item = context.$input.item;
 			}
@@ -142,7 +258,56 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return [items];
+			const mapOutput = this.getNodeParameter('mapOutput', 0, false) as boolean;
+
+			if (mapOutput) {
+				const mapingType = this.getNodeParameter('mapingType', 0, 'byIndex') as string;
+				let fallbackIndex = 0;
+
+				switch (mapingType) {
+					case 'byIndex':
+						fallbackIndex = this.getNodeParameter('fallbackIndex', 0, 0) as number;
+						items.map((item, index) => {
+							item.pairedItem = { item: index < InputLength ? index : fallbackIndex };
+							return item;
+						});
+						break;
+					case 'toFirstItem':
+						items.map((item) => {
+							item.pairedItem = { item: 0 };
+							return item;
+						});
+						break;
+					case 'byField':
+						const fieldsToMatch = this.getNodeParameter('fieldsToMatch.values', 0, []) as Array<{
+							inputItemField: string;
+							outputItemField: string;
+						}>;
+						fallbackIndex = this.getNodeParameter('fallbackIndex', 0, 0) as number;
+						const inputItems = this.getInputData();
+
+						items.map((item) => {
+							let index = inputItems.findIndex((inputItem) => {
+								for (const field of fieldsToMatch) {
+									if (inputItem.json[field.inputItemField] !== item.json[field.outputItemField]) {
+										return false;
+									}
+								}
+								return true;
+							});
+							if (index === -1) {
+								index = fallbackIndex;
+							}
+							item.pairedItem = { item: index };
+							return item;
+						});
+						break;
+				}
+
+				return [items];
+			} else {
+				return [items];
+			}
 		}
 
 		// ----------------------------------
