@@ -8,7 +8,15 @@ export const initErrorHandling = async () => {
 	if (initialized) return;
 
 	process.on('uncaughtException', (error) => {
-		ErrorReporterProxy.error(error);
+		ErrorReporterProxy.error(error, {
+			tags: { uncaughtException: true },
+		});
+	});
+
+	process.on('unhandledRejection', (error) => {
+		ErrorReporterProxy.error(error, {
+			tags: { unhandledRejection: true },
+		});
 	});
 
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
