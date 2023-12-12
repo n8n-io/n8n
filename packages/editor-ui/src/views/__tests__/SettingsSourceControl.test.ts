@@ -169,6 +169,7 @@ describe('SettingsSourceControl', () => {
 			['git@github.enterprise.com:org-name/repo-name', true],
 			['git@192.168.1.101:2222:user/repo', true],
 			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
+			['ssh://git@mydomain.example:2224/gitolite-admin', true],
 			['http://github.com/user/repository', false],
 			['https://github.com/user/repository', false],
 		])('%s', async (url: string, isValid: boolean) => {

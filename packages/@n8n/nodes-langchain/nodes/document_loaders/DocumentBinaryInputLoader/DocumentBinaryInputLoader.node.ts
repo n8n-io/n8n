@@ -17,6 +17,7 @@ import { getConnectionHintNoticeField, metadataFilterField } from '../../../util
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
+import type { TextSplitter } from 'langchain/text_splitter';
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -177,7 +178,13 @@ export class DocumentBinaryInputLoader implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supply Data for Binary Input Loader');
-		const processor = new N8nBinaryLoader(this);
+		const textSplitter = (await this.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as TextSplitter | undefined;
+
+		const binaryDataKey = this.getNodeParameter('binaryDataKey', 0) as string;
+		const processor = new N8nBinaryLoader(this, undefined, binaryDataKey, textSplitter);
 
 		return {
 			response: logWrapper(processor, this),

@@ -25,15 +25,21 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 export default defineComponent({
 	name: 'BinaryDataDisplay',
-	mixins: [nodeHelpers],
+
 	components: {
 		BinaryDataDisplayEmbed,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+
+		return {
+			nodeHelpers,
+		};
 	},
 	props: [
 		'displayData', // IBinaryData
@@ -42,7 +48,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		binaryData(): IBinaryData | null {
-			const binaryData = this.getBinaryData(
+			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.displayData.node,
 				this.displayData.runIndex,

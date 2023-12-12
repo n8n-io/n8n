@@ -61,7 +61,7 @@
 			data-test-id="credentials-config-container-test-success"
 		/>
 
-		<template v-if="credentialPermissions.updateConnection">
+		<template v-if="credentialPermissions.update">
 			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -104,7 +104,7 @@
 		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
+			v-if="credentialType && credentialPermissions.update"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"

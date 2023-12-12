@@ -93,6 +93,12 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			error = new Error(errorObject.message as string);
 		}
 
+		if ('description' in errorObject) {
+			// @ts-expect-error Error descriptions are surfaced by the UI but
+			// not all backend errors account for this property yet.
+			error.description = errorObject.description as string;
+		}
+
 		if ('stack' in errorObject) {
 			// If there's a 'stack' property, set it on the new Error instance.
 			error.stack = errorObject.stack as string;
@@ -404,9 +410,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') !== 'default') {
-					await restoreBinaryDataId(fullRunData, this.executionId);
-				}
+				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
@@ -619,6 +623,21 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				// send tracking and event log events, but don't wait for them
 				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
 			},
+			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject) {
+				const externalHooks = Container.get(ExternalHooks);
+				if (externalHooks.exists('workflow.postExecute')) {
+					try {
+						await externalHooks.run('workflow.postExecute', [
+							fullRunData,
+							this.workflowData,
+							this.executionId,
+						]);
+					} catch (error) {
+						ErrorReporter.error(error);
+						console.error('There was a problem running hook "workflow.postExecute"', error);
+					}
+				}
+			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
@@ -724,6 +743,7 @@ async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: {
+		node?: INode;
 		parentWorkflowId?: string;
 		inputData?: INodeExecutionData[];
 		parentExecutionId?: string;
@@ -777,8 +797,8 @@ async function executeWorkflow(
 		await PermissionChecker.check(workflow, additionalData.userId);
 		await PermissionChecker.checkSubworkflowExecutePolicy(
 			workflow,
-			additionalData.userId,
-			options.parentWorkflowId,
+			options.parentWorkflowId!,
+			options.node,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -1007,6 +1027,7 @@ export function getWorkflowHooksWorkerExecuter(
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
+
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 

@@ -149,7 +149,6 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -185,7 +184,7 @@ interface IResourceLocatorQuery {
 
 export default defineComponent({
 	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
+	mixins: [debounceHelper, workflowHelpers],
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,

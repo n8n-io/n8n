@@ -126,7 +126,9 @@ export class UsersController {
 		const users = await this.userService.findMany(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
+			users.map(async (u) =>
+				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			),
 		);
 
 		return listQueryOptions
@@ -168,7 +170,6 @@ export class UsersController {
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
-	@Authorized(['global', 'owner'])
 	@Delete('/:id')
 	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {

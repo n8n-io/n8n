@@ -24,6 +24,7 @@ const props = defineProps({
 const $emit = defineEmits({
 	credentialSelected: (_credentialId: string) => true,
 	credentialDeselected: () => true,
+	credentialModalOpened: () => true,
 });
 
 const uiStore = useUIStore();
@@ -47,10 +48,12 @@ const onCredentialSelected = (credentialId: string) => {
 };
 const createNewCredential = () => {
 	uiStore.openNewCredential(props.credentialType, true);
+	$emit('credentialModalOpened');
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
 	uiStore.openExistingCredential(props.selectedCredentialId);
+	$emit('credentialModalOpened');
 };
 
 listenForCredentialChanges({

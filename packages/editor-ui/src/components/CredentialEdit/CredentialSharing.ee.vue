@@ -34,7 +34,7 @@
 			<n8n-info-tip v-if="credentialPermissions.isOwner" :bold="false" class="mb-s">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="!credentialPermissions.updateSharing" :bold="false" class="mb-s">
+			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
@@ -42,10 +42,14 @@
 				}}
 			</n8n-info-tip>
 			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.reader') }}
+				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
+					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
+						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}
+					</template>
+				</i18n-t>
 			</n8n-info-tip>
 			<n8n-user-select
-				v-if="credentialPermissions.updateSharing"
+				v-if="credentialPermissions.share"
 				class="mb-s"
 				size="large"
 				:users="usersList"
@@ -62,7 +66,7 @@
 				:actions="usersListActions"
 				:users="sharedWithList"
 				:currentUserId="usersStore.currentUser.id"
-				:readonly="!credentialPermissions.updateSharing"
+				:readonly="!credentialPermissions.share"
 				@delete="onRemoveSharee"
 			/>
 		</div>
@@ -114,13 +118,12 @@ export default defineComponent({
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
 					(sharee: IUser) => sharee.id === user.id,
 				);
-				const isOwner = this.credentialData.ownedBy.id === user.id;
+				const isOwner = this.credentialData.ownedBy?.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser && !isOwner;
+				return !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): IUser[] {
@@ -133,6 +136,11 @@ export default defineComponent({
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
+		},
+		isCredentialSharedWithCurrentUser(): boolean {
+			return (this.credentialData.sharedWith || []).some((sharee: IUser) => {
+				return sharee.id === this.usersStore.currentUser?.id;
+			});
 		},
 	},
 	methods: {
