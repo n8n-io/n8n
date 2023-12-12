@@ -145,6 +145,7 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
+		this.autoRefresh = false;
 		this.stopAutoRefreshInterval();
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
@@ -181,6 +182,9 @@ export default defineComponent({
 			next();
 		}
 	},
+	created() {
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
+	},
 	async mounted() {
 		this.loading = true;
 		const workflowUpdated = this.$route.params.name !== this.workflowsStore.workflowId;
@@ -198,8 +202,6 @@ export default defineComponent({
 				await this.setExecutions();
 			}
 		}
-
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
 		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
@@ -363,10 +365,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onAutoRefreshToggle(value: boolean): void {
 			this.autoRefresh = value;
@@ -448,7 +448,7 @@ export default defineComponent({
 							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 						})
 						.catch(() => {});
-				} else if (this.executions.length === 0) {
+				} else if (this.executions.length === 0 && this.$route.name === VIEWS.EXECUTION_PREVIEW) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_HOME,
