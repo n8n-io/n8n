@@ -108,6 +108,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.webhookService.populateCache();
 	}
 
+	async getAllWorkflowActivationErrors() {
+		return this.activationErrorsService.getAll();
+	}
+
 	/**
 	 * Removes all the currently active workflows from memory.
 	 */

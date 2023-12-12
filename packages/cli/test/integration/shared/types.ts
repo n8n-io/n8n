@@ -32,7 +32,8 @@ type EndpointGroup =
 	| 'workflowHistory'
 	| 'binaryData'
 	| 'role'
-	| 'invitations';
+	| 'invitations'
+	| 'debug';
 
 export interface SetupProps {
 	applyAuth?: boolean;
