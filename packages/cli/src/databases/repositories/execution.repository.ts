@@ -236,7 +236,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				},
 			])
 			.execute();
-		return executionId;
+		return String(executionId);
 	}
 
 	async markAsCrashed(executionIds: string[]) {
