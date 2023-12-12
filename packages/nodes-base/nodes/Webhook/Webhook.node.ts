@@ -126,7 +126,12 @@ export class Webhook extends Node {
 		}
 
 		const nodeVersion = context.getNode().typeVersion;
-		if (nodeVersion > 1 && !req.body && !options.rawBody) {
+		if (
+			nodeVersion > 1 &&
+			['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase()) &&
+			!req.body &&
+			!options.rawBody
+		) {
 			try {
 				return await this.handleBinaryData(context);
 			} catch (error) {}
@@ -274,7 +279,6 @@ export class Webhook extends Node {
 			await pipeline(req, createWriteStream(binaryFile.path));
 
 			const returnItem: INodeExecutionData = {
-				binary: {},
 				json: {
 					headers: req.headers,
 					params: req.params,
@@ -295,7 +299,7 @@ export class Webhook extends Node {
 				return { workflowData: [[returnItem]] };
 			}
 
-			returnItem.binary![binaryPropertyName] = binaryData;
+			returnItem.binary = { [binaryPropertyName]: binaryData };
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {
