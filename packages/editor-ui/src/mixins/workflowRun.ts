@@ -310,6 +310,17 @@ export const workflowRun = defineComponent({
 							node.parameters.resume === 'form' &&
 							runWorkflowApiResponse.executionId
 						) {
+							const workflowTriggerNodes = workflow.getTriggerNodes().map((node) => node.name);
+
+							const showForm =
+								options.destinationNode === node.name ||
+								directParentNodes.includes(node.name) ||
+								workflowTriggerNodes.some((triggerNode) =>
+									this.workflowsStore.isNodeInOutgoingNodeConnections(triggerNode, node.name),
+								);
+
+							if (!showForm) continue;
+
 							const { webhookSuffix } = (node.parameters.options || {}) as IDataObject;
 							const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
 							testUrl = `${this.rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
