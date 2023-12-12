@@ -1,5 +1,5 @@
 ## Summary
-> Describe what the PR does. And how to test. Photos and videos are recommended.
+> Describe what the PR does and how to test. Photos and videos are recommended.
 
 
 
