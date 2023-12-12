@@ -11,7 +11,7 @@ import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
-import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
 import validator from 'validator';
@@ -29,6 +29,7 @@ export class InvitationController {
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly userService: UserService,
 		private readonly license: License,
+		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -133,7 +134,7 @@ export class InvitationController {
 			throw new BadRequestError('Invalid payload');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
 		const users = await this.userService.findMany({
 			where: { id: In([inviterId, inviteeId]) },
@@ -163,7 +164,7 @@ export class InvitationController {
 
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
-		invitee.password = await hashPassword(validPassword);
+		invitee.password = await this.passwordUtility.hash(validPassword);
 
 		const updatedUser = await this.userService.save(invitee);
 

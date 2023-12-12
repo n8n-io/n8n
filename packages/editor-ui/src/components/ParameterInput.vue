@@ -395,7 +395,7 @@ import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
+
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -417,6 +417,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
@@ -426,7 +427,7 @@ type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 export default defineComponent({
 	name: 'parameter-input',
-	mixins: [nodeHelpers, workflowHelpers, debounceHelper],
+	mixins: [workflowHelpers, debounceHelper],
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
@@ -505,10 +506,12 @@ export default defineComponent({
 	setup() {
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
+		const nodeHelpers = useNodeHelpers();
 
 		return {
 			externalHooks,
 			i18n,
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -881,7 +884,7 @@ export default defineComponent({
 
 			if (node) {
 				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				this.nodeHelpers.updateNodeCredentialIssues(node);
 			}
 
 			void this.externalHooks.run('nodeSettings.credentialSelected', { updateInformation });

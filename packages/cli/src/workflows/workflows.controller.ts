@@ -30,6 +30,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NamingService } from '@/services/naming.service';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -139,12 +140,9 @@ workflowsController.get(
 workflowsController.get(
 	'/new',
 	ResponseHelper.send(async (req: WorkflowRequest.NewName) => {
-		const requestedName =
-			req.query.name && req.query.name !== ''
-				? req.query.name
-				: config.getEnv('workflows.defaultName');
+		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');
 
-		const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+		const name = await Container.get(NamingService).getUniqueWorkflowName(requestedName);
 
 		const onboardingFlowEnabled =
 			!config.getEnv('workflows.onboardingFlowDisabled') &&

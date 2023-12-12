@@ -43,14 +43,14 @@ import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n } from '@/composables/useI18n';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
 
 type JsonPathData = {
@@ -60,7 +60,7 @@ type JsonPathData = {
 
 export default defineComponent({
 	name: 'run-data-json-actions',
-	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
+	mixins: [genericHelpers, pinData, copyPaste],
 
 	props: {
 		node: {
@@ -95,9 +95,10 @@ export default defineComponent({
 	},
 	setup() {
 		const i18n = useI18n();
-
+		const nodeHelpers = useNodeHelpers();
 		return {
 			i18n,
+			nodeHelpers,
 			...useToast(),
 		};
 	},
@@ -121,7 +122,7 @@ export default defineComponent({
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
 					selectedValue = executionDataToJson(
-						this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
+						this.nodeHelpers.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
 					);
 				}
 			}

@@ -20,9 +20,9 @@ import {
 } from './constants';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 import type { User } from '@db/entities/User';
-import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
 import { Logger } from '@/Logger';
 import { ApplicationError } from 'n8n-workflow';
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class SourceControlGitService {
@@ -30,7 +30,10 @@ export class SourceControlGitService {
 
 	private gitOptions: Partial<SimpleGitOptions> = {};
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly ownershipService: OwnershipService,
+	) {}
 
 	/**
 	 * Run pre-checks before initialising git
@@ -103,8 +106,8 @@ export class SourceControlGitService {
 		}
 		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
 			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
-				const user = await getInstanceOwner();
-				await this.initRepository(sourceControlPreferences, user);
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				await this.initRepository(sourceControlPreferences, instanceOwner);
 			}
 		}
 	}
