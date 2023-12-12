@@ -14,6 +14,8 @@ import { License } from '@/License';
 import { mockInstance } from '../../shared/mocking';
 import { badPasswords } from '../shared/testData';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
@@ -27,6 +29,7 @@ describe('OwnerController', () => {
 		internalHooks,
 		settingsRepository,
 		userService,
+		Container.get(PasswordUtility),
 	);
 
 	describe('setupOwner', () => {

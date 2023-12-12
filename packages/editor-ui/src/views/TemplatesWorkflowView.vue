@@ -69,8 +69,8 @@ import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
-import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -107,7 +107,7 @@ export default defineComponent({
 	},
 	methods: {
 		async openTemplateSetup(id: string, e: PointerEvent) {
-			if (!isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
+			if (!this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
 				const telemetryPayload = {
 					source: 'workflow',
 					template_id: id,
@@ -121,6 +121,7 @@ export default defineComponent({
 			}
 
 			await openTemplateCredentialSetup({
+				posthogStore: this.posthogStore,
 				router: this.$router,
 				templateId: id,
 				inNewBrowserTab: e.metaKey || e.ctrlKey,
