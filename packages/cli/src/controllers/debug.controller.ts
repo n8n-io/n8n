@@ -25,6 +25,7 @@ export class DebugController {
 
 		return {
 			instanceId: this.multiMainSetup.instanceId,
+			leaderKey: this.multiMainSetup.instanceLeaderKey,
 			activeWorkflows,
 			activationErrors,
 		};
