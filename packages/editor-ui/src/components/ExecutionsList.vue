@@ -346,7 +346,7 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: this.autoRefreshEnabled,
+			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
@@ -360,6 +360,9 @@ export default defineComponent({
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
 		};
+	},
+	created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
@@ -376,6 +379,7 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
+		this.autoRefresh = false;
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
@@ -946,10 +950,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
