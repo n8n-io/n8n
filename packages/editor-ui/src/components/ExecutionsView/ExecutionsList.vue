@@ -294,7 +294,7 @@ export default defineComponent({
 				}
 				if (this.executions.length > 0) {
 					await this.$router
-						.push({
+						.replace({
 							name: VIEWS.EXECUTION_PREVIEW,
 							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
@@ -304,7 +304,7 @@ export default defineComponent({
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					await this.$router.push({
+					await this.$router.replace({
 						name: VIEWS.EXECUTION_HOME,
 						params: { name: this.currentWorkflow },
 					});
