@@ -24,6 +24,7 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
@@ -80,6 +81,8 @@ export class NDV extends BasePage {
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
 		searchInput: () => cy.getByTestId('ndv-search'),
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
+		nodeVersion: () => cy.getByTestId('node-version'),
+		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
 	};
 
 	actions = {
@@ -223,6 +226,10 @@ export class NDV extends BasePage {
 				delay,
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+		},
+
+		openSettings: () => {
+			this.getters.nodeSettingsTab().click();
 		},
 	};
 }

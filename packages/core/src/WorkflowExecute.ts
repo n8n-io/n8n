@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { setMaxListeners } from 'events';
 import PCancelable from 'p-cancelable';
 
 import type {
-	ExecutionError,
+	ExecutionBaseError,
 	ExecutionStatus,
 	GenericValue,
 	IConnection,
@@ -30,37 +29,29 @@ import type {
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 	NodeHelpers,
 	NodeConnectionType,
+	ApplicationError,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
-	runExecutionData: IRunExecutionData;
+	private status: ExecutionStatus = 'new';
 
-	private additionalData: IWorkflowExecuteAdditionalData;
-
-	private mode: WorkflowExecuteMode;
-
-	private status: ExecutionStatus;
+	private readonly abortController = new AbortController();
 
 	constructor(
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		runExecutionData?: IRunExecutionData,
-	) {
-		this.additionalData = additionalData;
-		this.mode = mode;
-		this.status = 'new';
-		this.runExecutionData = runExecutionData || {
+		private readonly additionalData: IWorkflowExecuteAdditionalData,
+		private readonly mode: WorkflowExecuteMode,
+		private runExecutionData: IRunExecutionData = {
 			startData: {},
 			resultData: {
 				runData: {},
@@ -73,8 +64,8 @@ export class WorkflowExecute {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		};
-	}
+		},
+	) {}
 
 	/**
 	 * Executes the given workflow.
@@ -99,7 +90,7 @@ export class WorkflowExecute {
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
 		if (startNode === undefined) {
-			throw new Error('No node to start the workflow from could be found!');
+			throw new ApplicationError('No node to start the workflow from could be found');
 		}
 
 		// If a destination node is given we only run the direct parent nodes and no others
@@ -807,7 +798,7 @@ export class WorkflowExecute {
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
-		let executionError: ExecutionError | undefined;
+		let executionError: ExecutionBaseError | undefined;
 		let executionNode: INode;
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
@@ -830,11 +821,16 @@ export class WorkflowExecute {
 		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, reject, onCancel) => {
-			let gotCancel = false;
+			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
+			setMaxListeners(Infinity, this.abortController.signal);
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
-				gotCancel = true;
+				this.status = 'canceled';
+				this.abortController.abort();
+				const fullRunData = this.getFullRunData(startedAt);
+				void this.executeHook('workflowExecuteAfter', [fullRunData]);
+				setTimeout(() => resolve(fullRunData), 10);
 			});
 
 			const returnPromise = (async () => {
@@ -843,11 +839,13 @@ export class WorkflowExecute {
 						await this.executeHook('workflowExecuteBefore', [workflow]);
 					}
 				} catch (error) {
+					const e = error as unknown as ExecutionBaseError;
+
 					// Set the error that it can be saved correctly
 					executionError = {
-						...(error as NodeOperationError | NodeApiError),
-						message: (error as NodeOperationError | NodeApiError).message,
-						stack: (error as NodeOperationError | NodeApiError).stack,
+						...e,
+						message: e.message,
+						stack: e.stack,
 					};
 
 					// Set the incoming data of the node that it can be saved correctly
@@ -881,10 +879,10 @@ export class WorkflowExecute {
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
 					) {
-						gotCancel = true;
+						this.status = 'canceled';
 					}
 
-					if (gotCancel) {
+					if (this.status === 'canceled') {
 						return;
 					}
 
@@ -932,7 +930,9 @@ export class WorkflowExecute {
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new Error('Did stop execution because execution seems to be in endless loop.');
+						throw new ApplicationError(
+							'Stopped execution because it seems to be in an endless loop',
+						);
 					}
 
 					if (
@@ -1014,9 +1014,6 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						if (gotCancel) {
-							return;
-						}
 						try {
 							if (tryIndex !== 0) {
 								// Reset executionError from previous error try
@@ -1052,6 +1049,7 @@ export class WorkflowExecute {
 									this.additionalData,
 									NodeExecuteFunctions,
 									this.mode,
+									this.abortController.signal,
 								);
 								nodeSuccessData = runNodeData.data;
 
@@ -1089,6 +1087,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										executionData,
 										this.mode,
+										this.abortController.signal,
 									);
 									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
 
@@ -1259,10 +1258,12 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
+							const e = error as unknown as ExecutionBaseError;
+
 							executionError = {
-								...(error as NodeOperationError | NodeApiError),
-								message: (error as NodeOperationError | NodeApiError).message,
-								stack: (error as NodeOperationError | NodeApiError).stack,
+								...e,
+								message: e.message,
+								stack: e.stack,
 							};
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
@@ -1331,11 +1332,17 @@ export class WorkflowExecute {
 								lineResult.json.$error !== undefined &&
 								lineResult.json.$json !== undefined
 							) {
+								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+								// @ts-ignore
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {
+									// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+									// @ts-ignore
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
 								};
 							} else if (lineResult.error !== undefined) {
+								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+								// @ts-ignore
 								lineResult.json = { error: lineResult.error.message };
 							}
 						}
@@ -1408,9 +1415,12 @@ export class WorkflowExecute {
 									outputIndex
 								]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
-										throw new Error(
-											`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
-										);
+										throw new ApplicationError('Destination node not found', {
+											extra: {
+												sourceNodeName: executionNode.name,
+												destinationNodeName: connectionData.node,
+											},
+										});
 									}
 
 									if (
@@ -1644,7 +1654,7 @@ export class WorkflowExecute {
 				return;
 			})()
 				.then(async () => {
-					if (gotCancel && executionError === undefined) {
+					if (this.status === 'canceled' && executionError === undefined) {
 						return this.processSuccessExecution(
 							startedAt,
 							workflow,
@@ -1703,7 +1713,7 @@ export class WorkflowExecute {
 	async processSuccessExecution(
 		startedAt: Date,
 		workflow: Workflow,
-		executionError?: ExecutionError,
+		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
 	): Promise<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
@@ -1717,7 +1727,7 @@ export class WorkflowExecute {
 				...executionError,
 				message: executionError.message,
 				stack: executionError.stack,
-			} as ExecutionError;
+			} as ExecutionBaseError;
 			if (executionError.message?.includes('canceled')) {
 				fullRunData.status = 'canceled';
 			}

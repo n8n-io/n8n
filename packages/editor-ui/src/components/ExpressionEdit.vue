@@ -87,7 +87,6 @@ import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
@@ -95,14 +94,21 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
-	mixins: [externalHooks, genericHelpers, debounceHelper],
+	mixins: [genericHelpers, debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
+	},
 	components: {
 		ExpressionEditorModalInput,
 		ExpressionEditorModalOutput,
@@ -147,8 +153,12 @@ export default defineComponent({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
-			void this.$externalHooks().run('expressionEdit.itemSelected', {
+			(
+				this.$refs.inputFieldExpression as {
+					itemSelected: (variable: IVariableItemSelected) => void;
+				}
+			).itemSelected(eventData);
+			void this.externalHooks.run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.modelValue,
 				selectedItem: eventData,
@@ -224,9 +234,12 @@ export default defineComponent({
 			this.latestValue = this.modelValue;
 
 			const resolvedExpressionValue =
-				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
-				undefined;
-			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
+				(
+					this.$refs.expressionResult as {
+						getValue: () => string;
+					}
+				)?.getValue() || '';
+			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
 				value: this.modelValue,
@@ -243,7 +256,7 @@ export default defineComponent({
 				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
+				void this.externalHooks.run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

@@ -46,7 +46,7 @@ export const description: SheetProperties = [
 	},
 	{
 		displayName:
-			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use a 'set' node before this node to change it if required.)",
+			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use an 'Edit Fields' node before this node to change it if required.)",
 		name: 'autoMapNotice',
 		type: 'notice',
 		default: '',
@@ -136,7 +136,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
-				'@version': [4, 4.1],
+				'@version': [4, 4.1, 4.2],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -266,7 +266,7 @@ export async function execute(
 		for (const [index, entry] of setData.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItems: { item: index },
+				pairedItem: { item: index },
 			});
 		}
 		return returnData;

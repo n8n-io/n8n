@@ -128,17 +128,18 @@ import {
 	VIEWS,
 } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
-import { getAccountAge } from '@/utils';
+import { getAccountAge } from '@/utils/userUtils';
 import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { usePostHog } from '@/stores';
+import { usePostHog } from '@/stores/posthog.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
@@ -162,7 +163,10 @@ export default defineComponent({
 		};
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 		};
 	},
@@ -642,7 +646,7 @@ export default defineComponent({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				await this.$externalHooks().run(
+				await this.externalHooks.run(
 					'personalizationModal.onSubmit',
 					survey as IPersonalizationLatestVersion,
 				);

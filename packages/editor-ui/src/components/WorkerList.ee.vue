@@ -21,23 +21,23 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { externalHooks } from '@/mixins/externalHooks';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
-import { useOrchestrationStore } from '../stores/orchestration.store';
-import { setPageTitle } from '@/utils';
-import { pushConnection } from '../mixins/pushConnection';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { pushConnection } from '@/mixins/pushConnection';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
+	mixins: [pushConnection, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
 	props: {
@@ -46,11 +46,13 @@ export default defineComponent({
 			default: true,
 		},
 	},
-	setup() {
+	setup(props, ctx) {
 		const i18n = useI18n();
 		return {
 			i18n,
 			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -66,7 +68,7 @@ export default defineComponent({
 		if (window.Cypress !== undefined) {
 			return;
 		}
-		this.pushConnect();
+		this.pushStore.pushConnect();
 		this.orchestrationManagerStore.startWorkerStatusPolling();
 	},
 	beforeUnmount() {
@@ -74,7 +76,7 @@ export default defineComponent({
 			return;
 		}
 		this.orchestrationManagerStore.stopWorkerStatusPolling();
-		this.pushDisconnect();
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useUIStore, useOrchestrationStore),

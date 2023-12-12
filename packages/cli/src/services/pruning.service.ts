@@ -1,14 +1,15 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import { LessThanOrEqual, IsNull, Not, In, Brackets } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
 import type { FindOptionsWhere } from 'typeorm';
+import { Brackets, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
-import { TIME, inTest } from '@/constants';
+import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { jsonStringify } from 'n8n-workflow';
 
 @Service()
 export class PruningService {
@@ -23,16 +24,13 @@ export class PruningService {
 
 	public hardDeletionTimeout: NodeJS.Timeout | undefined;
 
-	private isMultiMainScenario =
-		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {}
 
-	async isPruningEnabled() {
+	isPruningEnabled() {
 		if (
 			!config.getEnv('executions.pruneData') ||
 			inTest ||
@@ -41,75 +39,71 @@ export class PruningService {
 			return false;
 		}
 
-		if (this.isMultiMainScenario) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-			);
-
-			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await multiMainInstancePublisher.init();
-
-			return multiMainInstancePublisher.isLeader;
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('generic.instanceType') === 'main' &&
+			config.getEnv('multiMainSetup.instanceType') === 'follower'
+		) {
+			return false;
 		}
 
 		return true;
 	}
 
 	/**
-	 * @important Call only after DB connection is established and migrations have completed.
+	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
+		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
+
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
 	}
 
-	async stopPruning() {
-		if (this.isMultiMainScenario) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-			);
-
-			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await multiMainInstancePublisher.init();
-
-			if (multiMainInstancePublisher.isFollower) return;
-		}
-
-		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
+	stopPruning() {
+		this.logger.debug('[Pruning] Removing soft-deletion and hard-deletion timers');
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
 	}
 
 	private setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
-		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
-
-		this.logger.debug(`Setting soft-deletion interval at every ${when} (pruning cycle)`);
+		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
 		this.softDeletionInterval = setInterval(
 			async () => this.softDeleteOnPruningCycle(),
 			this.rates.softDeletion,
 		);
+
+		this.logger.debug(`[Pruning] Soft-deletion scheduled every ${when}`);
 	}
 
 	private scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
-		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
+		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
-		this.logger.debug(`Scheduling hard-deletion for next ${when} (pruning cycle)`);
+		this.hardDeletionTimeout = setTimeout(() => {
+			this.hardDeleteOnPruningCycle()
+				.then((rate) => this.scheduleHardDeletion(rate))
+				.catch((error) => {
+					this.scheduleHardDeletion(1 * TIME.SECOND);
 
-		this.hardDeletionTimeout = setTimeout(
-			async () => this.hardDeleteOnPruningCycle(),
-			this.rates.hardDeletion,
-		);
+					const errorMessage =
+						error instanceof Error
+							? error.message
+							: jsonStringify(error, { replaceCircularRefs: true });
+
+					this.logger.error('[Pruning] Failed to hard-delete executions', { errorMessage });
+				});
+		}, rateMs);
+
+		this.logger.debug(`[Pruning] Hard-deletion scheduled for next ${when}`);
 	}
 
 	/**
 	 * Mark executions as deleted based on age and count, in a pruning cycle.
 	 */
 	async softDeleteOnPruningCycle() {
-		this.logger.debug('Starting soft-deletion of executions (pruning cycle)');
+		this.logger.debug('[Pruning] Starting soft-deletion of executions');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
@@ -157,12 +151,16 @@ export class PruningService {
 			.execute();
 
 		if (result.affected === 0) {
-			this.logger.debug('Found no executions to soft-delete (pruning cycle)');
+			this.logger.debug('[Pruning] Found no executions to soft-delete');
+			return;
 		}
+
+		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
 	}
 
 	/**
 	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
+	 * @return Delay in ms after which the next cycle should be started
 	 */
 	private async hardDeleteOnPruningCycle() {
 		const date = new Date();
@@ -187,21 +185,22 @@ export class PruningService {
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
-			this.logger.debug('Found no executions to hard-delete (pruning cycle)');
-			this.scheduleHardDeletion();
-			return;
+			this.logger.debug('[Pruning] Found no executions to hard-delete');
+			return this.rates.hardDeletion;
 		}
 
 		try {
-			this.logger.debug('Starting hard-deletion of executions (pruning cycle)', {
+			this.logger.debug('[Pruning] Starting hard-deletion of executions', {
 				executionIds,
 			});
 
 			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 			await this.executionRepository.delete({ id: In(executionIds) });
+
+			this.logger.debug('[Pruning] Hard-deleted executions', { executionIds });
 		} catch (error) {
-			this.logger.error('Failed to hard-delete executions (pruning cycle)', {
+			this.logger.error('[Pruning] Failed to hard-delete executions', {
 				executionIds,
 				error: error instanceof Error ? error.message : `${error}`,
 			});
@@ -213,7 +212,6 @@ export class PruningService {
 		 */
 		const isHighVolume = executionIds.length >= this.hardDeletionBatchSize;
 		const rate = isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
-
-		this.scheduleHardDeletion(rate);
+		return rate;
 	}
 }

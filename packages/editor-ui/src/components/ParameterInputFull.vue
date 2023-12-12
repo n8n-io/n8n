@@ -77,13 +77,10 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useI18n, useToast } from '@/composables';
-import {
-	hasExpressionMapping,
-	isResourceLocatorValue,
-	hasOnlyListMode,
-	isValueExpression,
-} from '@/utils';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import type {
 	INodeParameters,
@@ -94,7 +91,6 @@ import type {
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
-import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
 
@@ -102,7 +98,6 @@ const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default defineComponent({
 	name: 'parameter-input-full',
-	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,

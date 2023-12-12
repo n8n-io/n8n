@@ -33,3 +33,10 @@ export const mockUser = (): User =>
 		firstName: randomName(),
 		lastName: randomName(),
 	});
+
+export const mockInstanceOwnerRole = () =>
+	Object.assign(new Role(), {
+		scope: 'global',
+		name: 'owner',
+		id: randomInteger(),
+	});

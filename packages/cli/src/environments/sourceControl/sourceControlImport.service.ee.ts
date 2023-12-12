@@ -8,7 +8,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import glob from 'fast-glob';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
@@ -24,7 +24,7 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
-import { VariablesService } from '../variables/variables.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -63,7 +63,7 @@ export class SourceControlImportService {
 		const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
 		if (!globalOwnerRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return globalOwnerRole;
@@ -73,7 +73,7 @@ export class SourceControlImportService {
 		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
 
 		if (!credentialOwnerRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return credentialOwnerRole;
@@ -83,7 +83,7 @@ export class SourceControlImportService {
 		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 
 		if (!workflowOwnerRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return workflowOwnerRole;
@@ -255,7 +255,9 @@ export class SourceControlImportService {
 					['id'],
 				);
 				if (upsertResult?.identifiers?.length !== 1) {
-					throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
+					throw new ApplicationError('Failed to upsert workflow', {
+						extra: { workflowId: importedWorkflow.id ?? 'new' },
+					});
 				}
 				// Update workflow owner to the user who exported the workflow, if that user exists
 				// in the instance, and the workflow doesn't already have an owner
@@ -435,7 +437,7 @@ export class SourceControlImportService {
 					select: ['id'],
 				});
 				if (findByName && findByName.id !== tag.id) {
-					throw new Error(
+					throw new ApplicationError(
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}

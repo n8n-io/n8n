@@ -12,6 +12,7 @@ const renderComponent = createComponentRenderer(WorkflowPreview);
 let pinia: ReturnType<typeof createPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let postMessageSpy: vi.SpyInstance;
+let consoleErrorSpy: vi.SpyInstance;
 
 const sendPostMessageCommand = (command: string) => {
 	window.postMessage(`{"command":"${command}"}`, '*');
@@ -23,6 +24,7 @@ describe('WorkflowPreview', () => {
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
 
+		consoleErrorSpy = vi.spyOn(console, 'error');
 		postMessageSpy = vi.fn();
 		Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
 			writable: true,
@@ -30,6 +32,10 @@ describe('WorkflowPreview', () => {
 				postMessage: postMessageSpy,
 			},
 		});
+	});
+
+	afterEach(() => {
+		consoleErrorSpy.mockRestore();
 	});
 
 	it('should not call iframe postMessage when it is ready and no workflow or executionId props', async () => {
@@ -94,6 +100,7 @@ describe('WorkflowPreview', () => {
 				JSON.stringify({
 					command: 'openWorkflow',
 					workflow,
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -134,6 +141,7 @@ describe('WorkflowPreview', () => {
 					command: 'openExecution',
 					executionId,
 					executionMode: '',
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -162,6 +170,7 @@ describe('WorkflowPreview', () => {
 					command: 'openExecution',
 					executionId,
 					executionMode: '',
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -197,6 +206,7 @@ describe('WorkflowPreview', () => {
 				JSON.stringify({
 					command: 'openWorkflow',
 					workflow,
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -215,6 +225,29 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
+	it('should pass the "Disable NDV" flag to using PostMessage', async () => {
+		const nodes = [{ name: 'Start' }] as INodeUi[];
+		const workflow = { nodes } as IWorkflowDb;
+		const { container } = renderComponent({
+			pinia,
+			props: {
+				workflow,
+				canOpenNDV: false,
+			},
+		});
+		sendPostMessageCommand('n8nReady');
+		await waitFor(() => {
+			expect(postMessageSpy).toHaveBeenCalledWith(
+				JSON.stringify({
+					command: 'openWorkflow',
+					workflow,
+					canOpenNDV: false,
+				}),
+				'*',
+			);
+		});
+	});
+
 	it('should emit "close" event if iframe sends "error" command', async () => {
 		const { emitted } = renderComponent({
 			pinia,
@@ -225,6 +258,34 @@ describe('WorkflowPreview', () => {
 
 		await waitFor(() => {
 			expect(emitted().close).toBeDefined();
+		});
+	});
+
+	it('should not do anything if no "command" is sent in the message', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage('commando', '*');
+
+		await waitFor(() => {
+			expect(console.error).not.toHaveBeenCalled();
+			expect(emitted()).toEqual({});
+		});
+	});
+
+	it('should not do anything if no "command" is sent in the message and the `includes` method cannot be applied to the data', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage(null, '*');
+
+		await waitFor(() => {
+			expect(console.error).not.toHaveBeenCalled();
+			expect(emitted()).toEqual({});
 		});
 	});
 });

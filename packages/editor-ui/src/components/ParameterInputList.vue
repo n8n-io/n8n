@@ -14,7 +14,7 @@
 			>
 				<multiple-parameter
 					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
@@ -30,7 +30,7 @@
 
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
-				class="parameter-item"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
@@ -71,7 +71,7 @@
 					<collection-parameter
 						v-if="parameter.type === 'collection'"
 						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 						:nodeValues="nodeValues"
 						:path="getPath(parameter.name)"
 						:isReadOnly="isReadOnly"
@@ -80,7 +80,7 @@
 					<fixed-collection-parameter
 						v-else-if="parameter.type === 'fixedCollection'"
 						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 						:nodeValues="nodeValues"
 						:path="getPath(parameter.name)"
 						:isReadOnly="isReadOnly"
@@ -118,7 +118,7 @@
 				<parameter-input-full
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="getParameterValue(nodeValues, parameter.name, path)"
+					:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
@@ -157,9 +157,14 @@ import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
+import {
+	getMainAuthField,
+	getNodeAuthFields,
+	isAuthRelatedParameter,
+} from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -176,6 +181,13 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+
+		return {
+			nodeHelpers,
+		};
 	},
 	props: {
 		nodeValues: {
@@ -344,7 +356,7 @@ export default defineComponent({
 			}
 
 			if (
-				this.isCustomApiCallSelected(this.nodeValues) &&
+				this.nodeHelpers.isCustomApiCallSelected(this.nodeValues) &&
 				this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
 			) {
 				return false;
@@ -418,13 +430,13 @@ export default defineComponent({
 				if (this.path) {
 					rawValues = deepCopy(this.nodeValues);
 					set(rawValues, this.path, nodeValues);
-					return this.displayParameter(rawValues, parameter, this.path, this.node);
+					return this.nodeHelpers.displayParameter(rawValues, parameter, this.path, this.node);
 				} else {
-					return this.displayParameter(nodeValues, parameter, '', this.node);
+					return this.nodeHelpers.displayParameter(nodeValues, parameter, '', this.node);
 				}
 			}
 
-			return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
+			return this.nodeHelpers.displayParameter(this.nodeValues, parameter, this.path, this.node);
 		},
 		valueChanged(parameterData: IUpdateInformation): void {
 			this.$emit('valueChanged', parameterData);

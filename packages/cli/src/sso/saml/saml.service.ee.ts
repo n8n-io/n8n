@@ -1,8 +1,7 @@
 import type express from 'express';
 import Container, { Service } from 'typedi';
 import type { User } from '@db/entities/User';
-import { jsonParse } from 'n8n-workflow';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
@@ -29,6 +28,8 @@ import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 @Service()
 export class SamlService {
@@ -92,7 +93,7 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					throw new Error('Invalid SAML response');
+					throw new ApplicationError('Invalid SAML response');
 				}
 			},
 		});
@@ -100,7 +101,7 @@ export class SamlService {
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
 		if (this.samlify === undefined) {
-			throw new Error('Samlify is not initialized');
+			throw new ApplicationError('Samlify is not initialized');
 		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
@@ -113,7 +114,7 @@ export class SamlService {
 
 	getServiceProviderInstance(): ServiceProviderInstance {
 		if (this.samlify === undefined) {
-			throw new Error('Samlify is not initialized');
+			throw new ApplicationError('Samlify is not initialized');
 		}
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
@@ -224,7 +225,7 @@ export class SamlService {
 		} else if (prefs.metadata) {
 			const validationResult = await validateMetadata(prefs.metadata);
 			if (!validationResult) {
-				throw new Error('Invalid SAML metadata');
+				throw new ApplicationError('Invalid SAML metadata');
 			}
 		}
 		this.getIdentityProviderInstance(true);

@@ -77,7 +77,7 @@ export async function getMappingColumns(
 					id: col.column_name,
 					displayName: col.column_name,
 					required: col.is_nullable !== 'YES' && !isAutoIncrement,
-					defaultMatch: col.column_name === 'id',
+					defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
 					display: true,
 					type,
 					canBeUsedToMatch,

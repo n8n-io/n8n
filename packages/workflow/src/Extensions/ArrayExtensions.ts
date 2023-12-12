@@ -1,4 +1,5 @@
-import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionError } from '../errors/expression.error';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { ExtensionMap } from './Extensions';
 import { compact as oCompact } from './ObjectExtensions';
 import deepEqual from 'deep-equal';
@@ -323,80 +324,70 @@ average.doc = {
 	name: 'average',
 	description: 'Returns the mean average of all values in the array.',
 	returnType: 'number',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-average',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-average',
 };
 
 compact.doc = {
 	name: 'compact',
 	description: 'Removes all empty values from the array.',
 	returnType: 'Array',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-compact',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-compact',
 };
 
 isEmpty.doc = {
 	name: 'isEmpty',
 	description: 'Checks if the array doesn’t have any elements.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-isEmpty',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
 	description: 'Checks if the array has elements.',
 	returnType: 'boolean',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-isNotEmpty',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
 };
 
 first.doc = {
 	name: 'first',
 	description: 'Returns the first element of the array.',
 	returnType: 'Element',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-first',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-first',
 };
 
 last.doc = {
 	name: 'last',
 	description: 'Returns the last element of the array.',
 	returnType: 'Element',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-last',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-last',
 };
 
 max.doc = {
 	name: 'max',
 	description: 'Gets the maximum value from a number-only array.',
 	returnType: 'number',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-max',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-max',
 };
 
 min.doc = {
 	name: 'min',
 	description: 'Gets the minimum value from a number-only array.',
 	returnType: 'number',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-min',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-min',
 };
 
 randomItem.doc = {
 	name: 'randomItem',
 	description: 'Returns a random element from an array.',
 	returnType: 'Element',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-randomItem',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-randomItem',
 };
 
 sum.doc = {
 	name: 'sum',
 	description: 'Returns the total sum all the values in an array of parsable numbers.',
 	returnType: 'number',
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-sum',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-sum',
 };
 
 chunk.doc = {
@@ -404,8 +395,7 @@ chunk.doc = {
 	description: 'Splits arrays into chunks with a length of `size`.',
 	returnType: 'Array',
 	args: [{ name: 'size', type: 'number' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-chunk',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-chunk',
 };
 
 difference.doc = {
@@ -414,8 +404,7 @@ difference.doc = {
 		'Compares two arrays. Returns all elements in the base array that aren’t present in `arr`.',
 	returnType: 'Array',
 	args: [{ name: 'arr', type: 'Array' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-difference',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-difference',
 };
 
 intersection.doc = {
@@ -425,7 +414,7 @@ intersection.doc = {
 	returnType: 'Array',
 	args: [{ name: 'arr', type: 'Array' }],
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-intersection',
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-intersection',
 };
 
 merge.doc = {
@@ -434,8 +423,7 @@ merge.doc = {
 		'Merges two Object-arrays into one array by merging the key-value pairs of each element.',
 	returnType: 'array',
 	args: [{ name: 'arr', type: 'Array' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-merge',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
 };
 
 pluck.doc = {
@@ -448,8 +436,7 @@ pluck.doc = {
 		{ name: '...' },
 		{ name: 'fieldNameN?', type: 'string' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-pluck',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-pluck',
 };
 
 renameKeys.doc = {
@@ -465,8 +452,7 @@ renameKeys.doc = {
 		{ name: 'fromN?', type: 'string' },
 		{ name: 'toN?', type: 'string' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-renameKeys',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-renameKeys',
 };
 
 smartJoin.doc = {
@@ -478,8 +464,7 @@ smartJoin.doc = {
 		{ name: 'keyField', type: 'string' },
 		{ name: 'nameField', type: 'string' },
 	],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-smartJoin',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-smartJoin',
 };
 
 union.doc = {
@@ -487,8 +472,7 @@ union.doc = {
 	description: 'Concatenates two arrays and then removes duplicates.',
 	returnType: 'Array',
 	args: [{ name: 'arr', type: 'Array' }],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-union',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-union',
 };
 
 unique.doc = {
@@ -496,8 +480,7 @@ unique.doc = {
 	description: 'Remove duplicates from an array. ',
 	returnType: 'Element',
 	aliases: ['removeDuplicates'],
-	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-unique',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
 };
 
 export const arrayExtensions: ExtensionMap = {

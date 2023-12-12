@@ -59,7 +59,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -68,6 +68,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -77,11 +78,14 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props),
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -91,7 +95,7 @@ export default defineComponent({
 	},
 	async mounted() {
 		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushConnect();
+		this.pushStore.pushConnect();
 
 		try {
 			this.loading = true;
@@ -137,7 +141,7 @@ export default defineComponent({
 		}
 	},
 	beforeUnmount() {
-		this.pushDisconnect();
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
@@ -222,10 +226,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 
-			void this.$externalHooks().run(
-				'settingsCommunityNodesView.openInstallModal',
-				telemetryPayload,
-			);
+			void this.externalHooks.run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

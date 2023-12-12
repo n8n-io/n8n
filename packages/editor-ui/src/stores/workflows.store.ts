@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IActivationError,
 	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -73,15 +72,10 @@ import {
 } from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
-import {
-	isJsonKeyObject,
-	getPairedItemsMapping,
-	stringSizeInBytes,
-	isObject,
-	isEmpty,
-	makeRestApiRequest,
-	unflattenExecutionData,
-} from '@/utils';
+import { isObject } from '@/utils/objectUtils';
+import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
+import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
+import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -365,7 +359,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 		},
 
-		async getActivationError(id: string): Promise<IActivationError | undefined> {
+		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
 		},
@@ -552,6 +546,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = true;
 			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(true);
+			}
 		},
 
 		setWorkflowInactive(workflowId: string): void {
@@ -561,6 +558,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = false;
+			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(false);
 			}
 		},
 
@@ -745,16 +745,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			// Check if the same connection exists already
-			const checkProperties = ['index', 'node', 'type'];
-			let propertyName: string;
+			const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+			let propertyName: keyof IConnection;
 			let connectionExists = false;
 			connectionLoop: for (const existingConnection of this.workflow.connections[sourceData.node][
 				sourceData.type
 			][sourceData.index]) {
 				for (propertyName of checkProperties) {
-					if (
-						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
-					) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
 						continue connectionLoop;
 					}
 				}

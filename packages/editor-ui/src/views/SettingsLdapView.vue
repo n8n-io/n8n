@@ -142,8 +142,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { convertToDisplayDate, capitalizeFirstLetter } from '@/utils';
-import { useToast, useMessage } from '@/composables';
+import { capitalizeFirstLetter } from '@/utils/htmlUtils';
+import { convertToDisplayDate } from '@/utils/typesUtils';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import type {
 	ILdapConfig,
 	ILdapSyncData,
@@ -160,7 +162,7 @@ import InfiniteLoading from 'v3-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { N8nFormInputs } from 'n8n-design-system';
 import type { CellStyle } from 'element-plus';
@@ -682,7 +684,7 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
-		async getLdapSynchronizations(state: any) {
+		async getLdapSynchronizations(state: { loaded: () => void; complete: () => void }) {
 			try {
 				this.loadingTable = true;
 				const data = await this.settingsStore.getLdapSynchronizations({
