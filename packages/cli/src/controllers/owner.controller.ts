@@ -1,7 +1,7 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
-import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
 import { Config } from '@/config';
@@ -22,6 +22,7 @@ export class OwnerController {
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userService: UserService,
+		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -52,7 +53,7 @@ export class OwnerController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
 		if (!firstName || !lastName) {
 			this.logger.debug(
@@ -79,7 +80,7 @@ export class OwnerController {
 			email,
 			firstName,
 			lastName,
-			password: await hashPassword(validPassword),
+			password: await this.passwordUtility.hash(validPassword),
 		});
 
 		await validateEntity(owner);
