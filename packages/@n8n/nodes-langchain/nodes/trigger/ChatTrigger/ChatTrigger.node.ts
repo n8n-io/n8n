@@ -329,8 +329,10 @@ export class ChatTrigger implements INodeType {
 				await validateAuth(this);
 			} catch (error) {
 				if (error) {
-					res.writeHead(error.responseCode, { 'www-authenticate': 'Basic realm="Webhook"' });
-					res.end(error.message);
+					res.writeHead(error.responseCode as number, {
+						'www-authenticate': 'Basic realm="Webhook"',
+					});
+					res.end(error.message as string);
 					return { noWebhookResponse: true };
 				}
 				throw error;

@@ -9,7 +9,7 @@ import {
 	type WorkflowActivateMode,
 	type WorkflowExecuteMode,
 	ApplicationError,
-	IRunData,
+	type IRunData,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';

@@ -1,6 +1,6 @@
 import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
-import { ChatTriggerAuthorizationError } from './error';
 import basicAuth from 'basic-auth';
+import { ChatTriggerAuthorizationError } from './error';
 
 export async function validateAuth(context: IWebhookFunctions) {
 	const authentication = context.getNodeParameter('authentication') as string;
