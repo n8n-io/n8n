@@ -57,6 +57,8 @@ describe('ImportService', () => {
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
 
+		if (!dbWorkflow) fail('Expected to find workflow');
+
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
 	});
 
@@ -80,6 +82,8 @@ describe('ImportService', () => {
 		await importService.importWorkflows([workflowToImport], owner.id);
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
+
+		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.active).toBe(false);
 	});
@@ -106,6 +110,8 @@ describe('ImportService', () => {
 		await importService.importWorkflows([workflowToImport], owner.id);
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
+
+		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.nodes.at(0)?.credentials).toMatchObject(credential);
 	});

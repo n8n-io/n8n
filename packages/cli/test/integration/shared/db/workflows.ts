@@ -119,4 +119,4 @@ export async function getAllWorkflows() {
 }
 
 export const getWorkflowById = async (id: string) =>
-	Container.get(WorkflowRepository).findOneByOrFail({ id });
+	Container.get(WorkflowRepository).findOneBy({ id });
