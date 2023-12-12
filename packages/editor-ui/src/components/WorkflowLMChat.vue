@@ -404,10 +404,9 @@ export default defineComponent({
 				return;
 			}
 
-			// TODO: This has to be cleaned up. Both should send the input via the same key
-			let inputKey = 'message';
-			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) {
-				inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+			let inputKey = 'chat_input';
+			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
+				inputKey = 'input';
 			}
 
 			const usersStore = useUsersStore();

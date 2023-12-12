@@ -103,8 +103,8 @@ export class ChatTrigger implements INodeType {
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'n8n Auth',
-						value: 'n8nAuth',
+						name: 'n8n User Auth',
+						value: 'n8nUserAuth',
 					},
 					{
 						name: 'None',
@@ -120,7 +120,7 @@ export class ChatTrigger implements INodeType {
 				type: 'notice',
 				displayOptions: {
 					show: {
-						authentication: ['n8nAuth'],
+						authentication: ['n8nUserAuth'],
 					},
 				},
 				default: '',
@@ -346,7 +346,7 @@ export class ChatTrigger implements INodeType {
 				const authentication = this.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
-					| 'n8nAuth';
+					| 'n8nUserAuth';
 				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 				const initialMessages = initialMessagesRaw
 					.split('\n')
