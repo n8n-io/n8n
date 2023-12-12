@@ -25,7 +25,7 @@ import type {
 import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
-import { ExecutionData } from '../entities/ExecutionData';
+import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
@@ -215,27 +215,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.manager
-			.createQueryBuilder()
-			.insert()
-			.into(ExecutionEntity)
-			.values([rest])
-			.execute();
-
+		const { identifiers: inserted } = await this.insert(rest);
 		const { id: executionId } = inserted[0] as { id: string };
 		const { connections, nodes, name } = workflowData ?? {};
-		await this.manager
-			.createQueryBuilder()
-			.insert()
-			.into(ExecutionData)
-			.values([
-				{
-					executionId,
-					workflowData: { connections, nodes, name },
-					data: stringify(data),
-				},
-			])
-			.execute();
+		await this.executionDataRepository.insert({
+			executionId,
+			workflowData: { connections, nodes, name },
+			data: stringify(data),
+		});
 		return String(executionId);
 	}
 
