@@ -295,11 +295,6 @@ export class Webhook extends Node {
 					fileName,
 					req.contentType ?? 'application/octet-stream',
 				);
-
-				if (!binaryData.data) {
-					return { workflowData: [[returnItem]] };
-				}
-
 				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
 
