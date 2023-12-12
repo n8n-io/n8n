@@ -99,7 +99,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			this.logger.info(`Importing ${totalImported} workflows...`);
 
 			for (const file of files) {
-				const workflow = jsonParse<WorkflowEntity>(fs.readFileSync(file, { encoding: 'utf8' }));
+				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
 				if (!workflow.id) {
 					workflow.id = generateNanoId();
 				}
