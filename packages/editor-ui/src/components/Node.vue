@@ -15,6 +15,7 @@
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
 				'menu-open': isContextMenuOpen,
+				'disable-pointer-events': disablePointerEvents,
 			}"
 		>
 			<div
@@ -204,6 +205,10 @@ export default defineComponent({
 	},
 	props: {
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		disablePointerEvents: {
 			type: Boolean,
 			default: false,
 		},
@@ -760,6 +765,9 @@ export default defineComponent({
 		width: 100%;
 		height: 100%;
 		cursor: pointer;
+		&.disable-pointer-events {
+			pointer-events: none;
+		}
 
 		.node-box {
 			width: 100%;

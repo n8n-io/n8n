@@ -120,6 +120,7 @@ import { CollaborationService } from './collaboration/collaboration.service';
 import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
 
@@ -264,6 +265,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				Container.get(SettingsRepository),
 				userService,
+				Container.get(PasswordUtility),
 				postHog,
 			),
 			Container.get(MeController),
@@ -298,6 +300,7 @@ export class Server extends AbstractServer {
 				externalHooks,
 				Container.get(UserService),
 				Container.get(License),
+				Container.get(PasswordUtility),
 				postHog,
 			),
 			Container.get(VariablesController),
