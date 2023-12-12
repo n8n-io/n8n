@@ -16,6 +16,8 @@ export class DebugController {
 
 	@Get('/multi-main-setup')
 	async getMultiMainSetupDetails() {
+		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
+
 		const activeWorkflows = await this.workflowRepository.find({
 			select: ['id', 'name'],
 			where: { id: In(this.activeWorkflowRunner.allActiveInMemory()) },
@@ -25,7 +27,7 @@ export class DebugController {
 
 		return {
 			instanceId: this.multiMainSetup.instanceId,
-			leaderKey: this.multiMainSetup.instanceLeaderKey,
+			leaderKey,
 			activeWorkflows,
 			activationErrors,
 		};
