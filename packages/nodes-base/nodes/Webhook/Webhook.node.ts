@@ -221,7 +221,6 @@ export class Webhook extends Node {
 		const { data, files } = req.body;
 
 		const returnItem: INodeExecutionData = {
-			binary: {},
 			json: {
 				headers: req.headers,
 				params: req.params,
@@ -229,6 +228,10 @@ export class Webhook extends Node {
 				body: data,
 			},
 		};
+
+		if (files?.length) {
+			returnItem.binary = {};
+		}
 
 		let count = 0;
 
