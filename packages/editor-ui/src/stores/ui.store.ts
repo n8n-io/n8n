@@ -53,6 +53,7 @@ import type {
 	NewCredentialsModal,
 	ThemeOption,
 	AppliedThemeOption,
+	LeadEnrichmentTemplates,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -217,6 +218,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
+		leadEnrichmentTemplates: undefined,
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
@@ -641,6 +643,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
+		},
+		setLeadEnrichmentTemplates(templates: LeadEnrichmentTemplates) {
+			this.leadEnrichmentTemplates = templates;
 		},
 	},
 });

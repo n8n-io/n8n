@@ -42,39 +42,42 @@
 			/>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						$locale.baseText(
-							currentUser.firstName
-								? 'workflows.empty.heading'
-								: 'workflows.empty.heading.userNotSetup',
-							{ interpolate: { name: currentUser.firstName } },
-						)
-					}}
-				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
-			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					@click="addWorkflow"
-					data-test-id="new-workflow-card"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+			<lead-enrichment-page v-if="leadEnrichmentTemplates" />
+			<div v-else>
+				<div class="text-center mt-s">
+					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							$locale.baseText(
+								currentUser.firstName
+									? 'workflows.empty.heading'
+									: 'workflows.empty.heading.userNotSetup',
+								{ interpolate: { name: currentUser.firstName } },
+							)
+						}}
+					</n8n-heading>
+					<n8n-text size="large" color="text-base">
+						{{
+							$locale.baseText(
+								readOnlyEnv
+									? 'workflows.empty.description.readOnlyEnv'
+									: 'workflows.empty.description',
+							)
+						}}
 					</n8n-text>
-				</n8n-card>
+				</div>
+				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+					<n8n-card
+						:class="$style.emptyStateCard"
+						hoverable
+						@click="addWorkflow"
+						data-test-id="new-workflow-card"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+						<n8n-text size="large" class="mt-xs" color="text-base">
+							{{ $locale.baseText('workflows.empty.startFromScratch') }}
+						</n8n-text>
+					</n8n-card>
+				</div>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -127,6 +130,7 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
+import LeadEnrichmentPage from '@/components/LeadEnrichment/LeadEnrichmentPage.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -152,6 +156,7 @@ const WorkflowsView = defineComponent({
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
+		LeadEnrichmentPage,
 	},
 	data() {
 		return {
@@ -200,6 +205,9 @@ const WorkflowsView = defineComponent({
 				},
 			];
 		},
+		leadEnrichmentTemplates() {
+			return this.uiStore.leadEnrichmentTemplates;
+		}
 	},
 	methods: {
 		addWorkflow() {

@@ -5,7 +5,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage, getLeadEnrichmentTemplates } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 import { hasPermission } from '@/rbac/permissions';
@@ -168,6 +168,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			return;
 		}
 
+		// TODO: Implement a proper call for this
+		const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
+		useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
 		try {
 			await checkForCloudPlanData();
 		} catch (error) {
