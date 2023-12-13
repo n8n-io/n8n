@@ -153,6 +153,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useUsageStore } from '@/stores/usage.store';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
@@ -186,11 +187,22 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useUsageStore,
+			usePostHog,
+		),
 		currentUser() {
 			return this.usersStore.currentUser;
 		},
 		canRegisterForEnterpriseTrial() {
+			if (this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
 			const isSizeEligible = [COMPANY_SIZE_500_999, COMPANY_SIZE_1000_OR_MORE].includes(
 				this.formValues[COMPANY_SIZE_KEY],
 			);
@@ -675,7 +687,6 @@ export default defineComponent({
 		onSave() {
 			this.formBus.emit('submit');
 		},
-		async requestSelfServeEnterpriseTrial() {},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
 			this.isSaving = true;
 
@@ -697,7 +708,7 @@ export default defineComponent({
 				this.posthogStore.setMetadata(survey, 'user');
 
 				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
-					await this.requestSelfServeEnterpriseTrial();
+					await this.usageStore.requestEnterpriseLicenseTrial();
 				}
 
 				if (Object.keys(values).length === 0) {

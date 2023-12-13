@@ -20,5 +20,10 @@ export const requestLicenseTrial = async (
 	context: IRestApiContext,
 	data: {},
 ): Promise<UsageState['data']> => {
-	return makeRestApiRequest(context, 'POST', 'endpoint', data);
+	return makeRestApiRequest(
+		{ ...context, baseUrl: 'https://enterprise.n8n-maintenance.workers.dev' },
+		'POST',
+		'/enterprise-trial',
+		data,
+	);
 };
