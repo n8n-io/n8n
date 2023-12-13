@@ -118,7 +118,10 @@ export default defineComponent({
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
 			if (this.noSelection) {
-				if (this.hasPinData) {
+				const inExecutionsFrame =
+					window !== window.parent && window.parent.location.pathname.includes('/executions');
+
+				if (this.hasPinData && !inExecutionsFrame) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
 					selectedValue = executionDataToJson(
@@ -160,6 +163,7 @@ export default defineComponent({
 			return { path, startPath };
 		},
 		handleCopyClick(commandData: { command: string }) {
+			console.log('handleCopyClick');
 			let value: string;
 			if (commandData.command === 'value') {
 				value = this.getJsonValue();
