@@ -1381,7 +1381,9 @@ export const tryToParseUrl = (value: unknown): string => {
 	}
 	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
 	if (!urlPattern.test(String(value))) {
-		throw new Error(`The value "${String(value)}" is not a valid url.`);
+		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+			extra: { value },
+		});
 	}
 	return String(value);
 };

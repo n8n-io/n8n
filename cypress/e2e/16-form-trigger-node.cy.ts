@@ -74,13 +74,25 @@ describe('n8n Form Trigger', () => {
 		)
 			.find('input')
 			.type('Option 2');
+
 		//add optional submitted message
-		cy.get('.param-options > .add-option').click();
-		getVisibleSelect().find('.el-select-dropdown__item').contains('Form Submitted Text').click();
-		cy.get('.indent > .parameter-item')
-			.find('input')
+		cy.get('.param-options').click();
+		cy.contains('span', 'Text to Show')
+			.should('exist')
+			.parent()
+			.parent()
+			.next()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.first()
 			.clear()
 			.type('Your test form was successfully submitted');
+
 		ndv.getters.backToCanvas().click();
 		workflowPage.getters.nodeIssuesByName('n8n Form Trigger').should('not.exist');
 	});
