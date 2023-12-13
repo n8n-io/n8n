@@ -188,7 +188,11 @@ export class UserService {
 		return Promise.race([fetchPromise, timeoutPromise]);
 	}
 
-	private async sendEmails(owner: User, toInviteUsers: { [key: string]: string }) {
+	private async sendEmails(
+		owner: User,
+		toInviteUsers: { [key: string]: string },
+		role: 'member' | 'admin',
+	) {
 		const domain = getInstanceBaseUrl();
 
 		return Promise.all(
@@ -225,6 +229,7 @@ export class UserService {
 						target_user_id: Object.values(toInviteUsers),
 						public_api: false,
 						email_sent: result.emailSent,
+						invitee_role: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
@@ -294,7 +299,11 @@ export class UserService {
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));
 
-		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
+		const usersInvited = await this.sendEmails(
+			owner,
+			Object.fromEntries(createdUsers),
+			toCreateUsers[0].role, // same role for all invited users
+		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}

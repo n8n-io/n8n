@@ -356,6 +356,13 @@ export interface IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 		email_sent: boolean;
+		invitee_role: string;
+	}): Promise<void>;
+	onUserRoleChange(userInviteData: {
+		user: User;
+		target_user_id: string;
+		public_api: boolean;
+		target_user_new_role: string;
 	}): Promise<void>;
 	onUserReinvite(userReinviteData: {
 		user: User;
