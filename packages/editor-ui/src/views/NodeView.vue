@@ -225,6 +225,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EnterpriseEditionFeature,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -3946,7 +3947,10 @@ export default defineComponent({
 					node.parameters = nodeParameters !== null ? nodeParameters : {};
 
 					// if it's a webhook and the path is empty set the UUID as the default path
-					if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
+					if (
+						[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
+						node.parameters.path === ''
+					) {
 						node.parameters.path = node.webhookId as string;
 					}
 				}
