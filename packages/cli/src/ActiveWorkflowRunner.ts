@@ -804,8 +804,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
 
 			if (shouldAddWebhooks) {
-				this.logger.debug(`Adding webhooks for workflow ${dbWorkflow.display()}`);
-
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
 			}
 
