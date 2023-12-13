@@ -391,6 +391,13 @@ export class UsersController {
 
 		await this.userService.update(targetUser.id, { globalRole: roleToSet });
 
+		void this.internalHooks.onUserRoleChange({
+			user: req.user,
+			target_user_id: targetUser.id,
+			target_user_new_role: [newRole.scope, newRole.name].join(' '),
+			public_api: false,
+		});
+
 		return { success: true };
 	}
 }
