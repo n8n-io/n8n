@@ -5,6 +5,7 @@ import type express from 'express';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import type {
+	IExecutionResponse,
 	IResponseCallbackData,
 	IWebhookManager,
 	IWorkflowDb,
@@ -19,8 +20,10 @@ import { NotFoundError } from './errors/response-errors/not-found.error';
 
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
+	protected includeForms = false;
+
 	constructor(
-		private readonly logger: Logger,
+		protected readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
@@ -28,12 +31,21 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
+	protected logReceivedWebhook(method: string, executionId: string) {
+		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
+	}
+
+	protected disableNode(execution: IExecutionResponse, _method?: string) {
+		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
-		this.logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
+
+		this.logReceivedWebhook(req.method, executionId);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
@@ -55,7 +67,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
-		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		this.disableNode(execution, req.method);
 
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
@@ -97,7 +109,8 @@ export class WaitingWebhooks implements IWebhookManager {
 			(webhook) =>
 				webhook.httpMethod === req.method &&
 				webhook.path === (suffix ?? '') &&
-				webhook.webhookDescription.restartWebhook === true,
+				webhook.webhookDescription.restartWebhook === true &&
+				(webhook.webhookDescription.isForm || false) === this.includeForms,
 		);
 
 		if (webhookData === undefined) {
