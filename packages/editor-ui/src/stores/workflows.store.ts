@@ -196,6 +196,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
+		isNodeInOutgoingNodeConnections() {
+			return (firstNode: string, secondNode: string): boolean => {
+				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
+				if (!firstNodeConnections || !firstNodeConnections.main || !firstNodeConnections.main[0])
+					return false;
+				const connections = firstNodeConnections.main[0];
+				if (connections.some((node) => node.node === secondNode)) return true;
+				return connections.some((node) =>
+					this.isNodeInOutgoingNodeConnections(node.node, secondNode),
+				);
+			};
+		},
 		allNodes(): INodeUi[] {
 			return this.workflow.nodes;
 		},
