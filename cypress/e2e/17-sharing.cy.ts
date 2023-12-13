@@ -150,6 +150,9 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 		cy.get('input').should('not.have.length');
 		credentialsModal.actions.changeTab('Sharing');
+		cy.contains(
+			'You can view this credential because you have permission to read and share',
+		).should('be.visible');
 
 		credentialsModal.getters.usersSelect().click();
 		cy.getByTestId('user-email')
