@@ -9,8 +9,13 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { mockCredRole, mockCredential, mockUser, mockInstanceOwnerRole, wfOwnerRole } from '../shared/mockObjects';
-
+import {
+	mockCredRole,
+	mockCredential,
+	mockUser,
+	mockInstanceOwnerRole,
+	wfOwnerRole,
+} from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const roleService = mockInstance(RoleService);
