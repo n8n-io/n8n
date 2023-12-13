@@ -28,6 +28,10 @@ export class MultiMainSetup extends SingleMainSetup {
 		return !this.isLeader;
 	}
 
+	get instanceId() {
+		return this.id;
+	}
+
 	setLicensed(newState: boolean) {
 		this.isLicensed = newState;
 	}
@@ -139,5 +143,9 @@ export class MultiMainSetup extends SingleMainSetup {
 			command: 'workflowFailedToActivate',
 			payload,
 		});
+	}
+
+	async fetchLeaderKey() {
+		return this.redisPublisher.get(this.leaderKey);
 	}
 }

@@ -868,7 +868,7 @@
 	"nodeCreator.subcategoryDescriptions.dataTransformation": "Manipulate data, run JavaScript code, etc.",
 	"nodeCreator.subcategoryDescriptions.files": "CSV, XLS, XML, text, images, etc.",
 	"nodeCreator.subcategoryDescriptions.flow": "IF, Switch, Wait, Compare and Merge data, etc.",
-	"nodeCreator.subcategoryDescriptions.helpers": "HTTP Requests (API Calls), date and time, scrape HTML, RSS, SSH, etc.",
+	"nodeCreator.subcategoryDescriptions.helpers": "Code, HTTP Requests (API Calls), Webhook, and other helpers",
 	"nodeCreator.subcategoryDescriptions.otherTriggerNodes": "Runs the flow on workflow errors, file changes, etc.",
 	"nodeCreator.subcategoryDescriptions.agents": "Autonomous entities that interact and make decisions.",
 	"nodeCreator.subcategoryDescriptions.chains": "Structured assemblies for specific tasks.",
