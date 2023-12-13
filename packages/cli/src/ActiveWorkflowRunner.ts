@@ -350,6 +350,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
 
+		if (webhooks.length === 0) return;
+
+		this.logger.debug(`Adding webhooks for workflow ${workflow.name}`);
+
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
@@ -806,8 +810,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 
 			if (shouldAddTriggersAndPollers) {
-				this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
-
 				await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',
@@ -992,6 +994,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
+			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
+
 			await this.activeWorkflows.add(
 				workflow.id,
 				workflow,
