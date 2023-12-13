@@ -221,7 +221,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: 'utf8',
-						description: 'Choose the character set that would be used to encode/decode the data',
+						description: 'Choose the character set to use to encode the data',
 					},
 					{
 						displayName: 'Strip BOM',

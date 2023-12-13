@@ -97,7 +97,7 @@ export class Compression implements INodeType {
 					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Input Binary Field(s)',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -108,7 +108,9 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: 'e.g. data',
-				hint: 'The name of the output binary field to put the decompressed file in',
+				hint: 'The name of the input binary field(s) containing the file(s) to decompress',
+				description:
+					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
 				displayName: 'Output Format',

@@ -268,7 +268,7 @@ export const description: INodeProperties[] = [
 				name: 'useWorkflowTimezone',
 				type: 'boolean',
 				default: false,
-				description: "Whether to use the workflow timezone set in node's settings or UTC",
+				description: "Whether to use the workflow timezone set in node's settings rather than UTC",
 			},
 		],
 	},

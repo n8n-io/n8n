@@ -60,7 +60,7 @@ export const properties: INodeProperties[] = [
 				type: 'options',
 				options: encodeDecodeOptions,
 				default: 'utf8',
-				description: 'Choose the character set that would be used to encode the data',
+				description: 'Choose the character set to use to encode the data',
 				displayOptions: {
 					hide: {
 						dataIsBase64: [true],
