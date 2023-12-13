@@ -163,7 +163,6 @@ export default defineComponent({
 			return { path, startPath };
 		},
 		handleCopyClick(commandData: { command: string }) {
-			console.log('handleCopyClick');
 			let value: string;
 			if (commandData.command === 'value') {
 				value = this.getJsonValue();
