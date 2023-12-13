@@ -6,7 +6,7 @@
 			@click="isMinimized = !isMinimized"
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 		>
-			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
+			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
@@ -231,10 +231,10 @@ export default defineComponent({
 	transition-property: transform;
 }
 .expanded .minimize-button {
-	-webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	-o-transform: rotate(180deg);
-	transform: rotate(180deg);
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 
 .webhook-url {

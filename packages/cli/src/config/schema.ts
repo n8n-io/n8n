@@ -1025,6 +1025,15 @@ export const schema = {
 		},
 	},
 
+	externalSecrets: {
+		updateInterval: {
+			format: Number,
+			default: 300,
+			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
+			doc: 'How often (in seconds) to check for secret updates.',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,

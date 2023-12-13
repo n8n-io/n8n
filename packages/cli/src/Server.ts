@@ -120,6 +120,7 @@ import { CollaborationService } from './collaboration/collaboration.service';
 import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
@@ -306,6 +307,11 @@ export class Server extends AbstractServer {
 			Container.get(VariablesController),
 			Container.get(RoleController),
 		];
+
+		if (Container.get(MultiMainSetup).isEnabled) {
+			const { DebugController } = await import('./controllers/debug.controller');
+			controllers.push(Container.get(DebugController));
+		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();

@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
+import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -216,7 +217,6 @@ export class Webhook extends Node {
 		const { data, files } = req.body;
 
 		const returnItem: INodeExecutionData = {
-			binary: {},
 			json: {
 				headers: req.headers,
 				params: req.params,
@@ -224,6 +224,10 @@ export class Webhook extends Node {
 				body: data,
 			},
 		};
+
+		if (files?.length) {
+			returnItem.binary = {};
+		}
 
 		let count = 0;
 
@@ -274,7 +278,6 @@ export class Webhook extends Node {
 			await pipeline(req, createWriteStream(binaryFile.path));
 
 			const returnItem: INodeExecutionData = {
-				binary: {},
 				json: {
 					headers: req.headers,
 					params: req.params,
@@ -283,19 +286,17 @@ export class Webhook extends Node {
 				},
 			};
 
-			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			const fileName = req.contentDisposition?.filename ?? uuid();
-			const binaryData = await context.nodeHelpers.copyBinaryFile(
-				binaryFile.path,
-				fileName,
-				req.contentType ?? 'application/octet-stream',
-			);
-
-			if (!binaryData.data) {
-				return { workflowData: [[returnItem]] };
+			const stats = await stat(binaryFile.path);
+			if (stats.size) {
+				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const fileName = req.contentDisposition?.filename ?? uuid();
+				const binaryData = await context.nodeHelpers.copyBinaryFile(
+					binaryFile.path,
+					fileName,
+					req.contentType ?? 'application/octet-stream',
+				);
+				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
-
-			returnItem.binary![binaryPropertyName] = binaryData;
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {
