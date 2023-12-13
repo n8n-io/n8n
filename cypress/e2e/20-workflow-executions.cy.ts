@@ -1,5 +1,6 @@
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
+import type { RouteHandler } from 'cypress/types/net-stubbing';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -30,11 +31,17 @@ describe('Current Workflow Executions', () => {
 			.should('match', /_active_/);
 	});
 
-	it.only('should not redirect back to execution tab when request is not done before leaving the page', () => {
+	it('should not redirect back to execution tab when request is not done before leaving the page', () => {
 		const executionsRefreshInterval = 4000;
 
-		cy.intercept('GET', '/rest/executions?filter=*');
-		cy.intercept('GET', '/rest/executions-current?filter=*');
+		const throttleResponse: RouteHandler = (req) => {
+			return new Promise((resolve) => {
+				setTimeout(() => resolve(req.continue()), 1000);
+			});
+		};
+
+		cy.intercept('GET', '/rest/executions?filter=*', throttleResponse);
+		cy.intercept('GET', '/rest/executions-current?filter=*', throttleResponse);
 
 		executionsTab.actions.switchToExecutionsTab();
 		executionsTab.actions.switchToEditorTab();
