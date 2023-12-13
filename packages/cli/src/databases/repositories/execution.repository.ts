@@ -213,17 +213,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: ExecutionPayload) {
+	async createNewExecution(execution: ExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
-
-		const newExecution = await this.save(rest);
-		await this.executionDataRepository.save({
-			execution: newExecution,
-			workflowData,
+		const { identifiers: inserted } = await this.insert(rest);
+		const { id: executionId } = inserted[0] as { id: string };
+		const { connections, nodes, name } = workflowData ?? {};
+		await this.executionDataRepository.insert({
+			executionId,
+			workflowData: { connections, nodes, name },
 			data: stringify(data),
 		});
-
-		return newExecution;
+		return String(executionId);
 	}
 
 	async markAsCrashed(executionIds: string[]) {
