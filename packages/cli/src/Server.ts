@@ -687,8 +687,8 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
-							extra: { jobId: req.params.id },
+						this.logger.debug('Could not stop job because it is no longer in queue', {
+							jobId: req.params.id,
 						});
 					} else {
 						await queue.stopJob(job);
