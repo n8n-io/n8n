@@ -4,15 +4,8 @@ import { Role } from '@db/entities/Role';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { RoleService } from '@/services/role.service';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { mockInstance } from '../../shared/mocking';
-import {
-	randomCredentialPayload,
-	randomEmail,
-	randomInteger,
-	randomName,
-} from '../../integration/shared/random';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
@@ -181,3 +174,4 @@ describe('OwnershipService', () => {
 			});
 		});
 	});
+});
