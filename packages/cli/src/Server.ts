@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
