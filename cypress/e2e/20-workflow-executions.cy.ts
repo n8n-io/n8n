@@ -9,10 +9,10 @@ describe('Current Workflow Executions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
-		createMockExecutions();
 	});
 
 	it('should render executions tab correctly', () => {
+		createMockExecutions();
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
 
@@ -28,6 +28,17 @@ describe('Current Workflow Executions', () => {
 			.first()
 			.invoke('attr', 'class')
 			.should('match', /_active_/);
+	});
+
+	it.only('should not redirect back to execution tab when request is not done before leaving the page', () => {
+		cy.intercept('GET', '/rest/executions?filter=*');
+		cy.intercept('GET', '/rest/executions-current?filter=*');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(50);
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(4000);
+		cy.url().should('not.include', '/executions');
 	});
 });
 

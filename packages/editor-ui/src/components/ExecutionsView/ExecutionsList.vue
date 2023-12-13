@@ -145,8 +145,6 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		this.autoRefresh = false;
-		this.stopAutoRefreshInterval();
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
 			return;
@@ -208,8 +206,9 @@ export default defineComponent({
 		this.loading = false;
 	},
 	beforeUnmount() {
-		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
+		this.autoRefresh = false;
+		this.stopAutoRefreshInterval();
 	},
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
