@@ -23,6 +23,8 @@ export const i18nInstance = createI18n({
 });
 
 export class I18nClass {
+	private baseTextCache = new Map<string, string>();
+
 	private get i18n() {
 		return i18nInstance.global;
 	}
@@ -50,11 +52,25 @@ export class I18nClass {
 		key: BaseTextKey,
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
-		if (options?.adjustToNumber !== undefined) {
-			return this.i18n.tc(key, options.adjustToNumber, options?.interpolate).toString();
+		// Create a unique cache key
+		const cacheKey = `${key}-${JSON.stringify(options)}`;
+
+		// Check if the result is already cached
+		if (this.baseTextCache.has(cacheKey)) {
+			return this.baseTextCache.get(cacheKey) ?? key;
 		}
 
-		return this.i18n.t(key, options?.interpolate).toString();
+		let result: string;
+		if (options?.adjustToNumber !== undefined) {
+			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+		} else {
+			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
+		}
+
+		// Store the result in the cache
+		this.baseTextCache.set(cacheKey, result);
+
+		return result;
 	}
 
 	/**

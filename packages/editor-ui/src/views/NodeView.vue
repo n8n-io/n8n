@@ -75,6 +75,7 @@
 						@removeNode="(name) => removeNode(name, true)"
 						:key="`${stickyData.id}_sticky`"
 						:name="stickyData.name"
+						:workflow="currentWorkflowObject"
 						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === stickyData.name"
@@ -731,6 +732,7 @@ export default defineComponent({
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
 			activeConnection: null as null | Connection,
+			isInsertingNodes: false,
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
@@ -2762,14 +2764,21 @@ export default defineComponent({
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
-					this.nodeHelpers.updateNodesInputIssues();
-					this.resetEndpointsErrors();
+					// When we add multiple nodes, this event could be fired hundreds of times for large workflows.
+					// And because the updateNodesInputIssues() method is quite expensive, we only call it if not in insert mode
+					if (!this.isInsertingNodes) {
+						this.nodeHelpers.updateNodesInputIssues();
+						this.resetEndpointsErrors();
+					}
 				}
 			} catch (e) {
 				console.error(e);
 			}
 		},
 		onDragMove() {
+			void this.callDebounced('updateConnectionsOverlays', { debounceTime: 200 });
+		},
+		updateConnectionsOverlays() {
 			this.instance?.connections.forEach((connection) => {
 				NodeViewUtils.showOrHideItemsLabel(connection);
 				NodeViewUtils.showOrHideMidpointArrow(connection);
@@ -3898,16 +3907,20 @@ export default defineComponent({
 			if (!nodes?.length) {
 				return;
 			}
-
+			this.isInsertingNodes = true;
+			const startTime = performance.now();
 			// Before proceeding we must check if all nodes contain the `properties` attribute.
 			// Nodes are loaded without this information so we must make sure that all nodes
 			// being added have this information.
 			await this.loadNodesProperties(
 				nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 			);
+			const endTimeProperties = performance.now();
+			console.log('Time taken to load node properties:', endTimeProperties - startTime, 'ms');
 
 			// Add the node to the node-list
 			let nodeType: INodeTypeDescription | null;
+			const startTimeNodes = performance.now();
 			nodes.forEach((node) => {
 				if (!node.id) {
 					node.id = uuid();
@@ -3953,60 +3966,72 @@ export default defineComponent({
 
 				// check and match credentials, apply new format if old is used
 				this.matchCredentials(node);
-
 				this.workflowsStore.addNode(node);
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(new AddNodeCommand(node));
 				}
 			});
+			const endTime = performance.now();
+			console.log('Time taken to add Nodes:', endTime - startTimeNodes, 'ms');
 
-			// Wait for the node to be rendered
+			// Wait for the nodes to be rendered
 			await this.$nextTick();
 
-			// Suspend drawing
 			this.instance?.setSuspendDrawing(true);
 
-			// Load the connections
-			if (connections !== undefined) {
-				let connectionData;
-				for (const sourceNode of Object.keys(connections)) {
-					for (const type of Object.keys(connections[sourceNode])) {
-						for (
-							let sourceIndex = 0;
-							sourceIndex < connections[sourceNode][type].length;
-							sourceIndex++
-						) {
-							const outwardConnections = connections[sourceNode][type][sourceIndex];
-							if (!outwardConnections) {
-								continue;
-							}
-							outwardConnections.forEach((targetData) => {
-								connectionData = [
-									{
-										node: sourceNode,
-										type,
-										index: sourceIndex,
-									},
-									{
-										node: targetData.node,
-										type: targetData.type,
-										index: targetData.index,
-									},
-								] as [IConnection, IConnection];
+			if (connections) {
+				await this.addConnections(connections);
+			}
+			// Add the node issues at the end as the node-connections are required
+			this.nodeHelpers.refreshNodeIssues();
+			this.nodeHelpers.updateNodesInputIssues();
+			this.resetEndpointsErrors();
+			this.isInsertingNodes = false;
 
-								this.__addConnection(connectionData);
+			const endTimeIssues = performance.now();
+			// Now it can draw again
+			this.instance?.setSuspendDrawing(false, true);
+			console.log('Total:', endTimeIssues - startTime, 'ms');
+		},
+		async addConnections(connections: IConnections) {
+			const batchedConnectionData: Array<[IConnection, IConnection]> = [];
+
+			for (const sourceNode in connections) {
+				for (const type in connections[sourceNode]) {
+					connections[sourceNode][type].forEach((outwardConnections, sourceIndex) => {
+						if (outwardConnections) {
+							outwardConnections.forEach((targetData) => {
+								batchedConnectionData.push([
+									{ node: sourceNode, type, index: sourceIndex },
+									{ node: targetData.node, type: targetData.type, index: targetData.index },
+								]);
 							});
 						}
-					}
+					});
 				}
 			}
 
-			// Add the node issues at the end as the node-connections are required
-			void this.nodeHelpers.refreshNodeIssues();
-
-			// Now it can draw again
-			this.instance?.setSuspendDrawing(false, true);
+			// Process the connections in batches
+			await this.processConnectionBatch(batchedConnectionData);
 		},
+
+		async processConnectionBatch(batchedConnectionData: Array<[IConnection, IConnection]>) {
+			const batchSize = 100;
+			const delayDuration = 50;
+
+			const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+			for (let i = 0; i < batchedConnectionData.length; i += batchSize) {
+				const batch = batchedConnectionData.slice(i, i + batchSize);
+
+				batch.forEach((connectionData) => {
+					this.__addConnection(connectionData);
+				});
+
+				await delay(delayDuration);
+			}
+		},
+
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
 			// be needed that they have to be renamed. Also could it be possible

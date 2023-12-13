@@ -882,8 +882,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					},
 				};
 			}
-
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
 		resetAllNodesIssues(): boolean {
@@ -1118,7 +1116,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			this.workflowExecutionData.data!.resultData.runData[pushData.nodeName].push(pushData.data);
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 		clearNodeExecutionData(nodeName: string): void {
 			if (!this.workflowExecutionData?.data) {
