@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
+
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';

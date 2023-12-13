@@ -51,7 +51,7 @@
 								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
 							</n8n-heading>
 						</div>
-						<CollectionsCarousel
+						<TemplatesInfoCarousel
 							:collections="collections"
 							:loading="loadingCollections"
 							@openCollection="onOpenCollection"
@@ -79,7 +79,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
+import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
@@ -114,7 +114,7 @@ export default defineComponent({
 	name: 'TemplatesSearchView',
 	mixins: [genericHelpers, debounceHelper],
 	components: {
-		CollectionsCarousel,
+		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,

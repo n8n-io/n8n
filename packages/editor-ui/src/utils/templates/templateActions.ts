@@ -1,9 +1,9 @@
 import type { INodeUi, IWorkflowData, IWorkflowTemplate } from '@/Interface';
 import { getNewWorkflow } from '@/api/workflows';
-import { VIEWS } from '@/constants';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
 import type { useRootStore } from '@/stores/n8nRoot.store';
+import type { PosthogStore } from '@/stores/posthog.store';
 import type { useWorkflowsStore } from '@/stores/workflows.store';
-import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
@@ -45,13 +45,16 @@ export async function createWorkflowFromTemplate(
  * if the feature flag is disabled)
  */
 export async function openTemplateCredentialSetup(opts: {
+	posthogStore: PosthogStore;
 	templateId: string;
 	router: Router;
 	inNewBrowserTab?: boolean;
 }) {
-	const { router, templateId, inNewBrowserTab = false } = opts;
+	const { router, templateId, inNewBrowserTab = false, posthogStore } = opts;
 
-	const routeLocation: RouteLocationRaw = isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)
+	const routeLocation: RouteLocationRaw = posthogStore.isFeatureEnabled(
+		TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
+	)
 		? {
 				name: VIEWS.TEMPLATE_SETUP,
 				params: { id: templateId },

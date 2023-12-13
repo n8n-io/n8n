@@ -1076,6 +1076,7 @@ export type NodePropertyTypes =
 	| 'resourceLocator'
 	| 'curlImport'
 	| 'resourceMapper'
+	| 'filter'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -1123,6 +1124,7 @@ export interface INodePropertyTypeOptions {
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
+	filter?: FilterTypeOptions;
 	[key: string]: any;
 }
 
@@ -1141,6 +1143,18 @@ export interface ResourceMapperTypeOptions {
 		hint?: string;
 	};
 }
+
+type NonEmptyArray<T> = [T, ...T[]];
+
+export type FilterTypeCombinator = 'and' | 'or';
+
+export type FilterTypeOptions = Partial<{
+	caseSensitive: boolean | string; // default = true
+	leftValue: string; // when set, user can't edit left side of condition
+	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions: number; // default = 10
+	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
 
 export interface IDisplayOptions {
 	hide?: {
@@ -2214,6 +2228,42 @@ export type ResourceMapperValue = {
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
 };
+
+export type FilterOperatorType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'array'
+	| 'object'
+	| 'dateTime'
+	| 'any';
+
+export interface FilterOperatorValue {
+	type: FilterOperatorType;
+	operation: string;
+	rightType?: FilterOperatorType;
+	singleValue?: boolean; // default = false
+}
+
+export type FilterConditionValue = {
+	id: string;
+	leftValue: unknown;
+	operator: FilterOperatorValue;
+	rightValue: unknown;
+};
+
+export type FilterOptionsValue = {
+	caseSensitive: boolean;
+	leftValue: string;
+	typeValidation: 'strict' | 'loose';
+};
+
+export type FilterValue = {
+	options: FilterOptionsValue;
+	conditions: FilterConditionValue[];
+	combinator: FilterTypeCombinator;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
