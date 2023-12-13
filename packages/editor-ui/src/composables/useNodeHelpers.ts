@@ -539,7 +539,7 @@ export function useNodeHelpers() {
 		}
 		const runData = executionData.resultData.runData;
 
-		const taskData = get(runData, `[${node.name}][${runIndex}]`);
+		const taskData = get(runData, [node.name, runIndex]);
 		if (!taskData) {
 			return [];
 		}

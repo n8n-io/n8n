@@ -122,6 +122,19 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 };
 
+export const tryToParseUrl = (value: unknown): string => {
+	if (typeof value === 'string' && !value.includes('://')) {
+		value = `http://${value}`;
+	}
+	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
+	if (!urlPattern.test(String(value))) {
+		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+			extra: { value },
+		});
+	}
+	return String(value);
+};
+
 type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
@@ -224,6 +237,13 @@ export const validateFieldType = (
 				};
 			}
 			return { valid: true, newValue: value };
+		}
+		case 'url': {
+			try {
+				return { valid: true, newValue: tryToParseUrl(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		default: {
 			return { valid: true, newValue: value };

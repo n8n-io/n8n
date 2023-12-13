@@ -1679,6 +1679,8 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	isForm?: boolean;
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
@@ -1925,6 +1927,7 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -2214,7 +2217,8 @@ export type FieldType =
 	| 'time'
 	| 'array'
 	| 'object'
-	| 'options';
+	| 'options'
+	| 'url';
 
 export type ValidationResult = {
 	valid: boolean;
@@ -2310,6 +2314,9 @@ export interface IPublicApiSettings {
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
