@@ -31,13 +31,27 @@ describe('Current Workflow Executions', () => {
 	});
 
 	it.only('should not redirect back to execution tab when request is not done before leaving the page', () => {
+		const executionsRefreshInterval = 4000;
+
 		cy.intercept('GET', '/rest/executions?filter=*');
 		cy.intercept('GET', '/rest/executions-current?filter=*');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(50);
 		executionsTab.actions.switchToEditorTab();
-		cy.wait(4000);
+		cy.wait(executionsRefreshInterval);
+		cy.url().should('not.include', '/executions');
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(executionsRefreshInterval);
+		cy.url().should('not.include', '/executions');
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(1000);
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(executionsRefreshInterval);
 		cy.url().should('not.include', '/executions');
 	});
 });
