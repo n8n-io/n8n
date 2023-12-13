@@ -310,6 +310,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
 	name: 'ExecutionsList',
@@ -328,11 +329,13 @@ export default defineComponent({
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
 		const externalHooks = useExternalHooks();
+		const route = useRoute();
 
 		return {
 			i18n,
 			telemetry,
 			externalHooks,
+			route,
 			...useToast(),
 			...useMessage(),
 		};
@@ -942,7 +945,7 @@ export default defineComponent({
 			}
 		},
 		async startAutoRefreshInterval() {
-			if (this.autoRefresh) {
+			if (this.autoRefresh && this.route.name === VIEWS.WORKFLOW_EXECUTIONS) {
 				await this.loadAutoRefresh();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();

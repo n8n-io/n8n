@@ -1,8 +1,10 @@
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
+import type { RouteHandler } from 'cypress/types/net-stubbing';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
+const executionsRefreshInterval = 4000;
 
 // Test suite for executions tab
 describe('Current Workflow Executions', () => {
@@ -30,14 +32,42 @@ describe('Current Workflow Executions', () => {
 			.should('match', /_active_/);
 	});
 
-	it.only('should not redirect back to execution tab when request is not done before leaving the page', () => {
+	it('should not redirect back to execution tab when request is not done before leaving the page', () => {
 		cy.intercept('GET', '/rest/executions?filter=*');
 		cy.intercept('GET', '/rest/executions-current?filter=*');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(50);
 		executionsTab.actions.switchToEditorTab();
-		cy.wait(4000);
+		cy.wait(executionsRefreshInterval);
+		cy.url().should('not.include', '/executions');
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(executionsRefreshInterval);
+		cy.url().should('not.include', '/executions');
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(1000);
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(executionsRefreshInterval);
+		cy.url().should('not.include', '/executions');
+	});
+
+	it('should not redirect back to execution tab when slow request is not done before leaving the page', () => {
+		const throttleResponse: RouteHandler = (req) => {
+			return new Promise((resolve) => {
+				setTimeout(() => resolve(req.continue()), 2000);
+			});
+		};
+
+		cy.intercept('GET', '/rest/executions?filter=*', throttleResponse);
+		cy.intercept('GET', '/rest/executions-current?filter=*', throttleResponse);
+
+		executionsTab.actions.switchToExecutionsTab();
+		executionsTab.actions.switchToEditorTab();
+		cy.wait(executionsRefreshInterval);
 		cy.url().should('not.include', '/executions');
 	});
 });
