@@ -45,6 +45,7 @@
 				:modelValue="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
+				:isSingleLine="isSingleLine"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -209,6 +210,7 @@
 				v-model="tempValue"
 				ref="inputField"
 				type="datetime"
+				valueFormat="YYYY-MM-DDTHH:mm:ss"
 				:size="inputSize"
 				:modelValue="displayValue"
 				:title="displayTitle"
@@ -445,6 +447,9 @@ export default defineComponent({
 			default: () => ({}),
 		},
 		isReadOnly: {
+			type: Boolean,
+		},
+		isSingleLine: {
 			type: Boolean,
 		},
 		parameter: {
