@@ -3,7 +3,7 @@ import { CacheService } from './cache.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';
-import { UserService } from './user.service';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import type { ListQuery } from '@/requests';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -11,7 +11,7 @@ import { ApplicationError } from 'n8n-workflow';
 export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
-		private userService: UserService,
+		private userRepository: UserRepository,
 		private roleService: RoleService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
@@ -20,9 +20,9 @@ export class OwnershipService {
 	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedValue = (await this.cacheService.get(`cache:workflow-owner:${workflowId}`)) as User;
+		const cachedValue = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
 
-		if (cachedValue) return this.userService.create(cachedValue);
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 
@@ -66,5 +66,14 @@ export class OwnershipService {
 		});
 
 		return entity;
+	}
+
+	async getInstanceOwner() {
+		const globalOwnerRole = await this.roleService.findGlobalOwnerRole();
+
+		return this.userRepository.findOneOrFail({
+			where: { globalRoleId: globalOwnerRole.id },
+			relations: ['globalRole'],
+		});
 	}
 }

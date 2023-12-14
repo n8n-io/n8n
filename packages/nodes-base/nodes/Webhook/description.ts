@@ -2,7 +2,7 @@ import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
-	httpMethod: '={{$parameter["httpMethod"]}}',
+	httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
 	isFullPath: true,
 	responseCode: '={{$parameter["responseCode"]}}',
 	responseMode: '={{$parameter["responseMode"]}}',

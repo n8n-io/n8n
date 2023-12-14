@@ -1,18 +1,19 @@
-import type {
-	INode,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeType,
-	NodeParameterValueType,
-} from 'n8n-workflow';
+import get from 'lodash/get';
 import {
-	NodeOperationError,
-	NodeHelpers,
-	LoggerProxy,
-	WorkflowOperationError,
 	ApplicationError,
+	LoggerProxy,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowOperationError,
+	executeFilter,
+	isFilterValue,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeType,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
@@ -123,6 +124,26 @@ function extractValueRLC(
 	return executeRegexExtractValue(value.value, regex, parameterName, property.displayName);
 }
 
+function extractValueFilter(
+	value: NodeParameterValueType | object,
+	property: INodeProperties,
+	parameterName: string,
+	itemIndex: number,
+): NodeParameterValueType | object {
+	if (!isFilterValue(value)) {
+		return value;
+	}
+
+	if (property.extractValue?.type) {
+		throw new ApplicationError(
+			`Property "${parameterName}" has an invalid extractValue type. Filter parameters only support extractValue: true`,
+			{ extra: { parameter: parameterName } },
+		);
+	}
+
+	return executeFilter(value, { itemIndex });
+}
+
 function extractValueOther(
 	value: NodeParameterValueType | object,
 	property: INodeProperties | INodePropertyCollection,
@@ -162,6 +183,7 @@ export function extractValue(
 	parameterName: string,
 	node: INode,
 	nodeType: INodeType,
+	itemIndex = 0,
 ): NodeParameterValueType | object {
 	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
 	try {
@@ -174,10 +196,12 @@ export function extractValue(
 
 		if (property.type === 'resourceLocator') {
 			return extractValueRLC(value, property, parameterName);
+		} else if (property.type === 'filter') {
+			return extractValueFilter(value, property, parameterName, itemIndex);
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		throw new NodeOperationError(node, error);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment
+		throw new NodeOperationError(node, error, { description: get(error, 'description') });
 	}
 }

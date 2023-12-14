@@ -9,7 +9,7 @@
 			@after-change="updateCarouselScroll"
 		>
 			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
-			<CollectionCard
+			<TemplatesInfoCard
 				v-for="collection in loading ? [] : collections"
 				:key="collection.id"
 				:collection="collection"
@@ -30,7 +30,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
-import CollectionCard from '@/components/CollectionCard.vue';
+import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
 import { VueAgile } from 'vue-agile';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -38,7 +38,7 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 type SliderRef = InstanceType<typeof VueAgile>;
 
 export default defineComponent({
-	name: 'CollectionsCarousel',
+	name: 'TemplatesInfoCarousel',
 	mixins: [genericHelpers],
 	props: {
 		collections: {
@@ -62,7 +62,7 @@ export default defineComponent({
 	},
 	components: {
 		Card,
-		CollectionCard,
+		TemplatesInfoCard,
 		agile: VueAgile,
 	},
 	data() {

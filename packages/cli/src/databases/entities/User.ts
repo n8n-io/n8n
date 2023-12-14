@@ -23,10 +23,6 @@ import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 
-export const MIN_PASSWORD_LENGTH = 8;
-
-export const MAX_PASSWORD_LENGTH = 64;
-
 const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
 	owner: ownerPermissions,
 	member: memberPermissions,

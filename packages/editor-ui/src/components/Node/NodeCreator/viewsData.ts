@@ -78,6 +78,7 @@ export interface NodeViewItem {
 		group?: string[];
 		sections?: NodeViewItemSection[];
 		description?: string;
+		tag?: string;
 		forceIncludeNodes?: string[];
 	};
 	category?: string | string[];
@@ -460,6 +461,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
 				icon: 'robot',
 				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+				tag: i18n.baseText('nodeCreator.aiPanel.newTag'),
 			},
 		});
 

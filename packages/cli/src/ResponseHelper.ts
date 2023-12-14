@@ -2,7 +2,11 @@
 import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
-import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
+import {
+	ErrorReporterProxy as ErrorReporter,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+	NodeApiError,
+} from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import type {
 	IExecutionDb,
@@ -65,6 +69,20 @@ export function sendErrorResponse(res: Response, error: Error) {
 	if (error instanceof ResponseError) {
 		if (inDevelopment) {
 			console.error(picocolors.red(error.httpStatusCode), error.message);
+		}
+
+		//render custom 404 page for form triggers
+		const { originalUrl } = res.req;
+		if (error.errorCode === 404 && originalUrl) {
+			const basePath = originalUrl.split('/')[1];
+			const isLegacyFormTrigger = originalUrl.includes(FORM_TRIGGER_PATH_IDENTIFIER);
+			const isFormTrigger = basePath.includes('form');
+
+			if (isFormTrigger || isLegacyFormTrigger) {
+				const isTestWebhook = basePath.includes('test');
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
+			}
 		}
 
 		httpStatusCode = error.httpStatusCode;

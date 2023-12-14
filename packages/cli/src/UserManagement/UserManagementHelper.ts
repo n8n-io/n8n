@@ -1,32 +1,16 @@
 import { In } from 'typeorm';
-import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
 import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { Scope } from '@n8n/permissions';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ApplicationError } from 'n8n-workflow';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
-}
-
-export async function getInstanceOwner() {
-	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-	return Container.get(UserRepository).findOneOrFail({
-		relations: ['globalRole'],
-		where: {
-			globalRoleId: globalOwnerRole.id,
-		},
-	});
 }
 
 /**
@@ -42,70 +26,12 @@ export function generateUserInviteUrl(inviterId: string, inviteeId: string): str
 	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 }
 
-// TODO: Enforce at model level
-export function validatePassword(password?: string): string {
-	if (!password) {
-		throw new BadRequestError('Password is mandatory');
-	}
-
-	const hasInvalidLength =
-		password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH;
-
-	const hasNoNumber = !/\d/.test(password);
-
-	const hasNoUppercase = !/[A-Z]/.test(password);
-
-	if (hasInvalidLength || hasNoNumber || hasNoUppercase) {
-		const message: string[] = [];
-
-		if (hasInvalidLength) {
-			message.push(
-				`Password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters long.`,
-			);
-		}
-
-		if (hasNoNumber) {
-			message.push('Password must contain at least 1 number.');
-		}
-
-		if (hasNoUppercase) {
-			message.push('Password must contain at least 1 uppercase letter.');
-		}
-
-		throw new BadRequestError(message.join(' '));
-	}
-
-	return password;
-}
-
 export async function getUserById(userId: string): Promise<User> {
 	const user = await Container.get(UserRepository).findOneOrFail({
 		where: { id: userId },
 		relations: ['globalRole'],
 	});
 	return user;
-}
-
-// ----------------------------------
-//            hashing
-// ----------------------------------
-
-export const hashPassword = async (validPassword: string): Promise<string> =>
-	hash(validPassword, genSaltSync(10));
-
-export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
-	try {
-		return await compare(plaintext, hashed);
-	} catch (e) {
-		const error = e instanceof Error ? e : new Error(`${e}`);
-
-		if (error instanceof Error && error.message.includes('Invalid salt version')) {
-			error.message +=
-				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
-		}
-
-		throw new ApplicationError(error.message, { cause: error });
-	}
 }
 
 // return the difference between two arrays
