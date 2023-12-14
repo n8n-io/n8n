@@ -145,7 +145,6 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		this.stopAutoRefreshInterval();
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
 			return;
@@ -181,6 +180,9 @@ export default defineComponent({
 			next();
 		}
 	},
+	created() {
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
+	},
 	async mounted() {
 		this.loading = true;
 		const workflowUpdated = this.$route.params.name !== this.workflowsStore.workflowId;
@@ -198,16 +200,15 @@ export default defineComponent({
 				await this.setExecutions();
 			}
 		}
-
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
 		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
 		this.loading = false;
 	},
 	beforeUnmount() {
-		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
+		this.autoRefresh = false;
+		this.stopAutoRefreshInterval();
 	},
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
@@ -292,7 +293,7 @@ export default defineComponent({
 				}
 				if (this.executions.length > 0) {
 					await this.$router
-						.push({
+						.replace({
 							name: VIEWS.EXECUTION_PREVIEW,
 							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
@@ -302,7 +303,7 @@ export default defineComponent({
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					await this.$router.push({
+					await this.$router.replace({
 						name: VIEWS.EXECUTION_HOME,
 						params: { name: this.currentWorkflow },
 					});
@@ -363,10 +364,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onAutoRefreshToggle(value: boolean): void {
 			this.autoRefresh = value;
@@ -448,7 +447,7 @@ export default defineComponent({
 							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 						})
 						.catch(() => {});
-				} else if (this.executions.length === 0) {
+				} else if (this.executions.length === 0 && this.$route.name === VIEWS.EXECUTION_PREVIEW) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_HOME,
