@@ -49,7 +49,9 @@ export const rawBodyReader: RequestHandler = async (req, res, next) => {
 export const parseBody = async (req: Request) => {
 	await req.readRawBody();
 	const { rawBody, contentType, encoding } = req;
-	if (rawBody?.length) {
+	if (!rawBody.length) {
+		return;
+	}
 		try {
 			if (contentType === 'application/json') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -74,7 +76,6 @@ export const parseBody = async (req: Request) => {
 				'unknown content-type ' + contentType,
 			);
 		}
-	}
 };
 
 export const bodyParser: RequestHandler = async (req, res, next) => {
