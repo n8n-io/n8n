@@ -281,7 +281,6 @@ export class SwitchV3 implements INodeType {
 			}
 		};
 
-		let outputIndex: number;
 		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const item = items[itemIndex];
@@ -291,7 +290,7 @@ export class SwitchV3 implements INodeType {
 					if (itemIndex === 0) {
 						returnData = new Array(numberOutputs).fill(0).map(() => []);
 					}
-					outputIndex = this.getNodeParameter('output', itemIndex) as number;
+					const outputIndex = this.getNodeParameter('output', itemIndex) as number;
 					checkIndexRange(returnData.length, outputIndex, itemIndex);
 
 					returnData[outputIndex].push(item);
@@ -360,6 +359,7 @@ export class SwitchV3 implements INodeType {
 		}
 
 		if (!returnData.length) return [[]];
+
 		return returnData;
 	}
 }
