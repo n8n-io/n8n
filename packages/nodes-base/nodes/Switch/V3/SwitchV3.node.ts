@@ -203,7 +203,7 @@ export class SwitchV3 implements INodeType {
 							displayName: 'Rename Fallback Output',
 							name: 'renameFallbackOutput',
 							type: 'string',
-							placeholder: 'e.g. Default',
+							placeholder: 'e.g. Fallback',
 							default: '',
 							displayOptions: {
 								show: {
