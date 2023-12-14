@@ -297,6 +297,7 @@ export class SwitchV3 implements INodeType {
 					returnData[outputIndex].push(item);
 				} else if (mode === 'rules') {
 					const rules = this.getNodeParameter('rules.values', itemIndex, []) as INodeParameters[];
+					if (!rules.length) continue;
 					const options = this.getNodeParameter('options', itemIndex, {});
 					const fallbackOutput = options.fallbackOutput;
 
@@ -358,6 +359,7 @@ export class SwitchV3 implements INodeType {
 			}
 		}
 
+		if (!returnData.length) return [[]];
 		return returnData;
 	}
 }
