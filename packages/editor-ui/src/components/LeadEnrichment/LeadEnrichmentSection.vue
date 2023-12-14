@@ -20,6 +20,10 @@ const props = defineProps({
 		type: Boolean as PropType<boolean>,
 		default: true,
 	},
+	carouselNavPosition: {
+		type: String as PropType<'inside' | 'outside'>,
+		default: 'outside',
+	},
 });
 
 const sectionTemplates = computed(() => {
@@ -58,6 +62,7 @@ function onOpenCollection({ event, id }: { event: Event; id: number }) {
 				:collections="sectionTemplates"
 				:loading="false"
 				:showItemCount="false"
+				:navigationInside="carouselNavPosition === 'inside'"
 				@openCollection="onOpenCollection"
 			/>
 		</div>

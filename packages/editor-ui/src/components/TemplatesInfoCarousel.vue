@@ -17,10 +17,18 @@
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
 		</agile>
-		<button v-show="carouselScrollPosition > 0" :class="$style.leftButton" @click="scrollLeft">
+		<button
+			v-show="carouselScrollPosition > 0"
+			:class="{ [$style.leftButton]: true, [$style.inside]: navigationInside }"
+			@click="scrollLeft"
+		>
 			<font-awesome-icon icon="chevron-left" />
 		</button>
-		<button v-show="!scrollEnd" :class="$style.rightButton" @click="scrollRight">
+		<button
+			v-show="!scrollEnd"
+			:class="{ [$style.rightButton]: true, [$style.inside]: navigationInside }"
+			@click="scrollRight"
+		>
 			<font-awesome-icon icon="chevron-right" />
 		</button>
 	</div>
@@ -51,6 +59,10 @@ export default defineComponent({
 		showItemCount: {
 			type: Boolean,
 			default: true,
+		},
+		navigationInside: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	watch: {
@@ -157,6 +169,10 @@ export default defineComponent({
 	composes: button;
 	left: -30px;
 
+	&.inside {
+		left: 10px;
+	}
+
 	&:after {
 		left: 27px;
 		background: linear-gradient(
@@ -180,6 +196,10 @@ export default defineComponent({
 .rightButton {
 	composes: button;
 	right: -30px;
+	&.inside {
+		right: 10px;
+	}
+
 	&:after {
 		right: 27px;
 		background: linear-gradient(
