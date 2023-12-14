@@ -84,12 +84,11 @@ function determineCase(locale: string): string {
 	*  but avoide lowercasing AI
 	*/
 	if(new RegExp('/AI\s/gm').test(locale)) {
-		locale.toLowerCase();
-		locale.replace('/ai\s/gm', 'AI');
+		let lcLocale = locale.toLowerCase();
+		return lcLocale.replace('/ai\s/gm', 'AI');
 	} else {
-		locale.toLowerCase();
+		return locale.toLowerCase();
 	}
-	return locale;
 }
 const getAhref = (connectionType: { connection: string; locale: string }) =>
 	`<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connectionType.connection}'>${connectionType.locale}</a>`;
