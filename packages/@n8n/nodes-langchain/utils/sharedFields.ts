@@ -85,7 +85,7 @@ function determineCase(locale: string): string {
 	*/
 	if(new RegExp('/AI\s/gm').test(locale)) {
 		let lcLocale = locale.toLowerCase();
-		return lcLocale.replace(/ai\s/gm, 'AI');
+		return lcLocale.replace(/ai\s/, 'AI ');
 	} else {
 		return locale.toLowerCase();
 	}
