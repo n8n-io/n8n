@@ -80,7 +80,7 @@ import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { licenseController } from './license/license.controller';
-import { setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler, closePushConnections } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
@@ -242,6 +242,18 @@ export class Server extends AbstractServer {
 				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
 		this.collaborationService = Container.get(CollaborationService);
+	}
+
+	/**
+	 * Stops the server from accepting new connections and gives existing
+	 * connections X seconds to finish their work and then closes them
+	 * forcefully.
+	 */
+	async stop(timeoutInS: number = 30) {
+		const stopServerPromise = super.stopServer(timeoutInS);
+		closePushConnections();
+
+		await stopServerPromise;
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {

@@ -246,4 +246,28 @@ export abstract class AbstractServer {
 			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
 	}
+
+	/**
+	 * Stops the HTTP(S) server from accepting new connections. Gives all
+	 * connections `timeoutInS` seconds to finish their work and
+	 * then closes them forcefully.
+	 */
+	protected async stopServer(timeoutInS: number): Promise<void> {
+		const forceConnectionCloseTimeout = setTimeout(() => {
+			this.server.closeAllConnections();
+		}, timeoutInS * 1000);
+
+		const closeServerPromise = new Promise<void>((resolve, reject) => {
+			this.server.close((error) => {
+				clearTimeout(forceConnectionCloseTimeout);
+				if (error) {
+					reject(error);
+				}
+
+				resolve();
+			});
+		});
+
+		return closeServerPromise;
+	}
 }

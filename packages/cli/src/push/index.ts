@@ -70,6 +70,10 @@ export class Push extends EventEmitter {
 	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
 	}
+
+	close() {
+		this.backend.closeAllConnections();
+	}
 }
 
 export const setupPushServer = (restEndpoint: string, server: Server, app: Application) => {
@@ -139,4 +143,14 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 		pushValidationMiddleware,
 		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);
+};
+
+/**
+ * Signals all push connections to close.
+ * NOTE: Does not close the server itself, since it's shared with the rest
+ * of the app.
+ */
+export const closePushConnections = () => {
+	const push = Container.get(Push);
+	push.close();
 };

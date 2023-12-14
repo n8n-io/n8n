@@ -102,6 +102,9 @@ export class Start extends BaseCommand {
 
 			await this.externalHooks?.run('n8n.stop', []);
 
+			// Stop the server from accepting new connections
+			const stopServerPromise = this.server.stop(15);
+
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
@@ -123,6 +126,7 @@ export class Start extends BaseCommand {
 
 			// Finally shut down Event Bus
 			await eventBus.close();
+			await stopServerPromise;
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
