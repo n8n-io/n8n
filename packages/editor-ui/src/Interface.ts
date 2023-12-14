@@ -1070,6 +1070,9 @@ export interface RootState {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	pushConnectionActive: boolean;
@@ -1098,6 +1101,9 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	baseUrl: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -1216,7 +1222,7 @@ export interface NDVState {
 		isDragging: boolean;
 		type: string;
 		data: string;
-		canDrop: boolean;
+		activeTargetId: string | null;
 		stickyPosition: null | XYPosition;
 	};
 	isMappingOnboarded: boolean;
