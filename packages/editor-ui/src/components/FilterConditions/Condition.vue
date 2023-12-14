@@ -288,7 +288,6 @@ const onBlur = (): void => {
 	display: flex;
 	align-items: flex-end;
 	gap: var(--spacing-4xs);
-	padding-left: var(--spacing-l);
 
 	&.hasIssues {
 		--input-border-color: var(--color-danger);
