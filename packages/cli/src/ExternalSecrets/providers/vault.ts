@@ -435,9 +435,9 @@ export class VaultProvider extends SecretsProvider {
 		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
 		try {
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
-				url: listPath,
+				url: `${listPath}?list=true`,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				method: 'LIST' as any,
+				method: 'GET' as any,
 			});
 			this.logger.debug(`[External Secrets] List response ${JSON.stringify(listResp.data)}`);
 		} catch (e) {
