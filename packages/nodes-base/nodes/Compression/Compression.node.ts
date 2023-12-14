@@ -292,20 +292,37 @@ export class Compression implements INodeType {
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (binaryData.fileExtension?.toLowerCase() === 'gz') {
+						} else if (['gz', 'gzip'].includes(binaryData.fileExtension?.toLowerCase() as string)) {
 							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
+							let fileExtension;
+							let mimeType;
+
+							if (binaryData.fileName?.endsWith('.gz')) {
+								const extractedFileExtension = binaryData.fileName.replace('.gz', '').split('.');
+								if (extractedFileExtension.length > 1) {
+									fileExtension = extractedFileExtension[extractedFileExtension.length - 1];
+									mimeType = mime.lookup(fileExtension) as string;
+								}
+							}
 
 							const propertyName = `${outputPrefix}${index}`;
 
 							binaryObject[propertyName] = await this.helpers.prepareBinaryData(
 								Buffer.from(file.buffer),
 								fileName,
+								mimeType,
 							);
-							const fileExtension = mime.extension(binaryObject[propertyName].mimeType) as string;
+
+							if (!fileExtension) {
+								mimeType = binaryObject[propertyName].mimeType;
+								fileExtension = mime.extension(mimeType) as string;
+							}
+
 							binaryObject[propertyName].fileName = `${fileName}.${fileExtension}`;
 							binaryObject[propertyName].fileExtension = fileExtension;
+							binaryObject[propertyName].mimeType = mimeType as string;
 						}
 					}
 
