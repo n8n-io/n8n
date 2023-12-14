@@ -52,30 +52,31 @@ export const parseBody = async (req: Request) => {
 	if (!rawBody.length) {
 		return;
 	}
-		try {
-			if (contentType === 'application/json') {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(rawBody.toString(encoding));
-			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
-			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
-					maxKeys: 1000,
-				});
-			} else if (contentType === 'text/plain') {
-				req.body = rawBody.toString(encoding);
-			}
-		} catch (error) {
-			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
-		}
 
-		if (!req.body) {
-			throw new UnprocessableRequestError(
-				'Failed to parse request body',
-				'unknown content-type ' + contentType,
-			);
+	try {
+		if (contentType === 'application/json') {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			req.body = jsonParse(rawBody.toString(encoding));
+		} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+		} else if (contentType === 'application/x-www-form-urlencoded') {
+			req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
+				maxKeys: 1000,
+			});
+		} else if (contentType === 'text/plain') {
+			req.body = rawBody.toString(encoding);
 		}
+	} catch (error) {
+		throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
+	}
+
+	if (!req.body) {
+		throw new UnprocessableRequestError(
+			'Failed to parse request body',
+			'unknown content-type ' + contentType,
+		);
+	}
 };
 
 export const bodyParser: RequestHandler = async (req, res, next) => {
