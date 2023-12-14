@@ -41,6 +41,14 @@
 				:readOnly="readOnlyEnv"
 			/>
 		</template>
+		<template #postListContent>
+			<lead-enrichment-section
+				v-if="leadEnrichmentTemplates"
+				:section="leadEnrichmentTemplates.sections[0]"
+				title="Explore lead enrichment workflow templates"
+				@openCollection="openLeadEnrichmentCollection"
+			/>
+		</template>
 		<template #empty>
 			<lead-enrichment-page v-if="leadEnrichmentTemplates" />
 			<div v-else>
@@ -131,6 +139,7 @@ import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import LeadEnrichmentPage from '@/components/LeadEnrichment/LeadEnrichmentPage.vue';
+import LeadEnrichmentSection from '@/components/LeadEnrichment/LeadEnrichmentSection.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -157,6 +166,7 @@ const WorkflowsView = defineComponent({
 		WorkflowCard,
 		TagsDropdown,
 		LeadEnrichmentPage,
+		LeadEnrichmentSection,
 	},
 	data() {
 		return {
@@ -207,7 +217,7 @@ const WorkflowsView = defineComponent({
 		},
 		leadEnrichmentTemplates() {
 			return this.uiStore.leadEnrichmentTemplates;
-		}
+		},
 	},
 	methods: {
 		addWorkflow() {
@@ -330,6 +340,9 @@ const WorkflowsView = defineComponent({
 					...filtersToApply,
 				};
 			}
+		},
+		openLeadEnrichmentCollection(collectionName: string) {
+			console.log('openLeadEnrichmentCollection', collectionName);
 		},
 	},
 	watch: {

@@ -1844,4 +1844,5 @@ export type LeadEnrichmentWorkflowPreview = {
 	title: string;
 	description: string;
 	preview: IWorkflowData;
+	nodes: ITemplatesNode[];
 };

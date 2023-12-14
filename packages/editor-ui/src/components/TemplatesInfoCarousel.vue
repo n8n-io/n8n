@@ -13,6 +13,7 @@
 				v-for="collection in loading ? [] : collections"
 				:key="collection.id"
 				:collection="collection"
+				:showItemCount="showItemCount"
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
 		</agile>
@@ -46,6 +47,10 @@ export default defineComponent({
 		},
 		loading: {
 			type: Boolean,
+		},
+		showItemCount: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	watch: {
