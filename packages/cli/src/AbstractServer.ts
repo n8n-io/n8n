@@ -14,6 +14,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
+import { WaitingForms } from '@/WaitingForms';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
@@ -39,6 +40,12 @@ export abstract class AbstractServer {
 
 	protected restEndpoint: string;
 
+	protected endpointForm: string;
+
+	protected endpointFormTest: string;
+
+	protected endpointFormWaiting: string;
+
 	protected endpointWebhook: string;
 
 	protected endpointWebhookTest: string;
@@ -63,6 +70,11 @@ export abstract class AbstractServer {
 		this.sslCert = config.getEnv('ssl_cert');
 
 		this.restEndpoint = config.getEnv('endpoints.rest');
+
+		this.endpointForm = config.getEnv('endpoints.form');
+		this.endpointFormTest = config.getEnv('endpoints.formTest');
+		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
+
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -165,10 +177,21 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
+			const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+			// Register a handler for active forms
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWorkflowRunner));
+
 			// Register a handler for active webhooks
 			this.app.all(
 				`/${this.endpointWebhook}/:path(*)`,
-				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+				webhookRequestHandler(activeWorkflowRunner),
+			);
+
+			// Register a handler for waiting forms
+			this.app.all(
+				`/${this.endpointFormWaiting}/:path/:suffix?`,
+				webhookRequestHandler(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
@@ -181,7 +204,8 @@ export abstract class AbstractServer {
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler for test webhooks
+			// Register a handler
+			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 
 			// Removes a test webhook

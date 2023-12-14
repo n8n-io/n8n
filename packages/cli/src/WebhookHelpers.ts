@@ -37,7 +37,6 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -133,16 +132,7 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			if (
-				error.errorCode === 404 &&
-				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
-			) {
-				const isTestWebhook = req.originalUrl.includes('webhook-test');
-				res.status(404);
-				return res.render('form-trigger-404', { isTestWebhook });
-			} else {
-				return ResponseHelper.sendErrorResponse(res, error as Error);
-			}
+			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
 
 		// Don't respond, if already responded
@@ -560,10 +550,27 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
+						const headers = response.headers;
+						let responseCode = response.statusCode;
+						let data = response.body as IDataObject;
+
+						// for formTrigger node redirection has to be handled by sending redirectURL in response body
+						if (
+							nodeType.description.name === 'formTrigger' &&
+							headers.location &&
+							String(responseCode).startsWith('3')
+						) {
+							responseCode = 200;
+							data = {
+								redirectURL: headers.location,
+							};
+							headers.location = undefined;
+						}
+
 						responseCallback(null, {
-							data: response.body as IDataObject,
-							headers: response.headers,
-							responseCode: response.statusCode,
+							data,
+							headers,
+							responseCode,
 						});
 					}
 
