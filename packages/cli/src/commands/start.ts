@@ -131,9 +131,6 @@ export class Start extends BaseCommand {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		this.logger.info('Stopping DB connection...');
-		await Db.close();
-
 		await this.exitSuccessFully();
 	}
 

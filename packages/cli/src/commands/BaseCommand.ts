@@ -121,6 +121,9 @@ export abstract class BaseCommand extends Command {
 	protected async exitSuccessFully() {
 		try {
 			await CrashJournal.cleanup();
+
+			this.logger.info('Stopping DB connection...');
+			await Db.close();
 		} finally {
 			process.exit();
 		}
