@@ -12,7 +12,7 @@ export const initErrorHandling = async () => {
 	});
 
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
-	if (!config.getEnv('diagnostics.enabled') || !dsn) {
+	if (!dsn) {
 		initialized = true;
 		return;
 	}
