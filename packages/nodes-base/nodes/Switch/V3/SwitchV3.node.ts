@@ -129,6 +129,7 @@ export class SwitchV3 implements INodeType {
 									type: 'filter',
 									default: {},
 									typeOptions: {
+										multipleValues: false,
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
 											typeValidation:
