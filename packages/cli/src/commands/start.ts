@@ -11,6 +11,7 @@ import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
+import * as Db from '@/Db';
 
 import { sleep, jsonParse } from 'n8n-workflow';
 import config from '@/config';
@@ -67,8 +68,6 @@ export class Start extends BaseCommand {
 
 	protected server = new Server();
 
-	private pruningService: PruningService;
-
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
@@ -101,7 +100,7 @@ export class Start extends BaseCommand {
 			// Stop with trying to activate workflows that could not be activated
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
@@ -110,45 +109,26 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
-			// Shut down License manager to unclaim any floating entitlements
-			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
-			await Container.get(License).shutdown();
-
-			if (this.pruningService.isPruningEnabled()) {
-				this.pruningService.stopPruning();
-			}
-
-			if (Container.get(MultiMainSetup).isEnabled) {
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
-
-				await Container.get(MultiMainSetup).shutdown();
-			}
+			await Promise.all([
+				// Shut down License manager to unclaim any floating entitlements
+				// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+				Container.get(License).shutdown(),
+				this.stopPruning(),
+				this.stopOrchestration(),
+			]);
 
 			await Container.get(InternalHooks).onN8nStop();
 
-			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = Container.get(ActiveExecutions);
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-			let count = 0;
-			while (executingWorkflows.length !== 0) {
-				if (count++ % 4 === 0) {
-					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-
-					executingWorkflows.map((execution) => {
-						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-					});
-				}
-
-				await sleep(500);
-				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-			}
+			await this.waitActiveWorkflowExecutionsToFinish();
 
 			// Finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
+
+		this.logger.info('Stopping DB connection...');
+		await Db.close();
 
 		await this.exitSuccessFully();
 	}
@@ -375,10 +355,9 @@ export class Start extends BaseCommand {
 	}
 
 	async initPruning() {
-		this.pruningService = Container.get(PruningService);
-
-		if (this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
+		const pruningService = Container.get(PruningService);
+		if (pruningService.isPruningEnabled()) {
+			pruningService.startPruning();
 		}
 
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
@@ -387,16 +366,61 @@ export class Start extends BaseCommand {
 			await multiMainSetup.init();
 
 			multiMainSetup.on('leadershipChange', async () => {
+				if (this.isShuttingDown) return;
+
 				if (multiMainSetup.isLeader) {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.startPruning();
+					if (pruningService.isPruningEnabled()) {
+						pruningService.startPruning();
 					}
 				} else {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.stopPruning();
+					if (pruningService.isPruningEnabled()) {
+						pruningService.stopPruning();
 					}
 				}
 			});
+		}
+	}
+
+	async stopPruning() {
+		this.logger.debug('Stopping pruning service...');
+		const pruningService = Container.get(PruningService);
+		if (pruningService.isPruningEnabled()) {
+			pruningService.stopPruning();
+		}
+	}
+
+	async stopOrchestration() {
+		this.logger.debug('Stopping orchestration...');
+		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+		if (!isQueueMode) return;
+
+		const isSingleMainSetup = !config.getEnv('multiMainSetup.enabled');
+		if (isSingleMainSetup) {
+			await Container.get(OrchestrationHandlerMainService).shutdown();
+			await Container.get(SingleMainSetup).shutdown();
+		} else {
+			const multiMainSetup = Container.get(MultiMainSetup);
+			await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			await multiMainSetup.shutdown();
+		}
+	}
+
+	async waitActiveWorkflowExecutionsToFinish() {
+		const activeExecutionsInstance = Container.get(ActiveExecutions);
+		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+
+		let count = 0;
+		while (executingWorkflows.length !== 0) {
+			if (count++ % 4 === 0) {
+				this.logger.info(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+
+				executingWorkflows.map((execution) => {
+					this.logger.info(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
+				});
+			}
+
+			await sleep(500);
+			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 	}
 

@@ -65,6 +65,8 @@ export class MultiMainSetup extends SingleMainSetup {
 		clearInterval(this.leaderCheckInterval);
 
 		if (this.isLeader) await this.redisPublisher.clear(this.leaderKey);
+
+		await super.shutdown();
 	}
 
 	private async checkLeader() {

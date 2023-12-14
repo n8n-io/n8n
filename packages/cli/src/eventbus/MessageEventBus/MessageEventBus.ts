@@ -261,6 +261,8 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	async close() {
+		if (!this.isInitialized) return;
+
 		this.logger.debug('Shutting down event writer...');
 		await this.logWriter?.close();
 		for (const destinationName of Object.keys(this.destinations)) {
