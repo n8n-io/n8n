@@ -67,6 +67,13 @@ export const parseBody = async (req: Request) => {
 		} catch (error) {
 			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
 		}
+
+		if (!req.body) {
+			throw new UnprocessableRequestError(
+				'Failed to parse request body',
+				'unknown content-type ' + contentType,
+			);
+		}
 	}
 };
 
