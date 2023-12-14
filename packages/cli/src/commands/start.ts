@@ -75,7 +75,7 @@ export class Start extends BaseCommand {
 		this.server = new Server({
 			shutdown: {
 				signal: this.shutdownController.signal,
-				timeoutInS: 15,
+				timeoutInS: 20,
 			},
 		});
 	}

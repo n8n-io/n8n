@@ -31,7 +31,7 @@ export class Webhook extends BaseCommand {
 		this.server = new WebhookServer({
 			shutdown: {
 				signal: this.shutdownController.signal,
-				timeoutInS: 15,
+				timeoutInS: 20,
 			},
 		});
 	}
