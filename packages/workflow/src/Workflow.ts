@@ -52,6 +52,7 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import * as EventReporter from './ErrorReporterProxy';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -94,7 +95,14 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id as string;
+		if (!parameters.id) {
+			EventReporter.report('Detected ID-less workflow', {
+				level: 'info',
+				extra: { parameters },
+			});
+		}
+
+		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
