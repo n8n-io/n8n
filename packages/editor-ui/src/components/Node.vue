@@ -637,8 +637,7 @@ export default defineComponent({
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
 				const nodeSubtitle =
-					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) ||
-					'';
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {

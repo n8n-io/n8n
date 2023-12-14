@@ -75,6 +75,7 @@
 						@removeNode="(name) => removeNode(name, true)"
 						:key="`${stickyData.id}_sticky`"
 						:name="stickyData.name"
+						:workflow="currentWorkflowObject"
 						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === stickyData.name"
@@ -732,6 +733,7 @@ export default defineComponent({
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
 			activeConnection: null as null | Connection,
+			isInsertingNodes: false,
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
@@ -2735,15 +2737,6 @@ export default defineComponent({
 							});
 						},
 					);
-					setTimeout(() => {
-						NodeViewUtils.addConnectionTestData(
-							info.source,
-							info.target,
-							info.connection?.connector?.hasOwnProperty('canvas')
-								? (info.connection.connector.canvas as HTMLElement)
-								: undefined,
-						);
-					}, 0);
 
 					const endpointArrow = NodeViewUtils.getOverlay(
 						info.connection,
@@ -2763,14 +2756,44 @@ export default defineComponent({
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
-					this.nodeHelpers.updateNodesInputIssues();
-					this.resetEndpointsErrors();
+					// When we add multiple nodes, this event could be fired hundreds of times for large workflows.
+					// And because the updateNodesInputIssues() method is quite expensive, we only call it if not in insert mode
+					if (!this.isInsertingNodes) {
+						this.nodeHelpers.updateNodesInputIssues();
+						this.resetEndpointsErrors();
+						setTimeout(() => {
+							NodeViewUtils.addConnectionTestData(
+								info.source,
+								info.target,
+								info.connection?.connector?.hasOwnProperty('canvas')
+									? (info.connection.connector.canvas as HTMLElement)
+									: undefined,
+							);
+						}, 0);
+					}
 				}
 			} catch (e) {
 				console.error(e);
 			}
 		},
+		addConectionsTestData() {
+			this.instance.connections.forEach((connection) => {
+				NodeViewUtils.addConnectionTestData(
+					connection.source,
+					connection.target,
+					connection?.connector?.hasOwnProperty('canvas')
+						? (connection?.connector.canvas as HTMLElement)
+						: undefined,
+				);
+			});
+		},
 		onDragMove() {
+			const totalNodes = this.nodes.length;
+			void this.callDebounced('updateConnectionsOverlays', {
+				debounceTime: totalNodes > 20 ? 200 : 0,
+			});
+		},
+		updateConnectionsOverlays() {
 			this.instance?.connections.forEach((connection) => {
 				NodeViewUtils.showOrHideItemsLabel(connection);
 				NodeViewUtils.showOrHideMidpointArrow(connection);
@@ -3899,7 +3922,7 @@ export default defineComponent({
 			if (!nodes?.length) {
 				return;
 			}
-
+			this.isInsertingNodes = true;
 			// Before proceeding we must check if all nodes contain the `properties` attribute.
 			// Nodes are loaded without this information so we must make sure that all nodes
 			// being added have this information.
@@ -3957,60 +3980,64 @@ export default defineComponent({
 
 				// check and match credentials, apply new format if old is used
 				this.matchCredentials(node);
-
 				this.workflowsStore.addNode(node);
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(new AddNodeCommand(node));
 				}
 			});
 
-			// Wait for the node to be rendered
+			// Wait for the nodes to be rendered
 			await this.$nextTick();
 
-			// Suspend drawing
 			this.instance?.setSuspendDrawing(true);
 
-			// Load the connections
-			if (connections !== undefined) {
-				let connectionData;
-				for (const sourceNode of Object.keys(connections)) {
-					for (const type of Object.keys(connections[sourceNode])) {
-						for (
-							let sourceIndex = 0;
-							sourceIndex < connections[sourceNode][type].length;
-							sourceIndex++
-						) {
-							const outwardConnections = connections[sourceNode][type][sourceIndex];
-							if (!outwardConnections) {
-								continue;
-							}
-							outwardConnections.forEach((targetData) => {
-								connectionData = [
-									{
-										node: sourceNode,
-										type,
-										index: sourceIndex,
-									},
-									{
-										node: targetData.node,
-										type: targetData.type,
-										index: targetData.index,
-									},
-								] as [IConnection, IConnection];
-
-								this.__addConnection(connectionData);
-							});
-						}
-					}
-				}
+			if (connections) {
+				await this.addConnections(connections);
 			}
-
 			// Add the node issues at the end as the node-connections are required
-			void this.nodeHelpers.refreshNodeIssues();
+			this.nodeHelpers.refreshNodeIssues();
+			this.nodeHelpers.updateNodesInputIssues();
+			this.resetEndpointsErrors();
+			this.isInsertingNodes = false;
 
 			// Now it can draw again
 			this.instance?.setSuspendDrawing(false, true);
 		},
+		async addConnections(connections: IConnections) {
+			const batchedConnectionData: Array<[IConnection, IConnection]> = [];
+
+			for (const sourceNode in connections) {
+				for (const type in connections[sourceNode]) {
+					connections[sourceNode][type].forEach((outwardConnections, sourceIndex) => {
+						if (outwardConnections) {
+							outwardConnections.forEach((targetData) => {
+								batchedConnectionData.push([
+									{ node: sourceNode, type, index: sourceIndex },
+									{ node: targetData.node, type: targetData.type, index: targetData.index },
+								]);
+							});
+						}
+					});
+				}
+			}
+
+			// Process the connections in batches
+			await this.processConnectionBatch(batchedConnectionData);
+			setTimeout(this.addConectionsTestData, 0);
+		},
+
+		async processConnectionBatch(batchedConnectionData: Array<[IConnection, IConnection]>) {
+			const batchSize = 100;
+
+			for (let i = 0; i < batchedConnectionData.length; i += batchSize) {
+				const batch = batchedConnectionData.slice(i, i + batchSize);
+
+				batch.forEach((connectionData) => {
+					this.__addConnection(connectionData);
+				});
+			}
+		},
+
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
 			// be needed that they have to be renamed. Also could it be possible
