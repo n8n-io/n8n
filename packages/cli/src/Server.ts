@@ -146,8 +146,15 @@ export class Server extends AbstractServer {
 
 	private collaborationService: CollaborationService;
 
-	constructor() {
+	constructor(opts: {
+		shutdown: {
+			signal: AbortSignal;
+			timeoutInS: number;
+		};
+	}) {
 		super('main');
+
+		const { signal: shutdownSignal, timeoutInS } = opts.shutdown;
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
@@ -155,6 +162,13 @@ export class Server extends AbstractServer {
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
+		shutdownSignal.addEventListener(
+			'abort',
+			async () => {
+				await this.stop(timeoutInS);
+			},
+			{ once: true },
+		);
 	}
 
 	async start() {
@@ -249,10 +263,9 @@ export class Server extends AbstractServer {
 	 * connections X seconds to finish their work and then closes them
 	 * forcefully.
 	 */
-	async stop(timeoutInS: number = 30) {
+	private async stop(timeoutInS: number) {
 		const stopServerPromise = super.stopServer(timeoutInS);
 		closePushConnections();
-
 		await stopServerPromise;
 	}
 

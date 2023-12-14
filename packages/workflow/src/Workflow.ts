@@ -1228,7 +1228,6 @@ export class Workflow {
 
 	/**
 	 * Executes the given node.
-	 *
 	 */
 	async runNode(
 		executionData: IExecuteData,

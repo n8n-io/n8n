@@ -1,8 +1,23 @@
 import { AbstractServer } from '@/AbstractServer';
 
 export class WebhookServer extends AbstractServer {
-	constructor() {
+	constructor(opts: {
+		shutdown: {
+			signal: AbortSignal;
+			timeoutInS: number;
+		};
+	}) {
 		super('webhook');
+
+		const { signal: shutdownSignal, timeoutInS } = opts.shutdown;
+
+		shutdownSignal.addEventListener(
+			'abort',
+			async () => {
+				await this.stop(timeoutInS);
+			},
+			{ once: true },
+		);
 	}
 
 	/**
@@ -10,7 +25,7 @@ export class WebhookServer extends AbstractServer {
 	 * connections X seconds to finish their work and then closes them
 	 * forcefully.
 	 */
-	async stop(timeoutInS: number = 30): Promise<void> {
+	private async stop(timeoutInS: number): Promise<void> {
 		await super.stopServer(timeoutInS);
 	}
 }

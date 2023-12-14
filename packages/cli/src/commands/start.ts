@@ -11,7 +11,6 @@ import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
-import * as Db from '@/Db';
 
 import { sleep, jsonParse } from 'n8n-workflow';
 import config from '@/config';
@@ -66,12 +65,19 @@ export class Start extends BaseCommand {
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
-	protected server = new Server();
+	protected server: Server;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
 		this.setInstanceQueueModeId();
+
+		this.server = new Server({
+			shutdown: {
+				signal: this.shutdownController.signal,
+				timeoutInS: 15,
+			},
+		});
 	}
 
 	/**
@@ -102,9 +108,6 @@ export class Start extends BaseCommand {
 
 			await this.externalHooks?.run('n8n.stop', []);
 
-			// Stop the server from accepting new connections
-			const stopServerPromise = this.server.stop(15);
-
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
@@ -126,7 +129,6 @@ export class Start extends BaseCommand {
 
 			// Finally shut down Event Bus
 			await eventBus.close();
-			await stopServerPromise;
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

@@ -253,11 +253,13 @@ export abstract class AbstractServer {
 	 * then closes them forcefully.
 	 */
 	protected async stopServer(timeoutInS: number): Promise<void> {
+		this.logger.debug(`Shutting down ${this.protocol} server`);
+
 		const forceConnectionCloseTimeout = setTimeout(() => {
 			this.server.closeAllConnections();
 		}, timeoutInS * 1000);
 
-		const closeServerPromise = new Promise<void>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			this.server.close((error) => {
 				clearTimeout(forceConnectionCloseTimeout);
 				if (error) {
@@ -267,7 +269,5 @@ export abstract class AbstractServer {
 				resolve();
 			});
 		});
-
-		return closeServerPromise;
 	}
 }

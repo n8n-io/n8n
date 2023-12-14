@@ -40,6 +40,8 @@ export abstract class BaseCommand extends Command {
 
 	protected isShuttingDown = false;
 
+	protected readonly shutdownController = new AbortController();
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
@@ -308,6 +310,7 @@ export abstract class BaseCommand extends Command {
 
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.isShuttingDown = true;
+			this.shutdownController.abort(signal);
 			await this.stopProcess();
 		};
 	}
