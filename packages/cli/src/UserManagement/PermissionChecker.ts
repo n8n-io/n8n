@@ -1,5 +1,10 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	LoggerProxy as Logger,
+	NodeOperationError,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import config from '@/config';
@@ -23,6 +28,11 @@ export class PermissionChecker {
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
+		Logger.info('Checking workflow permissions for credentials', {
+			credentialIds: workflowCredIds,
+			workflowId: workflow.id,
+		});
+
 		if (workflowCredIds.length === 0) return;
 
 		// allow if requesting user is instance owner
@@ -32,7 +42,12 @@ export class PermissionChecker {
 			relations: ['globalRole'],
 		});
 
-		if (await user.hasGlobalScope('workflow:execute')) return;
+		if (await user.hasGlobalScope('workflow:execute')) {
+			Logger.info('User has global scope to execute workflows, skipping credential checks', {
+				workflowId: workflow.id,
+			});
+			return;
+		}
 
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
@@ -40,12 +55,19 @@ export class PermissionChecker {
 		let workflowUserIds = [userId];
 
 		if (workflow.id && isSharingEnabled()) {
+			Logger.info('Sharing is enabled; fetching all workflow users', { workflowId: workflow.id });
+
 			const workflowSharings = await Container.get(SharedWorkflowRepository).find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
 				select: ['userId'],
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
+
+			Logger.info('List of users with workflow access', {
+				workflowId: workflow.id,
+				users: workflowUserIds,
+			});
 		}
 
 		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
@@ -62,7 +84,14 @@ export class PermissionChecker {
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
+		Logger.info('List of accessible credentials', { accessibleCredIds, workflowId: workflow.id });
+
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
+
+		Logger.info('List of inaccessible credentials', {
+			inaccessibleCredIds,
+			workflowId: workflow.id,
+		});
 
 		if (inaccessibleCredIds.length === 0) return;
 
@@ -70,10 +99,19 @@ export class PermissionChecker {
 
 		const nodeToFlag = credIdsToNodes[inaccessibleCredIds[0]][0];
 
-		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
-			description: 'Please recreate the credential or ask its owner to share it with you.',
-			level: 'warning',
+		const thrownError = new ApplicationError('Node has no access to credential', {
+			extra: {
+				workflowId: workflow.id,
+				inaccessibleCredIds,
+				accessibleCredIds,
+				workflowUserIds,
+				isSharingEnabled: isSharingEnabled(),
+				node: nodeToFlag.name,
+			},
 		});
+		// @ts-ignore
+		thrownError.node = nodeToFlag;
+		throw thrownError;
 	}
 
 	static async checkSubworkflowExecutePolicy(
