@@ -20,25 +20,57 @@ export const initErrorHandling = async () => {
 	// Collect longer stacktraces
 	Error.stackTraceLimit = 50;
 
-	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
+	const {
+		N8N_VERSION: release,
+		ENVIRONMENT: environment,
+		DEPLOYMENT_NAME: serverName,
+	} = process.env;
 
-	const { init, captureException, addGlobalEventProcessor } = await import('@sentry/node');
+	const { init, captureException, addEventProcessor } = await import('@sentry/node');
 
 	const { RewriteFrames } = await import('@sentry/integrations');
+	const { Integrations } = await import('@sentry/node');
 
+	const blockedIntegrations = [
+		'Console',
+		'Http',
+		'Undici',
+		'OnUncaughtException',
+		'LocalVariables',
+		'Context',
+		'Modules',
+		'RequestData',
+	];
 	init({
 		dsn,
 		release,
 		environment,
+		enableTracing: false,
+		serverName,
+		beforeBreadcrumb: () => null,
 		integrations: (integrations) => {
-			integrations = integrations.filter(({ name }) => name !== 'OnUncaughtException');
-			integrations.push(new RewriteFrames({ root: process.cwd() }));
+			integrations = integrations.filter(({ name }) => !blockedIntegrations.includes(name));
+			integrations.push(
+				new RewriteFrames({ root: process.cwd() }),
+				new Integrations.RequestData({
+					include: {
+						cookies: false,
+						data: false,
+						headers: false,
+						query_string: false,
+						url: true,
+						user: false,
+					},
+				}),
+			);
 			return integrations;
 		},
 	});
 
 	const seenErrors = new Set<string>();
-	addGlobalEventProcessor((event, { originalException }) => {
+	addEventProcessor((event, { originalException }) => {
+		if (!originalException) return null;
+
 		if (originalException instanceof ApplicationError) {
 			const { level, extra, tags } = originalException;
 			if (level === 'warning') return null;
@@ -47,8 +79,7 @@ export const initErrorHandling = async () => {
 			if (tags) event.tags = { ...event.tags, ...tags };
 		}
 
-		if (!event.exception) return null;
-		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
+		const eventHash = createHash('sha1').update(JSON.stringify(originalException)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
 
