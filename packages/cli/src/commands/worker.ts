@@ -292,7 +292,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Queue init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
-		await this.initQueue();
 
 		await Container.get(OrchestrationWorkerService).publishToEventLog(
 			new EventMessageGeneric({
