@@ -2736,15 +2736,6 @@ export default defineComponent({
 							});
 						},
 					);
-					setTimeout(() => {
-						NodeViewUtils.addConnectionTestData(
-							info.source,
-							info.target,
-							info.connection?.connector?.hasOwnProperty('canvas')
-								? (info.connection.connector.canvas as HTMLElement)
-								: undefined,
-						);
-					}, 0);
 
 					const endpointArrow = NodeViewUtils.getOverlay(
 						info.connection,
@@ -2769,14 +2760,38 @@ export default defineComponent({
 					if (!this.isInsertingNodes) {
 						this.nodeHelpers.updateNodesInputIssues();
 						this.resetEndpointsErrors();
+						setTimeout(() => {
+							console.log('Before add connection test data', info.connection.connector);
+							NodeViewUtils.addConnectionTestData(
+								info.source,
+								info.target,
+								info.connection?.connector?.hasOwnProperty('canvas')
+									? (info.connection.connector.canvas as HTMLElement)
+									: undefined,
+							);
+						}, 0);
 					}
 				}
 			} catch (e) {
 				console.error(e);
 			}
 		},
+		addConectionsTestData() {
+			this.instance.connections.forEach((connection) => {
+				NodeViewUtils.addConnectionTestData(
+					connection.source,
+					connection.target,
+					connection?.connector?.hasOwnProperty('canvas')
+						? (connection?.connector.canvas as HTMLElement)
+						: undefined,
+				);
+			});
+		},
 		onDragMove() {
-			void this.callDebounced('updateConnectionsOverlays', { debounceTime: 200 });
+			const totalNodes = this.nodes.length;
+			void this.callDebounced('updateConnectionsOverlays', {
+				debounceTime: totalNodes > 20 ? 200 : 0,
+			});
 		},
 		updateConnectionsOverlays() {
 			this.instance?.connections.forEach((connection) => {
@@ -4013,13 +4028,11 @@ export default defineComponent({
 
 			// Process the connections in batches
 			await this.processConnectionBatch(batchedConnectionData);
+			setTimeout(this.addConectionsTestData, 0);
 		},
 
 		async processConnectionBatch(batchedConnectionData: Array<[IConnection, IConnection]>) {
 			const batchSize = 100;
-			const delayDuration = 50;
-
-			const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 			for (let i = 0; i < batchedConnectionData.length; i += batchSize) {
 				const batch = batchedConnectionData.slice(i, i + batchSize);
@@ -4027,8 +4040,6 @@ export default defineComponent({
 				batch.forEach((connectionData) => {
 					this.__addConnection(connectionData);
 				});
-
-				await delay(delayDuration);
 			}
 		},
 
