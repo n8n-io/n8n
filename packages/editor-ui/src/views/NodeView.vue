@@ -2761,7 +2761,6 @@ export default defineComponent({
 						this.nodeHelpers.updateNodesInputIssues();
 						this.resetEndpointsErrors();
 						setTimeout(() => {
-							console.log('Before add connection test data', info.connection.connector);
 							NodeViewUtils.addConnectionTestData(
 								info.source,
 								info.target,
@@ -3923,19 +3922,15 @@ export default defineComponent({
 				return;
 			}
 			this.isInsertingNodes = true;
-			const startTime = performance.now();
 			// Before proceeding we must check if all nodes contain the `properties` attribute.
 			// Nodes are loaded without this information so we must make sure that all nodes
 			// being added have this information.
 			await this.loadNodesProperties(
 				nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 			);
-			const endTimeProperties = performance.now();
-			console.log('Time taken to load node properties:', endTimeProperties - startTime, 'ms');
 
 			// Add the node to the node-list
 			let nodeType: INodeTypeDescription | null;
-			const startTimeNodes = performance.now();
 			nodes.forEach((node) => {
 				if (!node.id) {
 					node.id = uuid();
@@ -3986,8 +3981,6 @@ export default defineComponent({
 					this.historyStore.pushCommandToUndo(new AddNodeCommand(node));
 				}
 			});
-			const endTime = performance.now();
-			console.log('Time taken to add Nodes:', endTime - startTimeNodes, 'ms');
 
 			// Wait for the nodes to be rendered
 			await this.$nextTick();
@@ -4003,10 +3996,8 @@ export default defineComponent({
 			this.resetEndpointsErrors();
 			this.isInsertingNodes = false;
 
-			const endTimeIssues = performance.now();
 			// Now it can draw again
 			this.instance?.setSuspendDrawing(false, true);
-			console.log('Total:', endTimeIssues - startTime, 'ms');
 		},
 		async addConnections(connections: IConnections) {
 			const batchedConnectionData: Array<[IConnection, IConnection]> = [];
