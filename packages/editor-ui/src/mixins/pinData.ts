@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { NodeConnectionType, NodeHelpers, jsonParse, jsonStringify } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export type PinDataSource =
 	| 'pin-icon-click'
@@ -168,7 +169,7 @@ export const pinData = defineComponent({
 				view: this.displayMode,
 				run_index: this.runIndex,
 			};
-			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+			void useExternalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
 			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 		},
 		onDataPinningError({

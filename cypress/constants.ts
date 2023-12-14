@@ -12,6 +12,13 @@ export const INSTANCE_OWNER = {
 	lastName: randLastName(),
 };
 
+export const INSTANCE_ADMIN = {
+	email: 'admin@n8n.io',
+	password: DEFAULT_USER_PASSWORD,
+	firstName: randFirstName(),
+	lastName: randLastName(),
+};
+
 export const INSTANCE_MEMBERS = [
 	{
 		email: 'rebecca@n8n.io',
@@ -34,7 +41,7 @@ export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
 export const SET_NODE_NAME = 'Set';
 export const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields';
-export const IF_NODE_NAME = 'IF';
+export const IF_NODE_NAME = 'If';
 export const MERGE_NODE_NAME = 'Merge';
 export const SWITCH_NODE_NAME = 'Switch';
 export const GMAIL_NODE_NAME = 'Gmail';

@@ -95,7 +95,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return (resource: ICredentialsResponse): boolean => {
 				const permissions = getCredentialPermissions(this.currentUser, resource);
 
-				return permissions.use;
+				return permissions.read;
 			};
 		},
 	},
@@ -137,7 +137,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {
@@ -301,10 +301,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
+		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
+			this.addUsers(
+				users.map(({ user }, index) => ({
+					isPending: true,
+					globalRole: { name: params[index].role },
+					...user,
+				})),
+			);
 			return users;
 		},
 		async reinviteUser(params: { email: string }): Promise<void> {

@@ -19,7 +19,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
@@ -77,6 +77,16 @@ export abstract class BaseCommand extends Command {
 		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
 			this.logger.warn(
 				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
+			);
+		}
+
+		if (
+			process.env.N8N_BINARY_DATA_TTL ??
+			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
+			process.env.EXECUTIONS_DATA_PRUNE_TIMEOUT
+		) {
+			this.logger.warn(
+				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL and EXECUTIONS_DATA_PRUNE_TIMEOUT no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.',
 			);
 		}
 

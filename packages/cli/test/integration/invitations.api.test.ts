@@ -2,7 +2,7 @@ import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
-import { compareHash } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 
 import Container from 'typedi';
@@ -81,6 +81,7 @@ describe('POST /invitations/:id/accept', () => {
 			globalRole,
 			isPending,
 			apiKey,
+			globalScopes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -93,6 +94,8 @@ describe('POST /invitations/:id/accept', () => {
 		expect(globalRole.scope).toBe('global');
 		expect(globalRole.name).toBe('member');
 		expect(apiKey).not.toBeDefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toHaveLength(0);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
@@ -132,6 +135,7 @@ describe('POST /invitations/:id/accept', () => {
 			globalRole,
 			isPending,
 			apiKey,
+			globalScopes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -144,6 +148,8 @@ describe('POST /invitations/:id/accept', () => {
 		expect(globalRole.scope).toBe('global');
 		expect(globalRole.name).toBe('admin');
 		expect(apiKey).not.toBeDefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toHaveLength(0);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
@@ -233,7 +239,10 @@ describe('POST /invitations/:id/accept', () => {
 		expect(storedMember.lastName).not.toBe(memberData.lastName);
 		expect(storedMember.password).not.toBe(memberData.password);
 
-		const comparisonResult = await compareHash(member.password, storedMember.password);
+		const comparisonResult = await Container.get(PasswordUtility).compare(
+			member.password,
+			storedMember.password,
+		);
 
 		expect(comparisonResult).toBe(false);
 	});

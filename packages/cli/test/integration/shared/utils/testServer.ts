@@ -21,6 +21,7 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { SetupProps, TestServer } from '../types';
 import { InternalHooks } from '@/InternalHooks';
 import { LicenseMocker } from '../license';
+import { PasswordUtility } from '@/services/password.utility';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -68,6 +69,7 @@ export const setupTestServer = ({
 	endpointGroups,
 	applyAuth = true,
 	enabledFeatures,
+	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -97,6 +99,7 @@ export const setupTestServer = ({
 		if (enabledFeatures) {
 			testServer.license.setDefaults({
 				features: enabledFeatures,
+				quotas,
 			});
 		}
 
@@ -227,6 +230,7 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(SettingsRepository),
 								Container.get(UserService),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;
@@ -275,6 +279,7 @@ export const setupTestServer = ({
 								Container.get(EHS),
 								Container.get(USE),
 								Container.get(License),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;
@@ -306,6 +311,11 @@ export const setupTestServer = ({
 					case 'role':
 						const { RoleController } = await import('@/controllers/role.controller');
 						registerController(app, config, Container.get(RoleController));
+						break;
+
+					case 'debug':
+						const { DebugController } = await import('@/controllers/debug.controller');
+						registerController(app, config, Container.get(DebugController));
 						break;
 				}
 			}

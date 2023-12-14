@@ -28,14 +28,14 @@
 						<event-destination-card
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:eventBus="eventBus"
-							:isInstanceOwner="isInstanceOwner"
+							:readonly="!canManageLogStreaming"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</el-col>
 				</el-row>
 				<div class="mt-m text-right">
-					<n8n-button v-if="isInstanceOwner" size="large" @click="addDestination">
+					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
 						{{ $locale.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
@@ -77,7 +77,7 @@ import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -100,13 +100,11 @@ export default defineComponent({
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
-			isInstanceOwner: false,
 		};
 	},
 	async mounted() {
 		if (!this.isLicensed) return;
 
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		await this.credentialsStore.fetchAllCredentials();
@@ -141,7 +139,6 @@ export default defineComponent({
 			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
-			useUsersStore,
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
@@ -157,6 +154,9 @@ export default defineComponent({
 		isLicensed(): boolean {
 			if (this.disableLicense) return false;
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
+		},
+		canManageLogStreaming(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 		},
 	},
 	methods: {

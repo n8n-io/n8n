@@ -3,17 +3,15 @@ import { CacheService } from './cache.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';
-import { UserService } from './user.service';
-import type { Credentials, ListQuery } from '@/requests';
-import type { Role } from '@db/entities/Role';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import type { ListQuery } from '@/requests';
 import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
-		private userService: UserService,
+		private userRepository: UserRepository,
 		private roleService: RoleService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
@@ -22,9 +20,9 @@ export class OwnershipService {
 	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedValue = (await this.cacheService.get(`cache:workflow-owner:${workflowId}`)) as User;
+		const cachedValue = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
 
-		if (cachedValue) return this.userService.create(cachedValue);
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 
@@ -40,37 +38,42 @@ export class OwnershipService {
 		return sharedWorkflow.user;
 	}
 
-	addOwnedBy(
-		workflow: ListQuery.Workflow.WithSharing,
-		workflowOwnerRole: Role,
-	): ListQuery.Workflow.WithOwnership {
-		const { shared, ...rest } = workflow;
+	addOwnedByAndSharedWith(
+		rawWorkflow: ListQuery.Workflow.WithSharing,
+	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+	addOwnedByAndSharedWith(
+		rawCredential: ListQuery.Credentials.WithSharing,
+	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+	addOwnedByAndSharedWith(
+		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
+	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
+		const { shared, ...rest } = rawEntity;
 
-		const ownerId = shared?.find((s) => s.roleId.toString() === workflowOwnerRole.id)?.userId;
+		const entity = rest as
+			| ListQuery.Workflow.WithOwnedByAndSharedWith
+			| ListQuery.Credentials.WithOwnedByAndSharedWith;
 
-		return Object.assign(rest, {
-			ownedBy: ownerId ? { id: ownerId } : null,
-		});
-	}
-
-	addOwnedByAndSharedWith(_credential: CredentialsEntity): Credentials.WithOwnedByAndSharedWith {
-		const { shared, ...rest } = _credential;
-
-		const credential = rest as Credentials.WithOwnedByAndSharedWith;
-
-		credential.ownedBy = null;
-		credential.sharedWith = [];
+		Object.assign(entity, { ownedBy: null, sharedWith: [] });
 
 		shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
 			if (role.name === 'owner') {
-				credential.ownedBy = { id, email, firstName, lastName };
+				entity.ownedBy = { id, email, firstName, lastName };
 			} else {
-				credential.sharedWith.push({ id, email, firstName, lastName });
+				entity.sharedWith.push({ id, email, firstName, lastName });
 			}
 		});
 
-		return credential;
+		return entity;
+	}
+
+	async getInstanceOwner() {
+		const globalOwnerRole = await this.roleService.findGlobalOwnerRole();
+
+		return this.userRepository.findOneOrFail({
+			where: { globalRoleId: globalOwnerRole.id },
+			relations: ['globalRole'],
+		});
 	}
 }

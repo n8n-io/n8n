@@ -529,7 +529,7 @@ export class GithubTrigger implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							'A webhook with the identical URL probably exists already. Please delete it manually on Github!',
-							{ severity: 'warning' },
+							{ level: 'warning' },
 						);
 					}
 
@@ -537,7 +537,7 @@ export class GithubTrigger implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Check that the repository exists and that you have permission to create the webhooks this node requires',
-							{ severity: 'warning' },
+							{ level: 'warning' },
 						);
 					}
 

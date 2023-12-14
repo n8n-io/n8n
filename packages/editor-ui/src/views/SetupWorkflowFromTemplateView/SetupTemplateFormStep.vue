@@ -1,16 +1,18 @@
 <script setup lang="ts">
+import type { PropType } from 'vue';
 import { computed } from 'vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import NodeIcon from '@/components/NodeIcon.vue';
 import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
-import { assert } from '@/utils/assert';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import type { IWorkflowTemplateNode } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 // Props
 const props = defineProps({
@@ -18,8 +20,8 @@ const props = defineProps({
 		type: Number,
 		required: true,
 	},
-	credentialName: {
-		type: String,
+	credentials: {
+		type: Object as PropType<CredentialUsages>,
 		required: true,
 	},
 });
@@ -28,22 +30,15 @@ const props = defineProps({
 const setupTemplateStore = useSetupTemplateStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 //#region Computed
 
-const credentials = computed(() => {
-	const credential = setupTemplateStore.credentialsByName.get(props.credentialName);
-	assert(credential);
-	return credential;
-});
-
-const node = computed(() => credentials.value.usedBy[0]);
+const node = computed(() => props.credentials.usedBy[0]);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
-
-const credentialType = computed(() => credentials.value.credentialType);
 
 const appName = computed(() =>
 	nodeType.value ? getAppNameFromNodeName(nodeType.value.displayName) : node.value.type,
@@ -51,14 +46,14 @@ const appName = computed(() =>
 
 const nodeNames = computed(() => {
 	const formatNodeName = (nodeToFormat: IWorkflowTemplateNode) => `<b>${nodeToFormat.name}</b>`;
-	return formatList(credentials.value.usedBy, {
+	return formatList(props.credentials.usedBy, {
 		formatFn: formatNodeName,
 		i18n,
 	});
 });
 
 const selectedCredentialId = computed(
-	() => setupTemplateStore.selectedCredentialIdByName[props.credentialName],
+	() => setupTemplateStore.selectedCredentialIdByKey[props.credentials.key],
 );
 
 //#endregion Computed
@@ -66,11 +61,25 @@ const selectedCredentialId = computed(
 //#region Methods
 
 const onCredentialSelected = (credentialId: string) => {
-	setupTemplateStore.setSelectedCredentialId(props.credentialName, credentialId);
+	setupTemplateStore.setSelectedCredentialId(props.credentials.key, credentialId);
 };
 
 const onCredentialDeselected = () => {
-	setupTemplateStore.unsetSelectedCredential(props.credentialName);
+	setupTemplateStore.unsetSelectedCredential(props.credentials.key);
+};
+
+const onCredentialModalOpened = () => {
+	telemetry.track(
+		'User opened Credential modal',
+		{
+			source: 'cred_setup',
+			credentialType: props.credentials.credentialType,
+			new_credential: !selectedCredentialId.value,
+		},
+		{
+			withPostHog: true,
+		},
+	);
 };
 
 //#endregion Methods
@@ -101,10 +110,11 @@ const onCredentialDeselected = () => {
 			<CredentialPicker
 				:class="$style.credentialPicker"
 				:app-name="appName"
-				:credentialType="credentialType"
+				:credentialType="props.credentials.credentialType"
 				:selectedCredentialId="selectedCredentialId"
 				@credential-selected="onCredentialSelected"
 				@credential-deselected="onCredentialDeselected"
+				@credential-modal-opened="onCredentialModalOpened"
 			/>
 
 			<IconSuccess
@@ -125,7 +135,7 @@ const onCredentialDeselected = () => {
 .heading {
 	display: flex;
 	align-items: center;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-2xs);
 }
 
 .headingOrder {
@@ -139,6 +149,8 @@ const onCredentialDeselected = () => {
 
 .description {
 	margin-bottom: var(--spacing-l);
+	font-size: var(--font-size-s);
+	color: var(--color-text-base);
 }
 
 .credentials {
@@ -153,6 +165,7 @@ const onCredentialDeselected = () => {
 
 .credentialOk {
 	margin-left: var(--spacing-2xs);
+	font-size: 24px;
 }
 
 .invisible {

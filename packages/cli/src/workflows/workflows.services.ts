@@ -4,6 +4,7 @@ import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
+import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -23,7 +24,6 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
@@ -150,7 +150,7 @@ export class WorkflowsService {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.role', 'shared.user');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);
@@ -178,16 +178,14 @@ export class WorkflowsService {
 			findManyOptions,
 		)) as [ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[], number];
 
-		if (!hasSharing(workflows)) return { workflows, count };
-
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-
-		return {
-			workflows: workflows.map((w) =>
-				Container.get(OwnershipService).addOwnedBy(w, workflowOwnerRole),
-			),
-			count,
-		};
+		return hasSharing(workflows)
+			? {
+					workflows: workflows.map((w) =>
+						Container.get(OwnershipService).addOwnedByAndSharedWith(w),
+					),
+					count,
+			  }
+			: { workflows, count };
 	}
 
 	static async update(
@@ -233,21 +231,9 @@ export class WorkflowsService {
 			);
 		}
 
-		let onlyActiveUpdate = false;
-
-		if (
-			(Object.keys(workflow).length === 3 &&
-				workflow.id !== undefined &&
-				workflow.versionId !== undefined &&
-				workflow.active !== undefined) ||
-			(Object.keys(workflow).length === 2 &&
-				workflow.versionId !== undefined &&
-				workflow.active !== undefined)
-		) {
-			// we're just updating the active status of the workflow, don't update the versionId
-			onlyActiveUpdate = true;
-		} else {
-			// Update the workflow's version
+		if (Object.keys(omit(workflow, ['id', 'versionId', 'active'])).length > 0) {
+			// Update the workflow's version when changing properties such as
+			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			workflow.versionId = uuid();
 			logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -323,7 +309,7 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!onlyActiveUpdate && workflow.versionId !== shared.workflow.versionId) {
+		if (workflow.versionId !== shared.workflow.versionId) {
 			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 

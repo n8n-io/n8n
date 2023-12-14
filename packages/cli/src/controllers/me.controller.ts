@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { Service } from 'typedi';
 import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
-import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
@@ -31,6 +31,7 @@ export class MeController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly internalHooks: InternalHooks,
 		private readonly userService: UserService,
+		private readonly passwordUtility: PasswordUtility,
 	) {}
 
 	/**
@@ -119,14 +120,17 @@ export class MeController {
 			throw new BadRequestError('Requesting user not set up.');
 		}
 
-		const isCurrentPwCorrect = await compareHash(currentPassword, req.user.password);
+		const isCurrentPwCorrect = await this.passwordUtility.compare(
+			currentPassword,
+			req.user.password,
+		);
 		if (!isCurrentPwCorrect) {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const validPassword = validatePassword(newPassword);
+		const validPassword = this.passwordUtility.validate(newPassword);
 
-		req.user.password = await hashPassword(validPassword);
+		req.user.password = await this.passwordUtility.hash(validPassword);
 
 		const user = await this.userService.save(req.user);
 		this.logger.info('Password updated successfully', { userId: user.id });

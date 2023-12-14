@@ -4,6 +4,9 @@ import router from '@/router';
 import { VIEWS } from '@/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useRBACStore } from '@/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
+import type { RouteRecordName } from 'vue-router';
 
 const App = {
 	template: '<div />',
@@ -64,9 +67,47 @@ describe('router', () => {
 		'should resolve %s to %s if user has permissions',
 		async (path, name) => {
 			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
+
 			settingsStore.settings.enterprise.debugInEditor = true;
 			settingsStore.settings.enterprise.workflowHistory = true;
+
+			await router.push(path);
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each<[string, RouteRecordName, Scope[]]>([
+		['/settings/users', VIEWS.WORKFLOWS, []],
+		['/settings/users', VIEWS.USERS_SETTINGS, ['user:create', 'user:update']],
+		['/settings/environments', VIEWS.WORKFLOWS, []],
+		['/settings/environments', VIEWS.SOURCE_CONTROL, ['sourceControl:manage']],
+		['/settings/external-secrets', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/external-secrets',
+			VIEWS.EXTERNAL_SECRETS_SETTINGS,
+			['externalSecretsProvider:list', 'externalSecretsProvider:update'],
+		],
+		['/settings/sso', VIEWS.WORKFLOWS, []],
+		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
+		['/settings/log-streaming', VIEWS.WORKFLOWS, []],
+		['/settings/log-streaming', VIEWS.LOG_STREAMING_SETTINGS, ['logStreaming:manage']],
+		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/community-nodes',
+			VIEWS.COMMUNITY_NODES,
+			['communityPackage:list', 'communityPackage:update'],
+		],
+		['/settings/ldap', VIEWS.WORKFLOWS, []],
+		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+	])(
+		'should resolve %s to %s with %s user permissions',
+		async (path, name, scopes) => {
+			const settingsStore = useSettingsStore();
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.communityNodesEnabled = true;
+			rbacStore.setGlobalScopes(scopes);
 
 			await router.push(path);
 			expect(router.currentRoute.value.name).toBe(name);

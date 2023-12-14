@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, BINARY_ENCODING } from 'n8n-workflow';
+import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -30,9 +30,15 @@ export class N8nBinaryLoader {
 
 	private optionsPrefix: string;
 
-	constructor(context: IExecuteFunctions, optionsPrefix = '') {
+	private binaryDataKey: string;
+
+	private textSplitter?: TextSplitter;
+
+	constructor(context: IExecuteFunctions, optionsPrefix = '', binaryDataKey = '', textSplitter?: TextSplitter) {
 		this.context = context;
+		this.textSplitter = textSplitter;
 		this.optionsPrefix = optionsPrefix;
+		this.binaryDataKey = binaryDataKey;
 	}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
@@ -53,17 +59,15 @@ export class N8nBinaryLoader {
 		const selectedLoader: keyof typeof SUPPORTED_MIME_TYPES = this.context.getNodeParameter(
 			'loader',
 			itemIndex,
+			'auto',
 		) as keyof typeof SUPPORTED_MIME_TYPES;
 
-		const binaryDataKey = this.context.getNodeParameter('binaryDataKey', itemIndex) as string;
 		const docs: Document[] = [];
 		const metadata = getMetadataFiltersValues(this.context, itemIndex);
 
 		if (!item) return [];
 
-		// TODO: Should we support traversing the object to find the binary data?
-		const binaryData = this.context.helpers.assertBinaryData(itemIndex, binaryDataKey);
-
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, this.binaryDataKey)
 		const { mimeType } = binaryData;
 
 		// Check if loader matches the mime-type of the data
@@ -174,12 +178,8 @@ export class N8nBinaryLoader {
 				loader = new TextLoader(filePathOrBlob);
 		}
 
-		const textSplitter = (await this.context.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
 
-		const loadedDoc = textSplitter ? await loader.loadAndSplit(textSplitter) : await loader.load();
+		const loadedDoc = this.textSplitter ? await loader.loadAndSplit(this.textSplitter) : await loader.load();
 
 		docs.push(...loadedDoc);
 
