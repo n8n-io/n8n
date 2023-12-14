@@ -420,7 +420,7 @@
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
 	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",
 	"credentialEdit.credentialSharing.info.reader": "You can view this credential because you have permission to read and share (and rename or delete it too).{notShared}",
-	"credentialEdit.credentialSharing.info.notShared": "To use it in a workflow, ask the credential owner to share it with you.",
+	"credentialEdit.credentialSharing.info.notShared": "To use it in a workflow you need to share it with yourself.",
 	"credentialEdit.credentialSharing.info.sharee": "Only {credentialOwnerName} can change who this credential is shared with",
 	"credentialEdit.credentialSharing.info.sharee.fallback": "the owner",
 	"credentialEdit.credentialSharing.select.placeholder": "Add users...",
