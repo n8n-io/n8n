@@ -99,19 +99,10 @@ export class PermissionChecker {
 
 		const nodeToFlag = credIdsToNodes[inaccessibleCredIds[0]][0];
 
-		const thrownError = new ApplicationError('Node has no access to credential', {
-			extra: {
-				workflowId: workflow.id,
-				inaccessibleCredIds,
-				accessibleCredIds,
-				workflowUserIds,
-				isSharingEnabled: isSharingEnabled(),
-				node: nodeToFlag.name,
-			},
+		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
+			description: 'Please recreate the credential or ask its owner to share it with you.',
+			level: 'warning',
 		});
-		// @ts-ignore
-		thrownError.node = nodeToFlag;
-		throw thrownError;
 	}
 
 	static async checkSubworkflowExecutePolicy(

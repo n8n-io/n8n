@@ -167,7 +167,7 @@ export class Worker extends BaseCommand {
 		}
 
 		const workflow = new Workflow({
-			id: workflowId,
+			id: fullExecutionData.workflowId,
 			name: fullExecutionData.workflowData.name,
 			nodes: fullExecutionData.workflowData.nodes,
 			connections: fullExecutionData.workflowData.connections,
