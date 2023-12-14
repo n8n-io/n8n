@@ -52,7 +52,7 @@ defineExpose({
 			<n8n-heading tag="h1" size="2xlarge" class="mb-2xs">
 				{{
 					$locale.baseText('leadEnrichment.heading', {
-						interpolate: { name: currentUser.firstName || $locale.baseText('generic.welcome') },
+						interpolate: { name: currentUser?.firstName || $locale.baseText('generic.welcome') },
 					})
 				}}
 			</n8n-heading>

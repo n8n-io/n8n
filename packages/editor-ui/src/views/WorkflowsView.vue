@@ -46,7 +46,6 @@
 				v-if="leadEnrichmentTemplates"
 				:section="leadEnrichmentTemplates.sections[0]"
 				title="Explore lead enrichment workflow templates"
-				@openCollection="openLeadEnrichmentCollection"
 			/>
 		</template>
 		<template #empty>
@@ -340,9 +339,6 @@ const WorkflowsView = defineComponent({
 					...filtersToApply,
 				};
 			}
-		},
-		openLeadEnrichmentCollection(collectionName: string) {
-			console.log('openLeadEnrichmentCollection', collectionName);
 		},
 	},
 	watch: {

@@ -37,6 +37,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -54,6 +55,7 @@ import type {
 	ThemeOption,
 	AppliedThemeOption,
 	LeadEnrichmentTemplates,
+	Notification,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -182,6 +184,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
 				open: false,
 			},
+			[LEAD_ENRICHMENT_PREVIEW_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -219,6 +224,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannersHeight: 0,
 		bannerStack: [],
 		leadEnrichmentTemplates: undefined,
+		// Notifications that should show when node view is initialized
+		// This enables us to set a queue of notifications that should show
+		// once users land on the node view
+		nodeViewNotifications: [],
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
@@ -646,6 +655,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		setLeadEnrichmentTemplates(templates: LeadEnrichmentTemplates) {
 			this.leadEnrichmentTemplates = templates;
+		},
+		setNodeViewNotifications(notifications: Notification[]) {
+			this.nodeViewNotifications = notifications;
 		},
 	},
 });

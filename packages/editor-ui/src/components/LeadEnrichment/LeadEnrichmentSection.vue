@@ -3,6 +3,7 @@ import { type PropType, computed } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import type { ITemplatesCollection, LeadEnrichmentTemplateSection } from '@/Interface';
 import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
+import { LEAD_ENRICHMENT_PREVIEW_MODAL_KEY } from '@/constants';
 
 const uiStore = useUIStore();
 
@@ -21,10 +22,6 @@ const props = defineProps({
 	},
 });
 
-const emit = defineEmits<{
-	(event: 'openCollection', value: string): void;
-}>();
-
 const sectionTemplates = computed(() => {
 	const carouselCollections = Array<ITemplatesCollection>();
 	if (!uiStore.leadEnrichmentTemplates) {
@@ -42,8 +39,10 @@ const sectionTemplates = computed(() => {
 });
 
 function onOpenCollection({ event, id }: { event: Event; id: number }) {
-	// TODO: How do we identify workflow here?
-	emit('openCollection', props.section.workflows[id].title);
+	uiStore.openModalWithData({
+		name: LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
+		data: { workflow: props.section.workflows[id] },
+	});
 }
 </script>
 

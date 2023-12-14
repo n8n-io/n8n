@@ -37,125 +37,113 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 						preview: {
 							nodes: [
 								{
-									id: '9971f7ab-ecc3-468b-8eb9-b58491b660bd',
-									name: "On clicking 'execute'",
-									type: 'n8n-nodes-base.manualTrigger',
-									position: [1040, 360],
-									parameters: {},
-									typeVersion: 1,
+									parameters: {
+										operation: 'create',
+										base: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										table: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										columns: {
+											mappingMode: 'defineBelow',
+											value: {},
+											matchingColumns: [],
+											schema: [],
+										},
+										options: {},
+									},
+									id: 'b09d4f4d-19fa-43de-8148-2d430a04956f',
+									name: 'Airtable',
+									type: 'n8n-nodes-base.airtable',
+									typeVersion: 2,
+									position: [1800, 740],
 								},
 								{
-									id: 'bb212963-9b6f-434c-9777-3360fb456d4b',
-									name: 'Note',
-									type: 'n8n-nodes-base.stickyNote',
-									position: [1320, 600],
-									parameters: {
-										width: 1020,
-										height: 360,
-										content: '# 3. Add items from B below items from A\n',
-									},
+									parameters: {},
+									id: '551313bb-1e01-4133-9956-e6f09968f2ce',
+									name: 'When clicking "Execute Workflow"',
+									type: 'n8n-nodes-base.manualTrigger',
 									typeVersion: 1,
+									position: [920, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'b4c089ee-2adb-435e-8d48-47012c981a11',
+									name: 'Get image',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4.1,
+									position: [1140, 740],
+								},
+								{
+									parameters: {
+										operation: 'extractHtmlContent',
+										options: {},
+									},
+									id: '04ca2f61-b930-4fbc-b467-3470c0d93d64',
+									name: 'Extract Information',
+									type: 'n8n-nodes-base.html',
+									typeVersion: 1,
+									position: [1360, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'd1a77493-c579-4ac4-b6a7-708eea2bf8ce',
+									name: 'Set Information',
+									type: 'n8n-nodes-base.set',
+									typeVersion: 3.2,
+									position: [1580, 740],
 								},
 							],
 							connections: {
-								'A. Queen': {
+								'When clicking "Execute Workflow"': {
 									main: [
 										[
 											{
-												node: 'Super Band',
+												node: 'Get image',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'A. Ingredients': {
+								'Get image': {
 									main: [
 										[
 											{
-												node: 'Merge recipe',
+												node: 'Extract Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'B. Led Zeppelin': {
+								'Extract Information': {
 									main: [
 										[
 											{
-												node: 'Super Band',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'B. Recipe quantities': {
-									main: [
-										[
-											{
-												node: 'Merge recipe',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'A. Ingredients Needed': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
+												node: 'Set Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								"On clicking 'execute'": {
+								'Set Information': {
 									main: [
 										[
 											{
-												node: 'A. Ingredients Needed',
+												node: 'Airtable',
 												type: 'main',
 												index: 0,
-											},
-											{
-												node: 'B. Ingredients in stock',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Ingredients',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Recipe quantities',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Queen',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Led Zeppelin',
-												type: 'main',
-												index: 0,
-											},
-										],
-									],
-								},
-								'B. Ingredients in stock': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
-												type: 'main',
-												index: 1,
 											},
 										],
 									],
@@ -166,23 +154,14 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 							{
 								id: 24,
 								icon: 'fa:code-branch',
-								name: 'n8n-nodes-base.merge',
 								defaults: {
-									name: 'Merge',
 									color: '#00bbcc',
 								},
 								iconData: {
 									icon: 'code-branch',
 									type: 'icon',
 								},
-								categories: [
-									{
-										id: 9,
-										name: 'Core Nodes',
-									},
-								],
 								displayName: 'Merge',
-								typeVersion: 2,
 							},
 						],
 					},
@@ -193,125 +172,113 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 						preview: {
 							nodes: [
 								{
-									id: '9971f7ab-ecc3-468b-8eb9-b58491b660bd',
-									name: "On clicking 'execute'",
-									type: 'n8n-nodes-base.manualTrigger',
-									position: [1040, 360],
-									parameters: {},
-									typeVersion: 1,
+									parameters: {
+										operation: 'create',
+										base: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										table: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										columns: {
+											mappingMode: 'defineBelow',
+											value: {},
+											matchingColumns: [],
+											schema: [],
+										},
+										options: {},
+									},
+									id: 'b09d4f4d-19fa-43de-8148-2d430a04956f',
+									name: 'Airtable',
+									type: 'n8n-nodes-base.airtable',
+									typeVersion: 2,
+									position: [1800, 740],
 								},
 								{
-									id: 'bb212963-9b6f-434c-9777-3360fb456d4b',
-									name: 'Note',
-									type: 'n8n-nodes-base.stickyNote',
-									position: [1320, 600],
-									parameters: {
-										width: 1020,
-										height: 360,
-										content: '# 3. Add items from B below items from A\n',
-									},
+									parameters: {},
+									id: '551313bb-1e01-4133-9956-e6f09968f2ce',
+									name: 'When clicking "Execute Workflow"',
+									type: 'n8n-nodes-base.manualTrigger',
 									typeVersion: 1,
+									position: [920, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'b4c089ee-2adb-435e-8d48-47012c981a11',
+									name: 'Get image',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4.1,
+									position: [1140, 740],
+								},
+								{
+									parameters: {
+										operation: 'extractHtmlContent',
+										options: {},
+									},
+									id: '04ca2f61-b930-4fbc-b467-3470c0d93d64',
+									name: 'Extract Information',
+									type: 'n8n-nodes-base.html',
+									typeVersion: 1,
+									position: [1360, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'd1a77493-c579-4ac4-b6a7-708eea2bf8ce',
+									name: 'Set Information',
+									type: 'n8n-nodes-base.set',
+									typeVersion: 3.2,
+									position: [1580, 740],
 								},
 							],
 							connections: {
-								'A. Queen': {
+								'When clicking "Execute Workflow"': {
 									main: [
 										[
 											{
-												node: 'Super Band',
+												node: 'Get image',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'A. Ingredients': {
+								'Get image': {
 									main: [
 										[
 											{
-												node: 'Merge recipe',
+												node: 'Extract Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'B. Led Zeppelin': {
+								'Extract Information': {
 									main: [
 										[
 											{
-												node: 'Super Band',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'B. Recipe quantities': {
-									main: [
-										[
-											{
-												node: 'Merge recipe',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'A. Ingredients Needed': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
+												node: 'Set Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								"On clicking 'execute'": {
+								'Set Information': {
 									main: [
 										[
 											{
-												node: 'A. Ingredients Needed',
+												node: 'Airtable',
 												type: 'main',
 												index: 0,
-											},
-											{
-												node: 'B. Ingredients in stock',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Ingredients',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Recipe quantities',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Queen',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Led Zeppelin',
-												type: 'main',
-												index: 0,
-											},
-										],
-									],
-								},
-								'B. Ingredients in stock': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
-												type: 'main',
-												index: 1,
 											},
 										],
 									],
@@ -374,125 +341,113 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 						preview: {
 							nodes: [
 								{
-									id: '9971f7ab-ecc3-468b-8eb9-b58491b660bd',
-									name: "On clicking 'execute'",
-									type: 'n8n-nodes-base.manualTrigger',
-									position: [1040, 360],
-									parameters: {},
-									typeVersion: 1,
+									parameters: {
+										operation: 'create',
+										base: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										table: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										columns: {
+											mappingMode: 'defineBelow',
+											value: {},
+											matchingColumns: [],
+											schema: [],
+										},
+										options: {},
+									},
+									id: 'b09d4f4d-19fa-43de-8148-2d430a04956f',
+									name: 'Airtable',
+									type: 'n8n-nodes-base.airtable',
+									typeVersion: 2,
+									position: [1800, 740],
 								},
 								{
-									id: 'bb212963-9b6f-434c-9777-3360fb456d4b',
-									name: 'Note',
-									type: 'n8n-nodes-base.stickyNote',
-									position: [1320, 600],
-									parameters: {
-										width: 1020,
-										height: 360,
-										content: '# 3. Add items from B below items from A\n',
-									},
+									parameters: {},
+									id: '551313bb-1e01-4133-9956-e6f09968f2ce',
+									name: 'When clicking "Execute Workflow"',
+									type: 'n8n-nodes-base.manualTrigger',
 									typeVersion: 1,
+									position: [920, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'b4c089ee-2adb-435e-8d48-47012c981a11',
+									name: 'Get image',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4.1,
+									position: [1140, 740],
+								},
+								{
+									parameters: {
+										operation: 'extractHtmlContent',
+										options: {},
+									},
+									id: '04ca2f61-b930-4fbc-b467-3470c0d93d64',
+									name: 'Extract Information',
+									type: 'n8n-nodes-base.html',
+									typeVersion: 1,
+									position: [1360, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'd1a77493-c579-4ac4-b6a7-708eea2bf8ce',
+									name: 'Set Information',
+									type: 'n8n-nodes-base.set',
+									typeVersion: 3.2,
+									position: [1580, 740],
 								},
 							],
 							connections: {
-								'A. Queen': {
+								'When clicking "Execute Workflow"': {
 									main: [
 										[
 											{
-												node: 'Super Band',
+												node: 'Get image',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'A. Ingredients': {
+								'Get image': {
 									main: [
 										[
 											{
-												node: 'Merge recipe',
+												node: 'Extract Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'B. Led Zeppelin': {
+								'Extract Information': {
 									main: [
 										[
 											{
-												node: 'Super Band',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'B. Recipe quantities': {
-									main: [
-										[
-											{
-												node: 'Merge recipe',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'A. Ingredients Needed': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
+												node: 'Set Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								"On clicking 'execute'": {
+								'Set Information': {
 									main: [
 										[
 											{
-												node: 'A. Ingredients Needed',
+												node: 'Airtable',
 												type: 'main',
 												index: 0,
-											},
-											{
-												node: 'B. Ingredients in stock',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Ingredients',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Recipe quantities',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Queen',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Led Zeppelin',
-												type: 'main',
-												index: 0,
-											},
-										],
-									],
-								},
-								'B. Ingredients in stock': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
-												type: 'main',
-												index: 1,
 											},
 										],
 									],
@@ -503,7 +458,6 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 							{
 								id: 14,
 								icon: 'fa:code',
-								name: 'n8n-nodes-base.function',
 								defaults: {
 									name: 'Function',
 									color: '#FF9922',
@@ -512,18 +466,7 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 									icon: 'code',
 									type: 'icon',
 								},
-								categories: [
-									{
-										id: 5,
-										name: 'Development',
-									},
-									{
-										id: 9,
-										name: 'Core Nodes',
-									},
-								],
 								displayName: 'Function',
-								typeVersion: 1,
 							},
 						],
 					},
@@ -535,125 +478,113 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 						preview: {
 							nodes: [
 								{
-									id: '9971f7ab-ecc3-468b-8eb9-b58491b660bd',
-									name: "On clicking 'execute'",
-									type: 'n8n-nodes-base.manualTrigger',
-									position: [1040, 360],
-									parameters: {},
-									typeVersion: 1,
+									parameters: {
+										operation: 'create',
+										base: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										table: {
+											__rl: true,
+											mode: 'list',
+											value: '',
+										},
+										columns: {
+											mappingMode: 'defineBelow',
+											value: {},
+											matchingColumns: [],
+											schema: [],
+										},
+										options: {},
+									},
+									id: 'b09d4f4d-19fa-43de-8148-2d430a04956f',
+									name: 'Airtable',
+									type: 'n8n-nodes-base.airtable',
+									typeVersion: 2,
+									position: [1800, 740],
 								},
 								{
-									id: 'bb212963-9b6f-434c-9777-3360fb456d4b',
-									name: 'Note',
-									type: 'n8n-nodes-base.stickyNote',
-									position: [1320, 600],
-									parameters: {
-										width: 1020,
-										height: 360,
-										content: '# 3. Add items from B below items from A\n',
-									},
+									parameters: {},
+									id: '551313bb-1e01-4133-9956-e6f09968f2ce',
+									name: 'When clicking "Execute Workflow"',
+									type: 'n8n-nodes-base.manualTrigger',
 									typeVersion: 1,
+									position: [920, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'b4c089ee-2adb-435e-8d48-47012c981a11',
+									name: 'Get image',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4.1,
+									position: [1140, 740],
+								},
+								{
+									parameters: {
+										operation: 'extractHtmlContent',
+										options: {},
+									},
+									id: '04ca2f61-b930-4fbc-b467-3470c0d93d64',
+									name: 'Extract Information',
+									type: 'n8n-nodes-base.html',
+									typeVersion: 1,
+									position: [1360, 740],
+								},
+								{
+									parameters: {
+										options: {},
+									},
+									id: 'd1a77493-c579-4ac4-b6a7-708eea2bf8ce',
+									name: 'Set Information',
+									type: 'n8n-nodes-base.set',
+									typeVersion: 3.2,
+									position: [1580, 740],
 								},
 							],
 							connections: {
-								'A. Queen': {
+								'When clicking "Execute Workflow"': {
 									main: [
 										[
 											{
-												node: 'Super Band',
+												node: 'Get image',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'A. Ingredients': {
+								'Get image': {
 									main: [
 										[
 											{
-												node: 'Merge recipe',
+												node: 'Extract Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								'B. Led Zeppelin': {
+								'Extract Information': {
 									main: [
 										[
 											{
-												node: 'Super Band',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'B. Recipe quantities': {
-									main: [
-										[
-											{
-												node: 'Merge recipe',
-												type: 'main',
-												index: 1,
-											},
-										],
-									],
-								},
-								'A. Ingredients Needed': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
+												node: 'Set Information',
 												type: 'main',
 												index: 0,
 											},
 										],
 									],
 								},
-								"On clicking 'execute'": {
+								'Set Information': {
 									main: [
 										[
 											{
-												node: 'A. Ingredients Needed',
+												node: 'Airtable',
 												type: 'main',
 												index: 0,
-											},
-											{
-												node: 'B. Ingredients in stock',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Ingredients',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Recipe quantities',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'A. Queen',
-												type: 'main',
-												index: 0,
-											},
-											{
-												node: 'B. Led Zeppelin',
-												type: 'main',
-												index: 0,
-											},
-										],
-									],
-								},
-								'B. Ingredients in stock': {
-									main: [
-										[
-											{
-												node: 'Ingredients in stock from recipe',
-												type: 'main',
-												index: 1,
 											},
 										],
 									],
@@ -664,7 +595,6 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 							{
 								id: 14,
 								icon: 'fa:code',
-								name: 'n8n-nodes-base.function',
 								defaults: {
 									name: 'Function',
 									color: '#FF9922',
@@ -673,23 +603,11 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 									icon: 'code',
 									type: 'icon',
 								},
-								categories: [
-									{
-										id: 5,
-										name: 'Development',
-									},
-									{
-										id: 9,
-										name: 'Core Nodes',
-									},
-								],
 								displayName: 'Function',
-								typeVersion: 1,
 							},
 							{
 								id: 24,
 								icon: 'fa:code-branch',
-								name: 'n8n-nodes-base.merge',
 								defaults: {
 									name: 'Merge',
 									color: '#00bbcc',
@@ -698,14 +616,7 @@ export function getLeadEnrichmentTemplates(): LeadEnrichmentTemplates {
 									icon: 'code-branch',
 									type: 'icon',
 								},
-								categories: [
-									{
-										id: 9,
-										name: 'Core Nodes',
-									},
-								],
 								displayName: 'Merge',
-								typeVersion: 2,
 							},
 						],
 					},

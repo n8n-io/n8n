@@ -1260,6 +1260,7 @@ export interface UIState {
 	bannerStack: BannerName[];
 	theme: ThemeOption;
 	leadEnrichmentTemplates?: LeadEnrichmentTemplates;
+	nodeViewNotifications: NotificationOptions[];
 }
 
 export type IFakeDoor = {
@@ -1850,5 +1851,5 @@ export type LeadEnrichmentWorkflowPreview = {
 	title: string;
 	description: string;
 	preview: IWorkflowData;
-	nodes: ITemplatesNode[];
+	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
 };
