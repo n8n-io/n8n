@@ -80,6 +80,12 @@ export class ExtractFromFile implements INodeType {
 						description: 'Extracts the content of a text file',
 					},
 					{
+						name: 'Extract From XML',
+						value: 'xml',
+						action: 'Extract from XLS',
+						description: 'Extracts the content of an XML file',
+					},
+					{
 						name: 'Extract From XLS',
 						value: 'xls',
 						action: 'Extract from XLS',
@@ -115,7 +121,7 @@ export class ExtractFromFile implements INodeType {
 			returnData = await spreadsheet.execute.call(this, items, 'operation');
 		}
 
-		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs'].includes(operation)) {
+		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
 			returnData = await moveTo.execute.call(this, items, operation);
 		}
 

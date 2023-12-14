@@ -94,7 +94,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs'],
+		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'],
 	},
 };
 

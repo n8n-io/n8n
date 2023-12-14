@@ -23,9 +23,13 @@
 		"Move Binary Data",
 		"Binary",
 		"File",
-		"JSON"
+		"JSON",
+		"HTML",
+		"ICS",
+		"RTF",
+		"64"
 	],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Files", "Data Transformation"]
 	}
 }

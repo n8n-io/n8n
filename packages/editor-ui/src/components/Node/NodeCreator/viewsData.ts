@@ -50,6 +50,8 @@ import {
 	HELPERS_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
+	EDIT_IMAGE_NODE_TYPE,
+	COMPRESSION_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -396,7 +398,16 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'convert',
 							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
-							items: [HTML_NODE_TYPE, MARKDOWN_NODE_TYPE, XML_NODE_TYPE, CRYPTO_NODE_TYPE],
+							items: [
+								HTML_NODE_TYPE,
+								MARKDOWN_NODE_TYPE,
+								XML_NODE_TYPE,
+								CRYPTO_NODE_TYPE,
+								EXTRACT_FROM_FILE_NODE_TYPE,
+								CONVERT_TO_FILE_NODE_TYPE,
+								COMPRESSION_NODE_TYPE,
+								EDIT_IMAGE_NODE_TYPE,
+							],
 						},
 					],
 				},

@@ -24,9 +24,16 @@
 		"Binary",
 		"File",
 		"PDF",
-		"JSON"
+		"JSON",
+		"HTML",
+		"ICS",
+		"txt",
+		"Text",
+		"RTF",
+		"XML",
+		"64"
 	],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Files", "Data Transformation"]
 	}
 }
