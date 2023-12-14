@@ -79,6 +79,18 @@ function determineArticle(nextWord: string): string {
 	const vowels = /^[aeiouAEIOU]/;
 	return vowels.test(nextWord) ? 'an' : 'a';
 }
+function determineCase(locale: string): string {
+	/* lowercase locales most of the time
+	*  but avoide lowercasing AI
+	*/
+	if(new RegExp('/AI\s/gm').test(locale)) {
+		locale.toLowerCase();
+		locale.replace('/ai\s/gm', 'AI');
+	} else {
+		locale.toLowerCase();
+	}
+	return locale;
+}
 const getAhref = (connectionType: { connection: string; locale: string }) =>
 	`<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connectionType.connection}'>${connectionType.locale}</a>`;
 
@@ -107,7 +119,7 @@ export function getConnectionHintNoticeField(
 		const [[connection, locales]] = Array.from(groupedConnections);
 		displayName = `This node must be connected to ${determineArticle(
 			locales[0],
-		)} ${locales[0].toLowerCase()}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
+		)} ${determineCase(locales[0])}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
 	} else {
 		const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
 			// If there are multiple locales, join them with ' or '
