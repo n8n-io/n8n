@@ -43,6 +43,7 @@ describe('ExecutionRepository', () => {
 			const executionDataRepo = Container.get(ExecutionDataRepository);
 			const executionData = await executionDataRepo.findOneBy({ executionId });
 			expect(executionData?.workflowData).toEqual({
+				id: workflow.id,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				name: workflow.name,
