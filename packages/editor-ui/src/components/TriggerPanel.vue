@@ -45,6 +45,12 @@
 							{{ listeningHint }}
 						</n8n-text>
 					</div>
+					<div v-if="isChatNode">
+						<n8n-button @click="openWebhookUrl()" class="mb-xl">
+							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
+						</n8n-button>
+					</div>
+
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:nodeName="nodeName"
@@ -105,6 +111,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -172,6 +179,9 @@ export default defineComponent({
 
 			return '';
 		},
+		isChatNode(): boolean {
+			return Boolean(this.node && this.node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
 		},
@@ -223,11 +233,16 @@ export default defineComponent({
 				: this.$locale.baseText('ndv.trigger.webhookNode.listening');
 		},
 		listeningHint(): string {
-			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
-				? this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint')
-				: this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
+			switch (this.nodeType?.name) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.chatTrigger.serviceHint');
+				case FORM_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint');
+				default:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 						interpolate: { service: this.serviceName },
-				  });
+					});
+			}
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
@@ -352,6 +367,15 @@ export default defineComponent({
 			if (this.$refs.help) {
 				this.executionsHelpEventBus.emit('expand');
 			}
+		},
+		openWebhookUrl() {
+			this.$telemetry.track('User clicked ndv link', {
+				workflow_id: this.workflowsStore.workflowId,
+				session_id: this.sessionId,
+				pane: 'input',
+				type: 'open-chat',
+			});
+			window.open(this.webhookTestUrl, '_blank', 'noreferrer');
 		},
 		onLinkClick(e: MouseEvent) {
 			if (!e.target) {
