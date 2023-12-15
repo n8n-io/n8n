@@ -14,7 +14,7 @@ export class LmChatGoogleGenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Generative AI Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'lmChatGoogleGenerative AI',
+		name: 'lmChatGoogleGenAi',
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
@@ -63,7 +63,7 @@ export class LmChatGoogleGenAi implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/v1beta3/models',
+								url: '/v1beta/models',
 							},
 							output: {
 								postReceive: [
@@ -76,7 +76,7 @@ export class LmChatGoogleGenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: "={{ $responseItem.name.startsWith('models/chat') }}",
+											pass: "={{ !$responseItem.name.startsWith('models/embedding') }}",
 										},
 									},
 									{
@@ -117,7 +117,7 @@ export class LmChatGoogleGenAi implements INodeType {
 					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
-						default: 0.7,
+						default: 0.9,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
@@ -160,7 +160,7 @@ export class LmChatGoogleGenAi implements INodeType {
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {
-			temperature: 0.7,
+			temperature: 0.9,
 			maxOutputTokens: 2048,
 			topK: 40,
 			topP: 0.9,

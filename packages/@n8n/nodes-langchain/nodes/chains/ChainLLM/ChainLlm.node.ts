@@ -21,6 +21,7 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage } from 'langchain/schema';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 interface MessagesTemplate {
@@ -36,6 +37,7 @@ async function getImageMessage(
 	context: IExecuteFunctions,
 	itemIndex: number,
 	message: MessagesTemplate,
+	isGoogleChat: boolean,
 ) {
 	if (message.messageType !== 'imageBinary' && message.messageType !== 'imageUrl') {
 		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
@@ -50,10 +52,12 @@ async function getImageMessage(
 			content: [
 				{
 					type: 'image_url',
-					image_url: {
-						url: message.imageUrl,
-						detail,
-					},
+					image_url: isGoogleChat
+						? message.imageUrl
+						: {
+								url: message.imageUrl,
+								detail,
+						  },
 				},
 			],
 		});
@@ -72,10 +76,12 @@ async function getImageMessage(
 		content: [
 			{
 				type: 'image_url',
-				image_url: {
-					url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
-					detail,
-				},
+				image_url: isGoogleChat
+					? `data:image/jpeg;base64,${bufferData.toString('base64')}`
+					: {
+							url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
+							detail,
+					  },
 			},
 		],
 	});
@@ -84,7 +90,7 @@ async function getImageMessage(
 async function getChainPromptTemplate(
 	context: IExecuteFunctions,
 	itemIndex: number,
-	llm: BaseLanguageModel | BaseChatModel,
+	llm: BaseLanguageModel | BaseChatModel | ChatGoogleGenerativeAI,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
 ) {
@@ -94,7 +100,7 @@ async function getChainPromptTemplate(
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
 
-	if (llm instanceof BaseChatModel) {
+	if (llm instanceof BaseChatModel || llm instanceof ChatGoogleGenerativeAI) {
 		const parsedMessages = await Promise.all(
 			(messages ?? []).map(async (message) => {
 				const messageClass = [
@@ -111,7 +117,9 @@ async function getChainPromptTemplate(
 				}
 
 				if (messageClass === HumanMessagePromptTemplate && message.messageType !== 'text') {
-					const test = await getImageMessage(context, itemIndex, message);
+					const isGoogleChat = llm instanceof ChatGoogleGenerativeAI;
+					const test = await getImageMessage(context, itemIndex, message, isGoogleChat);
+
 					return test;
 				}
 
