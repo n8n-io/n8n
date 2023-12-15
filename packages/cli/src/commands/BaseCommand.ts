@@ -40,6 +40,12 @@ export abstract class BaseCommand extends Command {
 
 	protected isShuttingDown = false;
 
+	/**
+	 * How long to wait for graceful shutdown before force killing the process.
+	 * Subclasses can override this value.
+	 */
+	protected gracefulShutdownTimeoutInS: number = 30;
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
@@ -309,9 +315,20 @@ export abstract class BaseCommand extends Command {
 				return;
 			}
 
+			const forceShutdownTimer = setTimeout(async () => {
+				// In case that something goes wrong with shutdown we
+				// kill after timeout no matter what
+				console.log(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
+				const errorMsg = `Shutdown timed out after ${this.gracefulShutdownTimeoutInS} seconds`;
+				await this.exitWithCrash(errorMsg, new Error(errorMsg));
+			}, this.gracefulShutdownTimeoutInS * 1000);
+
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.isShuttingDown = true;
+
 			await this.stopProcess();
+
+			clearTimeout(forceShutdownTimer);
 		};
 	}
 }
