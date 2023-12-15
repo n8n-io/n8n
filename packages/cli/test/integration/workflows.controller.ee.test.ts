@@ -20,6 +20,8 @@ import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from 
 import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
 import type { Role } from '@/databases/entities/Role';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -55,6 +57,9 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initNodeTypes();
+
+	Container.set(WorkflowService, new WorkflowService());
+	Container.set(EnterpriseWorkflowService, new EnterpriseWorkflowService());
 });
 
 beforeEach(async () => {
