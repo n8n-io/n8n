@@ -49,6 +49,7 @@ export async function request(config: {
 	endpoint: string;
 	headers?: IDataObject;
 	data?: IDataObject;
+	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
@@ -62,7 +63,7 @@ export async function request(config: {
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {
-		options.withCredentials = true;
+		options.withCredentials = options.withCredentials ?? true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;

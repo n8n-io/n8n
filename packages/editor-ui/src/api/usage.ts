@@ -28,6 +28,7 @@ export const requestLicenseTrial = async (data: {
 		baseURL: 'https://enterprise.n8n.io',
 		endpoint: '/enterprise-trial',
 		data,
+		withCredentials: false,
 		headers: {
 			'Content-Type': 'application/json',
 		},
