@@ -101,6 +101,16 @@ export class FileSystemManager implements BinaryData.Manager {
 				await fs.rm(dir, { recursive: true, force: true });
 			}),
 		);
+
+		await Promise.all(
+			binaryDataDirs.map(async (dir) => {
+				const executionDir = dir.replace(/\/binary_data\/$/, '');
+
+				const isEmpty = (await fs.readdir(executionDir)).length === 0;
+
+				if (isEmpty) await fs.rm(executionDir, { recursive: true, force: true });
+			}),
+		);
 	}
 
 	async copyByFilePath(

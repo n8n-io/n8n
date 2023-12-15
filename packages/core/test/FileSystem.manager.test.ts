@@ -171,6 +171,10 @@ describe('deleteMany()', () => {
 
 		expect(fsp.rm).toHaveBeenCalledTimes(1);
 	});
+
+	// it('should delete parent dir if empty after regular deletion', async () => {
+	// @TODO
+	// });
 });
 
 describe('rename()', () => {
