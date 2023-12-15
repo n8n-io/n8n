@@ -4,90 +4,10 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowsListPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
-describe('Lead Enrichment - Should not render', () => {
-
-	beforeEach(() => {
-		cy.visit(WorkflowsListPage.url);
-	});
-
-	it('should not render lead enrichment templates if not in cloud deployment', () => {
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'notCloud' } },
-				});
-			});
-		}).as('loadSettings');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-
-	it('should not render lead enrichment templates if feature flag is not set', () => {
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'cloud' } },
-				});
-			});
-		}).as('loadSettings');
-		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-
-	it('should not render lead enrichment templates if endpoint throws error', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'cloud' } },
-				});
-			});
-		}).as('loadSettings');
-		cy.intercept('GET', '/rest/cloud/proxy/templates', { statusCode: 500 }).as('loadTemplates');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-
-	it('should not render lead enrichment templates if endpoint returns empty list', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'cloud' } },
-				});
-			});
-		}).as('loadSettings');
-		cy.intercept('GET', '/rest/cloud/proxy/templates', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { collections: [] },
-				});
-			});
-		}).as('loadTemplates');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-
-	it('should not render lead enrichment templates if endpoint returns invalid response', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'cloud' } },
-				});
-			});
-		}).as('loadSettings');
-		cy.intercept('GET', '/rest/cloud/proxy/templates', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { somethingElse: [] },
-				});
-			});
-		}).as('loadTemplates');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-});
-
 describe('Lead Enrichment - Should render', () => {
 
 	beforeEach(() => {
+		// Setup everything needed to dislay lead enrichment templates
 		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
@@ -100,6 +20,7 @@ describe('Lead Enrichment - Should render', () => {
 			fixture: 'Lead_Enrichment_Templates.json',
 		});
 		cy.visit(WorkflowsListPage.url);
+		cy.wait('@loadSettings');
 	});
 
 	it('should render lead enrichment page in empty workflow list', () => {
@@ -116,6 +37,7 @@ describe('Lead Enrichment - Should render', () => {
 	});
 
 	it('should enable users to signup for lead enrichment templates', () => {
+		// Test the whole flow
 		WorkflowsListPage.getters.leadEnrichmentCards().first().click();
 		WorkflowsListPage.getters.leadEnrichmentPreviewModal().should('exist');
 		WorkflowsListPage.getters.leadEnrichmentUseTemplateButton().click();
@@ -128,4 +50,84 @@ describe('Lead Enrichment - Should render', () => {
 		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
 	});
 
+});
+
+describe('Lead Enrichment - Should not render', () => {
+	beforeEach(() => {
+		cy.visit(WorkflowsListPage.url);
+	});
+
+	it('should not render lead enrichment templates if not in cloud deployment', () => {
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'notCloud' } },
+				});
+			});
+		});
+		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+	});
+
+	it('should not render lead enrichment templates if feature flag is not set', () => {
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' } },
+				});
+			});
+		});
+		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
+		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+	});
+
+	it('should not render lead enrichment templates if endpoint throws error', () => {
+		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' } },
+				});
+			});
+		});
+		cy.intercept('GET', '/rest/cloud/proxy/templates', { statusCode: 500 }).as('loadTemplates');
+		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+	});
+
+	it('should not render lead enrichment templates if endpoint returns empty list', () => {
+		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' } },
+				});
+			});
+		});
+		cy.intercept('GET', '/rest/cloud/proxy/templates', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { collections: [] },
+				});
+			});
+		});
+		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+	});
+
+	it('should not render lead enrichment templates if endpoint returns invalid response', () => {
+		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { ...res.body.data, deployment: { type: 'cloud' } },
+				});
+			});
+		});
+		cy.intercept('GET', '/rest/cloud/proxy/templates', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: { somethingElse: [] },
+				});
+			});
+		});
+		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+	});
 });
