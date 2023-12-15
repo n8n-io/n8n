@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { IDataObject, INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
@@ -41,8 +41,9 @@ export type WorkflowsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
-export class WorkflowsService {
-	static async getSharing(
+@Service()
+export class WorkflowService {
+	async getSharing(
 		user: User,
 		workflowId: string,
 		options: WorkflowsGetSharedOptions,
@@ -68,7 +69,7 @@ export class WorkflowsService {
 	 *   - select the _first_ pinned trigger that leads to the executed node,
 	 *   - else select the executed pinned trigger.
 	 */
-	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+	findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
 
 		const isTrigger = (nodeTypeName: string) =>
@@ -102,14 +103,14 @@ export class WorkflowsService {
 		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
-	static async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+	async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
 		return Container.get(WorkflowRepository).findOne({
 			where: workflow,
 			relations: options?.relations,
 		});
 	}
 
-	static async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
+	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
@@ -188,7 +189,7 @@ export class WorkflowsService {
 			: { workflows, count };
 	}
 
-	static async update(
+	async update(
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
@@ -381,7 +382,7 @@ export class WorkflowsService {
 		return updatedWorkflow;
 	}
 
-	static async runManually(
+	async runManually(
 		{
 			workflowData,
 			runData,
@@ -395,7 +396,7 @@ export class WorkflowsService {
 		const EXECUTION_MODE = 'manual';
 		const ACTIVATION_MODE = 'manual';
 
-		const pinnedTrigger = WorkflowsService.findPinnedTrigger(workflowData, startNodes, pinData);
+		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
@@ -463,7 +464,7 @@ export class WorkflowsService {
 		};
 	}
 
-	static async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await Container.get(ExternalHooks).run('workflow.delete', [workflowId]);
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
@@ -502,7 +503,7 @@ export class WorkflowsService {
 		return sharedWorkflow.workflow;
 	}
 
-	static async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
 		const qb = Container.get(WorkflowRepository).createQueryBuilder('workflow');
 		return qb
 			.update()
@@ -522,19 +523,19 @@ export class WorkflowsService {
 	/**
 	 * Saves the static data if it changed
 	 */
-	static async saveStaticData(workflow: Workflow): Promise<void> {
+	async saveStaticData(workflow: Workflow): Promise<void> {
 		if (workflow.staticData.__dataChanged === true) {
 			// Static data of workflow changed and so has to be saved
 			if (isWorkflowIdValid(workflow.id)) {
 				// Workflow is saved so update in database
 				try {
-					await WorkflowsService.saveStaticDataById(workflow.id, workflow.staticData);
+					await this.saveStaticDataById(workflow.id, workflow.staticData);
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
 					Container.get(Logger).error(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
+						`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
 						{ workflowId: workflow.id },
 					);
 				}
@@ -548,7 +549,7 @@ export class WorkflowsService {
 	 * @param {(string)} workflowId The id of the workflow to save data on
 	 * @param {IDataObject} newStaticData The static data to save
 	 */
-	static async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
+	async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
 		await Container.get(WorkflowRepository).update(workflowId, {
 			staticData: newStaticData,
 		});
