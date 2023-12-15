@@ -18,6 +18,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { initializeAuthenticatedFeatures } from '@/init';
 
 export default defineComponent({
 	name: 'SetupView',
@@ -107,8 +108,11 @@ export default defineComponent({
 						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
 					} catch {}
 				}
+				await initializeAuthenticatedFeatures();
 
-				if (forceRedirectedHere) {
+				if (this.uiStore.leadEnrichmentTemplates) {
+					await this.$router.push({ name: VIEWS.WORKFLOWS });
+				} else if (forceRedirectedHere) {
 					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
