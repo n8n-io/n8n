@@ -1,5 +1,6 @@
 <template>
 	<div :class="$style['content']">
+		Is loading: {{  genericHelpers.isLoading }}
 		<div
 			class="node-view-root do-not-select"
 			id="node-view-root"
@@ -191,7 +192,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, computed } from 'vue';
 import { mapStores } from 'pinia';
 
 import type {
@@ -248,6 +249,7 @@ import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useDataSchema } from '@/composables/useDataSchema';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
@@ -385,7 +387,6 @@ export default defineComponent({
 	name: 'NodeView',
 	mixins: [
 		copyPaste,
-		genericHelpers,
 		moveNodeWorkflow,
 		workflowHelpers,
 		workflowRun,
@@ -408,6 +409,7 @@ export default defineComponent({
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
+		const genericHelpers = useGenericHelpers();
 
 		return {
 			locale,
@@ -415,6 +417,7 @@ export default defineComponent({
 			dataSchema,
 			nodeHelpers,
 			externalHooks,
+			genericHelpers,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -449,14 +452,14 @@ export default defineComponent({
 			// When entering this tab:
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
 				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
-					this.startLoading();
+					this.genericHelpers.startLoading();
 					if (nodeViewNotInitialized) {
 						const previousDirtyState = this.uiStore.stateIsDirty;
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
 					await Promise.all([this.loadCredentials(), this.initView()]);
-					this.stopLoading();
+					this.genericHelpers.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
 					}
@@ -589,7 +592,7 @@ export default defineComponent({
 		},
 		showCanvasAddButton(): boolean {
 			return (
-				this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
+				this.genericHelpers.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
 			);
 		},
 		lastSelectedNode(): INodeUi | null {
@@ -702,8 +705,11 @@ export default defineComponent({
 		instance(): BrowserJsPlumbInstance {
 			return this.canvasStore.jsPlumbInstance;
 		},
-		isLoading(): boolean {
-			return this.loadingService !== null;
+		readOnlyEnv() {
+			return this.genericHelpers.readOnlyEnv.value
+		},
+		isReadOnlyRoute() {
+			return this.genericHelpers.isReadOnlyRoute.value
 		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();
@@ -915,7 +921,7 @@ export default defineComponent({
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
 		async openExecution(executionId: string) {
-			this.startLoading();
+			this.genericHelpers.startLoading();
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
@@ -1014,7 +1020,7 @@ export default defineComponent({
 					duration: 0,
 				});
 			}
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 		},
 		async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 			if (!data.workflow.nodes || !data.workflow.connections) {
@@ -1033,7 +1039,7 @@ export default defineComponent({
 			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
-			this.startLoading();
+			this.genericHelpers.startLoading();
 			this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
@@ -1072,10 +1078,10 @@ export default defineComponent({
 				templateName: data.name,
 				workflow: data.workflow,
 			});
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
-			this.startLoading();
+			this.genericHelpers.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
@@ -1128,7 +1134,7 @@ export default defineComponent({
 			} else {
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
@@ -1768,18 +1774,18 @@ export default defineComponent({
 		async getWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
 			let workflowData: IWorkflowDataUpdate;
 
-			this.startLoading();
+			this.genericHelpers.startLoading();
 			try {
 				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
-				this.stopLoading();
+				this.genericHelpers.stopLoading();
 				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
 				return;
 			}
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 
 			return workflowData;
 		},
@@ -2751,7 +2757,7 @@ export default defineComponent({
 					}
 				}
 				this.dropPrevented = false;
-				if (!this.isLoading) {
+				if (!this.genericHelpers.isLoading) {
 					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
@@ -3194,7 +3200,7 @@ export default defineComponent({
 				e.returnValue = true; //Gecko + IE
 				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
-				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				this.genericHelpers.startLoading(this.$locale.baseText('nodeView.redirecting'));
 				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
@@ -3205,7 +3211,7 @@ export default defineComponent({
 			clearTimeout(this.unloadTimeout);
 		},
 		async newWorkflow(): Promise<void> {
-			this.startLoading();
+			this.genericHelpers.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -3217,7 +3223,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			this.canvasStore.zoomToFit();
@@ -4341,9 +4347,9 @@ export default defineComponent({
 
 			if (nodesToBeFetched.length > 0) {
 				// Only call API if node information is actually missing
-				this.startLoading();
+				this.genericHelpers.startLoading();
 				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-				this.stopLoading();
+				this.genericHelpers.stopLoading();
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
@@ -4594,7 +4600,7 @@ export default defineComponent({
 		onPageShow(e: PageTransitionEvent) {
 			// Page was restored from the bfcache (back-forward cache)
 			if (e.persisted) {
-				this.stopLoading();
+				this.genericHelpers.stopLoading();
 			}
 		},
 		readOnlyEnvRouteCheck() {
@@ -4690,7 +4696,7 @@ export default defineComponent({
 		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
-		this.startLoading();
+		this.genericHelpers.startLoading();
 		const loadPromises = [
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
@@ -4715,6 +4721,7 @@ export default defineComponent({
 		}
 
 		ready(async () => {
+		console.log('ready', this.isReadOnlyRoute, this.readOnlyEnv);
 			try {
 				try {
 					this.bindCanvasEvents();
@@ -4733,7 +4740,7 @@ export default defineComponent({
 					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
 				);
 			}
-			this.stopLoading();
+			this.genericHelpers.stopLoading();
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();

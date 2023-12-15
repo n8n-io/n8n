@@ -48,7 +48,6 @@ import type {
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
@@ -68,6 +67,7 @@ import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -475,12 +475,14 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [genericHelpers],
+	// mixins: [genericHelpers],
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const genericHelpers = useGenericHelpers();
 		return {
 			...useToast(),
 			...useMessage(),
+			genericHelpers,
 			nodeHelpers,
 		};
 	},
@@ -886,12 +888,12 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
-			if (this.readOnlyEnv) {
+			if (this.genericHelpers.readOnlyEnv) {
 				return;
 			}
 
 			const currentWorkflow = id || this.$route.params.name;
-			const isLoading = this.loadingService !== null;
+			const isLoading = this.genericHelpers.loadingService !== null;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 				return this.saveAsNewWorkflow({ name, tags }, redirect);
