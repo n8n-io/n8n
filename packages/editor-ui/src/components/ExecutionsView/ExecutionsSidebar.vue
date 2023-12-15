@@ -120,10 +120,6 @@ export default defineComponent({
 				this.$router.go(-1);
 			}
 		},
-		'workflowsStore.activeWorkflowExecution'() {
-			this.checkListSize();
-			this.scrollToActiveCard();
-		},
 	},
 	mounted() {
 		// On larger screens, we need to load more then first page of executions
