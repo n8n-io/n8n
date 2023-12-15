@@ -28,6 +28,7 @@ export {
 	deepCopy,
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	sleep,
 	fileTypeFromMimeType,
 	assert,
