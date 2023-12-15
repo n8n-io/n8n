@@ -127,7 +127,7 @@ export class ChatTrigger implements INodeType {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Open Chat and execute workflow',
+				displayName: 'Open Built-in Chat and execute workflow',
 				name: 'openChat',
 				type: 'button',
 				typeOptions: {
