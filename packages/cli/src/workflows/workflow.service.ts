@@ -297,7 +297,7 @@ export class WorkflowService {
 				'nodes',
 				'connections',
 				'settings',
-				'Data',
+				'staticData',
 				'pinData',
 				'versionId',
 			]),

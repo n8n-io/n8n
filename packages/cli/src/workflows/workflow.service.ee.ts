@@ -13,12 +13,13 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+@Service()
 export class EnterpriseWorkflowService extends WorkflowService {
 	async isOwned(
 		user: User,

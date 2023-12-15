@@ -97,6 +97,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async init() {
@@ -418,8 +419,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 		}
 		await this.webhookService.populateCache();
-		// Save static data!
-		await Container.get(WorkflowService).saveStaticData(workflow);
+
+		await this.workflowService.saveStaticData(workflow);
 	}
 
 	/**
