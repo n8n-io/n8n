@@ -1,3 +1,18 @@
+## [1.21.1](https://github.com/n8n-io/n8n/compare/n8n@1.21.0...n8n@1.21.1) (2023-12-15)
+
+
+### Bug Fixes
+
+* **ActiveCampaign Node:** Fix pagination issue when loading tags ([#8017](https://github.com/n8n-io/n8n/issues/8017)) ([d661861](https://github.com/n8n-io/n8n/commit/d66186157232479012e7d257fe3800194abdec8e))
+* **core:** Initialize queue once in queue mode ([#8025](https://github.com/n8n-io/n8n/issues/8025)) ([b1c9c50](https://github.com/n8n-io/n8n/commit/b1c9c5072dbff686558f0d42acd543ac85b70867))
+* **core:** Restore workflow ID during execution creation ([#8031](https://github.com/n8n-io/n8n/issues/8031)) ([2d16161](https://github.com/n8n-io/n8n/commit/2d16161c8594fdc969cbe005ca1398414b655012)), closes [/github.com/n8n-io/n8n/pull/8002/files#diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224](https://github.com//github.com/n8n-io/n8n/pull/8002/files/issues/diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224)
+* **editor:** Add back credential `use` permission ([#8023](https://github.com/n8n-io/n8n/issues/8023)) ([cf5c723](https://github.com/n8n-io/n8n/commit/cf5c7239f127f206cf07127654884fe088fed0cb))
+* **editor:** Disable auto scroll and list size check when clicking on executions ([#7983](https://github.com/n8n-io/n8n/issues/7983)) ([99d1771](https://github.com/n8n-io/n8n/commit/99d177105bd9a83231cfea31a9bee7172713b080))
+* **editor:** Show credential share info only to appropriate users ([#8020](https://github.com/n8n-io/n8n/issues/8020)) ([9933fce](https://github.com/n8n-io/n8n/commit/9933fce2d4cd0ad0f325ee6471f28e782a7ed0f2))
+* **editor:** Turn off executions list auto-refresh after leaving the page ([#8005](https://github.com/n8n-io/n8n/issues/8005)) ([b866a94](https://github.com/n8n-io/n8n/commit/b866a941ff823c48776571d2df3a3e594710505c))
+
+
+
 # [1.21.0](https://github.com/n8n-io/n8n/compare/n8n@1.20.0...n8n@1.21.0) (2023-12-13)
 
 
