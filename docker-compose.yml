@@ -8,6 +8,9 @@ services:
     build: .
     restart: always
     environment:
+      - N8N_PROTOCOL=https
+      - N8N_HOST=${DOMAIN}
+      - WEBHOOK_URL=${DOMAIN}
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=${POSTGRES_HOST}
       - DB_POSTGRESDB_PORT=5432
@@ -18,3 +21,32 @@ services:
       - 5678:5678
     volumes:
       - n8n_storage:/home/node/.n8n
+
+  proxy:
+    build:
+      context: ./docker/proxy
+    restart: always
+    depends_on:
+      - n8n
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - certbot-web:/vol/www
+      - proxy-dhparams:/vol/proxy
+      - certbot-certs:/etc/letsencrypt
+      - static:/vol/static
+    environment:
+      - DOMAIN=${DOMAIN}
+
+  certbot:
+    build:
+      context: ./docker/certbot
+    environment:
+      - EMAIL=${ACME_DEFAULT_EMAIL}
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - certbot-web:/vol/www
+      - certbot-certs:/etc/letsencrypt/
+    depends_on:
+      - proxy
