@@ -1635,6 +1635,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
 	triggerPanel?: {
+		hideContent?: boolean | string;
 		header?: string;
 		executionsHelp?:
 			| string

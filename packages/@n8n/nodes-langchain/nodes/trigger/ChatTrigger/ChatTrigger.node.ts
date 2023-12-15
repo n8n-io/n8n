@@ -76,6 +76,7 @@ export class ChatTrigger implements INodeType {
 		eventTriggerDescription: 'Waiting for you to submit the chat',
 		activationMessage: 'You can now make calls to your production Chat URL.',
 		triggerPanel: {
+			hideContent: '={{ $parameter.mode === "testChat" }}',
 			header: 'Pull in a test chat submission',
 			executionsHelp: {
 				inactive:

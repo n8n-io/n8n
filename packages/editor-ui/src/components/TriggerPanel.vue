@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
-			<div key="empty" v-if="hasIssues"></div>
+			<div key="empty" v-if="hasIssues || hideContent"></div>
 			<div key="listening" v-else-if="isListeningForEvents">
 				<n8n-pulse>
 					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
@@ -166,6 +166,36 @@ export default defineComponent({
 			}
 
 			return null;
+		},
+		hideContent(): boolean {
+			if (!this.nodeType?.triggerPanel) {
+				return false;
+			}
+
+			if (
+				this.nodeType?.triggerPanel &&
+				this.nodeType?.triggerPanel.hasOwnProperty('hideContent')
+			) {
+				const hideContent = this.nodeType?.triggerPanel.hideContent;
+				if (typeof hideContent === 'boolean') {
+					return hideContent;
+				}
+
+				if (this.node) {
+					const hideContentValue = this.getCurrentWorkflow().expression.getSimpleParameterValue(
+						this.node,
+						hideContent,
+						'internal',
+						{},
+					);
+
+					if (typeof hideContentValue === 'boolean') {
+						return hideContentValue;
+					}
+				}
+			}
+
+			return false;
 		},
 		hasIssues(): boolean {
 			return Boolean(
