@@ -13,13 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	NodeOperationError,
-	sleep,
-	ApplicationError,
-	ErrorReporterProxy as EventReporter,
-} from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -137,13 +131,6 @@ export class Worker extends BaseCommand {
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!; // @tech_debt Ensure this is not optional
-
-		if (!workflowId) {
-			EventReporter.report('Detected ID-less workflow', {
-				level: 'info',
-				extra: { execution: fullExecutionData },
-			});
-		}
 
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
