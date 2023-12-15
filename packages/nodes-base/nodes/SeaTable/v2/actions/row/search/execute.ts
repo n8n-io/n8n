@@ -13,29 +13,21 @@ export async function search(
 ): Promise<INodeExecutionData[]> {
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
-	const searchTerm = this.getNodeParameter('searchTerm', index) as any; // string or integer
+	let searchTerm = this.getNodeParameter('searchTerm', index) as any; // string or integer
+	const insensitive = this.getNodeParameter('insensitive', index) as boolean;
 	const wildcard = this.getNodeParameter('wildcard', index) as boolean;
 	const simple = this.getNodeParameter('simple', index) as boolean;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
 
-	//let metadata: IDtableMetadataColumn[] = [];
-	//let rows: IRow[];
-	//let sqlResult: IRowResponse;
-
-	// get the collaborators (avoid executing this multiple times !!!!)
-	/*let collaboratorsResult: ICollaboratorsResult = await seaTableApiRequest.call(
-		this,
-		{},
-		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/related-users/',
-	);
-	let collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
-	*/
-
 	// this is the base query. The WHERE has to be finalized...
 	let sqlQuery = `SELECT * FROM \`${tableName}\` WHERE \`${searchColumn}\``;
+
+	if (insensitive) {
+		searchTerm = searchTerm.toLowerCase();
+		sqlQuery = `SELECT * FROM \`${tableName}\` WHERE lower(\`${searchColumn}\`)`;
+	}
 
 	if (wildcard && isNaN(searchTerm)) sqlQuery = sqlQuery + ' LIKE "%' + searchTerm + '%"';
 	else if (!wildcard && isNaN(searchTerm)) sqlQuery = sqlQuery + ' = "' + searchTerm + '"';

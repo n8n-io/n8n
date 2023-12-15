@@ -53,6 +53,20 @@ export const rowSearchDescription: RowProperties = [
 		description: 'What to look for?',
 	},
 	{
+		displayName: 'Case Insensitive Search',
+		name: 'insensitive',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['row'],
+				operation: ['search'],
+			},
+		},
+		default: false,
+		description:
+			'FALSE: The search distinguish between uppercase and lowercase characters. TRUE: Search ignores case sensitivity.',
+	},
+	{
 		displayName: 'Activate wildcard search',
 		name: 'wildcard',
 		type: 'boolean',
