@@ -95,13 +95,6 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		if (!parameters.id) {
-			EventReporter.report('Detected ID-less workflow', {
-				level: 'info',
-				extra: { parameters },
-			});
-		}
-
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
