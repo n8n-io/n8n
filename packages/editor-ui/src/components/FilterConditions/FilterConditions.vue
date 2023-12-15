@@ -134,9 +134,10 @@ function getIssues(index: number): string[] {
 		<n8n-input-label
 			v-if="!singleCondition"
 			:label="parameter.displayName"
-			:underline="true"
-			:showOptions="true"
+			underline
+			showOptions
 			:showExpressionSelector="false"
+			size="small"
 			color="text-dark"
 		>
 		</n8n-input-label>
@@ -212,7 +213,7 @@ function getIssues(index: number): string[] {
 	}
 
 	.content {
-		margin-top: calc(var(--spacing-s) * -1);
+		margin-top: calc(var(--spacing-xs) * -1);
 	}
 }
 

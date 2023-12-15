@@ -353,7 +353,6 @@ const onBlur = (): void => {
 }
 
 .remove {
-	--button-font-color: var(--color-text-light);
 	position: absolute;
 	left: 0;
 	top: var(--spacing-l);
