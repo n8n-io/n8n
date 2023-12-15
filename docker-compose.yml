@@ -40,7 +40,7 @@ services:
     build:
       context: ./docker/certbot
     environment:
-      - EMAIL=${ACME_DEFAULT_EMAIL}
+      - EMAIL=${EMAIL}
       - DOMAIN=${DOMAIN}
     volumes:
       - certbot-web:/vol/www
