@@ -1767,6 +1767,7 @@ export class HttpRequestV3 implements INodeType {
 
 			// eslint-disable-next-line prefer-const
 			for (let [index, response] of Object.entries(responses)) {
+				delete response.request;
 				if (this.getMode() === 'manual' && index === '0') {
 					// For manual executions save the first response in the context
 					// so that we can use it in the frontend and so make it easier for
