@@ -174,9 +174,9 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { Component } from 'vue';
 
-// const FixedCollectionParameter: Component = defineAsyncComponent(
-// 	async () => import('./FixedCollectionParameter.vue'),
-// );
+const FixedCollectionParameter: Component = defineAsyncComponent(
+	async () => import('./FixedCollectionParameter.vue'),
+);
 const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
 
 export default defineComponent({
@@ -184,7 +184,7 @@ export default defineComponent({
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue'),
+		FixedCollectionParameter,
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
