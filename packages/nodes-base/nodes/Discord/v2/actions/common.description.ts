@@ -297,7 +297,7 @@ export const simplifyBoolean: INodeProperties = {
 // embeds -----------------------------------------------------------------------------------------
 const embedFields: INodeProperties[] = [
 	{
-		displayName: 'Description (Required)',
+		displayName: 'Description',
 		name: 'description',
 		type: 'string',
 		default: '',

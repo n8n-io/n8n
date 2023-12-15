@@ -133,13 +133,6 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[], i 
 				}
 			}
 
-			if (!embedReturnData.description) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Description is required, embed ${index} in item ${i} is missing it`,
-				);
-			}
-
 			if (embedReturnData.author) {
 				embedReturnData.author = {
 					name: embedReturnData.author,
