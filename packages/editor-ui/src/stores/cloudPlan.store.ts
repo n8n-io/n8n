@@ -168,9 +168,15 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			return;
 		}
 
-		// TODO: Implement a proper call for this
-		const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
-		useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+		try {
+			const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
+			if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
+				useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+			}
+		} catch (error) {
+			console.warn('Error checking for cloud plan data:', error);
+		}
+
 		try {
 			await checkForCloudPlanData();
 		} catch (error) {
