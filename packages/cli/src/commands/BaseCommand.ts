@@ -124,7 +124,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async exitSuccessFully() {
 		try {
-			await CrashJournal.cleanup();
+			await Promise.all([CrashJournal.cleanup(), Db.close()]);
 		} finally {
 			process.exit();
 		}
