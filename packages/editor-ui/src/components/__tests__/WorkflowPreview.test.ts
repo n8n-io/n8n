@@ -101,6 +101,7 @@ describe('WorkflowPreview', () => {
 					command: 'openWorkflow',
 					workflow,
 					canOpenNDV: true,
+					hideNodeIssues: false,
 				}),
 				'*',
 			);
@@ -207,6 +208,7 @@ describe('WorkflowPreview', () => {
 					command: 'openWorkflow',
 					workflow,
 					canOpenNDV: true,
+					hideNodeIssues: false,
 				}),
 				'*',
 			);
@@ -225,10 +227,10 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
-	it('should pass the "Disable NDV" flag to using PostMessage', async () => {
+	it('should pass the "Disable NDV" & "Hide issues" flags to using PostMessage', async () => {
 		const nodes = [{ name: 'Start' }] as INodeUi[];
 		const workflow = { nodes } as IWorkflowDb;
-		const { container } = renderComponent({
+		renderComponent({
 			pinia,
 			props: {
 				workflow,
@@ -242,6 +244,7 @@ describe('WorkflowPreview', () => {
 					command: 'openWorkflow',
 					workflow,
 					canOpenNDV: false,
+					hideNodeIssues: false,
 				}),
 				'*',
 			);
