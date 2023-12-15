@@ -97,7 +97,6 @@ export const useUsageStore = defineStore('usage', () => {
 			instanceUrl: window.location.origin,
 		});
 
-		console.log(data);
 		return data;
 	};
 
