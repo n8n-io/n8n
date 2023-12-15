@@ -43,7 +43,7 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {
+export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;

@@ -89,7 +89,7 @@ export const useUsageStore = defineStore('usage', () => {
 			throw new Error('User is not logged in');
 		}
 
-		const data = await requestLicenseTrial(rootStore.getRestApiContext, {
+		const data = await requestLicenseTrial({
 			licenseType: 'enterprise',
 			firstName: usersStore.currentUser.firstName ?? '',
 			lastName: usersStore.currentUser.lastName ?? '',
