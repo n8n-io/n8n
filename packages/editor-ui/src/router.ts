@@ -18,6 +18,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
+import { cloneDeep } from 'vue-json-pretty/types/utils';
+import { deepCopy } from 'n8n-workflow';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -761,6 +763,20 @@ export const routes = [
 	},
 ] as Array<RouteRecordRaw & RouteConfig>;
 
+function withReadonlyMeta(route: RouteRecordRaw & RouteConfig) {
+	if(!route.meta) route.meta = {};
+	const nonReadonlyViews: VIEWS[] = [
+		VIEWS.WORKFLOW,
+		VIEWS.NEW_WORKFLOW,
+		VIEWS.LOG_STREAMING_SETTINGS,
+		VIEWS.EXECUTION_DEBUG,
+	];
+
+	route.meta.readonly = route.name ? !nonReadonlyViews.includes(route.name as VIEWS) : false;
+
+	return route;
+}
+const mappedRoutes = routes.map(withReadonlyMeta);
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
 	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
@@ -770,7 +786,7 @@ const router = createRouter({
 			to.meta.setScrollPosition(0);
 		}
 	},
-	routes,
+	routes: routes.map(withReadonlyMeta),
 });
 
 router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {

@@ -382,6 +382,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -390,11 +391,9 @@ export default defineComponent({
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
-		const genericHelpers = useGenericHelpers();
 
 		return {
 			externalHooks,
-			genericHelpers,
 			...useToast(),
 		};
 	},
@@ -459,11 +458,12 @@ export default defineComponent({
 			useRootStore,
 			useUsersStore,
 			useSettingsStore,
+			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
-		readOnlyEnv() {
-			return this.genericHelpers.readOnlyEnv.value
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;

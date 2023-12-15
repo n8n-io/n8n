@@ -127,7 +127,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		isReadOnlyRoute() {
-			return this.genericHelpers.isReadOnlyRoute.value
+			return this.$route?.meta.readonly === true;
 		},
 	},
 	methods: {

@@ -10,12 +10,13 @@ import { useDebounceHelper } from './useDebounce';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import type { Route } from 'vue-router';
+import { useTelemetry } from './useTelemetry';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
 export function useHistoryHelper(activeRoute: Route) {
 	const instance = getCurrentInstance();
-	const telemetry = instance?.proxy.$telemetry;
+	const telemetry = useTelemetry();
 
 	const ndvStore = useNDVStore();
 	const historyStore = useHistoryStore();
@@ -86,9 +87,9 @@ export function useHistoryHelper(activeRoute: Route) {
 
 	function trackCommand(command: Undoable, type: 'undo' | 'redo'): void {
 		if (command instanceof Command) {
-			telemetry?.track(`User hit ${type}`, { commands_length: 1, commands: [command.name] });
+			telemetry.track(`User hit ${type}`, { commands_length: 1, commands: [command.name] });
 		} else if (command instanceof BulkCommand) {
-			telemetry?.track(`User hit ${type}`, {
+			telemetry.track(`User hit ${type}`, {
 				commands_length: command.commands.length,
 				commands: command.commands.map((c) => c.name),
 			});
@@ -99,7 +100,7 @@ export function useHistoryHelper(activeRoute: Route) {
 		if (isNDVOpen.value && !event.shiftKey) {
 			const activeNode = ndvStore.activeNode;
 			if (activeNode) {
-				telemetry?.track('User hit undo in NDV', { node_type: activeNode.type });
+				telemetry.track('User hit undo in NDV', { node_type: activeNode.type });
 			}
 		}
 	}

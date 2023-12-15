@@ -1,7 +1,4 @@
-import { ref, computed, toRef } from 'vue';
 import dateformat from 'dateformat';
-import { VIEWS } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useI18n } from './useI18n';
 import { useRouter } from 'vue-router';
 import { useLoadingService } from './useLoadingService';
@@ -9,16 +6,6 @@ import { useLoadingService } from './useLoadingService';
 export function useGenericHelpers() {
 	const i18n = useI18n();
 	const loadingService = useLoadingService();
-
-	const isReadOnlyRoute = computed(() => ![
-			VIEWS.WORKFLOW,
-			VIEWS.NEW_WORKFLOW,
-			VIEWS.LOG_STREAMING_SETTINGS,
-			VIEWS.EXECUTION_DEBUG,
-		].includes(useRouter().currentRoute.value.name as VIEWS)
-	);
-
-	const readOnlyEnv = computed(() => useSourceControlStore().preferences.branchReadOnly);
 
 	function displayTimer(msPassed: number, showMs = false): string {
 		if (msPassed < 60000) {
@@ -61,8 +48,6 @@ export function useGenericHelpers() {
 	}
 
 	return {
-		isReadOnlyRoute,
-		readOnlyEnv,
 		loadingService: loadingService.loadingService,
 		isLoading: loadingService.isLoading,
 		displayTimer,

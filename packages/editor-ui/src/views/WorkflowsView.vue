@@ -180,8 +180,8 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 		),
-		readOnlyEnv() {
-			return this.genericHelpers.readOnlyEnv.value
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);

@@ -71,6 +71,7 @@ import { useI18n } from './useI18n';
 import type { Router } from 'vue-router';
 import { useGenericHelpers } from './useGenericHelpers';
 import { useTelemetry } from './useTelemetry';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -867,8 +868,9 @@ export function useWorkflowHelpers(router: Router) {
 		forceSave = false,
 	): Promise<boolean> {
 		const genericHelpers = useGenericHelpers();
+		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 
-		if (genericHelpers.readOnlyEnv.value) {
+		if (readOnlyEnv) {
 			return false;
 		}
 		const currentWorkflow = id || router.currentRoute.value.params.name as string;
