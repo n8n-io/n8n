@@ -24,7 +24,7 @@ import {
 	parseTagNames,
 	getWorkflowsAndCount,
 } from './workflows.service';
-import { WorkflowsService } from '@/workflows/workflows.services';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
@@ -63,7 +63,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
-			const workflow = await WorkflowsService.delete(req.user, workflowId);
+			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
