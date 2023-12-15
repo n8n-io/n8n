@@ -39,7 +39,7 @@ export class Webhook extends BaseCommand {
 		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
