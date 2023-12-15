@@ -421,7 +421,9 @@ export default defineComponent({
 						[
 							{
 								json: {
-									sessionId: `manual-${currentUser.id || 'unknown'}`,
+									// TODO: I changed it temporary to "chat_history" from "sessionId" to be
+									//       identical. Probably should be renamed again.
+									chat_history: `test-${currentUser.id || 'unknown'}`,
 									action: 'sendMessage',
 									[inputKey]: message,
 								},
