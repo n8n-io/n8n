@@ -656,6 +656,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		setLeadEnrichmentTemplates(templates: LeadEnrichmentTemplates) {
 			this.leadEnrichmentTemplates = templates;
 		},
+		deleteLeadEnrichmentTemplates() {
+			this.leadEnrichmentTemplates = undefined;
+		},
 		setNodeViewNotifications(notifications: Notification[]) {
 			this.nodeViewNotifications = notifications;
 		},

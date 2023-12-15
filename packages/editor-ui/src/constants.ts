@@ -685,3 +685,5 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
+
+export const LEAD_ENRICHMENT_FLAG = 'SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS';

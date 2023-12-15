@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage, getLeadEnrichmentTemplates } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, LEAD_ENRICHMENT_FLAG, STORES } from '@/constants';
 import { hasPermission } from '@/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
@@ -168,13 +168,16 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			return;
 		}
 
-		try {
-			const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
-			if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
-				useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+		const localStorageFlag = localStorage.getItem(LEAD_ENRICHMENT_FLAG);
+		if (localStorageFlag === 'true') {
+			try {
+				const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
+				if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
+					useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+				}
+			} catch (error) {
+				console.warn('Error checking for cloud plan data:', error);
 			}
-		} catch (error) {
-			console.warn('Error checking for cloud plan data:', error);
 		}
 
 		try {

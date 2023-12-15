@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
+import { LEAD_ENRICHMENT_FLAG, LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
 import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -34,6 +34,8 @@ function showConfirmationMessage(event: PointerEvent) {
 		telemetry.track('User wants to be notified once template is ready', undefined, {
 			withPostHog: true,
 		});
+		localStorage.setItem(LEAD_ENRICHMENT_FLAG, 'false');
+		uiStore.deleteLeadEnrichmentTemplates();
 	}
 }
 
