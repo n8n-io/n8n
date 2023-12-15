@@ -40,10 +40,12 @@ import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRouter } from 'vue-router';
 
 export const pushConnection = defineComponent({
 	setup() {
-		const workflowHelpers = useWorkflowHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 		const nodeHelpers = useNodeHelpers();
 
 		return {

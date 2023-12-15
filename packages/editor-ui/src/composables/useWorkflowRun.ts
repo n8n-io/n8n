@@ -29,6 +29,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
+import { Router, useRouter } from 'vue-router';
 
 export function useWorkflowRun() {
 	const nodeHelpers = useNodeHelpers();
@@ -74,8 +75,9 @@ export function useWorkflowRun() {
 			| { destinationNode: string; source?: string }
 			| { triggerNode: string; nodeData: ITaskData; source?: string }
 			| { source?: string },
+		router: Router,
 	): Promise<IExecutionPushResponse | undefined> {
-		const workflowHelpers  = useWorkflowHelpers();
+		const workflowHelpers = useWorkflowHelpers(router);
 		const workflow = workflowHelpers.getCurrentWorkflow();
 		const { clearAllStickyNotifications, showMessage } = useToast();
 		const { titleSet } = useTitleChange();

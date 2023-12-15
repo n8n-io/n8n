@@ -314,7 +314,7 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import type { Route, RawLocation } from 'vue-router';
+import { type Route, type RawLocation, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
@@ -403,11 +403,12 @@ export default defineComponent({
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
+		const router = useRouter();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
 		const genericHelpers = useGenericHelpers();
-		const workflowHelpers = useWorkflowHelpers();
+		const workflowHelpers = useWorkflowHelpers(router);
 		const workflowRun = useWorkflowRun();
 
 		return {
@@ -793,7 +794,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
-			void this.workflowRun.runWorkflow({ destinationNode: nodeName, source });
+			void this.workflowRun.runWorkflow({ destinationNode: nodeName, source }, this.$router);
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -816,7 +817,7 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.workflowRun.runWorkflow({});
+			await this.workflowRun.runWorkflow({}, this.$router);
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {

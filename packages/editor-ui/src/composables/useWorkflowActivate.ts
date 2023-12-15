@@ -16,10 +16,11 @@ import { ref } from 'vue';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
+import { Router } from 'vue-router';
 
-export function useWorkflowActivate(ctx: SetupContext) {
+export function useWorkflowActivate(ctx: SetupContext, router: Router) {
 	const updatingWorkflowActivation = ref(false);
-	const workflowHelpers = useWorkflowHelpers();
+	const workflowHelpers = useWorkflowHelpers(router);
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();

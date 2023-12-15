@@ -13,6 +13,7 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import { useRouter } from 'vue-router';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -25,7 +26,8 @@ export const expressionManager = defineComponent({
 		},
 	},
 	setup() {
-		const workflowHelpers = useWorkflowHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			workflowHelpers

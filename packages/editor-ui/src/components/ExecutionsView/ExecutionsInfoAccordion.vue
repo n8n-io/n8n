@@ -210,7 +210,7 @@ export default defineComponent({
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
 				currentId = this.$route.params.name as string;
 			}
-			const saved = await useWorkflowHelpers().saveCurrentWorkflow({
+			const saved = await useWorkflowHelpers(this.$router).saveCurrentWorkflow({
 				id: currentId,
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,

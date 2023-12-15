@@ -185,6 +185,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useGenericHelpers } from '@/composables/useGenericHelpers';
+import { useRouter } from 'vue-router';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -215,7 +216,8 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const workflowHelpers = useWorkflowHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 		const genericHelpers = useGenericHelpers();
 
 		return {

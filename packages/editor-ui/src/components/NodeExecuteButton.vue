@@ -252,7 +252,7 @@ export default defineComponent({
 					await this.workflowRun.runWorkflow({
 						destinationNode: this.nodeName,
 						source: 'RunData.ExecuteNodeButton',
-					});
+					}, this.$router);
 					this.$emit('execute');
 				}
 			}

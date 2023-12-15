@@ -68,7 +68,7 @@ import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credent
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { computed } from 'vue';
 import { useI18n } from './useI18n';
-import { useRoute, useRouter } from 'vue-router';
+import type { Router } from 'vue-router';
 import { useGenericHelpers } from './useGenericHelpers';
 import { useTelemetry } from './useTelemetry';
 
@@ -477,14 +477,16 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers() {
+export function useWorkflowHelpers(router: Router) {
+	if(!router) {
+		throw new Error('Router is required for useWorkflowHelpers composable to work as `useRouter` is only available in inside script setup');
+	}
+
 	const usersStore = useUsersStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const route = useRoute();
-	const router = useRouter();
 
 	const workflowPermissions = computed(() => getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow))
 
@@ -869,7 +871,7 @@ export function useWorkflowHelpers() {
 		if (genericHelpers.readOnlyEnv.value) {
 			return false;
 		}
-		const currentWorkflow = id || route.params.name as string;
+		const currentWorkflow = id || router.currentRoute.value.params.name as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 			return saveAsNewWorkflow({ name, tags }, redirect);
@@ -1060,7 +1062,7 @@ export function useWorkflowHelpers() {
 			const tagIds = createdTags.map((tag: ITag): string => tag.id);
 			workflowsStore.setWorkflowTagIds(tagIds);
 
-			const templateId = route.query.templateId;
+			const templateId = router.currentRoute.value.query.templateId;
 			if (templateId) {
 				useTelemetry().track('User saved new workflow from template', {
 					template_id: templateId,

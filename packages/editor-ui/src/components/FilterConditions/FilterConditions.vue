@@ -24,6 +24,7 @@ import CombinatorSelect from './CombinatorSelect.vue';
 
 import { v4 as uuid } from 'uuid';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 interface Props {
 	parameter: INodeProperties;
@@ -39,9 +40,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const ndvStore = useNDVStore();
 const { callDebounced } = useDebounceHelper();
-const { resolveParameter } = useWorkflowHelpers();
+const { resolveParameter } = useWorkflowHelpers(router);
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };

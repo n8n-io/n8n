@@ -366,7 +366,7 @@ export default defineComponent({
 				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
-					const resolved = useWorkflowHelpers().resolveExpression(expression);
+					const resolved = useWorkflowHelpers(this.$router).resolveExpression(expression);
 
 					return typeof resolved === 'string' ? resolved : null;
 				}
@@ -676,7 +676,7 @@ export default defineComponent({
 					});
 				}
 
-				const resolvedNodeParameters = useWorkflowHelpers().resolveRequiredParameters(
+				const resolvedNodeParameters = useWorkflowHelpers(this.$router).resolveRequiredParameters(
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;

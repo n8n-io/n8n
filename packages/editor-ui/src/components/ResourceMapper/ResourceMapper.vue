@@ -19,6 +19,7 @@ import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 type Props = {
 	parameter: INodeProperties;
@@ -30,9 +31,10 @@ type Props = {
 	teleported: boolean;
 };
 
+const router = useRouter();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const { resolveRequiredParameters } = useWorkflowHelpers();
+const { resolveRequiredParameters } = useWorkflowHelpers(router);
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,

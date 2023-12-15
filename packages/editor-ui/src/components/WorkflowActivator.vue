@@ -58,12 +58,14 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	setup(props, ctx) {
-		const workflowActivate = useWorkflowActivate(ctx);
+		const router = useRouter();
+		const workflowActivate = useWorkflowActivate(ctx, router);
 
 		return {
 			...useToast(),

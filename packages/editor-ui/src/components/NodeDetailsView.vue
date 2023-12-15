@@ -174,6 +174,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -200,8 +201,9 @@ export default defineComponent({
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
-		const workflowHelpers = useWorkflowHelpers();
-		const workflowActivate = useWorkflowActivate(ctx);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowActivate = useWorkflowActivate(ctx, router);
 
 		return {
 			externalHooks,

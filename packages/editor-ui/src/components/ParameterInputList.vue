@@ -173,6 +173,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { Component } from 'vue';
+import { useRouter } from 'vue-router';
 
 const FixedCollectionParameter: Component = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -192,7 +193,8 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
-		const workflowHelpers = useWorkflowHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			nodeHelpers,

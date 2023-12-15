@@ -48,7 +48,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-
+const router = useRouter();
 const condition = ref<FilterConditionValue>(props.condition);
 
 const operatorId = computed<FilterOperatorId>(() => {
@@ -71,7 +71,7 @@ const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePrope
 
 const conditionResult = computed<ConditionResult>(() => {
 	try {
-		const resolved = useWorkflowHelpers().resolveParameter(
+		const resolved = useWorkflowHelpers(router).resolveParameter(
 			condition.value as unknown as NodeParameterValue,
 		) as FilterConditionValue;
 
