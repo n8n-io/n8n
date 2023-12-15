@@ -80,6 +80,12 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		if (config.getEnv('executions.mode') === 'queue' && dbType === 'sqlite') {
+			this.logger.warn(
+				'Queue mode is not officially supported with sqlite. Please switch to PostgreSQL.',
+			);
+		}
+
 		if (
 			process.env.N8N_BINARY_DATA_TTL ??
 			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
