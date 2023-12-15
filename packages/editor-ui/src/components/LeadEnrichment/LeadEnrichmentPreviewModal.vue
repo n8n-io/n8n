@@ -3,8 +3,9 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
-import { IWorkflowDb, type LeadEnrichmentWorkflowPreview } from '@/Interface';
+import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
@@ -19,6 +20,7 @@ const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 function showConfirmationMessage(event: PointerEvent) {
 	if (event.target instanceof HTMLAnchorElement) {
@@ -28,6 +30,9 @@ function showConfirmationMessage(event: PointerEvent) {
 			title: i18n.baseText('leadEnrichment.notification.confirmation.title'),
 			message: i18n.baseText('leadEnrichment.notification.confirmation.message'),
 			type: 'success',
+		});
+		telemetry.track('User wants to be notified once template is ready', undefined, {
+			withPostHog: true,
 		});
 	}
 }
@@ -44,6 +49,7 @@ function openCanvas() {
 	uiStore.closeModal(LEAD_ENRICHMENT_PREVIEW_MODAL_KEY);
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
+	telemetry.track('User clicked Use Template button', undefined, { withPostHog: true });
 }
 </script>
 
@@ -79,6 +85,6 @@ function openCanvas() {
 
 <style module lang="scss">
 .footerButtons {
-	margin-top: 40px;
+	margin-top: var(--spacing-xl);
 }
 </style>

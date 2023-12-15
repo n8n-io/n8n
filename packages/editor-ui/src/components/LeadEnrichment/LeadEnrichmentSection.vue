@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { type PropType, computed } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
-import type { ITemplatesCollection, LeadEnrichmentTemplateSection } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
+import type {
+	ITemplatesCollection,
+	ITemplatesNode,
+	LeadEnrichmentTemplateSection,
+} from '@/Interface';
 import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import { LEAD_ENRICHMENT_PREVIEW_MODAL_KEY } from '@/constants';
 
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 
 const props = defineProps({
 	section: {
@@ -36,17 +42,18 @@ const sectionTemplates = computed(() => {
 			id: index,
 			name: workflow.title,
 			workflows: [{ id: index }],
-			nodes: workflow.nodes,
+			nodes: workflow.nodes as ITemplatesNode[],
 		});
 	});
 	return carouselCollections;
 });
 
-function onOpenCollection({ event, id }: { event: Event; id: number }) {
+function onOpenCollection({ id }: { event: Event; id: number }) {
 	uiStore.openModalWithData({
 		name: LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
 		data: { workflow: props.section.workflows[id] },
 	});
+	telemetry.track('User clicked template recommendation', undefined, { withPostHog: true });
 }
 </script>
 
