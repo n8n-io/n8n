@@ -38,12 +38,14 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
+	protected isShuttingDown = false;
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
 
-		process.once('SIGTERM', async () => this.stopProcess());
-		process.once('SIGINT', async () => this.stopProcess());
+		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		// Make sure the settings exist
 		this.instanceSettings = Container.get(InstanceSettings);
@@ -298,5 +300,18 @@ export abstract class BaseCommand extends Command {
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);
+	}
+
+	private onTerminationSignal(signal: string) {
+		return async () => {
+			if (this.isShuttingDown) {
+				this.logger.info(`Received ${signal}. Already shutting down...`);
+				return;
+			}
+
+			this.logger.info(`Received ${signal}. Shutting down...`);
+			this.isShuttingDown = true;
+			await this.stopProcess();
+		};
 	}
 }
