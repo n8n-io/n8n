@@ -19,7 +19,7 @@ export function useToast() {
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
-	function showMessage(messageData: NotificationOptions, track = true) {
+	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		messageData = { ...messageDefaults, ...messageData };
 		messageData.message =
 			typeof messageData.message === 'string'
