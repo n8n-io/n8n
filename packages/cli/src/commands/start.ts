@@ -127,6 +127,8 @@ export class Start extends BaseCommand {
 
 			await this.waitActiveWorkflowExecutionsToFinish();
 
+			await this.server.waitForServerToStop();
+
 			// Finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {

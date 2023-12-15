@@ -21,6 +21,14 @@ import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 
+export type AbstractServerOpts = {
+	instanceType: N8nInstanceType;
+	shutdown: {
+		signal: AbortSignal;
+		timeoutInS: number;
+	};
+};
+
 export abstract class AbstractServer {
 	protected logger: Logger;
 
@@ -58,7 +66,12 @@ export abstract class AbstractServer {
 
 	readonly uniqueInstanceId: string;
 
-	constructor(instanceType: N8nInstanceType = 'main') {
+	protected stopServerPromise: Promise<void> | undefined;
+
+	constructor({
+		instanceType = 'main',
+		shutdown: { signal: shutdownSignal, timeoutInS },
+	}: AbstractServerOpts) {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -82,6 +95,14 @@ export abstract class AbstractServer {
 		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 
 		this.logger = Container.get(Logger);
+
+		shutdownSignal.addEventListener(
+			'abort',
+			async () => {
+				await this.stopServer(timeoutInS);
+			},
+			{ once: true },
+		);
 	}
 
 	async configure(): Promise<void> {
@@ -247,19 +268,27 @@ export abstract class AbstractServer {
 		}
 	}
 
+	async waitForServerToStop(): Promise<void> {
+		return this.stopServerPromise ?? Promise.resolve();
+	}
+
 	/**
 	 * Stops the HTTP(S) server from accepting new connections. Gives all
 	 * connections `timeoutInS` seconds to finish their work and
 	 * then closes them forcefully.
 	 */
 	protected async stopServer(timeoutInS: number): Promise<void> {
+		if (this.stopServerPromise) {
+			return this.stopServerPromise;
+		}
+
 		this.logger.debug(`Shutting down ${this.protocol} server`);
 
 		const forceConnectionCloseTimeout = setTimeout(() => {
 			this.server.closeAllConnections();
 		}, timeoutInS * 1000);
 
-		await new Promise<void>((resolve, reject) => {
+		this.stopServerPromise = new Promise<void>((resolve, reject) => {
 			this.server.close((error) => {
 				clearTimeout(forceConnectionCloseTimeout);
 				if (error) {
@@ -269,5 +298,7 @@ export abstract class AbstractServer {
 				resolve();
 			});
 		});
+
+		await this.stopServerPromise;
 	}
 }

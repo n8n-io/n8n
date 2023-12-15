@@ -68,6 +68,8 @@ export class Webhook extends BaseCommand {
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
+
+			await this.server.waitForServerToStop();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

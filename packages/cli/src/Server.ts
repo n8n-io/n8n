@@ -83,6 +83,7 @@ import { licenseController } from './license/license.controller';
 import { setupPushServer, setupPushHandler, closePushConnections } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
+import type { AbstractServerOpts } from './AbstractServer';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -146,15 +147,11 @@ export class Server extends AbstractServer {
 
 	private collaborationService: CollaborationService;
 
-	constructor(opts: {
-		shutdown: {
-			signal: AbortSignal;
-			timeoutInS: number;
-		};
-	}) {
-		super('main');
-
-		const { signal: shutdownSignal, timeoutInS } = opts.shutdown;
+	constructor(opts: Omit<AbstractServerOpts, 'instanceType'>) {
+		super({
+			...opts,
+			instanceType: 'main',
+		});
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
@@ -162,13 +159,6 @@ export class Server extends AbstractServer {
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
-		shutdownSignal.addEventListener(
-			'abort',
-			async () => {
-				await this.stop(timeoutInS);
-			},
-			{ once: true },
-		);
 	}
 
 	async start() {
@@ -263,7 +253,7 @@ export class Server extends AbstractServer {
 	 * connections X seconds to finish their work and then closes them
 	 * forcefully.
 	 */
-	private async stop(timeoutInS: number) {
+	protected async stopServer(timeoutInS: number): Promise<void> {
 		const stopServerPromise = super.stopServer(timeoutInS);
 		closePushConnections();
 		await stopServerPromise;
