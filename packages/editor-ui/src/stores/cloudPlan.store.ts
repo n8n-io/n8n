@@ -171,7 +171,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		const localStorageFlag = localStorage.getItem(LEAD_ENRICHMENT_FLAG);
 		if (localStorageFlag === 'true') {
 			try {
-				const leadEnrichmentTemplates = getLeadEnrichmentTemplates();
+				const leadEnrichmentTemplates = await getLeadEnrichmentTemplates(
+					rootStore.getRestApiContext,
+				);
 				if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
 					useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
 				}
