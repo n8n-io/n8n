@@ -1032,6 +1032,12 @@ export const schema = {
 			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
 			doc: 'How often (in seconds) to check for secret updates.',
 		},
+		preferGet: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
+			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
+		},
 	},
 
 	deployment: {
