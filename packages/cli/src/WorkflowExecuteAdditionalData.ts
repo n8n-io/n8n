@@ -1076,8 +1076,6 @@ export function getWorkflowHooksWorkerMain(
 				(executionStatus === 'success' && !saveSettings.success) ||
 				(executionStatus !== 'success' && !saveSettings.error);
 
-			console.log('[getWorkflowHooksWorkerMain] shouldNotSave', shouldNotSave);
-
 			if (shouldNotSave) {
 				await Container.get(ExecutionRepository).hardDelete({
 					workflowId: this.workflowData.id as string,
