@@ -54,7 +54,7 @@ function openCanvas() {
 </script>
 
 <template>
-	<Modal width="640px" height="640px" :name="props.modalName">
+	<Modal width="900px" height="640px" :name="props.modalName">
 		<template #header>
 			<n8n-heading tag="h2" size="xlarge">
 				{{ $props.data.workflow.title }}
@@ -65,6 +65,7 @@ function openCanvas() {
 				:loading="false"
 				:workflow="$props.data.workflow.preview as IWorkflowDb"
 				:canOpenNDV="false"
+				:hideNodeIssues="true"
 				@close="uiStore.closeModal(LEAD_ENRICHMENT_PREVIEW_MODAL_KEY)"
 			/>
 		</template>

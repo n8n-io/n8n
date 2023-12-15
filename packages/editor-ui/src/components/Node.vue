@@ -37,7 +37,7 @@
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
-					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
+					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
@@ -209,6 +209,10 @@ export default defineComponent({
 			default: false,
 		},
 		disablePointerEvents: {
+			type: Boolean,
+			default: false,
+		},
+		hideNodeIssues: {
 			type: Boolean,
 			default: false,
 		},
