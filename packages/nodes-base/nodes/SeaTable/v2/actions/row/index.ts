@@ -1,5 +1,6 @@
 import * as create from './create';
 import * as get from './get';
+import * as list from './list';
 import * as search from './search';
 import * as update from './update';
 import * as remove from './remove';
@@ -7,7 +8,7 @@ import * as lock from './lock';
 import * as unlock from './unlock';
 import type { INodeProperties } from 'n8n-workflow';
 
-export { create, get, search, update, remove, lock, unlock };
+export { create, get, search, update, remove, lock, unlock, list };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -32,6 +33,12 @@ export const descriptions: INodeProperties[] = [
 				value: 'get',
 				description: 'Get the content of a row',
 				action: 'Get a row',
+			},
+			{
+				name: 'Get Many',
+				value: 'list',
+				description: 'Get many rows from a table of view',
+				action: 'Get many rows',
 			},
 			{
 				name: 'Search',
@@ -68,6 +75,7 @@ export const descriptions: INodeProperties[] = [
 	},
 	...create.description,
 	...get.description,
+	...list.description,
 	...search.description,
 	...update.description,
 	...remove.description,
