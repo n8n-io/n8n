@@ -282,18 +282,6 @@ export class Worker extends BaseCommand {
 		super(argv, cmdConfig);
 		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
-
-		const dbType = config.getEnv('database.type');
-
-		if (['mysqldb', 'mariadb'].includes(dbType)) {
-			this.logger.warn(
-				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
-			);
-		}
-
-		if (dbType === 'sqlite') {
-			this.logger.warn('Queue mode is not compatible with sqlite. Please use PostgreSQL.');
-		}
 	}
 
 	async init() {

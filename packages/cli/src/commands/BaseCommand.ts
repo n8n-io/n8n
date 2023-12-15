@@ -80,6 +80,13 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		if (config.getEnv('executions.mode') === 'queue' && dbType === 'sqlite') {
+			this.logger.error(
+				'Queue mode is incompatible with sqlite. Please switch to PostgreSQL. Exiting...',
+			);
+			await this.exitSuccessFully();
+		}
+
 		if (
 			process.env.N8N_BINARY_DATA_TTL ??
 			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
