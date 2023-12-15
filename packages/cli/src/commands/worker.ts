@@ -13,13 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	NodeOperationError,
-	sleep,
-	ApplicationError,
-	ErrorReporterProxy as EventReporter,
-} from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';

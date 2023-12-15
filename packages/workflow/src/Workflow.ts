@@ -52,7 +52,6 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 import { ApplicationError } from './errors/application.error';
-import * as EventReporter from './ErrorReporterProxy';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
