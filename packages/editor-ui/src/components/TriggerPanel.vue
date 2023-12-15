@@ -14,7 +14,7 @@
 						<n8n-text>
 							{{
 								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
-									interpolate: { type: this.webhookHttpMethod },
+									interpolate: { type: webhookHttpMethod },
 								})
 							}}
 						</n8n-text>
@@ -114,7 +114,6 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { copyPaste } from '@/mixins/copyPaste';
@@ -124,16 +123,24 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { N8nInfoAccordion } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 
 export default defineComponent({
 	name: 'TriggerPanel',
-	mixins: [workflowHelpers, copyPaste],
+	mixins: [copyPaste],
 	components: {
 		NodeExecuteButton,
 		CopyInput,
 		NodeIcon,
+	},
+	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+
+		return {
+			workflowHelpers
+		};
 	},
 	data: () => {
 		return {
@@ -180,14 +187,14 @@ export default defineComponent({
 				return undefined;
 			}
 
-			return this.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
+			return this.workflowHelpers.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
 		},
 		webhookTestUrl(): string | undefined {
 			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
-			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
+			return this.workflowHelpers.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 		},
 		isWebhookBasedNode(): boolean {
 			return Boolean(this.nodeType?.webhooks?.length);

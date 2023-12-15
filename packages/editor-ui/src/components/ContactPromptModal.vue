@@ -37,16 +37,15 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'ContactPromptModal',
-	mixins: [workflowHelpers],
 	components: { Modal },
 	props: ['modalName'],
 	setup() {

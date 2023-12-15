@@ -134,8 +134,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useTagsStore } from '@/stores/tags.store';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -144,10 +144,8 @@ const StatusFilter = {
 	DEACTIVATED: false,
 	ALL: '',
 };
-
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
-	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -165,6 +163,13 @@ const WorkflowsView = defineComponent({
 			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
+	setup() {
+		const genericHelpers = useGenericHelpers();
+
+		return {
+			genericHelpers
+		}
+	},
 	computed: {
 		...mapStores(
 			useSettingsStore,
@@ -175,6 +180,9 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 		),
+		readOnlyEnv() {
+			return this.genericHelpers.readOnlyEnv.value
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},

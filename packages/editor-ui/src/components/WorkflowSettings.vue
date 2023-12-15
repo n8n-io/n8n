@@ -355,7 +355,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
@@ -386,15 +385,16 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
-	mixins: [genericHelpers],
 	components: {
 		Modal,
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
+		const genericHelpers = useGenericHelpers();
 
 		return {
 			externalHooks,
+			genericHelpers,
 			...useToast(),
 		};
 	},
@@ -462,6 +462,9 @@ export default defineComponent({
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
+		readOnlyEnv() {
+			return this.genericHelpers.readOnlyEnv.value
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},

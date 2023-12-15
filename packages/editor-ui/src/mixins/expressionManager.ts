@@ -6,7 +6,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
@@ -15,7 +15,6 @@ import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
 export const expressionManager = defineComponent({
-	mixins: [workflowHelpers],
 	props: {
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
@@ -24,6 +23,13 @@ export const expressionManager = defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+
+		return {
+			workflowHelpers
+		};
 	},
 	data() {
 		return {
@@ -211,7 +217,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
+					result.resolved = this.workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

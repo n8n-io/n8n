@@ -149,7 +149,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -174,6 +174,7 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -184,7 +185,7 @@ interface IResourceLocatorQuery {
 
 export default defineComponent({
 	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers],
+	mixins: [debounceHelper],
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,
@@ -365,7 +366,7 @@ export default defineComponent({
 				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
-					const resolved = this.resolveExpression(expression);
+					const resolved = useWorkflowHelpers().resolveExpression(expression);
 
 					return typeof resolved === 'string' ? resolved : null;
 				}
@@ -675,7 +676,7 @@ export default defineComponent({
 					});
 				}
 
-				const resolvedNodeParameters = this.resolveRequiredParameters(
+				const resolvedNodeParameters = useWorkflowHelpers().resolveRequiredParameters(
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;

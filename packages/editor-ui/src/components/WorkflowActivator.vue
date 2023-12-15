@@ -52,26 +52,29 @@
 
 <script lang="ts">
 import { useToast } from '@/composables/useToast';
-import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
-	mixins: [workflowActivate],
 	setup(props, ctx) {
+		const workflowActivate = useWorkflowActivate(ctx);
+
 		return {
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
+			workflowActivate,
 		};
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
+		updatingWorkflowActivation() {
+			this.workflowActivate.updatingWorkflowActivation.value
+		},
 		nodesIssuesExist(): boolean {
 			return this.workflowsStore.nodesIssuesExist;
 		},
@@ -106,7 +109,7 @@ export default defineComponent({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return this.workflowActivate.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;

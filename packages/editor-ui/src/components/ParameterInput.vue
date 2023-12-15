@@ -398,7 +398,6 @@ import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
@@ -424,12 +423,13 @@ import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 export default defineComponent({
 	name: 'parameter-input',
-	mixins: [workflowHelpers, debounceHelper],
+	mixins: [debounceHelper],
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
@@ -512,11 +512,13 @@ export default defineComponent({
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			externalHooks,
 			i18n,
 			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -617,7 +619,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -862,7 +864,7 @@ export default defineComponent({
 			return shortPath.join('.');
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		isResourceLocatorParameter(): boolean {
 			return this.parameter.type === 'resourceLocator';

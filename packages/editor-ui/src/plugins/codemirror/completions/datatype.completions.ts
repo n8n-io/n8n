@@ -2,7 +2,7 @@ import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
 import { Expression, ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import {
 	setRank,
 	hasNoParams,

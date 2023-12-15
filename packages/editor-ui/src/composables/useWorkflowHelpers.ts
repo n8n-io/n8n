@@ -869,8 +869,6 @@ export function useWorkflowHelpers() {
 		if (genericHelpers.readOnlyEnv.value) {
 			return false;
 		}
-		// const route = router;
-		console.log("🚀 ~ file: useWorkflowHelpers.ts:871 ~ useWorkflowHelpers ~ route:", route)
 		const currentWorkflow = id || route.params.name as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {

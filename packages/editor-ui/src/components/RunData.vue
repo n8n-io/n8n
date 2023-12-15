@@ -605,7 +605,6 @@ import {
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { pinData } from '@/mixins/pinData';
 import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -620,6 +619,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -633,7 +633,7 @@ export type EnterEditModeArgs = {
 
 export default defineComponent({
 	name: 'RunData',
-	mixins: [genericHelpers, pinData],
+	mixins: [pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
@@ -701,9 +701,11 @@ export default defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
+		const genericHelpers = useGenericHelpers();
 
 		return {
 			...useToast(),
+			genericHelpers,
 			externalHooks,
 			nodeHelpers,
 		};
@@ -749,7 +751,10 @@ export default defineComponent({
 		this.hidePinDataDiscoveryTooltip();
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
+		isReadOnlyRoute() {
+			return this.genericHelpers.isReadOnlyRoute.value
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

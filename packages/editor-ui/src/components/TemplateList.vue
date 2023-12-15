@@ -34,12 +34,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import TemplateCard from './TemplateCard.vue';
 
 export default defineComponent({
 	name: 'TemplateList',
-	mixins: [genericHelpers],
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,

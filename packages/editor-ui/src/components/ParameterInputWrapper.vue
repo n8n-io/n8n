@@ -61,7 +61,6 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -69,10 +68,10 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'parameter-input-wrapper',
-	mixins: [workflowHelpers],
 	components: {
 		ParameterInput,
 		InputHint,
@@ -143,6 +142,13 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+
+		return {
+			workflowHelpers,
+		}
+	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
@@ -204,7 +210,7 @@ export default defineComponent({
 					};
 				}
 
-				computedValue = this.resolveExpression(value, undefined, opts);
+				computedValue = this.workflowHelpers.resolveExpression(value, undefined, opts);
 
 				if (computedValue === null) {
 					return null;

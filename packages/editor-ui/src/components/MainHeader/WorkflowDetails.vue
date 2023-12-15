@@ -158,7 +158,6 @@ import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
@@ -183,8 +182,9 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { hasPermission } from '@/rbac/permissions';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -197,7 +197,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -216,10 +215,15 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+		const genericHelpers = useGenericHelpers();
+
 		return {
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
+			genericHelpers,
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -383,7 +387,7 @@ export default defineComponent({
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
 				currentId = this.$route.params.name;
 			}
-			const saved = await this.saveCurrentWorkflow({
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({
 				id: currentId,
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
@@ -436,7 +440,7 @@ export default defineComponent({
 			}
 			this.tagsSaving = true;
 
-			const saved = await this.saveCurrentWorkflow({ tags });
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
 				workflow_id: this.currentWorkflowId,
 				new_tag_count: tags.length,
@@ -487,7 +491,7 @@ export default defineComponent({
 				return;
 			}
 
-			const saved = await this.saveCurrentWorkflow({ name });
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({ name });
 			if (saved) {
 				this.isNameEditEnabled = false;
 			}
@@ -532,7 +536,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-					const workflowData = await this.getWorkflowDataToSave();
+					const workflowData = await this.workflowHelpers.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
 					const exportData: IWorkflowToShare = {
 						...data,
@@ -579,7 +583,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.startLoading();
+					this.genericHelpers.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -603,7 +607,7 @@ export default defineComponent({
 								this.showError(error, this.$locale.baseText('error'));
 						}
 					} finally {
-						this.stopLoading();
+						this.genericHelpers.stopLoading();
 					}
 
 					break;

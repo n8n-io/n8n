@@ -57,7 +57,6 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -74,7 +73,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,

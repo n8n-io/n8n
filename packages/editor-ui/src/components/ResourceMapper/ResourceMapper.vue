@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveRequiredParameters } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -19,6 +18,7 @@ import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/node
 import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 type Props = {
 	parameter: INodeProperties;
@@ -32,6 +32,7 @@ type Props = {
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const { resolveRequiredParameters } = useWorkflowHelpers();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,

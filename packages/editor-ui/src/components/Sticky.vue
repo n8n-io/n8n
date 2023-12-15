@@ -1,5 +1,6 @@
 <template>
 	<div
+		v-if="node && data"
 		class="sticky-wrapper"
 		:id="nodeId"
 		:ref="data.name"
@@ -106,7 +107,6 @@ import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -125,7 +125,7 @@ import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
 	setup() {
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);

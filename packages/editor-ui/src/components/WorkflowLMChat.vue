@@ -133,7 +133,6 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
-import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
@@ -143,6 +142,9 @@ import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowRun } from '@/composables/useWorkflowRun';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
@@ -165,19 +167,20 @@ interface LangChainMessage {
 // - display errors better
 export default defineComponent({
 	name: 'WorkflowLMChat',
-	mixins: [workflowRun],
 	components: {
 		Modal,
 		RunDataAi,
 	},
-	setup(props, ctx) {
+	setup() {
 		const externalHooks = useExternalHooks();
+		const workflowRun = useWorkflowRun();
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			externalHooks,
+			workflowRun,
+			workflowHelpers,
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -192,7 +195,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -204,7 +207,7 @@ export default defineComponent({
 	},
 	methods: {
 		displayExecution(executionId: string) {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.id, executionId },
@@ -246,7 +249,7 @@ export default defineComponent({
 		},
 
 		setConnectedNode() {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
 				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
@@ -309,7 +312,7 @@ export default defineComponent({
 		getChatMessages(): ChatMessage[] {
 			if (!this.connectedNode) return [];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const connectedMemoryInputs =
 				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
 			if (!connectedMemoryInputs) return [];
@@ -361,7 +364,7 @@ export default defineComponent({
 				return;
 			}
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(triggerNode.name);
 
 			for (const childNode of childNodes) {
@@ -381,7 +384,7 @@ export default defineComponent({
 		},
 
 		getTriggerNode(): INode | null {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
 				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
@@ -423,7 +426,7 @@ export default defineComponent({
 				source: [null],
 			};
 
-			const response = await this.runWorkflow({
+			const response = await this.workflowRun.runWorkflow({
 				triggerNode: triggerNode.name,
 				nodeData,
 				source: 'RunData.ManualChatMessage',

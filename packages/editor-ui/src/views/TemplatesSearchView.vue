@@ -84,7 +84,6 @@ import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type {
 	ITemplatesCollection,
 	ITemplatesWorkflow,
@@ -112,7 +111,7 @@ interface ISearchEvent {
 
 export default defineComponent({
 	name: 'TemplatesSearchView',
-	mixins: [genericHelpers, debounceHelper],
+	mixins: [debounceHelper],
 	components: {
 		TemplatesInfoCarousel,
 		TemplateFilters,

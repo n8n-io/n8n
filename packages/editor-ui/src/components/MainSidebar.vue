@@ -98,11 +98,7 @@
 <script lang="ts">
 import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
-
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useMessage } from '@/composables/useMessage';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { workflowRun } from '@/mixins/workflowRun';
 
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
@@ -121,7 +117,6 @@ import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -130,15 +125,10 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 	},
-	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props, ctx) {
-		const externalHooks = useExternalHooks();
-
+	mixins: [userHelpers, debounceHelper],
+	setup() {
 		return {
-			externalHooks,
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {

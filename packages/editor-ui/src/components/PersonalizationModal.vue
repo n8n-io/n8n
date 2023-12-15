@@ -127,7 +127,7 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
@@ -143,7 +143,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
-	mixins: [workflowHelpers],
 	components: { Modal },
 	props: {
 		teleported: {
@@ -164,7 +163,6 @@ export default defineComponent({
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
-
 		return {
 			externalHooks,
 			...useToast(),

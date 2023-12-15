@@ -21,8 +21,9 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounceHelper } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+
 import { v4 as uuid } from 'uuid';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 interface Props {
 	parameter: INodeProperties;
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const { callDebounced } = useDebounceHelper();
+const { resolveParameter } = useWorkflowHelpers();
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };

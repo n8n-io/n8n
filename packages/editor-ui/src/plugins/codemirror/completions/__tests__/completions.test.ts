@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createPinia, setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
-import * as workflowHelpers from '@/mixins/workflowHelpers';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { dollarOptions } from '@/plugins/codemirror/completions/dollar.completions';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import {

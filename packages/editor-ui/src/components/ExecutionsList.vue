@@ -2,7 +2,7 @@
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
 					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
@@ -288,7 +288,6 @@ import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
@@ -314,7 +313,7 @@ import { useRoute } from 'vue-router';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [genericHelpers, executionHelpers],
+	mixins: [executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
@@ -364,9 +363,6 @@ export default defineComponent({
 			workflows: [] as IWorkflowShortResponse[],
 		};
 	},
-	created() {
-		this.autoRefresh = this.autoRefreshEnabled;
-	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
@@ -374,6 +370,7 @@ export default defineComponent({
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
 		void this.externalHooks.run('executionsList.openDialog');
@@ -552,7 +549,7 @@ export default defineComponent({
 			}
 		},
 		getWorkflowName(workflowId: string): string | undefined {
-			return this.workflows.find((data) => data.id === workflowId)?.name;
+			return this.workflowHelpers.workflows.find((data) => data.id === workflowId)?.name;
 		},
 		async loadActiveExecutions(): Promise<void> {
 			const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)

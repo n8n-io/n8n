@@ -32,7 +32,7 @@ import {
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { workflowRun } from '@/mixins/workflowRun';
+
 import { pinData } from '@/mixins/pinData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -40,10 +40,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowRun } from '@/composables/useWorkflowRun';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	inheritAttrs: false,
-	mixins: [workflowRun, pinData],
+	mixins: [pinData],
 	props: {
 		nodeName: {
 			type: String,
@@ -71,17 +73,17 @@ export default defineComponent({
 	},
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
+		const workflowRun = useWorkflowRun();
 
 		return {
 			externalHooks,
+			workflowRun,
 			...useToast(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
@@ -247,7 +249,7 @@ export default defineComponent({
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow({
+					await this.workflowRun.runWorkflow({
 						destinationNode: this.nodeName,
 						source: 'RunData.ExecuteNodeButton',
 					});

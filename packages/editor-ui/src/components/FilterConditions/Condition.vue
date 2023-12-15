@@ -19,7 +19,8 @@ import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+
 type ConditionResult =
 	| { status: 'resolve_error' }
 	| { status: 'validation_error'; error: string }
@@ -70,7 +71,7 @@ const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePrope
 
 const conditionResult = computed<ConditionResult>(() => {
 	try {
-		const resolved = resolveParameter(
+		const resolved = useWorkflowHelpers().resolveParameter(
 			condition.value as unknown as NodeParameterValue,
 		) as FilterConditionValue;
 

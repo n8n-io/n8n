@@ -43,7 +43,7 @@ import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
-import { genericHelpers } from '@/mixins/genericHelpers';
+
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -52,6 +52,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 type JsonPathData = {
 	path: string;
@@ -60,7 +61,7 @@ type JsonPathData = {
 
 export default defineComponent({
 	name: 'run-data-json-actions',
-	mixins: [genericHelpers, pinData, copyPaste],
+	mixins: [pinData, copyPaste],
 
 	props: {
 		node: {
@@ -96,14 +97,20 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
+		const genericHelpers = useGenericHelpers();
+
 		return {
 			i18n,
 			nodeHelpers,
+			genericHelpers,
 			...useToast(),
 		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
+		isReadOnlyRoute() {
+			return this.genericHelpers.isReadOnlyRoute.value
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

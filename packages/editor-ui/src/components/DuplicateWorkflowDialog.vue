@@ -51,7 +51,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables/useToast';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
@@ -63,15 +62,18 @@ import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
-	mixins: [workflowHelpers],
 	components: { TagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+
 		return {
 			...useToast(),
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -156,13 +158,13 @@ export default defineComponent({
 						await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
-					this.removeForeignCredentialsFromWorkflow(
+					this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 						workflowToUpdate,
 						this.credentialsStore.allCredentials,
 					);
 				}
 
-				const saved = await this.saveAsNewWorkflow({
+				const saved = await this.workflowHelpers.saveAsNewWorkflow({
 					name,
 					data: workflowToUpdate,
 					tags: this.currentTagIds,

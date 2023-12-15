@@ -239,7 +239,6 @@ import {
 	TIME,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -4721,7 +4720,6 @@ export default defineComponent({
 		}
 
 		ready(async () => {
-		console.log('ready', this.isReadOnlyRoute, this.readOnlyEnv);
 			try {
 				try {
 					this.bindCanvasEvents();

@@ -146,7 +146,6 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -162,7 +161,6 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -174,10 +172,12 @@ import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [workflowHelpers, workflowActivate, pinData],
+	mixins: [pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -200,14 +200,16 @@ export default defineComponent({
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const workflowHelpers = useWorkflowHelpers();
+		const workflowActivate = useWorkflowActivate(ctx);
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			workflowHelpers,
+			workflowActivate,
 			...useDeviceSupport(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -280,7 +282,7 @@ export default defineComponent({
 			);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
@@ -475,7 +477,7 @@ export default defineComponent({
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
 						this.activeNodeType,
-						this.getCurrentWorkflow(),
+						this.workflowHelpers.getCurrentWorkflow(),
 					),
 				});
 
@@ -580,7 +582,7 @@ export default defineComponent({
 		onWorkflowActivate() {
 			this.ndvStore.activeNodeName = null;
 			setTimeout(() => {
-				void this.activateCurrentWorkflow('ndv');
+				void this.workflowActivate.activateCurrentWorkflow('ndv');
 			}, 1000);
 		},
 		onFeatureRequestClick() {

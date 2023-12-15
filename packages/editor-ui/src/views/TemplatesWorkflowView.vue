@@ -64,7 +64,6 @@ import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import type { ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
@@ -74,7 +73,6 @@ import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplatesView,

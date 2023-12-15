@@ -56,8 +56,6 @@ import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
-
-import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -74,7 +72,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 
 export default defineComponent({
 	name: 'code-node-editor',
-	mixins: [linterExtension, completerExtension, workflowHelpers],
+	mixins: [linterExtension, completerExtension],
 	components: {
 		AskAI,
 	},

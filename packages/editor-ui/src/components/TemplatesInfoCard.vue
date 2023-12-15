@@ -14,13 +14,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
 
 export default defineComponent({
 	name: 'TemplatesInfoCard',
-	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,

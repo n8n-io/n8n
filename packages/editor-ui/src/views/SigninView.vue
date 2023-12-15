@@ -30,18 +30,20 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useUIStore } from '@/stores/ui.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'SigninView',
-	mixins: [genericHelpers],
 	components: {
 		AuthView,
 		MfaView,
 	},
 	setup() {
+		const genericHelpers = useGenericHelpers();
+
 		return {
 			...useToast(),
+			genericHelpers,
 		};
 	},
 	data() {
@@ -141,8 +143,8 @@ export default defineComponent({
 					result: this.showMfaView ? 'mfa_success' : 'success',
 				});
 
-				if (this.isRedirectSafe()) {
-					const redirect = this.getRedirectQueryParameter();
+				if (this.genericHelpers.isRedirectSafe()) {
+					const redirect = this.genericHelpers.getRedirectQueryParameter();
 					void this.$router.push(redirect);
 					return;
 				}

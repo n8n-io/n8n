@@ -67,17 +67,19 @@ import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
-	mixins: [copyPaste, workflowHelpers],
+	mixins: [copyPaste],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
+		const workflowHelpers = useWorkflowHelpers();
 		return {
+			workflowHelpers,
 			...useToast(),
 		};
 	},
@@ -145,7 +147,7 @@ export default defineComponent({
 		},
 		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 			if (this.node) {
-				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+				return this.workflowHelpers.getWebhookUrl(webhookData, this.node, this.showUrlFor);
 			}
 			return '';
 		},

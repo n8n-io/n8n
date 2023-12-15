@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setupServer } from '@/__tests__/server';
-import { executeData } from '@/mixins/workflowHelpers';
+import { executeData } from '@/composables/useWorkflowHelpers';
 import type { IExecutionResponse } from '@/Interface';
 
 describe('workflowHelpers', () => {

@@ -159,7 +159,8 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import Conditions from '@/components/FilterConditions/FilterConditions.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -171,18 +172,19 @@ import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-const FixedCollectionParameter = defineAsyncComponent(
-	async () => import('./FixedCollectionParameter.vue'),
-);
+import { Component } from 'vue';
+
+// const FixedCollectionParameter: Component = defineAsyncComponent(
+// 	async () => import('./FixedCollectionParameter.vue'),
+// );
 const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
 
 export default defineComponent({
 	name: 'ParameterInputList',
-	mixins: [workflowHelpers],
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter,
+		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue'),
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
@@ -190,9 +192,11 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	props: {
@@ -411,7 +415,7 @@ export default defineComponent({
 					} else {
 						// Contains probably no expression with a missing parameter so resolve
 						try {
-							nodeValues[key] = this.resolveExpression(
+							nodeValues[key] = this.workflowHelpers.resolveExpression(
 								rawValues[key],
 								nodeValues,
 							) as NodeParameterValue;
@@ -486,7 +490,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {

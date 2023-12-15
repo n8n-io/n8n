@@ -61,7 +61,6 @@ import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -77,7 +76,7 @@ const LOAD_MORE_PAGE_SIZE = 100;
 
 export default defineComponent({
 	name: 'executions-list',
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	mixins: [executionHelpers, debounceHelper],
 	components: {
 		ExecutionsSidebar,
 	},

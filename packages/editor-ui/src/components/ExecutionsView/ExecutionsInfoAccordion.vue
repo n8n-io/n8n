@@ -45,7 +45,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -55,7 +55,6 @@ interface IWorkflowSaveSettings {
 
 export default defineComponent({
 	name: 'executions-info-accordion',
-	mixins: [workflowHelpers],
 	props: {
 		initiallyExpanded: {
 			type: Boolean,
@@ -204,14 +203,14 @@ export default defineComponent({
 		openWorkflowSettings(event: MouseEvent): void {
 			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
-		async onSaveWorkflowClick(event: MouseEvent): void {
+		async onSaveWorkflowClick(event: MouseEvent): Promise<void> {
 			let currentId = undefined;
 			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				currentId = this.currentWorkflowId;
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
-				currentId = this.$route.params.name;
+				currentId = this.$route.params.name as string;
 			}
-			const saved = await this.saveCurrentWorkflow({
+			const saved = await useWorkflowHelpers().saveCurrentWorkflow({
 				id: currentId,
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,

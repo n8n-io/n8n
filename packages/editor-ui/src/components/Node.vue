@@ -158,7 +158,7 @@ import {
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+
 import { pinData } from '@/mixins/pinData';
 import type {
 	ConnectionTypes,
@@ -197,7 +197,7 @@ export default defineComponent({
 
 		return { contextMenu, externalHooks, nodeHelpers };
 	},
-	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,

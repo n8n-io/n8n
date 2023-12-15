@@ -69,7 +69,6 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
 import {
@@ -89,7 +88,6 @@ export const FORM = {
 
 export default defineComponent({
 	name: 'MfaView',
-	mixins: [genericHelpers],
 	components: {
 		Logo,
 	},

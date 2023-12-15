@@ -117,7 +117,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
@@ -137,6 +136,7 @@ import {
 	updateNodeAuthType,
 	isRequiredCredential,
 } from '@/utils/nodeTypesUtils';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -144,7 +144,6 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 
 export default defineComponent({
 	name: 'NodeCredentials',
-	mixins: [genericHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -171,9 +170,11 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const genericHelpers = useGenericHelpers();
 
 		return {
 			...useToast(),
+			genericHelpers,
 			nodeHelpers,
 		};
 	},
@@ -280,6 +281,9 @@ export default defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 		),
+		isReadOnlyRoute() {
+			return this.genericHelpers.isReadOnlyRoute.value
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
