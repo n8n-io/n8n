@@ -45,7 +45,6 @@
 			<lead-enrichment-section
 				v-if="leadEnrichmentTemplates"
 				:section="leadEnrichmentTemplates.sections[0]"
-				carouselNavPosition="inside"
 				title="Explore lead enrichment workflow templates"
 			/>
 		</template>

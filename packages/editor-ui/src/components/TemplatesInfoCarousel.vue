@@ -14,19 +14,20 @@
 				:key="collection.id"
 				:collection="collection"
 				:showItemCount="showItemCount"
+				:width="cardsWidth"
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
 		</agile>
 		<button
-			v-show="carouselScrollPosition > 0"
-			:class="{ [$style.leftButton]: true, [$style.inside]: navigationInside }"
+			v-show="showNavigation && carouselScrollPosition > 0"
+			:class="{ [$style.leftButton]: true }"
 			@click="scrollLeft"
 		>
 			<font-awesome-icon icon="chevron-left" />
 		</button>
 		<button
-			v-show="!scrollEnd"
-			:class="{ [$style.rightButton]: true, [$style.inside]: navigationInside }"
+			v-show="showNavigation && !scrollEnd"
+			:class="{ [$style.rightButton]: true }"
 			@click="scrollRight"
 		>
 			<font-awesome-icon icon="chevron-right" />
@@ -60,9 +61,13 @@ export default defineComponent({
 			type: Boolean,
 			default: true,
 		},
-		navigationInside: {
+		showNavigation: {
 			type: Boolean,
-			default: false,
+			default: true,
+		},
+		cardsWidth: {
+			type: String,
+			default: '240px',
 		},
 	},
 	watch: {
@@ -85,7 +90,8 @@ export default defineComponent({
 	data() {
 		return {
 			carouselScrollPosition: 0,
-			cardWidth: 240,
+			cardWidth: parseInt(this.cardsWidth, 10),
+			sliderWidth: 0,
 			scrollEnd: false,
 			listElement: null as null | Element,
 		};
@@ -169,10 +175,6 @@ export default defineComponent({
 	composes: button;
 	left: -30px;
 
-	&.inside {
-		left: 10px;
-	}
-
 	&:after {
 		left: 27px;
 		background: linear-gradient(
@@ -196,9 +198,6 @@ export default defineComponent({
 .rightButton {
 	composes: button;
 	right: -30px;
-	&.inside {
-		right: 10px;
-	}
 
 	&:after {
 		right: 27px;
@@ -228,10 +227,6 @@ export default defineComponent({
 		padding-bottom: var(--spacing-2xs);
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
-	}
-
-	&__track {
-		width: 50px;
 	}
 }
 </style>
