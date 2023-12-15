@@ -268,7 +268,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 		dialogVisibleChanged: [
 			(_, meta) => {
 				const segmentStore = useSegment();
-				const currentValue = meta.value.slice(1);
+				const currentValue = meta.value?.slice(1) ?? '';
 				let isValueDefault = false;
 
 				switch (typeof meta.parameter.default) {
