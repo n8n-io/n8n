@@ -53,7 +53,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, ref } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 const SURVEY_VERSION = 'v4';
