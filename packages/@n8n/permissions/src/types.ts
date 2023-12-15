@@ -15,6 +15,7 @@ export type Resource =
 	| 'tag'
 	| 'user'
 	| 'variable'
+	| 'workersView'
 	| 'workflow';
 
 export type ResourceScope<
@@ -48,6 +49,7 @@ export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' 
 export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
+export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
 export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
 
 export type Scope =
@@ -66,6 +68,7 @@ export type Scope =
 	| TagScope
 	| UserScope
 	| VariableScope
+	| WorkersViewScope
 	| WorkflowScope;
 
 export type ScopeLevel = 'global' | 'project' | 'resource';

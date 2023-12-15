@@ -4,15 +4,12 @@
 		<div :class="$style.workerListHeader">
 			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 		</div>
-		<div v-if="isMounting">
-			<n8n-loading :class="$style.tableLoader" variant="custom" />
+		<div v-if="workerIds.length === 0">
+			<n8n-spinner />
 		</div>
 		<div v-else>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
-			<div v-else>
-				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
-				</div>
+			<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+				<WorkerCard :workerId="workerId" data-test-id="worker-card" />
 			</div>
 		</div>
 	</div>
@@ -55,14 +52,8 @@ export default defineComponent({
 			...pushConnection.setup?.(props, ctx),
 		};
 	},
-	data() {
-		return {
-			isMounting: true,
-		};
-	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
-		this.isMounting = false;
 	},
 	beforeMount() {
 		if (window.Cypress !== undefined) {
