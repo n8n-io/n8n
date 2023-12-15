@@ -11,6 +11,7 @@
 			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
 			<TemplatesInfoCard
 				v-for="collection in loading ? [] : collections"
+				data-test-id="templates-info-card"
 				:key="collection.id"
 				:collection="collection"
 				:showItemCount="showItemCount"

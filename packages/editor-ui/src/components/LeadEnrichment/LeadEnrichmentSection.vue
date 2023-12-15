@@ -54,7 +54,7 @@ function onOpenCollection({ id }: { event: Event; id: number }) {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="lead-enrichment-section-container">
 		<div v-if="showTitle" :class="$style.header">
 			<n8n-text size="large" color="text-base" :bold="true">
 				{{ props.title ?? section.title }}

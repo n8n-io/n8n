@@ -79,6 +79,7 @@ function openCanvas() {
 				<n8n-button
 					@click="openCanvas"
 					float="right"
+					data-test-id="use-template-button"
 					:label="$locale.baseText('leadEnrichment.modal.button.label')"
 				/>
 			</div>
