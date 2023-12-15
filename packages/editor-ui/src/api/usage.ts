@@ -18,7 +18,13 @@ export const renewLicense = async (context: IRestApiContext): Promise<UsageState
 
 export const requestLicenseTrial = async (
 	context: IRestApiContext,
-	data: {},
+	data: {
+		licenseType: 'enterprise';
+		firstName: string;
+		lastName: string;
+		email: string;
+		instanceUrl: string;
+	},
 ): Promise<UsageState['data']> => {
 	return makeRestApiRequest(
 		{ ...context, baseUrl: 'https://enterprise.n8n-maintenance.workers.dev' },

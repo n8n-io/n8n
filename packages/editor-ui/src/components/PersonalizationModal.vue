@@ -23,18 +23,20 @@
 					tagSize="small"
 					@submit="onSubmit"
 				/>
-				<n8n-checkbox v-if="canRegisterForEnterpriseTrial" v-model="registerForEnterpriseTrial">
-					<i18n-t keypath="personalizationModal.registerEmailForTrial">
-						<template #trial>
-							<strong>
-								{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
-							</strong>
-						</template>
-					</i18n-t>
-					<n8n-text size="small" tag="div" color="text-light">
-						{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
-					</n8n-text>
-				</n8n-checkbox>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
 			</div>
 		</template>
 		<template #footer>
@@ -154,6 +156,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useUsageStore } from '@/stores/usage.store';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
@@ -184,6 +187,7 @@ export default defineComponent({
 		return {
 			externalHooks,
 			...useToast(),
+			...useMessage(),
 		};
 	},
 	computed: {
@@ -707,10 +711,6 @@ export default defineComponent({
 
 				this.posthogStore.setMetadata(survey, 'user');
 
-				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
-					await this.usageStore.requestEnterpriseLicenseTrial();
-				}
-
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
 				}
@@ -722,6 +722,28 @@ export default defineComponent({
 
 			this.isSaving = false;
 			this.closeDialog();
+
+			try {
+				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
+					await this.usageStore.requestEnterpriseLicenseTrial();
+					await this.alert(
+						this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
+						{
+							title: this.$locale.baseText(
+								'personalizationModal.registerEmailForTrial.success.title',
+							),
+							confirmButtonText: this.$locale.baseText(
+								'personalizationModal.registerEmailForTrial.success.button',
+							),
+						},
+					);
+				}
+			} catch (e) {
+				this.showError(
+					e,
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.error'),
+				);
+			}
 		},
 		async fetchOnboardingPrompt() {
 			if (
