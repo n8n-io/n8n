@@ -28,6 +28,7 @@
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
+      "dist/credentials/GoogleAiStudioApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
@@ -57,6 +58,7 @@
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmGooglePalm/LmGooglePalm.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
+      "dist/nodes/llms/LmChatGoogleGenAi/LmChatGoogleGenAi.node.js",
       "dist/nodes/llms/LmChatGooglePalm/LmChatGooglePalm.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
@@ -116,6 +118,7 @@
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "0.2.1",
     "@huggingface/inference": "2.6.4",
+    "@langchain/google-genai": "^0.0.3",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
     "@supabase/supabase-js": "2.38.5",
