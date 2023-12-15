@@ -208,17 +208,17 @@ export class ChatTrigger implements INodeType {
 							{
 								name: 'Not Supported',
 								value: 'notSupported',
-								description: 'Loading of previous sessions is not supported',
+								description: 'Loading of messages of previous session is not supported',
 							},
 							{
 								name: 'From Memory',
 								value: 'memory',
-								description: 'Load sessions from memory',
+								description: 'Load session messages from memory',
 							},
 							{
 								name: 'Manually',
 								value: 'manually',
-								description: 'Manually return session messages',
+								description: 'Manually return messages of session',
 							},
 						],
 						default: 'notSupported',
