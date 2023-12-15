@@ -60,7 +60,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
-import { WorkflowsService } from './workflows/workflows.services';
+import { WorkflowService } from './workflows/workflow.service';
 import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
@@ -387,7 +387,7 @@ export async function executeWebhook(
 		}
 
 		// Save static data if it changed
-		await WorkflowsService.saveStaticData(workflow);
+		await Container.get(WorkflowService).saveStaticData(workflow);
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,

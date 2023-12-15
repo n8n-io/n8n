@@ -364,9 +364,6 @@ export default defineComponent({
 			workflows: [] as IWorkflowShortResponse[],
 		};
 	},
-	created() {
-		this.autoRefresh = this.autoRefreshEnabled;
-	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
@@ -374,6 +371,7 @@ export default defineComponent({
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
 		void this.externalHooks.run('executionsList.openDialog');
@@ -945,7 +943,7 @@ export default defineComponent({
 			}
 		},
 		async startAutoRefreshInterval() {
-			if (this.autoRefresh && this.route.name === VIEWS.WORKFLOW_EXECUTIONS) {
+			if (this.autoRefresh && this.route.name === VIEWS.EXECUTIONS) {
 				await this.loadAutoRefresh();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();
