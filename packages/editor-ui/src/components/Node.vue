@@ -491,7 +491,7 @@ export default defineComponent({
 			if (this.data.disabled) {
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
-				if (this.hasIssues) {
+				if (this.hasIssues && !this.hideNodeIssues) {
 					// Do not set red border if there is an issue with the configuration node
 					if (
 						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==

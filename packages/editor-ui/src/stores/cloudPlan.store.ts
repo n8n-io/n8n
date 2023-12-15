@@ -163,23 +163,20 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
 	};
 
+	const fetchLeadEnrichmentTemplates = async () => {
+		try {
+			const leadEnrichmentTemplates = await getLeadEnrichmentTemplates(rootStore.getRestApiContext);
+			if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
+				useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+			}
+		} catch (error) {
+			console.warn('Error checking for lead enrichment templates:', error);
+		}
+	};
+
 	const initialize = async () => {
 		if (state.initialized) {
 			return;
-		}
-
-		const localStorageFlag = localStorage.getItem(LEAD_ENRICHMENT_FLAG);
-		if (localStorageFlag === 'true') {
-			try {
-				const leadEnrichmentTemplates = await getLeadEnrichmentTemplates(
-					rootStore.getRestApiContext,
-				);
-				if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
-					useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
-				}
-			} catch (error) {
-				console.warn('Error checking for cloud plan data:', error);
-			}
 		}
 
 		try {
@@ -192,6 +189,11 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			await fetchUserCloudAccount();
 		} catch (error) {
 			console.warn('Error fetching user cloud account:', error);
+		}
+
+		const localStorageFlag = localStorage.getItem(LEAD_ENRICHMENT_FLAG);
+		if (localStorageFlag === 'true') {
+			await fetchLeadEnrichmentTemplates();
 		}
 
 		state.initialized = true;

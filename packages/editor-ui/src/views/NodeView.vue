@@ -1031,8 +1031,9 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
-			await this.$nextTick();
-			this.canvasStore.zoomToFit();
+			setTimeout(() => {
+				this.canvasStore.zoomToFit();
+			}, 200);
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.startLoading();
