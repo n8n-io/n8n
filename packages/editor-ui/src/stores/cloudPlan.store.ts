@@ -5,7 +5,12 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage, getLeadEnrichmentTemplates } from '@/api/cloudPlans';
+import {
+	getAdminPanelLoginCode,
+	getCurrentPlan,
+	getCurrentUsage,
+	getLeadEnrichmentTemplates,
+} from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, LEAD_ENRICHMENT_FLAG, STORES } from '@/constants';
 import { hasPermission } from '@/rbac/permissions';
