@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -29,7 +29,8 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
-	WebhookPathAlreadyTakenError,
+	WebhookPathTakenError,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import type express from 'express';
@@ -42,7 +43,6 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
@@ -59,7 +59,7 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
-import { WorkflowsService } from './workflows/workflows.services';
+import { WorkflowService } from './workflows/workflow.service';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
@@ -68,6 +68,8 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
+import type { Scope } from '@n8n/permissions';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -104,6 +106,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
 		await this.webhookService.populateCache();
+	}
+
+	async getAllWorkflowActivationErrors() {
+		return this.activationErrorsService.getAll();
 	}
 
 	/**
@@ -165,9 +171,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 
 		if (workflowData === null) {
-			throw new ResponseHelper.NotFoundError(
-				`Could not find workflow with id "${webhook.workflowId}"`,
-			);
+			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
 		}
 
 		const workflow = new Workflow({
@@ -196,7 +200,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const workflowStartNode = workflow.getNode(webhookData.node);
 
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise((resolve, reject) => {
@@ -252,7 +256,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 		if (webhook === null) {
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod),
 				WEBHOOK_PROD_UNREGISTERED_HINT,
 			);
@@ -271,8 +275,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	/**
 	 * Get the IDs of active workflows from storage.
 	 */
-	async allActiveInStorage(user?: User) {
-		const isFullAccess = !user || user.globalRole.name === 'owner';
+	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
+		const isFullAccess = !options?.user || (await options.user.hasGlobalScope(options.scope));
 
 		const activationErrors = await this.activationErrorsService.getAll();
 
@@ -287,8 +291,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const where = whereClause({
-			user,
+		const where = await whereClause({
+			user: options.user,
+			globalScope: 'workflow:list',
 			entityType: 'workflow',
 		});
 
@@ -403,7 +408,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error instanceof Error && error.name === 'QueryFailedError') {
-					error = new WebhookPathAlreadyTakenError(webhook.node, error);
+					error = new WebhookPathTakenError(webhook.node, error);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;
@@ -413,8 +418,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 		}
 		await this.webhookService.populateCache();
-		// Save static data!
-		await WorkflowsService.saveStaticData(workflow);
+
+		await Container.get(WorkflowService).saveStaticData(workflow);
 	}
 
 	/**
@@ -427,7 +432,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 
 		if (workflowData === null) {
-			throw new Error(`Could not find workflow with id "${workflowId}"`);
+			throw new ApplicationError('Could not find workflow', { extra: { workflowId } });
 		}
 
 		const workflow = new Workflow({
@@ -453,7 +458,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', false);
 		}
 
-		await WorkflowsService.saveStaticData(workflow);
+		await Container.get(WorkflowService).saveStaticData(workflow);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
@@ -526,7 +531,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void WorkflowsService.saveStaticData(workflow);
+				void Container.get(WorkflowService).saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -581,7 +586,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void WorkflowsService.saveStaticData(workflow);
+				void Container.get(WorkflowService).saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -816,7 +821,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await this.activationErrorsService.unset(workflowId);
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
-			await WorkflowsService.updateWorkflowTriggerCount(workflow.id, triggerCount);
+			await Container.get(WorkflowService).updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.set(workflowId, error.message);
@@ -826,7 +831,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
-		await WorkflowsService.saveStaticData(workflow);
+		await Container.get(WorkflowService).saveStaticData(workflow);
 	}
 
 	/**

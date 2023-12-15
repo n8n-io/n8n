@@ -17,7 +17,7 @@ import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type { ITemplatesNode } from '@/Interface';
-import { filterTemplateNodes } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'NodeList',

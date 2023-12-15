@@ -668,6 +668,24 @@ export const schema = {
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
 		},
+		form: {
+			format: String,
+			default: 'form',
+			env: 'N8N_ENDPOINT_FORM',
+			doc: 'Path for form endpoint',
+		},
+		formTest: {
+			format: String,
+			default: 'form-test',
+			env: 'N8N_ENDPOINT_FORM_TEST',
+			doc: 'Path for test form endpoint',
+		},
+		formWaiting: {
+			format: String,
+			default: 'form-waiting',
+			env: 'N8N_ENDPOINT_FORM_WAIT',
+			doc: 'Path for waiting form endpoint',
+		},
 		webhook: {
 			format: String,
 			default: 'webhook',
@@ -1004,6 +1022,15 @@ export const schema = {
 					doc: 'Access secret in S3-compatible external storage',
 				},
 			},
+		},
+	},
+
+	externalSecrets: {
+		updateInterval: {
+			format: Number,
+			default: 300,
+			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
+			doc: 'How often (in seconds) to check for secret updates.',
 		},
 	},
 

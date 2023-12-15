@@ -1,3 +1,4 @@
+import type { IDataObject } from 'n8n-workflow';
 import type {
 	IRestApiContext,
 	SourceControlAggregatedFile,
@@ -5,8 +6,7 @@ import type {
 	SourceControlStatus,
 	SshKeyTypes,
 } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
-import type { IDataObject } from 'n8n-workflow';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const sourceControlApiRoot = '/source-control';

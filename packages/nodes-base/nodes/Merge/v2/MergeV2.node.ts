@@ -37,7 +37,7 @@ const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["mode"]}}',
-	description: 'Merges data of multiple streams once data from both is available',
+	description: 'Merge data of two inputs once data from both is available',
 	defaults: {
 		name: 'Merge',
 		color: '#00bbcc',

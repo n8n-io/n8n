@@ -5,7 +5,6 @@ import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { Config } from '@/config';
-import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers/owner.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -14,6 +13,9 @@ import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
 import { badPasswords } from '../shared/testData';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
@@ -27,6 +29,7 @@ describe('OwnerController', () => {
 		internalHooks,
 		settingsRepository,
 		userService,
+		Container.get(PasswordUtility),
 	);
 
 	describe('setupOwner', () => {

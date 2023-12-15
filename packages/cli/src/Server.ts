@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -92,7 +92,7 @@ import { License } from './License';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { variablesController } from './environments/variables/variables.controller';
+import { VariablesController } from './environments/variables/variables.controller.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import {
 	isLdapCurrentAuthenticationMethod,
@@ -117,6 +117,11 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
+import { BadRequestError } from './errors/response-errors/bad-request.error';
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
 
@@ -261,6 +266,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				Container.get(SettingsRepository),
 				userService,
+				Container.get(PasswordUtility),
 				postHog,
 			),
 			Container.get(MeController),
@@ -278,6 +284,7 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				Container.get(RoleService),
 				userService,
+				Container.get(License),
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -286,15 +293,25 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
 			new InvitationController(
 				config,
 				logger,
 				internalHooks,
 				externalHooks,
 				Container.get(UserService),
+				Container.get(License),
+				Container.get(PasswordUtility),
 				postHog,
 			),
+			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
+
+		if (Container.get(MultiMainSetup).isEnabled) {
+			const { DebugController } = await import('./controllers/debug.controller');
+			controllers.push(Container.get(DebugController));
+		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();
@@ -424,12 +441,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-		// Variables
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
-
-		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
 		try {
@@ -446,7 +457,10 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage({
+					user: req.user,
+					scope: 'workflow:list',
+				});
 			}),
 		);
 
@@ -458,8 +472,9 @@ export class Server extends AbstractServer {
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: whereClause({
+					where: await whereClause({
 						user: req.user,
+						globalScope: 'workflow:read',
 						entityType: 'workflow',
 						entityId: workflowId,
 					}),
@@ -471,9 +486,7 @@ export class Server extends AbstractServer {
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.BadRequestError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-					);
+					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 				}
 
 				return this.activeWorkflowRunner.getActivationError(workflowId);
@@ -496,7 +509,7 @@ export class Server extends AbstractServer {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError('Invalid cURL command');
+						throw new BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -629,7 +642,7 @@ export class Server extends AbstractServer {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
@@ -642,7 +655,7 @@ export class Server extends AbstractServer {
 				);
 
 				if (!fullExecutionData) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
@@ -674,7 +687,9 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
+							extra: { jobId: req.params.id },
+						});
 					} else {
 						await queue.stopJob(job);
 					}

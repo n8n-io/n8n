@@ -15,6 +15,7 @@
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
 				'menu-open': isContextMenuOpen,
+				'disable-pointer-events': disablePointerEvents,
 			}"
 		>
 			<div
@@ -156,12 +157,9 @@ import {
 	NOT_DUPLICATABE_NODE_TYPES,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
-
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -169,6 +167,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
@@ -176,7 +175,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -185,15 +184,20 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables';
+import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'Node',
 	setup() {
 		const contextMenu = useContextMenu();
-		return { contextMenu };
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+
+		return { contextMenu, externalHooks, nodeHelpers };
 	},
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
@@ -201,6 +205,10 @@ export default defineComponent({
 	},
 	props: {
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		disablePointerEvents: {
 			type: Boolean,
 			default: false,
 		},
@@ -285,15 +293,11 @@ export default defineComponent({
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isConfigNode(): boolean {
-			return this.nodeTypesStore.isConfigNode(
-				this.getCurrentWorkflow(),
-				this.data,
-				this.data?.type ?? '',
-			);
+			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data?.type ?? '');
 		},
 		isConfigurableNode(): boolean {
 			return this.nodeTypesStore.isConfigurableNode(
-				this.getCurrentWorkflow(),
+				this.workflow,
 				this.data,
 				this.data?.type ?? '',
 			);
@@ -348,9 +352,8 @@ export default defineComponent({
 			};
 
 			if (this.node && this.nodeType) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
 				const inputs =
-					NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
+					NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType) ||
 					([] as Array<ConnectionTypes | INodeInputConfiguration>);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
@@ -371,7 +374,7 @@ export default defineComponent({
 				}
 
 				const outputs =
-					NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
+					NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType) ||
 					([] as Array<ConnectionTypes | INodeOutputConfiguration>);
 
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
@@ -392,7 +395,7 @@ export default defineComponent({
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
-				return nodeExecutionRunData[0].executionStatus ?? '';
+				return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
 			}
 			return '';
 		},
@@ -401,7 +404,7 @@ export default defineComponent({
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
-					if (executionRunData.error) {
+					if (executionRunData?.error) {
 						issues.push(
 							`${executionRunData.error.message}${
 								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
@@ -426,7 +429,10 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
+			return (
+				!this.isConfigurableNode &&
+				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+			);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -482,9 +488,15 @@ export default defineComponent({
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = '--color-danger';
-					returnStyles['border-width'] = '2px';
-					returnStyles['border-style'] = 'solid';
+					// Do not set red border if there is an issue with the configuration node
+					if (
+						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==
+						'configuration-node'
+					) {
+						borderColor = '--color-danger';
+						returnStyles['border-width'] = '2px';
+						returnStyles['border-style'] = 'solid';
+					}
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
@@ -608,6 +620,7 @@ export default defineComponent({
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
+				this.uiStore.isModalActive ||
 				dataItemsCount === 0
 			)
 				return;
@@ -624,7 +637,7 @@ export default defineComponent({
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
 				const nodeSubtitle =
-					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
@@ -633,7 +646,7 @@ export default defineComponent({
 		},
 		disableNode() {
 			if (this.data !== null) {
-				this.disableNodes([this.data]);
+				this.nodeHelpers.disableNodes([this.data]);
 				this.historyStore.pushCommandToUndo(
 					new EnableNodeToggleCommand(
 						this.data.name,
@@ -751,6 +764,9 @@ export default defineComponent({
 		width: 100%;
 		height: 100%;
 		cursor: pointer;
+		&.disable-pointer-events {
+			pointer-events: none;
+		}
 
 		.node-box {
 			width: 100%;
@@ -899,9 +915,6 @@ export default defineComponent({
 		--node-width: 75px;
 		--node-height: 75px;
 
-		& [class*='node-wrapper--connection-type'] {
-			--configurable-node-options: -10px;
-		}
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -969,7 +982,6 @@ export default defineComponent({
 		);
 		--configurable-node-icon-offset: 40px;
 		--configurable-node-icon-size: 30px;
-		--configurable-node-options: -10px;
 
 		.node-description {
 			top: calc(50%);
@@ -997,7 +1009,7 @@ export default defineComponent({
 			}
 
 			.node-options {
-				left: var(--configurable-node-options, 65px);
+				left: 0;
 				height: 25px;
 			}
 
@@ -1046,12 +1058,6 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: hsla(
-			var(--color-foreground-base-h),
-			60%,
-			var(--color-foreground-base-l),
-			80%
-		);
 	}
 }
 
@@ -1333,6 +1339,10 @@ export default defineComponent({
 		z-index: 10;
 	}
 
+	&.add-input-endpoint-error {
+		--endpoint-svg-color: var(--color-danger);
+	}
+
 	.add-input-endpoint-default {
 		transition: transform var(--add-input-endpoint--transition-duration) ease;
 	}
@@ -1431,7 +1441,7 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-label-length='medium'] {
+	&.node-connection-type-main[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;

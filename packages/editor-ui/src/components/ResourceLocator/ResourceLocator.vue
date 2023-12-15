@@ -92,7 +92,7 @@
 									v-if="isValueExpression || forceShowExpression"
 									:modelValue="expressionDisplayValue"
 									:path="path"
-									isForRecordLocator
+									isSingleLine
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
@@ -149,19 +149,14 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	getAppNameFromNodeName,
-	getMainAuthField,
-	hasOnlyListMode,
-	isResourceLocatorValue,
-} from '@/utils';
+import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -189,7 +184,7 @@ interface IResourceLocatorQuery {
 
 export default defineComponent({
 	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
+	mixins: [debounceHelper, workflowHelpers],
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,

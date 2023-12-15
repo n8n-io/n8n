@@ -4,7 +4,8 @@ import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useSourceControlStore, useUIStore } from '@/stores';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),

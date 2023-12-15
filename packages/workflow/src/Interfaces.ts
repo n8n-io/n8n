@@ -13,12 +13,13 @@ import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
-import type { ExpressionError } from './ExpressionError';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { ExpressionError } from './errors/expression.error';
 import type { Workflow } from './Workflow';
-import type { WorkflowActivationError } from './WorkflowActivationError';
-import type { WorkflowOperationError } from './WorkflowErrors';
+import type { WorkflowActivationError } from './errors/workflow-activation.error';
+import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { NodeOperationError } from './errors/node-operation.error';
+import type { NodeApiError } from './errors/node-api.error';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -1070,6 +1071,7 @@ export type NodePropertyTypes =
 	| 'resourceLocator'
 	| 'curlImport'
 	| 'resourceMapper'
+	| 'filter'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -1097,6 +1099,7 @@ export interface ILoadOptions {
 
 export interface INodePropertyTypeOptions {
 	action?: string; // Supported by: button
+	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1116,6 +1119,7 @@ export interface INodePropertyTypeOptions {
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
+	filter?: FilterTypeOptions;
 	[key: string]: any;
 }
 
@@ -1134,6 +1138,18 @@ export interface ResourceMapperTypeOptions {
 		hint?: string;
 	};
 }
+
+type NonEmptyArray<T> = [T, ...T[]];
+
+export type FilterTypeCombinator = 'and' | 'or';
+
+export type FilterTypeOptions = Partial<{
+	caseSensitive: boolean | string; // default = true
+	leftValue: string; // when set, user can't edit left side of condition
+	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions: number; // default = 10
+	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1525,6 +1541,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 }
 
 export type ConnectionTypes =
+	| 'ai_agent'
 	| 'ai_chain'
 	| 'ai_document'
 	| 'ai_embedding'
@@ -1539,6 +1556,8 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiAgent = 'ai_agent',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiChain = 'ai_chain',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1655,6 +1674,8 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	isForm?: boolean;
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
@@ -1883,6 +1904,7 @@ export interface IWorkflowExecuteAdditionalData {
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: {
+			node?: INode;
 			parentWorkflowId?: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;
@@ -1900,6 +1922,7 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -2189,7 +2212,8 @@ export type FieldType =
 	| 'time'
 	| 'array'
 	| 'object'
-	| 'options';
+	| 'options'
+	| 'url';
 
 export type ValidationResult = {
 	valid: boolean;
@@ -2203,6 +2227,42 @@ export type ResourceMapperValue = {
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
 };
+
+export type FilterOperatorType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'array'
+	| 'object'
+	| 'dateTime'
+	| 'any';
+
+export interface FilterOperatorValue {
+	type: FilterOperatorType;
+	operation: string;
+	rightType?: FilterOperatorType;
+	singleValue?: boolean; // default = false
+}
+
+export type FilterConditionValue = {
+	id: string;
+	leftValue: unknown;
+	operator: FilterOperatorValue;
+	rightValue: unknown;
+};
+
+export type FilterOptionsValue = {
+	caseSensitive: boolean;
+	leftValue: string;
+	typeValidation: 'strict' | 'loose';
+};
+
+export type FilterValue = {
+	options: FilterOptionsValue;
+	conditions: FilterConditionValue[];
+	combinator: FilterTypeCombinator;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
@@ -2249,6 +2309,9 @@ export interface IPublicApiSettings {
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
@@ -2330,6 +2393,7 @@ export interface IN8nUISettings {
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
 		workerView: boolean;
+		advancedPermissions: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2373,3 +2437,5 @@ export type BannerName =
 	| 'TRIAL'
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
+
+export type Functionality = 'regular' | 'configuration-node';

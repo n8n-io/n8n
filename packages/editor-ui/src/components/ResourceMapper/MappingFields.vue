@@ -14,9 +14,13 @@ import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNDVStore } from '@/stores';
-import { fieldCannotBeDeleted, isMatchingField, parseResourceMapperFieldName } from '@/utils';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNDVStore } from '@/stores/ndv.store';
+import {
+	fieldCannotBeDeleted,
+	isMatchingField,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 
 interface Props {
 	parameter: INodeProperties;
@@ -337,10 +341,14 @@ defineExpose({
 						props.showMatchingColumnsSelector,
 					)
 				"
-				:class="['delete-option', 'clickable', 'mt-5xs']"
+				:class="['delete-option', 'mt-5xs']"
 			>
-				<font-awesome-icon
+				<n8n-icon-button
+					type="tertiary"
+					text
+					size="mini"
 					icon="trash"
+					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					:title="
 						locale.baseText('resourceMapper.removeField', {
 							interpolate: {
@@ -348,9 +356,8 @@ defineExpose({
 							},
 						})
 					"
-					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					@click="removeField(field.name)"
-				/>
+				></n8n-icon-button>
 			</div>
 			<div :class="$style.parameterInput">
 				<parameter-input-full

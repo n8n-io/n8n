@@ -15,6 +15,7 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
+	updateRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -29,7 +30,7 @@ import type {
 	CurrentUserResponse,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -39,16 +40,12 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, ScopeLevel } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
-const isDefaultUser = (user: IUserResponse | null) =>
-	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
-
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
-
-const isInstanceOwner = (user: IUserResponse | null) =>
-	Boolean(user?.globalRole?.name === ROLE.Owner);
+const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
+const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
@@ -140,7 +137,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {
@@ -304,10 +301,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
+		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
+			this.addUsers(
+				users.map(({ user }, index) => ({
+					isPending: true,
+					globalRole: { name: params[index].role },
+					...user,
+				})),
+			);
 			return users;
 		},
 		async reinviteUser(params: { email: string }): Promise<void> {
@@ -374,6 +377,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async confirmEmail() {
 			await confirmEmail(useRootStore().getRestApiContext);
+		},
+
+		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+			const rootStore = useRootStore();
+			await updateRole(rootStore.getRestApiContext, { id, role });
+			await this.fetchUsers();
 		},
 	},
 });

@@ -4,10 +4,11 @@ import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
 import { assertDir, doesNotExist } from './utils';
-import { BinaryFileNotFoundError, InvalidPathError } from '../errors';
+import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
+import { FileNotFoundError } from '../errors/file-not-found.error';
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
@@ -47,7 +48,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(fileId);
 
 		if (await doesNotExist(filePath)) {
-			throw new BinaryFileNotFoundError(filePath);
+			throw new FileNotFoundError(filePath);
 		}
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
@@ -57,7 +58,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(fileId);
 
 		if (await doesNotExist(filePath)) {
-			throw new BinaryFileNotFoundError(filePath);
+			throw new FileNotFoundError(filePath);
 		}
 
 		return fs.readFile(filePath);
@@ -171,7 +172,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const returnPath = path.join(this.storagePath, ...args);
 
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
-			throw new InvalidPathError(returnPath);
+			throw new DisallowedFilepathError(returnPath);
 		}
 
 		return returnPath;
@@ -190,7 +191,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			const stats = await fs.stat(filePath);
 			return stats.size;
 		} catch (error) {
-			throw new BinaryFileNotFoundError(filePath);
+			throw new FileNotFoundError(filePath);
 		}
 	}
 }

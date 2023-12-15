@@ -23,7 +23,8 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -36,11 +37,13 @@ const props = withDefaults(
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
+		canOpenNDV?: boolean;
 	}>(),
 	{
 		loading: false,
 		mode: 'workflow',
 		loaderType: 'image',
+		canOpenNDV: true,
 	},
 );
 
@@ -81,6 +84,7 @@ const loadWorkflow = () => {
 			JSON.stringify({
 				command: 'openWorkflow',
 				workflow: props.workflow,
+				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',
 		);
@@ -103,6 +107,7 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode || '',
+				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',
 		);
@@ -135,6 +140,9 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
 	try {
 		const json = JSON.parse(data);
 		if (json.command === 'n8nReady') {

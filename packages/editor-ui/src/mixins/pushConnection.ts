@@ -5,9 +5,9 @@ import type {
 	IPushDataExecutionFinished,
 } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -19,11 +19,12 @@ import type {
 	IWorkflowBase,
 	SubworkflowOperationError,
 	IExecuteContextData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -37,12 +38,14 @@ import { defineComponent } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const pushConnection = defineComponent({
 	setup() {
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers: useNodeHelpers(),
 		};
 	},
 	created() {
@@ -50,7 +53,7 @@ export const pushConnection = defineComponent({
 			void this.pushMessageReceived(message);
 		});
 	},
-	mixins: [externalHooks, nodeHelpers, workflowHelpers],
+	mixins: [workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
@@ -102,7 +105,7 @@ export const pushConnection = defineComponent({
 				const messageData = this.pushMessageQueue.shift();
 
 				const result = await this.pushMessageReceived(messageData!.message, true);
-				if (result === false) {
+				if (!result) {
 					// Was not successful
 					messageData!.retriesLeft -= 1;
 
@@ -395,25 +398,59 @@ export const pushConnection = defineComponent({
 							type: 'error',
 							duration: 0,
 						});
-					} else {
+					} else if (
+						runDataExecuted.data.resultData.error?.name === 'NodeOperationError' &&
+						(runDataExecuted.data.resultData.error as NodeOperationError).functionality ===
+							'configuration-node'
+					) {
+						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
 						let title: string;
-						let type = 'error';
-						if (runDataExecuted.status === 'canceled') {
-							title = this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title');
-							type = 'warning';
-						} else if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
+						if (nodeError.node.name) {
+							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
 
 						this.showMessage({
 							title,
-							message: runDataExecutedErrorMessage,
-							type,
+							message:
+								(nodeError?.description ?? runDataExecutedErrorMessage) +
+								this.$locale.baseText('pushConnection.executionError.openNode', {
+									interpolate: {
+										node: nodeError.node.name,
+									},
+								}),
+							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,
 						});
+					} else {
+						let title: string;
+						const isManualExecutionCancelled =
+							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
+
+						// Do not show the error message if the workflow got canceled manually
+						if (isManualExecutionCancelled) {
+							this.showMessage({
+								title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
+								type: 'success',
+							});
+						} else {
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+								dangerouslyUseHTMLString: true,
+							});
+						}
 					}
 				} else {
 					// Workflow did execute without a problem
@@ -468,7 +505,7 @@ export const pushConnection = defineComponent({
 
 				// Set the node execution issues on all the nodes which produced an error so that
 				// it can be displayed in the node-view
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const lastNodeExecuted: string | undefined =
 					runDataExecuted.data.resultData.lastNodeExecuted;
@@ -482,7 +519,7 @@ export const pushConnection = defineComponent({
 						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
-				void this.$externalHooks().run('pushConnection.executionFinished', {
+				void useExternalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,

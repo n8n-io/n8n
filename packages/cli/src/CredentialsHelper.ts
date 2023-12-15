@@ -32,7 +32,6 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	ICredentialTestFunctions,
-	Severity,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -41,6 +40,7 @@ import {
 	RoutingNode,
 	Workflow,
 	ErrorReporterProxy as ErrorReporter,
+	ApplicationError,
 } from 'n8n-workflow';
 
 import type { ICredentialsDb } from '@/Interfaces';
@@ -55,6 +55,7 @@ import { isObjectLiteral } from './utils';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -81,20 +82,13 @@ const mockNodeTypes: INodeTypes = {
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${nodeType}`);
+			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+				tags: { nodeType },
+			});
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
-
-class CredentialNotFoundError extends Error {
-	severity: Severity;
-
-	constructor(credentialId: string, credentialType: string) {
-		super(`Credential with ID "${credentialId}" does not exist for type "${credentialType}".`);
-		this.severity = 'warning';
-	}
-}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -267,7 +261,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
-			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
+			throw new ApplicationError('Found credential with no ID.', {
+				extra: { credentialName: nodeCredential.name },
+				tags: { credentialType: type },
+			});
 		}
 
 		let credential: CredentialsEntity;
@@ -300,7 +297,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
-			throw new Error(`The credentials of type "${type}" are not known.`);
+			throw new ApplicationError('Unknown credential type', { tags: { credentialType: type } });
 		}
 
 		if (credentialTypeData.extends === undefined) {
@@ -582,7 +579,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
-					user.isOwner,
+					await user.hasGlobalScope('externalSecret:use'),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);

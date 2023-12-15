@@ -2,15 +2,13 @@ import type { SuperAgentTest } from 'supertest';
 import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
-import { License } from '@/License';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-import { mockInstance } from '../../shared/mocking';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
@@ -27,11 +25,7 @@ let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
-
-const licenseLike = mockInstance(License, {
-	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
+const license = testServer.license;
 
 beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
@@ -49,7 +43,10 @@ beforeAll(async () => {
 	});
 
 	await utils.initNodeTypes();
-	workflowRunner = await utils.initActiveWorkflowRunner();
+
+	workflowRunner = Container.get(ActiveWorkflowRunner);
+
+	await workflowRunner.init();
 });
 
 beforeEach(async () => {
@@ -64,7 +61,6 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
-	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 afterEach(async () => {
@@ -700,7 +696,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -746,7 +742,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -940,7 +936,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',
@@ -995,7 +991,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should not create workflow history when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',

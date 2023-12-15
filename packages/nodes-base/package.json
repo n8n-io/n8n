@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.18.0",
+  "version": "1.21.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -784,7 +784,13 @@
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
       "dist/nodes/Zoom/Zoom.node.js",
-      "dist/nodes/Zulip/Zulip.node.js"
+      "dist/nodes/Zulip/Zulip.node.js",
+      "dist/nodes/Transform/Aggregate/Aggregate.node.js",
+      "dist/nodes/Transform/Limit/Limit.node.js",
+      "dist/nodes/Transform/RemoveDuplicates/RemoveDuplicates.node.js",
+      "dist/nodes/Transform/SplitOut/SplitOut.node.js",
+      "dist/nodes/Transform/Sort/Sort.node.js",
+      "dist/nodes/Transform/Summarize/Summarize.node.js"
     ]
   },
   "devDependencies": {

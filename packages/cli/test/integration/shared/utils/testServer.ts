@@ -20,6 +20,8 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { InternalHooks } from '@/InternalHooks';
+import { LicenseMocker } from '../license';
+import { PasswordUtility } from '@/services/password.utility';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -67,6 +69,7 @@ export const setupTestServer = ({
 	endpointGroups,
 	applyAuth = true,
 	enabledFeatures,
+	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -83,6 +86,7 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		license: new LicenseMocker(),
 	};
 
 	beforeAll(async () => {
@@ -91,8 +95,12 @@ export const setupTestServer = ({
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
+		testServer.license.mock(Container.get(License));
 		if (enabledFeatures) {
-			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
+			testServer.license.setDefaults({
+				features: enabledFeatures,
+				quotas,
+			});
 		}
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
@@ -129,10 +137,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						const { variablesController } = await import(
-							'@/environments/variables/variables.controller'
+						const { VariablesController } = await import(
+							'@/environments/variables/variables.controller.ee'
 						);
-						app.use(`/${REST_PATH_SEGMENT}/variables`, variablesController);
+						registerController(app, config, Container.get(VariablesController));
 						break;
 
 					case 'license':
@@ -166,7 +174,7 @@ export const setupTestServer = ({
 						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { handleLdapInit } = await import('@/Ldap/helpers');
 						const { LdapController } = await import('@/controllers/ldap.controller');
-						Container.get(License).isLdapEnabled = () => true;
+						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
 						const { service, sync } = LdapManager.getInstance();
 						registerController(
@@ -222,6 +230,7 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(SettingsRepository),
 								Container.get(UserService),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;
@@ -250,6 +259,7 @@ export const setupTestServer = ({
 								Container.get(ActiveWorkflowRunner),
 								Container.get(RS),
 								Container.get(US),
+								Container.get(License),
 							),
 						);
 						break;
@@ -268,6 +278,8 @@ export const setupTestServer = ({
 								Container.get(InternalHooks),
 								Container.get(EHS),
 								Container.get(USE),
+								Container.get(License),
+								Container.get(PasswordUtility),
 							),
 						);
 						break;
@@ -295,6 +307,16 @@ export const setupTestServer = ({
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
 						registerController(app, config, Container.get(BinaryDataController));
 						break;
+
+					case 'role':
+						const { RoleController } = await import('@/controllers/role.controller');
+						registerController(app, config, Container.get(RoleController));
+						break;
+
+					case 'debug':
+						const { DebugController } = await import('@/controllers/debug.controller');
+						registerController(app, config, Container.get(DebugController));
+						break;
 				}
 			}
 		}
@@ -303,6 +325,10 @@ export const setupTestServer = ({
 	afterAll(async () => {
 		await testDb.terminate();
 		testServer.httpServer.close();
+	});
+
+	beforeEach(() => {
+		testServer.license.reset();
 	});
 
 	return testServer;

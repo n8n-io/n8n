@@ -52,13 +52,15 @@ import type {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
+import { getNodeViewTab } from '@/utils/canvasUtils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -66,6 +68,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -89,7 +92,10 @@ export default defineComponent({
 		};
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 		};
@@ -139,7 +145,6 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		this.stopAutoRefreshInterval();
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
 			return;
@@ -175,6 +180,9 @@ export default defineComponent({
 			next();
 		}
 	},
+	created() {
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
+	},
 	async mounted() {
 		this.loading = true;
 		const workflowUpdated = this.$route.params.name !== this.workflowsStore.workflowId;
@@ -192,23 +200,20 @@ export default defineComponent({
 				await this.setExecutions();
 			}
 		}
-
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
 		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
 		this.loading = false;
 	},
 	beforeUnmount() {
-		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
+		this.autoRefresh = false;
+		this.stopAutoRefreshInterval();
 	},
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
 			if (loadWorkflow) {
-				if (this.nodeTypesStore.allNodeTypes.length === 0) {
-					await this.nodeTypesStore.getNodeTypes();
-				}
+				await this.nodeTypesStore.loadNodeTypesIfNotLoaded();
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
@@ -282,26 +287,27 @@ export default defineComponent({
 					this.executions[0];
 
 				await this.workflowsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
+				this.workflowsStore.deleteExecution(this.executions[executionIndex]);
 				if (this.temporaryExecution?.id === this.$route.params.executionId) {
 					this.temporaryExecution = null;
 				}
 				if (this.executions.length > 0) {
 					await this.$router
-						.push({
+						.replace({
 							name: VIEWS.EXECUTION_PREVIEW,
 							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
 						.catch(() => {});
 					this.workflowsStore.activeWorkflowExecution = nextExecution;
+					await this.setExecutions();
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					await this.$router.push({
+					await this.$router.replace({
 						name: VIEWS.EXECUTION_HOME,
 						params: { name: this.currentWorkflow },
 					});
 				}
-				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
 				this.showError(
@@ -358,10 +364,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onAutoRefreshToggle(value: boolean): void {
 			this.autoRefresh = value;
@@ -443,8 +447,15 @@ export default defineComponent({
 							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 						})
 						.catch(() => {});
-				} else if (this.executions.length === 0) {
-					this.$router.push({ name: VIEWS.EXECUTION_HOME }).catch(() => {});
+				} else if (this.executions.length === 0 && this.$route.name === VIEWS.EXECUTION_PREVIEW) {
+					this.$router
+						.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: {
+								name: this.currentWorkflow,
+							},
+						})
+						.catch(() => {});
 					this.workflowsStore.activeWorkflowExecution = null;
 				}
 			}
@@ -578,7 +589,7 @@ export default defineComponent({
 
 			this.tagsStore.upsertTags(tags);
 
-			void this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+			void this.externalHooks.run('workflow.open', { workflowId, workflowName: data.name });
 			this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {

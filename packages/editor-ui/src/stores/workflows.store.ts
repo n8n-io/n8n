@@ -72,15 +72,10 @@ import {
 } from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
-import {
-	isJsonKeyObject,
-	getPairedItemsMapping,
-	stringSizeInBytes,
-	isObject,
-	isEmpty,
-	makeRestApiRequest,
-	unflattenExecutionData,
-} from '@/utils';
+import { isObject } from '@/utils/objectUtils';
+import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
+import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
+import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -199,6 +194,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					return this.workflow.connections[nodeName];
 				}
 				return {};
+			};
+		},
+		isNodeInOutgoingNodeConnections() {
+			return (firstNode: string, secondNode: string): boolean => {
+				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
+				if (!firstNodeConnections || !firstNodeConnections.main || !firstNodeConnections.main[0])
+					return false;
+				const connections = firstNodeConnections.main[0];
+				if (connections.some((node) => node.node === secondNode)) return true;
+				return connections.some((node) =>
+					this.isNodeInOutgoingNodeConnections(node.node, secondNode),
+				);
 			};
 		},
 		allNodes(): INodeUi[] {
@@ -887,8 +894,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					},
 				};
 			}
-
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
 		resetAllNodesIssues(): boolean {
@@ -1123,7 +1128,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			this.workflowExecutionData.data!.resultData.runData[pushData.nodeName].push(pushData.data);
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 		clearNodeExecutionData(nodeName: string): void {
 			if (!this.workflowExecutionData?.data) {

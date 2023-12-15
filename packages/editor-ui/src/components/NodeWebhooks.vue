@@ -6,7 +6,7 @@
 			@click="isMinimized = !isMinimized"
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 		>
-			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
+			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
@@ -64,7 +64,7 @@
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -211,7 +211,7 @@ export default defineComponent({
 }
 .url-field-full-width {
 	display: inline-block;
-	width: 100%;
+	margin: 5px 10px;
 }
 
 .url-selection {
@@ -231,10 +231,10 @@ export default defineComponent({
 	transition-property: transform;
 }
 .expanded .minimize-button {
-	-webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	-o-transform: rotate(180deg);
-	transform: rotate(180deg);
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 
 .webhook-url {

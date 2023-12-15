@@ -1,20 +1,20 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
+import { locale } from 'n8n-design-system';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+
 import type { INodeTranslationHeaders } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
 	normalize,
 	insertOptionsAndValues,
 } from './utils';
-import { locale } from 'n8n-design-system';
-
-import englishBaseText from './locales/en.json';
-import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { useRootStore } from '@/stores';
 
 export const i18nInstance = createI18n({
 	locale: 'en',
@@ -23,6 +23,8 @@ export const i18nInstance = createI18n({
 });
 
 export class I18nClass {
+	private baseTextCache = new Map<string, string>();
+
 	private get i18n() {
 		return i18nInstance.global;
 	}
@@ -50,11 +52,25 @@ export class I18nClass {
 		key: BaseTextKey,
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
-		if (options?.adjustToNumber !== undefined) {
-			return this.i18n.tc(key, options.adjustToNumber, options?.interpolate).toString();
+		// Create a unique cache key
+		const cacheKey = `${key}-${JSON.stringify(options)}`;
+
+		// Check if the result is already cached
+		if (this.baseTextCache.has(cacheKey)) {
+			return this.baseTextCache.get(cacheKey) ?? key;
 		}
 
-		return this.i18n.t(key, options?.interpolate).toString();
+		let result: string;
+		if (options?.adjustToNumber !== undefined) {
+			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+		} else {
+			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
+		}
+
+		// Store the result in the cache
+		this.baseTextCache.set(cacheKey, result);
+
+		return result;
 	}
 
 	/**
@@ -366,6 +382,7 @@ export class I18nClass {
 		'$execution.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
 		'$execution.mode': this.baseText('codeNodeEditor.completer.$execution.mode'),
 		'$execution.resumeUrl': this.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+		'$execution.resumeFormUrl': this.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 
 		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
 		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
