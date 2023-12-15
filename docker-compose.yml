@@ -1,8 +1,5 @@
 version: '3.8'
 
-volumes:
-  n8n_storage:
-
 services:
   n8n:
     build: .
@@ -50,3 +47,11 @@ services:
       - certbot-certs:/etc/letsencrypt/
     depends_on:
       - proxy
+
+volumes:
+  n8n_storage:
+  certbot-web:
+  proxy-dhparams:
+  certbot-certs:
+  static:
+
