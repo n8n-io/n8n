@@ -49,9 +49,7 @@ export class NDV extends BasePage {
 		parameterExpressionPreview: (parameterName: string) =>
 			this.getters
 				.nodeParameters()
-				.find(
-					`[data-test-id="parameter-input-${parameterName}"] + [data-test-id="parameter-expression-preview"]`,
-				),
+				.find(`[data-test-id="parameter-expression-preview-${parameterName}"]`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
@@ -79,6 +77,23 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		filterComponent: (paramName: string) => cy.getByTestId(`filter-${paramName}`),
+		filterCombinator: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-combinator-select').eq(index),
+		filterConditions: (paramName: string) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition'),
+		filterCondition: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition').eq(index),
+		filterConditionLeft: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition-left').eq(index),
+		filterConditionRight: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition-right').eq(index),
+		filterConditionOperator: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-operator-select').eq(index),
+		filterConditionRemove: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-remove-condition').eq(index),
+		filterConditionAdd: (paramName: string) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-add-condition'),
 		searchInput: () => cy.getByTestId('ndv-search'),
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
@@ -199,7 +214,6 @@ export class NDV extends BasePage {
 				.find('span')
 				.should('include.html', asEncodedHTML(value));
 		},
-
 		refreshResourceMapperColumns: () => {
 			this.getters.resourceMapperSelectColumn().realHover();
 			this.getters
@@ -210,7 +224,12 @@ export class NDV extends BasePage {
 
 			getVisiblePopper().find('li').last().click();
 		},
-
+		addFilterCondition: (paramName: string) => {
+			this.getters.filterConditionAdd(paramName).click();
+		},
+		removeFilterCondition: (paramName: string, index: number) => {
+			this.getters.filterConditionRemove(paramName, index).click();
+		},
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,

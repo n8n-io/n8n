@@ -1791,11 +1791,13 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
 	return {
 		$execution: {
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			resumeFormUrl,
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
@@ -2041,12 +2043,9 @@ const validateResourceMapperValue = (
 		}
 
 		if (schemaEntry?.type) {
-			const validationResult = validateFieldType(
-				key,
-				resolvedValue,
-				schemaEntry.type,
-				schemaEntry.options,
-			);
+			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
+				valueOptions: schemaEntry.options,
+			});
 			if (!validationResult.valid) {
 				return { ...validationResult, fieldName: key };
 			} else {
@@ -2107,12 +2106,9 @@ const validateCollection = (
 		for (const key of Object.keys(value)) {
 			if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(
-				key,
-				value[key],
-				validationMap[key].type,
-				validationMap[key].options,
-			);
+			const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+				valueOptions: validationMap[key].options,
+			});
 
 			if (!fieldValidationResult.valid) {
 				throw new ExpressionError(
@@ -2270,7 +2266,7 @@ export function getNodeParameter(
 
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType);
+		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined

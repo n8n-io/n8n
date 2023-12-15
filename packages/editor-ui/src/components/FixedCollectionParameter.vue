@@ -28,28 +28,32 @@
 						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
 					>
 						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon
+							<n8n-icon-button
+								type="tertiary"
+								text
+								size="mini"
 								icon="trash"
-								class="reset-icon clickable"
 								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 								@click="deleteOption(property.name, index)"
-							/>
-							<div v-if="sortable" class="sort-icon">
-								<font-awesome-icon
-									v-if="index !== 0"
-									icon="angle-up"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-									@click="moveOptionUp(property.name, index)"
-								/>
-								<font-awesome-icon
-									v-if="index !== mutableValues[property.name].length - 1"
-									icon="angle-down"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-									@click="moveOptionDown(property.name, index)"
-								/>
-							</div>
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== 0"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-up"
+								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+								@click="moveOptionUp(property.name, index)"
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== mutableValues[property.name].length - 1"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-down"
+								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+								@click="moveOptionDown(property.name, index)"
+							></n8n-icon-button>
 						</div>
 						<Suspense>
 							<parameter-input-list
@@ -67,12 +71,14 @@
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
 					<div class="delete-option" v-if="!isReadOnly">
-						<font-awesome-icon
+						<n8n-icon-button
+							type="tertiary"
+							text
+							size="mini"
 							icon="trash"
-							class="reset-icon clickable"
 							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"
-						/>
+						></n8n-icon-button>
 					</div>
 					<parameter-input-list
 						:parameters="property.values"
@@ -87,7 +93,7 @@
 			</div>
 		</div>
 
-		<div v-if="parameterOptions.length > 0 && !isReadOnly">
+		<div class="controls" v-if="parameterOptions.length > 0 && !isReadOnly">
 			<n8n-button
 				v-if="parameter.options.length === 1"
 				type="tertiary"
@@ -346,28 +352,35 @@ export default defineComponent({
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	:deep(.button) {
-		font-weight: var(--font-weight-normal);
-		--button-font-color: var(--color-text-dark);
-		--button-border-color: var(--color-foreground-base);
-		--button-background-color: var(--color-background-base);
+	.delete-option {
+		display: flex;
+		flex-direction: column;
+	}
 
-		--button-hover-font-color: var(--color-text-dark);
-		--button-hover-border-color: var(--color-foreground-base);
-		--button-hover-background-color: var(--color-background-base);
+	.controls {
+		:deep(.button) {
+			font-weight: var(--font-weight-normal);
+			--button-font-color: var(--color-text-dark);
+			--button-border-color: var(--color-foreground-base);
+			--button-background-color: var(--color-background-base);
 
-		--button-active-font-color: var(--color-text-dark);
-		--button-active-border-color: var(--color-foreground-base);
-		--button-active-background-color: var(--color-background-base);
+			--button-hover-font-color: var(--color-text-dark);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
 
-		--button-focus-font-color: var(--color-text-dark);
-		--button-focus-border-color: var(--color-foreground-base);
-		--button-focus-background-color: var(--color-background-base);
+			--button-active-font-color: var(--color-text-dark);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
 
-		&:active,
-		&.active,
-		&:focus {
-			outline: none;
+			--button-focus-font-color: var(--color-text-dark);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
 		}
 	}
 }
@@ -376,19 +389,8 @@ export default defineComponent({
 	margin: var(--spacing-xs) 0;
 }
 
-.delete-option {
-	display: none;
-	position: absolute;
-	z-index: 999;
-	color: #f56c6c;
-	left: 0;
-	top: 0.5em;
-	width: 15px;
-	height: 100%;
-}
-
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
-	display: block;
+	opacity: 1;
 }
 
 .parameter-item {
@@ -410,12 +412,5 @@ export default defineComponent({
 
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
-}
-
-.sort-icon {
-	display: flex;
-	flex-direction: column;
-	margin-left: 1px;
-	margin-top: 0.5em;
 }
 </style>

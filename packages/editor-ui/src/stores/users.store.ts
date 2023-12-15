@@ -95,7 +95,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return (resource: ICredentialsResponse): boolean => {
 				const permissions = getCredentialPermissions(this.currentUser, resource);
 
-				return permissions.read;
+				return permissions.use;
 			};
 		},
 	},

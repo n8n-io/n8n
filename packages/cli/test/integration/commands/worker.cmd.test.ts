@@ -65,15 +65,15 @@ test('worker initializes all its components', async () => {
 	expect(worker.queueModeId).toBeDefined();
 	expect(worker.queueModeId).toContain('worker');
 	expect(worker.queueModeId.length).toBeGreaterThan(15);
-	expect(worker.initLicense).toHaveBeenCalled();
-	expect(worker.initBinaryDataService).toHaveBeenCalled();
-	expect(worker.initExternalHooks).toHaveBeenCalled();
-	expect(worker.initExternalSecrets).toHaveBeenCalled();
-	expect(worker.initEventBus).toHaveBeenCalled();
-	expect(worker.initOrchestration).toHaveBeenCalled();
-	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalled();
-	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalled();
-	expect(worker.initQueue).toHaveBeenCalled();
+	expect(worker.initLicense).toHaveBeenCalledTimes(1);
+	expect(worker.initBinaryDataService).toHaveBeenCalledTimes(1);
+	expect(worker.initExternalHooks).toHaveBeenCalledTimes(1);
+	expect(worker.initExternalSecrets).toHaveBeenCalledTimes(1);
+	expect(worker.initEventBus).toHaveBeenCalledTimes(1);
+	expect(worker.initOrchestration).toHaveBeenCalledTimes(1);
+	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalledTimes(1);
+	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalledTimes(1);
+	expect(worker.initQueue).toHaveBeenCalledTimes(1);
 
 	jest.restoreAllMocks();
 });

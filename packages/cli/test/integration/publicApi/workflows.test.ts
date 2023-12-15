@@ -7,7 +7,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -43,7 +43,10 @@ beforeAll(async () => {
 	});
 
 	await utils.initNodeTypes();
-	workflowRunner = await utils.initActiveWorkflowRunner();
+
+	workflowRunner = Container.get(ActiveWorkflowRunner);
+
+	await workflowRunner.init();
 });
 
 beforeEach(async () => {
