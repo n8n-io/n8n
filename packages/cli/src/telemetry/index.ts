@@ -10,6 +10,7 @@ import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { InstanceSettings } from 'n8n-core';
+import { UserService } from '@/services/user.service';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -108,6 +109,7 @@ export class Telemetry {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
+			role_count: await Container.get(UserService).countUsersByRole(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,

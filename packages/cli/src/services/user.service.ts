@@ -17,6 +17,7 @@ import { RoleService } from '@/services/role.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { RoleRepository } from '@/databases/repositories/role.repository';
 
 @Service()
 export class UserService {
@@ -306,5 +307,23 @@ export class UserService {
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
+	}
+
+	/**
+	 * Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }`
+	 */
+	async countUsersByRole() {
+		const result: Array<{ role_name: string; count: number }> = await Container.get(RoleRepository)
+			.createQueryBuilder('role')
+			.select('role.name')
+			.addSelect('COUNT(user.id)', 'count')
+			.innerJoin('user', 'user', 'role.id = user.globalRoleId')
+			.groupBy('role.name')
+			.getRawMany();
+
+		return result.reduce<Record<string, number>>((acc, item) => {
+			acc[item.role_name] = item.count;
+			return acc;
+		}, {});
 	}
 }
