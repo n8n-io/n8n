@@ -1030,10 +1030,8 @@ export default defineComponent({
 			if (data.workflow.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
-
-			setTimeout(() => {
-				this.canvasStore.zoomToFit();
-			}, 200);
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.startLoading();
@@ -4371,12 +4369,14 @@ export default defineComponent({
 			}
 			try {
 				const json = JSON.parse(message.data);
+				let renderedPreview = false;
 				if (json && json.command === 'openWorkflow') {
 					try {
 						await this.importWorkflowExact(json);
 						this.canOpenNDV = json.canOpenNDV ?? true;
 						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = false;
+						renderedPreview = true;
 					} catch (e) {
 						if (window.top) {
 							window.top.postMessage(
@@ -4403,6 +4403,7 @@ export default defineComponent({
 						this.canOpenNDV = json.canOpenNDV ?? true;
 						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = true;
+						renderedPreview = true;
 					} catch (e) {
 						if (window.top) {
 							window.top.postMessage(
@@ -4421,6 +4422,13 @@ export default defineComponent({
 					}
 				} else if (json?.command === 'setActiveExecution') {
 					this.workflowsStore.activeWorkflowExecution = json.execution;
+				}
+				// If NodeView is part of the preview iframe, zoom to fit the workflow
+				// Just waiting for nextTick was not enough, so we use a timeout
+				if (renderedPreview) {
+					setTimeout(() => {
+						this.canvasStore.zoomToFit();
+					}, 100);
 				}
 			} catch (e) {}
 		},
