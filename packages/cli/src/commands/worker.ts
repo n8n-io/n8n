@@ -130,7 +130,8 @@ export class Worker extends BaseCommand {
 				{ extra: { executionId } },
 			);
 		}
-		const workflowId = fullExecutionData.workflowData.id!;
+		const workflowId = fullExecutionData.workflowData.id!; // @tech_debt Ensure this is not optional
+
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
@@ -292,7 +293,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Queue init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
-		await this.initQueue();
 
 		await Container.get(OrchestrationWorkerService).publishToEventLog(
 			new EventMessageGeneric({

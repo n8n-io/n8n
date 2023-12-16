@@ -310,6 +310,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
 	name: 'ExecutionsList',
@@ -328,11 +329,13 @@ export default defineComponent({
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
 		const externalHooks = useExternalHooks();
+		const route = useRoute();
 
 		return {
 			i18n,
 			telemetry,
 			externalHooks,
+			route,
 			...useToast(),
 			...useMessage(),
 		};
@@ -346,7 +349,7 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: this.autoRefreshEnabled,
+			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
@@ -368,6 +371,7 @@ export default defineComponent({
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
 		void this.externalHooks.run('executionsList.openDialog');
@@ -376,6 +380,7 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
+		this.autoRefresh = false;
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
@@ -938,7 +943,7 @@ export default defineComponent({
 			}
 		},
 		async startAutoRefreshInterval() {
-			if (this.autoRefresh) {
+			if (this.autoRefresh && this.route.name === VIEWS.EXECUTIONS) {
 				await this.loadAutoRefresh();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();
@@ -946,10 +951,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
