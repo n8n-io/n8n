@@ -45,7 +45,7 @@
 							{{ listeningHint }}
 						</n8n-text>
 					</div>
-					<div v-if="isChatNode">
+					<div v-if="displayChatButton">
 						<n8n-button @click="openWebhookUrl()" class="mb-xl">
 							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
 						</n8n-button>
@@ -209,8 +209,12 @@ export default defineComponent({
 
 			return '';
 		},
-		isChatNode(): boolean {
-			return Boolean(this.node && this.node.type === CHAT_TRIGGER_NODE_TYPE);
+		displayChatButton(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.type === CHAT_TRIGGER_NODE_TYPE &&
+					this.node.parameters.mode !== 'webhook',
+			);
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
