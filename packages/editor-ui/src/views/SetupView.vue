@@ -110,9 +110,7 @@ export default defineComponent({
 				}
 				await initializeAuthenticatedFeatures();
 
-				if (this.uiStore.leadEnrichmentTemplates) {
-					await this.$router.push({ name: VIEWS.WORKFLOWS });
-				} else if (forceRedirectedHere) {
+				if (forceRedirectedHere) {
 					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
