@@ -28,7 +28,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 		name: 'Test Workflow',
 		connections: withConnections
 			? {
-					'On new manual Chat Message': {
+					'Chat Trigger': {
 						main: [
 							[
 								{
