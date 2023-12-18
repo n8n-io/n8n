@@ -877,3 +877,11 @@ export abstract class SecretsProvider {
 }
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
+
+export type RegisteredWebhook = {
+	sessionId?: string;
+	timeout: NodeJS.Timeout;
+	workflowEntity: IWorkflowDb;
+	workflow: Workflow;
+	destinationNode?: string;
+};

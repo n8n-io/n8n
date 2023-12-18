@@ -1,4 +1,3 @@
-import { ActiveWebhooks } from '@/ActiveWebhooks';
 import { mockInstance } from '../shared/mocking';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
@@ -22,11 +21,10 @@ import type {
 describe('TestWebhooks', () => {
 	jest.useFakeTimers();
 
-	const activeWebhooks = mockInstance(ActiveWebhooks);
 	const push = mockInstance(Push);
 	const nodeTypes = mockInstance(NodeTypes);
 
-	const testWebhooks = new TestWebhooks(activeWebhooks, push, nodeTypes);
+	const testWebhooks = new TestWebhooks(push, nodeTypes);
 
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -54,9 +52,15 @@ describe('TestWebhooks', () => {
 			WorkflowActivateMode,
 		];
 
+		const workflow = {
+			id: workflowId,
+			createWebhookIfNotExists: () => {},
+			deleteWebhook: () => {},
+		} as unknown as Workflow;
+
 		const args: NeedsWebhookArgs = [
 			{ id: workflowId } as unknown as IWorkflowDb,
-			{ id: workflowId } as unknown as Workflow,
+			workflow,
 			{} as unknown as IWorkflowExecuteAdditionalData,
 			'manual',
 			'manual',
@@ -64,30 +68,27 @@ describe('TestWebhooks', () => {
 
 		test('should register a webhook as active', async () => {
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			activeWebhooks.getWebhookKey.mockReturnValue(keyPart);
+			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
+			const activateWebhookSpy = jest.spyOn(testWebhooks, 'activateWebhook');
 
 			const needsWebhook = await testWebhooks.needsWebhook(...args);
 
 			expect(needsWebhook).toBe(true);
-			expect(activeWebhooks.add).toHaveBeenCalledWith(
-				{ id: workflowId },
-				webhook,
-				'manual',
-				'manual',
-			);
+			expect(activateWebhookSpy).toHaveBeenCalledWith(workflow, webhook, 'manual', 'manual');
 		});
 
 		test('should remove from active webhooks on failure to add', async () => {
 			const msg = 'Failed to add webhook to active webhooks';
 
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			activeWebhooks.getWebhookKey.mockReturnValue(keyPart);
-			activeWebhooks.add.mockRejectedValue(new Error(msg));
+			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
+			jest.spyOn(testWebhooks, 'activateWebhook').mockRejectedValue(new Error(msg));
+			const deactivateSpy = jest.spyOn(testWebhooks, 'deactivateWebhooksFor');
 
 			const needsWebhook = testWebhooks.needsWebhook(...args);
 
 			await expect(needsWebhook).rejects.toThrowError(msg);
-			expect(activeWebhooks.removeWorkflow).toHaveBeenCalledWith({ id: workflowId });
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
 		});
 
 		test('should return false if no webhook to start workflow', async () => {
@@ -114,9 +115,9 @@ describe('TestWebhooks', () => {
 		const keyPart = [httpMethod, path].join('|');
 
 		test('should throw if webhook is not registered', async () => {
-			activeWebhooks.get.mockReturnValue(webhook);
-			activeWebhooks.getWebhookMethods.mockReturnValue([]);
-			activeWebhooks.getWebhookKey.mockReturnValue(keyPart);
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockReturnValue(webhook);
+			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
 
 			const request = { params: { path } } as WebhookRequest;
 			const response = {} as express.Response;
@@ -126,16 +127,18 @@ describe('TestWebhooks', () => {
 		});
 
 		test('should throw if webhook node is registered but missing from workflow', async () => {
-			activeWebhooks.get.mockReturnValue(webhook);
-			activeWebhooks.getWebhookMethods.mockReturnValue([]);
-			activeWebhooks.getWebhookKey.mockReturnValue(keyPart);
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockReturnValue(webhook);
+			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
 
 			// @ts-expect-error Private property
-			testWebhooks.testWebhooks[`${keyPart}|${workflowId}`] = {
+			testWebhooks.registeredWebhooks[`${keyPart}|${workflowId}`] = {
 				sessionId: 'some-session-id',
 				timeout: setTimeout(() => {}, 0),
 				workflowEntity: {} as IWorkflowDb,
-				workflow: { getNode: () => null } as unknown as Workflow,
+				workflow: {
+					getNode: () => null,
+				} as unknown as Workflow,
 			};
 
 			const request = { params: { path } } as WebhookRequest;
@@ -145,7 +148,7 @@ describe('TestWebhooks', () => {
 			await expect(promise).rejects.toThrowError(NotFoundError);
 
 			// @ts-expect-error Private property
-			delete testWebhooks.testWebhooks[`${keyPart}|${workflowId}`];
+			delete testWebhooks.registeredWebhooks[`${keyPart}|${workflowId}`];
 		});
 	});
 });

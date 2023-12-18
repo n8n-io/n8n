@@ -1009,7 +1009,7 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
+		{ isTest }: { isTest?: boolean } = {},
 	): Promise<void> {
 		const webhookExists = await this.runWebhookMethod(
 			'checkExists',
@@ -1037,7 +1037,7 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
+		{ isTest }: { isTest?: boolean } = {},
 	) {
 		await this.runWebhookMethod(
 			'delete',
