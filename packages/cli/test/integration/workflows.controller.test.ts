@@ -18,17 +18,20 @@ import { saveCredential } from './shared/db/credentials';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createTag } from './shared/db/tags';
+import { Push } from '@/push';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+mockInstance(Push);
 
 beforeAll(async () => {
 	owner = await createOwner();
