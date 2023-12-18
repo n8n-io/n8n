@@ -81,21 +81,13 @@ export class Worker extends BaseCommand {
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
-
-			const stopTime = new Date().getTime() + maxStopTime;
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, maxStopTime);
+			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
+					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
@@ -272,6 +264,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
+		this.gracefulShutdownTimeoutInS = config.getEnv('queue.bull.gracefulShutdownTimeout');
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
