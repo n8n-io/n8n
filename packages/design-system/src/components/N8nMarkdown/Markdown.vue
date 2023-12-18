@@ -247,7 +247,8 @@ export default defineComponent({
 	}
 
 	img {
-		max-width: -webkit-fill-available;
+		max-width: 100%;
+		border-radius: var(--border-radius-large);
 	}
 
 	blockquote {
