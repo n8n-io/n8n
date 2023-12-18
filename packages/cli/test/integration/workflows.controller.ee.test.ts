@@ -57,9 +57,6 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initNodeTypes();
-
-	// Container.set(WorkflowService, new WorkflowService());
-	// Container.set(EnterpriseWorkflowService, new EnterpriseWorkflowService());
 });
 
 beforeEach(async () => {
