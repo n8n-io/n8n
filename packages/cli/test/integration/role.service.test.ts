@@ -18,7 +18,7 @@ describe('RoleService', () => {
 			mock(),
 		);
 
-		testDb.truncate(['User']);
+		await testDb.truncate(['User']);
 	});
 
 	afterEach(async () => {

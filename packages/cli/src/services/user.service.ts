@@ -17,7 +17,6 @@ import { RoleService } from '@/services/role.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { RoleRepository } from '@/databases/repositories/role.repository';
 
 @Service()
 export class UserService {
