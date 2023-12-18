@@ -13,13 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	NodeOperationError,
-	sleep,
-	ApplicationError,
-	ErrorReporterProxy as EventReporter,
-} from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -85,23 +79,15 @@ export class Worker extends BaseCommand {
 		await Worker.jobQueue.pause(true);
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
-			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
-
-			const stopTime = new Date().getTime() + maxStopTime;
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, maxStopTime);
+			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
+					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
@@ -137,13 +123,6 @@ export class Worker extends BaseCommand {
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!; // @tech_debt Ensure this is not optional
-
-		if (!workflowId) {
-			EventReporter.report('Detected ID-less workflow', {
-				level: 'info',
-				extra: { execution: fullExecutionData },
-			});
-		}
 
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
@@ -285,6 +264,13 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
+		const configuredShutdownTimeout = config.getEnv('queue.bull.gracefulShutdownTimeout');
+		if (configuredShutdownTimeout) {
+			this.gracefulShutdownTimeoutInS = configuredShutdownTimeout;
+			this.logger.warn(
+				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
+			);
+		}
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
@@ -496,7 +482,7 @@ export class Worker extends BaseCommand {
 		});
 
 		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks.run('worker.ready');
+		await this.externalHooks?.run('worker.ready');
 		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 

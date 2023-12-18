@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -59,7 +59,7 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
-import { WorkflowsService } from './workflows/workflows.services';
+import { WorkflowService } from './workflows/workflow.service';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
@@ -418,8 +418,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 		}
 		await this.webhookService.populateCache();
-		// Save static data!
-		await WorkflowsService.saveStaticData(workflow);
+
+		await Container.get(WorkflowService).saveStaticData(workflow);
 	}
 
 	/**
@@ -458,7 +458,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', false);
 		}
 
-		await WorkflowsService.saveStaticData(workflow);
+		await Container.get(WorkflowService).saveStaticData(workflow);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
@@ -531,7 +531,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void WorkflowsService.saveStaticData(workflow);
+				void Container.get(WorkflowService).saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -586,7 +586,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void WorkflowsService.saveStaticData(workflow);
+				void Container.get(WorkflowService).saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -821,7 +821,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await this.activationErrorsService.unset(workflowId);
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
-			await WorkflowsService.updateWorkflowTriggerCount(workflow.id, triggerCount);
+			await Container.get(WorkflowService).updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.set(workflowId, error.message);
@@ -831,7 +831,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
-		await WorkflowsService.saveStaticData(workflow);
+		await Container.get(WorkflowService).saveStaticData(workflow);
 	}
 
 	/**

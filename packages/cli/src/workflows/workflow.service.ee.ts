@@ -5,7 +5,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserService } from '@/services/user.service';
-import { WorkflowsService } from './workflows.services';
+import { WorkflowService } from './workflow.service';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
@@ -13,21 +13,31 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import Container from 'typedi';
+import { Service } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-export class EEWorkflowsService extends WorkflowsService {
-	static async isOwned(
+@Service()
+export class EnterpriseWorkflowService {
+	constructor(
+		private readonly workflowService: WorkflowService,
+		private readonly userService: UserService,
+		private readonly roleService: RoleService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+	) {}
+
+	async isOwned(
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, { allowGlobalScope: false }, [
-			'workflow',
-			'role',
-		]);
+		const sharing = await this.workflowService.getSharing(
+			user,
+			workflowId,
+			{ allowGlobalScope: false },
+			['workflow', 'role'],
+		);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
 
@@ -36,7 +46,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		return { ownsWorkflow: true, workflow };
 	}
 
-	static async getSharings(
+	async getSharings(
 		transaction: EntityManager,
 		workflowId: string,
 		relations = ['shared'],
@@ -48,7 +58,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		return workflow?.shared ?? [];
 	}
 
-	static async pruneSharings(
+	async pruneSharings(
 		transaction: EntityManager,
 		workflowId: string,
 		userIds: string[],
@@ -59,13 +69,13 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 	}
 
-	static async share(
+	async share(
 		transaction: EntityManager,
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
-		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
-		const role = await Container.get(RoleService).findWorkflowEditorRole();
+		const users = await this.userService.getByIds(transaction, shareWithIds);
+		const role = await this.roleService.findWorkflowEditorRole();
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {
@@ -76,14 +86,14 @@ export class EEWorkflowsService extends WorkflowsService {
 				userId: user.id,
 				roleId: role?.id,
 			};
-			acc.push(Container.get(SharedWorkflowRepository).create(entity));
+			acc.push(this.sharedWorkflowRepository.create(entity));
 			return acc;
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
+	addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
 		if (!workflow.usedCredentials) {
@@ -104,7 +114,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		delete workflow.shared;
 	}
 
-	static async addCredentialsToWorkflow(
+	async addCredentialsToWorkflow(
 		workflow: WorkflowWithSharingsAndCredentials,
 		currentUser: User,
 	): Promise<void> {
@@ -150,7 +160,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 	}
 
-	static validateCredentialPermissionsToUser(
+	validateCredentialPermissionsToUser(
 		workflow: WorkflowEntity,
 		allowedCredentials: CredentialsEntity[],
 	) {
@@ -171,8 +181,8 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 	}
 
-	static async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
-		const previousVersion = await EEWorkflowsService.get({ id: workflowId });
+	async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
+		const previousVersion = await this.workflowService.get({ id: workflowId });
 
 		if (!previousVersion) {
 			throw new NotFoundError('Workflow not found');
