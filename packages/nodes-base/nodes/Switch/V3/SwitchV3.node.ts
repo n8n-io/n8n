@@ -98,7 +98,7 @@ export class SwitchV3 implements INodeType {
 						},
 					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-number
-					default: '={{ $itemIndex }}',
+					default: '={{}}',
 					description:
 						"The output's index to which send an input item, use expressions to calculate what input item should be routed to which output, expression must return a number",
 				},
@@ -111,7 +111,30 @@ export class SwitchV3 implements INodeType {
 						multipleValues: true,
 						sortable: true,
 					},
-					default: {},
+					default: {
+						values: [
+							{
+								conditions: {
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+									},
+									conditions: [
+										{
+											leftValue: '',
+											rightValue: '',
+											operator: {
+												type: 'string',
+												operation: 'equals',
+											},
+										},
+									],
+									combinator: 'and',
+								},
+							},
+						],
+					},
 					displayOptions: {
 						show: {
 							mode: ['rules'],
@@ -144,8 +167,8 @@ export class SwitchV3 implements INodeType {
 									default: false,
 								},
 								{
-									displayName: 'Output Key',
-									displayNameIndexed: 'Output {{entryIndex}}',
+									displayName: 'Output Name',
+									// displayNameIndexed: 'Output {{entryIndex}}',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -341,7 +364,7 @@ export class SwitchV3 implements INodeType {
 						}
 					}
 
-					if (fallbackOutput && fallbackOutput !== 'none' && !matchFound) {
+					if (fallbackOutput !== undefined && fallbackOutput !== 'none' && !matchFound) {
 						if (fallbackOutput === 'extra') {
 							returnData[returnData.length - 1].push(item);
 							continue;
