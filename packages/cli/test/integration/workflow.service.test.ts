@@ -8,6 +8,7 @@ import { createWorkflow } from './shared/db/workflows';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { mock } from 'jest-mock-extended';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Telemetry } from '@/telemetry';
 
 let workflowService: WorkflowService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
@@ -16,20 +17,15 @@ beforeAll(async () => {
 	await testDb.init();
 
 	activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+	mockInstance(Telemetry);
 
 	workflowService = new WorkflowService(
-		mock(),
-		mock(),
-		mock(),
 		mock(),
 		Container.get(SharedWorkflowRepository),
 		Container.get(WorkflowRepository),
 		mock(),
 		mock(),
 		mock(),
-		mock(),
-		mock(),
-		activeWorkflowRunner,
 		mock(),
 		mock(),
 		mock(),

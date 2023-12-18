@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import type { IDataObject, INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
@@ -44,9 +44,6 @@ export type WorkflowsGetSharedOptions =
 @Service()
 export class WorkflowService {
 	constructor(
-		private readonly logger: Logger,
-		private readonly externalHooks: ExternalHooks,
-		private readonly internalHooks: InternalHooks,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -55,9 +52,6 @@ export class WorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly nodeTypes: NodeTypes,
-		private readonly testWebhooks: TestWebhooks,
 		private readonly multiMainSetup: MultiMainSetup,
 	) {}
 
@@ -107,7 +101,7 @@ export class WorkflowService {
 			nodes: workflow.nodes,
 			connections: workflow.connections,
 			active: workflow.active,
-			nodeTypes: this.nodeTypes,
+			nodeTypes: Container.get(NodeTypes),
 		}).getParentNodes(startNodeName);
 
 		let checkNodeName = '';
@@ -226,7 +220,7 @@ export class WorkflowService {
 		});
 
 		if (!shared) {
-			this.logger.verbose('User attempted to update a workflow without permissions', {
+			Container.get(Logger).verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -252,7 +246,7 @@ export class WorkflowService {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			workflow.versionId = uuid();
-			this.logger.verbose(
+			Container.get(Logger).verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: shared.workflow.versionId,
@@ -266,7 +260,7 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		await this.externalHooks.run('workflow.update', [workflow]);
+		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
 		/**
 		 * If the workflow being updated is stored as `active`, remove it from
@@ -276,7 +270,7 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (shared.workflow.active) {
-			await this.activeWorkflowRunner.remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
 		const workflowSettings = workflow.settings ?? {};
@@ -351,14 +345,14 @@ export class WorkflowService {
 			});
 		}
 
-		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-		void this.internalHooks.onWorkflowSaved(user, updatedWorkflow, false);
+		await Container.get(ExternalHooks).run('workflow.afterUpdate', [updatedWorkflow]);
+		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowRunner.add(
+				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
+				await Container.get(ActiveWorkflowRunner).add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
 				);
@@ -426,14 +420,14 @@ export class WorkflowService {
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 				active: false,
-				nodeTypes: this.nodeTypes,
+				nodeTypes: Container.get(NodeTypes),
 				staticData: undefined,
 				settings: workflowData.settings,
 			});
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhookData(
+			const needsWebhook = await Container.get(TestWebhooks).needsWebhookData(
 				workflowData,
 				workflow,
 				additionalData,
@@ -479,7 +473,7 @@ export class WorkflowService {
 	}
 
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		await this.externalHooks.run('workflow.delete', [workflowId]);
+		await Container.get(ExternalHooks).run('workflow.delete', [workflowId]);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
 			relations: ['workflow', 'role'],
@@ -498,7 +492,7 @@ export class WorkflowService {
 
 		if (sharedWorkflow.workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowRunner.remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
 		const idsForDeletion = await this.executionRepository
@@ -511,8 +505,8 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
-		void this.internalHooks.onWorkflowDeleted(user, workflowId, false);
-		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
 	}
@@ -547,7 +541,7 @@ export class WorkflowService {
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
-					this.logger.error(
+					Container.get(Logger).error(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
 						{ workflowId: workflow.id },
