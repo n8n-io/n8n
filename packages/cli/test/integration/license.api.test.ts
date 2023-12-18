@@ -87,12 +87,12 @@ describe('POST /license/renew', () => {
 
 	test('errors out properly', async () => {
 		License.prototype.renew = jest.fn().mockImplementation(() => {
-			throw new Error(RENEW_ERROR_MESSAGE);
+			throw new Error(GENERIC_ERROR_MESSAGE);
 		});
 
 		await authOwnerAgent
 			.post('/license/renew')
-			.expect(400, { code: 400, message: RENEW_ERROR_MESSAGE });
+			.expect(400, { code: 400, message: `Failed to renew license: ${GENERIC_ERROR_MESSAGE}` });
 	});
 });
 
@@ -131,4 +131,4 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 
 const UNAUTHORIZED_RESPONSE = { status: 'error', message: 'Unauthorized' };
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
-const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';
+const GENERIC_ERROR_MESSAGE = 'Something went wrong';
