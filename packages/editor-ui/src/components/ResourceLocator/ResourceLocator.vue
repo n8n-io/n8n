@@ -258,6 +258,13 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const workflowHelpers = useWorkflowHelpers();
+
+		return {
+			workflowHelpers
+		}
+	},
 	data() {
 		return {
 			resourceDropdownVisible: false,
@@ -366,7 +373,7 @@ export default defineComponent({
 				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
-					const resolved = useWorkflowHelpers(this.$router).resolveExpression(expression);
+					const resolved = this.workflowHelpers.resolveExpression(expression);
 
 					return typeof resolved === 'string' ? resolved : null;
 				}

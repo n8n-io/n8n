@@ -24,13 +24,6 @@ export const expressionManager = defineComponent({
 			default: () => ({}),
 		},
 	},
-	setup(props) {
-		const workflowHelpers = useWorkflowHelpers();
-
-		return {
-			workflowHelpers,
-		};
-	},
 	data() {
 		return {
 			editor: {} as EditorView,
@@ -195,6 +188,7 @@ export const expressionManager = defineComponent({
 		},
 
 		resolve(resolvable: string, targetItem?: TargetItem) {
+			const workflowHelpers = useWorkflowHelpers();
 			const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 				resolved: undefined,
 				error: false,
@@ -217,7 +211,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = this.workflowHelpers.resolveExpression(
+					result.resolved = workflowHelpers.resolveExpression(
 						'=' + resolvable,
 						undefined,
 						opts,

@@ -481,11 +481,7 @@ export function useWorkflowHelpers(vueInstance?: ComponentInternalInstance) {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const instance = vueInstance ?? getCurrentInstance();
 
-	if (!instance) {
-		throw new Error('No vue instance found! If you\'re using `useWorkflowHelpers` in another composable, make sure to provide `vueInstance` argument.');
-	}
 
 	const workflowPermissions = computed(() =>
 		getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow),
@@ -866,10 +862,12 @@ export function useWorkflowHelpers(vueInstance?: ComponentInternalInstance) {
 		redirect = true,
 		forceSave = false,
 	): Promise<boolean> {
+		const instance = vueInstance ?? getCurrentInstance();
 		const router = instance?.proxy?.$router;
-		if (!router) {
-			throw new Error('Router not found');
+		if (!instance || !router) {
+			throw new Error('No vue instance found! If you\'re using `useWorkflowHelpers` in another composable, make sure to provide `vueInstance` argument.');
 		}
+
 		const canvasStore = useCanvasStore();
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 
@@ -994,7 +992,11 @@ export function useWorkflowHelpers(vueInstance?: ComponentInternalInstance) {
 		redirect = true,
 	): Promise<boolean> {
 		try {
+			const instance = vueInstance ?? getCurrentInstance();
 			const router = instance?.proxy?.$router;
+			if (!instance || !router) {
+				throw new Error('No vue instance found! If you\'re using `useWorkflowHelpers` in another composable, make sure to provide `vueInstance` argument.');
+			}
 			uiStore.addActiveAction('workflowSaving');
 
 			const workflowDataRequest: IWorkflowDataUpdate = data || (await getWorkflowDataToSave());
