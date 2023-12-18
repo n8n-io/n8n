@@ -7,8 +7,7 @@ const WorkflowPage = new WorkflowPageClass();
 describe('Lead Enrichment - Should render', () => {
 
 	beforeEach(() => {
-		// Setup everything needed to dislay lead enrichment templates
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
+		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -54,6 +53,7 @@ describe('Lead Enrichment - Should render', () => {
 
 describe('Lead Enrichment - Should not render', () => {
 	beforeEach(() => {
+		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
 		cy.visit(WorkflowsListPage.url);
 	});
 
@@ -66,22 +66,10 @@ describe('Lead Enrichment - Should not render', () => {
 			});
 		});
 		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-	});
-
-	it('should not render lead enrichment templates if feature flag is not set', () => {
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, deployment: { type: 'cloud' } },
-				});
-			});
-		});
-		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint throws error', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -91,10 +79,10 @@ describe('Lead Enrichment - Should not render', () => {
 		});
 		cy.intercept('GET', '/rest/cloud/proxy/templates', { statusCode: 500 }).as('loadTemplates');
 		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint returns empty list', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -110,10 +98,10 @@ describe('Lead Enrichment - Should not render', () => {
 			});
 		});
 		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint returns invalid response', () => {
-		localStorage.setItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS', 'true');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -129,5 +117,6 @@ describe('Lead Enrichment - Should not render', () => {
 			});
 		});
 		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
+		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
 	});
 });

@@ -49,7 +49,11 @@ function onOpenCollection({ id }: { event: Event; id: number }) {
 		name: LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
 		data: { workflow: props.section.workflows[id] },
 	});
-	telemetry.track('User clicked template recommendation', undefined, { withPostHog: true });
+	telemetry.track(
+		'User clicked template recommendation',
+		{ name: props.section.workflows[id].title },
+		{ withPostHog: true },
+	);
 }
 </script>
 

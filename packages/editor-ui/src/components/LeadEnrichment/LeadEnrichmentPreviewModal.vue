@@ -8,6 +8,7 @@ import { LEAD_ENRICHMENT_FLAG, LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '
 import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import { dataPinningEventBus } from '@/event-bus';
 
 const props = defineProps<{
 	modalName: string;
@@ -31,9 +32,13 @@ function showConfirmationMessage(event: PointerEvent) {
 			message: i18n.baseText('leadEnrichment.notification.confirmation.message'),
 			type: 'success',
 		});
-		telemetry.track('User wants to be notified once template is ready', undefined, {
-			withPostHog: true,
-		});
+		telemetry.track(
+			'User wants to be notified once template is ready',
+			{ name: props.data.workflow.title },
+			{
+				withPostHog: true,
+			},
+		);
 		localStorage.setItem(LEAD_ENRICHMENT_FLAG, 'false');
 		uiStore.deleteLeadEnrichmentTemplates();
 	}
@@ -51,7 +56,11 @@ function openCanvas() {
 	uiStore.closeModal(LEAD_ENRICHMENT_PREVIEW_MODAL_KEY);
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
-	telemetry.track('User clicked Use Template button', undefined, { withPostHog: true });
+	telemetry.track(
+		'User clicked Use Template button',
+		{ name: props.data.workflow.title },
+		{ withPostHog: true },
+	);
 }
 </script>
 
