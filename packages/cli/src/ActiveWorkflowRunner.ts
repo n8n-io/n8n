@@ -276,7 +276,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Get the IDs of active workflows from storage.
 	 */
 	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
-		const isFullAccess = !options?.user || (await options.user.hasGlobalScope(options.scope));
+		const isFullAccess = !options?.user || options.user.hasGlobalScope(options.scope);
 
 		const activationErrors = await this.activationErrorsService.getAll();
 
@@ -291,7 +291,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const where = await whereClause({
+		const where = whereClause({
 			user: options.user,
 			globalScope: 'workflow:list',
 			entityType: 'workflow',

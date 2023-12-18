@@ -71,7 +71,7 @@ export class WorkflowService {
 		// Omit user from where if the requesting user has relevant
 		// global workflow permissions. This allows the user to
 		// access workflows they don't own.
-		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
 			where.userId = user.id;
 		}
 
@@ -215,7 +215,7 @@ export class WorkflowService {
 	): Promise<WorkflowEntity> {
 		const shared = await this.sharedWorkflowRepository.findOne({
 			relations: ['workflow', 'role'],
-			where: await whereClause({
+			where: whereClause({
 				user,
 				globalScope: 'workflow:update',
 				entityType: 'workflow',
@@ -482,7 +482,7 @@ export class WorkflowService {
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
 			relations: ['workflow', 'role'],
-			where: await whereClause({
+			where: whereClause({
 				user,
 				globalScope: 'workflow:delete',
 				entityType: 'workflow',
