@@ -1340,8 +1340,8 @@ export class Workflow {
 			closeFunctions.forEach(async (closeFunction) => {
 				try {
 					await closeFunction();
-				} catch (error: unknown) {
-					console.log(`Problem closing node "${node.name}": ${error.message}`);
+				} catch (error) {
+					console.log(`Problem closing node "${node.name}": ${error}`);
 				}
 			});
 
