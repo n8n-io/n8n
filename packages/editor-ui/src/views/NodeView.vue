@@ -1040,7 +1040,7 @@ export default defineComponent({
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
-			this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
+			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
