@@ -1,5 +1,10 @@
 <template>
-	<ModalDrawer :name="VERSIONS_MODAL_KEY" direction="ltr" width="520px">
+	<ModalDrawer
+		:name="VERSIONS_MODAL_KEY"
+		direction="ltr"
+		width="520px"
+		data-test-id="version-updates-panel"
+	>
 		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}

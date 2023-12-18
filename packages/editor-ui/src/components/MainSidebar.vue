@@ -29,7 +29,13 @@
 			/></template>
 			<template #menuSuffix>
 				<div>
-					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+					<div
+						v-if="hasVersionUpdates"
+						data-test-id="version-updates-panel-button"
+						:class="$style.updates"
+						@click="openUpdatesPanel"
+						c
+					>
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
