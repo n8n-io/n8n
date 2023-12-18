@@ -49,7 +49,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];

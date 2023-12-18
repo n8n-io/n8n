@@ -124,7 +124,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { N8nInfoAccordion } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 

@@ -24,7 +24,6 @@ import CombinatorSelect from './CombinatorSelect.vue';
 
 import { v4 as uuid } from 'uuid';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 interface Props {
 	parameter: INodeProperties;

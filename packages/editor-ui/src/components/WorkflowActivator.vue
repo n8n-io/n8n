@@ -58,7 +58,6 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
-import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'WorkflowActivator',

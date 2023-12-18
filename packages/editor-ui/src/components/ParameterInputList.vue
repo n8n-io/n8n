@@ -172,8 +172,6 @@ import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { useRouter } from 'vue-router';
-
 const FixedCollectionParameter: Component = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
 );

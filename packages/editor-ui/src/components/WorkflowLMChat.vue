@@ -145,7 +145,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowRun } from '@/composables/useWorkflowRun';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRouter } from 'vue-router';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 

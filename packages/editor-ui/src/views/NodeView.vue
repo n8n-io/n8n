@@ -314,7 +314,7 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import { type Route, type RawLocation, useRouter } from 'vue-router';
+import { type Route, type RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';

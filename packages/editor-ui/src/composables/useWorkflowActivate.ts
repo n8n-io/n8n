@@ -16,7 +16,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
-import type { Router } from 'vue-router';
 
 export function useWorkflowActivate(ctx: SetupContext) {
 	const updatingWorkflowActivation = ref(false);

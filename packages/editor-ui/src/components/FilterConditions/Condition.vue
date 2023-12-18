@@ -20,7 +20,6 @@ import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 type ConditionResult =
 	| { status: 'resolve_error' }

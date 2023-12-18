@@ -184,7 +184,6 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {

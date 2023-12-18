@@ -69,7 +69,6 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'parameter-input-wrapper',
