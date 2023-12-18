@@ -34,7 +34,6 @@
 						data-test-id="version-updates-panel-button"
 						:class="$style.updates"
 						@click="openUpdatesPanel"
-						c
 					>
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
