@@ -31,7 +31,7 @@
 				</p>
 
 				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
+					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
 						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
