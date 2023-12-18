@@ -26,7 +26,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHist
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected externalHooks: IExternalHooksClass;
+	protected externalHooks?: IExternalHooksClass;
 
 	protected nodeTypes: NodeTypes;
 
