@@ -594,8 +594,11 @@ export default defineComponent({
 		},
 		showCanvasAddButton(): boolean {
 			return (
-				this.genericHelpers.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
+				!this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
 			);
+		},
+		isLoading(): boolean {
+			return this.genericHelpers.isLoading.value;
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -2759,7 +2762,7 @@ export default defineComponent({
 					}
 				}
 				this.dropPrevented = false;
-				if (!this.genericHelpers.isLoading) {
+				if (!this.isLoading) {
 					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
