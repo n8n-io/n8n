@@ -261,7 +261,10 @@ export interface IExternalHooksClass {
 
 export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
 
-export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+export type WebhookRequest = Request<{ path: string }> & {
+	method: IHttpRequestMethods;
+	params: Record<string, string>;
+};
 
 export type WaitingWebhookRequest = WebhookRequest & {
 	params: WebhookRequest['path'] & { suffix?: string };

@@ -6,8 +6,9 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, WebhookPathTakenError } from 'n8n-workflow';
+import { WebhookPathTakenError } from 'n8n-workflow';
 import * as NodeExecuteFunctions from 'n8n-core';
+import { IdLessWorkflowError } from './errors/id-less-workflow.error';
 
 @Service()
 export class ActiveWebhooks {
@@ -31,11 +32,8 @@ export class ActiveWebhooks {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): Promise<void> {
-		if (workflow.id === undefined) {
-			throw new ApplicationError(
-				'Webhooks can only be added for saved workflows as an ID is needed',
-			);
-		}
+		if (!workflow.id) throw new IdLessWorkflowError(workflow);
+
 		if (webhookData.path.endsWith('/')) {
 			webhookData.path = webhookData.path.slice(0, -1);
 		}
