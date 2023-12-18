@@ -254,7 +254,6 @@ export default defineComponent({
 							destinationNode: this.nodeName,
 							source: 'RunData.ExecuteNodeButton',
 						},
-						this.$router,
 					);
 					this.$emit('execute');
 				}

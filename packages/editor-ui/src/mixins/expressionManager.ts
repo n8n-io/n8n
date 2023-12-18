@@ -24,6 +24,13 @@ export const expressionManager = defineComponent({
 			default: () => ({}),
 		},
 	},
+	setup(props) {
+		const workflowHelpers = useWorkflowHelpers();
+
+		return {
+			workflowHelpers,
+		};
+	},
 	data() {
 		return {
 			editor: {} as EditorView,
@@ -210,7 +217,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = useWorkflowHelpers(this.$router).resolveExpression(
+					result.resolved = this.workflowHelpers.resolveExpression(
 						'=' + resolvable,
 						undefined,
 						opts,

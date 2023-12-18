@@ -7,7 +7,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { computed, getCurrentInstance } from 'vue';
+import { computed, getCurrentInstance, type ComponentInternalInstance } from 'vue';
 
 import type {
 	IConnections,
@@ -475,13 +475,17 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers() {
+export function useWorkflowHelpers(vueInstance?: ComponentInternalInstance) {
 	const usersStore = useUsersStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const instance = getCurrentInstance();
+	const instance = vueInstance ?? getCurrentInstance();
+
+	if (!instance) {
+		throw new Error('No vue instance found! If you\'re using `useWorkflowHelpers` in another composable, make sure to provide `vueInstance` argument.');
+	}
 
 	const workflowPermissions = computed(() =>
 		getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow),

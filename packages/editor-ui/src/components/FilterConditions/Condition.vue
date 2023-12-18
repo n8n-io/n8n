@@ -47,6 +47,7 @@ const emit = defineEmits<{
 	(event: 'remove'): void;
 }>();
 
+const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -70,7 +71,7 @@ const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePrope
 
 const conditionResult = computed<ConditionResult>(() => {
 	try {
-		const resolved = useWorkflowHelpers().resolveParameter(
+		const resolved = workflowHelpers.resolveParameter(
 			condition.value as unknown as NodeParameterValue,
 		) as FilterConditionValue;
 

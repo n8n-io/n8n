@@ -13,7 +13,7 @@ import {
 	TelemetryHelpers,
 	FORM_TRIGGER_PATH_IDENTIFIER,
 } from 'n8n-workflow';
-
+import { getCurrentInstance } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
@@ -34,6 +34,7 @@ export function useWorkflowRun() {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const i18n = useI18n();
+	const instance = getCurrentInstance();
 
 	// Starts to executes a workflow on server.
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -73,7 +74,7 @@ export function useWorkflowRun() {
 			| { triggerNode: string; nodeData: ITaskData; source?: string }
 			| { source?: string },
 	): Promise<IExecutionPushResponse | undefined> {
-		const workflowHelpers = useWorkflowHelpers();
+		const workflowHelpers = useWorkflowHelpers(instance ?? undefined);
 		const workflow = workflowHelpers.getCurrentWorkflow();
 		const { clearAllStickyNotifications, showMessage } = useToast();
 		const { titleSet } = useTitleChange();

@@ -38,7 +38,7 @@
 					<div v-if="!webhook.ndvHideMethod" class="webhook-wrapper">
 						<div class="http-field">
 							<div class="http-method">
-								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
+								{{ workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
 						</div>
 						<div class="url-field">

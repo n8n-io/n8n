@@ -276,7 +276,7 @@ export default defineComponent({
 			);
 		},
 		workflow(): Workflow {
-			return useWorkflowHelpers().getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;

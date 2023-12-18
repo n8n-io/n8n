@@ -791,7 +791,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
-			void this.workflowRun.runWorkflow({ destinationNode: nodeName, source }, this.$router);
+			void this.workflowRun.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -816,7 +816,7 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.workflowRun.runWorkflow({}, this.$router);
+			await this.workflowRun.runWorkflow({});
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {

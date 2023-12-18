@@ -1,5 +1,5 @@
 import type { SetupContext } from 'vue';
-import { computed, ref } from 'vue';
+import { computed, ref, getCurrentInstance } from 'vue';
 import { useStorage } from '@/composables/useStorage';
 
 import { useToast } from '@/composables/useToast';
@@ -19,7 +19,6 @@ import { useI18n } from './useI18n';
 
 export function useWorkflowActivate(ctx: SetupContext) {
 	const updatingWorkflowActivation = ref(false);
-	const workflowHelpers = useWorkflowHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
@@ -36,6 +35,8 @@ export function useWorkflowActivate(ctx: SetupContext) {
 		telemetrySource?: string,
 	) {
 		updatingWorkflowActivation.value = true;
+		const instance = getCurrentInstance()
+		const workflowHelpers = useWorkflowHelpers(instance ?? undefined);
 		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 
 		let currWorkflowId: string | undefined = workflowId;

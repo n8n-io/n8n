@@ -431,8 +431,7 @@ export default defineComponent({
 					triggerNode: triggerNode.name,
 					nodeData,
 					source: 'RunData.ManualChatMessage',
-				},
-				this.$router,
+				}
 			);
 
 			if (!response) {
