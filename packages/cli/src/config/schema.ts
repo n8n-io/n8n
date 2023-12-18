@@ -498,7 +498,7 @@ export const schema = {
 			env: 'N8N_RELEASE_TYPE',
 		},
 
-		gracefulShutdownTimeoutInS: {
+		gracefulShutdownTimeout: {
 			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
 			format: Number,
 			default: 30,
