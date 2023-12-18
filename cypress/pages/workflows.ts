@@ -34,12 +34,12 @@ export class WorkflowsPage extends BasePage {
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
-		leadEnrichmentPageContainer: () => cy.getByTestId('lead-enrichment-page-container'),
-		leadEnrichmentCards: () => cy.getByTestId('templates-info-card').filter(':visible'),
-		leadEnrichmentNewWorkflowButton: () => cy.getByTestId('lead-enrichment-new-workflow-button'),
-		leadEnrichmentSectionContainer: () => cy.getByTestId('lead-enrichment-section-container'),
-		leadEnrichmentPreviewModal: () => cy.getByTestId('lead-enrichment-preview-modal'),
-		leadEnrichmentUseTemplateButton: () => cy.getByTestId('use-template-button'),
+		suggestedTemplatesPageContainer: () => cy.getByTestId('suggested-templates-page-container'),
+		suggestedTemplatesCards: () => cy.getByTestId('templates-info-card').filter(':visible'),
+		suggestedTemplatesNewWorkflowButton: () => cy.getByTestId('suggested-templates-new-workflow-button'),
+		suggestedTemplatesSectionContainer: () => cy.getByTestId('suggested-templates-section-container'),
+		suggestedTemplatesPreviewModal: () => cy.getByTestId('suggested-templates-preview-modal'),
+		suggestedTemplatesUseTemplateButton: () => cy.getByTestId('use-template-button'),
 	};
 
 	actions = {

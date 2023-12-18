@@ -152,7 +152,7 @@
 		<ModalRoot :name="SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SuggestedTemplatesPreviewModal
-					data-test-id="lead-enrichment-preview-modal"
+					data-test-id="suggested-templates-preview-modal"
 					:modalName="modalName"
 					:data="data"
 				/>

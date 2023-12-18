@@ -1,10 +1,29 @@
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
+type SuggestedTemplatesStub = {
+	sections: SuggestedTemplatesSectionStub[];
+}
+
+type SuggestedTemplatesSectionStub = {
+	name: string;
+	title: string;
+	description: string;
+	workflows: Array<Object>;
+};
+
 const WorkflowsListPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
+let fixtureSections: SuggestedTemplatesStub = { sections: [] };;
+
 describe('Lead Enrichment - Should render', () => {
+
+	before(() => {
+		cy.fixture('Lead_Enrichment_Templates.json').then((data) => {
+			fixtureSections = data;
+		});
+	});
 
 	beforeEach(() => {
 		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
@@ -23,30 +42,32 @@ describe('Lead Enrichment - Should render', () => {
 	});
 
 	it('should render lead enrichment page in empty workflow list', () => {
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('exist');
-		WorkflowsListPage.getters.leadEnrichmentCards().should('have.length', 4);
+		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('exist');
+		WorkflowsListPage.getters.suggestedTemplatesCards().should('have.length', fixtureSections.sections[0].workflows.length);
+		cy.contains(fixtureSections.sections[0].title).should('exist');
 	});
 
 	it('should render lead enrichment when there are workflows in the list', () => {
-		WorkflowsListPage.getters.leadEnrichmentNewWorkflowButton().click();
+		WorkflowsListPage.getters.suggestedTemplatesNewWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Test Workflow');
 		cy.visit(WorkflowsListPage.url);
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('exist');
-		WorkflowsListPage.getters.leadEnrichmentCards().should('have.length', 4);
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('exist');
+		cy.contains(`Explore ${fixtureSections.sections[0].name.toLocaleLowerCase()} workflow templates`).should('exist');
+		WorkflowsListPage.getters.suggestedTemplatesCards().should('have.length', fixtureSections.sections[0].workflows.length);
 	});
 
 	it('should enable users to signup for lead enrichment templates', () => {
 		// Test the whole flow
-		WorkflowsListPage.getters.leadEnrichmentCards().first().click();
-		WorkflowsListPage.getters.leadEnrichmentPreviewModal().should('exist');
-		WorkflowsListPage.getters.leadEnrichmentUseTemplateButton().click();
+		WorkflowsListPage.getters.suggestedTemplatesCards().first().click();
+		WorkflowsListPage.getters.suggestedTemplatesPreviewModal().should('exist');
+		WorkflowsListPage.getters.suggestedTemplatesUseTemplateButton().click();
 		cy.url().should('include', '/workflow/new');
 		WorkflowPage.getters.infoToast().should('contain', 'Template coming soon!');
 		WorkflowPage.getters.infoToast().contains('Notify me when it\'s available').click();
 		WorkflowPage.getters.successToast().should('contain', 'We will contact you via email once this template is released.');
 		cy.visit(WorkflowsListPage.url);
 		// Once users have signed up for a template, suggestions should not be shown again
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
 });
@@ -65,8 +86,8 @@ describe('Lead Enrichment - Should not render', () => {
 				});
 			});
 		});
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint throws error', () => {
@@ -78,8 +99,8 @@ describe('Lead Enrichment - Should not render', () => {
 			});
 		});
 		cy.intercept('GET', '/rest/cloud/proxy/templates', { statusCode: 500 }).as('loadTemplates');
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint returns empty list', () => {
@@ -97,8 +118,8 @@ describe('Lead Enrichment - Should not render', () => {
 				});
 			});
 		});
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
 	it('should not render lead enrichment templates if endpoint returns invalid response', () => {
@@ -116,7 +137,7 @@ describe('Lead Enrichment - Should not render', () => {
 				});
 			});
 		});
-		WorkflowsListPage.getters.leadEnrichmentPageContainer().should('not.exist');
-		WorkflowsListPage.getters.leadEnrichmentSectionContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('not.exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 });

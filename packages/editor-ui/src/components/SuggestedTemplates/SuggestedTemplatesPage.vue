@@ -49,7 +49,7 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="lead-enrichment-page-container">
+	<div :class="$style.container" data-test-id="suggested-templates-page-container">
 		<div :class="$style.header">
 			<n8n-heading tag="h1" size="2xlarge" class="mb-2xs">
 				{{
@@ -76,7 +76,7 @@ defineExpose({
 				type="secondary"
 				size="medium"
 				icon="plus"
-				data-test-id="lead-enrichment-new-workflow-button"
+				data-test-id="suggested-templates-new-workflow-button"
 				@click="openCanvas"
 			/>
 		</div>
