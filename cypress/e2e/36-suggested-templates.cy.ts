@@ -17,16 +17,16 @@ const WorkflowPage = new WorkflowPageClass();
 
 let fixtureSections: SuggestedTemplatesStub = { sections: [] };;
 
-describe('Lead Enrichment - Should render', () => {
+describe('Suggested templates - Should render', () => {
 
 	before(() => {
-		cy.fixture('Lead_Enrichment_Templates.json').then((data) => {
+		cy.fixture('Suggested_Templates.json').then((data) => {
 			fixtureSections = data;
 		});
 	});
 
 	beforeEach(() => {
-		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
+		localStorage.removeItem('SHOW_N8N_SUGGESTED_TEMPLATES');
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -35,19 +35,19 @@ describe('Lead Enrichment - Should render', () => {
 			});
 		}).as('loadSettings');
 		cy.intercept('GET', '/rest/cloud/proxy/templates', {
-			fixture: 'Lead_Enrichment_Templates.json',
+			fixture: 'Suggested_Templates.json',
 		});
 		cy.visit(WorkflowsListPage.url);
 		cy.wait('@loadSettings');
 	});
 
-	it('should render lead enrichment page in empty workflow list', () => {
+	it('should render suggested templates page in empty workflow list', () => {
 		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('exist');
 		WorkflowsListPage.getters.suggestedTemplatesCards().should('have.length', fixtureSections.sections[0].workflows.length);
 		cy.contains(fixtureSections.sections[0].title).should('exist');
 	});
 
-	it('should render lead enrichment when there are workflows in the list', () => {
+	it('should render suggested templates when there are workflows in the list', () => {
 		WorkflowsListPage.getters.suggestedTemplatesNewWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Test Workflow');
 		cy.visit(WorkflowsListPage.url);
@@ -56,7 +56,7 @@ describe('Lead Enrichment - Should render', () => {
 		WorkflowsListPage.getters.suggestedTemplatesCards().should('have.length', fixtureSections.sections[0].workflows.length);
 	});
 
-	it('should enable users to signup for lead enrichment templates', () => {
+	it('should enable users to signup for suggested templates templates', () => {
 		// Test the whole flow
 		WorkflowsListPage.getters.suggestedTemplatesCards().first().click();
 		WorkflowsListPage.getters.suggestedTemplatesPreviewModal().should('exist');
@@ -72,13 +72,13 @@ describe('Lead Enrichment - Should render', () => {
 
 });
 
-describe('Lead Enrichment - Should not render', () => {
+describe('Suggested templates - Should not render', () => {
 	beforeEach(() => {
-		localStorage.removeItem('SHOW_N8N_LEAD_ENRICHMENT_SUGGESTIONS');
+		localStorage.removeItem('SHOW_N8N_SUGGESTED_TEMPLATES');
 		cy.visit(WorkflowsListPage.url);
 	});
 
-	it('should not render lead enrichment templates if not in cloud deployment', () => {
+	it('should not render suggested templates templates if not in cloud deployment', () => {
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -90,7 +90,7 @@ describe('Lead Enrichment - Should not render', () => {
 		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
-	it('should not render lead enrichment templates if endpoint throws error', () => {
+	it('should not render suggested templates templates if endpoint throws error', () => {
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -103,7 +103,7 @@ describe('Lead Enrichment - Should not render', () => {
 		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
-	it('should not render lead enrichment templates if endpoint returns empty list', () => {
+	it('should not render suggested templates templates if endpoint returns empty list', () => {
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -122,7 +122,7 @@ describe('Lead Enrichment - Should not render', () => {
 		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('not.exist');
 	});
 
-	it('should not render lead enrichment templates if endpoint returns invalid response', () => {
+	it('should not render suggested templates templates if endpoint returns invalid response', () => {
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
