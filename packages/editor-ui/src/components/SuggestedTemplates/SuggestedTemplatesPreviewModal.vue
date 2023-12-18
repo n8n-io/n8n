@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { LEAD_ENRICHMENT_FLAG, LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
+import { LEAD_ENRICHMENT_FLAG, SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
 import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -52,7 +52,7 @@ function openCanvas() {
 			onClick: showConfirmationMessage,
 		},
 	]);
-	uiStore.closeModal(LEAD_ENRICHMENT_PREVIEW_MODAL_KEY);
+	uiStore.closeModal(SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY);
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
 	telemetry.track(

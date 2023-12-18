@@ -56,7 +56,7 @@ export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
-export const LEAD_ENRICHMENT_PREVIEW_MODAL_KEY = 'leadEnrichmentPreview';
+export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'leadEnrichmentPreview';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 

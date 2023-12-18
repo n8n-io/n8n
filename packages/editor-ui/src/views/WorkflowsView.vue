@@ -42,14 +42,14 @@
 			/>
 		</template>
 		<template #postListContent>
-			<lead-enrichment-section
+			<suggested-templates-section
 				v-if="leadEnrichmentTemplates"
 				:section="leadEnrichmentTemplates.sections[0]"
 				title="Explore lead enrichment workflow templates"
 			/>
 		</template>
 		<template #empty>
-			<lead-enrichment-page v-if="leadEnrichmentTemplates" />
+			<suggested-templates-page v-if="leadEnrichmentTemplates" />
 			<div v-else>
 				<div class="text-center mt-s">
 					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
@@ -137,8 +137,8 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import LeadEnrichmentPage from '@/components/LeadEnrichment/LeadEnrichmentPage.vue';
-import LeadEnrichmentSection from '@/components/LeadEnrichment/LeadEnrichmentSection.vue';
+import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
+import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -164,8 +164,8 @@ const WorkflowsView = defineComponent({
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
-		LeadEnrichmentPage,
-		LeadEnrichmentSection,
+		SuggestedTemplatesPage,
+		SuggestedTemplatesSection,
 	},
 	data() {
 		return {

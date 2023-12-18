@@ -37,7 +37,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -184,7 +184,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
 				open: false,
 			},
-			[LEAD_ENRICHMENT_PREVIEW_MODAL_KEY]: {
+			[SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY]: {
 				open: false,
 			},
 		},

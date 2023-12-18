@@ -5,7 +5,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { VIEWS } from '@/constants';
 import type { ITemplatesCollection } from '@/Interface';
-import LeadEnrichmentSection from '@/components/LeadEnrichment/LeadEnrichmentSection.vue';
+import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
@@ -63,7 +63,7 @@ defineExpose({
 			</n8n-text>
 		</div>
 		<div :class="$style.content">
-			<lead-enrichment-section
+			<suggested-templates-section
 				v-for="section in uiStore.leadEnrichmentTemplates?.sections"
 				:key="section.title"
 				:section="section"

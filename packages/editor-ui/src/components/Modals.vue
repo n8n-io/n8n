@@ -149,9 +149,9 @@
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="LEAD_ENRICHMENT_PREVIEW_MODAL_KEY">
+		<ModalRoot :name="SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<LeadEnrichmentPreviewModal
+				<SuggestedTemplatesPreviewModal
 					data-test-id="lead-enrichment-preview-modal"
 					:modalName="modalName"
 					:data="data"
@@ -192,7 +192,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -224,7 +224,7 @@ import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
-import LeadEnrichmentPreviewModal from '@/components/LeadEnrichment/LeadEnrichmentPreviewModal.vue';
+import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -258,7 +258,7 @@ export default defineComponent({
 		DebugPaywallModal,
 		MfaSetupModal,
 		WorkflowHistoryVersionRestoreModal,
-		LeadEnrichmentPreviewModal,
+		SuggestedTemplatesPreviewModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -289,7 +289,7 @@ export default defineComponent({
 		DEBUG_PAYWALL_MODAL_KEY,
 		MFA_SETUP_MODAL_KEY,
 		WORKFLOW_HISTORY_VERSION_RESTORE,
-		LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
+		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	}),
 });
 </script>

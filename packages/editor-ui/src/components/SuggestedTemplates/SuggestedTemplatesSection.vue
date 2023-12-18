@@ -8,7 +8,7 @@ import type {
 	LeadEnrichmentTemplateSection,
 } from '@/Interface';
 import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
-import { LEAD_ENRICHMENT_PREVIEW_MODAL_KEY } from '@/constants';
+import { SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY } from '@/constants';
 
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
@@ -46,7 +46,7 @@ const sectionTemplates = computed(() => {
 
 function onOpenCollection({ id }: { event: Event; id: number }) {
 	uiStore.openModalWithData({
-		name: LEAD_ENRICHMENT_PREVIEW_MODAL_KEY,
+		name: SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 		data: { workflow: props.section.workflows[id] },
 	});
 	telemetry.track(
