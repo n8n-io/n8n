@@ -694,7 +694,6 @@
 	"genericHelpers.sec": "sec",
 	"genericHelpers.secShort": "s",
 	"leadEnrichment.heading": "{name}, get started with n8n 👇",
-	"leadEnrichment.subheading": "Explore curated lead enrichment workflows or start fresh with a blank canvas",
 	"leadEnrichment.newWorkflowButton": "Create blank workflow",
 	"leadEnrichment.modal.button.label": "Use Template",
 	"leadEnrichment.notification.comingSoon.title": "Template coming soon!",

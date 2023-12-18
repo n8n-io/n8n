@@ -1846,6 +1846,7 @@ export type LeadEnrichmentTemplates = {
 export type LeadEnrichmentTemplateSection = {
 	name: string;
 	title: string;
+	description: string;
 	workflows: LeadEnrichmentWorkflowPreview[];
 };
 

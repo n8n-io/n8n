@@ -13,13 +13,19 @@ const router = useRouter();
 
 const currentUser = computed(() => usersStore.currentUser);
 
+const defaultSection = computed(() => {
+	if (!uiStore.leadEnrichmentTemplates) {
+		return null;
+	}
+	return uiStore.leadEnrichmentTemplates.sections[0];
+});
+
 const leadEnrichmentTemplates = computed(() => {
 	const carouselCollections = Array<ITemplatesCollection>();
-	if (!uiStore.leadEnrichmentTemplates) {
+	if (!uiStore.leadEnrichmentTemplates || !defaultSection.value) {
 		return carouselCollections;
 	}
-	const leadEnrichmentSection = uiStore.leadEnrichmentTemplates.sections[0];
-	leadEnrichmentSection.workflows.forEach((workflow, index) => {
+	defaultSection.value.workflows.forEach((workflow, index) => {
 		carouselCollections.push({
 			id: index,
 			name: workflow.title,
@@ -33,10 +39,6 @@ const leadEnrichmentTemplates = computed(() => {
 function openCanvas() {
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
-}
-
-function onOpenCollection(collectionName: string) {
-	console.log('onOpenCollection', collectionName);
 }
 
 defineExpose({
@@ -57,7 +59,7 @@ defineExpose({
 				}}
 			</n8n-heading>
 			<n8n-text size="large" color="text-base">
-				{{ $locale.baseText('leadEnrichment.subheading') }}
+				{{ defaultSection?.description }}
 			</n8n-text>
 		</div>
 		<div :class="$style.content">
@@ -66,7 +68,6 @@ defineExpose({
 				:key="section.title"
 				:section="section"
 				:showTitle="false"
-				@openCollection="onOpenCollection"
 			/>
 		</div>
 		<div>
