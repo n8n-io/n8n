@@ -36,7 +36,7 @@ patchedDependencies:
     hash: kzcwsjcayy5m6iezu7r4tdimjq
     path: patches/pyodide@0.23.4.patch
   typedi@0.10.0:
-    hash: 62r6bc2crgimafeyruodhqlgo4
+    hash: sk6omkefrosihg7lmqbzh7vfxe
     path: patches/typedi@0.10.0.patch
 
 importers:
@@ -686,7 +686,7 @@ importers:
         version: 1.1.1
       typedi:
         specifier: 0.10.0
-        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       typeorm:
         specifier: 0.3.17
         version: 0.3.17(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
@@ -861,7 +861,7 @@ importers:
         version: 6.11.0
       typedi:
         specifier: 0.10.0
-        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 8.3.2
         version: 8.3.2
@@ -1257,7 +1257,7 @@ importers:
         version: 3.0.3
       typedi:
         specifier: ^0.10.0
-        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
     devDependencies:
       '@oclif/dev-cli':
         specifier: ^1.22.2
@@ -1444,7 +1444,7 @@ importers:
         version: 3.0.3
       typedi:
         specifier: 0.10.0
-        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 8.3.2
         version: 8.3.2
@@ -24350,7 +24350,7 @@ packages:
   /typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typedi@0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4):
+  /typedi@0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe):
     resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
     dev: false
     patched: true
