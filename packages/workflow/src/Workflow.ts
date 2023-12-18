@@ -53,6 +53,7 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import { NodeOperationError } from './errors';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -1341,7 +1342,7 @@ export class Workflow {
 				try {
 					await closeFunction();
 				} catch (error) {
-					console.log(`Problem closing node "${node.name}": ${error}`);
+					throw new NodeOperationError(node, error as Error);
 				}
 			});
 
