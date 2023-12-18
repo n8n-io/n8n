@@ -5,6 +5,7 @@ import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import { Logger } from '@/Logger';
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { preferGet } from '../externalSecretsHelper.ee';
 import { Container } from 'typedi';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
@@ -422,10 +423,14 @@ export class VaultProvider extends SecretsProvider {
 		listPath += path;
 		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
 		try {
+			const shouldPreferGet = preferGet();
+			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
-				url: listPath,
+				url,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				method: 'LIST' as any,
+				method,
 			});
 		} catch {
 			return null;
