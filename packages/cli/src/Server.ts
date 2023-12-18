@@ -121,9 +121,11 @@ import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 import { PasswordUtility } from './services/password.utility';
+import { ShutdownListener } from '@/decorators/ShutdownListener';
 
 const exec = promisify(callbackExec);
 
+@ShutdownListener()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
 

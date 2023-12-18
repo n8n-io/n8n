@@ -20,8 +20,9 @@ import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
+import { OnShutdown } from '@/shutdown/Shutdown.service';
 
-export abstract class AbstractServer {
+export abstract class AbstractServer implements OnShutdown {
 	protected logger: Logger;
 
 	protected server: Server;
@@ -245,5 +246,37 @@ export abstract class AbstractServer {
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
+	}
+
+	/**
+	 * Stops the HTTP(S) server from accepting new connections. Gives all
+	 * connections configured amount of time to finish their work and
+	 * then closes them forcefully.
+	 */
+	async onShutdown(): Promise<void> {
+		if (!this.server) {
+			return;
+		}
+
+		this.logger.debug(`Shutting down ${this.protocol} server`);
+
+		const timeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+
+		const forceConnectionCloseTimeout = setTimeout(() => {
+			this.server.closeAllConnections();
+		}, timeoutInS * 1000);
+
+		const stopServerPromise = new Promise<void>((resolve, reject) => {
+			this.server.close((error) => {
+				clearTimeout(forceConnectionCloseTimeout);
+				if (error) {
+					reject(error);
+				}
+
+				resolve();
+			});
+		});
+
+		await stopServerPromise;
 	}
 }
