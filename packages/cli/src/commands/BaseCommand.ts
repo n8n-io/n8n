@@ -26,7 +26,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHist
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected externalHooks: IExternalHooksClass;
+	protected externalHooks?: IExternalHooksClass;
 
 	protected nodeTypes: NodeTypes;
 
@@ -39,6 +39,11 @@ export abstract class BaseCommand extends Command {
 	protected server?: AbstractServer;
 
 	protected isShuttingDown = false;
+
+	/**
+	 * How long to wait for graceful shutdown before force killing the process.
+	 */
+	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -309,9 +314,20 @@ export abstract class BaseCommand extends Command {
 				return;
 			}
 
+			const forceShutdownTimer = setTimeout(async () => {
+				// In case that something goes wrong with shutdown we
+				// kill after timeout no matter what
+				console.log(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
+				const errorMsg = `Shutdown timed out after ${this.gracefulShutdownTimeoutInS} seconds`;
+				await this.exitWithCrash(errorMsg, new Error(errorMsg));
+			}, this.gracefulShutdownTimeoutInS * 1000);
+
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.isShuttingDown = true;
+
 			await this.stopProcess();
+
+			clearTimeout(forceShutdownTimer);
 		};
 	}
 }

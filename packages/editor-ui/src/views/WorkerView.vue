@@ -32,7 +32,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('source-control', 'upgrade-source-control');
+	void uiStore.goToUpgrade('worker-view', 'upgrade-worker-view');
 };
 </script>
 
