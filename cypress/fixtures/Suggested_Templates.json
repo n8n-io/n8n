@@ -2,7 +2,7 @@
 	"sections": [
 			{
 					"name": "Lead enrichment",
-					"title": "Explore curated lead enrichment workflows or start fresh with a blank canvas",
+					"description": "Explore curated lead enrichment workflows or start fresh with a blank canvas",
 					"workflows": [
 							{
 									"title": "Score new leads with AI from Facebook Lead Ads with AI and get notifications for high scores on Slack",

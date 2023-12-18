@@ -58,7 +58,11 @@ defineExpose({
 					})
 				}}
 			</n8n-heading>
-			<n8n-text size="large" color="text-base">
+			<n8n-text
+				size="large"
+				color="text-base"
+				data-test-id="suggested-template-section-description"
+			>
 				{{ defaultSection?.description }}
 			</n8n-text>
 		</div>

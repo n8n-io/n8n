@@ -44,7 +44,7 @@ describe('Suggested templates - Should render', () => {
 	it('should render suggested templates page in empty workflow list', () => {
 		WorkflowsListPage.getters.suggestedTemplatesPageContainer().should('exist');
 		WorkflowsListPage.getters.suggestedTemplatesCards().should('have.length', fixtureSections.sections[0].workflows.length);
-		cy.contains(fixtureSections.sections[0].title).should('exist');
+		WorkflowsListPage.getters.suggestedTemplatesSectionDescription().should('contain', fixtureSections.sections[0].description);
 	});
 
 	it('should render suggested templates when there are workflows in the list', () => {

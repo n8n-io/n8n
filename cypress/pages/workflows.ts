@@ -40,6 +40,7 @@ export class WorkflowsPage extends BasePage {
 		suggestedTemplatesSectionContainer: () => cy.getByTestId('suggested-templates-section-container'),
 		suggestedTemplatesPreviewModal: () => cy.getByTestId('suggested-templates-preview-modal'),
 		suggestedTemplatesUseTemplateButton: () => cy.getByTestId('use-template-button'),
+		suggestedTemplatesSectionDescription: () => cy.getByTestId('suggested-template-section-description'),
 	};
 
 	actions = {
