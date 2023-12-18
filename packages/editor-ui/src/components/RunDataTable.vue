@@ -235,6 +235,9 @@ export default defineComponent({
 			columnLimitExceeded: false,
 		};
 	},
+	created() {
+		this.workflowsStore.refreshWorkflowPairedItemMappings();
+	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
 			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;

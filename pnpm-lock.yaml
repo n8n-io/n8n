@@ -1068,6 +1068,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
+      pako:
+        specifier: ^2.1.0
+        version: 2.1.0
       pinia:
         specifier: ^2.1.6
         version: 2.1.6(typescript@5.3.2)(vue@3.3.4)
@@ -1144,6 +1147,9 @@ importers:
       '@types/luxon':
         specifier: ^3.2.0
         version: 3.2.0
+      '@types/pako':
+        specifier: ^2.0.3
+        version: 2.0.3
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
@@ -10356,6 +10362,10 @@ packages:
 
   /@types/npmlog@4.1.4:
     resolution: {integrity: sha512-WKG4gTr8przEZBiJ5r3s8ZIAoMXNbOgQ+j/d5O4X3x6kZJRLNvyUJuUK/KoG3+8BaOHPhp2m7WC6JKKeovDSzQ==}
+    dev: true
+
+  /@types/pako@2.0.3:
+    resolution: {integrity: sha512-bq0hMV9opAcrmE0Byyo0fY3Ew4tgOevJmQ9grUhpXQhYfyLJ1Kqg3P33JT5fdbT2AjeAjR51zqqVjAL/HMkx7Q==}
     dev: true
 
   /@types/parse-json@4.0.0:
@@ -21086,6 +21096,10 @@ packages:
     resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
     dev: false
 
+  /pako@2.1.0:
+    resolution: {integrity: sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==}
+    dev: false
+
   /param-case@3.0.4:
     resolution: {integrity: sha512-RXlj7zCYokReqWpOPH9oYivUzLYZ5vAPIfEmCTNViosC78F8F0H9y7T7gG2M39ymgutxF5gcFEsyZQSph9Bp3A==}
     dependencies:
@@ -25418,6 +25432,10 @@ packages:
 
   /utf8@2.1.2:
     resolution: {integrity: sha512-QXo+O/QkLP/x1nyi54uQiG0XrODxdysuQvE5dtVqv7F5K2Qb6FsN+qbr6KhF5wQ20tfcV3VQp0/2x1e1MRSPWg==}
+    dev: false
+
+  /utfz-lib@0.2.0:
+    resolution: {integrity: sha512-wQhMpAJhwFesoBEkGg44GsDL4Hi09tXvSWLIwh5HKXZkSN1Tc30ZlDH24DEoISz+fKoJTsLjcwd2zM6lAhXQvA==}
     dev: false
 
   /util-deprecate@1.0.2:

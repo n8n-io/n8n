@@ -82,6 +82,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import pako from 'pako';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -611,9 +612,32 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Node actions
 		setWorkflowExecutionData(workflowResultData: IExecutionResponse | null): void {
 			this.workflowExecutionData = workflowResultData;
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
+		refreshWorkflowPairedItemMappings(): void {
+			const pairedItemsWorker = new Worker(new URL('@/workers/pairedItem.worker.ts', import.meta.url), {
+				type: 'module',
+			})
+			console.log('setWorkflowExecutionData 123')
+			const startTime = performance.now();
+			const jsonString = JSON.stringify(this.workflowExecutionData);
+			console.log('Serialization took ' + (performance.now() - startTime) + ' milliseconds.');
+			const encoder = new TextEncoder();
+			const buffer = encoder.encode(jsonString).buffer;
+			// const compressed = pako.deflate(jsonString);
+			console.log('Deflation took ' + (performance.now() - startTime) + ' milliseconds.');
+			pairedItemsWorker.postMessage({
+				action: 'getPairedItemsMapping',
+				executionResponse: buffer,
+			}, [buffer])
+			console.log('Sending took ' + (performance.now() - startTime) + ' milliseconds.');
+			pairedItemsWorker.onmessage = (event) => {
+			// Handle received data
+				this.workflowExecutionPairedItemMappings = event.data;
+				pairedItemsWorker.terminate();
+				// console.log("🚀 ~ file: RunDataTable.vue:237 ~ mounted ~ pairedItemsWorker:")
+			};
+		},
 		setWorkflowExecutionRunData(workflowResultData: IRunExecutionData): void {
 			if (this.workflowExecutionData) this.workflowExecutionData.data = workflowResultData;
 		},
