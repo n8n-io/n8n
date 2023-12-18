@@ -3,6 +3,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	SUGGESTED_TEMPLATES_FLAG,
@@ -23,6 +24,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 
@@ -37,7 +39,7 @@ function showConfirmationMessage(event: PointerEvent) {
 		});
 		telemetry.track(
 			'User wants to be notified once template is ready',
-			{ name: props.data.workflow.title },
+			{ templateName: props.data.workflow.title, email: usersStore.currentUser?.email },
 			{
 				withPostHog: true,
 			},
@@ -61,7 +63,7 @@ function openCanvas() {
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
 	telemetry.track(
 		'User clicked Use Template button',
-		{ name: props.data.workflow.title },
+		{ templateName: props.data.workflow.title },
 		{ withPostHog: true },
 	);
 }

@@ -47,7 +47,7 @@ function onOpenCollection({ id }: { event: Event; id: number }) {
 	});
 	telemetry.track(
 		'User clicked template recommendation',
-		{ name: props.section.workflows[id].title },
+		{ templateName: props.section.workflows[id].title },
 		{ withPostHog: true },
 	);
 }
