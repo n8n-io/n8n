@@ -3,16 +3,37 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as testDb from './shared/testDb';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { mockInstance } from '../shared/mocking';
-import { Telemetry } from '@/telemetry';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { mock } from 'jest-mock-extended';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
-mockInstance(Telemetry);
-
-const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+let workflowService: WorkflowService;
+let activeWorkflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
 	await testDb.init();
+
+	activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+
+	workflowService = new WorkflowService(
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		Container.get(SharedWorkflowRepository),
+		Container.get(WorkflowRepository),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		activeWorkflowRunner,
+		mock(),
+		mock(),
+		mock(),
+	);
 });
 
 afterEach(async () => {
@@ -32,7 +53,7 @@ describe('update()', () => {
 		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
 
-		await Container.get(WorkflowService).update(owner, workflow, workflow.id);
+		await workflowService.update(owner, workflow, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
@@ -52,7 +73,7 @@ describe('update()', () => {
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
 
 		workflow.active = false;
-		await Container.get(WorkflowService).update(owner, workflow, workflow.id);
+		await workflowService.update(owner, workflow, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
