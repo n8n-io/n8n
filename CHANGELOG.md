@@ -1,3 +1,12 @@
+## [1.18.4](https://github.com/n8n-io/n8n/compare/n8n@1.18.3...n8n@1.18.4) (2023-12-18)
+
+
+### Bug Fixes
+
+* **core:** Restore workflow ID during execution creation ([#8031](https://github.com/n8n-io/n8n/issues/8031)) ([7add8ca](https://github.com/n8n-io/n8n/commit/7add8ca423d22ee12cdb1f8c70ea9c54d832ee2b)), closes [/github.com/n8n-io/n8n/pull/8002/files#diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224](https://github.com//github.com/n8n-io/n8n/pull/8002/files/issues/diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224)
+
+
+
 ## [1.18.3](https://github.com/n8n-io/n8n/compare/n8n@1.18.2...n8n@1.18.3) (2023-12-15)
 
 
