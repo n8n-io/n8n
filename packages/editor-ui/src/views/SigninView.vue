@@ -143,8 +143,8 @@ export default defineComponent({
 					result: this.showMfaView ? 'mfa_success' : 'success',
 				});
 
-				if (this.genericHelpers.isRedirectSafe()) {
-					const redirect = this.genericHelpers.getRedirectQueryParameter();
+				if (this.genericHelpers.isRedirectSafe(this.$router)) {
+					const redirect = this.genericHelpers.getRedirectQueryParameter(this.$router);
 					void this.$router.push(redirect);
 					return;
 				}
