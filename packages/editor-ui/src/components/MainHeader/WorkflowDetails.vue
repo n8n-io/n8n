@@ -184,8 +184,8 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/rbac/permissions';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 import { useRouter } from 'vue-router';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -218,13 +218,11 @@ export default defineComponent({
 	setup() {
 		const router = useRouter();
 		const workflowHelpers = useWorkflowHelpers(router);
-		const genericHelpers = useGenericHelpers();
 
 		return {
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
-			genericHelpers,
 			workflowHelpers,
 		};
 	},
@@ -250,6 +248,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useSourceControlStore,
+			useCanvasStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -585,7 +584,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.genericHelpers.startLoading();
+					this.canvasStore.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -609,7 +608,7 @@ export default defineComponent({
 								this.showError(error, this.$locale.baseText('error'));
 						}
 					} finally {
-						this.genericHelpers.stopLoading();
+						this.canvasStore.stopLoading();
 					}
 
 					break;

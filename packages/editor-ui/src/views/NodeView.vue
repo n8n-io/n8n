@@ -453,14 +453,14 @@ export default defineComponent({
 			// When entering this tab:
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
 				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
-					this.genericHelpers.startLoading();
+					this.canvasStore.startLoading();
 					if (nodeViewNotInitialized) {
 						const previousDirtyState = this.uiStore.stateIsDirty;
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
 					await Promise.all([this.loadCredentials(), this.initView()]);
-					this.genericHelpers.stopLoading();
+					this.canvasStore.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
 					}
@@ -598,7 +598,7 @@ export default defineComponent({
 			);
 		},
 		isLoading(): boolean {
-			return this.genericHelpers.isLoading.value;
+			return this.canvasStore.isLoading;
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -926,7 +926,7 @@ export default defineComponent({
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
 		async openExecution(executionId: string) {
-			this.genericHelpers.startLoading();
+			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
@@ -1025,7 +1025,7 @@ export default defineComponent({
 					duration: 0,
 				});
 			}
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 			if (!data.workflow.nodes || !data.workflow.connections) {
@@ -1044,7 +1044,7 @@ export default defineComponent({
 			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
-			this.genericHelpers.startLoading();
+			this.canvasStore.startLoading();
 			this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
@@ -1083,10 +1083,10 @@ export default defineComponent({
 				templateName: data.name,
 				workflow: data.workflow,
 			});
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
-			this.genericHelpers.startLoading();
+			this.canvasStore.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
@@ -1139,7 +1139,7 @@ export default defineComponent({
 			} else {
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
@@ -1779,18 +1779,18 @@ export default defineComponent({
 		async getWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
 			let workflowData: IWorkflowDataUpdate;
 
-			this.genericHelpers.startLoading();
+			this.canvasStore.startLoading();
 			try {
 				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
-				this.genericHelpers.stopLoading();
+				this.canvasStore.stopLoading();
 				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
 				return;
 			}
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 
 			return workflowData;
 		},
@@ -3205,7 +3205,7 @@ export default defineComponent({
 				e.returnValue = true; //Gecko + IE
 				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
-				this.genericHelpers.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
 				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
@@ -3216,7 +3216,7 @@ export default defineComponent({
 			clearTimeout(this.unloadTimeout);
 		},
 		async newWorkflow(): Promise<void> {
-			this.genericHelpers.startLoading();
+			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -3228,7 +3228,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			this.canvasStore.zoomToFit();
@@ -4352,9 +4352,9 @@ export default defineComponent({
 
 			if (nodesToBeFetched.length > 0) {
 				// Only call API if node information is actually missing
-				this.genericHelpers.startLoading();
+				this.canvasStore.startLoading();
 				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-				this.genericHelpers.stopLoading();
+				this.canvasStore.stopLoading();
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
@@ -4605,7 +4605,7 @@ export default defineComponent({
 		onPageShow(e: PageTransitionEvent) {
 			// Page was restored from the bfcache (back-forward cache)
 			if (e.persisted) {
-				this.genericHelpers.stopLoading();
+				this.canvasStore.stopLoading();
 			}
 		},
 		readOnlyEnvRouteCheck() {
@@ -4701,7 +4701,7 @@ export default defineComponent({
 		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
-		this.genericHelpers.startLoading();
+		this.canvasStore.startLoading();
 		const loadPromises = [
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
@@ -4744,7 +4744,7 @@ export default defineComponent({
 					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
 				);
 			}
-			this.genericHelpers.stopLoading();
+			this.canvasStore.stopLoading();
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();

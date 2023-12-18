@@ -1,13 +1,10 @@
 import dateformat from 'dateformat';
 import { useI18n } from './useI18n';
-import { useRouter } from 'vue-router';
-import { useLoadingService } from './useLoadingService';
+import type { Router } from 'vue-router';
 
 export function useGenericHelpers() {
-	const i18n = useI18n();
-	const loadingService = useLoadingService();
-
 	function displayTimer(msPassed: number, showMs = false): string {
+		const i18n = useI18n();
 		if (msPassed < 60000) {
 			if (!showMs) {
 				return `${Math.floor(msPassed / 1000)}${i18n.baseText('genericHelpers.secShort')}`;
@@ -32,30 +29,8 @@ export function useGenericHelpers() {
 		return { date, time };
 	}
 
-
-	function isRedirectSafe() {
-		const redirect = getRedirectQueryParameter();
-		return redirect.startsWith('/');
-	}
-
-	function getRedirectQueryParameter() {
-		const router = useRouter();
-		let redirect = '';
-		if (typeof router.currentRoute.value.query.redirect === 'string') {
-			redirect = decodeURIComponent(router.currentRoute.value.query.redirect);
-		}
-		return redirect;
-	}
-
 	return {
-		loadingService: loadingService.loadingService,
-		isLoading: loadingService.isLoading,
 		displayTimer,
 		convertToDisplayDate,
-		isRedirectSafe,
-		getRedirectQueryParameter,
-		startLoading: loadingService.startLoading,
-		setLoadingText: loadingService.setLoadingText,
-		stopLoading: loadingService.stopLoading,
 	};
 }

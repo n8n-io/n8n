@@ -118,6 +118,17 @@ export default defineComponent({
 		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
 			await this.login(form);
 		},
+		isRedirectSafe() {
+			const redirect = this.getRedirectQueryParameter();
+			return redirect.startsWith('/');
+		},
+		getRedirectQueryParameter() {
+			let redirect = '';
+			if (typeof this.$route.query?.redirect === 'string') {
+				redirect = decodeURIComponent(this.$route.query?.redirect);
+			}
+			return redirect;
+		},
 		async login(form: { email: string; password: string; token?: string; recoveryCode?: string }) {
 			try {
 				this.loading = true;
@@ -143,8 +154,8 @@ export default defineComponent({
 					result: this.showMfaView ? 'mfa_success' : 'success',
 				});
 
-				if (this.genericHelpers.isRedirectSafe(this.$router)) {
-					const redirect = this.genericHelpers.getRedirectQueryParameter(this.$router);
+				if (this.isRedirectSafe()) {
+					const redirect = this.getRedirectQueryParameter();
 					void this.$router.push(redirect);
 					return;
 				}

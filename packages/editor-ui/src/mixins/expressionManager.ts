@@ -13,7 +13,6 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
-import { useRouter } from 'vue-router';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -24,14 +23,6 @@ export const expressionManager = defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
-	},
-	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
-
-		return {
-			workflowHelpers
-		};
 	},
 	data() {
 		return {
@@ -219,7 +210,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = this.workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
+					result.resolved = useWorkflowHelpers(this.$router).resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

@@ -72,6 +72,7 @@ import type { Router } from 'vue-router';
 import { useGenericHelpers } from './useGenericHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -867,7 +868,7 @@ export function useWorkflowHelpers(router: Router) {
 		redirect = true,
 		forceSave = false,
 	): Promise<boolean> {
-		const genericHelpers = useGenericHelpers();
+		const canvasStore = useCanvasStore();
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 
 		if (readOnlyEnv) {
@@ -881,7 +882,7 @@ export function useWorkflowHelpers(router: Router) {
 
 		// Workflow exists already so update it
 		try {
-			if (!forceSave && genericHelpers.isLoading.value) {
+			if (!forceSave && canvasStore.isLoading) {
 				return true;
 			}
 			uiStore.addActiveAction('workflowSaving');
