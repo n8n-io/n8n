@@ -1,6 +1,7 @@
+import Container from 'typedi';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as testDb from './shared/testDb';
-import { WorkflowsService } from '@/workflows/workflows.services';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { mockInstance } from '../shared/mocking';
 import { Telemetry } from '@/telemetry';
 import { createOwner } from './shared/db/users';
@@ -31,7 +32,7 @@ describe('update()', () => {
 		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
 
-		await WorkflowsService.update(owner, workflow, workflow.id);
+		await Container.get(WorkflowService).update(owner, workflow, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
@@ -51,7 +52,7 @@ describe('update()', () => {
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
 
 		workflow.active = false;
-		await WorkflowsService.update(owner, workflow, workflow.id);
+		await Container.get(WorkflowService).update(owner, workflow, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
