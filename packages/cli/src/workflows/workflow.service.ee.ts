@@ -13,22 +13,31 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
-export class EnterpriseWorkflowService extends WorkflowService {
+export class EnterpriseWorkflowService {
+	constructor(
+		private readonly workflowService: WorkflowService,
+		private readonly userService: UserService,
+		private readonly roleService: RoleService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+	) {}
+
 	async isOwned(
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, { allowGlobalScope: false }, [
-			'workflow',
-			'role',
-		]);
+		const sharing = await this.workflowService.getSharing(
+			user,
+			workflowId,
+			{ allowGlobalScope: false },
+			['workflow', 'role'],
+		);
 
 		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
 
@@ -65,8 +74,8 @@ export class EnterpriseWorkflowService extends WorkflowService {
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
-		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
-		const role = await Container.get(RoleService).findWorkflowEditorRole();
+		const users = await this.userService.getByIds(transaction, shareWithIds);
+		const role = await this.roleService.findWorkflowEditorRole();
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {
@@ -77,7 +86,7 @@ export class EnterpriseWorkflowService extends WorkflowService {
 				userId: user.id,
 				roleId: role?.id,
 			};
-			acc.push(Container.get(SharedWorkflowRepository).create(entity));
+			acc.push(this.sharedWorkflowRepository.create(entity));
 			return acc;
 		}, []);
 
@@ -173,7 +182,7 @@ export class EnterpriseWorkflowService extends WorkflowService {
 	}
 
 	async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
-		const previousVersion = await this.get({ id: workflowId });
+		const previousVersion = await this.workflowService.get({ id: workflowId });
 
 		if (!previousVersion) {
 			throw new NotFoundError('Workflow not found');
