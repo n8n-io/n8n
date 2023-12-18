@@ -152,12 +152,15 @@ describe('deleteMany()', () => {
 		];
 
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		fsp.rmdir = jest.fn().mockResolvedValue(undefined);
+		fsp.readdir = jest.fn().mockResolvedValue([]);
 
 		const promise = fsManager.deleteMany(ids);
 
 		await expect(promise).resolves.not.toThrow();
 
-		expect(fsp.rm).toHaveBeenCalledTimes(2);
+		expect(fsp.rm).toHaveBeenCalledTimes(2); // deleted `/binary_data` dirs and files
+		expect(fsp.rmdir).toHaveBeenCalledTimes(2); // deleted empty `/executions` dirs
 	});
 
 	it('should suppress error on non-existing filepath', async () => {
@@ -171,10 +174,6 @@ describe('deleteMany()', () => {
 
 		expect(fsp.rm).toHaveBeenCalledTimes(1);
 	});
-
-	// it('should delete parent dir if empty after regular deletion', async () => {
-	// @TODO
-	// });
 });
 
 describe('rename()', () => {

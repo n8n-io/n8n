@@ -102,13 +102,15 @@ export class FileSystemManager implements BinaryData.Manager {
 			}),
 		);
 
+		const executionDirs = binaryDataDirs.map((dir) => dir.replace(/\/binary_data\/$/, ''));
+
 		await Promise.all(
-			binaryDataDirs.map(async (dir) => {
-				const executionDir = dir.replace(/\/binary_data\/$/, '');
+			executionDirs.map(async (dir) => {
+				try {
+					const contents = await fs.readdir(dir);
 
-				const isEmpty = (await fs.readdir(executionDir)).length === 0;
-
-				if (isEmpty) await fs.rm(executionDir, { recursive: true, force: true });
+					if (contents.length === 0) await fs.rmdir(dir);
+				} catch {} // ignore if dir not found
 			}),
 		);
 	}
