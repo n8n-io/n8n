@@ -107,6 +107,7 @@ describe('WorkflowHistory', () => {
 				params: { workflowId, versionId: versionData.versionId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -124,6 +125,7 @@ describe('WorkflowHistory', () => {
 		await waitFor(() => {
 			expect(router.replace).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User selected version', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -142,6 +144,7 @@ describe('WorkflowHistory', () => {
 				params: { workflowId, versionId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User selected version', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -159,6 +162,7 @@ describe('WorkflowHistory', () => {
 				params: { workflowId, versionId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened version in new tab', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -180,6 +184,7 @@ describe('WorkflowHistory', () => {
 				params: { workflowId, versionId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened version in new tab', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -202,6 +207,7 @@ describe('WorkflowHistory', () => {
 				params: { name: newWorkflowId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User cloned version', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
@@ -217,6 +223,7 @@ describe('WorkflowHistory', () => {
 
 		await waitFor(() => {
 			expect(telemetry.track).toHaveBeenCalledWith('User downloaded version', {
+				instance_id: '',
 				workflow_id: workflowId,
 			});
 		});
