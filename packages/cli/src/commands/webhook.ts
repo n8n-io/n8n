@@ -39,13 +39,7 @@ export class Webhook extends BaseCommand {
 		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, 30000);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
