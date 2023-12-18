@@ -477,6 +477,7 @@ export default defineComponent({
 				const destinationType = (this.nodeParameters.__type ?? 'unknown')
 					.replace('$$MessageEventBusDestination', '')
 					.toLowerCase();
+
 				const isComplete = () => {
 					if (this.isTypeWebhook) {
 						return this.destination.host !== '';
@@ -493,6 +494,7 @@ export default defineComponent({
 					}
 					return false;
 				};
+
 				useTelemetry().track('User updated log streaming destination', {
 					instance_id: useRootStore().instanceId,
 					destination_type: destinationType,
