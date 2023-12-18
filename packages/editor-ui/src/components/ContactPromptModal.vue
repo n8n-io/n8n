@@ -42,7 +42,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables/useToast';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'ContactPromptModal',

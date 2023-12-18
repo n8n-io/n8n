@@ -191,7 +191,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, computed } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 
 import type {
@@ -385,12 +385,7 @@ const CanvasControls = defineAsyncComponent(async () => import('@/components/Can
 
 export default defineComponent({
 	name: 'NodeView',
-	mixins: [
-		copyPaste,
-		moveNodeWorkflow,
-		debounceHelper,
-		pinData,
-	],
+	mixins: [copyPaste, moveNodeWorkflow, debounceHelper, pinData],
 	components: {
 		NodeDetailsView,
 		Node,
@@ -593,9 +588,7 @@ export default defineComponent({
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return (
-				!this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
-			);
+			return !this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv;
 		},
 		isLoading(): boolean {
 			return this.canvasStore.isLoading;
@@ -814,8 +807,10 @@ export default defineComponent({
 				const telemetryPayload = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.workflowHelpers.getNodeTypes())
-							.nodeGraph,
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							this.workflowHelpers.getNodeTypes(),
+						).nodeGraph,
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
@@ -1518,7 +1513,11 @@ export default defineComponent({
 			// Get all upstream nodes and select them
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.workflowHelpers.getConnectedNodes('upstream', workflow, lastSelectedNode.name);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'upstream',
+				workflow,
+				lastSelectedNode.name,
+			);
 			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
@@ -1537,7 +1536,11 @@ export default defineComponent({
 			// Get all downstream nodes and select them
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.workflowHelpers.getConnectedNodes('downstream', workflow, lastSelectedNode.name);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'downstream',
+				workflow,
+				lastSelectedNode.name,
+			);
 			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
@@ -1551,7 +1554,11 @@ export default defineComponent({
 
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.workflowHelpers.getConnectedNodes('downstream', workflow, sourceNodeName);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'downstream',
+				workflow,
+				sourceNodeName,
+			);
 			for (const nodeName of checkNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
@@ -1688,8 +1695,10 @@ export default defineComponent({
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.workflowHelpers.getNodeTypes())
-							.nodeGraph,
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							this.workflowHelpers.getNodeTypes(),
+						).nodeGraph,
 					),
 				};
 
@@ -1812,9 +1821,9 @@ export default defineComponent({
 					workflowData.nodes.forEach((node: INode) => {
 						//generate new webhookId if workflow already contains a node with the same webhookId
 						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-							const isDuplicate = Object.values(this.workflowHelpers.getCurrentWorkflow().nodes).some(
-								(n) => n.webhookId === node.webhookId,
-							);
+							const isDuplicate = Object.values(
+								this.workflowHelpers.getCurrentWorkflow().nodes,
+							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
 							}
@@ -1836,13 +1845,17 @@ export default defineComponent({
 				const currInstanceId = this.rootStore.instanceId;
 
 				const nodeGraph = JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.workflowHelpers.getNodeTypes(), {
-						nodeIdMap,
-						sourceInstanceId:
-							workflowData.meta && workflowData.meta.instanceId !== currInstanceId
-								? workflowData.meta.instanceId
-								: '',
-					}).nodeGraph,
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						this.workflowHelpers.getNodeTypes(),
+						{
+							nodeIdMap,
+							sourceInstanceId:
+								workflowData.meta && workflowData.meta.instanceId !== currInstanceId
+									? workflowData.meta.instanceId
+									: '',
+						},
+					).nodeGraph,
 				);
 				if (source === 'paste') {
 					this.$telemetry.track('User pasted nodes', {

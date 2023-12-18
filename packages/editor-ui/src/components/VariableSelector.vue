@@ -65,7 +65,7 @@ export default defineComponent({
 		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
-			workflowHelpers
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -81,7 +81,10 @@ export default defineComponent({
 			if (!activeNode) {
 				return null;
 			}
-			return this.workflowHelpers.getParentMainInputNode(this.workflowHelpers.getCurrentWorkflow(), activeNode);
+			return this.workflowHelpers.getParentMainInputNode(
+				this.workflowHelpers.getCurrentWorkflow(),
+				activeNode,
+			);
 		},
 		extendAll(): boolean {
 			if (this.variableFilter) {

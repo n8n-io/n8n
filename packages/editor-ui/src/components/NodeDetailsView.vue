@@ -137,13 +137,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { createEventBus } from 'n8n-design-system/utils';
-import type {
-	INodeConnections,
-	INodeTypeDescription,
-	IRunData,
-	IRunExecutionData,
-	Workflow,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -290,7 +284,7 @@ export default defineComponent({
 			if (!this.activeNode) return false;
 			const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 				this.activeNode.name,
-			) as INodeConnections;
+			);
 
 			// Check if there's at-least one output connection
 			return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;

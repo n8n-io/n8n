@@ -167,8 +167,8 @@ const WorkflowsView = defineComponent({
 		const genericHelpers = useGenericHelpers();
 
 		return {
-			genericHelpers
-		}
+			genericHelpers,
+		};
 	},
 	computed: {
 		...mapStores(

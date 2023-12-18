@@ -108,7 +108,7 @@ export default defineComponent({
 
 		return {
 			externalHooks,
-			genericHelpers
+			genericHelpers,
 		};
 	},
 	components: {

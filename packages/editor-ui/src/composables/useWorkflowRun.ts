@@ -1,6 +1,4 @@
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
 
 import type {
 	IDataObject,
@@ -29,7 +27,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
-import { Router, useRouter } from 'vue-router';
+import type { Router } from 'vue-router';
 
 export function useWorkflowRun() {
 	const nodeHelpers = useNodeHelpers();
@@ -96,7 +94,10 @@ export function useWorkflowRun() {
 			const issuesExist = workflowsStore.nodesIssuesExist;
 			if (issuesExist) {
 				// If issues exist get all of the issues of all nodes
-				const workflowIssues = workflowHelpers.checkReadyForExecution(workflow, options.destinationNode);
+				const workflowIssues = workflowHelpers.checkReadyForExecution(
+					workflow,
+					options.destinationNode,
+				);
 				if (workflowIssues !== null) {
 					const errorMessages = [];
 					let nodeIssues: string[];
@@ -146,8 +147,7 @@ export function useWorkflowRun() {
 						useTelemetry().track('Workflow execution preflight failed', {
 							workflow_id: workflow.id,
 							workflow_name: workflow.name,
-							execution_type:
-								options.destinationNode || options.triggerNode ? 'node' : 'workflow',
+							execution_type: options.destinationNode || options.triggerNode ? 'node' : 'workflow',
 							node_graph_string: JSON.stringify(
 								TelemetryHelpers.generateNodesGraph(
 									workflowData as IWorkflowBase,
@@ -220,9 +220,7 @@ export function useWorkflowRun() {
 				executedNode = options.destinationNode;
 				startNodes.push(options.destinationNode);
 			} else if ('triggerNode' in options && 'nodeData' in options) {
-				startNodes.push(
-					...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
-				);
+				startNodes.push(...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1));
 				newRunData = {
 					[options.triggerNode]: [options.nodeData],
 				};
@@ -343,6 +341,6 @@ export function useWorkflowRun() {
 	}
 	return {
 		runWorkflowApi,
-		runWorkflow
+		runWorkflow,
 	};
 }

@@ -148,7 +148,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import type { PropType } from 'vue';
+import type { PropType, Component } from 'vue';
 import { defineAsyncComponent, defineComponent } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -172,7 +172,6 @@ import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { Component } from 'vue';
 import { useRouter } from 'vue-router';
 
 const FixedCollectionParameter: Component = defineAsyncComponent(

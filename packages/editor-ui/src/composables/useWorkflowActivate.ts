@@ -1,4 +1,5 @@
-import { SetupContext, computed } from 'vue';
+import type { SetupContext } from 'vue';
+import { computed, ref } from 'vue';
 import { useStorage } from '@/composables/useStorage';
 
 import { useToast } from '@/composables/useToast';
@@ -12,11 +13,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { ref } from 'vue';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
-import { Router } from 'vue-router';
+import type { Router } from 'vue-router';
 
 export function useWorkflowActivate(ctx: SetupContext, router: Router) {
 	const updatingWorkflowActivation = ref(false);
@@ -112,7 +112,6 @@ export function useWorkflowActivate(ctx: SetupContext, router: Router) {
 			active: newActiveState,
 		});
 
-
 		ctx.emit('workflowActiveChanged', { id: currWorkflowId, active: newActiveState });
 		updatingWorkflowActivation.value = false;
 
@@ -127,7 +126,6 @@ export function useWorkflowActivate(ctx: SetupContext, router: Router) {
 	return {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
-		updatingWorkflowActivation: computed(() => updatingWorkflowActivation.value)
-	}
+		updatingWorkflowActivation: computed(() => updatingWorkflowActivation.value),
+	};
 }
-

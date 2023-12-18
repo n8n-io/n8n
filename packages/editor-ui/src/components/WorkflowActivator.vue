@@ -75,7 +75,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
 		updatingWorkflowActivation() {
-			this.workflowActivate.updatingWorkflowActivation.value
+			this.workflowActivate.updatingWorkflowActivation.value;
 		},
 		nodesIssuesExist(): boolean {
 			return this.workflowsStore.nodesIssuesExist;

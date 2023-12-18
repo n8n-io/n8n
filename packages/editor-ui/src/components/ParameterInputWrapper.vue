@@ -149,7 +149,7 @@ export default defineComponent({
 
 		return {
 			workflowHelpers,
-		}
+		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),

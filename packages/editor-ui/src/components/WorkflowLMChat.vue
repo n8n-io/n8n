@@ -428,11 +428,14 @@ export default defineComponent({
 				source: [null],
 			};
 
-			const response = await this.workflowRun.runWorkflow({
-				triggerNode: triggerNode.name,
-				nodeData,
-				source: 'RunData.ManualChatMessage',
-			}, this.$router);
+			const response = await this.workflowRun.runWorkflow(
+				{
+					triggerNode: triggerNode.name,
+					nodeData,
+					source: 'RunData.ManualChatMessage',
+				},
+				this.$router,
+			);
 
 			if (!response) {
 				this.showError(

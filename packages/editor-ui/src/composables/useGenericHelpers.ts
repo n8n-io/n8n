@@ -1,6 +1,5 @@
 import dateformat from 'dateformat';
 import { useI18n } from './useI18n';
-import type { Router } from 'vue-router';
 
 export function useGenericHelpers() {
 	function displayTimer(msPassed: number, showMs = false): string {

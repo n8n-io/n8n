@@ -210,7 +210,11 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = useWorkflowHelpers(this.$router).resolveExpression('=' + resolvable, undefined, opts);
+					result.resolved = useWorkflowHelpers(this.$router).resolveExpression(
+						'=' + resolvable,
+						undefined,
+						opts,
+					);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

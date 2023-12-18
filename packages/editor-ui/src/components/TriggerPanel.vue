@@ -141,7 +141,7 @@ export default defineComponent({
 		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
-			workflowHelpers
+			workflowHelpers,
 		};
 	},
 	data: () => {
@@ -189,7 +189,10 @@ export default defineComponent({
 				return undefined;
 			}
 
-			return this.workflowHelpers.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
+			return this.workflowHelpers.getWebhookExpressionValue(
+				this.nodeType.webhooks[0],
+				'httpMethod',
+			);
 		},
 		webhookTestUrl(): string | undefined {
 			if (!this.node || !this.nodeType?.webhooks?.length) {

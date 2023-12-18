@@ -18,8 +18,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
-import { cloneDeep } from 'vue-json-pretty/types/utils';
-import { deepCopy } from 'n8n-workflow';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -764,7 +762,7 @@ export const routes = [
 ] as Array<RouteRecordRaw & RouteConfig>;
 
 function withReadonlyMeta(route: RouteRecordRaw & RouteConfig) {
-	if(!route.meta) route.meta = {};
+	if (!route.meta) route.meta = {};
 	const nonReadonlyViews: VIEWS[] = [
 		VIEWS.WORKFLOW,
 		VIEWS.NEW_WORKFLOW,

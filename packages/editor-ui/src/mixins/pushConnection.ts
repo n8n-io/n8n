@@ -329,7 +329,8 @@ export const pushConnection = defineComponent({
 						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 							key: 'open-settings',
 							action: async () => {
-								if (this.workflowsStore.isNewWorkflow) await this.workflowHelpers.saveAsNewWorkflow();
+								if (this.workflowsStore.isNewWorkflow)
+									await this.workflowHelpers.saveAsNewWorkflow();
 								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							},
 						});

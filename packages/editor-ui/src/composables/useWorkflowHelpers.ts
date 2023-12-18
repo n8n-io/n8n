@@ -7,8 +7,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+import { computed } from 'vue';
 
 import type {
 	IConnections,
@@ -66,10 +65,8 @@ import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { computed } from 'vue';
 import { useI18n } from './useI18n';
 import type { Router } from 'vue-router';
-import { useGenericHelpers } from './useGenericHelpers';
 import { useTelemetry } from './useTelemetry';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -480,8 +477,10 @@ export function executeData(
 }
 
 export function useWorkflowHelpers(router: Router) {
-	if(!router) {
-		throw new Error('Router is required for useWorkflowHelpers composable to work as `useRouter` is only available in inside script setup');
+	if (!router) {
+		throw new Error(
+			'Router is required for useWorkflowHelpers composable to work as `useRouter` is only available in inside script setup',
+		);
 	}
 
 	const usersStore = useUsersStore();
@@ -490,7 +489,9 @@ export function useWorkflowHelpers(router: Router) {
 	const uiStore = useUIStore();
 	const i18n = useI18n();
 
-	const workflowPermissions = computed(() => getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow))
+	const workflowPermissions = computed(() =>
+		getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow),
+	);
 
 	// Returns data about nodeTypes which have a "maxNodes" limit set.
 	// For each such type does it return how high the limit is, how many
@@ -718,12 +719,7 @@ export function useWorkflowHelpers(router: Router) {
 					}
 
 					if (
-						!useNodeHelpers().displayParameter(
-							node.parameters,
-							credentialTypeDescription,
-							'',
-							node,
-						)
+						!useNodeHelpers().displayParameter(node.parameters, credentialTypeDescription, '', node)
 					) {
 						// Credential should not be displayed so do also not save
 						continue;
@@ -775,7 +771,11 @@ export function useWorkflowHelpers(router: Router) {
 		}
 	}
 
-	function getWebhookUrl(webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
+	function getWebhookUrl(
+		webhookData: IWebhookDescription,
+		node: INode,
+		showUrlFor?: string,
+	): string {
 		const { isForm, restartWebhook } = webhookData;
 		const rootStore = useRootStore();
 		if (restartWebhook === true) {
@@ -874,7 +874,7 @@ export function useWorkflowHelpers(router: Router) {
 		if (readOnlyEnv) {
 			return false;
 		}
-		const currentWorkflow = id || router.currentRoute.value.params.name as string;
+		const currentWorkflow = id || (router.currentRoute.value.params.name as string);
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 			return saveAsNewWorkflow({ name, tags }, redirect);
@@ -937,7 +937,7 @@ export function useWorkflowHelpers(router: Router) {
 					name: VIEWS.WORKFLOW,
 					params: { name: currentWorkflow },
 				}).href;
-				const { confirm,  } = useMessage();
+				const { confirm } = useMessage();
 				const overwrite = await confirm(
 					i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
 						interpolate: {
@@ -994,8 +994,7 @@ export function useWorkflowHelpers(router: Router) {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataUpdate =
-				data || (await getWorkflowDataToSave());
+			const workflowDataRequest: IWorkflowDataUpdate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {
@@ -1207,6 +1206,6 @@ export function useWorkflowHelpers(router: Router) {
 		saveAsNewWorkflow,
 		updateNodePositions,
 		dataHasChanged,
-		removeForeignCredentialsFromWorkflow
-	}
+		removeForeignCredentialsFromWorkflow,
+	};
 }
