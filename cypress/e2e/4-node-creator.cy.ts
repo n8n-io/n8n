@@ -2,6 +2,7 @@ import { NodeCreator } from '../pages/features/node-creator';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
 import { getVisibleSelect } from '../utils';
+import { IF_NODE_NAME } from '../constants';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
@@ -360,7 +361,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
@@ -368,11 +369,11 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('IF');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');

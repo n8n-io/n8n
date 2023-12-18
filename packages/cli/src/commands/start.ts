@@ -101,14 +101,7 @@ export class Start extends BaseCommand {
 			// Stop with trying to activate workflows that could not be activated
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
-			await this.externalHooks.run('n8n.stop', []);
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				console.log('process exited after 30s');
-				await this.exitSuccessFully();
-			}, 30000);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			// Shut down License manager to unclaim any floating entitlements
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete

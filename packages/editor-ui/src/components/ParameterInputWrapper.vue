@@ -1,5 +1,5 @@
 <template>
-	<div data-test-id="parameter-input">
+	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
@@ -18,6 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
+			:isSingleLine="isSingleLine"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -26,20 +27,20 @@
 			@textInput="onTextInput"
 			@update="onValueChanged"
 		/>
-		<input-hint
-			v-if="expressionOutput"
-			:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
-			data-test-id="parameter-expression-preview"
-			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-			:hint="expressionOutput"
-			:singleLine="true"
-		/>
-		<input-hint
-			v-else-if="parameterHint"
-			:class="$style.hint"
-			:renderHTML="true"
-			:hint="parameterHint"
-		/>
+		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
+			<div>
+				<input-hint
+					v-if="expressionOutput"
+					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
+					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
+					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+					:hint="expressionOutput"
+					:singleLine="true"
+				/>
+				<input-hint v-else-if="parameterHint" :renderHTML="true" :hint="parameterHint" />
+			</div>
+			<slot v-if="$slots.options" name="options" />
+		</div>
 	</div>
 </template>
 
@@ -84,6 +85,9 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
+		isSingleLine: {
+			type: Boolean,
+		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
 		},
@@ -104,6 +108,10 @@ export default defineComponent({
 		},
 		hint: {
 			type: String,
+			required: false,
+		},
+		hideHint: {
+			type: Boolean,
 			required: false,
 		},
 		inputSize: {
@@ -252,8 +260,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.hint {
-	margin-top: var(--spacing-4xs);
+.parameterInput {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 }
 
 .hovering {

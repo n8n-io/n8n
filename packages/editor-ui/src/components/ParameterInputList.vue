@@ -48,18 +48,16 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div
-					class="delete-option clickable"
-					:title="$locale.baseText('parameterInputList.delete')"
+				<n8n-icon-button
 					v-if="hideDelete !== true && !isReadOnly"
-				>
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						:title="$locale.baseText('parameterInputList.parameterOptions')"
-						@click="deleteOption(parameter.name)"
-					/>
-				</div>
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="delete-option"
+					:title="$locale.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></n8n-icon-button>
 				<n8n-input-label
 					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
@@ -98,22 +96,28 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
+			<FilterConditions
+				v-else-if="parameter.type === 'filter'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				@valueChanged="valueChanged"
+			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
-				<div
-					class="delete-option clickable"
-					:title="$locale.baseText('parameterInputList.delete')"
+				<n8n-icon-button
 					v-if="hideDelete !== true && !isReadOnly"
-				>
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						:title="$locale.baseText('parameterInputList.deleteParameter')"
-						@click="deleteOption(parameter.name)"
-					/>
-				</div>
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="delete-option"
+					:title="$locale.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></n8n-icon-button>
 
 				<parameter-input-full
 					:parameter="parameter"
@@ -153,6 +157,7 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+import Conditions from '@/components/FilterConditions/FilterConditions.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -181,6 +186,7 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
+		FilterConditions: Conditions,
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
@@ -519,15 +525,11 @@ export default defineComponent({
 <style lang="scss">
 .parameter-input-list-wrapper {
 	.delete-option {
-		display: none;
 		position: absolute;
-		z-index: 999;
-		color: #f56c6c;
-		font-size: var(--font-size-2xs);
-
-		&:hover {
-			color: #ff0000;
-		}
+		opacity: 0;
+		top: 0;
+		left: calc(-1 * var(--spacing-2xs));
+		transition: opacity 100ms ease-in;
 	}
 
 	.indent > div {
@@ -538,11 +540,6 @@ export default defineComponent({
 		position: relative;
 		margin: var(--spacing-xs) 0;
 
-		.delete-option {
-			top: 0;
-			left: 0;
-		}
-
 		.parameter-info {
 			display: none;
 		}
@@ -551,15 +548,10 @@ export default defineComponent({
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing-xs) 0;
-
-		> .delete-option {
-			top: var(--spacing-5xs);
-			left: 0;
-		}
 	}
 	.parameter-item:hover > .delete-option,
 	.multi-parameter:hover > .delete-option {
-		display: block;
+		opacity: 1;
 	}
 
 	.parameter-notice {

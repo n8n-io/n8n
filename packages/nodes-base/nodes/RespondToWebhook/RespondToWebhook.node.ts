@@ -47,6 +47,10 @@ export class RespondToWebhook implements INodeType {
 						value: 'noData',
 					},
 					{
+						name: 'Redirect',
+						value: 'redirect',
+					},
+					{
 						name: 'Text',
 						value: 'text',
 					},
@@ -65,6 +69,21 @@ export class RespondToWebhook implements INodeType {
 					},
 				},
 				default: '',
+			},
+			{
+				displayName: 'Redirect URL',
+				name: 'redirectURL',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						respondWith: ['redirect'],
+					},
+				},
+				default: '',
+				placeholder: 'e.g. http://www.n8n.io',
+				description: 'The URL to redirect to',
+				validateType: 'url',
 			},
 			{
 				displayName: 'Response Body',
@@ -202,6 +221,7 @@ export class RespondToWebhook implements INodeType {
 			}
 		}
 
+		let statusCode = (options.responseCode as number) || 200;
 		let responseBody: IN8nHttpResponse | Readable;
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
@@ -250,6 +270,9 @@ export class RespondToWebhook implements INodeType {
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
+		} else if (respondWith == 'redirect') {
+			headers.location = this.getNodeParameter('redirectURL', 0) as string;
+			statusCode = (options.responseCode as number) ?? 307;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -260,7 +283,7 @@ export class RespondToWebhook implements INodeType {
 		const response: IN8nHttpFullResponse = {
 			body: responseBody,
 			headers,
-			statusCode: (options.responseCode as number) || 200,
+			statusCode,
 		};
 
 		this.sendResponse(response);

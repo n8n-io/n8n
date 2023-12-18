@@ -1069,6 +1069,9 @@ export interface RootState {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	pushConnectionActive: boolean;
@@ -1097,6 +1100,9 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	baseUrl: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -1215,7 +1221,7 @@ export interface NDVState {
 		isDragging: boolean;
 		type: string;
 		data: string;
-		canDrop: boolean;
+		activeTargetId: string | null;
 		stickyPosition: null | XYPosition;
 	};
 	isMappingOnboarded: boolean;
@@ -1774,7 +1780,8 @@ export type CloudUpdateLinkSourceType =
 	| 'settings-users'
 	| 'variables'
 	| 'community-nodes'
-	| 'workflow-history';
+	| 'workflow-history'
+	| 'worker-view';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1792,7 +1799,8 @@ export type UTMCampaign =
 	| 'upgrade-variables'
 	| 'upgrade-community-nodes'
 	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions';
+	| 'upgrade-advanced-permissions'
+	| 'upgrade-worker-view';
 
 export type N8nBanners = {
 	[key in BannerName]: {

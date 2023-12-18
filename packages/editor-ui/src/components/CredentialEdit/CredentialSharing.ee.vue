@@ -41,7 +41,15 @@
 					})
 				}}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
+			<n8n-info-tip
+				v-if="
+					credentialPermissions.read &&
+					credentialPermissions.share &&
+					!credentialPermissions.isOwner
+				"
+				class="mb-s"
+				:bold="false"
+			>
 				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
 					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
 						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}

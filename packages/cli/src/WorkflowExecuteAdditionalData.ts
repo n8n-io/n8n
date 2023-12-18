@@ -52,7 +52,7 @@ import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { WorkflowsService } from './workflows/workflows.services';
+import { WorkflowService } from './workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { EventsService } from '@/services/events.service';
@@ -418,7 +418,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowsService.saveStaticDataById(
+							await Container.get(WorkflowService).saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -564,7 +564,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowsService.saveStaticDataById(
+							await Container.get(WorkflowService).saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -714,7 +714,7 @@ export async function getWorkflowData(
 	if (workflowInfo.id !== undefined) {
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
+		workflowData = await Container.get(WorkflowService).get({ id: workflowInfo.id }, { relations });
 
 		if (workflowData === undefined || workflowData === null) {
 			throw new ApplicationError('Workflow does not exist.', {
@@ -963,9 +963,11 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
+	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
+
 	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 
 	const variables = await WorkflowHelpers.getVariables();
 
@@ -974,6 +976,7 @@ export async function getBase(
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		instanceBaseUrl: urlBaseWebhook,
+		formWaitingBaseUrl,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,
 		webhookTestBaseUrl,
