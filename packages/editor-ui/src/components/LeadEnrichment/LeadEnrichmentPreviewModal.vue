@@ -8,7 +8,6 @@ import { LEAD_ENRICHMENT_FLAG, LEAD_ENRICHMENT_PREVIEW_MODAL_KEY, VIEWS } from '
 import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { dataPinningEventBus } from '@/event-bus';
 
 const props = defineProps<{
 	modalName: string;

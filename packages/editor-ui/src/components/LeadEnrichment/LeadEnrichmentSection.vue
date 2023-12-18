@@ -38,11 +38,26 @@ const sectionTemplates = computed(() => {
 			id: index,
 			name: workflow.title,
 			workflows: [{ id: index }],
-			nodes: workflow.nodes as ITemplatesNode[],
+			nodes: removeDuplicateNodes(workflow.nodes as ITemplatesNode[]),
 		});
 	});
 	return carouselCollections;
 });
+
+// For lead enrichment we only care about app nodes so trigger nodes are removed
+function removeDuplicateNodes(objects: ITemplatesNode[]): ITemplatesNode[] {
+	const uniqueNames = new Set<string>();
+
+	return objects.filter((node) => {
+		const plainName = node.displayName.replace(' Trigger', '');
+		if (uniqueNames.has(plainName)) {
+			return false;
+		}
+		uniqueNames.add(plainName);
+		node.displayName = plainName;
+		return true;
+	});
+}
 
 function onOpenCollection({ id }: { event: Event; id: number }) {
 	uiStore.openModalWithData({
