@@ -79,7 +79,7 @@ export class Worker extends BaseCommand {
 		await Worker.jobQueue.pause(true);
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
 
@@ -483,7 +483,7 @@ export class Worker extends BaseCommand {
 		});
 
 		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks.run('worker.ready');
+		await this.externalHooks?.run('worker.ready');
 		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 
