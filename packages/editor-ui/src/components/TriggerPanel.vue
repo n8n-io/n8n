@@ -137,8 +137,7 @@ export default defineComponent({
 		NodeIcon,
 	},
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			workflowHelpers,

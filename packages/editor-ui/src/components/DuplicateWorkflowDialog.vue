@@ -70,8 +70,7 @@ export default defineComponent({
 	components: { TagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			...useToast(),

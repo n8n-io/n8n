@@ -399,12 +399,11 @@ export default defineComponent({
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
-		const router = useRouter();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
 		const genericHelpers = useGenericHelpers();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 		const workflowRun = useWorkflowRun();
 
 		return {
@@ -707,7 +706,7 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		isReadOnlyRoute() {
-			return this.$route?.meta.readonly === true;
+			return this.$route?.meta?.readonly === true;
 		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();

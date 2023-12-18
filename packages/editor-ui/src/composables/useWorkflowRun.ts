@@ -73,9 +73,8 @@ export function useWorkflowRun() {
 			| { destinationNode: string; source?: string }
 			| { triggerNode: string; nodeData: ITaskData; source?: string }
 			| { source?: string },
-		router: Router,
 	): Promise<IExecutionPushResponse | undefined> {
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 		const workflow = workflowHelpers.getCurrentWorkflow();
 		const { clearAllStickyNotifications, showMessage } = useToast();
 		const { titleSet } = useTitleChange();

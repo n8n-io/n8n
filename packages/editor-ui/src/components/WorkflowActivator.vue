@@ -64,8 +64,7 @@ export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	setup(props, ctx) {
-		const router = useRouter();
-		const workflowActivate = useWorkflowActivate(ctx, router);
+		const workflowActivate = useWorkflowActivate(ctx);
 
 		return {
 			...useToast(),

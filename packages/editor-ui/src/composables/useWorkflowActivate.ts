@@ -18,9 +18,9 @@ import { useTelemetry } from './useTelemetry';
 import { useI18n } from './useI18n';
 import type { Router } from 'vue-router';
 
-export function useWorkflowActivate(ctx: SetupContext, router: Router) {
+export function useWorkflowActivate(ctx: SetupContext) {
 	const updatingWorkflowActivation = ref(false);
-	const workflowHelpers = useWorkflowHelpers(router);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();

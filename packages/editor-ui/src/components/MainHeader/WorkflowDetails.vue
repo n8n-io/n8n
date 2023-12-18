@@ -216,8 +216,7 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			...useTitleChange(),

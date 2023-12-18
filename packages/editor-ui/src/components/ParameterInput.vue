@@ -513,8 +513,7 @@ export default defineComponent({
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			externalHooks,

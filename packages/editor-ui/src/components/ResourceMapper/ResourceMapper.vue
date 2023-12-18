@@ -31,10 +31,9 @@ type Props = {
 	teleported: boolean;
 };
 
-const router = useRouter();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const { resolveRequiredParameters } = useWorkflowHelpers(router);
+const { resolveRequiredParameters } = useWorkflowHelpers();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,

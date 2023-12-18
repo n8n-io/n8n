@@ -68,7 +68,6 @@ import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
@@ -78,8 +77,7 @@ export default defineComponent({
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 		return {
 			workflowHelpers,
 			...useToast(),

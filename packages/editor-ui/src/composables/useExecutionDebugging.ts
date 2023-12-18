@@ -1,5 +1,4 @@
-import { h, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { h, computed, getCurrentInstance } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -15,7 +14,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 
 export const useExecutionDebugging = () => {
-	const router = useRouter();
+	const instance = getCurrentInstance();
 	const i18n = useI18n();
 	const message = useMessage();
 	const toast = useToast();
@@ -80,7 +79,7 @@ export const useExecutionDebugging = () => {
 					}
 				});
 			} else {
-				await router.push({
+				await instance?.proxy?.$router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: workflow.id, executionId },
 				});

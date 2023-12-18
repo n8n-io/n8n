@@ -7,7 +7,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 
 import type {
 	IConnections,
@@ -66,7 +66,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from './useI18n';
-import type { Router } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -476,18 +475,13 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers(router: Router) {
-	if (!router) {
-		throw new Error(
-			'Router is required for useWorkflowHelpers composable to work as `useRouter` is only available in inside script setup',
-		);
-	}
-
+export function useWorkflowHelpers() {
 	const usersStore = useUsersStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
+	const instance = getCurrentInstance();
 
 	const workflowPermissions = computed(() =>
 		getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow),
@@ -868,6 +862,10 @@ export function useWorkflowHelpers(router: Router) {
 		redirect = true,
 		forceSave = false,
 	): Promise<boolean> {
+		const router = instance?.proxy?.$router;
+		if (!router) {
+			throw new Error('Router not found');
+		}
 		const canvasStore = useCanvasStore();
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 
@@ -992,6 +990,7 @@ export function useWorkflowHelpers(router: Router) {
 		redirect = true,
 	): Promise<boolean> {
 		try {
+			const router = instance?.proxy?.$router;
 			uiStore.addActiveAction('workflowSaving');
 
 			const workflowDataRequest: IWorkflowDataUpdate = data || (await getWorkflowDataToSave());

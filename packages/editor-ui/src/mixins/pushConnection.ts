@@ -44,8 +44,7 @@ import { useRouter } from 'vue-router';
 
 export const pushConnection = defineComponent({
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 		const nodeHelpers = useNodeHelpers();
 
 		return {

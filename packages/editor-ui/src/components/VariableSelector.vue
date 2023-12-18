@@ -61,8 +61,7 @@ export default defineComponent({
 	},
 	props: ['path', 'redactValues'],
 	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers();
 
 		return {
 			workflowHelpers,

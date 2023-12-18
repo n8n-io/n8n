@@ -195,9 +195,8 @@ export default defineComponent({
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
-		const workflowActivate = useWorkflowActivate(ctx, router);
+		const workflowHelpers = useWorkflowHelpers();
+		const workflowActivate = useWorkflowActivate(ctx);
 
 		return {
 			externalHooks,
@@ -278,7 +277,7 @@ export default defineComponent({
 			);
 		},
 		workflow(): Workflow {
-			return this.workflowHelpers.getCurrentWorkflow();
+			return useWorkflowHelpers().getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
