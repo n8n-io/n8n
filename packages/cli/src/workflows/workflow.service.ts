@@ -386,7 +386,7 @@ export class WorkflowService {
 		const newState = updatedWorkflow.active;
 
 		if (this.multiMainSetup.isEnabled && oldState !== newState) {
-			await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
+			await this.multiMainSetup.broadcastWorkflowActiveStateChanged({
 				workflowId,
 				oldState,
 				newState,
