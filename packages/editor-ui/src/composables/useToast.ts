@@ -3,8 +3,10 @@ import type { NotificationInstance, NotificationOptions, MessageBoxState } from 
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
+import { VIEWS } from '@/constants';
 
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
@@ -16,6 +18,7 @@ const stickyNotificationQueue: NotificationInstance[] = [];
 export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
@@ -155,11 +158,30 @@ export function useToast() {
 		stickyNotificationQueue.length = 0;
 	}
 
+	// Pick up and display notifications for the given list of views
+	function showNotificationForViews(views: VIEWS[]) {
+		const notifications: NotificationOptions[] = [];
+		views.forEach((view) => {
+			notifications.push(...uiStore.getNotificationsForView(view));
+		});
+		if (notifications.length) {
+			notifications.forEach(async (notification) => {
+				// Notifications show on top of each other without this timeout
+				setTimeout(() => {
+					showMessage(notification);
+				}, 5);
+			});
+			// Clear the queue once all notifications are shown
+			uiStore.setNotificationsForView(VIEWS.WORKFLOW, []);
+		}
+	}
+
 	return {
 		showMessage,
 		showToast,
 		showError,
 		showAlert,
 		clearAllStickyNotifications,
+		showNotificationForViews,
 	};
 }

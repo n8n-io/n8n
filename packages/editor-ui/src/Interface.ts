@@ -6,6 +6,7 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	VIEWS,
 } from './constants';
 import type { IMenuItem } from 'n8n-design-system';
 import {
@@ -1259,7 +1260,9 @@ export interface UIState {
 	bannerStack: BannerName[];
 	theme: ThemeOption;
 	leadEnrichmentTemplates?: LeadEnrichmentTemplates;
-	nodeViewNotifications: NotificationOptions[];
+	pendingNotificationsForViews: {
+		[key in VIEWS]?: NotificationOptions[];
+	};
 }
 
 export type IFakeDoor = {

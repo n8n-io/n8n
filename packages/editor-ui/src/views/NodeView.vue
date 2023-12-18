@@ -3307,20 +3307,7 @@ export default defineComponent({
 			window.addEventListener('unload', this.onUnload);
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
-			this.showNotificationsFromTheQueue();
-		},
-		showNotificationsFromTheQueue() {
-			const notifications = this.uiStore.nodeViewNotifications;
-			if (notifications.length) {
-				notifications.forEach(async (notification) => {
-					// Notifications show on top of each other without this timeout
-					setTimeout(() => {
-						this.showMessage(notification);
-					}, 5);
-				});
-				// Clear the queue once all notifications are shown
-				this.uiStore.setNodeViewNotifications([]);
-			}
+			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 		},
 		getOutputEndpointUUID(
 			nodeName: string,

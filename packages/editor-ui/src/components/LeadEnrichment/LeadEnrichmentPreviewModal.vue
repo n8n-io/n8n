@@ -40,7 +40,7 @@ function showConfirmationMessage(event: PointerEvent) {
 }
 
 function openCanvas() {
-	uiStore.setNodeViewNotifications([
+	uiStore.setNotificationsForView(VIEWS.WORKFLOW, [
 		{
 			title: i18n.baseText('leadEnrichment.notification.comingSoon.title'),
 			message: i18n.baseText('leadEnrichment.notification.comingSoon.message'),

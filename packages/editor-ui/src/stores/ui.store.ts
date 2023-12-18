@@ -224,10 +224,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannersHeight: 0,
 		bannerStack: [],
 		leadEnrichmentTemplates: undefined,
-		// Notifications that should show when node view is initialized
-		// This enables us to set a queue of notifications that should show
-		// once users land on the node view
-		nodeViewNotifications: [],
+		// Notifications that should show when a view is initialized
+		// This enables us to set a queue of notifications form outside (another component)
+		// and then show them when the view is initialized
+		pendingNotificationsForViews: {},
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
@@ -659,8 +659,14 @@ export const useUIStore = defineStore(STORES.UI, {
 		deleteLeadEnrichmentTemplates() {
 			this.leadEnrichmentTemplates = undefined;
 		},
-		setNodeViewNotifications(notifications: Notification[]) {
-			this.nodeViewNotifications = notifications;
+		getNotificationsForView(view: VIEWS): Notification[] {
+			return this.pendingNotificationsForViews[view] || [];
+		},
+		setNotificationsForView(view: VIEWS, notifications: Notification[]) {
+			this.pendingNotificationsForViews[view] = notifications;
+		},
+		deleteNotificationsForView(view: VIEWS) {
+			delete this.pendingNotificationsForViews[view];
 		},
 	},
 });
