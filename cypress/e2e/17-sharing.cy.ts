@@ -98,6 +98,26 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 	});
 
+	it('should open W1, add node using C2 as U2', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+
+		cy.visit(workflowsPage.url);
+		workflowsPage.getters.workflowCards().should('have.length', 2);
+		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
+		ndv.actions.close();
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		workflowPage.actions.openNode('Notion');
+		ndv.getters
+			.credentialInput()
+			.find('input')
+			.should('have.value', 'Credential C1')
+			.should('be.enabled');
+		ndv.actions.close();
+	});
+
 	it('should not have access to W2, as U3', () => {
 		cy.signin(INSTANCE_MEMBERS[1]);
 
@@ -131,7 +151,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 	});
 
-	it.only('should work for admin role on credentials created by others (also can share it with themselves)', () => {
+	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 
 		cy.visit(credentialsPage.url);
@@ -150,6 +170,9 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 		cy.get('input').should('not.have.length');
 		credentialsModal.actions.changeTab('Sharing');
+		cy.contains(
+			'You can view this credential because you have permission to read and share',
+		).should('be.visible');
 
 		credentialsModal.getters.usersSelect().click();
 		cy.getByTestId('user-email')

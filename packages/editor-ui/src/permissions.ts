@@ -101,6 +101,10 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 			test: (permissions) =>
 				hasPermission(['rbac'], { rbac: { scope: 'credential:delete' } }) || !!permissions.isOwner,
 		},
+		{
+			name: 'use',
+			test: (permissions) => !!permissions.isOwner || !!permissions.isSharee,
+		},
 	];
 
 	return parsePermissionsTable(user, table);

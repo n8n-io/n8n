@@ -832,9 +832,6 @@ importers:
       file-type:
         specifier: 16.5.4
         version: 16.5.4
-      flatted:
-        specifier: 3.2.7
-        version: 3.2.7
       form-data:
         specifier: 4.0.0
         version: 4.0.0

@@ -420,7 +420,7 @@ export function useNodeHelpers() {
 					.getCredentialsByType(credentialTypeDescription.name)
 					.filter((credential: ICredentialsResponse) => {
 						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.read;
+						return permissions.use;
 					});
 
 				if (userCredentials === null) {
