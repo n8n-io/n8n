@@ -4,7 +4,11 @@ import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { LEAD_ENRICHMENT_FLAG, SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY, VIEWS } from '@/constants';
+import {
+	SUGGESTED_TEMPLATES_FLAG,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
 import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -38,7 +42,7 @@ function showConfirmationMessage(event: PointerEvent) {
 				withPostHog: true,
 			},
 		);
-		localStorage.setItem(LEAD_ENRICHMENT_FLAG, 'false');
+		localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
 		uiStore.deleteLeadEnrichmentTemplates();
 	}
 }
@@ -76,7 +80,7 @@ function openCanvas() {
 				:workflow="$props.data.workflow.preview as IWorkflowDb"
 				:canOpenNDV="false"
 				:hideNodeIssues="true"
-				@close="uiStore.closeModal(LEAD_ENRICHMENT_PREVIEW_MODAL_KEY)"
+				@close="uiStore.closeModal(SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY)"
 			/>
 		</template>
 		<template #footer>

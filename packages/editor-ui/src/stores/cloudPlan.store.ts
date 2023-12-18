@@ -9,10 +9,10 @@ import {
 	getAdminPanelLoginCode,
 	getCurrentPlan,
 	getCurrentUsage,
-	getLeadEnrichmentTemplates,
+	fetchSuggestedTemplates,
 } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, LEAD_ENRICHMENT_FLAG, STORES } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, SUGGESTED_TEMPLATES_FLAG, STORES } from '@/constants';
 import { hasPermission } from '@/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
@@ -168,11 +168,11 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
 	};
 
-	const fetchLeadEnrichmentTemplates = async () => {
+	const loadSuggestedTemplates = async () => {
 		try {
-			const leadEnrichmentTemplates = await getLeadEnrichmentTemplates(rootStore.getRestApiContext);
-			if (leadEnrichmentTemplates.sections && leadEnrichmentTemplates.sections.length > 0) {
-				useUIStore().setLeadEnrichmentTemplates(leadEnrichmentTemplates);
+			const additionalTemplates = await fetchSuggestedTemplates(rootStore.getRestApiContext);
+			if (additionalTemplates.sections && additionalTemplates.sections.length > 0) {
+				useUIStore().setLeadEnrichmentTemplates(additionalTemplates);
 			}
 		} catch (error) {
 			console.warn('Error checking for lead enrichment templates:', error);
@@ -196,10 +196,10 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			console.warn('Error fetching user cloud account:', error);
 		}
 
-		const localStorageFlag = localStorage.getItem(LEAD_ENRICHMENT_FLAG);
+		const localStorageFlag = localStorage.getItem(SUGGESTED_TEMPLATES_FLAG);
 		// Don't show if users already opted in
 		if (localStorageFlag !== 'false') {
-			await fetchLeadEnrichmentTemplates();
+			await loadSuggestedTemplates();
 		}
 
 		state.initialized = true;

@@ -21,7 +21,7 @@ export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<
 	return get(context.baseUrl, '/cloud/proxy/login/code');
 }
 
-export async function getLeadEnrichmentTemplates(
+export async function fetchSuggestedTemplates(
 	context: IRestApiContext,
 ): Promise<LeadEnrichmentTemplates> {
 	return get(context.baseUrl, '/cloud/proxy/templates');
