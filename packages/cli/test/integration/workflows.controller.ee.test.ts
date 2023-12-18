@@ -20,8 +20,7 @@ import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from 
 import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
 import type { Role } from '@/databases/entities/Role';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { Push } from '@/push';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -33,6 +32,7 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+mockInstance(Push);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
@@ -57,9 +57,6 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initNodeTypes();
-
-	Container.set(WorkflowService, new WorkflowService());
-	Container.set(EnterpriseWorkflowService, new EnterpriseWorkflowService());
 });
 
 beforeEach(async () => {
