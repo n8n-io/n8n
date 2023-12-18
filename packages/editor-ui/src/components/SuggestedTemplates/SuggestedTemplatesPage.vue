@@ -6,12 +6,18 @@ import { useUIStore } from '@/stores/ui.store';
 import { VIEWS } from '@/constants';
 import type { ITemplatesCollection } from '@/Interface';
 import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
+import type { IUser } from '@/Interface';
 
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const router = useRouter();
 
 const currentUser = computed(() => usersStore.currentUser);
+
+const upperCaseFirstName = (user: IUser | null) => {
+	if (!user || !user.firstName) return;
+	return user.firstName?.charAt(0)?.toUpperCase() + user?.firstName?.slice(1);
+};
 
 const defaultSection = computed(() => {
 	if (!uiStore.suggestedTemplates) {
@@ -54,7 +60,9 @@ defineExpose({
 			<n8n-heading tag="h1" size="2xlarge" class="mb-2xs">
 				{{
 					$locale.baseText('suggestedTemplates.heading', {
-						interpolate: { name: currentUser?.firstName || $locale.baseText('generic.welcome') },
+						interpolate: {
+							name: upperCaseFirstName(currentUser) || $locale.baseText('generic.welcome'),
+						},
 					})
 				}}
 			</n8n-heading>
