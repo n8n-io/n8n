@@ -31,8 +31,8 @@ function showConfirmationMessage(event: PointerEvent) {
 		event.preventDefault();
 		// @ts-expect-error Additional parameters are not necessary for this function
 		toast.showMessage({
-			title: i18n.baseText('leadEnrichment.notification.confirmation.title'),
-			message: i18n.baseText('leadEnrichment.notification.confirmation.message'),
+			title: i18n.baseText('suggestedTemplates.notification.confirmation.title'),
+			message: i18n.baseText('suggestedTemplates.notification.confirmation.message'),
 			type: 'success',
 		});
 		telemetry.track(
@@ -50,8 +50,8 @@ function showConfirmationMessage(event: PointerEvent) {
 function openCanvas() {
 	uiStore.setNotificationsForView(VIEWS.WORKFLOW, [
 		{
-			title: i18n.baseText('leadEnrichment.notification.comingSoon.title'),
-			message: i18n.baseText('leadEnrichment.notification.comingSoon.message'),
+			title: i18n.baseText('suggestedTemplates.notification.comingSoon.title'),
+			message: i18n.baseText('suggestedTemplates.notification.comingSoon.message'),
 			type: 'info',
 			onClick: showConfirmationMessage,
 		},
@@ -92,7 +92,7 @@ function openCanvas() {
 					@click="openCanvas"
 					float="right"
 					data-test-id="use-template-button"
-					:label="$locale.baseText('leadEnrichment.modal.button.label')"
+					:label="$locale.baseText('suggestedTemplates.modal.button.label')"
 				/>
 			</div>
 		</template>

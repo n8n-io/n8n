@@ -53,7 +53,7 @@ defineExpose({
 		<div :class="$style.header">
 			<n8n-heading tag="h1" size="2xlarge" class="mb-2xs">
 				{{
-					$locale.baseText('leadEnrichment.heading', {
+					$locale.baseText('suggestedTemplates.heading', {
 						interpolate: { name: currentUser?.firstName || $locale.baseText('generic.welcome') },
 					})
 				}}
@@ -72,7 +72,7 @@ defineExpose({
 		</div>
 		<div>
 			<n8n-button
-				:label="$locale.baseText('leadEnrichment.newWorkflowButton')"
+				:label="$locale.baseText('suggestedTemplates.newWorkflowButton')"
 				type="secondary"
 				size="medium"
 				icon="plus"

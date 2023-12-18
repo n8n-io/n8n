@@ -43,9 +43,14 @@
 		</template>
 		<template #postListContent>
 			<suggested-templates-section
-				v-if="suggestedTemplates"
-				:section="suggestedTemplates.sections[0]"
-				title="Explore lead enrichment workflow templates"
+				v-for="(section, key) in suggestedTemplates?.sections"
+				:key="key"
+				:section="section"
+				:title="
+					$locale.baseText('suggestedTemplates.sectionTitle', {
+						interpolate: { sectionName: section.name.toLocaleLowerCase() },
+					})
+				"
 			/>
 		</template>
 		<template #empty>
