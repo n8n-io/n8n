@@ -1780,7 +1780,8 @@ export type CloudUpdateLinkSourceType =
 	| 'settings-users'
 	| 'variables'
 	| 'community-nodes'
-	| 'workflow-history';
+	| 'workflow-history'
+	| 'worker-view';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1798,7 +1799,8 @@ export type UTMCampaign =
 	| 'upgrade-variables'
 	| 'upgrade-community-nodes'
 	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions';
+	| 'upgrade-advanced-permissions'
+	| 'upgrade-worker-view';
 
 export type N8nBanners = {
 	[key in BannerName]: {
