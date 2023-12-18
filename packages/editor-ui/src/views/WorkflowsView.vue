@@ -43,13 +43,13 @@
 		</template>
 		<template #postListContent>
 			<suggested-templates-section
-				v-if="leadEnrichmentTemplates"
-				:section="leadEnrichmentTemplates.sections[0]"
+				v-if="suggestedTemplates"
+				:section="suggestedTemplates.sections[0]"
 				title="Explore lead enrichment workflow templates"
 			/>
 		</template>
 		<template #empty>
-			<suggested-templates-page v-if="leadEnrichmentTemplates" />
+			<suggested-templates-page v-if="suggestedTemplates" />
 			<div v-else>
 				<div class="text-center mt-s">
 					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
@@ -214,8 +214,8 @@ const WorkflowsView = defineComponent({
 				},
 			];
 		},
-		leadEnrichmentTemplates() {
-			return this.uiStore.leadEnrichmentTemplates;
+		suggestedTemplates() {
+			return this.uiStore.suggestedTemplates;
 		},
 	},
 	methods: {

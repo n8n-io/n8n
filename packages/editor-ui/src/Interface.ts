@@ -1259,7 +1259,7 @@ export interface UIState {
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
-	leadEnrichmentTemplates?: LeadEnrichmentTemplates;
+	suggestedTemplates?: SuggestedTemplates;
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
@@ -1839,18 +1839,18 @@ export type ToggleNodeCreatorOptions = {
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
 
-export type LeadEnrichmentTemplates = {
-	sections: LeadEnrichmentTemplateSection[];
+export type SuggestedTemplates = {
+	sections: SuggestedTemplatesSection[];
 };
 
-export type LeadEnrichmentTemplateSection = {
+export type SuggestedTemplatesSection = {
 	name: string;
 	title: string;
 	description: string;
-	workflows: LeadEnrichmentWorkflowPreview[];
+	workflows: SuggestedTemplatesWorkflowPreview[];
 };
 
-export type LeadEnrichmentWorkflowPreview = {
+export type SuggestedTemplatesWorkflowPreview = {
 	title: string;
 	description: string;
 	preview: IWorkflowData;

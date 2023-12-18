@@ -14,15 +14,15 @@ const router = useRouter();
 const currentUser = computed(() => usersStore.currentUser);
 
 const defaultSection = computed(() => {
-	if (!uiStore.leadEnrichmentTemplates) {
+	if (!uiStore.suggestedTemplates) {
 		return null;
 	}
-	return uiStore.leadEnrichmentTemplates.sections[0];
+	return uiStore.suggestedTemplates.sections[0];
 });
 
-const leadEnrichmentTemplates = computed(() => {
+const suggestedTemplates = computed(() => {
 	const carouselCollections = Array<ITemplatesCollection>();
-	if (!uiStore.leadEnrichmentTemplates || !defaultSection.value) {
+	if (!uiStore.suggestedTemplates || !defaultSection.value) {
 		return carouselCollections;
 	}
 	defaultSection.value.workflows.forEach((workflow, index) => {
@@ -44,7 +44,7 @@ function openCanvas() {
 defineExpose({
 	currentUser,
 	openCanvas,
-	leadEnrichmentTemplates,
+	suggestedTemplates,
 });
 </script>
 
@@ -64,7 +64,7 @@ defineExpose({
 		</div>
 		<div :class="$style.content">
 			<suggested-templates-section
-				v-for="section in uiStore.leadEnrichmentTemplates?.sections"
+				v-for="section in uiStore.suggestedTemplates?.sections"
 				:key="section.title"
 				:section="section"
 				:showTitle="false"

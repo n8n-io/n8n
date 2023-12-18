@@ -54,8 +54,7 @@ import type {
 	NewCredentialsModal,
 	ThemeOption,
 	AppliedThemeOption,
-	LeadEnrichmentTemplates,
-	Notification,
+	SuggestedTemplates,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -223,7 +222,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
-		leadEnrichmentTemplates: undefined,
+		suggestedTemplates: undefined,
 		// Notifications that should show when a view is initialized
 		// This enables us to set a queue of notifications form outside (another component)
 		// and then show them when the view is initialized
@@ -653,16 +652,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		clearBannerStack() {
 			this.bannerStack = [];
 		},
-		setLeadEnrichmentTemplates(templates: LeadEnrichmentTemplates) {
-			this.leadEnrichmentTemplates = templates;
+		setSuggestedTemplates(templates: SuggestedTemplates) {
+			this.suggestedTemplates = templates;
 		},
-		deleteLeadEnrichmentTemplates() {
-			this.leadEnrichmentTemplates = undefined;
+		deleteSuggestedTemplates() {
+			this.suggestedTemplates = undefined;
 		},
-		getNotificationsForView(view: VIEWS): Notification[] {
-			return this.pendingNotificationsForViews[view] || [];
+		getNotificationsForView(view: VIEWS): NotificationOptions[] {
+			return this.pendingNotificationsForViews[view] ?? [];
 		},
-		setNotificationsForView(view: VIEWS, notifications: Notification[]) {
+		setNotificationsForView(view: VIEWS, notifications: NotificationOptions[]) {
 			this.pendingNotificationsForViews[view] = notifications;
 		},
 		deleteNotificationsForView(view: VIEWS) {

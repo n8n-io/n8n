@@ -2,11 +2,7 @@
 import { type PropType, computed } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type {
-	ITemplatesCollection,
-	ITemplatesNode,
-	LeadEnrichmentTemplateSection,
-} from '@/Interface';
+import type { ITemplatesCollection, ITemplatesNode, SuggestedTemplatesSection } from '@/Interface';
 import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import { SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY } from '@/constants';
 
@@ -15,7 +11,7 @@ const telemetry = useTelemetry();
 
 const props = defineProps({
 	section: {
-		type: Object as PropType<LeadEnrichmentTemplateSection>,
+		type: Object as PropType<SuggestedTemplatesSection>,
 		required: true,
 	},
 	title: {
@@ -30,7 +26,7 @@ const props = defineProps({
 
 const sectionTemplates = computed(() => {
 	const carouselCollections = Array<ITemplatesCollection>();
-	if (!uiStore.leadEnrichmentTemplates) {
+	if (!uiStore.suggestedTemplates) {
 		return carouselCollections;
 	}
 	props.section.workflows.forEach((workflow, index) => {

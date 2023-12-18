@@ -9,14 +9,14 @@ import {
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	VIEWS,
 } from '@/constants';
-import type { IWorkflowDb, LeadEnrichmentWorkflowPreview } from '@/Interface';
+import type { IWorkflowDb, SuggestedTemplatesWorkflowPreview } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
-		workflow: LeadEnrichmentWorkflowPreview;
+		workflow: SuggestedTemplatesWorkflowPreview;
 	};
 }>();
 
@@ -43,7 +43,7 @@ function showConfirmationMessage(event: PointerEvent) {
 			},
 		);
 		localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
-		uiStore.deleteLeadEnrichmentTemplates();
+		uiStore.deleteSuggestedTemplates();
 	}
 }
 

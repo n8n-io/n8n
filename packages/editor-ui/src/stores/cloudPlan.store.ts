@@ -172,7 +172,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		try {
 			const additionalTemplates = await fetchSuggestedTemplates(rootStore.getRestApiContext);
 			if (additionalTemplates.sections && additionalTemplates.sections.length > 0) {
-				useUIStore().setLeadEnrichmentTemplates(additionalTemplates);
+				useUIStore().setSuggestedTemplates(additionalTemplates);
 			}
 		} catch (error) {
 			console.warn('Error checking for lead enrichment templates:', error);
