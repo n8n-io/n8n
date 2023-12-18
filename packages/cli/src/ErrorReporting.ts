@@ -31,15 +31,12 @@ export const initErrorHandling = async () => {
 	const { RewriteFrames } = await import('@sentry/integrations');
 	const { Integrations } = await import('@sentry/node');
 
-	const blockedIntegrations = [
-		'Console',
-		'Http',
-		'Undici',
-		'OnUncaughtException',
-		'LocalVariables',
-		'Context',
-		'Modules',
-		'RequestData',
+	const enabledIntegrations = [
+		'InboundFilters',
+		'FunctionToString',
+		'LinkedErrors',
+		'OnUnhandledRejection',
+		'ContextLines',
 	];
 	init({
 		dsn,
@@ -48,23 +45,20 @@ export const initErrorHandling = async () => {
 		enableTracing: false,
 		serverName,
 		beforeBreadcrumb: () => null,
-		integrations: (integrations) => {
-			integrations = integrations.filter(({ name }) => !blockedIntegrations.includes(name));
-			integrations.push(
-				new RewriteFrames({ root: process.cwd() }),
-				new Integrations.RequestData({
-					include: {
-						cookies: false,
-						data: false,
-						headers: false,
-						query_string: false,
-						url: true,
-						user: false,
-					},
-				}),
-			);
-			return integrations;
-		},
+		integrations: (integrations) => [
+			...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
+			new RewriteFrames({ root: process.cwd() }),
+			new Integrations.RequestData({
+				include: {
+					cookies: false,
+					data: false,
+					headers: false,
+					query_string: false,
+					url: true,
+					user: false,
+				},
+			}),
+		],
 	});
 
 	const seenErrors = new Set<string>();
