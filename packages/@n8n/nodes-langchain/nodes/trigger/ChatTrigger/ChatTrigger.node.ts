@@ -156,7 +156,7 @@ export class ChatTrigger implements INodeType {
 					{
 						name: 'Hosted Chat',
 						value: 'hostedChat',
-						description: 'Make webhook and Chat-Website available',
+						description: 'Chat by going to a URL hosted by n8n (plus chat within the editor)',
 					},
 					// TODO: Reminder, if we change value of "testChat" also update in ChatEmbedModal.vue. Delete this line before merge!
 					{
@@ -165,9 +165,10 @@ export class ChatTrigger implements INodeType {
 						description: 'Only use to test with the debug Chat',
 					},
 					{
-						name: 'Webhook',
+						name: 'Embedded Chat',
 						value: 'webhook',
-						description: 'Make webhook available',
+						description:
+							'Chat through a widget embedded in another page, or by calling a webhook (plus chat within the editor)',
 					},
 				],
 				default: 'testChat',
