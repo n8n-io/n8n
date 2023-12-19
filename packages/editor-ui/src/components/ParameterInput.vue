@@ -78,6 +78,7 @@
 							:defaultValue="parameter.default"
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
+							:canFullscreen="false"
 							@update:modelValue="expressionUpdated"
 						/>
 					</div>
@@ -95,6 +96,7 @@
 
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
+					:key="codeEditDialogVisible"
 					:mode="node.parameters.mode"
 					:modelValue="modelValue"
 					:defaultValue="parameter.default"
@@ -103,6 +105,7 @@
 					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
+					@openDialog="displayEditDialog()"
 				/>
 
 				<html-editor

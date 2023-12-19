@@ -36,6 +36,14 @@
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
+		<n8n-icon
+			v-if="canFullscreen"
+			icon="external-link-alt"
+			size="xsmall"
+			class="edit-window-button textarea-modal-opener"
+			:title="$locale.baseText('parameterInput.openEditWindow')"
+			@click="$emit('openDialog')"
+		/>
 	</div>
 </template>
 
@@ -96,7 +104,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-
+		canFullscreen: {
+			type: Boolean,
+			default: true,
+		},
 		rows: {
 			type: Number,
 			default: -1,
