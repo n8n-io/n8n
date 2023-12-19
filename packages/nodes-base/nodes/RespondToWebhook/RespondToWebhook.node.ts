@@ -33,26 +33,32 @@ export class RespondToWebhook implements INodeType {
 					{
 						name: 'Binary',
 						value: 'binary',
+						description: 'Respond with incoming file binary data',
 					},
 					{
 						name: 'First Incoming Item',
 						value: 'firstIncomingItem',
+						description: 'Respond with the first incoming JSON item',
 					},
 					{
 						name: 'JSON',
 						value: 'json',
+						description: 'Respond with a cutom JSON body',
 					},
 					{
 						name: 'No Data',
 						value: 'noData',
+						description: 'Respond with an empty body',
 					},
 					{
 						name: 'Redirect',
 						value: 'redirect',
+						description: 'Respond with a redirect to another URL',
 					},
 					{
 						name: 'Text',
 						value: 'text',
+						description: 'Respond with a simple Text message body',
 					},
 				],
 				default: 'firstIncomingItem',
