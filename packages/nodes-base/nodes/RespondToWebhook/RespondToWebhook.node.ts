@@ -111,6 +111,9 @@ export class RespondToWebhook implements INodeType {
 						respondWith: ['text'],
 					},
 				},
+				typeOptions: {
+					rows: 2,
+				},
 				default: '',
 				placeholder: 'e.g. Workflow started',
 				description: 'The HTTP Response text data',
