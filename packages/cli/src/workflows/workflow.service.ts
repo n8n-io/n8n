@@ -432,7 +432,7 @@ export class WorkflowService {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhookData(
+			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
 				workflow,
 				additionalData,
@@ -441,11 +441,8 @@ export class WorkflowService {
 				sessionId,
 				destinationNode,
 			);
-			if (needsWebhook) {
-				return {
-					waitingForWebhook: true,
-				};
-			}
+
+			if (needsWebhook) return { waitingForWebhook: true };
 		}
 
 		// For manual testing always set to not active

@@ -261,7 +261,10 @@ export interface IExternalHooksClass {
 
 export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
 
-export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+export type WebhookRequest = Request<{ path: string }> & {
+	method: IHttpRequestMethods;
+	params: Record<string, string>;
+};
 
 export type WaitingWebhookRequest = WebhookRequest & {
 	params: WebhookRequest['path'] & { suffix?: string };
@@ -874,3 +877,11 @@ export abstract class SecretsProvider {
 }
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
+
+export type RegisteredWebhook = {
+	sessionId?: string;
+	timeout: NodeJS.Timeout;
+	workflowEntity: IWorkflowDb;
+	workflow: Workflow;
+	destinationNode?: string;
+};
