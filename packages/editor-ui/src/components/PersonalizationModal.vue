@@ -720,28 +720,33 @@ export default defineComponent({
 				this.showError(e, 'Error while submitting results');
 			}
 
-			this.isSaving = false;
-			this.closeDialog();
-
+			let licenseRequestSucceeded = false;
 			try {
 				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
 					await this.usageStore.requestEnterpriseLicenseTrial();
-					await this.alert(
-						this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
-						{
-							title: this.$locale.baseText(
-								'personalizationModal.registerEmailForTrial.success.title',
-							),
-							confirmButtonText: this.$locale.baseText(
-								'personalizationModal.registerEmailForTrial.success.button',
-							),
-						},
-					);
+					licenseRequestSucceeded = true;
 				}
 			} catch (e) {
 				this.showError(
 					e,
 					this.$locale.baseText('personalizationModal.registerEmailForTrial.error'),
+				);
+			}
+
+			this.isSaving = false;
+			this.closeDialog();
+
+			if (licenseRequestSucceeded) {
+				await this.alert(
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
+					{
+						title: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.title',
+						),
+						confirmButtonText: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.button',
+						),
+					},
 				);
 			}
 		},
