@@ -144,18 +144,6 @@ export class ChatTrigger implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
-				displayName: 'The chat will only be accessible to authenticated n8n users',
-				name: 'notice',
-				type: 'notice',
-				displayOptions: {
-					show: {
-						authentication: ['n8nUserAuth'],
-						public: [true],
-					},
-				},
-				default: '',
-			},
-			{
 				displayName: 'Initial Messages',
 				name: 'initialMessages',
 				type: 'string',
