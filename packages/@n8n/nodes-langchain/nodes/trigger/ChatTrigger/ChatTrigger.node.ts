@@ -115,6 +115,32 @@ export class ChatTrigger implements INodeType {
 				},
 			},
 			{
+				displayName:
+					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+				name: 'hostedChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName:
+					'Follow the instructions <a>here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+				name: 'embeddedChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						mode: ['webhook'],
+						public: [true],
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
