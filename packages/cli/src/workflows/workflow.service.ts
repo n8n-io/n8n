@@ -432,7 +432,7 @@ export class WorkflowService {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhookData(
+			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
 				workflow,
 				additionalData,
