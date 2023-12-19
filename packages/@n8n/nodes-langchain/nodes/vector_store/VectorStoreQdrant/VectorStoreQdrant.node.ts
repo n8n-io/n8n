@@ -1,0 +1,88 @@
+import { type INodeProperties } from 'n8n-workflow';
+import type { QdrantLibArgs } from 'langchain/vectorstores/qdrant';
+import { QdrantVectorStore } from 'langchain/vectorstores/qdrant';
+import { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { metadataFilterField } from '../../../utils/sharedFields';
+import { qdrantCollectionRLC } from '../shared/descriptions';
+import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
+
+const sharedFields: INodeProperties[] = [qdrantCollectionRLC];
+
+const retrieveFields: INodeProperties[] = [metadataFilterField];
+
+const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Collection config',
+				name: 'collectionConfig',
+				required: false,
+				type: 'json',
+				default: null,
+				description: 'JSON object representing configuration options for creating a collecton',
+			}
+		],
+	},
+];
+
+export const VectorStoreQdrant = createVectorStoreNode({
+	meta: {
+		displayName: 'Qdrant Vector Store',
+		name: 'vectorStoreQdrant',
+		description: 'Work with your data in a Qdrant collection',
+		icon: 'file:qdrant.svg',
+		docsUrl:
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/',
+		credentials: [
+			{
+				name: 'qdrantApi',
+				required: true,
+			},
+		],
+	},
+	methods: { listSearch: { qdrantCollectionsSearch } },
+	retrieveFields,
+	loadFields: retrieveFields,
+	insertFields,
+	sharedFields,
+	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+		const collection = context.getNodeParameter('qdrantCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+
+		const credentials = await context.getCredentials('qdrantApi');
+
+		const config: QdrantLibArgs = {
+			url: credentials.qdrantUrl as string,
+			apiKey: credentials.apiKey as string,
+			collectionName: collection,
+		};
+
+		return QdrantVectorStore.fromExistingCollection(embeddings, config);
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const collectionName = context.getNodeParameter('qdrantCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+
+		const { collectionConfig } = context.getNodeParameter('options', itemIndex, {}) as {
+			collectionConfig?: QdrantSchemas["CreateCollection"];
+		};
+		const credentials = await context.getCredentials('qdrantApi');
+
+		const config: QdrantLibArgs = {
+			url: credentials.qdrantUrl as string,
+			apiKey: credentials.apiKey as string,
+			collectionName,
+			collectionConfig
+		};
+
+		await QdrantVectorStore.fromDocuments(documents, embeddings, config);
+	},
+});
