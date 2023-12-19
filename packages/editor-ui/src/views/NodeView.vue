@@ -1585,6 +1585,7 @@ export default defineComponent({
 			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
+						...(this.workflowsStore.workflow.meta ?? {}),
 						instanceId: this.rootStore.instanceId,
 					},
 					...data,

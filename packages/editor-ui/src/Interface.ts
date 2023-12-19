@@ -243,9 +243,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: {
-		instanceId: string;
-	};
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowTemplateNode
@@ -274,6 +272,7 @@ export interface INewWorkflowData {
 export interface WorkflowMetadata {
 	onboardingId?: string;
 	templateId?: string;
+	instanceId?: string;
 }
 
 // Almost identical to cli.Interfaces.ts
