@@ -295,6 +295,7 @@ export class TestWebhooks implements IWebhookManager {
 		if (!this.webhookUrls[key]) {
 			this.webhookUrls[key] = [];
 		}
+		webhook.isTest = true;
 		this.webhookUrls[key].push(webhook);
 
 		try {
@@ -303,7 +304,6 @@ export class TestWebhooks implements IWebhookManager {
 				NodeExecuteFunctions,
 				executionMode,
 				activationMode,
-				{ isTest: true },
 			);
 		} catch (error) {
 			// If there was a problem unregister the webhook again
@@ -373,9 +373,7 @@ export class TestWebhooks implements IWebhookManager {
 		// Go through all the registered webhooks of the workflow and remove them
 
 		for (const webhookData of webhooks) {
-			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', {
-				isTest: true,
-			});
+			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 
 			const key = this.toWebhookKey(
 				webhookData.httpMethod,

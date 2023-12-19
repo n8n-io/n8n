@@ -377,7 +377,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 					NodeExecuteFunctions,
 					mode,
 					activation,
-					{ isTest: false },
 				);
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
@@ -449,9 +448,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', {
-				isTest: false,
-			});
+			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
 		await Container.get(WorkflowService).saveStaticData(workflow);

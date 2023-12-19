@@ -3757,7 +3757,6 @@ export function getExecuteHookFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
-	isTest?: boolean,
 	webhookData?: IWebhookData,
 ): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
@@ -3799,7 +3798,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					getAdditionalKeys(additionalData, mode, null),
-					isTest,
+					webhookData?.isTest,
 				);
 			},
 			getWebhookName(): string {
