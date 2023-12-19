@@ -6,7 +6,7 @@ export interface OnShutdown {
 }
 
 /**
- * Error reported when a component fails to shutdown gracefully.
+ * Error reported when a listener fails to shutdown gracefully.
  */
 export class ComponentShutdownError extends ApplicationError {
 	constructor(componentName: string, cause: Error) {
@@ -18,38 +18,45 @@ export class ComponentShutdownError extends ApplicationError {
 	}
 }
 
+type ToNotify = {
+	name: string;
+	listener: OnShutdown;
+};
+
 /**
  * Service responsible for orchestrating a graceful shutdown of the application.
  */
 @Service()
 export class ShutdownService {
-	private readonly toNotify: OnShutdown[] = [];
+	private readonly toNotify: ToNotify[] = [];
 
 	private shutdownPromises: Promise<void>[] | undefined = undefined;
 
 	/**
-	 * Registers given component to be notified when the application is shutting down.
+	 * Registers given listener to be notified when the application is shutting down.
 	 */
-	register(component: OnShutdown) {
-		console.log('Registering component', component.constructor.name);
-		this.toNotify.push(component);
+	register(name: string, listener: OnShutdown) {
+		this.toNotify.push({
+			name,
+			listener,
+		});
 	}
 
 	/**
-	 * Signals all registered components that the application is shutting down.
+	 * Signals all registered listeners that the application is shutting down.
 	 */
 	shutdown() {
 		if (this.shutdownPromises) {
 			throw new Error('App is already shutting down');
 		}
 
-		this.shutdownPromises = Array.from(this.toNotify).map((component) =>
-			this.shutdownComponent(component),
+		this.shutdownPromises = Array.from(this.toNotify).map((listener) =>
+			this.shutdownComponent(listener),
 		);
 	}
 
 	/**
-	 * Returns a promise that resolves when all the registered components
+	 * Returns a promise that resolves when all the registered listeners
 	 * have shut down.
 	 */
 	async waitForShutdown() {
@@ -64,12 +71,11 @@ export class ShutdownService {
 		return !!this.shutdownPromises;
 	}
 
-	private async shutdownComponent(component: OnShutdown) {
+	private async shutdownComponent(component: ToNotify) {
 		try {
-			await component.onShutdown();
+			await component.listener.onShutdown();
 		} catch (error) {
-			const componentName = component.constructor.name;
-			ErrorReporterProxy.error(new ComponentShutdownError(componentName, error));
+			ErrorReporterProxy.error(new ComponentShutdownError(component.name, error));
 		}
 	}
 }

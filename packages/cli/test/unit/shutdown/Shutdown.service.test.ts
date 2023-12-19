@@ -14,6 +14,8 @@ describe('ShutdownService', () => {
 	let mockComponent: OnShutdown;
 	let mockErrorReporterProxy: jest.SpyInstance;
 
+	const componentName = MockComponent.name;
+
 	beforeEach(() => {
 		shutdownService = new ShutdownService();
 		mockComponent = new MockComponent();
@@ -22,13 +24,13 @@ describe('ShutdownService', () => {
 
 	describe('shutdown', () => {
 		it('should signal shutdown', () => {
-			shutdownService.register(mockComponent);
+			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
 			expect(mockComponent.onShutdown).toBeCalledTimes(1);
 		});
 
 		it('should throw error if shutdown is already in progress', () => {
-			shutdownService.register(mockComponent);
+			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
 			expect(() => shutdownService.shutdown()).toThrow('App is already shutting down');
 		});
@@ -40,7 +42,7 @@ describe('ShutdownService', () => {
 					throw componentError;
 				}),
 			);
-			shutdownService.register(mockComponent);
+			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
 
 			expect(mockErrorReporterProxy).toHaveBeenCalledTimes(1);
@@ -56,7 +58,7 @@ describe('ShutdownService', () => {
 
 	describe('waitForShutdown', () => {
 		it('should wait for shutdown', async () => {
-			shutdownService.register(mockComponent);
+			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
 			await expect(shutdownService.waitForShutdown()).resolves.toBeDefined();
 		});
@@ -68,7 +70,7 @@ describe('ShutdownService', () => {
 
 	describe('isShuttingDown', () => {
 		it('should return true if app is shutting down', () => {
-			shutdownService.register(mockComponent);
+			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
 			expect(shutdownService.isShuttingDown()).toBe(true);
 		});

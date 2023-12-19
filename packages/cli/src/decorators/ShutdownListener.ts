@@ -26,12 +26,9 @@ export function ShutdownListener() {
 				}
 
 				const shutdownService = Container.get(ShutdownService);
-				shutdownService.register(this as OnShutdown);
+				shutdownService.register(constructor.name, this as OnShutdown);
 			}
 		}
-
-		// Maintain the constructor name, since it's used for logging
-		Object.defineProperty(ExtendedClass, 'name', { value: constructor.name, configurable: true });
 
 		return ExtendedClass;
 	};
