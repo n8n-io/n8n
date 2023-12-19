@@ -155,14 +155,14 @@ createChat({
 - **Default**: `false`
 - **Description**: Whether to show the welcome screen when the Chat window is opened.
 
-### `chatHistoryKey`
+### `chatSessionKey`
 - **Type**: `string`
-- **Default**: `'chat_history'`
+- **Default**: `'sessionId'`
 - **Description**: The key to use for sending the chat history session ID for the AI Memory node.
 
 ### `chatInputKey`
 - **Type**: `string`
-- **Default**: `'chat_input'`
+- **Default**: `'chatInput'`
 - **Description**: The key to use for sending the chat input for the AI Agent node.
 
 ### `defaultLanguage`
