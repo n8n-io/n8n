@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import set from 'lodash/set';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,6 +31,11 @@ export class RespondToWebhook implements INodeType {
 				name: 'respondWith',
 				type: 'options',
 				options: [
+					{
+						name: 'All Incoming Items',
+						value: 'allIncomingItems',
+						description: 'Respond with all incoming JSON items',
+					},
 					{
 						name: 'Binary',
 						value: 'binary',
@@ -213,6 +219,18 @@ export class RespondToWebhook implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Put Response in Field',
+						name: 'responseKey',
+						type: 'string',
+						displayOptions: {
+							show: {
+								['/respondWith']: ['allIncomingItems', 'firstIncomingItem'],
+							},
+						},
+						default: '',
+						description: 'The name of the repsonse field to put all items in',
+					},
 				],
 			},
 		],
@@ -247,8 +265,15 @@ export class RespondToWebhook implements INodeType {
 					});
 				}
 			}
+		} else if (respondWith === 'allIncomingItems') {
+			const respondItems = items.map((item) => item.json);
+			responseBody = options.responseKey
+				? set({}, options.responseKey as string, respondItems)
+				: respondItems;
 		} else if (respondWith === 'firstIncomingItem') {
-			responseBody = items[0].json;
+			responseBody = options.responseKey
+				? set({}, options.responseKey as string, items[0].json)
+				: items[0].json;
 		} else if (respondWith === 'text') {
 			responseBody = this.getNodeParameter('responseBody', 0) as string;
 		} else if (respondWith === 'binary') {
@@ -283,7 +308,7 @@ export class RespondToWebhook implements INodeType {
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-		} else if (respondWith == 'redirect') {
+		} else if (respondWith === 'redirect') {
 			headers.location = this.getNodeParameter('redirectURL', 0) as string;
 			statusCode = (options.responseCode as number) ?? 307;
 		} else if (respondWith !== 'noData') {
