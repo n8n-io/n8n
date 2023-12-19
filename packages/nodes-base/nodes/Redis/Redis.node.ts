@@ -757,16 +757,8 @@ export class Redis implements INodeType {
 									continue;
 								}
 
-								const promises: {
-									[key: string]: GenericValue;
-								} = {};
-
 								for (const keyName of keys) {
-									promises[keyName] = await getValue(client, keyName);
-								}
-
-								for (const keyName of keys) {
-									item.json[keyName] = promises[keyName];
+									item.json[keyName] = await getValue(client, keyName);
 								}
 								returnItems.push(item);
 							} else if (operation === 'set') {
