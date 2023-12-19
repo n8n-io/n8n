@@ -1,5 +1,5 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhooks">
+	<div v-if="webhooksNode.length && visibleWebhookUrls.length > 0" class="webhooks">
 		<div
 			class="clickable headline"
 			:class="{ expanded: !isMinimized }"
@@ -29,13 +29,13 @@
 				</div>
 
 				<n8n-tooltip
-					v-for="(webhook, index) in webhooksNode.filter((webhook) => !webhook.ndvHideUrl)"
+					v-for="(webhook, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="!webhook.ndvHideMethod" class="webhook-wrapper">
+					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
 						<div class="http-field">
 							<div class="http-method">
 								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
@@ -88,6 +88,15 @@ export default defineComponent({
 		};
 	},
 	computed: {
+		visibleWebhookUrls(): IWebhookDescription[] {
+			return this.webhooksNode.filter((webhook) => {
+				if (typeof webhook.ndvHideUrl === 'string') {
+					return !this.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+				}
+
+				return !webhook.ndvHideUrl;
+			});
+		},
 		webhooksNode(): IWebhookDescription[] {
 			if (this.nodeType === null || this.nodeType.webhooks === undefined) {
 				return [];
@@ -148,6 +157,13 @@ export default defineComponent({
 				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
 			}
 			return '';
+		},
+		isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
+			if (typeof webhook.ndvHideMethod === 'string') {
+				return !this.getWebhookExpressionValue(webhook, 'ndvHideMethod');
+			}
+
+			return !webhook.ndvHideMethod;
 		},
 	},
 	watch: {

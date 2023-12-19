@@ -71,6 +71,7 @@ export class ChatTrigger implements INodeType {
 				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
+				ndvHideUrl: '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
