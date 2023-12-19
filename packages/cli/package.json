@@ -168,7 +168,7 @@
     "pg": "8.8.0",
     "picocolors": "1.0.0",
     "pkce-challenge": "3.0.0",
-    "posthog-node": "2.2.2",
+    "posthog-node": "3.2.1",
     "prom-client": "13.2.0",
     "psl": "1.9.0",
     "raw-body": "2.5.1",
