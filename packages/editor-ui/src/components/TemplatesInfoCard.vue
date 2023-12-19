@@ -1,5 +1,5 @@
 <template>
-	<Card :loading="loading" :title="collection.name">
+	<Card :loading="loading" :title="collection.name" :style="{ width }">
 		<template #footer>
 			<span>
 				<n8n-text v-show="showItemCount" size="small" color="text-light">
@@ -31,6 +31,10 @@ export default defineComponent({
 		showItemCount: {
 			type: Boolean,
 			default: true,
+		},
+		width: {
+			type: String,
+			required: true,
 		},
 	},
 	components: {

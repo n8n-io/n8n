@@ -236,6 +236,9 @@ export default defineComponent({
 				</div>
 			</div>
 		</div>
+		<div class="post-list-container">
+			<slot name="postListContent" />
+		</div>
 	</div>
 </template>
 
@@ -262,5 +265,8 @@ export default defineComponent({
 	display: flex;
 	position: relative;
 	width: 100%;
+}
+.post-list-container {
+	margin-top: var(--spacing-3xl);
 }
 </style>
