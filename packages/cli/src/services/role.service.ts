@@ -100,22 +100,4 @@ export class RoleService {
 			})
 			.then((shared) => shared?.role);
 	}
-
-	/**
-	 * Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }`
-	 */
-	async countUsersByRole() {
-		const result: Array<{ role_name: string; count: number }> = await this.roleRepository
-			.createQueryBuilder('role')
-			.select('role.name')
-			.addSelect('COUNT(user.id)', 'count')
-			.innerJoin('user', 'user', 'role.id = user.globalRoleId')
-			.groupBy('role.name')
-			.getRawMany();
-
-		return result.reduce<Record<string, number>>((acc, item) => {
-			acc[item.role_name] = item.count;
-			return acc;
-		}, {});
-	}
 }
