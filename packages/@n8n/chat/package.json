@@ -42,7 +42,7 @@
     "n8n-design-system": "workspace:*",
     "shelljs": "^0.8.5",
     "unplugin-icons": "^0.17.0",
-    "vite-plugin-dts": "^3.6.0"
+    "vite-plugin-dts": "^3.6.4"
   },
   "repository": {
     "type": "git",
