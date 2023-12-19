@@ -23,10 +23,12 @@ export class WebhookEntity {
 	pathLength?: number;
 
 	/**
-	 * Unique section of production webhook path, appended to `${instanceUrl}/webhook/`.
-	 * - Example for static UUID webhook: `87dd035f-9606-47b7-b443-8b675fe25719`
-	 * - Example for static user-defined webhook: `user/:id/posts`
-	 * - Example for dynamic webhook: `7e0e2b2a-19ba-4a6c-b452-4b46c0e11749/user/:id/posts`
+	 * Unique section of webhook path.
+	 *
+	 * - Static: `${uuid}` or `user/defined/path`
+	 * - Dynamic: `${uuid}/user/:id/posts`
+	 *
+	 * Appended to `${instanceUrl}/webhook/` or `${instanceUrl}/test-webhook/`.
 	 */
 	private get uniquePath() {
 		return this.webhookPath.includes(':')
