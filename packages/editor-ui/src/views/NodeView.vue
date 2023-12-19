@@ -4351,7 +4351,7 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			if (!message?.data?.includes?.('"command"')) {
+			if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
 				return;
 			}
 			try {
