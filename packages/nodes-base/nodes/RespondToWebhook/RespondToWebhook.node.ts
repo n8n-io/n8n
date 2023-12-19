@@ -94,8 +94,12 @@ export class RespondToWebhook implements INodeType {
 						respondWith: ['json'],
 					},
 				},
-				default: '',
-				placeholder: '{ "key": "value" }',
+				default: '{ "key": "value" }',
+				typeOptions: {
+					editor: 'json',
+					editorLanguage: 'json',
+					rows: 2,
+				},
 				description: 'The HTTP Response JSON data',
 			},
 			{
