@@ -17,6 +17,8 @@ import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } fr
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { ShutdownListener } from '@/decorators/ShutdownListener';
+import { OnShutdown } from '@/shutdown/Shutdown.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -25,10 +27,13 @@ type FeatureReturnType = Partial<
 >;
 
 @Service()
-export class License {
+@ShutdownListener()
+export class License implements OnShutdown {
 	private manager: LicenseManager | undefined;
 
 	private redisPublisher: RedisServicePubSubPublisher;
+
+	private isShuttingdown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -40,6 +45,11 @@ export class License {
 
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
+			this.logger.warn('License manager already initialized or shutting down');
+			return;
+		}
+		if (this.isShuttingdown) {
+			this.logger.warn('License manager already shutting down');
 			return;
 		}
 
@@ -191,7 +201,11 @@ export class License {
 		await this.manager.renew();
 	}
 
-	async shutdown() {
+	async onShutdown() {
+		// Shut down License manager to unclaim any floating entitlements
+		// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+		this.isShuttingdown = true;
+
 		if (!this.manager) {
 			return;
 		}
