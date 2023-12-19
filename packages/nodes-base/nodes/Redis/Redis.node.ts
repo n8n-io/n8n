@@ -766,8 +766,7 @@ export class Redis implements INodeType {
 								}
 
 								for (const keyName of keys) {
-									// eslint-disable-next-line @typescript-eslint/await-thenable
-									item.json[keyName] = await promises[keyName];
+									item.json[keyName] = promises[keyName];
 								}
 								returnItems.push(item);
 							} else if (operation === 'set') {
