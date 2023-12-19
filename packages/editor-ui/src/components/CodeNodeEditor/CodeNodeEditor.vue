@@ -38,6 +38,7 @@
 		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
 		<n8n-icon
 			v-if="canFullscreen"
+			data-test-id="code-editor-fullscreen-button"
 			icon="external-link-alt"
 			size="xsmall"
 			class="edit-window-button textarea-modal-opener"

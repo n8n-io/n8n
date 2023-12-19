@@ -360,6 +360,15 @@ describe('NDV', () => {
 		ndv.getters.nodeExecuteButton().should('be.visible');
 	});
 
+	it('should allow editing code in fullscreen in the Code node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.actions.openCodeEditorFullscreen();
+
+		ndv.getters.codeEditorFullscreen().type('foo()');
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
+	});
+
 	it('should not retrieve remote options when a parameter value changes', () => {
 		cy.intercept('/rest/dynamic-node-parameters/options?**', cy.spy().as('fetchParameterOptions'));
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
@@ -370,108 +379,128 @@ describe('NDV', () => {
 	});
 
 	describe('floating nodes', () => {
-		function getFloatingNodeByPosition(position: 'inputMain' | 'outputMain' | 'outputSub'| 'inputSub') {
+		function getFloatingNodeByPosition(
+			position: 'inputMain' | 'outputMain' | 'outputSub' | 'inputSub',
+		) {
 			return cy.get(`[data-node-placement=${position}]`);
 		}
 		beforeEach(() => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
-			workflowPage.getters.canvasNodes().first().dblclick()
-			getFloatingNodeByPosition("inputMain").should('not.exist');
-			getFloatingNodeByPosition("outputMain").should('exist');
+			workflowPage.getters.canvasNodes().first().dblclick();
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('exist');
 		});
 
 		it('should traverse floating nodes with mouse', () => {
 			// Traverse 4 connected node forwards
-			Array.from(Array(4).keys()).forEach(i => {
-				getFloatingNodeByPosition("outputMain").click({ force: true});
+			Array.from(Array(4).keys()).forEach((i) => {
+				getFloatingNodeByPosition('outputMain').click({ force: true });
 				ndv.getters.nodeNameContainer().should('contain', `Node ${i + 1}`);
-				getFloatingNodeByPosition("inputMain").should('exist');
-				getFloatingNodeByPosition("outputMain").should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+				getFloatingNodeByPosition('outputMain').should('exist');
 				ndv.actions.close();
 				workflowPage.getters.selectedNodes().should('have.length', 1);
-				workflowPage.getters.selectedNodes().first().should('contain', `Node ${i + 1}`);
+				workflowPage.getters
+					.selectedNodes()
+					.first()
+					.should('contain', `Node ${i + 1}`);
 				workflowPage.getters.selectedNodes().first().dblclick();
-			})
+			});
 
-			getFloatingNodeByPosition("outputMain").click({ force: true});
+			getFloatingNodeByPosition('outputMain').click({ force: true });
 			ndv.getters.nodeNameContainer().should('contain', 'Chain');
-			getFloatingNodeByPosition("inputSub").should('exist');
-			getFloatingNodeByPosition("inputSub").click({ force: true});
+			getFloatingNodeByPosition('inputSub').should('exist');
+			getFloatingNodeByPosition('inputSub').click({ force: true });
 			ndv.getters.nodeNameContainer().should('contain', 'Model');
-			getFloatingNodeByPosition("inputSub").should('not.exist');
-			getFloatingNodeByPosition("inputMain").should('not.exist');
-			getFloatingNodeByPosition("outputMain").should('not.exist');
-			getFloatingNodeByPosition("outputSub").should('exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('exist');
 			ndv.actions.close();
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters.selectedNodes().first().should('contain', 'Model');
 			workflowPage.getters.selectedNodes().first().dblclick();
-			getFloatingNodeByPosition("outputSub").click({ force: true});
+			getFloatingNodeByPosition('outputSub').click({ force: true });
 			ndv.getters.nodeNameContainer().should('contain', 'Chain');
 
 			// Traverse 4 connected node backwards
-			Array.from(Array(4).keys()).forEach(i => {
-				getFloatingNodeByPosition("inputMain").click({ force: true});
-				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - (i)}`);
-				getFloatingNodeByPosition("outputMain").should('exist');
-				getFloatingNodeByPosition("inputMain").should('exist');
-			})
-			getFloatingNodeByPosition("inputMain").click({ force: true});
-			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-			getFloatingNodeByPosition("inputMain").should('not.exist');
-			getFloatingNodeByPosition("inputSub").should('not.exist');
-			getFloatingNodeByPosition("outputSub").should('not.exist');
+			Array.from(Array(4).keys()).forEach((i) => {
+				getFloatingNodeByPosition('inputMain').click({ force: true });
+				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - i}`);
+				getFloatingNodeByPosition('outputMain').should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+			});
+			getFloatingNodeByPosition('inputMain').click({ force: true });
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('not.exist');
 			ndv.actions.close();
 			workflowPage.getters.selectedNodes().should('have.length', 1);
-			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
 
 		it('should traverse floating nodes with mouse', () => {
 			// Traverse 4 connected node forwards
-			Array.from(Array(4).keys()).forEach(i => {
-				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight'])
+			Array.from(Array(4).keys()).forEach((i) => {
+				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight']);
 				ndv.getters.nodeNameContainer().should('contain', `Node ${i + 1}`);
-				getFloatingNodeByPosition("inputMain").should('exist');
-				getFloatingNodeByPosition("outputMain").should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+				getFloatingNodeByPosition('outputMain').should('exist');
 				ndv.actions.close();
 				workflowPage.getters.selectedNodes().should('have.length', 1);
-				workflowPage.getters.selectedNodes().first().should('contain', `Node ${i + 1}`);
+				workflowPage.getters
+					.selectedNodes()
+					.first()
+					.should('contain', `Node ${i + 1}`);
 				workflowPage.getters.selectedNodes().first().dblclick();
-			})
+			});
 
-			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight'])
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight']);
 			ndv.getters.nodeNameContainer().should('contain', 'Chain');
-			getFloatingNodeByPosition("inputSub").should('exist');
-			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowDown'])
+			getFloatingNodeByPosition('inputSub').should('exist');
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowDown']);
 			ndv.getters.nodeNameContainer().should('contain', 'Model');
-			getFloatingNodeByPosition("inputSub").should('not.exist');
-			getFloatingNodeByPosition("inputMain").should('not.exist');
-			getFloatingNodeByPosition("outputMain").should('not.exist');
-			getFloatingNodeByPosition("outputSub").should('exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('exist');
 			ndv.actions.close();
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters.selectedNodes().first().should('contain', 'Model');
 			workflowPage.getters.selectedNodes().first().dblclick();
-			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowUp'])
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowUp']);
 			ndv.getters.nodeNameContainer().should('contain', 'Chain');
 
 			// Traverse 4 connected node backwards
-			Array.from(Array(4).keys()).forEach(i => {
-				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft'])
-				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - (i)}`);
-				getFloatingNodeByPosition("outputMain").should('exist');
-				getFloatingNodeByPosition("inputMain").should('exist');
-			})
-			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft'])
-			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-			getFloatingNodeByPosition("inputMain").should('not.exist');
-			getFloatingNodeByPosition("inputSub").should('not.exist');
-			getFloatingNodeByPosition("outputSub").should('not.exist');
+			Array.from(Array(4).keys()).forEach((i) => {
+				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft']);
+				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - i}`);
+				getFloatingNodeByPosition('outputMain').should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+			});
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft']);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('not.exist');
 			ndv.actions.close();
 			workflowPage.getters.selectedNodes().should('have.length', 1);
-			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
-	})
+	});
 	it('should show node name and version in settings', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
 

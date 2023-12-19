@@ -71,6 +71,7 @@
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
+					data-test-id="code-editor-fullscreen"
 				>
 					<div class="ignore-key-press">
 						<code-node-editor

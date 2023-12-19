@@ -98,6 +98,9 @@ export class NDV extends BasePage {
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
+		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
+		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
+		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-editor'),
 	};
 
 	actions = {
@@ -249,6 +252,10 @@ export class NDV extends BasePage {
 
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
+		},
+
+		openCodeEditorFullscreen: () => {
+			this.getters.codeEditorFullscreenButton().click({ force: true });
 		},
 	};
 }
