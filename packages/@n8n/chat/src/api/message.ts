@@ -7,7 +7,7 @@ export async function loadPreviousSession(sessionId: string, options: ChatOption
 		`${options.webhookUrl}`,
 		{
 			action: 'loadPreviousSession',
-			[options.chatHistoryKey as string]: sessionId,
+			[options.chatSessionKey as string]: sessionId,
 			...(options.metadata ? { metadata: options.metadata } : {}),
 		},
 		{
@@ -22,7 +22,7 @@ export async function sendMessage(message: string, sessionId: string, options: C
 		`${options.webhookUrl}`,
 		{
 			action: 'sendMessage',
-			[options.chatHistoryKey as string]: sessionId,
+			[options.chatSessionKey as string]: sessionId,
 			[options.chatInputKey as string]: message,
 			...(options.metadata ? { metadata: options.metadata } : {}),
 		},

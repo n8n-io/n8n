@@ -169,7 +169,7 @@ export class ChatTrigger implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
-				displayName: 'Initial Messages',
+				displayName: 'Initial Message(s)',
 				name: 'initialMessages',
 				type: 'string',
 				displayOptions: {
@@ -217,9 +217,9 @@ export class ChatTrigger implements INodeType {
 						options: [
 							// TODO: Think about how options should be called
 							{
-								name: 'Not Supported',
+								name: 'Off',
 								value: 'notSupported',
-								description: 'Loading of messages of previous session is not supported',
+								description: 'Loading messages of previous session is turned off',
 							},
 							{
 								name: 'From Memory',
@@ -233,7 +233,7 @@ export class ChatTrigger implements INodeType {
 							},
 						],
 						default: 'notSupported',
-						description: 'If loading messages of a previous session should be supported',
+						description: 'If loading messages of a previous session should be enabled',
 					},
 					{
 						displayName: 'Response Mode',
@@ -255,7 +255,7 @@ export class ChatTrigger implements INodeType {
 						description: 'When and how to respond to the webhook',
 					},
 					{
-						displayName: 'Show Welcome Screen',
+						displayName: 'Require Button Click to Start Chat',
 						name: 'showWelcomeScreen',
 						type: 'boolean',
 						displayOptions: {

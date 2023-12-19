@@ -8,7 +8,7 @@ export interface ChatOptions {
 	mode?: 'window' | 'fullscreen';
 	showWelcomeScreen?: boolean;
 	chatInputKey?: string;
-	chatHistoryKey?: string;
+	chatSessionKey?: string;
 	defaultLanguage?: 'en';
 	initialMessages?: string[];
 	metadata?: Record<string, unknown>;
