@@ -76,9 +76,7 @@ export class ChatTrigger implements INodeType {
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
 		activationMessage: 'You can now make calls to your production Chat URL.',
-		triggerPanel: {
-			hideContent: true,
-		},
+		triggerPanel: false,
 		properties: [
 			/**
 			 * @note If we change this property, also update it in ChatEmbedModal.vue

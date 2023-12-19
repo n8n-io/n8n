@@ -1634,22 +1634,24 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
-	triggerPanel?: {
-		hideContent?: boolean | string;
-		header?: string;
-		executionsHelp?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-		activationHint?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-	};
+	triggerPanel?:
+		| {
+				hideContent?: boolean | string;
+				header?: string;
+				executionsHelp?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+				activationHint?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+		  }
+		| boolean;
 	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
