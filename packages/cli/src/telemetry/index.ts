@@ -2,14 +2,15 @@ import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
 import { Container, Service } from 'typedi';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
-import { InstanceSettings } from 'n8n-core';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -41,6 +42,7 @@ export class Telemetry {
 		private postHog: PostHogClient,
 		private license: License,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async init() {
@@ -107,7 +109,7 @@ export class Telemetry {
 		const pulsePacket = {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
-			usage: await LicenseService.getActiveTriggerCount(),
+			usage: await this.workflowRepository.getActiveTriggerCount(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
