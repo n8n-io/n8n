@@ -67,7 +67,7 @@ EEWorkflowController.put(
 		if (!ownsWorkflow || !workflow) {
 			workflow = undefined;
 			// Allow owners/admins to share
-			if (await req.user.hasGlobalScope('workflow:share')) {
+			if (req.user.hasGlobalScope('workflow:share')) {
 				const sharedRes = await Container.get(WorkflowService).getSharing(req.user, workflowId, {
 					allowGlobalScope: true,
 					globalScope: 'workflow:share',
@@ -136,7 +136,7 @@ EEWorkflowController.get(
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-		if (!userSharing && !(await req.user.hasGlobalScope('workflow:read'))) {
+		if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
 			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
