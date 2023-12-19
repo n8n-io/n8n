@@ -4,7 +4,9 @@ export class TemplatesPage extends BasePage {
 	url = '/templates';
 
 	getters = {
-		useTemplateButton: () => cy.get('[data-testid="use-template-button"]'),
+		useTemplateButton: () => cy.getByTestId('use-template-button'),
+		templateCards: () => cy.getByTestId('template-card'),
+		firstTemplateCard: () => this.getters.templateCards().first(),
 	};
 
 	actions = {
