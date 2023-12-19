@@ -47,7 +47,7 @@ const webhookNode = computed(() => {
 		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
 		if (node) {
 			// This has to be kept up-to-date with the mode in the Chat-Trigger node
-			if (type === CHAT_TRIGGER_NODE_TYPE && node.parameters.mode === 'testChat') {
+			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {
 				continue;
 			}
 

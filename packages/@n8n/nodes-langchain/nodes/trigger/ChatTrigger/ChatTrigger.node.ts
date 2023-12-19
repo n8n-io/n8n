@@ -79,6 +79,9 @@ export class ChatTrigger implements INodeType {
 			hideContent: true,
 		},
 		properties: [
+			/**
+			 * @note If we change this property, also update it in ChatEmbedModal.vue
+			 */
 			{
 				displayName: 'Make Chat Publicly Available',
 				name: 'public',
@@ -88,13 +91,34 @@ export class ChatTrigger implements INodeType {
 					'Whether the chat should be publicly available or only accessible through the manual chat interface',
 			},
 			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Hosted Chat',
+						value: 'hostedChat',
+						description: 'Chat by going to a URL hosted by n8n (plus chat within the editor)',
+					},
+					{
+						name: 'Embedded Chat',
+						value: 'webhook',
+						description:
+							'Chat through a widget embedded in another page, or by calling a webhook (plus chat within the editor)',
+					},
+				],
+				default: 'hostedChat',
+				displayOptions: {
+					show: {
+						public: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
 				displayOptions: {
-					hide: {
-						mode: ['testChat'],
-					},
 					show: {
 						public: [true],
 					},
@@ -103,11 +127,13 @@ export class ChatTrigger implements INodeType {
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
+						description: 'Simple username and password (the same one for all users)',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'n8n User Auth',
 						value: 'n8nUserAuth',
+						description: 'Require user to be logged in with their n8n account',
 					},
 					{
 						name: 'None',
@@ -128,36 +154,6 @@ export class ChatTrigger implements INodeType {
 					},
 				},
 				default: '',
-			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Hosted Chat',
-						value: 'hostedChat',
-						description: 'Chat by going to a URL hosted by n8n (plus chat within the editor)',
-					},
-					// TODO: Reminder, if we change value of "testChat" also update in ChatEmbedModal.vue. Delete this line before merge!
-					{
-						name: 'Test Chat',
-						value: 'testChat',
-						description: 'Only use to test with the debug Chat',
-					},
-					{
-						name: 'Embedded Chat',
-						value: 'webhook',
-						description:
-							'Chat through a widget embedded in another page, or by calling a webhook (plus chat within the editor)',
-					},
-				],
-				default: 'testChat',
-				displayOptions: {
-					show: {
-						public: [true],
-					},
-				},
 			},
 			{
 				displayName: 'Initial Messages',
@@ -305,8 +301,9 @@ export class ChatTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = this.getResponseObject();
 
-		const nodeMode = this.getNodeParameter('mode', 'testChat') as string;
-		if (nodeMode === 'testChat') {
+		const isPublic = this.getNodeParameter('public', false) as boolean;
+		const nodeMode = this.getNodeParameter('mode', 'hostedChat') as string;
+		if (!isPublic) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
