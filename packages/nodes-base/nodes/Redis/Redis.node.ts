@@ -1,7 +1,6 @@
 import util from 'util';
 import type {
 	IExecuteFunctions,
-	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
