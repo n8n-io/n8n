@@ -37,7 +37,7 @@ export class WorkflowStatisticsController {
 		const workflowId = req.params.id;
 		const allowed = await this.sharedWorkflowRepository.exist({
 			relations: ['workflow'],
-			where: await whereClause({
+			where: whereClause({
 				user,
 				globalScope: 'workflow:read',
 				entityType: 'workflow',

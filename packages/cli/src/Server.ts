@@ -466,7 +466,7 @@ export class Server extends AbstractServer {
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: await whereClause({
+					where: whereClause({
 						user: req.user,
 						globalScope: 'workflow:read',
 						entityType: 'workflow',
