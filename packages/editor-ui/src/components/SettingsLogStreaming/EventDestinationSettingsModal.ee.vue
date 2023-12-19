@@ -207,6 +207,8 @@ import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default defineComponent({
 	name: 'event-destination-settings-modal',
@@ -471,6 +473,34 @@ export default defineComponent({
 				this.unchanged = true;
 				this.eventBus.emit('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
+
+				const destinationType = (this.nodeParameters.__type ?? 'unknown')
+					.replace('$$MessageEventBusDestination', '')
+					.toLowerCase();
+
+				const isComplete = () => {
+					if (this.isTypeWebhook) {
+						return this.destination.host !== '';
+					} else if (this.isTypeSentry) {
+						return this.destination.dsn !== '';
+					} else if (this.isTypeSyslog) {
+						return (
+							this.destination.host !== '' &&
+							this.destination.port !== undefined &&
+							this.destination.protocol !== '' &&
+							this.destination.facility !== undefined &&
+							this.destination.app_name !== ''
+						);
+					}
+					return false;
+				};
+
+				useTelemetry().track('User updated log streaming destination', {
+					instance_id: useRootStore().instanceId,
+					destination_type: destinationType,
+					is_complete: isComplete(),
+					is_active: this.destination.enabled,
+				});
 			}
 		},
 	},
