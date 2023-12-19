@@ -50,7 +50,7 @@
     "@n8n/permissions": "workspace:*",
     "@vueuse/components": "^10.5.0",
     "@vueuse/core": "^10.5.0",
-    "axios": "^0.21.1",
+    "axios": "^1.6.2",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
