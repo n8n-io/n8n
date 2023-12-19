@@ -15,6 +15,10 @@ const props = defineProps({
 
 const { message } = toRefs(props);
 
+const messageText = computed(() => {
+	return message.value.text || '&lt;Empty response&gt;';
+});
+
 const classes = computed(() => {
 	return {
 		'chat-message-from-user': message.value.sender === 'user',
@@ -39,7 +43,7 @@ const markdownOptions = {
 		<slot>
 			<vue-markdown
 				class="chat-message-markdown"
-				:source="message.text"
+				:source="messageText"
 				:options="markdownOptions"
 			/>
 		</slot>
