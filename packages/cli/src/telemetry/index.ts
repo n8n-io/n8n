@@ -59,7 +59,7 @@ export class Telemetry {
 			const logLevel = config.getEnv('logs.level');
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			this.rudderStack = new RudderStack(key, url, { logLevel });
+			this.rudderStack = new RudderStack(key, { logLevel, dataPlaneUrl: url });
 
 			this.startPulse();
 		}
@@ -152,16 +152,8 @@ export class Telemetry {
 
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		void this.track('User instance stopped');
-		return new Promise<void>(async (resolve) => {
-			await this.postHog.stop();
-
-			if (this.rudderStack) {
-				this.rudderStack.flush(resolve);
-			} else {
-				resolve();
-			}
-		});
+		await this.track('User instance stopped');
+		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
 	async identify(traits?: {
@@ -192,7 +184,7 @@ export class Telemetry {
 		return new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
-				const updatedProperties: ITelemetryTrackProperties = {
+				const updatedProperties = {
 					...properties,
 					instance_id: instanceId,
 					version_cli: N8N_VERSION,
