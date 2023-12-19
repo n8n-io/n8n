@@ -8,6 +8,7 @@ export type Resource =
 	| 'eventBusEvent'
 	| 'eventBusDestination'
 	| 'ldap'
+	| 'license'
 	| 'logStreaming'
 	| 'orchestration'
 	| 'sourceControl'
@@ -41,6 +42,7 @@ export type EventBusDestinationScope = ResourceScope<
 >;
 export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
+export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
@@ -59,6 +61,7 @@ export type Scope =
 	| EventBusEventScope
 	| EventBusDestinationScope
 	| LdapScope
+	| LicenseScope
 	| LogStreamingScope
 	| OrchestrationScope
 	| SamlScope

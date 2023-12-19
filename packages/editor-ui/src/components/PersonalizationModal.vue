@@ -15,6 +15,7 @@
 		<template #content>
 			<div :class="$style.container">
 				<n8n-form-inputs
+					v-model="formValues"
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
@@ -22,6 +23,20 @@
 					tagSize="small"
 					@submit="onSubmit"
 				/>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
 			</div>
 		</template>
 		<template #footer>
@@ -140,6 +155,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useUsageStore } from '@/stores/usage.store';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
@@ -153,11 +170,13 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			formValues: {} as Record<string, string>,
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
+			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
 		};
@@ -168,10 +187,47 @@ export default defineComponent({
 		return {
 			externalHooks,
 			...useToast(),
+			...useMessage(),
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useUsageStore,
+			usePostHog,
+		),
+		currentUser() {
+			return this.usersStore.currentUser;
+		},
+		canRegisterForEnterpriseTrial() {
+			if (this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
+			const isSizeEligible = [COMPANY_SIZE_500_999, COMPANY_SIZE_1000_OR_MORE].includes(
+				this.formValues[COMPANY_SIZE_KEY],
+			);
+
+			const emailParts = (this.currentUser?.email || '@').split('@');
+			const emailDomain = emailParts[emailParts.length - 1];
+			const emailDomainParts = emailDomain.split('.');
+			const isEmailEligible = ![
+				'gmail',
+				'yahoo',
+				'hotmail',
+				'aol',
+				'live',
+				'outlook',
+				'icloud',
+				'mail',
+				'email',
+			].find((provider) => emailDomainParts.includes(provider));
+
+			return isSizeEligible && isEmailEligible;
+		},
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -664,8 +720,35 @@ export default defineComponent({
 				this.showError(e, 'Error while submitting results');
 			}
 
+			let licenseRequestSucceeded = false;
+			try {
+				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
+					await this.usageStore.requestEnterpriseLicenseTrial();
+					licenseRequestSucceeded = true;
+				}
+			} catch (e) {
+				this.showError(
+					e,
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.error'),
+				);
+			}
+
 			this.isSaving = false;
 			this.closeDialog();
+
+			if (licenseRequestSucceeded) {
+				await this.alert(
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
+					{
+						title: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.title',
+						),
+						confirmButtonText: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.button',
+						),
+					},
+				);
+			}
 		},
 		async fetchOnboardingPrompt() {
 			if (

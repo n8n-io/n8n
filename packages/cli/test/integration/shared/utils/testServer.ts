@@ -144,8 +144,8 @@ export const setupTestServer = ({
 						break;
 
 					case 'license':
-						const { licenseController } = await import('@/license/license.controller');
-						app.use(`/${REST_PATH_SEGMENT}/license`, licenseController);
+						const { LicenseController } = await import('@/license/license.controller');
+						registerController(app, config, Container.get(LicenseController));
 						break;
 
 					case 'metrics':
