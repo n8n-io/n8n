@@ -402,7 +402,7 @@ module.exports = {
 			type: 'error',
 			docs: {
 				description:
-					'Disallow non-relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve them.',
+					'Disallow non-relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
 				recommended: true,
 			},
 		},
@@ -416,7 +416,7 @@ module.exports = {
 					context.report({
 						node,
 						message:
-							'Use relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve them.',
+							'Use relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
 					});
 				},
 			};
