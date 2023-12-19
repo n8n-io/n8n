@@ -8,6 +8,7 @@ export const defaultOptions: ChatOptions = {
 	},
 	target: '#n8n-chat',
 	mode: 'window',
+	loadPreviousSession: true,
 	chatInputKey: 'chatInput',
 	chatSessionKey: 'sessionId',
 	defaultLanguage: 'en',

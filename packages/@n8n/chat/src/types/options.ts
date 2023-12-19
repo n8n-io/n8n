@@ -7,6 +7,7 @@ export interface ChatOptions {
 	target?: string | Element;
 	mode?: 'window' | 'fullscreen';
 	showWelcomeScreen?: boolean;
+	loadPreviousSession?: boolean;
 	chatInputKey?: string;
 	chatSessionKey?: string;
 	defaultLanguage?: 'en';

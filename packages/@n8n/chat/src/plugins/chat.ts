@@ -61,6 +61,10 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		}
 
 		async function loadPreviousSession() {
+			if (!options.loadPreviousSession) {
+				return;
+			}
+
 			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 			const timestamp = new Date().toISOString();
