@@ -410,14 +410,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				try {
-					await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
-				} catch (e) {
-					logger.error('Failed to restore binary data ID', {
-						executionId: this.executionId,
-						mode: this.mode,
-					});
-				}
+				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
