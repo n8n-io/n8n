@@ -30,7 +30,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .card {
-	width: 240px !important;
+	min-width: 180px;
 	height: 140px;
 	margin-right: var(--spacing-2xs);
 	cursor: pointer;
