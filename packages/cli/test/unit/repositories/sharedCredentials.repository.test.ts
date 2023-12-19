@@ -24,20 +24,18 @@ describe('SharedCredentialsRepository', () => {
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
 		const owner = mock<User>({
 			isOwner: true,
-			hasGlobalScope: async (scope) => {
-				return hasScope(scope, {
+			hasGlobalScope: (scope) =>
+				hasScope(scope, {
 					global: ownerPermissions,
-				});
-			},
+				}),
 		});
 		const member = mock<User>({
 			isOwner: false,
 			id: 'test',
-			hasGlobalScope: async (scope) => {
-				return hasScope(scope, {
+			hasGlobalScope: (scope) =>
+				hasScope(scope, {
 					global: memberPermissions,
-				});
-			},
+				}),
 		});
 
 		beforeEach(() => {
