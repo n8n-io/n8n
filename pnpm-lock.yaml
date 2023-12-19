@@ -749,8 +749,8 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
       '@types/localtunnel':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^2.0.4
+        version: 2.0.4
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
@@ -9357,8 +9357,10 @@ packages:
   /@types/linkify-it@3.0.2:
     resolution: {integrity: sha512-HZQYqbiFVWufzCwexrvh694SOim8z2d+xJl5UNamcvQFejLY/2YUtzXHYi3cHdI7PMlS8ejH2slRAOJQ32aNbA==}
 
-  /@types/localtunnel@1.9.0:
-    resolution: {integrity: sha512-3YxO7RHRrmtYNX6Rhkr97bnXHrF1Ckfo4axENWLcBXWi+8B1WsNbqPqe5Eg6TA5survjAWWvLTu1KQesuLHVgQ==}
+  /@types/localtunnel@2.0.4:
+    resolution: {integrity: sha512-7WM5nlEfEKp8MpwthPa2utdy+f/7ZBxMPzu8qw6EijFFTcpzh5CXgt2YoncxWAZNOPNieMofXCKFudtDEY4bag==}
+    dependencies:
+      '@types/node': 18.16.16
     dev: true
 
   /@types/lodash-es@4.17.6:

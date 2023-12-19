@@ -579,7 +579,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
-					await user.hasGlobalScope('externalSecret:use'),
+					user.hasGlobalScope('externalSecret:use'),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);
