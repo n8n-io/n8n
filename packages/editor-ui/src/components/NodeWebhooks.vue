@@ -11,19 +11,10 @@
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
-				<div class="url-selection">
+				<div class="url-selection" v-if="!isProductionOnly">
 					<el-row>
 						<el-col :span="24">
-							<n8n-radio-buttons
-								v-model="showUrlFor"
-								:options="[
-									{ label: baseText.testUrl, value: 'test' },
-									{
-										label: baseText.productionUrl,
-										value: 'production',
-									},
-								]"
-							/>
+							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
 						</el-col>
 					</el-row>
 				</div>
@@ -65,7 +56,12 @@ import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 
 import { useToast } from '@/composables/useToast';
-import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+} from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
@@ -88,6 +84,18 @@ export default defineComponent({
 		};
 	},
 	computed: {
+		isProductionOnly(): boolean {
+			return this.nodeType && PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
+		urlOptions(): Array<{ label: string; value: string }> {
+			return [
+				...(this.isProductionOnly ? [] : [{ label: this.baseText.testUrl, value: 'test' }]),
+				{
+					label: this.baseText.productionUrl,
+					value: 'production',
+				},
+			];
+		},
 		visibleWebhookUrls(): IWebhookDescription[] {
 			return this.webhooksNode.filter((webhook) => {
 				if (typeof webhook.ndvHideUrl === 'string') {
@@ -109,6 +117,20 @@ export default defineComponent({
 		baseText() {
 			const nodeType = this.nodeType.name;
 			switch (nodeType) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.chatTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.chatTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.chatTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.chatTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.chatTrigger'),
+					};
+
 				case FORM_TRIGGER_NODE_TYPE:
 					return {
 						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.formTrigger'),
@@ -154,7 +176,11 @@ export default defineComponent({
 		},
 		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 			if (this.node) {
-				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+				return this.getWebhookUrl(
+					webhookData,
+					this.node,
+					this.isProductionOnly ? 'production' : this.showUrlFor,
+				);
 			}
 			return '';
 		},
