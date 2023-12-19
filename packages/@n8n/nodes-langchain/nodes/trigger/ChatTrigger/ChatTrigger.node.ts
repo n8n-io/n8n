@@ -76,16 +76,7 @@ export class ChatTrigger implements INodeType {
 		eventTriggerDescription: 'Waiting for you to submit the chat',
 		activationMessage: 'You can now make calls to your production Chat URL.',
 		triggerPanel: {
-			hideContent: '={{ $parameter.mode === "testChat" }}',
-			header: 'Pull in a test chat submission',
-			executionsHelp: {
-				inactive:
-					"Chat Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test chat that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a chat submission via the Production Chat URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
-				active:
-					"Chat Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test chat that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a chat submission via the Production Chat URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
-			},
-			activationHint:
-				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new chat messages created via the Production URL.',
+			hideContent: true,
 		},
 		properties: [
 			{
@@ -135,16 +126,6 @@ export class ChatTrigger implements INodeType {
 						authentication: ['n8nUserAuth'],
 						public: [true],
 					},
-				},
-				default: '',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Open Built-in Chat and execute workflow',
-				name: 'openChat',
-				type: 'button',
-				typeOptions: {
-					action: 'openChat',
 				},
 				default: '',
 			},

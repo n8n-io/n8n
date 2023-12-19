@@ -78,9 +78,9 @@
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:nodeName="nodeName"
-						@execute="onNodeExecute"
 						size="medium"
 						telemetrySource="inputs"
+						@execute="onNodeExecute"
 					/>
 				</div>
 
