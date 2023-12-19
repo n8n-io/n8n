@@ -27,6 +27,13 @@ export class RespondToWebhook implements INodeType {
 		credentials: [],
 		properties: [
 			{
+				displayName:
+					'Use with a Webhook node\'s <b>Respond</b> to <b>Using \'Respond to Webhook\' Node</b> option. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
+				name: 'generalNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Respond With',
 				name: 'respondWith',
 				type: 'options',
