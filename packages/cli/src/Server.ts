@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -681,8 +681,8 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
-							extra: { jobId: req.params.id },
+						this.logger.debug('Could not stop job because it is no longer in queue', {
+							jobId: req.params.id,
 						});
 					} else {
 						await queue.stopJob(job);
