@@ -1,4 +1,4 @@
-import type { ChatOptions } from '@/types';
+import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
 	webhookUrl: 'http://localhost:5678',

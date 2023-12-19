@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { ChatMessage } from '@/types';
+import type { ChatMessage } from '@n8n/chat/types';
 import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';

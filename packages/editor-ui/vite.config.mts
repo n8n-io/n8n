@@ -5,9 +5,10 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
 import { vitestConfig } from '../design-system/vite.config.mts';
+import icons from 'unplugin-icons/vite';
 
 const vendorChunks = ['vue', 'vue-router'];
-const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
+const n8nChunks = ['n8n-workflow', 'n8n-design-system', '@n8n/chat'];
 const ignoreChunks = [
 	'@fontsource/open-sans',
 	'@vueuse/components',
@@ -49,6 +50,10 @@ const alias = [
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
+	{
+		find: /^@n8n\/chat\//,
+		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
+	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: `lodash-es/${name}`,
@@ -59,7 +64,12 @@ const alias = [
 	},
 ];
 
-const plugins = [vue()];
+const plugins = [
+	icons({
+		compiler: 'vue3',
+	}),
+	vue()
+];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

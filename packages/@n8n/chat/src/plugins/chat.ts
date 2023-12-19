@@ -1,10 +1,10 @@
 import type { Plugin } from 'vue';
 import { computed, nextTick, ref } from 'vue';
-import type { ChatMessage, ChatOptions } from '@/types';
+import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { v4 as uuidv4 } from 'uuid';
-import { chatEventBus } from '@/event-buses';
-import * as api from '@/api';
-import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@/constants';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import * as api from '@n8n/chat/api';
+import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ChatPlugin: Plugin<ChatOptions> = {
