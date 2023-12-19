@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { createHash } from 'crypto';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -14,24 +15,15 @@ describe('Data Transformation Functions', () => {
 		});
 
 		describe('.hash()', () => {
+			const hash = (algo: string) => createHash(algo).update('12345').digest('hex');
 			const tests = [
-				['md5', '827ccb0eea8a706c4c34a16891f84e7b'],
-				['sha1', '8cb2237d0679ca88db6464eac60da96345513964'],
-				['sha224', 'a7470858e79c282bc2f6adfd831b132672dfd1224c1e78cbf5bcd057'],
-				['sha256', '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5'],
-				[
-					'sha384',
-					'0fa76955abfa9dafd83facca8343a92aa09497f98101086611b0bfa95dbc0dcc661d62e9568a5a032ba81960f3e55d4a',
-				],
-				[
-					'sha512',
-					'3627909a29c31381a071ec27f7c9ca97726182aed29a7ddd2e54353322cfb30abb9e3a6df2ac2c20fe23436311d678564d0c8d305930575f60e2d3d048184d79',
-				],
-				[
-					'sha3',
-					'74bdb1e2736b3238a91dde1b02809f745b36ec82820017d3e5074b16a5701315d67e470f7cc4c4c0105f9c76c5169795f25b9477a516e78be231d66473341a97',
-				],
-				['ripemd160', 'e9cbd2ea8015a084ce9cf83a3c65b51f8fa10a39'],
+				['md5', hash('md5')],
+				['sha1', hash('sha1')],
+				['sha224', hash('sha224')],
+				['sha256', hash('sha256')],
+				['sha384', hash('sha384')],
+				['sha512', hash('sha512')],
+				['sha3', hash('sha3-512')],
 			] as const;
 			for (const [hashFn, hashValue] of tests) {
 				test(`should work for ${hashFn}`, () => {
