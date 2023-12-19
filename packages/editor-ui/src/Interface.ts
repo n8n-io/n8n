@@ -1772,6 +1772,7 @@ export interface ExternalSecretsProviderWithProperties extends ExternalSecretsPr
 }
 
 export type CloudUpdateLinkSourceType =
+	| 'advanced-permissions'
 	| 'canvas-nav'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
