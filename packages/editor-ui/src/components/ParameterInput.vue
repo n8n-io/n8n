@@ -73,7 +73,7 @@
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
 				>
-					<div class="ignore-key-press">
+					<div class="ignore-key-press code-edit-dialog">
 						<code-node-editor
 							:modelValue="modelValue"
 							:defaultValue="parameter.default"
@@ -1421,5 +1421,13 @@ export default defineComponent({
 
 .invalid {
 	border-color: var(--color-danger);
+}
+
+.code-edit-dialog {
+	height: 70vh;
+
+	.code-node-editor {
+		height: 100%;
+	}
 }
 </style>
