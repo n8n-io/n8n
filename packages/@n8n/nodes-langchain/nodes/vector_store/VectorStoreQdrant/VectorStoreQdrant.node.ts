@@ -3,13 +3,10 @@ import type { QdrantLibArgs } from 'langchain/vectorstores/qdrant';
 import { QdrantVectorStore } from 'langchain/vectorstores/qdrant';
 import { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 
 const sharedFields: INodeProperties[] = [qdrantCollectionRLC];
-
-const retrieveFields: INodeProperties[] = [metadataFilterField];
 
 const insertFields: INodeProperties[] = [
 	{
@@ -25,7 +22,7 @@ const insertFields: INodeProperties[] = [
 				required: false,
 				type: 'json',
 				default: null,
-				description: 'JSON object representing configuration options for creating a collecton',
+				description: 'JSON options for creating a collecton. https://qdrant.tech/documentation/concepts/collections/.',
 			}
 		],
 	},
@@ -47,8 +44,8 @@ export const VectorStoreQdrant = createVectorStoreNode({
 		],
 	},
 	methods: { listSearch: { qdrantCollectionsSearch } },
-	retrieveFields,
-	loadFields: retrieveFields,
+	retrieveFields: [],
+	loadFields: [],
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
@@ -71,6 +68,8 @@ export const VectorStoreQdrant = createVectorStoreNode({
 			extractValue: true,
 		}) as string;
 
+		// If collection config is not provided, the collection will be created with default settings
+		// i.e. with the size of the passed embeddings and "Cosine" distance metric
 		const { collectionConfig } = context.getNodeParameter('options', itemIndex, {}) as {
 			collectionConfig?: QdrantSchemas["CreateCollection"];
 		};
