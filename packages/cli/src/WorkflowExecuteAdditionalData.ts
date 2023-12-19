@@ -413,7 +413,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				try {
 					await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 				} catch (e) {
-					logger.debug('Failed to restore binary data ID', {
+					logger.error('Failed to restore binary data ID', {
 						executionId: this.executionId,
 						mode: this.mode,
 					});
