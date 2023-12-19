@@ -10,7 +10,7 @@ export class QdrantApi implements ICredentialType {
 
 	displayName = 'QdrantApi';
 
-	documentationUrl = 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/';
+	documentationUrl = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
 
 	properties: INodeProperties[] = [
 		{
