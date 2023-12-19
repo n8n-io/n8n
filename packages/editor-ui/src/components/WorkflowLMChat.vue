@@ -331,7 +331,7 @@ export default defineComponent({
 						action: string;
 						chatHistory?: unknown[];
 						response?: {
-							chat_history?: unknown[];
+							sessionId?: unknown[];
 						};
 					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
 				)
@@ -343,7 +343,7 @@ export default defineComponent({
 			if (memoryOutputData?.chatHistory) {
 				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
 			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.chat_history as LangChainMessage[];
+				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
 			} else {
 				return [];
 			}
@@ -404,7 +404,7 @@ export default defineComponent({
 				return;
 			}
 
-			let inputKey = 'chat_input';
+			let inputKey = 'chatInput';
 			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
 				inputKey = 'input';
 			}
@@ -421,9 +421,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									// TODO: I changed it temporary to "chat_history" from "sessionId" to be
-									//       identical. Probably should be renamed again.
-									chat_history: `test-${currentUser.id || 'unknown'}`,
+									sessionId: `test-${currentUser.id || 'unknown'}`,
 									action: 'sendMessage',
 									[inputKey]: message,
 								},
