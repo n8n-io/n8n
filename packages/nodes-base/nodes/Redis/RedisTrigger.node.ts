@@ -7,7 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import redis from 'redis';
+import type { RedisClientOptions } from 'redis';
+import { createClient } from 'redis';
 
 export class RedisTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -67,10 +68,12 @@ export class RedisTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('redis');
 
-		const redisOptions: redis.ClientOpts = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			db: credentials.database as number,
+		const redisOptions: RedisClientOptions = {
+			socket: {
+				host: credentials.host as string,
+				port: credentials.port as number,
+			},
+			database: credentials.database as number,
 		};
 
 		if (credentials.password) {
@@ -85,15 +88,13 @@ export class RedisTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Channels are mandatory!');
 		}
 
-		const client = redis.createClient(redisOptions);
-
+		const client = createClient(redisOptions);
 		const manualTriggerFunction = async () => {
-			await new Promise((resolve, reject) => {
-				client.on('connect', () => {
-					for (const channel of channels) {
-						client.psubscribe(channel);
-					}
-					client.on('pmessage', (pattern: string, channel: string, message: string) => {
+			await new Promise(async (resolve, reject) => {
+				client.on('error', (error) => reject(error));
+				await client.connect();
+				for (const channel of channels) {
+					await client.pSubscribe(channel, (message) => {
 						if (options.jsonParseBody) {
 							try {
 								message = JSON.parse(message);
@@ -109,11 +110,7 @@ export class RedisTrigger implements INodeType {
 						this.emit([this.helpers.returnJsonArray({ channel, message })]);
 						resolve(true);
 					});
-				});
-
-				client.on('error', (error) => {
-					reject(error);
-				});
+				}
 			});
 		};
 
@@ -122,7 +119,7 @@ export class RedisTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
-			client.quit();
+			await client.quit();
 		}
 
 		return {
