@@ -89,12 +89,23 @@ export class ChatTrigger implements INodeType {
 		},
 		properties: [
 			{
+				displayName: 'Make Chat Publicly Available',
+				name: 'public',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the chat should be publicly available or only accessible through the manual chat interface',
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
 				displayOptions: {
 					hide: {
 						mode: ['testChat'],
+					},
+					show: {
+						public: [true],
 					},
 				},
 				options: [
@@ -122,6 +133,7 @@ export class ChatTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['n8nUserAuth'],
+						public: [true],
 					},
 				},
 				default: '',
@@ -159,6 +171,11 @@ export class ChatTrigger implements INodeType {
 					},
 				],
 				default: 'testChat',
+				displayOptions: {
+					show: {
+						public: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Initial Messages',
@@ -167,6 +184,7 @@ export class ChatTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						mode: ['hostedChat'],
+						public: [true],
 					},
 				},
 				typeOptions: {
@@ -182,6 +200,7 @@ export class ChatTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						mode: ['hostedChat', 'webhook'],
+						public: [true],
 					},
 				},
 				placeholder: 'Add Field',
