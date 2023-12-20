@@ -63,7 +63,10 @@ export async function restoreBinaryDataId(
 		const logger = Container.get(Logger);
 
 		if (error.message.includes('ENOENT')) {
-			logger.error('Failed to restore binary data ID - No such file or dir', { executionId, error });
+			logger.warn('Failed to restore binary data ID - No such file or dir', {
+				executionId,
+				error,
+			});
 			return;
 		}
 
