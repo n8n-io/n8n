@@ -408,6 +408,9 @@ export default defineComponent({
 			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
 				inputKey = 'input';
 			}
+			if (triggerNode.type === CHAT_TRIGGER_NODE_TYPE) {
+				inputKey = 'chatInput';
+			}
 
 			const usersStore = useUsersStore();
 			const currentUser = usersStore.currentUser ?? ({} as IUser);
@@ -424,6 +427,7 @@ export default defineComponent({
 									// TODO: I changed it temporary to "chat_history" from "sessionId" to be
 									//       identical. Probably should be renamed again.
 									chat_history: `test-${currentUser.id || 'unknown'}`,
+									sessionId: `test-${currentUser.id || 'unknown'}`,
 									action: 'sendMessage',
 									[inputKey]: message,
 								},
