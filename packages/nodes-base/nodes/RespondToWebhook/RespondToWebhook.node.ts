@@ -28,7 +28,7 @@ export class RespondToWebhook implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Use with a Webhook node\'s Respond to "Using \'Respond to Webhook\' Node" option. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
+					'Verify that the "Webhook" node\'s "Respond" parameter is set to "Using Respond to Webhook Node". <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
 				name: 'generalNotice',
 				type: 'notice',
 				default: '',
@@ -41,22 +41,22 @@ export class RespondToWebhook implements INodeType {
 					{
 						name: 'All Incoming Items',
 						value: 'allIncomingItems',
-						description: 'Respond with all incoming JSON items',
+						description: 'Respond with all input JSON items',
 					},
 					{
-						name: 'Binary',
+						name: 'Binary File',
 						value: 'binary',
 						description: 'Respond with incoming file binary data',
 					},
 					{
 						name: 'First Incoming Item',
 						value: 'firstIncomingItem',
-						description: 'Respond with the first incoming JSON item',
+						description: 'Respond with the first input JSON item',
 					},
 					{
 						name: 'JSON',
 						value: 'json',
-						description: 'Respond with a cutom JSON body',
+						description: 'Respond with a custom JSON body',
 					},
 					{
 						name: 'No Data',
@@ -66,12 +66,12 @@ export class RespondToWebhook implements INodeType {
 					{
 						name: 'Redirect',
 						value: 'redirect',
-						description: 'Respond with a redirect to another URL',
+						description: 'Respond with a redirect to a given URL',
 					},
 					{
 						name: 'Text',
 						value: 'text',
-						description: 'Respond with a simple Text message body',
+						description: 'Respond with a simple text message body',
 					},
 				],
 				default: 'firstIncomingItem',
@@ -79,7 +79,7 @@ export class RespondToWebhook implements INodeType {
 			},
 			{
 				displayName:
-					'When using expressions, note that this node will only run for the first item in the input data.',
+					'When using expressions, note that this node will only run for the first item in the input data',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
@@ -113,13 +113,13 @@ export class RespondToWebhook implements INodeType {
 						respondWith: ['json'],
 					},
 				},
-				default: '{ "key": "value" }',
+				default: '{\n  "myField": "value"\n}',
 				typeOptions: {
 					editor: 'json',
 					editorLanguage: 'json',
-					rows: 2,
+					rows: 4,
 				},
-				description: 'The HTTP Response JSON data',
+				description: 'The HTTP response JSON data',
 			},
 			{
 				displayName: 'Response Body',
@@ -134,8 +134,8 @@ export class RespondToWebhook implements INodeType {
 					rows: 2,
 				},
 				default: '',
-				placeholder: 'e.g. Workflow started',
-				description: 'The HTTP Response text data',
+				placeholder: 'e.g. Workflow completed',
+				description: 'The HTTP response text data',
 			},
 			{
 				displayName: 'Response Data Source',
@@ -191,7 +191,7 @@ export class RespondToWebhook implements INodeType {
 							maxValue: 599,
 						},
 						default: 200,
-						description: 'The HTTP Response code to return. Defaults to 200.',
+						description: 'The HTTP response code to return. Defaults to 200.',
 					},
 					{
 						displayName: 'Response Headers',
@@ -236,7 +236,8 @@ export class RespondToWebhook implements INodeType {
 							},
 						},
 						default: '',
-						description: 'The name of the repsonse field to put all items in',
+						description: 'The name of the response field to put all items in',
+						placeholder: 'e.g. data',
 					},
 				],
 			},
