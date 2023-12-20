@@ -94,7 +94,9 @@ export const codeNodeEditorTheme = ({
 				? {}
 				: { minHeight: rows && rows !== -1 ? `${Number(rows) * 1.3}em` : 'auto' }),
 		},
-		'.cm-gutter,.cm-content': { minHeight: rows && rows !== -1 ? 'auto' : minHeight ?? '20vh' },
+		'.cm-gutter,.cm-content': {
+			minHeight: rows && rows !== -1 ? 'auto' : minHeight ?? 'calc(30vh - var(--spacing-2xl))',
+		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
 			color: 'var(--color-primary)',
