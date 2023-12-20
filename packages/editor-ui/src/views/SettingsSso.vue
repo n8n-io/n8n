@@ -82,7 +82,7 @@ const getSamlConfig = async () => {
 	ssoSettingsSaved.value = !!config?.metadata;
 };
 
-const testSucceeded = ref(false);
+let testSucceeded = false;
 
 const onSave = async () => {
 	try {
@@ -110,7 +110,7 @@ const onSave = async () => {
 		telemetry.track('User updated single sign on settings', {
 			instance_id: rootStore.instanceId,
 			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
-			is_valid: testSucceeded.value,
+			is_valid: testSucceeded,
 			is_active: ssoStore.isSamlLoginEnabled,
 		});
 	} catch (error) {
@@ -128,10 +128,10 @@ const onTest = async () => {
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');
 		}
-		testSucceeded.value = true;
+		testSucceeded = true;
 	} catch (error) {
 		toast.showError(error, 'error');
-		testSucceeded.value = false;
+		testSucceeded = false;
 	}
 };
 
