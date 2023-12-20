@@ -5,13 +5,13 @@
 	</defs>
 	<style>
 		tspan { white-space:pre } 
-		.t0 { font-size: 48px;fill: #384d5b;font-weight: 700;font-family: "Roboto-Bold", "Roboto" } 
+		.t0 { font-size: 56px;fill: #212c33;font-weight: 700;font-family: "Roboto-Bold", "Roboto" } 
 	</style>
 	<g id="Layer">
-		<text id="Promptify" style="transform: matrix(1,0,0,1,149,37)" >
-			<tspan x="0" y="36" class="t0">P</tspan><tspan  y="36" class="t0">r</tspan><tspan  y="36" class="t0">o</tspan><tspan  y="36" class="t0">m</tspan><tspan  y="36" class="t0">p</tspan><tspan  y="36" class="t0">t</tspan><tspan  y="36" class="t0">i</tspan><tspan  y="36" class="t0">f</tspan><tspan  y="36" class="t0">y
+		<use id="favicon" href="#img1" transform="matrix(.547,0,0,.547,8,-1)"/>
+		<text id="Promptify" style="transform: matrix(1,0,0,1,117,29)" >
+			<tspan x="0" y="39.4" class="t0">P</tspan><tspan  y="39.4" class="t0">r</tspan><tspan  y="39.4" class="t0">o</tspan><tspan  y="39.4" class="t0">m</tspan><tspan  y="39.4" class="t0">p</tspan><tspan  y="39.4" class="t0">t</tspan><tspan  y="39.4" class="t0">i</tspan><tspan  y="39.4" class="t0">f</tspan><tspan  y="39.4" class="t0">y
 </tspan>
 		</text>
-		<use id="favicon" href="#img1" transform="matrix(.714,0,0,.547,5,0)"/>
 	</g>
 </svg>

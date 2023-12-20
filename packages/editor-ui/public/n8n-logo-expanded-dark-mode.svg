@@ -1,5 +1,5 @@
 <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 58 16" width="58" height="16">
-	<title>n8n-logo-expanded-dark-mode-svg</title>
+	<title>n8n-logo-expanded-svg</title>
 	<defs>
 		<clipPath clipPathUnits="userSpaceOnUse" id="cp1">
 			<path d="m0 0h58v16h-58z"/>
@@ -8,13 +8,15 @@
 	</defs>
 	<style>
 		tspan { white-space:pre } 
-		.t0 { font-size: 8px;fill: #ffffff;font-weight: 700;font-family: "Roboto-Bold", "Roboto" } 
+		.t0 { font-size: 9px;fill: #ffffff;font-weight: 700;font-family: "Roboto-Bold", "Roboto" } 
 	</style>
-	<g id="Clip-Path" clip-path="url(#cp1)">
-		<text id="promptify" style="transform: matrix(1,0,0,1,23,4)" >
-			<tspan x="0" y="6" class="t0">p</tspan><tspan  y="6" class="t0">r</tspan><tspan  y="6" class="t0">o</tspan><tspan  y="6" class="t0">m</tspan><tspan  y="6" class="t0">p</tspan><tspan  y="6" class="t0">t</tspan><tspan  y="6" class="t0">i</tspan><tspan  y="6" class="t0">f</tspan><tspan  y="6" class="t0">y
+	<g id="Clip-Path: Clip-Path" clip-path="url(#cp1)">
+		<g id="Clip-Path">
+			<text id="Promptify" style="transform: matrix(1,0,0,1,18,4)" >
+				<tspan x="0" y="6.8" class="t0">P</tspan><tspan  y="6.8" class="t0">r</tspan><tspan  y="6.8" class="t0">o</tspan><tspan  y="6.8" class="t0">m</tspan><tspan  y="6.8" class="t0">p</tspan><tspan  y="6.8" class="t0">t</tspan><tspan  y="6.8" class="t0">i</tspan><tspan  y="6.8" class="t0">f</tspan><tspan  y="6.8" class="t0">y
 </tspan>
-		</text>
-		<use id="favicon" href="#img1" transform="matrix(.109,0,0,.083,1,0)"/>
+			</text>
+		</g>
+		<use id="favicon" href="#img1" transform="matrix(.083,0,0,.083,1,0)"/>
 	</g>
 </svg>
