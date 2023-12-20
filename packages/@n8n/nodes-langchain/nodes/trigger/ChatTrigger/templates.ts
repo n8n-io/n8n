@@ -52,7 +52,7 @@ export function createPage({
 								},
 							};
 						} catch (error) {
-							window.location.href = '/signin';
+							window.location.href = '/signin?redirect=' + window.location.href;
 							return;
 						}
 					}

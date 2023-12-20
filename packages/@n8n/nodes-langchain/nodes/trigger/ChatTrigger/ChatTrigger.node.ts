@@ -97,13 +97,12 @@ export class ChatTrigger implements INodeType {
 					{
 						name: 'Hosted Chat',
 						value: 'hostedChat',
-						description: 'Chat by going to a URL hosted by n8n (plus chat within the editor)',
+						description: 'Chat on a page served by n8n',
 					},
 					{
 						name: 'Embedded Chat',
 						value: 'webhook',
-						description:
-							'Chat through a widget embedded in another page, or by calling a webhook (plus chat within the editor)',
+						description: 'Chat through a widget embedded in another page, or by calling a webhook',
 					},
 				],
 				default: 'hostedChat',
@@ -128,7 +127,7 @@ export class ChatTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Follow the instructions <a>here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
 				name: 'embeddedChatNotice',
 				type: 'notice',
 				displayOptions: {

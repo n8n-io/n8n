@@ -143,6 +143,11 @@ export default defineComponent({
 
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
+					if (redirect.startsWith('http')) {
+						window.location.href = redirect;
+						return;
+					}
+
 					void this.$router.push(redirect);
 					return;
 				}
