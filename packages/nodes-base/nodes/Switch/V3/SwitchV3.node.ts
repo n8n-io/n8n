@@ -309,9 +309,7 @@ export class SwitchV3 implements INodeType {
 			try {
 				const item = items[itemIndex];
 
-				if (item.pairedItem === undefined) {
-					item.pairedItem = { item: itemIndex };
-				}
+				item.pairedItem = { item: itemIndex };
 
 				if (mode === 'expression') {
 					const numberOutputs = this.getNodeParameter('numberOutputs', itemIndex) as number;

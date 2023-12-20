@@ -644,9 +644,7 @@ export class SwitchV2 implements INodeType {
 				const rules = this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[];
 				mode = this.getNodeParameter('mode', itemIndex) as string;
 
-				if (item.pairedItem === undefined) {
-					item.pairedItem = { item: itemIndex };
-				}
+				item.pairedItem = { item: itemIndex };
 
 				if (mode === 'expression') {
 					const outputsAmount = this.getNodeParameter('outputsAmount', itemIndex) as number;
