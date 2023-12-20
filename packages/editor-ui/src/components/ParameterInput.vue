@@ -62,10 +62,8 @@
 				"
 			>
 				<el-dialog
-					v-if="codeEditDialogVisible"
-					:modelValue="true"
+					:modelValue="codeEditDialogVisible"
 					append-to-body
-					:close-on-click-modal="false"
 					width="80%"
 					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()
@@ -75,11 +73,32 @@
 				>
 					<div class="ignore-key-press code-edit-dialog">
 						<code-node-editor
+							v-if="editorType === 'codeNodeEditor'"
 							:modelValue="modelValue"
 							:defaultValue="parameter.default"
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
+							fillParent
 							@update:modelValue="expressionUpdated"
+						/>
+						<html-editor
+							v-else-if="editorType === 'htmlEditor'"
+							:modelValue="modelValue"
+							:isReadOnly="isReadOnly"
+							:rows="getArgument('rows')"
+							:disableExpressionColoring="!isHtmlNode(node)"
+							:disableExpressionCompletions="!isHtmlNode(node)"
+							fillParent
+							@update:modelValue="valueChangedDebounced"
+						/>
+						<sql-editor
+							v-else-if="editorType === 'sqlEditor'"
+							:modelValue="modelValue"
+							:dialect="getArgument('sqlDialect')"
+							:isReadOnly="isReadOnly"
+							:rows="getArgument('rows')"
+							fillParent
+							@update:modelValue="valueChangedDebounced"
 						/>
 					</div>
 				</el-dialog>
@@ -111,7 +130,7 @@
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
-							class="edit-window-button textarea-modal-opener"
+							class="textarea-modal-opener"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
@@ -133,7 +152,7 @@
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
-							class="edit-window-button textarea-modal-opener"
+							class="textarea-modal-opener"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
@@ -154,7 +173,7 @@
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
-							class="edit-window-button textarea-modal-opener"
+							class="textarea-modal-opener"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>

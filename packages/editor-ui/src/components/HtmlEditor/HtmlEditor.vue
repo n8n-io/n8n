@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div :class="$style.editor">
 		<div ref="htmlEditor"></div>
 		<slot name="suffix" />
 	</div>
@@ -39,9 +39,9 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { htmlEditorEventBus } from '@/event-bus';
 import { expressionManager } from '@/mixins/expressionManager';
-import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
+import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -52,6 +52,10 @@ export default defineComponent({
 			required: true,
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
@@ -98,8 +102,11 @@ export default defineComponent({
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
-				theme({
+				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
+					maxHeight: this.fillParent ? '100%' : '50vh',
+					rows: this.rows,
+					highlightColors: 'html',
 				}),
 				lineNumbers(),
 				highlightActiveLineGutter(),
@@ -271,13 +278,7 @@ export default defineComponent({
 	mounted() {
 		htmlEditorEventBus.on('format-html', this.format);
 
-		let doc = this.modelValue;
-
-		if (this.modelValue === '' && this.rows > 0) {
-			doc = '\n'.repeat(this.rows - 1);
-		}
-
-		const state = EditorState.create({ doc, extensions: this.extensions });
+		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
 		this.editorState = this.editor.state;
@@ -291,4 +292,12 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.editor {
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
+}
+</style>

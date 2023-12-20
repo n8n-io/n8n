@@ -3,6 +3,7 @@
 		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
+			v-if="!fillParent"
 			:segments="segments"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
@@ -88,6 +89,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		fillParent: {
+			type: Boolean,
+			default: false,
+		},
 		rows: {
 			type: Number,
 			default: -1,
@@ -143,8 +148,9 @@ export default defineComponent({
 				expressionInputHandler(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					customMaxHeight: '350px',
-					customMinHeight: this.rows,
+					maxHeight: this.fillParent ? '100%' : '50vh',
+					minHeight: '10vh',
+					rows: this.rows,
 				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
@@ -234,5 +240,10 @@ export default defineComponent({
 <style module lang="scss">
 .sqlEditor {
 	position: relative;
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
 }
 </style>
