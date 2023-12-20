@@ -35,7 +35,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -69,15 +68,13 @@ export default defineComponent({
 		Telemetry,
 		Modals,
 	},
-	mixins: [newVersions, userHelpers],
-	setup(props) {
+	mixins: [userHelpers],
+	setup() {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -115,7 +112,6 @@ export default defineComponent({
 	async mounted() {
 		this.logHiringBanner();
 
-		void this.checkForNewVersions();
 		void initializeAuthenticatedFeatures();
 
 		void useExternalHooks().run('app.mount');

@@ -134,6 +134,9 @@
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :updateItemSize="updateItemSize" />
 						</template>
+						<template #postListContent>
+							<slot name="postListContent" />
+						</template>
 					</n8n-recycle-scroller>
 					<n8n-datatable
 						v-if="typeProps.columns"

@@ -325,4 +325,33 @@ describe('Undo/Redo', () => {
 				WorkflowPage.getters.nodeConnections().should('have.length', 2);
 			});
 	});
+
+	it('should be able to copy and paste pinned data nodes in workflows with dynamic Switch node', () => {
+		cy.fixture('Test_workflow_form_switch.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		WorkflowPage.actions.zoomToFit();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
+					.should('have.css', 'left', `637px`)
+					.should('have.css', 'top', `501px`);
+
+		cy.fixture('Test_workflow_form_switch.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		WorkflowPage.getters.canvasNodes().should('have.length', 4);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+
+		WorkflowPage.actions.hitUndo();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
+					.should('have.css', 'left', `637px`)
+					.should('have.css', 'top', `501px`);
+	});
 });
