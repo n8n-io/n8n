@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - packages/cli/src/databases/migrations/**
+      - packages/cli/src/databases/**
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
