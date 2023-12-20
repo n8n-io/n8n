@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import type { RoleNames, RoleScopes } from '../entities/Role';
 import { Role } from '../entities/Role';
+import { User } from '../entities/User';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
@@ -20,9 +21,9 @@ export class RoleRepository extends Repository<Role> {
 		type Row = { role_name: string; count: number | string };
 
 		const rows: Row[] = await this.createQueryBuilder('role')
-			.select('role.name', 'role_name')
+			.select('role.name')
 			.addSelect('COUNT(user.id)', 'count')
-			.innerJoin('user', 'user', 'role.id = user.globalRoleId')
+			.innerJoin(User, 'user', 'role.id = user.globalRoleId')
 			.groupBy('role.name')
 			.getRawMany();
 
