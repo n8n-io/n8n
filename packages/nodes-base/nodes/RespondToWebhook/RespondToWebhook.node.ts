@@ -28,7 +28,7 @@ export class RespondToWebhook implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Use with a Webhook node\'s <b>Respond</b> to <b>Using \'Respond to Webhook\' Node</b> option. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
+					'Use with a Webhook node\'s Respond to "Using \'Respond to Webhook\' Node" option. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
 				name: 'generalNotice',
 				type: 'notice',
 				default: '',
@@ -267,9 +267,15 @@ export class RespondToWebhook implements INodeType {
 				if (typeof responseBodyParameter === 'object') {
 					responseBody = responseBodyParameter;
 				} else {
-					responseBody = jsonParse(responseBodyParameter, {
-						errorMessage: "Invalid JSON in 'Response Body' field",
-					});
+					try {
+						responseBody = jsonParse(responseBodyParameter);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), error as Error, {
+							message: "Invalid JSON in 'Response Body' field",
+							description:
+								"Check that the syntax of the JSON in the 'Response Body' parameter is valid",
+						});
+					}
 				}
 			}
 		} else if (respondWith === 'allIncomingItems') {
