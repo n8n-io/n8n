@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
 import { initializeCloudHooks } from '@/hooks/register';
+import { useVersionsStore } from '@/stores/versions.store';
 
 let coreInitialized = false;
 let authenticatedFeaturesInitialized = false;
@@ -20,9 +21,12 @@ export async function initializeCore() {
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const versionsStore = useVersionsStore();
 
 	await settingsStore.initialize();
 	await usersStore.initialize();
+
+	void versionsStore.checkForNewVersions();
 
 	if (settingsStore.isCloudDeployment) {
 		try {

@@ -1,5 +1,11 @@
 <template>
-	<a v-if="version" :href="version.documentationUrl" target="_blank" :class="$style.card">
+	<a
+		v-if="version"
+		:href="version.documentationUrl"
+		target="_blank"
+		:class="$style.card"
+		data-test-id="version-card"
+	>
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
