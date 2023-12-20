@@ -34,6 +34,13 @@ export class WorkflowsPage extends BasePage {
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
+		suggestedTemplatesPageContainer: () => cy.getByTestId('suggested-templates-page-container'),
+		suggestedTemplatesCards: () => cy.getByTestId('templates-info-card').filter(':visible'),
+		suggestedTemplatesNewWorkflowButton: () => cy.getByTestId('suggested-templates-new-workflow-button'),
+		suggestedTemplatesSectionContainer: () => cy.getByTestId('suggested-templates-section-container'),
+		suggestedTemplatesPreviewModal: () => cy.getByTestId('suggested-templates-preview-modal'),
+		suggestedTemplatesUseTemplateButton: () => cy.getByTestId('use-template-button'),
+		suggestedTemplatesSectionDescription: () => cy.getByTestId('suggested-template-section-description'),
 	};
 
 	actions = {

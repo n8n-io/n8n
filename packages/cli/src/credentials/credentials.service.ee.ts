@@ -40,7 +40,7 @@ export class EECredentialsService extends CredentialsService {
 		// Omit user from where if the requesting user has relevant
 		// global credential permissions. This allows the user to
 		// access credentials they don't own.
-		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
 			where.userId = user.id;
 		}
 

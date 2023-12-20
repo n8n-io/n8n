@@ -450,7 +450,6 @@ export interface IGetExecuteHookFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 		webhookData?: IWebhookData,
 	): IHookFunctions;
 }
@@ -1660,6 +1659,7 @@ export interface IWebhookData {
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
+	isTest?: boolean;
 }
 
 export interface IWebhookDescription {

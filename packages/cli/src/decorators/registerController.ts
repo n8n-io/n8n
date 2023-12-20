@@ -68,7 +68,7 @@ export const createGlobalScopeMiddleware =
 
 		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
 
-		const hasScopes = await user.hasGlobalScope(scopes);
+		const hasScopes = user.hasGlobalScope(scopes);
 		if (!hasScopes) {
 			return res.status(403).json({ status: 'error', message: 'Unauthorized' });
 		}

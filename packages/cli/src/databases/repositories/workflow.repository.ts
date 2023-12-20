@@ -21,4 +21,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		});
 	}
+
+	async getActiveTriggerCount() {
+		const totalTriggerCount = await this.sum('triggerCount', {
+			active: true,
+		});
+		return totalTriggerCount ?? 0;
+	}
 }

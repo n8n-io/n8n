@@ -1,4 +1,5 @@
-import type { ResponseType } from 'axios';
+import type { AxiosResponseHeaders, ResponseType } from 'axios';
+import type { BinaryData } from '../BinaryData/types';
 
 export type RawListPage = {
 	listBucketResult: {
@@ -30,5 +31,11 @@ export type RequestOptions = {
 	body?: string | Buffer;
 	responseType?: ResponseType;
 };
+
+export type MetadataResponseHeaders = AxiosResponseHeaders & {
+	'content-length': string;
+	'content-type'?: string;
+	'x-amz-meta-filename'?: string;
+} & BinaryData.PreWriteMetadata;
 
 export type ConfigSchemaCredentials = { accessKey: string; accessSecret: string };
