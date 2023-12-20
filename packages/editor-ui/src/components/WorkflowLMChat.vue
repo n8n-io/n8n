@@ -353,7 +353,7 @@ export default defineComponent({
 				return [];
 			}
 
-			return chatHistory.map((message) => {
+			return (chatHistory || []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
