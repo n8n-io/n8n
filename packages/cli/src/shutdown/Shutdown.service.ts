@@ -59,7 +59,7 @@ export class ShutdownService {
 	 * Returns a promise that resolves when all the registered listeners
 	 * have shut down.
 	 */
-	async waitForShutdown() {
+	async waitForShutdown(): Promise<void> {
 		if (!this.shutdownPromises) {
 			throw new ApplicationError('App is not shutting down');
 		}

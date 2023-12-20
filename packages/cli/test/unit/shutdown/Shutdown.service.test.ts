@@ -61,7 +61,7 @@ describe('ShutdownService', () => {
 		it('should wait for shutdown', async () => {
 			shutdownService.register(componentName, mockComponent);
 			shutdownService.shutdown();
-			await expect(shutdownService.waitForShutdown()).resolves.toBeDefined();
+			await expect(shutdownService.waitForShutdown()).resolves.toBeUndefined();
 		});
 
 		it('should throw error if app is not shutting down', async () => {
