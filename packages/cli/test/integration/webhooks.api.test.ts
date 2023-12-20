@@ -2,24 +2,24 @@ import { readFileSync } from 'fs';
 import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 
 import { AbstractServer } from '@/AbstractServer';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
+import { initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
+import { createUser } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
-	LoggerProxy.init(getLogger());
 
 	let agent: SuperAgentTest;
 
@@ -34,8 +34,8 @@ describe('Webhook API', () => {
 	describe('Content-Type support', () => {
 		beforeAll(async () => {
 			const node = new WebhookTestingNode();
-			const user = await testDb.createUser();
-			await testDb.createWorkflow(createWebhookWorkflow(node), user);
+			const user = await createUser();
+			await createWorkflow(createWebhookWorkflow(node), user);
 
 			const nodeTypes = mockInstance(NodeTypes);
 			nodeTypes.getByName.mockReturnValue(node);
@@ -137,8 +137,8 @@ describe('Webhook API', () => {
 	describe('Params support', () => {
 		beforeAll(async () => {
 			const node = new WebhookTestingNode();
-			const user = await testDb.createUser();
-			await testDb.createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
+			const user = await createUser();
+			await createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
 
 			const nodeTypes = mockInstance(NodeTypes);
 			nodeTypes.getByName.mockReturnValue(node);

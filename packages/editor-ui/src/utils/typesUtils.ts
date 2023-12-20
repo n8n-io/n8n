@@ -1,6 +1,7 @@
 import dateformat from 'dateformat';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import { isObject } from '@/utils/objectUtils';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -10,15 +11,11 @@ const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
-export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
-	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
-}
-
 export function isJsonKeyObject(item: unknown): item is {
 	json: unknown;
 	[otherKeys: string]: unknown;
 } {
-	if (!isObjectLiteral(item)) return false;
+	if (!isObject(item)) return false;
 
 	return Object.keys(item).includes('json');
 }

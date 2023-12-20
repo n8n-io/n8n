@@ -24,6 +24,7 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
@@ -48,9 +49,7 @@ export class NDV extends BasePage {
 		parameterExpressionPreview: (parameterName: string) =>
 			this.getters
 				.nodeParameters()
-				.find(
-					`[data-test-id="parameter-input-${parameterName}"] + [data-test-id="parameter-expression-preview"]`,
-				),
+				.find(`[data-test-id="parameter-expression-preview-${parameterName}"]`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
@@ -72,15 +71,38 @@ export class NDV extends BasePage {
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
-		resourceMapperRemoveFieldButton: (fieldName: string) => cy.getByTestId(`remove-field-button-${fieldName}`),
-		resourceMapperColumnsOptionsButton: () => cy.getByTestId('columns-parameter-input-options-container'),
+		resourceMapperRemoveFieldButton: (fieldName: string) =>
+			cy.getByTestId(`remove-field-button-${fieldName}`),
+		resourceMapperColumnsOptionsButton: () =>
+			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		filterComponent: (paramName: string) => cy.getByTestId(`filter-${paramName}`),
+		filterCombinator: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-combinator-select').eq(index),
+		filterConditions: (paramName: string) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition'),
+		filterCondition: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition').eq(index),
+		filterConditionLeft: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition-left').eq(index),
+		filterConditionRight: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-condition-right').eq(index),
+		filterConditionOperator: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-operator-select').eq(index),
+		filterConditionRemove: (paramName: string, index = 0) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-remove-condition').eq(index),
+		filterConditionAdd: (paramName: string) =>
+			this.getters.filterComponent(paramName).getByTestId('filter-add-condition'),
+		searchInput: () => cy.getByTestId('ndv-search'),
+		pagination: () => cy.getByTestId('ndv-data-pagination'),
+		nodeVersion: () => cy.getByTestId('node-version'),
+		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
 	};
 
 	actions = {
 		pinData: () => {
-			this.getters.pinDataButton().click();
+			this.getters.pinDataButton().click({ force: true });
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
@@ -104,7 +126,12 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
+				.type(
+					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					{
+						delay: 0,
+					},
+				);
 
 			this.actions.savePinnedData();
 		},
@@ -114,7 +141,7 @@ export class NDV extends BasePage {
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean, delay?: number },
+			opts?: { parseSpecialCharSequences: boolean; delay?: number },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
@@ -187,7 +214,6 @@ export class NDV extends BasePage {
 				.find('span')
 				.should('include.html', asEncodedHTML(value));
 		},
-
 		refreshResourceMapperColumns: () => {
 			this.getters.resourceMapperSelectColumn().realHover();
 			this.getters
@@ -198,14 +224,31 @@ export class NDV extends BasePage {
 
 			getVisiblePopper().find('li').last().click();
 		},
-
-		setInvalidExpression: ({ fieldName, invalidExpression, delay }: { fieldName: string, invalidExpression?: string, delay?: number }) => {
+		addFilterCondition: (paramName: string) => {
+			this.getters.filterConditionAdd(paramName).click();
+		},
+		removeFilterCondition: (paramName: string, index: number) => {
+			this.getters.filterConditionRemove(paramName, index).click();
+		},
+		setInvalidExpression: ({
+			fieldName,
+			invalidExpression,
+			delay,
+		}: {
+			fieldName: string;
+			invalidExpression?: string;
+			delay?: number;
+		}) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
 				delay,
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+		},
+
+		openSettings: () => {
+			this.getters.nodeSettingsTab().click();
 		},
 	};
 }

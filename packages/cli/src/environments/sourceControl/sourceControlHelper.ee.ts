@@ -1,9 +1,8 @@
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { License } from '@/License';
 import { generateKeyPairSync } from 'crypto';
 import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { LoggerProxy } from 'n8n-workflow';
 import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -12,6 +11,7 @@ import {
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import path from 'path';
 import type { KeyPairType } from './types/keyPairType';
+import { Logger } from '@/Logger';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -51,7 +51,7 @@ export function sourceControlFoldersExistCheck(
 				try {
 					mkdirSync(folder, { recursive: true });
 				} catch (error) {
-					LoggerProxy.error((error as Error).message);
+					Container.get(Logger).error((error as Error).message);
 				}
 			}
 		}

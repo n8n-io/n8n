@@ -14,6 +14,7 @@ interface N8nPlusEndpointParams extends EndpointRepresentationParams {
 	dimensions: number;
 	connectedEndpoint: Endpoint;
 	hoverMessage: string;
+	endpointLabelLength: 'small' | 'medium';
 	size: 'small' | 'medium';
 	showOutputLabel: boolean;
 }
@@ -23,15 +24,17 @@ export const N8nPlusEndpointType = 'N8nPlus';
 export const EVENT_PLUS_ENDPOINT_CLICK = 'eventPlusEndpointClick';
 export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpoint> {
 	params: N8nPlusEndpointParams;
+
 	label: string;
+
 	stalkOverlay: Overlay | null;
+
 	messageOverlay: Overlay | null;
 
 	constructor(endpoint: Endpoint, params: N8nPlusEndpointParams) {
 		super(endpoint, params);
 
 		this.params = params;
-
 		this.label = '';
 		this.stalkOverlay = null;
 		this.messageOverlay = null;
@@ -41,15 +44,18 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 	}
 
 	static type = N8nPlusEndpointType;
+
 	type = N8nPlusEndpoint.type;
 
 	setupOverlays() {
 		this.clearOverlays();
-		this.endpoint.instance.setSuspendDrawing(true);
 		this.stalkOverlay = this.endpoint.addOverlay({
 			type: 'Custom',
 			options: {
 				id: PlusStalkOverlay,
+				attributes: {
+					'data-endpoint-label-length': this.params.endpointLabelLength,
+				},
 				create: () => {
 					const stalk = createElement('div', {}, `${PlusStalkOverlay} ${this.params.size}`);
 					return stalk;
@@ -61,6 +67,9 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			options: {
 				id: HoverMessageOverlay,
 				location: 0.5,
+				attributes: {
+					'data-endpoint-label-length': this.params.endpointLabelLength,
+				},
 				create: () => {
 					const hoverMessage = createElement('p', {}, `${HoverMessageOverlay} ${this.params.size}`);
 					hoverMessage.innerHTML = this.params.hoverMessage;
@@ -68,25 +77,28 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				},
 			},
 		});
-		this.endpoint.instance.setSuspendDrawing(false);
 	}
+
 	bindEvents() {
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.bind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	}
+
 	unbindEvents() {
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.unbind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	}
+
 	setStalkLabels = () => {
 		if (!this.endpoint) return;
 
 		const stalkOverlay = this.endpoint.getOverlay(PlusStalkOverlay);
 		const messageOverlay = this.endpoint.getOverlay(HoverMessageOverlay);
+
 		if (stalkOverlay && messageOverlay) {
 			// Increase the size of the stalk overlay if the label is too long
 			const fnKey = this.label.length > 10 ? 'add' : 'remove';
@@ -100,21 +112,25 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			}
 		}
 	};
+
 	fireClickEvent = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint) {
 			this.instance.fire(EVENT_PLUS_ENDPOINT_CLICK, this.endpoint);
 		}
 	};
+
 	setHoverMessageVisible = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint && this.messageOverlay) {
 			this.instance.addOverlayClass(this.messageOverlay, 'visible');
 		}
 	};
+
 	unsetHoverMessageVisible = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint && this.messageOverlay) {
 			this.instance.removeOverlayClass(this.messageOverlay, 'visible');
 		}
 	};
+
 	clearOverlays() {
 		Object.keys(this.endpoint.getOverlays()).forEach((key) => {
 			this.endpoint.removeOverlay(key);
@@ -122,6 +138,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.stalkOverlay = null;
 		this.messageOverlay = null;
 	}
+
 	getConnections() {
 		const connections = [
 			...this.endpoint.connections,
@@ -130,19 +147,16 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 		return connections;
 	}
+
 	setIsVisible(visible: boolean) {
-		this.instance.setSuspendDrawing(true);
 		Object.keys(this.endpoint.getOverlays()).forEach((overlay) => {
 			this.endpoint.getOverlays()[overlay].setVisible(visible);
 		});
-
 		this.setVisible(visible);
-
 		// Re-trigger the success state if label is set
 		if (visible && this.label) {
 			this.setSuccessOutput(this.label);
 		}
-		this.instance.setSuspendDrawing(false);
 	}
 
 	setSuccessOutput(label: string) {
@@ -178,6 +192,8 @@ export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8
 		ep.y = y;
 		ep.w = w;
 		ep.h = h;
+
+		ep.canvas?.setAttribute('data-endpoint-label-length', ep.params.endpointLabelLength);
 
 		ep.addClass('plus-endpoint');
 		return [x, y, w, h, ep.params.dimensions];

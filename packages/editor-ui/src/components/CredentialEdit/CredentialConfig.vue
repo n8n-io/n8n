@@ -61,7 +61,7 @@
 			data-test-id="credentials-config-container-test-success"
 		/>
 
-		<template v-if="credentialPermissions.updateConnection">
+		<template v-if="credentialPermissions.update">
 			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -104,7 +104,7 @@
 		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
+			v-if="credentialType && credentialPermissions.update"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
@@ -145,7 +145,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
@@ -288,7 +288,7 @@ export default defineComponent({
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			const documentationUrl = type && type.documentationUrl;
+			const documentationUrl = type?.documentationUrl;
 
 			if (!documentationUrl) {
 				return '';
@@ -306,7 +306,7 @@ export default defineComponent({
 
 			if (url.hostname === DOCS_DOMAIN) {
 				url.searchParams.set('utm_source', 'n8n_app');
-				url.searchParams.set('utm_medium', 'left_nav_menu');
+				url.searchParams.set('utm_medium', 'credential_settings');
 				url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
 			}
 

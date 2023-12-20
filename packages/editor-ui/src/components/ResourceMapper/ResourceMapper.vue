@@ -15,7 +15,8 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
@@ -173,9 +174,7 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					(field.canBeUsedToMatch || field.defaultMatch) &&
-					field.display !== false &&
-					field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) && field.display && field.removed !== true,
 			).length > 0
 		);
 	}

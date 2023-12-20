@@ -15,7 +15,9 @@
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
-				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+				<div>
+					{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}
+				</div>
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
@@ -29,7 +31,6 @@
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading"
 				data-test-id="workflow-activate-switch"
 			>
 			</el-switch>
@@ -50,23 +51,23 @@
 </template>
 
 <script lang="ts">
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import { getActivatableTriggerNodes } from '@/utils';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
-	setup(props) {
+	setup(props, ctx) {
 		return {
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props),
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	computed: {
@@ -82,7 +83,7 @@ export default defineComponent({
 			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
 		},
 		getActiveColor(): string {
-			if (this.couldNotBeStarted === true) {
+			if (this.couldNotBeStarted) {
 				return '#ff4949';
 			}
 			return '#13ce66';
@@ -119,7 +120,7 @@ export default defineComponent({
 				} else {
 					errorMessage = this.$locale.baseText(
 						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-						{ interpolate: { message: errorData.error.message } },
+						{ interpolate: { message: errorData } },
 					);
 				}
 			} catch (error) {
@@ -155,15 +156,11 @@ export default defineComponent({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
-
-	:deep(.el-loading-spinner) {
-		margin-top: -10px;
-	}
 }
 
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
 }
 </style>

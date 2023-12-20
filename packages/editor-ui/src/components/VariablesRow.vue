@@ -2,9 +2,12 @@
 import type { ComponentPublicInstance, PropType } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
-import { useI18n, useToast, useCopyToClipboard } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore, useUsersStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { getVariablesPermissions } from '@/permissions';
 
 const i18n = useI18n();
@@ -264,8 +267,8 @@ function focusFirstInput() {
 
 .usageSyntax {
 	cursor: pointer;
-	background: var(--color-success-tint-2);
-	color: var(--color-success);
+	background: var(--color-variables-usage-syntax-bg);
+	color: var(--color-variables-usage-font);
 	font-family: var(--font-family-monospace);
 	font-size: var(--font-size-s);
 }

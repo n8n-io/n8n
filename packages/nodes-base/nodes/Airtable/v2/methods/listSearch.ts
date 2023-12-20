@@ -118,7 +118,9 @@ export async function viewSearch(
 	});
 
 	if (!tableData) {
-		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
+			level: 'warning',
+		});
 	}
 
 	if (filter) {

@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import type { n8n } from 'n8n-core';
-import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
@@ -16,14 +15,17 @@ export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
-export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
 export function getN8nPackageJson() {
 	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
 }
 
-export const STARTING_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
+export const STARTING_NODES = [
+	'@n8n/n8n-nodes-langchain.manualChatTrigger',
+	'n8n-nodes-base.start',
+	'n8n-nodes-base.manualTrigger',
+];
 
 export const N8N_VERSION = getN8nPackageJson().version;
 
@@ -34,7 +36,6 @@ export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
 export const RESPONSE_ERROR_MESSAGES = {
 	NO_CREDENTIAL: 'Credential not found',
 	NO_NODE: 'Node not found',
-	NO_ENCRYPTION_KEY: CORE_RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 	PACKAGE_NAME_NOT_PROVIDED: 'Package name is required',
 	PACKAGE_NAME_NOT_VALID: `Package name is not valid - it must start with "${NODE_PACKAGE_PREFIX}"`,
 	PACKAGE_NOT_INSTALLED: 'This package is not installed - you must install it first',
@@ -82,6 +83,9 @@ export const LICENSE_FEATURES = {
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
+	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
+	WORKER_VIEW: 'feat:workerView',
+	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -106,3 +110,7 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
+
+export const MIN_PASSWORD_CHAR_LENGTH = 8;
+
+export const MAX_PASSWORD_CHAR_LENGTH = 64;

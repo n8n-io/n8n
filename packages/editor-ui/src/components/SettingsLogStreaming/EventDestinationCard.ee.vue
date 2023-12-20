@@ -25,7 +25,7 @@
 
 				<el-switch
 					class="mr-s"
-					:disabled="!isInstanceOwner"
+					:disabled="readonly"
 					:modelValue="nodeParameters.enabled"
 					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
@@ -35,7 +35,6 @@
 					"
 					active-color="#13ce66"
 					inactive-color="#8899AA"
-					element-loading-spinner="el-icon-loading"
 					data-test-id="workflow-activate-switch"
 				>
 				</el-switch>
@@ -49,7 +48,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -85,7 +84,7 @@ export default defineComponent({
 			required: true,
 			default: deepCopy(defaultMessageEventBusDestinationOptions),
 		},
-		isInstanceOwner: Boolean,
+		readonly: Boolean,
 	},
 	mounted() {
 		this.nodeParameters = Object.assign(
@@ -106,7 +105,7 @@ export default defineComponent({
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
 			];
-			if (this.isInstanceOwner) {
+			if (!this.readonly) {
 				actions.push({
 					label: this.$locale.baseText('workflows.item.delete'),
 					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,

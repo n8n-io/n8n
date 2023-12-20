@@ -1,5 +1,5 @@
-import FormData from 'form-data';
 import type { Readable } from 'stream';
+import FormData from 'form-data';
 import {
 	BINARY_ENCODING,
 	type IDataObject,
@@ -179,9 +179,8 @@ export const objectOperations: INodeProperties[] = [
 								// Set the headers
 								if (!requestOptions.headers) requestOptions.headers = {};
 								requestOptions.headers['Content-Length'] = body.getLengthSync();
-								requestOptions.headers[
-									'Content-Type'
-								] = `multipart/related; boundary=${body.getBoundary()}`;
+								requestOptions.headers['Content-Type'] =
+									`multipart/related; boundary=${body.getBoundary()}`;
 
 								// Return the request data
 								requestOptions.body = body;

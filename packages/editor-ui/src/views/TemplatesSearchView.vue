@@ -10,8 +10,11 @@
 				<div :class="$style.button">
 					<n8n-button
 						size="large"
-						:label="$locale.baseText('templates.newButton')"
-						@click="openNewWorkflow"
+						type="secondary"
+						element="a"
+						:href="creatorHubUrl"
+						:label="$locale.baseText('templates.shareWorkflow')"
+						target="_blank"
 					/>
 				</div>
 			</div>
@@ -48,7 +51,7 @@
 								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
 							</n8n-heading>
 						</div>
-						<CollectionsCarousel
+						<TemplatesInfoCarousel
 							:collections="collections"
 							:loading="loadingCollections"
 							@openCollection="onOpenCollection"
@@ -76,7 +79,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
+import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
@@ -89,14 +92,14 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
@@ -111,7 +114,7 @@ export default defineComponent({
 	name: 'TemplatesSearchView',
 	mixins: [genericHelpers, debounceHelper],
 	components: {
-		CollectionsCarousel,
+		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
@@ -132,6 +135,7 @@ export default defineComponent({
 			search: '',
 			searchEventToTrack: null as null | ISearchEvent,
 			errorLoadingWorkflows: false,
+			creatorHubUrl: CREATOR_HUB_URL as string,
 		};
 	},
 	computed: {
@@ -223,10 +227,6 @@ export default defineComponent({
 				);
 				this.searchEventToTrack = null;
 			}
-		},
-		openNewWorkflow() {
-			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
@@ -363,8 +363,7 @@ export default defineComponent({
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
 			if (
-				this.$route.meta &&
-				this.$route.meta.setScrollPosition &&
+				this.$route.meta?.setScrollPosition &&
 				typeof this.$route.meta.setScrollPosition === 'function'
 			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);

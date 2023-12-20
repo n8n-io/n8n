@@ -12,9 +12,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IMessage, IMessageUi } from './MessageInterface';
-
 import type { OptionsWithUri } from 'request';
+import moment from 'moment-timezone';
+import jwt from 'jsonwebtoken';
+import type { IMessage, IMessageUi } from './MessageInterface';
 
 import {
 	// attachmentFields,
@@ -33,9 +34,6 @@ import {
 
 import { googleApiRequest, googleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Chat',

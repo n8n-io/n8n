@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import pgPromise from 'pg-promise';
 import {
 	generateReturning,
 	getItemCopy,
@@ -14,8 +15,6 @@ import {
 	pgQueryV2,
 	pgUpdate,
 } from '../Postgres/v1/genericFunctions';
-
-import pgPromise from 'pg-promise';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {

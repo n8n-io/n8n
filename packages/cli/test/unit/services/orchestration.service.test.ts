@@ -1,20 +1,22 @@
 import Container from 'typedi';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
-import { mockInstance } from '../../integration/shared/utils';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { Logger } from '@/Logger';
+import { Push } from '@/push';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { mockInstance } from '../../shared/mocking';
 
-const os = Container.get(OrchestrationMainService);
+const os = Container.get(SingleMainSetup);
 const handler = Container.get(OrchestrationHandlerMainService);
+mockInstance(ActiveWorkflowRunner);
 
 let queueModeId: string;
 
@@ -33,10 +35,11 @@ const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
 };
 
 describe('Orchestration Service', () => {
+	const logger = mockInstance(Logger);
+	mockInstance(Push);
 	beforeAll(async () => {
 		mockInstance(RedisService);
 		mockInstance(ExternalSecretsManager);
-		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
 			if (typeof Redis === 'object') {
@@ -47,12 +50,11 @@ describe('Orchestration Service', () => {
 				};
 			}
 			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return function (...args: any) {
 				return new Redis(args);
 			};
 		});
-		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher', () => {
+		jest.mock('@/services/redis/RedisServicePubSubPublisher', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
 					init: jest.fn(),
@@ -62,7 +64,7 @@ describe('Orchestration Service', () => {
 				};
 			});
 		});
-		jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber', () => {
+		jest.mock('@/services/redis/RedisServicePubSubSubscriber', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
 					subscribeToCommandChannel: jest.fn(),
@@ -75,8 +77,8 @@ describe('Orchestration Service', () => {
 	});
 
 	afterAll(async () => {
-		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
-		jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
+		jest.mock('@/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
+		jest.mock('@/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
 		await os.shutdown();
 	});
 
@@ -96,7 +98,6 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should handle command messages from others', async () => {
-		jest.spyOn(LoggerProxy, 'error');
 		const responseFalseId = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
@@ -106,8 +107,7 @@ describe('Orchestration Service', () => {
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(LoggerProxy.error).toHaveBeenCalled();
-		jest.spyOn(LoggerProxy, 'error').mockRestore();
+		expect(logger.error).toHaveBeenCalled();
 	});
 
 	test('should reject command messages from iteslf', async () => {

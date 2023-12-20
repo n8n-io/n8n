@@ -1,6 +1,6 @@
 import type { SpyInstance } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -17,6 +17,7 @@ import {
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 import type { WorkflowVersion } from '@/types/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
+import { telemetry } from '@/plugins/telemetry';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -54,8 +55,12 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						default: versionId,
 					},
 				},
-				template:
-					'<div><button data-test-id="stub-preview-button" @click="event => $emit(`preview`, {id, event})">Preview</button>button></div>',
+				template: `<div>
+						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
+						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
+						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
+						<button data-test-id="stub-download-button" @click="() => $emit('action', { action: 'download', id })" />
+					</div>`,
 			}),
 		},
 	},
@@ -83,6 +88,7 @@ describe('WorkflowHistory', () => {
 		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
+		vi.spyOn(telemetry, 'track').mockImplementation(() => {});
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -95,12 +101,16 @@ describe('WorkflowHistory', () => {
 
 		renderComponent({ pinia });
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId: versionData.versionId },
-			}),
-		);
+			});
+			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
 	});
 
 	it('should load version data if path contains /:versionId', async () => {
@@ -111,8 +121,14 @@ describe('WorkflowHistory', () => {
 
 		renderComponent({ pinia });
 
-		await waitFor(() => expect(router.replace).not.toHaveBeenCalled());
 		expect(getWorkflowVersionSpy).toHaveBeenCalledWith(workflowId, versionData.versionId);
+		await waitFor(() => {
+			expect(router.replace).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith('User selected version', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
 	});
 
 	it('should change path on preview', async () => {
@@ -122,12 +138,35 @@ describe('WorkflowHistory', () => {
 
 		await userEvent.click(getByTestId('stub-preview-button'));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId },
-			}),
-		);
+			});
+			expect(telemetry.track).toHaveBeenCalledWith('User selected version', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
+	});
+
+	it('should open preview in new tab if open action is dispatched', async () => {
+		route.params.workflowId = workflowId;
+		const { getByTestId } = renderComponent({ pinia });
+
+		await userEvent.click(getByTestId('stub-open-button'));
+
+		await waitFor(() => {
+			expect(router.resolve).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId, versionId },
+			});
+			expect(telemetry.track).toHaveBeenCalledWith('User opened version in new tab', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
+		expect(windowOpenSpy).toHaveBeenCalled();
 	});
 
 	it('should open preview in new tab if meta key used', async () => {
@@ -139,12 +178,54 @@ describe('WorkflowHistory', () => {
 		await user.keyboard('[ControlLeft>]');
 		await user.click(getByTestId('stub-preview-button'));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(router.resolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId },
-			}),
-		);
+			});
+			expect(telemetry.track).toHaveBeenCalledWith('User opened version in new tab', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
 		expect(windowOpenSpy).toHaveBeenCalled();
+	});
+
+	it('should clone workflow from version data', async () => {
+		route.params.workflowId = workflowId;
+		const newWorkflowId = faker.string.nanoid();
+		vi.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow').mockResolvedValue({
+			id: newWorkflowId,
+		} as IWorkflowDb);
+
+		const { getByTestId, getByRole } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-clone-button'));
+
+		await waitFor(() => {
+			expect(router.resolve).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { name: newWorkflowId },
+			});
+			expect(telemetry.track).toHaveBeenCalledWith('User cloned version', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
+
+		expect(within(getByRole('alert')).getByRole('link')).toBeInTheDocument();
+	});
+
+	it('should download workflow version', async () => {
+		route.params.workflowId = workflowId;
+
+		const { getByTestId } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-download-button'));
+
+		await waitFor(() => {
+			expect(telemetry.track).toHaveBeenCalledWith('User downloaded version', {
+				instance_id: '',
+				workflow_id: workflowId,
+			});
+		});
 	});
 });

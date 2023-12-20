@@ -118,8 +118,8 @@ import type {
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -128,7 +128,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
@@ -136,7 +136,7 @@ import {
 	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
 	isRequiredCredential,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -144,7 +144,7 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 
 export default defineComponent({
 	name: 'NodeCredentials',
-	mixins: [genericHelpers, nodeHelpers],
+	mixins: [genericHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -170,8 +170,11 @@ export default defineComponent({
 		TitledList,
 	},
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	data() {
@@ -248,7 +251,7 @@ export default defineComponent({
 				// When active node parameters change, check if authentication type has been changed
 				// and set `subscribedToCredentialType` to corresponding credential type
 				const isActive = this.node.name === this.ndvStore.activeNode?.name;
-				const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+				const nodeType = this.nodeType;
 				// Only do this for active node and if it's listening for auth change
 				if (isActive && nodeType && this.listeningForAuthChange) {
 					if (this.mainNodeAuthField && oldValue && newValue) {
@@ -291,13 +294,11 @@ export default defineComponent({
 			});
 		},
 		credentialTypesNodeDescription(): INodeCredentialDescription[] {
-			const node = this.node;
-
 			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			const activeNodeType = this.nodeType;
 			if (activeNodeType?.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -346,10 +347,13 @@ export default defineComponent({
 			let options: CredentialDropdownOption[] = [];
 			types.forEach((type) => {
 				options = options.concat(
-					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
-						...option,
-						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
-					})),
+					this.credentialsStore.allUsableCredentialsByType[type].map(
+						(option: ICredentialsResponse) =>
+							({
+								...option,
+								typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
+							}) as CredentialDropdownOption,
+					),
 				);
 			});
 			return options;
@@ -430,7 +434,7 @@ export default defineComponent({
 			this.$telemetry.track('User selected credential from node modal', {
 				credential_type: credentialType,
 				node_type: this.node.type,
-				...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
+				...(this.nodeHelpers.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
 				workflow_id: this.workflowsStore.workflowId,
 				credential_id: credentialId,
 			});
@@ -458,7 +462,7 @@ export default defineComponent({
 					invalid: oldCredentials,
 					type: selectedCredentialsType,
 				});
-				this.updateNodesCredentialsIssues();
+				this.nodeHelpers.updateNodesCredentialsIssues();
 				this.showMessage({
 					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
 					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
@@ -509,7 +513,12 @@ export default defineComponent({
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
+			return this.nodeHelpers.displayParameter(
+				this.node.parameters,
+				credentialTypeDescription,
+				'',
+				this.node,
+			);
 		},
 
 		getIssues(credentialTypeName: string): string[] {
@@ -548,19 +557,24 @@ export default defineComponent({
 			this.subscribedToCredentialType = credentialType;
 		},
 		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			const nodeType = this.nodeType;
 			const isRequired = isRequiredCredential(nodeType, credentialType);
 
 			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+			const isCredentialOnlyNode = this.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
+
+			if (isCredentialOnlyNode) {
+				return this.$locale.baseText('nodeCredentials.credentialFor', {
+					interpolate: { credentialType: this.nodeType?.displayName ?? credentialTypeName },
+				});
+			}
 
 			if (!this.showMixedCredentials(credentialType)) {
 				return this.$locale.baseText('nodeCredentials.credentialFor', {
-					interpolate: {
-						credentialType: credentialTypeName,
-					},
+					interpolate: { credentialType: credentialTypeName },
 				});
 			}
 			return this.$locale.baseText('nodeCredentials.credentialsLabel');

@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<el-row>
+		<el-row v-if="nodesWithAccess.length > 0">
 			<el-col :span="8" :class="$style.accessLabel">
 				<n8n-text :compact="true" :bold="true">
 					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}
@@ -9,7 +9,7 @@
 			<el-col :span="16">
 				<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
 					<el-checkbox
-						v-if="credentialPermissions.updateNodeAccess"
+						v-if="credentialPermissions.update"
 						:label="
 							$locale.headerText({
 								key: `headers.${shortNodeType(node)}.displayName`,

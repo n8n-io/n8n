@@ -21,16 +21,16 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import MfaView from './MfaView.vue';
-import { useToast } from '@/composables';
+import MfaView, { FORM } from './MfaView.vue';
+import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCloudPlanStore, useUIStore } from '@/stores';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useUIStore } from '@/stores/ui.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { FORM } from './MfaView.vue';
 
 export default defineComponent({
 	name: 'SigninView',
@@ -126,7 +126,13 @@ export default defineComponent({
 					mfaRecoveryCode: form.recoveryCode,
 				});
 				this.loading = false;
-				await this.cloudPlanStore.checkForCloudPlanData();
+				if (this.settingsStore.isCloudDeployment) {
+					try {
+						await this.cloudPlanStore.checkForCloudPlanData();
+					} catch (error) {
+						console.warn('Failed to check for cloud plan data', error);
+					}
+				}
 				await this.settingsStore.getSettings();
 				this.clearAllStickyNotifications();
 				this.checkRecoveryCodesLeft();

@@ -9,6 +9,7 @@ import type {
 
 import { NodeOperationError } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	Mysql2Pool,
 	QueryMode,
@@ -19,7 +20,6 @@ import type {
 } from './interfaces';
 
 import { BATCH_MODE } from './interfaces';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
 	if (replacements === undefined) {

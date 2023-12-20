@@ -33,13 +33,6 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function getStyleTokenValue(name: string, cssVariable = false): string {
-	if (cssVariable) return `var(${name})`;
-
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
-}
-
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }
@@ -69,4 +62,10 @@ export const getBannerRowHeight = async (): Promise<number> => {
 			resolve(document.getElementById('banners')?.clientHeight ?? 0);
 		}, 0);
 	});
+};
+
+export const highlightText = (text: string, search = ''): string => {
+	const pattern = search.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
+	const regex = new RegExp(`(${pattern})`, 'gi');
+	return search ? text?.replace(regex, '<mark class="highlight">$1</mark>') : text;
 };

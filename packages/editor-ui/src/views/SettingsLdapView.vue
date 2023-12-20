@@ -142,8 +142,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { convertToDisplayDate } from '@/utils';
-import { useToast, useMessage } from '@/composables';
+import { capitalizeFirstLetter } from '@/utils/htmlUtils';
+import { convertToDisplayDate } from '@/utils/typesUtils';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import type {
 	ILdapConfig,
 	ILdapSyncData,
@@ -156,12 +158,11 @@ import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
 import { ElTable, ElTableColumn } from 'element-plus';
-import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'v3-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { N8nFormInputs } from 'n8n-design-system';
 import type { CellStyle } from 'element-plus';
@@ -217,7 +218,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap === true;
+			return this.settingsStore.settings.enterprise.ldap;
 		},
 	},
 	methods: {
@@ -304,7 +305,7 @@ export default defineComponent({
 			let saveForm = true;
 
 			try {
-				if (this.adConfig.loginEnabled === true && newConfiguration.loginEnabled === false) {
+				if (this.adConfig.loginEnabled && !newConfiguration.loginEnabled) {
 					const confirmAction = await this.confirm(
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.message'),
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.headline'),
@@ -399,11 +400,11 @@ export default defineComponent({
 				this.loginEnabled = this.adConfig.loginEnabled;
 				this.syncEnabled = this.adConfig.synchronizationEnabled;
 				const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
-					values['loginEnabled'] === true;
+					values.loginEnabled === true;
 				const whenSyncAndLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
-					values['synchronizationEnabled'] === true && values['loginEnabled'] === true;
+					values.synchronizationEnabled === true && values.loginEnabled === true;
 				const whenAdminBindingAndLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
-					values['bindingType'] === 'admin' && values['loginEnabled'] === true;
+					values.bindingType === 'admin' && values.loginEnabled === true;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -484,7 +485,7 @@ export default defineComponent({
 							required: false,
 						},
 						shouldDisplay(values): boolean {
-							return values['connectionSecurity'] !== 'none' && values['loginEnabled'] === true;
+							return values.connectionSecurity !== 'none' && values.loginEnabled === true;
 						},
 					},
 					{
@@ -683,7 +684,7 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
-		async getLdapSynchronizations(state: any) {
+		async getLdapSynchronizations(state: { loaded: () => void; complete: () => void }) {
 			try {
 				this.loadingTable = true;
 				const data = await this.settingsStore.getLdapSynchronizations({

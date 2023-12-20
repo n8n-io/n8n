@@ -5,9 +5,11 @@ import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { ROLE } from '@/utils/userUtils';
+import { hasPermission } from '@/rbac/permissions';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -25,6 +27,12 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+
+const canUserActivateLicense = computed(() =>
+	hasPermission(['role'], {
+		role: [ROLE.Owner],
+	}),
+);
 
 const showActivationSuccess = () => {
 	toast.showMessage({
@@ -77,7 +85,7 @@ onMounted(async () => {
 		}
 	}
 	try {
-		if (!route.query.key && usageStore.canUserActivateLicense) {
+		if (!route.query.key && canUserActivateLicense.value) {
 			await usageStore.refreshLicenseManagementToken();
 		} else {
 			await usageStore.getLicenseInfo();
@@ -184,18 +192,18 @@ const openPricingPage = () => {
 				<n8n-button
 					:class="$style.buttonTertiary"
 					@click="onAddActivationKey"
-					v-if="usageStore.canUserActivateLicense"
+					v-if="canUserActivateLicense"
 					type="tertiary"
 					size="large"
 				>
-					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
 				</n8n-button>
 				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 					<a :href="managePlanUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
 				</n8n-button>
-				<n8n-button v-else @click="onViewPlans" size="large">
+				<n8n-button v-else @click.prevent="onViewPlans" size="large">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
@@ -262,7 +270,7 @@ const openPricingPage = () => {
 	margin: 0 0 var(--spacing-xs);
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-light-grey);
+	border: 1px solid var(--color-foreground-base);
 	white-space: nowrap;
 
 	.count {
@@ -318,13 +326,6 @@ const openPricingPage = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
-}
-
-.buttonTertiary {
-	&,
-	&:hover {
-		background: transparent;
-	}
 }
 </style>
 

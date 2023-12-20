@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 
 interface Props {
@@ -59,7 +59,7 @@ const emit = defineEmits<{
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return (field.canBeUsedToMatch || field.defaultMatch) && field.display !== false;
+		return (field.canBeUsedToMatch || field.defaultMatch) && field.display;
 	});
 });
 

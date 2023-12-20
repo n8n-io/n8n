@@ -1022,8 +1022,12 @@ export class Telegram implements INodeType {
 										type: 'options',
 										options: [
 											{
-												name: 'Markdown',
+												name: 'Markdown (Legacy)',
 												value: 'Markdown',
+											},
+											{
+												name: 'MarkdownV2',
+												value: 'MarkdownV2',
 											},
 											{
 												name: 'HTML',
@@ -1575,8 +1579,12 @@ export class Telegram implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Markdown',
+								name: 'Markdown (Legacy)',
 								value: 'Markdown',
+							},
+							{
+								name: 'MarkdownV2',
+								value: 'MarkdownV2',
 							},
 							{
 								name: 'HTML',
@@ -1708,7 +1716,7 @@ export class Telegram implements INodeType {
 		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		const nodeVersion = this.getNode().typeVersion;
-		const instanceId = await this.getInstanceId();
+		const instanceId = this.getInstanceId();
 
 		for (let i = 0; i < items.length; i++) {
 			try {

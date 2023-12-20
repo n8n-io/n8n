@@ -66,7 +66,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
 const GREAT_FEEDBACK_TITLE =
@@ -200,6 +200,10 @@ export default defineComponent({
 		margin-top: 10px;
 		padding: 0 15px;
 	}
+
+	h2 {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .content {
@@ -214,6 +218,9 @@ export default defineComponent({
 .wrapper {
 	display: flex;
 	flex-direction: column;
+	.text span {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .buttons {
@@ -256,7 +263,7 @@ export default defineComponent({
 }
 
 .valueSurvey {
-	background: var(--color-background-dark);
+	background: var(--color-value-survey-background);
 	height: 120px;
 	top: auto;
 
@@ -278,7 +285,7 @@ export default defineComponent({
 			right: 16px;
 			position: absolute;
 			font-weight: var(--font-weight-bold);
-			color: var(--color-text-xlight);
+			color: var(--color-value-survey-font);
 
 			@media (max-width: $breakpoint-xs) {
 				top: 2px;

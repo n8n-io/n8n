@@ -10,9 +10,11 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
@@ -41,15 +43,15 @@ EECredentialsController.get(
 		)) as CredentialsEntity;
 
 		if (!credential) {
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
 			);
 		}
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError('Forbidden.');
+		if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
+			throw new UnauthorizedError('Forbidden.');
 		}
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
@@ -61,11 +63,7 @@ EECredentialsController.get(
 
 		const { data: _, ...rest } = credential;
 
-		const key = await EECredentials.getEncryptionKey();
-		const decryptedData = EECredentials.redact(
-			await EECredentials.decrypt(key, credential),
-			credential,
-		);
+		const decryptedData = EECredentials.redact(EECredentials.decrypt(credential), credential);
 
 		return { data: decryptedData, ...rest };
 	}),
@@ -81,28 +79,29 @@ EECredentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const encryptionKey = await EECredentials.getEncryptionKey();
-
 		const credentialId = credentials.id;
 		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
-		const sharing = await EECredentials.getSharing(req.user, credentialId);
+		const sharing = await EECredentials.getSharing(req.user, credentialId, {
+			allowGlobalScope: true,
+			globalScope: 'credential:read',
+		});
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError('Forbidden');
+				throw new UnauthorizedError('Forbidden');
 			}
 
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			Object.assign(credentials, { data: decryptedData });
 		}
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			mergedCredentials.data = EECredentials.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return EECredentials.test(req.user, encryptionKey, mergedCredentials);
+		return EECredentials.test(req.user, mergedCredentials);
 	}),
 );
 
@@ -122,20 +121,42 @@ EECredentialsController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
-		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
+		const isOwnedRes = await EECredentials.isOwned(req.user, credentialId);
+		const { ownsCredential } = isOwnedRes;
+		let { credential } = isOwnedRes;
 		if (!ownsCredential || !credential) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			credential = undefined;
+			// Allow owners/admins to share
+			if (req.user.hasGlobalScope('credential:share')) {
+				const sharedRes = await EECredentials.getSharing(req.user, credentialId, {
+					allowGlobalScope: true,
+					globalScope: 'credential:share',
+				});
+				credential = sharedRes?.credentials;
+			}
+			if (!credential) {
+				throw new UnauthorizedError('Forbidden');
+			}
 		}
+
+		const ownerIds = (
+			await EECredentials.getSharings(Db.getConnection().createEntityManager(), credentialId, [
+				'shared',
+				'shared.role',
+			])
+		)
+			.filter((e) => e.role.name === 'owner')
+			.map((e) => e.userId);
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
 			const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
-				req.user.id,
+				...ownerIds,
 				...shareWithIds,
 			]);
 			if (affected) amountRemoved = affected;
@@ -149,7 +170,7 @@ EECredentialsController.put(
 			);
 
 			if (newShareeIds.length) {
-				await EECredentials.share(trx, credential, newShareeIds);
+				await EECredentials.share(trx, credential!, newShareeIds);
 			}
 		});
 

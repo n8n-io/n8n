@@ -61,18 +61,23 @@
 import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
-import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'CredentialsSelectModal',
-	mixins: [externalHooks],
 	components: {
 		Modal,
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	async mounted() {
 		try {
@@ -114,7 +119,7 @@ export default defineComponent({
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			void this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
+			void this.externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

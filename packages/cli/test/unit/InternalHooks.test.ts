@@ -1,11 +1,8 @@
 import { Telemetry } from '@/telemetry';
-import { RoleService } from '@/services/role.service';
 import { InternalHooks } from '@/InternalHooks';
-import { NodeTypes } from '@/NodeTypes';
-import { ExecutionRepository } from '@/databases/repositories';
-import { EventsService } from '@/services/events.service';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 import type { IDiagnosticInfo } from '@/Interfaces';
+import { mock } from 'jest-mock-extended';
 
 jest.mock('@/telemetry');
 
@@ -15,13 +12,7 @@ let telemetry: Telemetry;
 describe('InternalHooks', () => {
 	beforeAll(() => {
 		telemetry = mockInstance(Telemetry);
-		internalHooks = new InternalHooks(
-			telemetry,
-			mockInstance(NodeTypes),
-			mockInstance(RoleService),
-			mockInstance(ExecutionRepository),
-			mockInstance(EventsService),
-		);
+		internalHooks = new InternalHooks(telemetry, mock(), mock(), mock(), mock());
 	});
 
 	it('Should be defined', () => {
@@ -49,6 +40,7 @@ describe('InternalHooks', () => {
 			saml_enabled: true,
 			licensePlanName,
 			licenseTenantId,
+			binary_data_s3: false,
 		};
 
 		const parameters = {

@@ -14,7 +14,7 @@
 			>
 				<multiple-parameter
 					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
@@ -23,18 +23,14 @@
 			</div>
 
 			<import-parameter
-				v-else-if="
-					parameter.type === 'curlImport' &&
-					nodeTypeName === 'n8n-nodes-base.httpRequest' &&
-					nodeTypeVersion >= 3
-				"
+				v-else-if="parameter.type === 'curlImport'"
 				:isReadOnly="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
 
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
-				class="parameter-item"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
@@ -52,18 +48,16 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div
-					class="delete-option clickable"
-					:title="$locale.baseText('parameterInputList.delete')"
+				<n8n-icon-button
 					v-if="hideDelete !== true && !isReadOnly"
-				>
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						:title="$locale.baseText('parameterInputList.parameterOptions')"
-						@click="deleteOption(parameter.name)"
-					/>
-				</div>
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="delete-option"
+					:title="$locale.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></n8n-icon-button>
 				<n8n-input-label
 					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
@@ -75,7 +69,7 @@
 					<collection-parameter
 						v-if="parameter.type === 'collection'"
 						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 						:nodeValues="nodeValues"
 						:path="getPath(parameter.name)"
 						:isReadOnly="isReadOnly"
@@ -84,7 +78,7 @@
 					<fixed-collection-parameter
 						v-else-if="parameter.type === 'fixedCollection'"
 						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 						:nodeValues="nodeValues"
 						:path="getPath(parameter.name)"
 						:isReadOnly="isReadOnly"
@@ -102,24 +96,33 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
-			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
-				<div
-					class="delete-option clickable"
-					:title="$locale.baseText('parameterInputList.delete')"
+			<FilterConditions
+				v-else-if="parameter.type === 'filter'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				@valueChanged="valueChanged"
+			/>
+			<div
+				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
+				class="parameter-item"
+			>
+				<n8n-icon-button
 					v-if="hideDelete !== true && !isReadOnly"
-				>
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						:title="$locale.baseText('parameterInputList.deleteParameter')"
-						@click="deleteOption(parameter.name)"
-					/>
-				</div>
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="delete-option"
+					:title="$locale.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></n8n-icon-button>
 
 				<parameter-input-full
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="getParameterValue(nodeValues, parameter.name, path)"
+					:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
@@ -137,9 +140,6 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import type {
 	INodeParameters,
 	INodeProperties,
@@ -147,20 +147,29 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import MultipleParameter from '@/components/MultipleParameter.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
+import MultipleParameter from '@/components/MultipleParameter.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import { get, set } from 'lodash-es';
+import Conditions from '@/components/FilterConditions/FilterConditions.vue';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import {
+	getMainAuthField,
+	getNodeAuthFields,
+	isAuthRelatedParameter,
+} from '@/utils/nodeTypesUtils';
+import { get, set } from 'lodash-es';
 import { nodeViewEventBus } from '@/event-bus';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -177,6 +186,14 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
+		FilterConditions: Conditions,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+
+		return {
+			nodeHelpers,
+		};
 	},
 	props: {
 		nodeValues: {
@@ -242,7 +259,16 @@ export default defineComponent({
 		nodeAuthFields(): INodeProperties[] {
 			return getNodeAuthFields(this.nodeType);
 		},
+		credentialsParameterIndex(): number {
+			return this.filteredParameters.findIndex((parameter) => parameter.type === 'credentials');
+		},
 		indexToShowSlotAt(): number {
+			const credentialsParameterIndex = this.credentialsParameterIndex;
+
+			if (credentialsParameterIndex !== -1) {
+				return credentialsParameterIndex;
+			}
+
 			let index = 0;
 			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
@@ -255,7 +281,7 @@ export default defineComponent({
 				}
 			});
 
-			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
+			return Math.min(index, this.filteredParameters.length - 1);
 		},
 		mainNodeAuthField(): INodeProperties | null {
 			return getMainAuthField(this.nodeType || null);
@@ -336,7 +362,7 @@ export default defineComponent({
 			}
 
 			if (
-				this.isCustomApiCallSelected(this.nodeValues) &&
+				this.nodeHelpers.isCustomApiCallSelected(this.nodeValues) &&
 				this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
 			) {
 				return false;
@@ -410,13 +436,13 @@ export default defineComponent({
 				if (this.path) {
 					rawValues = deepCopy(this.nodeValues);
 					set(rawValues, this.path, nodeValues);
-					return this.displayParameter(rawValues, parameter, this.path, this.node);
+					return this.nodeHelpers.displayParameter(rawValues, parameter, this.path, this.node);
 				} else {
-					return this.displayParameter(nodeValues, parameter, '', this.node);
+					return this.nodeHelpers.displayParameter(nodeValues, parameter, '', this.node);
 				}
 			}
 
-			return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
+			return this.nodeHelpers.displayParameter(this.nodeValues, parameter, this.path, this.node);
 		},
 		valueChanged(parameterData: IUpdateInformation): void {
 			this.$emit('valueChanged', parameterData);
@@ -499,15 +525,11 @@ export default defineComponent({
 <style lang="scss">
 .parameter-input-list-wrapper {
 	.delete-option {
-		display: none;
 		position: absolute;
-		z-index: 999;
-		color: #f56c6c;
-		font-size: var(--font-size-2xs);
-
-		&:hover {
-			color: #ff0000;
-		}
+		opacity: 0;
+		top: 0;
+		left: calc(-1 * var(--spacing-2xs));
+		transition: opacity 100ms ease-in;
 	}
 
 	.indent > div {
@@ -518,11 +540,6 @@ export default defineComponent({
 		position: relative;
 		margin: var(--spacing-xs) 0;
 
-		.delete-option {
-			top: 0;
-			left: 0;
-		}
-
 		.parameter-info {
 			display: none;
 		}
@@ -531,15 +548,10 @@ export default defineComponent({
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing-xs) 0;
-
-		> .delete-option {
-			top: var(--spacing-5xs);
-			left: 0;
-		}
 	}
 	.parameter-item:hover > .delete-option,
 	.multi-parameter:hover > .delete-option {
-		display: block;
+		opacity: 1;
 	}
 
 	.parameter-notice {

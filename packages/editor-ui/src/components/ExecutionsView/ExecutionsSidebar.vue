@@ -120,10 +120,6 @@ export default defineComponent({
 				this.$router.go(-1);
 			}
 		},
-		'workflowsStore.activeWorkflowExecution'() {
-			this.checkListSize();
-			this.scrollToActiveCard();
-		},
 	},
 	mounted() {
 		// On larger screens, we need to load more then first page of executions
@@ -145,7 +141,7 @@ export default defineComponent({
 				}
 			}
 		},
-		onRetryExecution(payload: Object) {
+		onRetryExecution(payload: object) {
 			this.$emit('retryExecution', payload);
 		},
 		onRefresh(): void {
@@ -204,6 +200,8 @@ export default defineComponent({
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 }
 
@@ -228,7 +226,7 @@ export default defineComponent({
 }
 
 .executionList {
-	height: calc(100% - 10.5em);
+	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;

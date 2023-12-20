@@ -37,6 +37,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -51,22 +52,43 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
+	ThemeOption,
+	AppliedThemeOption,
+	SuggestedTemplates,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getThemeOverride,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
+import { useUsersStore } from './users.store';
+
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = getThemeOverride();
+	if (isValidTheme(value)) {
+		savedTheme = value;
+		addThemeToBody(value);
+	}
+} catch (e) {}
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
 				open: false,
@@ -161,6 +183,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
 				open: false,
 			},
+			[SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -197,13 +222,23 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
+		suggestedTemplates: undefined,
+		// Notifications that should show when a view is initialized
+		// This enables us to set a queue of notifications form outside (another component)
+		// and then show them when the view is initialized
+		pendingNotificationsForViews: {},
 	}),
 	getters: {
-		logo() {
+		appliedTheme(): AppliedThemeOption {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
 			return releaseChannel === 'stable'
-				? 'n8n-logo-expanded.svg'
-				: `n8n-${releaseChannel}-logo.svg`;
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
@@ -349,10 +384,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
+				const { isInstanceOwner } = useUsersStore();
 
-				const isOwner = useUsersStore().isInstanceOwner;
-
-				if (deploymentType === 'cloud' && isOwner) {
+				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
 					const { code } = await useCloudPlanStore().getAutoLoginCode();
 					linkUrl = `https://${adminPanelHost}/login`;
@@ -373,10 +407,15 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		headerHeight() {
-			return Number(getStyleTokenValue('--header-height'));
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -520,7 +559,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		addSelectedNode(node: INodeUi): void {
-			this.selectedNodes.push(node);
+			const isAlreadySelected = this.selectedNodes.some((n) => n.name === node.name);
+			if (!isAlreadySelected) {
+				this.selectedNodes.push(node);
+			}
 		},
 		removeNodeFromSelection(node: INodeUi): void {
 			let index;
@@ -609,6 +651,21 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
+		},
+		setSuggestedTemplates(templates: SuggestedTemplates) {
+			this.suggestedTemplates = templates;
+		},
+		deleteSuggestedTemplates() {
+			this.suggestedTemplates = undefined;
+		},
+		getNotificationsForView(view: VIEWS): NotificationOptions[] {
+			return this.pendingNotificationsForViews[view] ?? [];
+		},
+		setNotificationsForView(view: VIEWS, notifications: NotificationOptions[]) {
+			this.pendingNotificationsForViews[view] = notifications;
+		},
+		deleteNotificationsForView(view: VIEWS) {
+			delete this.pendingNotificationsForViews[view];
 		},
 	},
 });

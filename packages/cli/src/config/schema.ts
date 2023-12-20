@@ -1,7 +1,8 @@
 import path from 'path';
 import convict from 'convict';
-import { UserSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
+import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
 
 convict.addFormat({
@@ -90,11 +91,17 @@ export const schema = {
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
+			poolSize: {
+				doc: 'PostgresDB Pool Size',
+				format: Number,
+				default: 2,
+				env: 'DB_POSTGRESDB_POOL_SIZE',
+			},
 
 			ssl: {
 				enabled: {
 					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'DB_POSTGRESDB_SSL_ENABLED',
 				},
@@ -118,7 +125,7 @@ export const schema = {
 				},
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
-					format: 'Boolean',
+					format: Boolean,
 					default: true,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
@@ -214,7 +221,7 @@ export const schema = {
 		},
 		onboardingFlowDisabled: {
 			doc: 'Show onboarding flow in new workflow',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
@@ -287,7 +294,7 @@ export const schema = {
 		},
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
@@ -299,27 +306,47 @@ export const schema = {
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
 		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 1 hour interval).
+		// the execution data gets pruned regularly (default: 15 minute interval).
 		// All saved execution data older than the max age will be deleted.
 		// Pruning is currently not activated by default, which will change in
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the finished execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
+		},
+		pruneDataHardDeleteBuffer: {
+			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
+			format: Number,
+			default: 1,
+			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
+		},
+		pruneDataIntervals: {
+			hardDelete: {
+				doc: 'How often (minutes) execution data should be hard-deleted',
+				format: Number,
+				default: 15,
+				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
+			},
+			softDelete: {
+				doc: 'How often (minutes) execution data should be soft-deleted',
+				format: Number,
+				default: 60,
+				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
+			},
 		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
@@ -337,7 +364,7 @@ export const schema = {
 		health: {
 			active: {
 				doc: 'If health checks should be enabled',
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
 			},
@@ -399,7 +426,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 				tls: {
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'QUEUE_BULL_REDIS_TLS',
 					doc: 'Enable TLS on Redis connections. Default: false',
@@ -412,10 +439,36 @@ export const schema = {
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
 			gracefulShutdownTimeout: {
-				doc: 'How long should n8n wait for running executions before exiting worker process',
+				doc: '[DEPRECATED] (Use N8N_GRACEFUL_SHUTDOWN_TIMEOUT instead) How long should n8n wait for running executions before exiting worker process (seconds)',
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
+			},
+			settings: {
+				lockDuration: {
+					doc: 'How long (ms) is the lease period for a worker to work on a message',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_LOCK_DURATION',
+				},
+				lockRenewTime: {
+					doc: 'How frequently (ms) should a worker renew the lease time',
+					format: Number,
+					default: 15000,
+					env: 'QUEUE_WORKER_LOCK_RENEW_TIME',
+				},
+				stalledInterval: {
+					doc: 'How often check for stalled jobs (use 0 for never checking)',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_STALLED_INTERVAL',
+				},
+				maxStalledCount: {
+					doc: 'Max amount of times a stalled job will be re-processed',
+					format: Number,
+					default: 1,
+					env: 'QUEUE_WORKER_MAX_STALLED_COUNT',
+				},
 			},
 		},
 	},
@@ -443,6 +496,13 @@ export const schema = {
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,
 			default: 'dev',
 			env: 'N8N_RELEASE_TYPE',
+		},
+
+		gracefulShutdownTimeout: {
+			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
+			format: Number,
+			default: 30,
+			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
 		},
 	},
 
@@ -537,7 +597,7 @@ export const schema = {
 		},
 		metrics: {
 			enable: {
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'N8N_METRICS',
 				doc: 'Enable /metrics endpoint. Default: false',
@@ -615,6 +675,24 @@ export const schema = {
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
 		},
+		form: {
+			format: String,
+			default: 'form',
+			env: 'N8N_ENDPOINT_FORM',
+			doc: 'Path for form endpoint',
+		},
+		formTest: {
+			format: String,
+			default: 'form-test',
+			env: 'N8N_ENDPOINT_FORM_TEST',
+			doc: 'Path for test form endpoint',
+		},
+		formWaiting: {
+			format: String,
+			default: 'form-waiting',
+			env: 'N8N_ENDPOINT_FORM_WAIT',
+			doc: 'Path for waiting form endpoint',
+		},
 		webhook: {
 			format: String,
 			default: 'webhook',
@@ -644,24 +722,6 @@ export const schema = {
 			default: false,
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
-		},
-		skipWebhooksDeregistrationOnShutdown: {
-			/**
-			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
-			 * and registers on startup / activation. If we skip
-			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
-			 * We don't have to worry about startup as it always
-			 * checks if webhooks already exist.
-			 * If users want to upgrade n8n, it is possible to run
-			 * two instances simultaneously without downtime, similar
-			 * to blue/green deployment.
-			 * WARNING: Trigger nodes (like Cron) will cause duplication
-			 * of work, so be aware when using.
-			 */
-			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 
@@ -747,6 +807,18 @@ export const schema = {
 						default: '',
 						env: 'N8N_SMTP_PASS',
 					},
+					serviceClient: {
+						doc: 'SMTP OAuth Service Client',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_SERVICE_CLIENT',
+					},
+					privateKey: {
+						doc: 'SMTP OAuth Private Key',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_PRIVATE_KEY',
+					},
 				},
 				sender: {
 					doc: 'How to display sender name',
@@ -823,7 +895,7 @@ export const schema = {
 	logs: {
 		level: {
 			doc: 'Log output level',
-			format: ['error', 'warn', 'info', 'verbose', 'debug', 'silent'] as const,
+			format: LOG_LEVELS,
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -849,7 +921,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -915,7 +987,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
@@ -957,6 +1029,21 @@ export const schema = {
 					doc: 'Access secret in S3-compatible external storage',
 				},
 			},
+		},
+	},
+
+	externalSecrets: {
+		updateInterval: {
+			format: Number,
+			default: 300,
+			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
+			doc: 'How often (in seconds) to check for secret updates.',
+		},
+		preferGet: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
+			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
 		},
 	},
 
@@ -1281,5 +1368,38 @@ export const schema = {
 			default: -1,
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
+	},
+
+	multiMainSetup: {
+		instanceType: {
+			doc: 'Type of instance in multi-main setup',
+			format: ['unset', 'leader', 'follower'] as const,
+			default: 'unset', // only until first leader key check
+		},
+		enabled: {
+			doc: 'Whether to enable multi-main setup for queue mode (license required)',
+			format: Boolean,
+			default: false,
+			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
+		},
+		ttl: {
+			doc: 'Time to live (in seconds) for leader key in multi-main setup',
+			format: Number,
+			default: 10,
+			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
+		},
+		interval: {
+			doc: 'Interval (in seconds) for leader check in multi-main setup',
+			format: Number,
+			default: 3,
+			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
+		},
+	},
+
+	proxy_hops: {
+		format: Number,
+		default: 0,
+		env: 'N8N_PROXY_HOPS',
+		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 };

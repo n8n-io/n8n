@@ -1,3 +1,4 @@
+import { ApplicationError } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
@@ -160,7 +161,9 @@ export async function pgQuery(
 			return result;
 		});
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 export async function pgQueryV2(
@@ -259,7 +262,9 @@ export async function pgQueryV2(
 			return result;
 		});
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -348,7 +353,9 @@ export async function pgInsert(
 		});
 	}
 
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -456,7 +463,9 @@ export async function pgInsertV2(
 		});
 	}
 
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -582,7 +591,9 @@ export async function pgUpdate(
 			});
 		}
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -713,5 +724,7 @@ export async function pgUpdateV2(
 			});
 		}
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }

@@ -142,7 +142,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useUsersStore } from '@/stores/users.store';
 import { copyPaste } from '@/mixins/copyPaste';
 import { mfaEventBus } from '@/event-bus';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 export default defineComponent({
@@ -287,6 +287,14 @@ export default defineComponent({
 
 .formContainer {
 	padding-bottom: var(--spacing-xl);
+}
+
+.qrContainer {
+	text-align: center;
+
+	canvas {
+		border: 4px solid var(--prim-gray-10);
+	}
 }
 
 .headerContainer {

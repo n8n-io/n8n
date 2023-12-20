@@ -119,7 +119,7 @@
 				</div>
 
 				<div
-					v-if="isCustomApiCallSelected(nodeValues)"
+					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
@@ -152,6 +152,17 @@
 					@valueChanged="valueChanged"
 					@parameterBlur="onParameterBlur"
 				/>
+				<div class="node-version" data-test-id="node-version">
+					{{
+						$locale.baseText('nodeSettings.nodeVersion', {
+							interpolate: {
+								node: nodeType?.displayName as string,
+								version: node.typeVersion.toString(),
+							},
+						})
+					}}
+					<span>({{ nodeVersionTag }})</span>
+				</div>
 			</div>
 		</div>
 		<n8n-block-ui :show="blockUI" />
@@ -190,11 +201,8 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash-es';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -204,10 +212,11 @@ import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 export default defineComponent({
 	name: 'NodeSettings',
-	mixins: [externalHooks, nodeHelpers],
 	components: {
 		NodeTitle,
 		NodeCredentials,
@@ -215,6 +224,15 @@ export default defineComponent({
 		NodeSettingsTabs,
 		NodeWebhooks,
 		NodeExecuteButton,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+			nodeHelpers,
+		};
 	},
 	computed: {
 		...mapStores(
@@ -233,13 +251,17 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
-			if (
-				this.nodeType &&
-				!this.isTriggerNode &&
-				!this.nodeType.inputs.includes(NodeConnectionType.Main)
-			) {
-				return false;
+			if (this.nodeType && this.node) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+					return false;
+				}
 			}
+
 			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
@@ -253,6 +275,29 @@ export default defineComponent({
 			}
 
 			return '';
+		},
+		nodeTypeVersions(): number[] {
+			if (!this.node) return [];
+			return this.nodeTypesStore.getNodeVersions(this.node.type);
+		},
+		latestVersion(): number {
+			return Math.max(...this.nodeTypeVersions);
+		},
+		isLatestNodeVersion(): boolean {
+			return this.latestVersion === this.node?.typeVersion;
+		},
+		nodeVersionTag(): string {
+			if (!this.nodeType || this.nodeType.hidden) {
+				return this.$locale.baseText('nodeSettings.deprecated');
+			}
+
+			if (this.isLatestNodeVersion) {
+				return this.$locale.baseText('nodeSettings.latest');
+			}
+
+			return this.$locale.baseText('nodeSettings.latestVersion', {
+				interpolate: { version: this.latestVersion.toString() },
+			});
 		},
 		nodeTypeDescription(): string {
 			if (this.nodeType?.description) {
@@ -367,7 +412,7 @@ export default defineComponent({
 				alwaysOutputData: false,
 				executeOnce: false,
 				notesInFlow: false,
-				continueOnFail: false,
+				onError: 'stopWorkflow',
 				retryOnFail: false,
 				maxTries: 3,
 				waitBetweenTries: 1000,
@@ -376,93 +421,7 @@ export default defineComponent({
 			} as INodeParameters,
 			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 
-			nodeSettings: [
-				{
-					displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
-					name: 'alwaysOutputData',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
-					name: 'executeOnce',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.executeOnce.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
-					name: 'retryOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
-					name: 'maxTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 2,
-						maxValue: 5,
-					},
-					default: 3,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.maxTries.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
-					name: 'waitBetweenTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 5000,
-					},
-					default: 1000,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
-					name: 'continueOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
-					name: 'notes',
-					type: 'string',
-					typeOptions: {
-						rows: 5,
-					},
-					default: '',
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.notes.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
-					name: 'notesInFlow',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
-				},
-			] as INodeProperties[],
+			nodeSettings: [] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
 			MAIN_NODE_PANEL_WIDTH,
@@ -481,7 +440,7 @@ export default defineComponent({
 
 				try {
 					parameters = JSON.parse(parameters) as {
-						[key: string]: any;
+						[key: string]: unknown;
 					};
 
 					//@ts-ignore
@@ -506,6 +465,132 @@ export default defineComponent({
 			});
 
 			this.workflowsStore.setNodePristine(this.node.name, false);
+		},
+		populateSettings() {
+			if (this.isExecutable && !this.isTriggerNode) {
+				this.nodeSettings.push(
+					...([
+						{
+							displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
+							name: 'alwaysOutputData',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
+							name: 'executeOnce',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.executeOnce.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
+							name: 'retryOnFail',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
+							name: 'maxTries',
+							type: 'number',
+							typeOptions: {
+								minValue: 2,
+								maxValue: 5,
+							},
+							default: 3,
+							displayOptions: {
+								show: {
+									retryOnFail: [true],
+								},
+							},
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.maxTries.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
+							name: 'waitBetweenTries',
+							type: 'number',
+							typeOptions: {
+								minValue: 0,
+								maxValue: 5000,
+							},
+							default: 1000,
+							displayOptions: {
+								show: {
+									retryOnFail: [true],
+								},
+							},
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.onError.displayName'),
+							name: 'onError',
+							type: 'options',
+							options: [
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.stopWorkflow.displayName',
+									),
+									value: 'stopWorkflow',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.stopWorkflow.description',
+									),
+								},
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.continueRegularOutput.displayName',
+									),
+									value: 'continueRegularOutput',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.continueRegularOutput.description',
+									),
+								},
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.continueErrorOutput.displayName',
+									),
+									value: 'continueErrorOutput',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.continueErrorOutput.description',
+									),
+								},
+							],
+							default: 'stopWorkflow',
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.onError.description'),
+						},
+					] as INodeProperties[]),
+				);
+			}
+			this.nodeSettings.push(
+				...([
+					{
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notes.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
+						name: 'notesInFlow',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
+					},
+				] as INodeProperties[]),
+			);
 		},
 		onParameterBlur(parameterName: string) {
 			this.hiddenIssuesInputs = this.hiddenIssuesInputs.filter((name) => name !== parameterName);
@@ -595,10 +680,10 @@ export default defineComponent({
 
 			if (node) {
 				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				this.nodeHelpers.updateNodeCredentialIssues(node);
 			}
 
-			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
@@ -627,6 +712,11 @@ export default defineComponent({
 
 			if (node === null) {
 				return;
+			}
+
+			if (parameterData.name === 'onError') {
+				// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
+				this.$emit('redrawRequired');
 			}
 
 			if (parameterData.name === 'name') {
@@ -692,7 +782,7 @@ export default defineComponent({
 						}
 					}
 
-					void this.$externalHooks().run('nodeSettings.valueChanged', {
+					void this.externalHooks.run('nodeSettings.valueChanged', {
 						parameterPath,
 						newValue,
 						parameters: this.parameters,
@@ -724,8 +814,8 @@ export default defineComponent({
 
 					this.workflowsStore.setNodeParameters(updateInformation);
 
-					this.updateNodeParameterIssuesByName(node.name);
-					this.updateNodeCredentialIssuesByName(node.name);
+					this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+					this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
 				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
@@ -800,15 +890,15 @@ export default defineComponent({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				void this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.externalHooks.run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,
 					oldNodeParameters,
 				});
 
-				this.updateNodeParameterIssuesByName(node.name);
-				this.updateNodeCredentialIssuesByName(node.name);
+				this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+				this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
 				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
@@ -876,10 +966,18 @@ export default defineComponent({
 				}
 
 				if (this.node.continueOnFail) {
-					foundNodeSettings.push('continueOnFail');
+					foundNodeSettings.push('onError');
 					this.nodeValues = {
 						...this.nodeValues,
-						continueOnFail: this.node.continueOnFail,
+						onError: 'continueRegularOutput',
+					};
+				}
+
+				if (this.node.onError) {
+					foundNodeSettings.push('onError');
+					this.nodeValues = {
+						...this.nodeValues,
+						onError: this.node.onError,
 					};
 				}
 
@@ -959,10 +1057,11 @@ export default defineComponent({
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
+		this.populateSettings();
 		this.setNodeValues();
 		this.eventBus?.on('openSettings', this.openSettings);
 
-		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
@@ -1024,6 +1123,7 @@ export default defineComponent({
 	.node-parameters-wrapper {
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) 200px var(--spacing-m);
+		flex-grow: 1;
 	}
 
 	&.dragging {
@@ -1065,6 +1165,14 @@ export default defineComponent({
 	position: absolute;
 	right: 7px;
 	top: -25px;
+}
+
+.node-version {
+	border-top: var(--border-base);
+	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
+	color: var(--color-text-light);
 }
 
 .parameter-value {

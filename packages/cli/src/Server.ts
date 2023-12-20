@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -11,8 +10,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
-import { createHmac } from 'crypto';
+import { join as pathJoin } from 'path';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -20,34 +18,16 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
-import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
-import type { RequestOptions } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
 
-import {
-	Credentials,
-	LoadMappingOptions,
-	LoadNodeParameterOptions,
-	LoadNodeListSearch,
-	UserSettings,
-} from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import type {
-	INodeCredentials,
-	INodeCredentialsDetails,
-	INodeListSearchResult,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeNameVersion,
-	WorkflowExecuteMode,
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
-	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -60,71 +40,46 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
-	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
 	N8N_VERSION,
-	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
-import type {
-	CurlHelper,
-	ExecutionRequest,
-	NodeListSearchRequest,
-	NodeParameterOptionsRequest,
-	OAuthRequest,
-	ResourceMapperRequest,
-	WorkflowRequest,
-} from '@/requests';
+import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
 import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MeController,
-	MFAController,
-	NodeTypesController,
-	OwnerController,
-	PasswordResetController,
-	TagsController,
-	TranslationController,
-	UsersController,
-	WorkflowStatisticsController,
-} from '@/controllers';
-
-import { BinaryDataController } from './controllers/binaryData.controller';
+import { AuthController } from '@/controllers/auth.controller';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
+import { LdapController } from '@/controllers/ldap.controller';
+import { MeController } from '@/controllers/me.controller';
+import { MFAController } from '@/controllers/mfa.controller';
+import { NodeTypesController } from '@/controllers/nodeTypes.controller';
+import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
+import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
+import { OwnerController } from '@/controllers/owner.controller';
+import { PasswordResetController } from '@/controllers/passwordReset.controller';
+import { TagsController } from '@/controllers/tags.controller';
+import { TranslationController } from '@/controllers/translation.controller';
+import { UsersController } from '@/controllers/users.controller';
+import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { UserManagementMailer } from '@/UserManagement/email';
-import * as Db from '@/Db';
-import type {
-	ICredentialsDb,
-	ICredentialsOverwrite,
-	IDiagnosticInfo,
-	IExecutionsStopData,
-} from '@/Interfaces';
+import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import {
-	CredentialsHelper,
-	getCredentialForUser,
-	getCredentialWithoutUser,
-} from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WaitTracker } from '@/WaitTracker';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
-import { licenseController } from './license/license.controller';
-import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { LicenseController } from '@/license/license.controller';
+import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
@@ -136,7 +91,7 @@ import { License } from './License';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { variablesController } from './environments/variables/variables.controller';
+import { VariablesController } from './environments/variables/variables.controller.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import {
 	isLdapCurrentAuthenticationMethod,
@@ -144,40 +99,51 @@ import {
 } from './sso/ssoHelpers';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository, SettingsRepository } from '@db/repositories';
+
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { TOTPService } from './Mfa/totp.service';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
-import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
+import { InvitationController } from './controllers/invitation.controller';
+import { CollaborationService } from './collaboration/collaboration.service';
+import { RoleController } from './controllers/role.controller';
+import { BadRequestError } from './errors/response-errors/bad-request.error';
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
 
 export class Server extends AbstractServer {
-	endpointPresetCredentials: string;
+	private endpointPresetCredentials: string;
 
-	waitTracker: WaitTracker;
+	private waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions;
+	private activeExecutionsInstance: ActiveExecutions;
 
-	presetCredentialsLoaded: boolean;
+	private presetCredentialsLoaded: boolean;
 
-	loadNodesAndCredentials: LoadNodesAndCredentials;
+	private loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: NodeTypes;
+	private nodeTypes: NodeTypes;
 
-	credentialTypes: ICredentialTypes;
+	private credentialTypes: ICredentialTypes;
 
-	frontendService: FrontendService;
+	private frontendService?: FrontendService;
 
-	postHog: PostHogClient;
+	private postHog: PostHogClient;
 
-	push: Push;
+	private collaborationService: CollaborationService;
 
 	constructor() {
 		super('main');
@@ -196,13 +162,8 @@ export class Server extends AbstractServer {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { FrontendService } = await import('@/services/frontend.service');
-			this.frontendService = Container.get(FrontendService);
-			this.loadNodesAndCredentials.addPostProcessor(async () =>
-				this.frontendService.generateTypes(),
-			);
-			await this.frontendService.generateTypes();
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
 		}
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -212,13 +173,16 @@ export class Server extends AbstractServer {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		this.push = Container.get(Push);
-
 		await super.start();
-		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = Container.get(License).isBinaryDataS3Licensed();
+
 		const diagnosticInfo: IDiagnosticInfo = {
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
@@ -257,6 +221,8 @@ export class Server extends AbstractServer {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
@@ -265,69 +231,59 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Db.collections.Workflow.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		}).then(async (workflow) =>
-			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-		);
+		void Container.get(WorkflowRepository)
+			.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+				where: {},
+			})
+			.then(async (workflow) =>
+				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
+		this.collaborationService = Container.get(CollaborationService);
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
-		const repositories = Db.collections;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes, logger } = this;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
-		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
-		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+		const mfaService = Container.get(MfaService);
 
 		const controllers: object[] = [
 			new EventBusController(),
 			new EventBusControllerEE(),
-			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
+			Container.get(AuthController),
+			Container.get(LicenseController),
+			Container.get(OAuth1CredentialController),
+			Container.get(OAuth2CredentialController),
 			new OwnerController(
 				config,
 				logger,
 				internalHooks,
 				Container.get(SettingsRepository),
 				userService,
+				Container.get(PasswordUtility),
 				postHog,
 			),
-			new MeController(logger, externalHooks, internalHooks, userService),
+			Container.get(MeController),
+			Container.get(DynamicNodeParametersController),
 			new NodeTypesController(config, nodeTypes),
-			new PasswordResetController(
-				config,
-				logger,
-				externalHooks,
-				internalHooks,
-				mailer,
-				userService,
-				jwtService,
-				mfaService,
-			),
+			Container.get(PasswordResetController),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
-				repositories.SharedCredentials,
-				repositories.SharedWorkflow,
+				Container.get(SharedCredentialsRepository),
+				Container.get(SharedWorkflowRepository),
 				activeWorkflowRunner,
-				mailer,
-				jwtService,
 				Container.get(RoleService),
 				userService,
-				postHog,
+				Container.get(License),
 			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -336,7 +292,25 @@ export class Server extends AbstractServer {
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
 			Container.get(BinaryDataController),
+			Container.get(VariablesController),
+			new InvitationController(
+				config,
+				logger,
+				internalHooks,
+				externalHooks,
+				Container.get(UserService),
+				Container.get(License),
+				Container.get(PasswordUtility),
+				postHog,
+			),
+			Container.get(VariablesController),
+			Container.get(RoleController),
 		];
+
+		if (Container.get(MultiMainSetup).isEnabled) {
+			const { DebugController } = await import('./controllers/debug.controller');
+			controllers.push(Container.get(DebugController));
+		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();
@@ -344,7 +318,6 @@ export class Server extends AbstractServer {
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { CommunityPackagesController } = await import(
 				'@/controllers/communityPackages.controller'
 			);
@@ -352,7 +325,6 @@ export class Server extends AbstractServer {
 		}
 
 		if (inE2ETests) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { E2EController } = await import('./controllers/e2e.controller');
 			controllers.push(Container.get(E2EController));
 		}
@@ -366,24 +338,23 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { MetricsService } = await import('@/services/metrics.service');
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 
-		this.instanceId = await UserSettings.getInstanceId();
+		const { frontendService } = this;
+		if (frontendService) {
+			frontendService.addToSettings({
+				isNpmAvailable: await exec('npm --version')
+					.then(() => true)
+					.catch(() => false),
+				versionCli: N8N_VERSION,
+			});
 
-		this.frontendService.addToSettings({
-			isNpmAvailable: await exec('npm --version')
-				.then(() => true)
-				.catch(() => false),
-			versionCli: N8N_VERSION,
-			instanceId: this.instanceId,
-		});
+			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+		}
 
-		await this.externalHooks.run('frontend.settings', [this.frontendService.getSettings()]);
-
-		await this.postHog.init(this.instanceId);
+		await this.postHog.init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
@@ -410,7 +381,9 @@ export class Server extends AbstractServer {
 		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
-			this.frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			if (frontendService) {
+				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			}
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -450,11 +423,6 @@ export class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
-		// License
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/license`, licenseController);
-
-		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
 
@@ -463,14 +431,8 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SamlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
+			this.logger.warn(`SAML initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-		// Variables
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
 
 		// ----------------------------------------
 		// Source Control
@@ -478,172 +440,8 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SourceControlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
+			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/node-parameter-options`,
-			ResponseHelper.send(
-				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
-					}
-					// @ts-ignore
-					if (req.query.loadOptions) {
-						return loadDataInstance.getOptionsViaRequestProperty(
-							// @ts-ignore
-							jsonParse(req.query.loadOptions as string),
-							additionalData,
-						);
-					}
-
-					return [];
-				},
-			),
-		);
-
-		// Returns parameter values which normally get loaded from an external API or
-		// get generated dynamically
-		this.app.get(
-			`/${this.restEndpoint}/nodes-list-search`,
-			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const listSearchInstance = new LoadNodeListSearch(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					if (methodName) {
-						return listSearchInstance.getOptionsViaMethodName(
-							methodName,
-							additionalData,
-							req.query.filter,
-							req.query.paginationToken,
-						);
-					}
-
-					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/get-mapping-fields`,
-			ResponseHelper.send(
-				async (
-					req: ResourceMapperRequest,
-					res: express.Response,
-				): Promise<ResourceMapperFields | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
-
-					const { path, methodName } = req.query;
-
-					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
-					}
-
-					const currentNodeParameters = jsonParse(
-						req.query.currentNodeParameters,
-					) as INodeParameters;
-
-					let credentials: INodeCredentials | undefined;
-
-					if (req.query.credentials) {
-						credentials = jsonParse(req.query.credentials);
-					}
-
-					const loadMappingOptionsInstance = new LoadMappingOptions(
-						nodeTypeAndVersion,
-						this.nodeTypes,
-						path,
-						currentNodeParameters,
-						credentials,
-					);
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
-						currentNodeParameters,
-					);
-
-					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
-						methodName,
-						additionalData,
-					);
-
-					return fields;
-				},
-			),
-		);
 
 		// ----------------------------------------
 		// Active Workflows
@@ -653,34 +451,36 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
+				return this.activeWorkflowRunner.allActiveInStorage({
+					user: req.user,
+					scope: 'workflow:list',
+				});
 			}),
 		);
 
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
 				const { id: workflowId } = req.params;
 
-				const shared = await Db.collections.SharedWorkflow.findOne({
+				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,
+						globalScope: 'workflow:read',
 						entityType: 'workflow',
 						entityId: workflowId,
 					}),
 				});
 
 				if (!shared) {
-					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
+					this.logger.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.BadRequestError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-					);
+					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 				}
 
 				return this.activeWorkflowRunner.getActivationError(workflowId);
@@ -703,278 +503,11 @@ export class Server extends AbstractServer {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError('Invalid cURL command');
+						throw new BadRequestError('Invalid cURL command');
 					}
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// OAuth1-Credential/Auth
-		// ----------------------------------------
-
-		// Authorize OAuth Data
-		this.app.get(
-			`/${this.restEndpoint}/oauth1-credential/auth`,
-			ResponseHelper.send(async (req: OAuthRequest.OAuth1Credential.Auth): Promise<string> => {
-				const { id: credentialId } = req.query;
-
-				if (!credentialId) {
-					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
-					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
-				}
-
-				const credential = await getCredentialForUser(credentialId, req.user);
-
-				if (!credential) {
-					LoggerProxy.error(
-						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
-						{ userId: req.user.id },
-					);
-					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
-				}
-
-				let encryptionKey: string;
-				try {
-					encryptionKey = await UserSettings.getEncryptionKey();
-				} catch (error) {
-					throw new ResponseHelper.InternalServerError(error.message);
-				}
-
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-
-				const mode: WorkflowExecuteMode = 'internal';
-				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
-				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					additionalData,
-					credential as INodeCredentialsDetails,
-					credential.type,
-					mode,
-					timezone,
-					true,
-				);
-
-				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-					additionalData,
-					decryptedDataOriginal,
-					credential.type,
-					mode,
-					timezone,
-				);
-
-				const signatureMethod = oauthCredentials.signatureMethod as string;
-
-				const oAuthOptions: clientOAuth1.Options = {
-					consumer: {
-						key: oauthCredentials.consumerKey as string,
-						secret: oauthCredentials.consumerSecret as string,
-					},
-					signature_method: signatureMethod,
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					hash_function(base, key) {
-						let algorithm: string;
-						switch (signatureMethod) {
-							case 'HMAC-SHA256':
-								algorithm = 'sha256';
-								break;
-							case 'HMAC-SHA512':
-								algorithm = 'sha512';
-								break;
-							default:
-								algorithm = 'sha1';
-								break;
-						}
-
-						return createHmac(algorithm, key).update(base).digest('base64');
-					},
-				};
-
-				const oauthRequestData = {
-					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth1-credential/callback?cid=${credentialId}`,
-				};
-
-				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
-
-				const oauth = new clientOAuth1(oAuthOptions);
-
-				const options: RequestOptions = {
-					method: 'POST',
-					url: oauthCredentials.requestTokenUrl as string,
-					data: oauthRequestData,
-				};
-
-				const data = oauth.toHeader(oauth.authorize(options));
-
-				// @ts-ignore
-				options.headers = data;
-
-				const response = await axios.request(options as Partial<AxiosRequestConfig>);
-
-				// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-				const paramsParser = new URLSearchParams(response.data);
-
-				const responseJson = Object.fromEntries(paramsParser.entries());
-
-				const returnUri = `${oauthCredentials.authUrl as string}?oauth_token=${
-					responseJson.oauth_token
-				}`;
-
-				// Encrypt the data
-				const credentials = new Credentials(
-					credential as INodeCredentialsDetails,
-					credential.type,
-					credential.nodesAccess,
-				);
-
-				credentials.setData(decryptedDataOriginal, encryptionKey);
-				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-
-				// Add special database related data
-				newCredentialsData.updatedAt = new Date();
-
-				// Update the credentials in DB
-				await Db.collections.Credentials.update(credentialId, newCredentialsData);
-
-				LoggerProxy.verbose('OAuth1 authorization successful for new credential', {
-					userId: req.user.id,
-					credentialId,
-				});
-
-				return returnUri;
-			}),
-		);
-
-		// Verify and store app code. Generate access tokens and store for respective credential.
-		this.app.get(
-			`/${this.restEndpoint}/oauth1-credential/callback`,
-			async (req: OAuthRequest.OAuth1Credential.Callback, res: express.Response) => {
-				try {
-					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
-
-					if (!oauth_verifier || !oauth_token) {
-						const errorResponse = new ResponseHelper.ServiceUnavailableError(
-							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
-								req.query,
-							)}`,
-						);
-						LoggerProxy.error(
-							'OAuth1 callback failed because of insufficient parameters received',
-							{
-								userId: req.user?.id,
-								credentialId,
-							},
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					const credential = await getCredentialWithoutUser(credentialId);
-
-					if (!credential) {
-						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
-							userId: req.user?.id,
-							credentialId,
-						});
-						const errorResponse = new ResponseHelper.NotFoundError(
-							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					let encryptionKey: string;
-					try {
-						encryptionKey = await UserSettings.getEncryptionKey();
-					} catch (error) {
-						throw new ResponseHelper.InternalServerError(error.message);
-					}
-
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-
-					const mode: WorkflowExecuteMode = 'internal';
-					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
-					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						additionalData,
-						credential as INodeCredentialsDetails,
-						credential.type,
-						mode,
-						timezone,
-						true,
-					);
-					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-						additionalData,
-						decryptedDataOriginal,
-						credential.type,
-						mode,
-						timezone,
-					);
-
-					const options: AxiosRequestConfig = {
-						method: 'POST',
-						url: oauthCredentials.accessTokenUrl as string,
-						params: {
-							oauth_token,
-							oauth_verifier,
-						},
-					};
-
-					let oauthToken;
-
-					try {
-						oauthToken = await axios.request(options);
-					} catch (error) {
-						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
-							userId: req.user?.id,
-							credentialId,
-						});
-						const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-					const paramParser = new URLSearchParams(oauthToken.data);
-
-					const oauthTokenJson = Object.fromEntries(paramParser.entries());
-
-					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
-
-					const credentials = new Credentials(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						credential.nodesAccess,
-					);
-					credentials.setData(decryptedDataOriginal, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-					// Add special database related data
-					newCredentialsData.updatedAt = new Date();
-					// Save the credentials in DB
-					await Db.collections.Credentials.update(credentialId, newCredentialsData);
-
-					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
-						userId: req.user?.id,
-						credentialId,
-					});
-					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
-				} catch (error) {
-					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
-						userId: req.user?.id,
-						credentialId: req.query.cid,
-					});
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
-
-		// ----------------------------------------
-		// OAuth2-Credential
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/oauth2-credential`, oauth2CredentialController);
 
 		// ----------------------------------------
 		// Executions
@@ -1103,7 +636,7 @@ export class Server extends AbstractServer {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
@@ -1116,7 +649,7 @@ export class Server extends AbstractServer {
 				);
 
 				if (!fullExecutionData) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
@@ -1148,7 +681,9 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+						this.logger.debug('Could not stop job because it is no longer in queue', {
+							jobId: req.params.id,
+						});
 					} else {
 						await queue.stopJob(job);
 					}
@@ -1203,17 +738,21 @@ export class Server extends AbstractServer {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the current settings for the UI
-		this.app.get(
-			`/${this.restEndpoint}/settings`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				ResponseHelper.send(
+					async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+						void Container.get(InternalHooks).onFrontendSettingsAPI(
+							req.headers.sessionid as string,
+						);
 
-					return this.frontendService.getSettings();
-				},
-			),
-		);
+						return frontendService.getSettings();
+					},
+				),
+			);
+		}
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -1243,7 +782,7 @@ export class Server extends AbstractServer {
 
 						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.frontendService?.generateTypes();
+						await frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1255,11 +794,12 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		const { staticCacheDir } = Container.get(InstanceSettings);
+		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {
-					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const isIndex = path === pathJoin(staticCacheDir, 'index.html');
 					const cacheControl = isIndex
 						? 'no-cache, no-store, must-revalidate'
 						: 'max-age=86400, immutable';
@@ -1285,7 +825,7 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
-				express.static(GENERATED_STATIC_DIR),
+				express.static(staticCacheDir),
 				express.static(EDITOR_UI_DIST_DIR, staticOptions),
 			);
 
@@ -1295,7 +835,7 @@ export class Server extends AbstractServer {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR));
+			this.app.use('/', express.static(staticCacheDir));
 		}
 	}
 

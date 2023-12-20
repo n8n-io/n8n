@@ -11,12 +11,15 @@
 		:sessionId="sessionId"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
+		@search="$emit('search', $event)"
 		ref="runData"
 		:data-output-type="outputMode"
 	>
@@ -62,14 +65,19 @@
 				$locale.baseText('ndv.output.waitingToRun')
 			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="canPinData">
-					<br />
-					{{ $locale.baseText('generic.or') }}
-					<n8n-text tag="a" size="medium" color="primary">
-						{{ $locale.baseText('ndv.output.insertTestData') }}
-					</n8n-text>
-				</span>
+				<template v-if="isSubNode">
+					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
+				</template>
+				<template v-else>
+					{{ $locale.baseText('ndv.output.runNodeHint') }}
+					<span @click="insertTestData" v-if="canPinData">
+						<br />
+						{{ $locale.baseText('generic.or') }}
+						<n8n-text tag="a" size="medium" color="primary">
+							{{ $locale.baseText('ndv.output.insertTestData') }}
+						</n8n-text>
+					</span>
+				</template>
 			</n8n-text>
 		</template>
 
@@ -87,7 +95,7 @@
 		</template>
 
 		<template #content v-if="outputMode === 'logs'">
-			<run-data-ai :node="node" />
+			<run-data-ai :node="node" :run-index="runIndex" />
 		</template>
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
@@ -144,6 +152,7 @@ export default defineComponent({
 	props: {
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -162,6 +171,10 @@ export default defineComponent({
 			default: false,
 		},
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		isPaneActive: {
 			type: Boolean,
 			default: false,
 		},
@@ -184,16 +197,16 @@ export default defineComponent({
 			if (this.node) {
 				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
 
-				if (!resultData || !Array.isArray(resultData)) {
+				if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
 					return false;
 				}
 
-				return !!resultData[resultData.length - 1!].metadata;
+				return !!resultData[resultData.length - 1].metadata;
 			}
 			return false;
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
@@ -318,6 +331,9 @@ export default defineComponent({
 			} else {
 				ndvEventBus.emit('setPositionByName', 'initial');
 			}
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 });

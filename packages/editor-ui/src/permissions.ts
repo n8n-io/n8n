@@ -6,7 +6,13 @@
 
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from './rbac/permissions';
+
+/**
+ * Old permissions implementation
+ * @deprecated
+ */
 
 export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
@@ -36,15 +42,20 @@ export const parsePermissionsTable = (
 	user: IUser | null,
 	table: IPermissionsTable,
 ): IPermissions => {
-	const genericTable = [{ name: UserRole.InstanceOwner, test: () => user?.isOwner }];
+	const genericTable: IPermissionsTable = [
+		{ name: UserRole.InstanceOwner, test: () => !!user?.isOwner },
+	];
 
-	return [...genericTable, ...table].reduce((permissions: IPermissions, row) => {
-		permissions[row.name] = Array.isArray(row.test)
-			? row.test.some((ability) => permissions[ability])
-			: (row.test as IPermissionsTableRowTestFn)(permissions);
+	return [...genericTable, ...table].reduce(
+		(permissions: IPermissions, row: IPermissionsTableRow) => {
+			permissions[row.name] = Array.isArray(row.test)
+				? row.test.some((ability) => permissions[ability])
+				: row.test(permissions);
 
-		return permissions;
-	}, {});
+			return permissions;
+		},
+		{},
+	);
 };
 
 /**
@@ -60,30 +71,40 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 	const table: IPermissionsTable = [
 		{
 			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(credential && credential.ownedBy && credential.ownedBy.id === user?.id) ||
-				!isSharingEnabled,
+			test: () => !!(credential?.ownedBy?.id === user?.id) || !isSharingEnabled,
 		},
 		{
 			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					credential &&
-					credential.sharedWith &&
-					credential.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
+			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
 		{
 			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:read' } }) || !!permissions.isOwner,
 		},
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
-		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'use', test: [UserRole.ResourceOwner, UserRole.ResourceSharee] },
+		{
+			name: 'save',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:create' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'update',
+			test: (permissions) => !!permissions.isOwner,
+		},
+		{
+			name: 'share',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:share' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'delete',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'credential:delete' } }) || !!permissions.isOwner,
+		},
+		{
+			name: 'use',
+			test: (permissions) => !!permissions.isOwner || !!permissions.isSharee,
+		},
 	];
 
 	return parsePermissionsTable(user, table);
@@ -99,32 +120,17 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 	const table: IPermissionsTable = [
 		{
 			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(isNewWorkflow || (workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id)) ||
-				!isSharingEnabled,
+			test: () => !!(isNewWorkflow || workflow?.ownedBy?.id === user?.id) || !isSharingEnabled,
 		},
 		{
-			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					workflow &&
-					workflow.sharedWith &&
-					workflow.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
+			name: 'updateSharing',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'workflow:share' } }) || !!permissions.isOwner,
 		},
 		{
-			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
-		},
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
-		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{
-			name: 'use',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
+			name: 'delete',
+			test: (permissions) =>
+				hasPermission(['rbac'], { rbac: { scope: 'workflow:delete' } }) || !!permissions.isOwner,
 		},
 	];
 
@@ -133,19 +139,10 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 
 export const getVariablesPermissions = (user: IUser | null) => {
 	const table: IPermissionsTable = [
-		{
-			name: 'create',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'edit',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'delete',
-			test: [UserRole.InstanceOwner],
-		},
-		{ name: 'use', test: () => true },
+		{ name: 'create', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:create' } }) },
+		{ name: 'edit', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:update' } }) },
+		{ name: 'delete', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:delete' } }) },
+		{ name: 'use', test: () => hasPermission(['rbac'], { rbac: { scope: 'variable:read' } }) },
 	];
 
 	return parsePermissionsTable(user, table);

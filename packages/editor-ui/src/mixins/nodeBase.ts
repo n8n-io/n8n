@@ -17,6 +17,7 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
+	Workflow,
 } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -104,6 +105,10 @@ export const nodeBase = defineComponent({
 		showCustomTooltip: {
 			type: Boolean,
 		},
+		workflow: {
+			type: Object as () => Workflow,
+			required: true,
+		},
 	},
 	methods: {
 		__addEndpointTestingData(endpoint: Endpoint, type: string, inputIndex: number) {
@@ -123,9 +128,8 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const inputs: Array<ConnectionTypes | INodeInputConfiguration> =
-				NodeHelpers.getNodeInputs(workflow, this.data!, nodeTypeData) || [];
+				NodeHelpers.getNodeInputs(this.workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
 
 			const sortedInputs = [...inputs];
@@ -261,6 +265,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: inputsOfSameRootType.length,
+						nodeType: node.type,
 					};
 				}
 
@@ -337,14 +342,13 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
-			this.outputs = outputs;
+			this.outputs = NodeHelpers.getNodeOutputs(this.workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
-
-			outputs.forEach((value, i) => {
+			let maxLabelLength = 0;
+			const outputConfigurations: INodeOutputConfiguration[] = [];
+			this.outputs.forEach((value, i) => {
 				let outputConfiguration: INodeOutputConfiguration;
 				if (typeof value === 'string') {
 					outputConfiguration = {
@@ -353,6 +357,24 @@ export const nodeBase = defineComponent({
 				} else {
 					outputConfiguration = value;
 				}
+				if (nodeTypeData.outputNames?.[i]) {
+					outputConfiguration.displayName = nodeTypeData.outputNames[i];
+				}
+
+				if (outputConfiguration.displayName) {
+					maxLabelLength =
+						outputConfiguration.displayName.length > maxLabelLength
+							? outputConfiguration.displayName.length
+							: maxLabelLength;
+				}
+
+				outputConfigurations.push(outputConfiguration);
+			});
+
+			const endpointLabelLength = maxLabelLength < 4 ? 'short' : 'medium';
+
+			this.outputs.forEach((value, i) => {
+				const outputConfiguration = outputConfigurations[i];
 
 				const outputName: ConnectionTypes = outputConfiguration.type;
 
@@ -375,7 +397,7 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
 				const typeIndex = typeIndexData[outputName];
 
-				const outputsOfSameRootType = outputs.filter((outputData) => {
+				const outputsOfSameRootType = this.outputs.filter((outputData) => {
 					const thisOutputName: string =
 						typeof outputData === 'string' ? outputData : outputData.type;
 					return outputName === NodeConnectionType.Main
@@ -416,19 +438,21 @@ export const nodeBase = defineComponent({
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
 					dragAllowedWhenFull: false,
-					...this.__getOutputConnectionStyle(outputName, nodeTypeData),
+					...this.__getOutputConnectionStyle(outputName, outputConfiguration, nodeTypeData),
 				};
 
 				const endpoint = this.instance.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
+
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
-				if (outputConfiguration.displayName || nodeTypeData.outputNames?.[i]) {
+				if (outputConfiguration.displayName) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
-						outputConfiguration.displayName || nodeTypeData.outputNames[i],
+						outputConfiguration.displayName,
 						outputName,
+						outputConfiguration?.category,
 					);
 					endpoint.addOverlay(overlaySpec);
 				}
@@ -439,6 +463,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: outputsOfSameRootType.length,
+						endpointLabelLength,
 					};
 				}
 
@@ -452,8 +477,9 @@ export const nodeBase = defineComponent({
 							options: {
 								dimensions: 24,
 								connectedEndpoint: endpoint,
-								showOutputLabel: outputs.length === 1,
-								size: outputs.length >= 3 ? 'small' : 'medium',
+								showOutputLabel: this.outputs.length === 1,
+								size: this.outputs.length >= 3 ? 'small' : 'medium',
+								endpointLabelLength,
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},
@@ -471,10 +497,16 @@ export const nodeBase = defineComponent({
 							nodeId: this.nodeId,
 							type: outputName,
 							index: typeIndex,
+							category: outputConfiguration?.category,
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
 					};
+
+					if (outputConfiguration?.category) {
+						plusEndpointData.cssClass = `${plusEndpointData.cssClass} ${outputConfiguration?.category}`;
+					}
+
 					const plusEndpoint = this.instance.addEndpoint(
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
@@ -486,6 +518,7 @@ export const nodeBase = defineComponent({
 							nodeName: node.name,
 							nodeId: this.nodeId,
 							index: typeIndex,
+							nodeType: node.type,
 							totalEndpoints: outputsOfSameRootType.length,
 						};
 					}
@@ -533,6 +566,7 @@ export const nodeBase = defineComponent({
 		},
 		__getOutputConnectionStyle(
 			connectionType: ConnectionTypes,
+			outputConfiguration: INodeOutputConfiguration,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
 			const type = 'output';
@@ -552,6 +586,18 @@ export const nodeBase = defineComponent({
 			});
 
 			if (connectionType === NodeConnectionType.Main) {
+				if (outputConfiguration.category === 'error') {
+					return {
+						paintStyle: {
+							...NodeViewUtils.getOutputEndpointStyle(
+								nodeTypeData,
+								this.__getEndpointColor(NodeConnectionType.Main),
+							),
+							fill: 'var(--node-error-output-color)',
+						},
+						cssClass: `dot-${type}-endpoint`,
+					};
+				}
 				return {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,

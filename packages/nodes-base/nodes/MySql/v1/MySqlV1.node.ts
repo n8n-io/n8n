@@ -18,6 +18,7 @@ import type mysql2 from 'mysql2/promise';
 import { createConnection, searchTables } from './GenericFunctions';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { getResolvables } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'MySQL',
@@ -306,8 +307,15 @@ export class MySqlV1 implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryQueue = items.map(async (item, index) => {
-					const rawQuery = this.getNodeParameter('query', index) as string;
+				const queryQueue = items.map(async (_, index) => {
+					let rawQuery = (this.getNodeParameter('query', index) as string).trim();
+
+					for (const resolvable of getResolvables(rawQuery)) {
+						rawQuery = rawQuery.replace(
+							resolvable,
+							this.evaluateExpression(resolvable, index) as string,
+						);
+					}
 
 					return connection.query(rawQuery);
 				});

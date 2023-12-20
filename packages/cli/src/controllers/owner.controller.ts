@@ -1,27 +1,28 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/ResponseHelper';
-import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import { ILogger } from 'n8n-workflow';
 import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import { IInternalHooksClass } from '@/Interfaces';
-import { SettingsRepository } from '@db/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
 	constructor(
 		private readonly config: Config,
-		private readonly logger: ILogger,
+		private readonly logger: Logger,
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userService: UserService,
+		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -52,7 +53,7 @@ export class OwnerController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
 		if (!firstName || !lastName) {
 			this.logger.debug(
@@ -79,7 +80,7 @@ export class OwnerController {
 			email,
 			firstName,
 			lastName,
-			password: await hashPassword(validPassword),
+			password: await this.passwordUtility.hash(validPassword),
 		});
 
 		await validateEntity(owner);
@@ -101,7 +102,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return this.userService.toPublic(owner, { posthog: this.postHog });
+		return this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}
 
 	@Post('/dismiss-banner')

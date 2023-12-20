@@ -1,318 +1,52 @@
-import validator from 'validator';
 import type { FindManyOptions } from 'typeorm';
 import { In, Not } from 'typeorm';
-import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
-import {
-	generateUserInviteUrl,
-	getInstanceBaseUrl,
-	hashPassword,
-	isEmailSetUp,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
-import { issueCookie } from '@/auth/jwt';
-import {
-	BadRequestError,
-	InternalServerError,
-	NotFoundError,
-	UnauthorizedError,
-} from '@/ResponseHelper';
-import { Response } from 'express';
+import { RequireGlobalScope, Authorized, Delete, Get, RestController, Patch } from '@/decorators';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
-import { UserManagementMailer } from '@/UserManagement/email';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { Config } from '@/config';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { PostHogClient } from '@/posthog';
-import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { plainToInstance } from 'class-transformer';
-import { License } from '@/License';
-import { Container } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
+import { Logger } from '@/Logger';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { License } from '@/License';
 
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
-		private readonly config: Config,
-		private readonly logger: ILogger,
+		private readonly logger: Logger,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly mailer: UserManagementMailer,
-		private readonly jwtService: JwtService,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
-		private readonly postHog?: PostHogClient,
+		private readonly license: License,
 	) {}
 
-	/**
-	 * Send email invite(s) to one or multiple users and create user shell(s).
-	 */
-	@Post('/')
-	async sendEmailInvites(req: UserRequest.Invite) {
-		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
-
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-			throw new BadRequestError(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-		}
-
-		if (!isWithinUsersLimit) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
-			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
-			);
-			throw new BadRequestError('You must set up your own account before inviting others');
-		}
-
-		if (!Array.isArray(req.body)) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the payload is not an array',
-				{
-					payload: req.body,
-				},
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		if (!req.body.length) return [];
-
-		const createUsers: { [key: string]: string | null } = {};
-		// Validate payload
-		req.body.forEach((invite) => {
-			if (typeof invite !== 'object' || !invite.email) {
-				throw new BadRequestError(
-					'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-				);
-			}
-
-			if (!validator.isEmail(invite.email)) {
-				this.logger.debug('Invalid email in payload', { invalidEmail: invite.email });
-				throw new BadRequestError(
-					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-				);
-			}
-			createUsers[invite.email.toLowerCase()] = null;
-		});
-
-		const role = await this.roleService.findGlobalMemberRole();
-
-		if (!role) {
-			this.logger.error(
-				'Request to send email invite(s) to user(s) failed because no global member role was found in database',
-			);
-			throw new InternalServerError('Members role not found in database - inconsistent state');
-		}
-
-		// remove/exclude existing users from creation
-		const existingUsers = await this.userService.findMany({
-			where: { email: In(Object.keys(createUsers)) },
-			relations: ['globalRole'],
-		});
-		existingUsers.forEach((user) => {
-			if (user.password) {
-				delete createUsers[user.email];
-				return;
-			}
-			createUsers[user.email] = user.id;
-		});
-
-		const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
-		const total = usersToSetUp.length;
-
-		this.logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
-
-		try {
-			await this.userService.getManager().transaction(async (transactionManager) =>
-				Promise.all(
-					usersToSetUp.map(async (email) => {
-						const newUser = Object.assign(new User(), {
-							email,
-							globalRole: role,
-						});
-						const savedUser = await transactionManager.save<User>(newUser);
-						createUsers[savedUser.email] = savedUser.id;
-						return savedUser;
-					}),
-				),
-			);
-		} catch (error) {
-			ErrorReporter.error(error);
-			this.logger.error('Failed to create user shells', { userShells: createUsers });
-			throw new InternalServerError('An error occurred during user creation');
-		}
-
-		this.logger.debug('Created user shell(s) successfully', { userId: req.user.id });
-		this.logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
-			userShells: createUsers,
-		});
-
-		const baseUrl = getInstanceBaseUrl();
-
-		const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
-
-		// send invite email to new or not yet setup users
-
-		const emailingResults = await Promise.all(
-			usersPendingSetup.map(async ([email, id]) => {
-				if (!id) {
-					// This should never happen since those are removed from the list before reaching this point
-					throw new InternalServerError('User ID is missing for user with email address');
-				}
-				const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
-				const resp: {
-					user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
-					error?: string;
-				} = {
-					user: {
-						id,
-						email,
-						inviteAcceptUrl,
-						emailSent: false,
-					},
-				};
-				try {
-					const result = await this.mailer.invite({
-						email,
-						inviteAcceptUrl,
-						domain: baseUrl,
-					});
-					if (result.emailSent) {
-						resp.user.emailSent = true;
-						void this.internalHooks.onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-					}
-
-					void this.internalHooks.onUserInvite({
-						user: req.user,
-						target_user_id: Object.values(createUsers) as string[],
-						public_api: false,
-						email_sent: result.emailSent,
-					});
-				} catch (error) {
-					if (error instanceof Error) {
-						void this.internalHooks.onEmailFailed({
-							user: req.user,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-						this.logger.error('Failed to send email', {
-							userId: req.user.id,
-							inviteAcceptUrl,
-							domain: baseUrl,
-							email,
-						});
-						resp.error = error.message;
-					}
-				}
-				return resp;
-			}),
-		);
-
-		await this.externalHooks.run('user.invited', [usersToSetUp]);
-
-		this.logger.debug(
-			usersPendingSetup.length > 1
-				? `Sent ${usersPendingSetup.length} invite emails successfully`
-				: 'Sent 1 invite email successfully',
-			{ userShells: createUsers },
-		);
-
-		return emailingResults;
-	}
-
-	/**
-	 * Fill out user shell with first name, last name, and password.
-	 */
-	@NoAuthRequired()
-	@Post('/:id')
-	async updateUser(req: UserRequest.Update, res: Response) {
-		const { id: inviteeId } = req.params;
-
-		const { inviterId, firstName, lastName, password } = req.body;
-
-		if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because of missing properties in payload',
-				{ payload: req.body },
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		const validPassword = validatePassword(password);
-
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
-
-		if (users.length !== 2) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the inviter ID and/or invitee ID were not found in database',
-				{
-					inviterId,
-					inviteeId,
-				},
-			);
-			throw new BadRequestError('Invalid payload or URL');
-		}
-
-		const invitee = users.find((user) => user.id === inviteeId) as User;
-
-		if (invitee.password) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the invite had already been accepted',
-				{ inviteeId },
-			);
-			throw new BadRequestError('This invite has been accepted already');
-		}
-
-		invitee.firstName = firstName;
-		invitee.lastName = lastName;
-		invitee.password = await hashPassword(validPassword);
-
-		const updatedUser = await this.userService.save(invitee);
-
-		await issueCookie(res, updatedUser);
-
-		void this.internalHooks.onUserSignup(updatedUser, {
-			user_type: 'email',
-			was_disabled_ldap_user: false,
-		});
-
-		const publicInvitee = await this.userService.toPublic(invitee);
-
-		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
-		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
-
-		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
-	}
+	static ERROR_MESSAGES = {
+		CHANGE_ROLE: {
+			MISSING_NEW_ROLE_KEY: 'Expected `newRole` to exist',
+			MISSING_NEW_ROLE_VALUE: 'Expected `newRole` to have `name` and `scope`',
+			NO_USER: 'Target user not found',
+			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
+			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
+			NO_USER_TO_OWNER: 'Cannot promote user to global owner',
+			NO_ADMIN_IF_UNLICENSED: 'Admin role is not available without a license',
+		},
+	} as const;
 
 	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<User> = {};
@@ -352,7 +86,7 @@ export class UsersController {
 		return findManyOptions;
 	}
 
-	removeSupplementaryFields(
+	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: ListQuery.Options,
 	) {
@@ -382,8 +116,8 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
+	@RequireGlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -392,7 +126,9 @@ export class UsersController {
 		const users = await this.userService.findMany(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
+			users.map(async (u) =>
+				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			),
 		);
 
 		return listQueryOptions
@@ -400,8 +136,8 @@ export class UsersController {
 			: publicUsers;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
+	@RequireGlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userService.findOneOrFail({
 			where: { id: req.params.id },
@@ -410,27 +146,12 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: user.id },
-			{
-				expiresIn: '1d',
-			},
-		);
-
-		const baseUrl = getInstanceBaseUrl();
-
-		const link = this.userService.generatePasswordResetUrl(
-			baseUrl,
-			resetPasswordToken,
-			user.mfaEnabled,
-		);
-		return {
-			link,
-		};
+		const link = this.userService.generatePasswordResetUrl(user);
+		return { link };
 	}
 
-	@Authorized(['global', 'owner'])
 	@Patch('/:id/settings')
+	@RequireGlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -450,6 +171,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
+	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 
@@ -604,77 +326,78 @@ export class UsersController {
 		return { success: true };
 	}
 
-	/**
-	 * Resend email invite to user.
-	 */
-	@Post('/:id/reinvite')
-	async reinviteUser(req: UserRequest.Reinvite) {
-		const { id: idToReinvite } = req.params;
-		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+	@Patch('/:id/role')
+	@RequireGlobalScope('user:changeRole')
+	async changeRole(req: UserRequest.ChangeRole) {
+		const {
+			MISSING_NEW_ROLE_KEY,
+			MISSING_NEW_ROLE_VALUE,
+			NO_ADMIN_ON_OWNER,
+			NO_USER_TO_OWNER,
+			NO_USER,
+			NO_OWNER_ON_OWNER,
+			NO_ADMIN_IF_UNLICENSED,
+		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		if (!isWithinUsersLimit) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
-			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		const { newRole } = req.body;
+
+		if (!newRole) {
+			throw new BadRequestError(MISSING_NEW_ROLE_KEY);
 		}
 
-		if (!isEmailSetUp()) {
-			this.logger.error('Request to reinvite a user failed because email sending was not set up');
-			throw new InternalServerError('Email sending must be set up in order to invite other users');
+		if (!newRole.name || !newRole.scope) {
+			throw new BadRequestError(MISSING_NEW_ROLE_VALUE);
 		}
 
-		const reinvitee = await this.userService.findOneBy({ id: idToReinvite });
-		if (!reinvitee) {
-			this.logger.debug(
-				'Request to reinvite a user failed because the ID of the reinvitee was not found in database',
-			);
-			throw new NotFoundError('Could not find user');
+		if (newRole.scope === 'global' && newRole.name === 'owner') {
+			throw new UnauthorizedError(NO_USER_TO_OWNER);
 		}
 
-		if (reinvitee.password) {
-			this.logger.debug(
-				'Request to reinvite a user failed because the invite had already been accepted',
-				{ userId: reinvitee.id },
-			);
-			throw new BadRequestError('User has already accepted the invite');
+		const targetUser = await this.userService.findOne({
+			where: { id: req.params.id },
+		});
+
+		if (targetUser === null) {
+			throw new NotFoundError(NO_USER);
 		}
 
-		const baseUrl = getInstanceBaseUrl();
-		const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
-
-		try {
-			const result = await this.mailer.invite({
-				email: reinvitee.email,
-				inviteAcceptUrl,
-				domain: baseUrl,
-			});
-			if (result.emailSent) {
-				void this.internalHooks.onUserReinvite({
-					user: req.user,
-					target_user_id: reinvitee.id,
-					public_api: false,
-				});
-
-				void this.internalHooks.onUserTransactionalEmail({
-					user_id: reinvitee.id,
-					message_type: 'Resend invite',
-					public_api: false,
-				});
-			}
-		} catch (error) {
-			void this.internalHooks.onEmailFailed({
-				user: reinvitee,
-				message_type: 'Resend invite',
-				public_api: false,
-			});
-			this.logger.error('Failed to send email', {
-				email: reinvitee.email,
-				inviteAcceptUrl,
-				domain: baseUrl,
-			});
-			throw new InternalServerError(`Failed to send email to ${reinvitee.email}`);
+		if (
+			newRole.scope === 'global' &&
+			newRole.name === 'admin' &&
+			!this.license.isAdvancedPermissionsLicensed()
+		) {
+			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
 		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'admin' &&
+			targetUser.globalRole.scope === 'global' &&
+			targetUser.globalRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
+		}
+
+		if (
+			req.user.globalRole.scope === 'global' &&
+			req.user.globalRole.name === 'owner' &&
+			targetUser.globalRole.scope === 'global' &&
+			targetUser.globalRole.name === 'owner'
+		) {
+			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
+		}
+
+		const roleToSet = await this.roleService.findCached(newRole.scope, newRole.name);
+
+		await this.userService.update(targetUser.id, { globalRole: roleToSet });
+
+		void this.internalHooks.onUserRoleChange({
+			user: req.user,
+			target_user_id: targetUser.id,
+			target_user_new_role: [newRole.scope, newRole.name].join(' '),
+			public_api: false,
+		});
+
 		return { success: true };
 	}
 }

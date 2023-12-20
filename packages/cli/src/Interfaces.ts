@@ -16,7 +16,6 @@ import type {
 	IWorkflowBase,
 	CredentialLoadingDetails,
 	Workflow,
-	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	IExecutionsSummary,
@@ -31,7 +30,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator, Repository } from 'typeorm';
+import type { FindOperator } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -41,42 +40,14 @@ import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type {
-	AuthIdentityRepository,
-	AuthProviderSyncHistoryRepository,
-	CredentialsRepository,
-	EventDestinationsRepository,
-	ExecutionDataRepository,
-	ExecutionMetadataRepository,
-	ExecutionRepository,
-	InstalledNodesRepository,
-	InstalledPackagesRepository,
-	RoleRepository,
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	UserRepository,
-	VariablesRepository,
-	WorkflowRepository,
-	WorkflowStatisticsRepository,
-	WorkflowTagMappingRepository,
-} from '@db/repositories';
+import type { CredentialsRepository } from '@db/repositories/credentials.repository';
+import type { SettingsRepository } from '@db/repositories/settings.repository';
+import type { UserRepository } from '@db/repositories/user.repository';
+import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-
-export interface IActivationError {
-	time: number;
-	error: {
-		message: string;
-	};
-}
-
-export interface IQueuedWorkflowActivations {
-	activationMode: WorkflowActivateMode;
-	lastTimeout: number;
-	timeout: NodeJS.Timeout;
-	workflowData: IWorkflowDb;
-}
+import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -85,33 +56,6 @@ export interface ICredentialsTypeData {
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
-
-/**
- * @important Do not add to these collections. Inject the repository as a dependency instead.
- */
-
-/* eslint-disable @typescript-eslint/naming-convention */
-export interface IDatabaseCollections extends Record<string, Repository<any>> {
-	AuthIdentity: AuthIdentityRepository;
-	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
-	Credentials: CredentialsRepository;
-	EventDestinations: EventDestinationsRepository;
-	Execution: ExecutionRepository;
-	ExecutionData: ExecutionDataRepository;
-	ExecutionMetadata: ExecutionMetadataRepository;
-	InstalledNodes: InstalledNodesRepository;
-	InstalledPackages: InstalledPackagesRepository;
-	Role: RoleRepository;
-	Settings: SettingsRepository;
-	SharedCredentials: SharedCredentialsRepository;
-	SharedWorkflow: SharedWorkflowRepository;
-	User: UserRepository;
-	Variables: VariablesRepository;
-	Workflow: WorkflowRepository;
-	WorkflowStatistics: WorkflowStatisticsRepository;
-	WorkflowTagMapping: WorkflowTagMappingRepository;
-}
-/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -295,18 +239,23 @@ export interface IExternalHooks {
 
 export interface IExternalHooksFileData {
 	[key: string]: {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		[key: string]: Array<(...args: any[]) => Promise<void>>;
 	};
 }
 
 export interface IExternalHooksFunctions {
-	dbCollections: IDatabaseCollections;
+	dbCollections: {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		User: UserRepository;
+		Settings: SettingsRepository;
+		Credentials: CredentialsRepository;
+		Workflow: WorkflowRepository;
+		/* eslint-enable @typescript-eslint/naming-convention */
+	};
 }
 
 export interface IExternalHooksClass {
 	init(): Promise<void>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
@@ -318,8 +267,20 @@ export type WaitingWebhookRequest = WebhookRequest & {
 	params: WebhookRequest['path'] & { suffix?: string };
 };
 
+export interface WebhookAccessControlOptions {
+	allowedOrigins?: string;
+}
+
 export interface IWebhookManager {
+	/** Gets all request methods associated with a webhook path*/
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+
+	/** Find the CORS options matching a path and method */
+	findAccessControlOptions?: (
+		path: string,
+		httpMethod: IHttpRequestMethods,
+	) => Promise<WebhookAccessControlOptions | undefined>;
+
 	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }
 
@@ -348,6 +309,8 @@ export interface IDiagnosticInfo {
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
+	binary_data_s3: boolean;
+	multi_main_setup_enabled: boolean;
 	licensePlanName?: string;
 	licenseTenantId?: number;
 }
@@ -393,6 +356,13 @@ export interface IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 		email_sent: boolean;
+		invitee_role: string;
+	}): Promise<void>;
+	onUserRoleChange(userInviteData: {
+		user: User;
+		target_user_id: string;
+		public_api: boolean;
+		target_user_new_role: string;
 	}): Promise<void>;
 	onUserReinvite(userReinviteData: {
 		user: User;
@@ -517,36 +487,66 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
-	| PushDataExecutionRecovered;
+	| PushDataExecutionRecovered
+	| PushDataActiveWorkflowUsersChanged
+	| PushDataWorkerStatusMessage
+	| PushDataWorkflowActivated
+	| PushDataWorkflowDeactivated
+	| PushDataWorkflowFailedToActivate;
 
-type PushDataExecutionRecovered = {
+type PushDataWorkflowFailedToActivate = {
+	data: IWorkflowFailedToActivate;
+	type: 'workflowFailedToActivate';
+};
+
+type PushDataWorkflowActivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowActivated';
+};
+
+type PushDataWorkflowDeactivated = {
+	data: IActiveWorkflowChanged;
+	type: 'workflowDeactivated';
+};
+
+type PushDataActiveWorkflowUsersChanged = {
+	data: IActiveWorkflowUsersChanged;
+	type: 'activeWorkflowUsersChanged';
+};
+
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataWorkerStatusMessage = {
+	data: IPushDataWorkerStatusMessage;
+	type: 'sendWorkerStatusMessage';
 };
 
 type PushDataReloadNodeType = {
@@ -554,20 +554,43 @@ type PushDataReloadNodeType = {
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataNodeDescriptionUpdated = {
+export type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+export interface IActiveWorkflowUser {
+	user: User;
+	lastSeen: Date;
+}
+
+export interface IActiveWorkflowAdded {
+	workflowId: Workflow['id'];
+}
+
+export interface IActiveWorkflowUsersChanged {
+	workflowId: Workflow['id'];
+	activeUsers: IActiveWorkflowUser[];
+}
+
+interface IActiveWorkflowChanged {
+	workflowId: Workflow['id'];
+}
+
+interface IWorkflowFailedToActivate {
+	workflowId: Workflow['id'];
+	errorMessage: string;
+}
 
 export interface IPushDataExecutionRecovered {
 	executionId: string;
@@ -619,6 +642,30 @@ export interface IPushDataConsoleMessage {
 	message: string;
 }
 
+export interface IPushDataWorkerStatusMessage {
+	workerId: string;
+	status: IPushDataWorkerStatusPayload;
+}
+
+export interface IPushDataWorkerStatusPayload {
+	workerId: string;
+	runningJobsSummary: WorkerJobStatusSummary[];
+	freeMem: number;
+	totalMem: number;
+	uptime: number;
+	loadAvg: number[];
+	cpus: string;
+	arch: string;
+	platform: NodeJS.Platform;
+	hostname: string;
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
+	version: string;
+}
+
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];
 	headers?: object;
@@ -634,7 +681,6 @@ export interface INodesTypeData {
 }
 
 export interface IWorkflowErrorData {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	[key: string]: any;
 	execution?: {
 		id?: string;
@@ -656,7 +702,6 @@ export interface IWorkflowErrorData {
 
 export interface IProcessMessageDataHook {
 	hook: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	parameters: any[];
 }
 
@@ -779,6 +824,7 @@ export interface PublicUser {
 	isPending: boolean;
 	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
+	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;

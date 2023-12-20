@@ -36,17 +36,22 @@ module.exports = {
 		'vue/v-slot-style': 'error',
 		'vue/no-unused-components': 'error',
 		'vue/multi-word-component-names': 'off',
+		'@typescript-eslint/no-explicit-any': 'error',
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',
 		'@typescript-eslint/no-unsafe-assignment': 'off',
+		'@typescript-eslint/no-unsafe-argument': 'off',
+		'@typescript-eslint/no-unsafe-return': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/no-unsafe-member-access': 'off',
 
 		// TODO: remove these
 		'vue/no-mutating-props': 'warn',
 		'vue/no-side-effects-in-computed-properties': 'warn',
 		'vue/no-v-text-v-html-on-component': 'warn',
 		'vue/return-in-computed-property': 'warn',
+		'n8n-local-rules/no-plain-errors': 'off',
 	},
 };

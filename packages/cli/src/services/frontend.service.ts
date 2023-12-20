@@ -10,15 +10,15 @@ import type {
 	INodeTypeBaseDescription,
 	ITelemetrySettings,
 } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 
-import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import { LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl, isEmailSetUp } from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { getLdapLoginLabel } from '@/Ldap/helpers';
@@ -28,18 +28,36 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { UserManagementMailer } from '@/UserManagement/email';
+import type { CommunityPackagesService } from '@/services/communityPackages.service';
+import { Logger } from '@/Logger';
 
 @Service()
 export class FrontendService {
 	settings: IN8nUISettings;
 
+	private communityPackagesService?: CommunityPackagesService;
+
 	constructor(
+		private readonly logger: Logger,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly license: License,
+		private readonly mailer: UserManagementMailer,
+		private readonly instanceSettings: InstanceSettings,
 	) {
+		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
+		void this.generateTypes();
+
 		this.initSettings();
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+				this.communityPackagesService = Container.get(CommunityPackagesService);
+			});
+		}
 	}
 
 	private initSettings() {
@@ -55,7 +73,7 @@ export class FrontendService {
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
-				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				this.logger.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 
@@ -63,6 +81,9 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			endpointForm: config.getEnv('endpoints.form'),
+			endpointFormTest: config.getEnv('endpoints.formTest'),
+			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
 			endpointWebhook: config.getEnv('endpoints.webhook'),
 			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),
 			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
@@ -85,7 +106,7 @@ export class FrontendService {
 				endpoint: config.getEnv('versionNotifications.endpoint'),
 				infoUrl: config.getEnv('versionNotifications.infoUrl'),
 			},
-			instanceId: '',
+			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: config.getEnv('diagnostics.enabled'),
@@ -103,7 +124,7 @@ export class FrontendService {
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
-				smtpSetup: isEmailSetUp(),
+				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {
@@ -155,7 +176,10 @@ export class FrontendService {
 				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+				binaryDataS3: false,
 				workflowHistory: false,
+				workerView: false,
+				advancedPermissions: false,
 			},
 			mfa: {
 				enabled: false,
@@ -186,14 +210,15 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
+		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	async getSettings(): Promise<IN8nUISettings> {
+	getSettings(): IN8nUISettings {
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
@@ -224,6 +249,10 @@ export class FrontendService {
 
 		this.settings.banners.dismissed = dismissedBanners;
 
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
 			sharing: this.license.isSharingEnabled(),
@@ -236,8 +265,11 @@ export class FrontendService {
 			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
+			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
+			workerView: this.license.isWorkerViewLicensed(),
+			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -265,13 +297,13 @@ export class FrontendService {
 			});
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
-			this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
+		if (this.communityPackagesService) {
+			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
+
+		this.settings.executionMode = config.getEnv('executions.mode');
 
 		return this.settings;
 	}
@@ -281,7 +313,8 @@ export class FrontendService {
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
-		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
+		const { staticCacheDir } = this.instanceSettings;
+		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
 		data.forEach((entry, index) => {

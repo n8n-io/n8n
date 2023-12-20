@@ -1,17 +1,17 @@
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+
 import { Service } from 'typedi';
 import { promisify } from 'util';
 import axios from 'axios';
 
-import { LoggerProxy as Logger } from 'n8n-workflow';
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
+import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
 import { toError } from '@/utils';
-import { InstalledPackagesRepository } from '@/databases/repositories/installedPackages.repository';
-import type { InstalledPackages } from '@/databases/entities/InstalledPackages';
+import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
@@ -21,6 +21,7 @@ import {
 } from '@/constants';
 import type { CommunityPackages } from '@/Interfaces';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { Logger } from '@/Logger';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -47,6 +48,8 @@ export class CommunityPackagesService {
 	missingPackages: string[] = [];
 
 	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
@@ -80,7 +83,7 @@ export class CommunityPackagesService {
 		} catch (maybeError) {
 			const error = toError(maybeError);
 
-			Logger.error('Failed to save installed packages and nodes', {
+			this.logger.error('Failed to save installed packages and nodes', {
 				error,
 				packageName: packageLoader.packageJson.name,
 			});
@@ -90,10 +93,10 @@ export class CommunityPackagesService {
 	}
 
 	parseNpmPackageName(rawString?: string): CommunityPackages.ParsedPackageName {
-		if (!rawString) throw new Error(PACKAGE_NAME_NOT_PROVIDED);
+		if (!rawString) throw new ApplicationError(PACKAGE_NAME_NOT_PROVIDED);
 
 		if (INVALID_OR_SUSPICIOUS_PACKAGE_NAME.test(rawString)) {
-			throw new Error('Package name must be a single word');
+			throw new ApplicationError('Package name must be a single word');
 		}
 
 		const scope = rawString.includes('/') ? rawString.split('/')[0] : undefined;
@@ -101,7 +104,7 @@ export class CommunityPackagesService {
 		const packageNameWithoutScope = scope ? rawString.replace(`${scope}/`, '') : rawString;
 
 		if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
-			throw new Error(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
+			throw new ApplicationError(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
 		}
 
 		const version = packageNameWithoutScope.includes('@')
@@ -114,7 +117,7 @@ export class CommunityPackagesService {
 	}
 
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
+		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 		const execOptions = {
 			cwd: downloadFolder,
@@ -152,12 +155,12 @@ export class CommunityPackagesService {
 			};
 
 			Object.entries(map).forEach(([npmMessage, n8nMessage]) => {
-				if (errorMessage.includes(npmMessage)) throw new Error(n8nMessage);
+				if (errorMessage.includes(npmMessage)) throw new ApplicationError(n8nMessage);
 			});
 
-			Logger.warn('npm command failed', { errorMessage });
+			this.logger.warn('npm command failed', { errorMessage });
 
-			throw new Error(PACKAGE_FAILED_TO_INSTALL);
+			throw new ApplicationError(PACKAGE_FAILED_TO_INSTALL);
 		}
 	}
 
@@ -268,12 +271,12 @@ export class CommunityPackagesService {
 
 		if (missingPackages.size === 0) return;
 
-		Logger.error(
+		this.logger.error(
 			'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 		);
 
 		if (reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
-			Logger.info('Attempting to reinstall missing packages', { missingPackages });
+			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
 			try {
 				// Optimistic approach - stop if any installation fails
 
@@ -282,9 +285,9 @@ export class CommunityPackagesService {
 
 					missingPackages.delete(missingPackage);
 				}
-				Logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
 			} catch (error) {
-				Logger.error('n8n was unable to install the missing packages.');
+				this.logger.error('n8n was unable to install the missing packages.');
 			}
 		}
 
@@ -324,7 +327,7 @@ export class CommunityPackagesService {
 			await this.executeNpmCommand(command);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new Error(`The npm package "${packageName}" could not be found.`);
+				throw new ApplicationError('npm package not found', { extra: { packageName } });
 			}
 			throw error;
 		}
@@ -338,7 +341,7 @@ export class CommunityPackagesService {
 			try {
 				await this.executeNpmCommand(removeCommand);
 			} catch {}
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
 		if (loader.loadedNodes.length > 0) {
@@ -351,7 +354,10 @@ export class CommunityPackagesService {
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				return installedPackage;
 			} catch (error) {
-				throw new Error(`Failed to save installed package: ${packageName}`, { cause: error });
+				throw new ApplicationError('Failed to save installed package', {
+					extra: { packageName },
+					cause: error,
+				});
 			}
 		} else {
 			// Remove this package since it contains no loadable nodes
@@ -360,7 +366,7 @@ export class CommunityPackagesService {
 				await this.executeNpmCommand(removeCommand);
 			} catch {}
 
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
 }

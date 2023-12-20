@@ -4,23 +4,26 @@ import type { Server } from 'http';
 import express from 'express';
 import compression from 'compression';
 import isbot from 'isbot';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { N8nInstanceType } from '@/Interfaces';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { N8nInstanceType, IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
+import { WaitingForms } from '@/WaitingForms';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
+import { Logger } from '@/Logger';
+import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 
 export abstract class AbstractServer {
+	protected logger: Logger;
+
 	protected server: Server;
 
 	readonly app: express.Application;
@@ -35,17 +38,19 @@ export abstract class AbstractServer {
 
 	protected sslCert: string;
 
-	protected timezone: string;
-
 	protected restEndpoint: string;
+
+	protected endpointForm: string;
+
+	protected endpointFormTest: string;
+
+	protected endpointFormWaiting: string;
 
 	protected endpointWebhook: string;
 
 	protected endpointWebhookTest: string;
 
 	protected endpointWebhookWaiting: string;
-
-	protected instanceId = '';
 
 	protected webhooksEnabled = true;
 
@@ -57,18 +62,26 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
+		const proxyHops = config.getEnv('proxy_hops');
+		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
+
 		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.timezone = config.getEnv('generic.timezone');
-
 		this.restEndpoint = config.getEnv('endpoints.rest');
+
+		this.endpointForm = config.getEnv('endpoints.form');
+		this.endpointFormTest = config.getEnv('endpoints.formTest');
+		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
+
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
 		this.uniqueInstanceId = generateHostInstanceId(instanceType);
+
+		this.logger = Container.get(Logger);
 	}
 
 	async configure(): Promise<void> {
@@ -164,10 +177,21 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
+			const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+			// Register a handler for active forms
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWorkflowRunner));
+
 			// Register a handler for active webhooks
 			this.app.all(
 				`/${this.endpointWebhook}/:path(*)`,
-				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+				webhookRequestHandler(activeWorkflowRunner),
+			);
+
+			// Register a handler for waiting forms
+			this.app.all(
+				`/${this.endpointFormWaiting}/:path/:suffix?`,
+				webhookRequestHandler(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
@@ -180,7 +204,8 @@ export abstract class AbstractServer {
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler for test webhooks
+			// Register a handler
+			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 
 			// Removes a test webhook
@@ -196,7 +221,7 @@ export abstract class AbstractServer {
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
 			if (userAgent && checkIfBot(userAgent)) {
-				Logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
+				this.logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();
 		});

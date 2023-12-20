@@ -1,10 +1,7 @@
-import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
-import { getLogger } from '@/Logger';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { BinaryDataService } from 'n8n-core';
 import { CacheService } from '@/services/cache.service';
@@ -19,11 +16,13 @@ import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+
+import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(async () => {
-	LoggerProxy.init(getLogger());
 	config.set('executions.mode', 'queue');
 	config.set('binaryDataManager.availableModes', 'filesystem');
 	mockInstance(Telemetry);
@@ -39,6 +38,7 @@ beforeAll(async () => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
+	mockInstance(MultiMainSetup);
 });
 
 test('worker initializes all its components', async () => {
@@ -65,15 +65,15 @@ test('worker initializes all its components', async () => {
 	expect(worker.queueModeId).toBeDefined();
 	expect(worker.queueModeId).toContain('worker');
 	expect(worker.queueModeId.length).toBeGreaterThan(15);
-	expect(worker.initLicense).toHaveBeenCalled();
-	expect(worker.initBinaryDataService).toHaveBeenCalled();
-	expect(worker.initExternalHooks).toHaveBeenCalled();
-	expect(worker.initExternalSecrets).toHaveBeenCalled();
-	expect(worker.initEventBus).toHaveBeenCalled();
-	expect(worker.initOrchestration).toHaveBeenCalled();
-	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalled();
-	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalled();
-	expect(worker.initQueue).toHaveBeenCalled();
+	expect(worker.initLicense).toHaveBeenCalledTimes(1);
+	expect(worker.initBinaryDataService).toHaveBeenCalledTimes(1);
+	expect(worker.initExternalHooks).toHaveBeenCalledTimes(1);
+	expect(worker.initExternalSecrets).toHaveBeenCalledTimes(1);
+	expect(worker.initEventBus).toHaveBeenCalledTimes(1);
+	expect(worker.initOrchestration).toHaveBeenCalledTimes(1);
+	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalledTimes(1);
+	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalledTimes(1);
+	expect(worker.initQueue).toHaveBeenCalledTimes(1);
 
 	jest.restoreAllMocks();
 });

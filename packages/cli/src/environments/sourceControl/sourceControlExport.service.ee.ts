@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -6,12 +6,10 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import * as Db from '@/Db';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
-import { Credentials, UserSettings } from 'n8n-core';
+import { Credentials, InstanceSettings } from 'n8n-core';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
@@ -25,8 +23,13 @@ import {
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { VariablesService } from '../variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { VariablesService } from '../variables/variables.service.ee';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { Logger } from '@/Logger';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 
 @Service()
 export class SourceControlExportService {
@@ -37,11 +40,12 @@ export class SourceControlExportService {
 	private credentialExportFolder: string;
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
+		instanceSettings: InstanceSettings,
 	) {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
 		this.credentialExportFolder = path.join(
 			this.gitFolder,
@@ -61,7 +65,7 @@ export class SourceControlExportService {
 		try {
 			await fsRm(this.gitFolder, { recursive: true });
 		} catch (error) {
-			LoggerProxy.error(`Failed to delete work folder: ${(error as Error).message}`);
+			this.logger.error(`Failed to delete work folder: ${(error as Error).message}`);
 		}
 	}
 
@@ -69,7 +73,7 @@ export class SourceControlExportService {
 		try {
 			filesToBeDeleted.forEach((e) => rmSync(e));
 		} catch (error) {
-			LoggerProxy.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
+			this.logger.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
 		}
 		return filesToBeDeleted;
 	}
@@ -91,7 +95,7 @@ export class SourceControlExportService {
 					versionId: e.versionId,
 					owner: owners[e.id],
 				};
-				LoggerProxy.debug(`Writing workflow ${e.id} to ${fileName}`);
+				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
@@ -101,7 +105,7 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+			const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 				relations: ['role', 'user'],
 				where: {
 					role: {
@@ -111,7 +115,7 @@ export class SourceControlExportService {
 					workflowId: In(workflowIds),
 				},
 			});
-			const workflows = await Db.collections.Workflow.find({
+			const workflows = await Container.get(WorkflowRepository).find({
 				where: {
 					id: In(workflowIds),
 				},
@@ -134,7 +138,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -164,7 +168,9 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', {
+				cause: error,
+			});
 		}
 	}
 
@@ -180,7 +186,7 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const mappings = await Db.collections.WorkflowTagMapping.find();
+			const mappings = await Container.get(WorkflowTagMappingRepository).find();
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			await fsWriteFile(
 				fileName,
@@ -204,7 +210,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -224,7 +230,7 @@ export class SourceControlExportService {
 					continue;
 				}
 			} catch (error) {
-				LoggerProxy.error(`Failed to sanitize credential data: ${(error as Error).message}`);
+				this.logger.error(`Failed to sanitize credential data: ${(error as Error).message}`);
 				throw error;
 			}
 		}
@@ -235,7 +241,7 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await Db.collections.SharedCredentials.find({
+			const credentialsToBeExported = await Container.get(SharedCredentialsRepository).find({
 				relations: ['credentials', 'role', 'user'],
 				where: {
 					credentialsId: In(credentialIds),
@@ -248,12 +254,11 @@ export class SourceControlExportService {
 					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
 				);
 			}
-			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
 				credentialsToBeExported.map(async (sharedCredential) => {
 					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
 					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData(encryptionKey);
+					const plainData = credentialObject.getData();
 					const sanitizedData = this.replaceCredentialData(plainData);
 					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
 					const sanitizedCredential: ExportableCredential = {
@@ -263,7 +268,7 @@ export class SourceControlExportService {
 						data: sanitizedData,
 						nodesAccess: sharedCredential.credentials.nodesAccess,
 					};
-					LoggerProxy.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
+					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
 			);
@@ -277,7 +282,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

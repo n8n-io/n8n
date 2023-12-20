@@ -24,7 +24,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({

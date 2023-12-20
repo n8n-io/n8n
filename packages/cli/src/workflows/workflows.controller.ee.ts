@@ -8,10 +8,9 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
-import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { LoggerProxy } from 'n8n-workflow';
 import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -22,8 +21,14 @@ import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
+import { Logger } from '@/Logger';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { WorkflowService } from './workflow.service';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
 
 EEWorkflowController.use((req, res, next) => {
@@ -52,21 +57,47 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
-		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
+		const isOwnedRes = await Container.get(EnterpriseWorkflowService).isOwned(req.user, workflowId);
+		const { ownsWorkflow } = isOwnedRes;
+		let { workflow } = isOwnedRes;
 
 		if (!ownsWorkflow || !workflow) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			workflow = undefined;
+			// Allow owners/admins to share
+			if (req.user.hasGlobalScope('workflow:share')) {
+				const sharedRes = await Container.get(WorkflowService).getSharing(req.user, workflowId, {
+					allowGlobalScope: true,
+					globalScope: 'workflow:share',
+				});
+				workflow = sharedRes?.workflow;
+			}
+			if (!workflow) {
+				throw new UnauthorizedError('Forbidden');
+			}
 		}
+
+		const ownerIds = (
+			await Container.get(EnterpriseWorkflowService).getSharings(
+				Db.getConnection().createEntityManager(),
+				workflowId,
+				['shared', 'shared.role'],
+			)
+		)
+			.filter((e) => e.role.name === 'owner')
+			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
+			await Container.get(EnterpriseWorkflowService).pruneSharings(trx, workflowId, [
+				...ownerIds,
+				...shareWithIds,
+			]);
 
-			const sharings = await EEWorkflows.getSharings(trx, workflowId);
+			const sharings = await Container.get(EnterpriseWorkflowService).getSharings(trx, workflowId);
 
 			// extract the new sharings that need to be added
 			newShareeIds = rightDiff(
@@ -75,7 +106,7 @@ EEWorkflowController.put(
 			);
 
 			if (newShareeIds.length) {
-				await EEWorkflows.share(trx, workflow, newShareeIds);
+				await Container.get(EnterpriseWorkflowService).share(trx, workflow!, newShareeIds);
 			}
 		});
 
@@ -98,22 +129,23 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
+		const workflow = await Container.get(WorkflowService).get({ id: workflowId }, { relations });
 
 		if (!workflow) {
-			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(
+		if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
+			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
 
-		EEWorkflows.addOwnerAndSharings(workflow);
-		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+
+		enterpriseWorkflowService.addOwnerAndSharings(workflow);
+		await enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
 		return workflow;
 	}),
 );
@@ -154,9 +186,12 @@ EEWorkflowController.post(
 		const allCredentials = await CredentialsService.getMany(req.user);
 
 		try {
-			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
+			Container.get(EnterpriseWorkflowService).validateCredentialPermissionsToUser(
+				newWorkflow,
+				allCredentials,
+			);
 		} catch (error) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
 		}
@@ -180,11 +215,17 @@ EEWorkflowController.post(
 		});
 
 		if (!savedWorkflow) {
-			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.InternalServerError(
+			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
+			throw new InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}
+
+		await Container.get(WorkflowHistoryService).saveVersion(
+			req.user,
+			savedWorkflow,
+			savedWorkflow.id,
+		);
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
 			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {
@@ -209,7 +250,7 @@ EEWorkflowController.get(
 		try {
 			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user);
 
-			const { workflows: data, count } = await EEWorkflows.getMany(
+			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
 				sharedWorkflowIds,
 				req.listQueryOptions,
 			);
@@ -233,9 +274,13 @@ EEWorkflowController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const safeWorkflow = await EEWorkflows.preventTampering(updateData, workflowId, req.user);
+		const safeWorkflow = await Container.get(EnterpriseWorkflowService).preventTampering(
+			updateData,
+			workflowId,
+			req.user,
+		);
 
-		const updatedWorkflow = await EEWorkflows.update(
+		const updatedWorkflow = await Container.get(WorkflowService).update(
 			req.user,
 			safeWorkflow,
 			workflowId,
@@ -257,10 +302,18 @@ EEWorkflowController.post(
 		Object.assign(workflow, req.body.workflowData);
 
 		if (req.body.workflowData.id !== undefined) {
-			const safeWorkflow = await EEWorkflows.preventTampering(workflow, workflow.id, req.user);
+			const safeWorkflow = await Container.get(EnterpriseWorkflowService).preventTampering(
+				workflow,
+				workflow.id,
+				req.user,
+			);
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 
-		return EEWorkflows.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
+		return Container.get(WorkflowService).runManually(
+			req.body,
+			req.user,
+			GenericHelpers.getSessionId(req),
+		);
 	}),
 );

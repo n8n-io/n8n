@@ -3,8 +3,6 @@ import { CacheService } from '@/services/cache.service';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 
 const cacheService = Container.get(CacheService);
 
@@ -36,7 +34,6 @@ const testObject: TestObject = {
 
 describe('cacheService', () => {
 	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
 			if (typeof Redis === 'object') {
@@ -47,7 +44,6 @@ describe('cacheService', () => {
 				};
 			}
 			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return function (...args: any) {
 				return new Redis(args);
 			};

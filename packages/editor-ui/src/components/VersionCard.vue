@@ -52,8 +52,7 @@ import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import type { IVersionNode } from '@/Interface';
-import type { IVersion } from '@/Interface';
+import type { IVersionNode, IVersion } from '@/Interface';
 
 export default defineComponent({
 	name: 'VersionCard',

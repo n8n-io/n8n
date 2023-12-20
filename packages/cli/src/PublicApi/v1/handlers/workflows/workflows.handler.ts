@@ -2,6 +2,7 @@ import type express from 'express';
 import { Container } from 'typedi';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
@@ -23,19 +24,19 @@ import {
 	parseTagNames,
 	getWorkflowsAndCount,
 } from './workflows.service';
-import { WorkflowsService } from '@/workflows/workflows.services';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import { isWorkflowHistoryLicensed } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 
 export = {
 	createWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
 			workflow.active = false;
+			workflow.versionId = uuid();
 
 			await replaceInvalidCredentials(workflow);
 
@@ -45,6 +46,12 @@ export = {
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
+			await Container.get(WorkflowHistoryService).saveVersion(
+				req.user,
+				createdWorkflow,
+				createdWorkflow.id,
+			);
+
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
 
@@ -52,11 +59,11 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
-			const workflow = await WorkflowsService.delete(req.user, workflowId);
+			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
@@ -67,7 +74,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -88,7 +95,7 @@ export = {
 		},
 	],
 	getWorkflows: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
@@ -97,7 +104,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (req.user.isOwner) {
+			if (['owner', 'admin'].includes(req.user.globalRole.name)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);
@@ -145,12 +152,13 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 			updateData.id = id;
+			updateData.versionId = uuid();
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
@@ -179,10 +187,6 @@ export = {
 				}
 			}
 
-			if (isWorkflowHistoryLicensed()) {
-				await Container.get(WorkflowHistoryService).saveVersion(req.user, sharedWorkflow.workflow);
-			}
-
 			if (sharedWorkflow.workflow.active) {
 				try {
 					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
@@ -195,6 +199,14 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
+			if (updatedWorkflow) {
+				await Container.get(WorkflowHistoryService).saveVersion(
+					req.user,
+					updatedWorkflow,
+					sharedWorkflow.workflowId,
+				);
+			}
+
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 
@@ -202,7 +214,7 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -236,7 +248,7 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 

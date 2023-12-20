@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -23,8 +24,6 @@ import { companyContactFields, companyContactOperations } from './CompanyContact
 import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
 
 import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
-
-import { snakeCase } from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {

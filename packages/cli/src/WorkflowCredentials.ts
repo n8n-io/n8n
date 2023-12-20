@@ -1,5 +1,6 @@
-import type { INode, IWorkflowCredentials } from 'n8n-workflow';
-import * as Db from '@/Db';
+import Container from 'typedi';
+import { ApplicationError, type INode, type IWorkflowCredentials } from 'n8n-workflow';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCredentials> {
@@ -23,20 +24,22 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 			nodeCredentials = node.credentials[type];
 
 			if (!nodeCredentials.id) {
-				throw new Error(
+				throw new ApplicationError(
 					`Credentials with name "${nodeCredentials.name}" for type "${type}" miss an ID.`,
+					{ extra: { credentialName: nodeCredentials.name }, tags: { credentialType: type } },
 				);
 			}
 
 			if (!returnCredentials[type][nodeCredentials.id]) {
-				foundCredentials = await Db.collections.Credentials.findOneBy({
+				foundCredentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type,
 				});
 				if (!foundCredentials) {
-					throw new Error(
-						`Could not find credentials for type "${type}" with ID "${nodeCredentials.id}".`,
-					);
+					throw new ApplicationError('Could not find credential.', {
+						tags: { credentialType: type },
+						extra: { credentialId: nodeCredentials.id },
+					});
 				}
 
 				returnCredentials[type][nodeCredentials.id] = foundCredentials;

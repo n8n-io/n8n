@@ -152,7 +152,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { ElDropdown } from 'element-plus';
-import { useExecutionDebugging, useMessage } from '@/composables';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -296,19 +297,7 @@ export default defineComponent({
 }
 
 .debugLink {
-	padding: 0;
+	height: 42px;
 	margin-right: var(--spacing-xs);
-
-	&.secondary {
-		a span {
-			color: var(--color-primary-shade-1);
-		}
-	}
-
-	a span {
-		display: block;
-		padding: var(--spacing-xs) var(--spacing-m);
-		color: var(--color-text-xlight);
-	}
 }
 </style>

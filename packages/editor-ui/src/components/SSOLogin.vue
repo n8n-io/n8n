@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useSSOStore } from '@/stores/sso.store';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -53,7 +54,7 @@ const onSSOLogin = async () => {
 		position: relative;
 		display: inline-block;
 		padding: var(--spacing-xl) var(--spacing-l);
-		background: var(--color-foreground-xlight);
+		background: var(--color-background-xlight);
 	}
 }
 </style>

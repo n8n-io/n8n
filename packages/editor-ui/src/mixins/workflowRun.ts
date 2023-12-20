@@ -1,25 +1,42 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
-import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, TelemetryHelpers } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	IWorkflowBase,
+} from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	TelemetryHelpers,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+} from 'n8n-workflow';
 
-import { externalHooks } from '@/mixins/externalHooks';
+import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
 
+import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { openPopUpWindow } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const workflowRun = defineComponent({
-	mixins: [externalHooks, workflowHelpers],
+	mixins: [workflowHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -76,6 +93,7 @@ export const workflowRun = defineComponent({
 
 			try {
 				// Check first if the workflow has any issues before execute it
+				this.nodeHelpers.refreshNodeIssues();
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
@@ -105,7 +123,9 @@ export const workflowRun = defineComponent({
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
+								errorMessages.push(
+									`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`,
+								);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);
@@ -118,7 +138,7 @@ export const workflowRun = defineComponent({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						void this.$externalHooks().run('workflowRun.runError', {
+						void useExternalHooks().run('workflowRun.runError', {
 							errorMessages,
 							nodeName: options.destinationNode,
 						});
@@ -255,11 +275,62 @@ export const workflowRun = defineComponent({
 					},
 				};
 				this.workflowsStore.setWorkflowExecutionData(executionData);
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				await this.$externalHooks().run('workflowRun.runWorkflow', {
+				for (const node of workflowData.nodes) {
+					if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
+						continue;
+					}
+
+					if (
+						options.destinationNode &&
+						options.destinationNode !== node.name &&
+						!directParentNodes.includes(node.name)
+					) {
+						continue;
+					}
+
+					if (node.name === options.destinationNode || !node.disabled) {
+						let testUrl = '';
+
+						if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
+							const webhookPath = (node.parameters.path as string) || node.webhookId;
+							testUrl = `${this.rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
+						}
+
+						if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
+							const webhookPath = (node.parameters.path as string) || node.webhookId;
+							testUrl = `${this.rootStore.getFormTestUrl}/${webhookPath}`;
+						}
+
+						if (
+							node.type === WAIT_NODE_TYPE &&
+							node.parameters.resume === 'form' &&
+							runWorkflowApiResponse.executionId
+						) {
+							const workflowTriggerNodes = workflow.getTriggerNodes().map((node) => node.name);
+
+							const showForm =
+								options.destinationNode === node.name ||
+								directParentNodes.includes(node.name) ||
+								workflowTriggerNodes.some((triggerNode) =>
+									this.workflowsStore.isNodeInOutgoingNodeConnections(triggerNode, node.name),
+								);
+
+							if (!showForm) continue;
+
+							const { webhookSuffix } = (node.parameters.options || {}) as IDataObject;
+							const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
+							testUrl = `${this.rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
+						}
+
+						if (testUrl) openPopUpWindow(testUrl);
+					}
+				}
+
+				await useExternalHooks().run('workflowRun.runWorkflow', {
 					nodeName: options.destinationNode,
 					source: options.source,
 				});

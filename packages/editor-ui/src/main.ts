@@ -20,10 +20,9 @@ import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
 
-import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { useWebhooksStore } from '@/stores';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
+import { ChartJSPlugin } from '@/plugins/chartjs';
 
 const pinia = createPinia();
 
@@ -39,12 +38,9 @@ app.use(JsPlumbPlugin);
 app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
+app.use(ChartJSPlugin);
 
 app.mount('#app');
-
-router.afterEach((to, from) => {
-	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
-});
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed

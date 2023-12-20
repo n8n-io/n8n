@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import {
 	COMMAND_REDIS_CHANNEL,
 	EVENT_BUS_REDIS_CHANNEL,
@@ -25,9 +24,9 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 		}
 		await this.redisClient?.subscribe(channel, (error, _count: number) => {
 			if (error) {
-				Logger.error(`Error subscribing to channel ${channel}`);
+				this.logger.error(`Error subscribing to channel ${channel}`);
 			} else {
-				Logger.debug(`Subscribed Redis PubSub client to channel: ${channel}`);
+				this.logger.debug(`Subscribed Redis PubSub client to channel: ${channel}`);
 			}
 		});
 	}
@@ -38,9 +37,9 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 		}
 		await this.redisClient?.unsubscribe(channel, (error, _count: number) => {
 			if (error) {
-				Logger.error(`Error unsubscribing from channel ${channel}`);
+				this.logger.error(`Error unsubscribing from channel ${channel}`);
 			} else {
-				Logger.debug(`Unsubscribed Redis PubSub client from channel: ${channel}`);
+				this.logger.debug(`Unsubscribed Redis PubSub client from channel: ${channel}`);
 			}
 		});
 	}

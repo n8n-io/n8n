@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
-import { checkExhaustive, shorten } from '@/utils';
+import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
+import { checkExhaustive } from '@/utils/typeGuards';
+import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
 type Props = {
@@ -14,6 +16,7 @@ type Props = {
 	draggingPath: string;
 	distanceFromActive: number;
 	node: INodeUi | null;
+	search: string;
 };
 
 const props = defineProps<Props>();
@@ -26,8 +29,12 @@ const isFlat = computed(
 		Array.isArray(props.schema.value) &&
 		props.schema.value.every((v) => !Array.isArray(v.value)),
 );
-const key = computed((): string | undefined =>
-	isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key,
+const key = computed((): string | undefined => {
+	const highlightedKey = sanitizeHtml(highlightText(props.schema.key, props.search));
+	return isSchemaParentTypeArray.value ? `[${highlightedKey}]` : highlightedKey;
+});
+const parentKey = computed((): string | undefined =>
+	sanitizeHtml(highlightText(props.parent.key, props.search)),
 );
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
@@ -92,8 +99,8 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
-				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }">{{ key }}</span>
+				<span v-if="isSchemaParentTypeArray" v-html="parentKey" />
+				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }" v-html="key" />
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
@@ -115,6 +122,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:distanceFromActive="distanceFromActive"
 				:node="node"
 				:style="{ transitionDelay: transitionDelay(i) }"
+				:search="search"
 			/>
 		</div>
 	</div>

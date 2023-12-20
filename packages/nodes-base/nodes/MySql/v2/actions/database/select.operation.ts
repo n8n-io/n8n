@@ -13,8 +13,6 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import { addSortRules, addWhereClauses } from '../../helpers/utils';
 
 import {
@@ -23,6 +21,7 @@ import {
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

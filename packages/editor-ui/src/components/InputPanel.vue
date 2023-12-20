@@ -13,12 +13,15 @@
 		:mappingEnabled="isMappingEnabled"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="input"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		@search="$emit('search', $event)"
 		data-test-id="ndv-input-panel"
 	>
 		<template #header>
@@ -28,7 +31,7 @@
 					teleported
 					size="small"
 					:modelValue="currentNodeName"
-					@update:modelValue="onSelect"
+					@update:modelValue="onInputNodeChange"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
@@ -163,7 +166,13 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { ConnectionTypes, IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IConnectedNode,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -190,6 +199,7 @@ export default defineComponent({
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -205,6 +215,10 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		isPaneActive: {
 			type: Boolean,
 			default: false,
 		},
@@ -263,9 +277,9 @@ export default defineComponent({
 			}
 
 			if (
-				(inputs.length === 0 ||
-					inputs.find((inputName) => inputName !== NodeConnectionType.Main)) &&
-				outputs.find((outputName) => outputName !== NodeConnectionType.Main)
+				inputs.length === 0 ||
+				(inputs.every((input) => this.filterOutConnectionType(input, NodeConnectionType.Main)) &&
+					outputs.find((output) => this.filterOutConnectionType(output, NodeConnectionType.Main)))
 			) {
 				return true;
 			}
@@ -376,6 +390,14 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		filterOutConnectionType(
+			item: ConnectionTypes | INodeOutputConfiguration,
+			type: ConnectionTypes,
+		) {
+			if (!item) return false;
+
+			return typeof item === 'string' ? item !== type : item.type !== type;
+		},
 		onInputModeChange(val: MappingMode) {
 			this.inputMode = val;
 		},
@@ -432,9 +454,9 @@ export default defineComponent({
 		onUnlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onSelect(value: string) {
+		onInputNodeChange(value: string) {
 			const index = this.parentNodes.findIndex((node) => node.name === value) + 1;
-			this.$emit('select', value, index);
+			this.$emit('changeInputNode', value, index);
 		},
 		onConnectionHelpClick() {
 			if (this.activeNode) {
@@ -453,6 +475,9 @@ export default defineComponent({
 				return `${truncated}...`;
 			}
 			return truncated;
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 	watch: {

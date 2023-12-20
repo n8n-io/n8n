@@ -7,6 +7,7 @@
 			!loading && $style.loaded,
 		]"
 		@click="onCardClick"
+		data-test-id="template-card"
 	>
 		<div :class="$style.loading" v-if="loading">
 			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
@@ -39,6 +40,7 @@
 				outline
 				label="Use workflow"
 				@click.stop="onUseWorkflowClick"
+				data-test-id="use-workflow-button"
 			/>
 		</div>
 	</div>
@@ -47,7 +49,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { filterTemplateNodes, abbreviateNumber } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
 

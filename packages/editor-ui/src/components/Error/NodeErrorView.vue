@@ -1,9 +1,7 @@
 <template>
 	<div class="node-error-view">
 		<div class="error-header">
-			<div class="error-header__message">
-				{{ getErrorMessage() }}
-			</div>
+			<div class="error-header__message" v-text="getErrorMessage()" />
 			<div
 				class="error-header__description"
 				v-if="error.description"
@@ -188,16 +186,16 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import {
+import type {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	jsonParse,
+	NodeOperationError,
 } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -241,7 +239,19 @@ export default defineComponent({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
-			if (!this.error.context || !this.error.context.descriptionTemplate) {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				return sanitizeHtml(
+					this.error.description +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
+			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
 
@@ -253,7 +263,21 @@ export default defineComponent({
 		getErrorMessage(): string {
 			const baseErrorMessage = '';
 
-			if (!this.error.context || !this.error.context.messageTemplate) {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				const baseErrorMessageSubNode = this.$locale.baseText('nodeErrorView.errorSubNode', {
+					interpolate: { node: this.error.node.name },
+				});
+				return baseErrorMessageSubNode;
+			}
+
+			if (this.error.message === this.error.description) {
+				return baseErrorMessage;
+			}
+			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}
 
@@ -271,7 +295,7 @@ export default defineComponent({
 					throw new Error();
 				}
 
-				if (fullPath === false) {
+				if (!fullPath) {
 					return parameters.pop()!.displayName;
 				}
 				return parameters.map((parameter) => parameter.displayName).join(' > ');
@@ -363,7 +387,6 @@ export default defineComponent({
 	margin-bottom: var(--spacing-s);
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-large);
-
 	&__summary {
 		padding: var(--spacing-xs) var(--spacing-l);
 		font-size: var(--font-size-xs);

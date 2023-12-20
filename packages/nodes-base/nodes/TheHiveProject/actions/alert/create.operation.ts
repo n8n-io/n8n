@@ -4,15 +4,14 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
-
-import { theHiveApiRequest } from '../../transport';
 
 import set from 'lodash/set';
 
 import FormData from 'form-data';
+import { theHiveApiRequest } from '../../transport';
 import { fixFieldType, prepareInputItem, splitAndTrim } from '../../helpers/utils';
 import { observableTypeOptions } from '../../descriptions';
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -152,8 +151,9 @@ export async function execute(
 
 					const binaryPropertyName = value.binaryProperty as string;
 					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-					formData.append(attachmentIndex, binaryData.data, {
+					formData.append(attachmentIndex, dataBuffer, {
 						filename: binaryData.fileName,
 						contentType: binaryData.mimeType,
 					});

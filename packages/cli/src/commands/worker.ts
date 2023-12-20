@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -22,12 +22,13 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
-import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
+import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -35,10 +36,11 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { IConfig } from '@oclif/config';
+import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -61,7 +63,7 @@ export class Worker extends BaseCommand {
 		[jobId: string]: WorkerJobStatusSummary;
 	} = {};
 
-	static jobQueue: JobQueue;
+	static jobQueue: Queue;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -71,30 +73,22 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		LoggerProxy.info('Stopping n8n...');
+		this.logger.info('Stopping n8n...');
 
 		// Stop accepting new jobs
 		await Worker.jobQueue.pause(true);
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
-			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
-
-			const stopTime = new Date().getTime() + maxStopTime;
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, maxStopTime);
+			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					LoggerProxy.info(
+					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
+					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
@@ -112,44 +106,45 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-			executionId,
-			{
-				includeData: true,
-				unflattenData: true,
-			},
-		);
+		const executionRepository = Container.get(ExecutionRepository);
+		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!fullExecutionData) {
-			LoggerProxy.error(
+			this.logger.error(
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
 			);
-			throw new Error(
-				`Unable to find data of execution "${executionId}" in database. Aborting execution.`,
+			throw new ApplicationError(
+				'Unable to find data of execution in database. Aborting execution.',
+				{ extra: { executionId } },
 			);
 		}
-		const workflowId = fullExecutionData.workflowData.id!;
-		LoggerProxy.info(
+		const workflowId = fullExecutionData.workflowData.id!; // @tech_debt Ensure this is not optional
+
+		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
+		await executionRepository.updateStatus(executionId, 'running');
 
 		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
-			const workflowData = await Db.collections.Workflow.findOne({
+			const workflowData = await Container.get(WorkflowRepository).findOne({
 				select: ['id', 'staticData'],
 				where: {
 					id: workflowId,
 				},
 			});
 			if (workflowData === null) {
-				LoggerProxy.error(
+				this.logger.error(
 					'Worker execution failed because workflow could not be found in database.',
 					{ workflowId, executionId },
 				);
-				throw new Error(`The workflow with the ID "${workflowId}" could not be found`);
+				throw new ApplicationError('Workflow could not be found', { extra: { workflowId } });
 			}
 			staticData = workflowData.staticData;
 		}
@@ -217,7 +212,7 @@ export class Worker extends BaseCommand {
 
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
-			LoggerProxy.debug(`Queued worker execution status for ${executionId} is "${status}"`);
+			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
 		};
 
 		let workflowExecute: WorkflowExecute;
@@ -269,6 +264,13 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
+		const configuredShutdownTimeout = config.getEnv('queue.bull.gracefulShutdownTimeout');
+		if (configuredShutdownTimeout) {
+			this.gracefulShutdownTimeoutInS = configuredShutdownTimeout;
+			this.logger.warn(
+				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
+			);
+		}
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
@@ -290,7 +292,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Queue init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
-		await this.initQueue();
 
 		await Container.get(OrchestrationWorkerService).publishToEventLog(
 			new EventMessageGeneric({
@@ -318,7 +319,6 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			instanceId: this.instanceId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => Object.keys(Worker.runningJobs),
 			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
@@ -335,15 +335,14 @@ export class Worker extends BaseCommand {
 			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
 		);
 
-		const queue = Container.get(Queue);
-		await queue.init();
+		Worker.jobQueue = Container.get(Queue);
+		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),
 		);
 
-		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
+		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
@@ -359,7 +358,7 @@ export class Worker extends BaseCommand {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.on('error', (error: Error) => {
+		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {
@@ -402,20 +401,20 @@ export class Worker extends BaseCommand {
 			'/healthz',
 
 			async (req: express.Request, res: express.Response) => {
-				LoggerProxy.debug('Health check started!');
+				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
 
 				try {
 					if (!connection.isInitialized) {
 						// Connection is not active
-						throw new Error('No active database connection!');
+						throw new ApplicationError('No active database connection');
 					}
 					// DB ping
 					await connection.query('SELECT 1');
 				} catch (e) {
-					LoggerProxy.error('No Database connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
+					this.logger.error('No Database connection!', e as Error);
+					const error = new ServiceUnavailableError('No Database connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 
@@ -423,10 +422,10 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.client.ping();
+					await Worker.jobQueue.ping();
 				} catch (e) {
-					LoggerProxy.error('No Redis connection!', e as Error);
-					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
+					this.logger.error('No Redis connection!', e as Error);
+					const error = new ServiceUnavailableError('No Redis connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
 
@@ -435,7 +434,7 @@ export class Worker extends BaseCommand {
 					status: 'ok',
 				};
 
-				LoggerProxy.debug('Health check completed successfully!');
+				this.logger.debug('Health check completed successfully!');
 
 				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 			},
@@ -483,7 +482,7 @@ export class Worker extends BaseCommand {
 		});
 
 		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks.run('worker.ready');
+		await this.externalHooks?.run('worker.ready');
 		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 

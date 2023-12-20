@@ -8,6 +8,7 @@ const commonThemeProps = {
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
 		color: 'var(--input-font-color, var(--color-text-dark))',
+		caretColor: 'var(--color-code-caret)',
 	},
 	'.cm-line': {
 		padding: '0',
@@ -26,9 +27,17 @@ export const inputTheme = ({ isSingleLine } = { isSingleLine: false }) => {
 			borderWidth: 'var(--border-width-base)',
 			borderStyle: 'var(--input-border-style, var(--border-style-base))',
 			borderColor: 'var(--input-border-color, var(--border-color-base))',
+			borderRightColor:
+				'var(--input-border-right-color,var(--input-border-color, var(--border-color-base)))',
+			borderBottomColor:
+				'var(--input-border-bottom-color,var(--input-border-color, var(--border-color-base)))',
 			borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
-			borderTopLeftRadius: '0',
-			borderBottomLeftRadius: '0',
+			borderTopLeftRadius: 0,
+			borderTopRightRadius:
+				'var(--input-border-top-right-radius, var(--input-border-radius, var(--border-radius-base)))',
+			borderBottomLeftRadius: 0,
+			borderBottomRightRadius:
+				'var(--input-border-bottom-right-radius, var(--input-border-radius, var(--border-radius-base)))',
 			backgroundColor: 'white',
 		},
 		'.cm-scroller': {

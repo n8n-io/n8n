@@ -4,12 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { theHiveApiRequest } from '../../transport';
 
 import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 import { caseRLC } from '../../descriptions';
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	caseRLC,

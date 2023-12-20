@@ -52,7 +52,7 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || '&nbsp;' }}</span>
+										<span v-html="highlightSearchTerm(column || '')" />
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
@@ -120,8 +120,8 @@
 						<span
 							v-if="isSimple(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							>{{ getValueToRender(data) }}</span
-						>
+							v-html="highlightSearchTerm(data)"
+						/>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
 								<span
@@ -141,9 +141,10 @@
 								>
 							</template>
 							<template #value="{ value }">
-								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
-									{{ getValueToRender(value) }}
-								</span>
+								<span
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+									v-html="highlightSearchTerm(value)"
+								/>
 							</template>
 						</n8n-tree>
 					</td>
@@ -160,15 +161,16 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/utils';
+import { shorten } from '@/utils/typesUtils';
+import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
+import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from '@/utils';
-import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -176,7 +178,6 @@ type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
 	name: 'run-data-table',
-	mixins: [externalHooks],
 	components: { Draggable, MappingPill },
 	props: {
 		node: {
@@ -206,6 +207,15 @@ export default defineComponent({
 		hasDefaultHoverState: {
 			type: Boolean,
 		},
+		search: {
+			type: String,
+		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	data() {
 		return {
@@ -361,7 +371,7 @@ export default defineComponent({
 				value === undefined
 			);
 		},
-		getValueToRender(value: unknown) {
+		getValueToRender(value: unknown): string {
 			if (value === '') {
 				return this.$locale.baseText('runData.emptyString');
 			}
@@ -377,14 +387,20 @@ export default defineComponent({
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
+			if (value === true || value === false || typeof value === 'number') {
+				return value.toString();
+			}
 			return value;
+		},
+		highlightSearchTerm(value: string): string {
+			return sanitizeHtml(highlightText(this.getValueToRender(value), this.search));
 		},
 		onDragStart() {
 			this.draggedColumn = true;
 			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
-			if (el && el.dataset.value) {
+			if (el?.dataset.value) {
 				this.draggingPath = el.dataset.value;
 			}
 
@@ -418,7 +434,7 @@ export default defineComponent({
 					...mappingTelemetry,
 				};
 
-				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

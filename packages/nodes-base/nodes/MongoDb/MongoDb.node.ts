@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -18,6 +18,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
+import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
@@ -29,7 +30,6 @@ import {
 } from './GenericFunctions';
 
 import type { IMongoParametricCredentials } from './mongoDb.types';
-import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -80,7 +80,9 @@ export class MongoDb implements INodeType {
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-						throw new Error(`Database "${database}" does not exist`);
+						throw new ApplicationError(`Database "${database}" does not exist`, {
+							level: 'warning',
+						});
 					}
 					await client.close();
 				} catch (error) {

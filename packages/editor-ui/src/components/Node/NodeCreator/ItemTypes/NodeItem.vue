@@ -5,7 +5,7 @@
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		:class="$style.nodeItem"
-		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
+		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
@@ -44,17 +44,19 @@ import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
 
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
-import { useI18n, useTelemetry } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 export interface Props {
@@ -78,6 +80,13 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (
+		props.subcategory === DEFAULT_SUBCATEGORY &&
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+	) {
+		return '';
+	}
+
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
@@ -106,7 +115,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
-const displayName = computed<any>(() => {
+const displayName = computed<string>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
 	return i18n.headerText({

@@ -1,29 +1,32 @@
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import Container from 'typedi';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import * as os from 'os';
-import Container from 'typedi';
 import { License } from '@/License';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { Logger } from '@/Logger';
+import { N8N_VERSION } from '@/constants';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;
+			const logger = Container.get(Logger);
 			let message: RedisServiceCommandObject;
 			try {
 				message = jsonParse<RedisServiceCommandObject>(messageString);
 			} catch {
-				LoggerProxy.debug(
+				logger.debug(
 					`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
 				);
 				return;
 			}
 			if (message) {
-				LoggerProxy.debug(
+				logger.debug(
 					`RedisCommandHandler(worker): Received command message ${message.command} from ${message.senderId}`,
 				);
 				if (message.targets && !message.targets.includes(options.queueModeId)) {
@@ -31,13 +34,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				}
 				switch (message.command) {
 					case 'getStatus':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getStatus',
 							payload: {
 								workerId: options.queueModeId,
-								runningJobs: options.getRunningJobIds(),
 								runningJobsSummary: options.getRunningJobsSummary(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -47,27 +49,32 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								arch: os.arch(),
 								platform: os.platform(),
 								hostname: os.hostname(),
-								net: Object.values(os.networkInterfaces()).flatMap(
+								interfaces: Object.values(os.networkInterfaces()).flatMap(
 									(interfaces) =>
-										interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
+										(interfaces ?? [])?.map((net) => ({
+											family: net.family,
+											address: net.address,
+											internal: net.internal,
+										})),
 								),
+								version: N8N_VERSION,
 							},
 						});
 						break;
 					case 'getId':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getId',
 						});
 						break;
 					case 'restartEventBus':
-						if (!debounceMessageReceiver(message, 100)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'success',
 								},
@@ -75,7 +82,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,
@@ -84,12 +91,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 						break;
 					case 'reloadExternalSecretsProviders':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'success',
 								},
@@ -97,7 +104,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,
@@ -115,7 +122,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						// await this.stopProcess();
 						break;
 					default:
-						LoggerProxy.debug(
+						logger.debug(
 							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 						);

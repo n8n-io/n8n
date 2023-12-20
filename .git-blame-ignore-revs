@@ -7,3 +7,7 @@
 # refactor(editor): Apply Prettier (no-changelog) #4920
 
 5ca2148c7ed06c90f999508928b7a51f9ac7a788
+
+# refactor: Run lintfix (no-changelog) (#7537)
+
+62c096710fab2f7e886518abdbded34b55e93f62

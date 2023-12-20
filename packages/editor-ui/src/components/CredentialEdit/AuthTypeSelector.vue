@@ -8,12 +8,12 @@ import {
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils';
+} from '@/utils/nodeTypesUtils';
 import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
 export interface Props {
-	credentialType: Object;
+	credentialType: object;
 }
 
 const emit = defineEmits<{
@@ -87,7 +87,7 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 
 	let shouldDisplay = false;
 	Object.keys(authRelatedFieldsValues.value).forEach((fieldName) => {
-		if (option.displayOptions && option.displayOptions.show) {
+		if (option.displayOptions?.show) {
 			if (
 				option.displayOptions.show[fieldName]?.includes(authRelatedFieldsValues.value[fieldName])
 			) {

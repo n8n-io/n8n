@@ -5,7 +5,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { updateDisplayOptions } from '@utils/utilities';
 
 import get from 'lodash/get';
 
@@ -14,6 +13,7 @@ import lt from 'lodash/lt';
 
 import { shuffleArray, sortByCode } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

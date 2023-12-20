@@ -139,7 +139,7 @@ export function addAdditionalFields(
 		if (keyboardData.rows !== undefined) {
 			for (const row of keyboardData.rows) {
 				const sendRows: ITelegramKeyboardButton[] = [];
-				if (row.row === undefined || row.row.buttons === undefined) {
+				if (row.row?.buttons === undefined) {
 					continue;
 				}
 				for (const button of row.row.buttons) {
