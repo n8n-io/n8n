@@ -31,66 +31,6 @@
       "import": "./style.css",
       "require": "./style.css"
     },
-    "./api": {
-      "import": "./api/index.mjs",
-      "require": "./api/index.js"
-    },
-    "./components": {
-      "import": "./components/index.mjs",
-      "require": "./components/index.js"
-    },
-    "./components/Button.vue": {
-      "import": "./components/Button.vue",
-      "require": "./components/Button.vue"
-    },
-    "./components/Chat.vue": {
-      "import": "./components/Chat.vue",
-      "require": "./components/Chat.vue"
-    },
-    "./components/ChatWindow.vue": {
-      "import": "./components/ChatWindow.vue",
-      "require": "./components/ChatWindow.vue"
-    },
-    "./components/GetStarted.vue": {
-      "import": "./components/GetStarted.vue",
-      "require": "./components/GetStarted.vue"
-    },
-    "./components/GetStartedFooter.vue": {
-      "import": "./components/GetStartedFooter.vue",
-      "require": "./components/GetStartedFooter.vue"
-    },
-    "./components/Input.vue": {
-      "import": "./components/Input.vue",
-      "require": "./components/Input.vue"
-    },
-    "./components/Layout.vue": {
-      "import": "./components/Layout.vue",
-      "require": "./components/Layout.vue"
-    },
-    "./components/Message.vue": {
-      "import": "./components/Message.vue",
-      "require": "./components/Message.vue"
-    },
-    "./components/MessagesList.vue": {
-      "import": "./components/MessagesList.vue",
-      "require": "./components/MessagesList.vue"
-    },
-    "./components/MessageTyping.vue": {
-      "import": "./components/MessageTyping.vue",
-      "require": "./components/MessageTyping.vue"
-    },
-    "./components/PoweredBy.vue": {
-      "import": "./components/PoweredBy.vue",
-      "require": "./components/PoweredBy.vue"
-    },
-    "./composables": {
-      "import": "./composables/index.mjs",
-      "require": "./composables/index.js"
-    },
-    "./constants": {
-      "import": "./constants/index.mjs",
-      "require": "./constants/index.js"
-    },
     "./*": {
       "import": "./*",
       "require": "./*"
