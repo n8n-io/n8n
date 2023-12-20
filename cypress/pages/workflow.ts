@@ -351,9 +351,6 @@ export class WorkflowPage extends BasePage {
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		},
-		hitPaste: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
-		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');
 		},
