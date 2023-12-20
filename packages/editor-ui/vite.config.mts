@@ -51,6 +51,10 @@ const alias = [
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
 	{
+		find: /^@n8n\/chat$/,
+		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src', 'index.ts'),
+	},
+	{
 		find: /^@n8n\/chat\//,
 		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
 	},
