@@ -12,9 +12,7 @@
 		"feat:sharing": true,
 		"feat:advancedExecutionFilters": true,
 		"quota:users": -1,
-		"quota:maxVariables": -1,
-		"feat:variables": true,
-		"feat:apiDisabled": true
+		"quota:maxVariables": -1
 	},
 	"metadata": {
 		"version": "v1",

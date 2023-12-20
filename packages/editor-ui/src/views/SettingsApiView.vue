@@ -64,7 +64,8 @@
 			</div>
 		</div>
 		<n8n-action-box
-			v-else-if="isTrialing"
+			v-else-if="!isPublicApiEnabled && isTrialing"
+			data-test-id="public-api-upgrade-cta"
 			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
 			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
 			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
