@@ -1,4 +1,4 @@
-import { INSTANCE_MEMBERS } from '../constants';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
 import { WorkerViewPage } from '../pages';
 
 const workerViewPage = new WorkerViewPage();
@@ -29,7 +29,7 @@ describe('Worker View (licensed)', () => {
 	});
 
 	it('should show up in the menu sidebar', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signin(INSTANCE_OWNER);
 		cy.enableQueueMode();
 		cy.visit(workerViewPage.url);
 		workerViewPage.getters.menuItem().should('exist');
