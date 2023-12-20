@@ -1,4 +1,5 @@
-import { ShutdownService, OnShutdown } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import { ShutdownService } from '@/shutdown/Shutdown.service';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 
 class MockComponent implements OnShutdown {
@@ -64,7 +65,9 @@ describe('ShutdownService', () => {
 		});
 
 		it('should throw error if app is not shutting down', async () => {
-			expect(() => shutdownService.waitForShutdown()).rejects.toThrow('App is not shutting down');
+			await expect(async () => shutdownService.waitForShutdown()).rejects.toThrow(
+				'App is not shutting down',
+			);
 		});
 	});
 

@@ -15,7 +15,7 @@ import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { ShutdownListener } from '@/decorators/ShutdownListener';
-import { OnShutdown } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 

@@ -18,7 +18,7 @@ import type { RedisServicePubSubPublisher } from './services/redis/RedisServiceP
 import { RedisService } from './services/redis.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ShutdownListener } from '@/decorators/ShutdownListener';
-import { OnShutdown } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
 
 type FeatureReturnType = Partial<
 	{

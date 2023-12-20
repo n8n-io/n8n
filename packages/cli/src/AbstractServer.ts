@@ -20,7 +20,7 @@ import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
-import { OnShutdown } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
 
 export abstract class AbstractServer implements OnShutdown {
 	protected logger: Logger;

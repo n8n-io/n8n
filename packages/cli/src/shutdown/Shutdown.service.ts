@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 
 export interface OnShutdown {
 	onShutdown(): Promise<void> | void;
@@ -30,7 +30,7 @@ type ToNotify = {
 export class ShutdownService {
 	private readonly toNotify: ToNotify[] = [];
 
-	private shutdownPromises: Promise<void>[] | undefined = undefined;
+	private shutdownPromises: Array<Promise<void>> | undefined = undefined;
 
 	/**
 	 * Registers given listener to be notified when the application is shutting down.
@@ -47,10 +47,10 @@ export class ShutdownService {
 	 */
 	shutdown() {
 		if (this.shutdownPromises) {
-			throw new Error('App is already shutting down');
+			throw new ApplicationError('App is already shutting down');
 		}
 
-		this.shutdownPromises = Array.from(this.toNotify).map((listener) =>
+		this.shutdownPromises = Array.from(this.toNotify).map(async (listener) =>
 			this.shutdownComponent(listener),
 		);
 	}
@@ -61,10 +61,10 @@ export class ShutdownService {
 	 */
 	async waitForShutdown() {
 		if (!this.shutdownPromises) {
-			throw new Error('App is not shutting down');
+			throw new ApplicationError('App is not shutting down');
 		}
 
-		return await Promise.all(this.shutdownPromises);
+		await Promise.all(this.shutdownPromises);
 	}
 
 	isShuttingDown() {
@@ -75,6 +75,7 @@ export class ShutdownService {
 		try {
 			await component.listener.onShutdown();
 		} catch (error) {
+			assert(error instanceof Error);
 			ErrorReporterProxy.error(new ComponentShutdownError(component.name, error));
 		}
 	}

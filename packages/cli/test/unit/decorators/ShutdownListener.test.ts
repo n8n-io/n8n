@@ -1,6 +1,7 @@
 import Container from 'typedi';
 import { ShutdownListener } from '@/decorators/ShutdownListener';
-import { OnShutdown, ShutdownService } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import { ShutdownService } from '@/shutdown/Shutdown.service';
 
 describe('ShutdownListener', () => {
 	let shutdownService: ShutdownService;
@@ -31,6 +32,6 @@ describe('ShutdownListener', () => {
 			class TestClass {}
 
 			new TestClass();
-		}).toThrow(`Class "TestClass" must implement "onShutdown" method`);
+		}).toThrow('Class "TestClass" must implement "onShutdown" method');
 	});
 });

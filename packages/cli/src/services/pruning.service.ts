@@ -11,7 +11,7 @@ import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { jsonStringify } from 'n8n-workflow';
 import { ShutdownListener } from '@/decorators/ShutdownListener';
-import { OnShutdown } from '@/shutdown/Shutdown.service';
+import type { OnShutdown } from '@/shutdown/Shutdown.service';
 
 @Service()
 @ShutdownListener()
