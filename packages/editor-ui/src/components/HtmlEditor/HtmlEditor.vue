@@ -1,5 +1,8 @@
 <template>
-	<div ref="htmlEditor"></div>
+	<div>
+		<div ref="htmlEditor"></div>
+		<slot name="suffix" />
+	</div>
 </template>
 
 <script lang="ts">

@@ -79,7 +79,6 @@
 							:defaultValue="parameter.default"
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
-							:canFullscreen="false"
 							@update:modelValue="expressionUpdated"
 						/>
 					</div>
@@ -106,30 +105,65 @@
 					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
-					@openDialog="displayEditDialog()"
-				/>
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</code-node-editor>
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
+					:key="codeEditDialogVisible"
 					:modelValue="modelValue"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
 					:disableExpressionCompletions="!isHtmlNode(node)"
 					@update:modelValue="valueChangedDebounced"
-				/>
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</html-editor>
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
+					:key="codeEditDialogVisible"
 					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					@update:modelValue="valueChangedDebounced"
-				/>
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</sql-editor>
 
 				<code-node-editor
 					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
+					:key="codeEditDialogVisible"
 					:mode="node.parameters.mode"
 					:modelValue="modelValue"
 					:defaultValue="parameter.default"
@@ -138,7 +172,18 @@
 					:aiButtonEnabled="false"
 					@update:modelValue="valueChangedDebounced"
 					:rows="getArgument('rows')"
-				/>
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</code-node-editor>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<code-node-editor

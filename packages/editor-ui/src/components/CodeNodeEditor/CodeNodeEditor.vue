@@ -18,6 +18,7 @@
 				data-test-id="code-node-tab-code"
 			>
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
+				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
@@ -35,16 +36,10 @@
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
-		<n8n-icon
-			v-if="canFullscreen"
-			data-test-id="code-editor-fullscreen-button"
-			icon="external-link-alt"
-			size="xsmall"
-			class="edit-window-button textarea-modal-opener"
-			:title="$locale.baseText('parameterInput.openEditWindow')"
-			@click="$emit('openDialog')"
-		/>
+		<div v-else>
+			<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
+			<slot name="suffix" />
+		</div>
 	</div>
 </template>
 
@@ -104,10 +99,6 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 			default: false,
-		},
-		canFullscreen: {
-			type: Boolean,
-			default: true,
 		},
 		rows: {
 			type: Number,
