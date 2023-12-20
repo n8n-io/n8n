@@ -53,7 +53,6 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 import { ApplicationError } from './errors/application.error';
-import { NodeOperationError } from './errors';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -1338,13 +1337,22 @@ export class Workflow {
 					? await nodeType.execute(context)
 					: await nodeType.execute.call(context);
 
-			closeFunctions.forEach(async (closeFunction) => {
+			const closingErrors = [];
+			for (const closeFunction of closeFunctions) {
 				try {
 					await closeFunction();
 				} catch (error) {
-					throw new NodeOperationError(node, error as Error);
+					closingErrors.push(error);
 				}
-			});
+			}
+
+			if (closingErrors.length > 0) {
+				throw new ApplicationError('Error on execution node\'s close function(s)', {
+					extra: { nodeName: node.name },
+					tags: { nodeType: node.type },
+					cause: closingErrors,
+				 })
+			}
 
 			return { data };
 		} else if (nodeType.poll) {
