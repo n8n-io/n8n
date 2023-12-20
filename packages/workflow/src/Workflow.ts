@@ -1347,11 +1347,11 @@ export class Workflow {
 			}
 
 			if (closingErrors.length > 0) {
-				throw new ApplicationError('Error on execution node\'s close function(s)', {
+				throw new ApplicationError("Error on execution node's close function(s)", {
 					extra: { nodeName: node.name },
 					tags: { nodeType: node.type },
 					cause: closingErrors,
-				 })
+				});
 			}
 
 			return { data };
