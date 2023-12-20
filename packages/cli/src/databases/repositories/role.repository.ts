@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import type { RoleNames, RoleScopes } from '../entities/Role';
 import { Role } from '../entities/Role';
+import { User } from '../entities/User';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
@@ -17,17 +18,17 @@ export class RoleRepository extends Repository<Role> {
 	 * Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }`
 	 */
 	async countUsersByRole() {
-		type Row = { role_name: string; count: number };
+		type Row = { role_name: string; count: number | string };
 
 		const rows: Row[] = await this.createQueryBuilder('role')
 			.select('role.name')
 			.addSelect('COUNT(user.id)', 'count')
-			.innerJoin('user', 'user', 'role.id = user.globalRoleId')
+			.innerJoin(User, 'user', 'role.id = user.globalRoleId')
 			.groupBy('role.name')
 			.getRawMany();
 
 		return rows.reduce<Record<string, number>>((acc, item) => {
-			acc[item.role_name] = item.count;
+			acc[item.role_name] = typeof item.count === 'number' ? item.count : parseInt(item.count, 10);
 			return acc;
 		}, {});
 	}
