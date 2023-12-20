@@ -4,12 +4,15 @@
 		<div :class="$style.workerListHeader">
 			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 		</div>
-		<div v-if="workerIds.length === 0">
+		<div v-if="!initialStatusReceived">
 			<n8n-spinner />
 		</div>
 		<div v-else>
-			<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-				<WorkerCard :workerId="workerId" data-test-id="worker-card" />
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
+				</div>
 			</div>
 		</div>
 	</div>
@@ -55,8 +58,6 @@ export default defineComponent({
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
-		this.isMounting = false;
-
 		this.$telemetry.track('User viewed worker view', {
 			instance_id: this.rootStore.instanceId,
 		});
@@ -83,6 +84,9 @@ export default defineComponent({
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
 			return returnData;
+		},
+		initialStatusReceived(): boolean {
+			return this.orchestrationManagerStore.initialStatusReceived;
 		},
 		workerIds(): string[] {
 			return Object.keys(this.orchestrationManagerStore.workers);
