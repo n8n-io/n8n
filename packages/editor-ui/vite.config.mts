@@ -14,6 +14,7 @@ const ignoreChunks = [
 	'@vueuse/components',
 	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
+	'vue-markdown-render',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
