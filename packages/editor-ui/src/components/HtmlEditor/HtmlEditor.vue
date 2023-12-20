@@ -104,7 +104,7 @@ export default defineComponent({
 				indentOnInput(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					maxHeight: this.fillParent ? '100%' : '50vh',
+					maxHeight: this.fillParent ? '100%' : '40vh',
 					rows: this.rows,
 					highlightColors: 'html',
 				}),

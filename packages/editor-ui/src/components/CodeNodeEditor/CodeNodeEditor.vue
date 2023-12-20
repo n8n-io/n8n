@@ -334,7 +334,7 @@ export default defineComponent({
 			EditorView.editable.of(!isReadOnly),
 			codeNodeEditorTheme({
 				isReadOnly,
-				maxHeight: this.fillParent ? '100%' : '50vh',
+				maxHeight: this.fillParent ? '100%' : '40vh',
 				rows: this.rows,
 			}),
 		];

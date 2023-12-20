@@ -148,7 +148,7 @@ export default defineComponent({
 				expressionInputHandler(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					maxHeight: this.fillParent ? '100%' : '50vh',
+					maxHeight: this.fillParent ? '100%' : '40vh',
 					minHeight: '10vh',
 					rows: this.rows,
 				}),
