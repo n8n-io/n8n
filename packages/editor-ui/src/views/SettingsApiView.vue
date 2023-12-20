@@ -120,6 +120,8 @@ export default defineComponent({
 		};
 	},
 	mounted() {
+		if (!this.isPublicApiEnabled) return;
+
 		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
@@ -139,6 +141,9 @@ export default defineComponent({
 		},
 		isLoadingCloudPlans(): boolean {
 			return this.cloudPlanStore.state.loadingPlan;
+		},
+		isPublicApiEnabled(): boolean {
+			return this.settingsStore.isPublicApiEnabled;
 		},
 	},
 	methods: {
