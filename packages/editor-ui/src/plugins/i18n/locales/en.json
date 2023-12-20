@@ -628,7 +628,7 @@
 	"workerList.actionBox.description": "View the current state of workers connected to your instance.",
 	"workerList.actionBox.description.link": "More info",
 	"workerList.actionBox.buttonText": "See plans",
-	"workerList.docs.url": "https://docs.n8n.io",
+	"workerList.docs.url": "https://docs.n8n.io/hosting/scaling/queue-mode/#view-running-workers",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",

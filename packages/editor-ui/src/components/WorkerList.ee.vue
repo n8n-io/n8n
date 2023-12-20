@@ -4,8 +4,8 @@
 		<div :class="$style.workerListHeader">
 			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 		</div>
-		<div v-if="isMounting">
-			<n8n-loading :class="$style.tableLoader" variant="custom" />
+		<div v-if="!initialStatusReceived">
+			<n8n-spinner />
 		</div>
 		<div v-else>
 			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
@@ -55,14 +55,8 @@ export default defineComponent({
 			...pushConnection.setup?.(props, ctx),
 		};
 	},
-	data() {
-		return {
-			isMounting: true,
-		};
-	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
-		this.isMounting = false;
 
 		this.$telemetry.track('User viewed worker view', {
 			instance_id: this.rootStore.instanceId,
@@ -90,6 +84,9 @@ export default defineComponent({
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
 			return returnData;
+		},
+		initialStatusReceived(): boolean {
+			return this.orchestrationManagerStore.initialStatusReceived;
 		},
 		workerIds(): string[] {
 			return Object.keys(this.orchestrationManagerStore.workers);
