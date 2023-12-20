@@ -58,7 +58,7 @@ export function rightDiff<T1, T2>(
  * Build a `where` clause for a TypeORM entity search,
  * checking for member access if the user is not an owner.
  */
-export async function whereClause({
+export function whereClause({
 	user,
 	entityType,
 	globalScope,
@@ -70,10 +70,10 @@ export async function whereClause({
 	globalScope: Scope;
 	entityId?: string;
 	roles?: string[];
-}): Promise<WhereClause> {
+}): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	if (!(await user.hasGlobalScope(globalScope))) {
+	if (!user.hasGlobalScope(globalScope)) {
 		where.user = { id: user.id };
 		if (roles?.length) {
 			where.role = { name: In(roles) };

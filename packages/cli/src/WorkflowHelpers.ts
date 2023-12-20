@@ -422,7 +422,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  */
 export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (!(await user.hasGlobalScope('workflow:read'))) {
+	if (!user.hasGlobalScope('workflow:read')) {
 		where.userId = user.id;
 	}
 	if (roles?.length) {

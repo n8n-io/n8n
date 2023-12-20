@@ -333,7 +333,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgradeAdvancedPermissions() {
-			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
+			void this.uiStore.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
 		},
 	},
 });

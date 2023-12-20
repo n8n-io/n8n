@@ -88,7 +88,7 @@ export class CredentialsService {
 	) {
 		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
 
-		const returnAll = (await user.hasGlobalScope('credential:list')) && !options.onlyOwn;
+		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
@@ -150,7 +150,7 @@ export class CredentialsService {
 		// Omit user from where if the requesting user has relevant
 		// global credential permissions. This allows the user to
 		// access credentials they don't own.
-		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
 			Object.assign(where, {
 				userId: user.id,
 				role: { name: 'owner' },
