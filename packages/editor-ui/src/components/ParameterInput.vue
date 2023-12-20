@@ -71,7 +71,7 @@
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
 				>
-					<div class="ignore-key-press code-edit-dialog">
+					<div v-if="codeEditDialogVisible" class="ignore-key-press code-edit-dialog">
 						<code-node-editor
 							v-if="editorType === 'codeNodeEditor'"
 							:modelValue="modelValue"
