@@ -34,6 +34,7 @@ export const ownerPermissions: Scope[] = [
 	'externalSecret:use',
 	'ldap:manage',
 	'ldap:sync',
+	'license:manage',
 	'logStreaming:manage',
 	'orchestration:read',
 	'orchestration:list',

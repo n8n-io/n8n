@@ -60,6 +60,7 @@
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						:workflow="currentWorkflowObject"
 						:disablePointerEvents="!canOpenNDV"
+						:hideNodeIssues="hideNodeIssues"
 					>
 						<template #custom-tooltip>
 							<span
@@ -746,6 +747,7 @@ export default defineComponent({
 			eventsAttached: false,
 			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 			canOpenNDV: true,
+			hideNodeIssues: false,
 		};
 	},
 	methods: {
@@ -1028,7 +1030,6 @@ export default defineComponent({
 			if (data.workflow.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
-
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 		},
@@ -3304,6 +3305,9 @@ export default defineComponent({
 
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 			window.addEventListener('unload', this.onUnload);
+			// Once view is initialized, pick up all toast notifications
+			// waiting in the store and display them
+			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 		},
 		getOutputEndpointUUID(
 			nodeName: string,
@@ -4347,7 +4351,7 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			if (!message?.data?.includes?.('"command"')) {
+			if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
 				return;
 			}
 			try {
@@ -4356,6 +4360,7 @@ export default defineComponent({
 					try {
 						await this.importWorkflowExact(json);
 						this.canOpenNDV = json.canOpenNDV ?? true;
+						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = false;
 					} catch (e) {
 						if (window.top) {
@@ -4381,6 +4386,7 @@ export default defineComponent({
 
 						await this.openExecution(json.executionId);
 						this.canOpenNDV = json.canOpenNDV ?? true;
+						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = true;
 					} catch (e) {
 						if (window.top) {

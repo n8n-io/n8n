@@ -54,6 +54,12 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+
+		this.isMounting = false;
+
+		this.$telemetry.track('User viewed worker view', {
+			instance_id: this.rootStore.instanceId,
+		});
 	},
 	beforeMount() {
 		if (window.Cypress !== undefined) {

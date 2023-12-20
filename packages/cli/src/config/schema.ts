@@ -439,7 +439,7 @@ export const schema = {
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
 			gracefulShutdownTimeout: {
-				doc: 'How long should n8n wait for running executions before exiting worker process',
+				doc: '[DEPRECATED] (Use N8N_GRACEFUL_SHUTDOWN_TIMEOUT instead) How long should n8n wait for running executions before exiting worker process (seconds)',
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
@@ -496,6 +496,13 @@ export const schema = {
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,
 			default: 'dev',
 			env: 'N8N_RELEASE_TYPE',
+		},
+
+		gracefulShutdownTimeout: {
+			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
+			format: Number,
+			default: 30,
+			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
 		},
 	},
 
@@ -1031,6 +1038,12 @@ export const schema = {
 			default: 300,
 			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
 			doc: 'How often (in seconds) to check for secret updates.',
+		},
+		preferGet: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
+			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
 		},
 	},
 

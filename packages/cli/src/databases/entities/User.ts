@@ -134,7 +134,7 @@ export class User extends WithTimestamps implements IUser {
 		return STATIC_SCOPE_MAP[this.globalRole?.name] ?? [];
 	}
 
-	async hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): Promise<boolean> {
+	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {
 		return hasScope(
 			scope,
 			{
