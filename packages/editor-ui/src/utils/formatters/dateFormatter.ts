@@ -1,4 +1,4 @@
-import dateformat from "dateformat";
+import dateformat from 'dateformat';
 
 export const convertToDisplayDateComponents = (
 	fullDate: Date | string | number,
