@@ -1494,9 +1494,6 @@ importers:
       callsites:
         specifier: 3.1.0
         version: 3.1.0
-      crypto-js:
-        specifier: 4.2.0
-        version: 4.2.0
       deep-equal:
         specifier: 2.2.0
         version: 2.2.0
@@ -1512,12 +1509,18 @@ importers:
       js-base64:
         specifier: 3.7.2
         version: 3.7.2
+      jssha:
+        specifier: 3.3.1
+        version: 3.3.1
       lodash:
         specifier: 4.17.21
         version: 4.17.21
       luxon:
         specifier: 3.3.0
         version: 3.3.0
+      md5:
+        specifier: 2.3.0
+        version: 2.3.0
       recast:
         specifier: 0.21.5
         version: 0.21.5
@@ -1531,9 +1534,6 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
     devDependencies:
-      '@types/crypto-js':
-        specifier: ^4.1.3
-        version: 4.1.3
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -1549,6 +1549,9 @@ importers:
       '@types/luxon':
         specifier: ^3.2.0
         version: 3.2.0
+      '@types/md5':
+        specifier: ^2.3.5
+        version: 2.3.5
       '@types/xml2js':
         specifier: ^0.4.11
         version: 0.4.11
@@ -9095,10 +9098,6 @@ packages:
       '@types/node': 18.16.16
     dev: true
 
-  /@types/crypto-js@4.1.3:
-    resolution: {integrity: sha512-YP1sYYayLe7Eg5oXyLLvOLfxBfZ5Fgpz6sVWkpB18wDMywCLPWmqzRz+9gyuOoLF0fzDTTFwlyNbx7koONUwqA==}
-    dev: true
-
   /@types/dateformat@3.0.1:
     resolution: {integrity: sha512-KlPPdikagvL6ELjWsljbyDIPzNCeliYkqRpI+zea99vBBbCIA5JNshZAwQKTON139c87y9qvTFVgkFd14rtS4g==}
     dev: true
@@ -9363,6 +9362,10 @@ packages:
     dependencies:
       '@types/linkify-it': 3.0.2
       '@types/mdurl': 1.0.2
+
+  /@types/md5@2.3.5:
+    resolution: {integrity: sha512-/i42wjYNgE6wf0j2bcTX6kuowmdL/6PE4IVitMpm2eYKBUuYCprdcWVK+xEF0gcV6ufMCRhtxmReGfc6hIK7Jw==}
+    dev: true
 
   /@types/mdurl@1.0.2:
     resolution: {integrity: sha512-eC4U9MlIcu2q0KQmXszyn5Akca/0jrQmwDRgpAMJai7qBWq4amIQhZyNau4VYGtCeALvW1/NtjzJJ567aZxfKA==}
@@ -17659,6 +17662,10 @@ packages:
 
   /jssha@3.3.0:
     resolution: {integrity: sha512-w9OtT4ALL+fbbwG3gw7erAO0jvS5nfvrukGPMWIAoea359B26ALXGpzy4YJSp9yGnpUvuvOw1nSjSoHDfWSr1w==}
+    dev: false
+
+  /jssha@3.3.1:
+    resolution: {integrity: sha512-VCMZj12FCFMQYcFLPRm/0lOBbLi8uM2BhXPTqw3U4YAfs4AZfiApOoBLoN8cQE60Z50m1MYMTQVCfgF/KaCVhQ==}
     dev: false
 
   /jstransformer@1.0.0:
