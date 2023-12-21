@@ -49,7 +49,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { createErrorExecution } from '@/GenericHelpers';
+import { ExecutionsService } from './executions/executions.service';
 import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
@@ -94,6 +94,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly executionService: ExecutionsService,
 	) {}
 
 	async init() {
@@ -547,9 +548,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			};
 
 			returnFunctions.__emitError = (error: ExecutionError): void => {
-				void createErrorExecution(error, node, workflowData, workflow, mode).then(() => {
-					this.executeErrorWorkflow(error, workflowData, mode);
-				});
+				void this.executionService
+					.createErrorExecution(error, node, workflowData, workflow, mode)
+					.then(() => {
+						this.executeErrorWorkflow(error, workflowData, mode);
+					});
 			};
 			return returnFunctions;
 		};

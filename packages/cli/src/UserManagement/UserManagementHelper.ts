@@ -6,7 +6,6 @@ import type { User } from '@db/entities/User';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import { UserRepository } from '@db/repositories/user.repository';
 import type { Scope } from '@n8n/permissions';
 
 export function isSharingEnabled(): boolean {
@@ -24,14 +23,6 @@ export function getInstanceBaseUrl(): string {
 
 export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
 	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
-}
-
-export async function getUserById(userId: string): Promise<User> {
-	const user = await Container.get(UserRepository).findOneOrFail({
-		where: { id: userId },
-		relations: ['globalRole'],
-	});
-	return user;
 }
 
 // return the difference between two arrays
