@@ -64,7 +64,7 @@ export class Start extends BaseCommand {
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
-	protected server = new Server();
+	protected server = Container.get(Server);
 
 	private pruningService: PruningService;
 

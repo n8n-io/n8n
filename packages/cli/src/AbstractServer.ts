@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
@@ -9,7 +9,8 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import type { N8nInstanceType, IExternalHooksClass } from '@/Interfaces';
+import { N8nInstanceType } from '@/Interfaces';
+import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
@@ -22,6 +23,7 @@ import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
 
+@Service()
 export abstract class AbstractServer {
 	protected logger: Logger;
 
