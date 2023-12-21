@@ -67,6 +67,13 @@ export const conversationalAgentProperties: INodeProperties[] = [
 				default: 10,
 				description: 'The maximum number of iterations the agent will run before stopping',
 			},
+			{
+				displayName: 'Return Intermediate Steps',
+				name: 'returnIntermediateSteps',
+				type: 'boolean',
+				default: false,
+				description: 'Whether or not the output should include intermediate steps the agent took',
+			},
 		],
 	},
 ];
