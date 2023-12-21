@@ -1,8 +1,6 @@
 /**
  * @jest-environment jsdom
  */
-
-import { stringExtensions } from '@/Extensions/StringExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -15,28 +13,28 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
-		test('.hash() should work correctly on a string', () => {
-			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
-				stringExtensions.functions.hash('12345', ['sha256']),
-			);
-
-			expect(evaluate('={{ "12345".hash("sha256") }}')).not.toEqual(
-				stringExtensions.functions.hash('12345', ['MD5']),
-			);
-
-			expect(evaluate('={{ "12345".hash("MD5") }}')).toEqual(
-				stringExtensions.functions.hash('12345', ['MD5']),
-			);
-
-			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
-				'5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5',
-			);
-		});
-
-		test('.hash() alias should work correctly on a string', () => {
-			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
-				'5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5',
-			);
+		describe('.hash()', () => {
+			test.each([
+				['md5', '827ccb0eea8a706c4c34a16891f84e7b'],
+				['sha1', '8cb2237d0679ca88db6464eac60da96345513964'],
+				['sha224', 'a7470858e79c282bc2f6adfd831b132672dfd1224c1e78cbf5bcd057'],
+				['sha256', '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5'],
+				[
+					'sha384',
+					'0fa76955abfa9dafd83facca8343a92aa09497f98101086611b0bfa95dbc0dcc661d62e9568a5a032ba81960f3e55d4a',
+				],
+				[
+					'sha512',
+					'3627909a29c31381a071ec27f7c9ca97726182aed29a7ddd2e54353322cfb30abb9e3a6df2ac2c20fe23436311d678564d0c8d305930575f60e2d3d048184d79',
+				],
+				[
+					'sha3',
+					'0a2a1719bf3ce682afdbedf3b23857818d526efbe7fcb372b31347c26239a0f916c398b7ad8dd0ee76e8e388604d0b0f925d5e913ad2d3165b9b35b3844cd5e6',
+				],
+			])('should work for %p', (hashFn, hashValue) => {
+				expect(evaluate(`={{ "12345".hash("${hashFn}") }}`)).toEqual(hashValue);
+				expect(evaluate(`={{ "12345".hash("${hashFn.toLowerCase()}") }}`)).toEqual(hashValue);
+			});
 		});
 
 		test('.urlDecode should work correctly on a string', () => {
