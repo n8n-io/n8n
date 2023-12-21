@@ -2,25 +2,6 @@ import type { BaseProperties } from '../../Interfaces';
 
 export const baseApiCallDescription: BaseProperties = [
 	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'options',
-		placeholder: 'Select a table',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTableNames',
-		},
-		displayOptions: {
-			show: {
-				resource: ['base'],
-				operation: ['apiCall'],
-			},
-		},
-		default: '',
-		description:
-			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
 		displayName: 'HTTP Method',
 		name: 'apiMethod',
 		type: 'options',
@@ -34,8 +15,8 @@ export const baseApiCallDescription: BaseProperties = [
 				value: 'GET',
 			},
 			{
-				name: 'POST',
-				value: 'POST',
+				name: 'PUT',
+				value: 'PUT',
 			},
 			{
 				name: 'DELETE',
@@ -132,5 +113,21 @@ export const baseApiCallDescription: BaseProperties = [
 		default: '',
 		description:
 			'Only valid JSON is accepted. n8n will pass anything you enter as raw input. For example, {"foo", "bar"} is perfectly valid. Of cause you can use variables from n8n inside your JSON.',
+	},
+	{
+		displayName: 'Response object parameter name',
+		name: 'responseObjectName',
+		type: 'string',
+		placeholder: 'Leave it empty or use a value like "rows", "metadata", "views" etc.',
+		required: false,
+		displayOptions: {
+			show: {
+				resource: ['base'],
+				operation: ['apiCall'],
+			},
+		},
+		default: '',
+		description:
+			'When using the SeaTable API, you can specify a parameter to retrieve either the entire array of objects or a specific object within it. This allows you to choose whether to fetch the complete output or only the object related to the provided parameter.',
 	},
 ];

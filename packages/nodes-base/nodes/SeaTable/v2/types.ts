@@ -95,3 +95,5 @@ export type TColumnsUiValues = Array<{
 	columnName: string;
 	columnValue: string;
 }>;
+
+export type APITypes = 'GET' | 'POST' | 'DELETE' | 'PUT';
