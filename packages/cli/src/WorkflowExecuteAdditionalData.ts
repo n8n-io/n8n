@@ -512,7 +512,15 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+						this.workflowData.id as string,
+					);
+					eventsService.emit(
+						'workflowExecutionCompleted',
+						this.workflowData,
+						fullRunData,
+						workflowOwner,
+					);
 				}
 			},
 		],
@@ -612,7 +620,15 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+						this.workflowData.id as string,
+					);
+					eventsService.emit(
+						'workflowExecutionCompleted',
+						this.workflowData,
+						fullRunData,
+						workflowOwner,
+					);
 				}
 			},
 			async function (

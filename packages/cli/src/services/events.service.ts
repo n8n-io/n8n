@@ -5,25 +5,30 @@ import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
-import { OwnershipService } from './ownership.service';
+import type { User } from '@/databases/entities/User';
 
 @Service()
 export class EventsService extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
-		private readonly ownershipService: OwnershipService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
 
-		this.on('nodeFetchedData', async (workflowId, node) => this.nodeFetchedData(workflowId, node));
-		this.on('workflowExecutionCompleted', async (workflowData, runData) =>
-			this.workflowExecutionCompleted(workflowData, runData),
+		this.on('nodeFetchedData', async (workflowId, node, workflowOwner) =>
+			this.nodeFetchedData(workflowId, node, workflowOwner),
+		);
+		this.on('workflowExecutionCompleted', async (workflowData, runData, workflowOwner) =>
+			this.workflowExecutionCompleted(workflowData, runData, workflowOwner),
 		);
 	}
 
-	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
+	async workflowExecutionCompleted(
+		workflowData: IWorkflowBase,
+		runData: IRun,
+		workflowOwner: User,
+	): Promise<void> {
 		// Determine the name of the statistic
 		const finished = runData.finished ? runData.finished : false;
 		const manual = runData.mode === 'manual';
@@ -45,14 +50,13 @@ export class EventsService extends EventEmitter {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
-				const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 				const metrics = {
-					user_id: owner.id,
+					user_id: workflowOwner.id,
 					workflow_id: workflowId,
 				};
 
-				if (!owner.settings?.userActivated) {
-					await Container.get(UserService).updateSettings(owner.id, {
+				if (!workflowOwner.settings?.userActivated) {
+					await Container.get(UserService).updateSettings(workflowOwner.id, {
 						firstSuccessfulWorkflowId: workflowId,
 						userActivated: true,
 					});
@@ -66,7 +70,11 @@ export class EventsService extends EventEmitter {
 		}
 	}
 
-	async nodeFetchedData(workflowId: string | undefined | null, node: INode): Promise<void> {
+	async nodeFetchedData(
+		workflowId: string | undefined | null,
+		node: INode,
+		workflowOwner: User,
+	): Promise<void> {
 		if (!workflowId) return;
 
 		const insertResult = await this.repository.insertWorkflowStatistics(
@@ -76,10 +84,9 @@ export class EventsService extends EventEmitter {
 		if (insertResult === 'failed' || insertResult === 'alreadyExists') return;
 
 		// Compile the metrics since this was a new data loaded event
-		const owner = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 
 		let metrics = {
-			user_id: owner.id,
+			user_id: workflowOwner.id,
 			workflow_id: workflowId,
 			node_type: node.type,
 			node_id: node.id,
@@ -103,11 +110,11 @@ export class EventsService extends EventEmitter {
 export declare interface EventsService {
 	on(
 		event: 'nodeFetchedData',
-		listener: (workflowId: string | undefined | null, node: INode) => void,
+		listener: (workflowId: string | undefined | null, node: INode, workflowOwner: User) => void,
 	): this;
 	on(
 		event: 'workflowExecutionCompleted',
-		listener: (workflowData: IWorkflowBase, runData: IRun) => void,
+		listener: (workflowData: IWorkflowBase, runData: IRun, workflowOwner: User) => void,
 	): this;
 	on(
 		event: 'telemetry.onFirstProductionWorkflowSuccess',
