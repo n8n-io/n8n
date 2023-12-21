@@ -28,7 +28,7 @@ import type { ExecutionRequest } from '@/requests';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -85,6 +85,7 @@ const schemaGetExecutionsQueryFilter = {
 
 const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
 
+@Service()
 export class ExecutionsService {
 	/**
 	 * Function to get the workflow Ids for a User
