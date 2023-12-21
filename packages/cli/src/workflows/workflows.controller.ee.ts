@@ -81,7 +81,7 @@ EEWorkflowController.put(
 		}
 
 		const ownerIds = (
-			await Container.get(EnterpriseWorkflowService).getSharings(
+			await Container.get(WorkflowRepository).getSharings(
 				Db.getConnection().createEntityManager(),
 				workflowId,
 				['shared', 'shared.role'],
@@ -93,12 +93,12 @@ EEWorkflowController.put(
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			await Container.get(EnterpriseWorkflowService).pruneSharings(trx, workflowId, [
+			await Container.get(WorkflowRepository).pruneSharings(trx, workflowId, [
 				...ownerIds,
 				...shareWithIds,
 			]);
 
-			const sharings = await Container.get(EnterpriseWorkflowService).getSharings(trx, workflowId);
+			const sharings = await Container.get(WorkflowRepository).getSharings(trx, workflowId);
 
 			// extract the new sharings that need to be added
 			newShareeIds = rightDiff(

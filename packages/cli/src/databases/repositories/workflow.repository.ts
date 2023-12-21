@@ -8,11 +8,15 @@ import {
 	type FindOptionsWhere,
 	type FindOptionsSelect,
 	type FindManyOptions,
+	type EntityManager,
+	type DeleteResult,
+	Not,
 } from 'typeorm';
-import config from '@/config';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
+import config from '@/config';
+import { WorkflowEntity } from '../entities/WorkflowEntity';
+import { SharedWorkflow } from '../entities/SharedWorkflow';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
@@ -54,6 +58,29 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			active: true,
 		});
 		return totalTriggerCount ?? 0;
+	}
+
+	async getSharings(
+		transaction: EntityManager,
+		workflowId: string,
+		relations = ['shared'],
+	): Promise<SharedWorkflow[]> {
+		const workflow = await transaction.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+			relations,
+		});
+		return workflow?.shared ?? [];
+	}
+
+	async pruneSharings(
+		transaction: EntityManager,
+		workflowId: string,
+		userIds: string[],
+	): Promise<DeleteResult> {
+		return transaction.delete(SharedWorkflow, {
+			workflowId,
+			userId: Not(In(userIds)),
+		});
 	}
 
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
