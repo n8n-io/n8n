@@ -95,8 +95,17 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<TextWithHighlights v-if="isSchemaParentTypeArray" :content="props.parent?.key" :search="props.search" />
-				<TextWithHighlights v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }" :content="key" :search="props.search" />
+				<TextWithHighlights
+					v-if="isSchemaParentTypeArray"
+					:content="props.parent?.key"
+					:search="props.search"
+				/>
+				<TextWithHighlights
+					v-if="key"
+					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+					:content="key"
+					:search="props.search"
+				/>
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>

@@ -48,7 +48,11 @@
 					/>
 				</template>
 				<template #renderNodeValue="{ node }">
-					<TextWithHighlights v-if="isNaN(node.index)" :content="getContent(node.content)" :search="search" />
+					<TextWithHighlights
+						v-if="isNaN(node.index)"
+						:content="getContent(node.content)"
+						:search="search"
+					/>
 					<TextWithHighlights
 						v-else
 						:content="getContent(node.content)"
@@ -96,12 +100,12 @@ const RunDataJsonActions = defineAsyncComponent(
 export default defineComponent({
 	name: 'run-data-json',
 	components: {
-    VueJsonPretty,
-    Draggable,
-    RunDataJsonActions,
-    MappingPill,
-    TextWithHighlights
-},
+		VueJsonPretty,
+		Draggable,
+		RunDataJsonActions,
+		MappingPill,
+		TextWithHighlights,
+	},
 	props: {
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string },
