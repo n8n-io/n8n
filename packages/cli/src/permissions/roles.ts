@@ -66,6 +66,7 @@ export const ownerPermissions: Scope[] = [
 	'workflow:list',
 	'workflow:share',
 	'workflow:execute',
+	'workersView:manage',
 ];
 export const adminPermissions: Scope[] = ownerPermissions.concat();
 export const memberPermissions: Scope[] = [

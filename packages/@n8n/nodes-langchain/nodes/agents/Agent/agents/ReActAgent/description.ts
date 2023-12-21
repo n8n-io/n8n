@@ -82,6 +82,13 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 					rows: 6,
 				},
 			},
+			{
+				displayName: 'Return Intermediate Steps',
+				name: 'returnIntermediateSteps',
+				type: 'boolean',
+				default: false,
+				description: 'Whether or not the output should include intermediate steps the agent took',
+			},
 		],
 	},
 ];

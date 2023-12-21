@@ -35,10 +35,7 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: false };
 
 export class CredentialsService {
-	static async get(
-		where: FindOptionsWhere<ICredentialsDb>,
-		options?: { relations: string[] },
-	): Promise<ICredentialsDb | null> {
+	static async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
 		return Container.get(CredentialsRepository).findOne({
 			relations: options?.relations,
 			where,
