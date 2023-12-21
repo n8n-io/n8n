@@ -10,12 +10,10 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { jsonStringify } from 'n8n-workflow';
-import { ShutdownListener } from '@/decorators/ShutdownListener';
-import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
-@ShutdownListener()
-export class PruningService implements OnShutdown {
+export class PruningService {
 	private hardDeletionBatchSize = 100;
 
 	private rates: Record<string, number> = {
@@ -168,7 +166,8 @@ export class PruningService implements OnShutdown {
 		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
 	}
 
-	onShutdown(): void {
+	@OnShutdown()
+	shutdown(): void {
 		this.isShuttingDown = true;
 		this.stopPruning();
 	}

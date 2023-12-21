@@ -1,8 +1,13 @@
 import { Service } from 'typedi';
 import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
+import { Logger } from '@/Logger';
 
-export interface OnShutdown {
-	onShutdown(): Promise<void> | void;
+export type ShutdownHookFn = () => Promise<void> | void;
+
+export interface ShutdownHook {
+	name: string;
+	hook: ShutdownHookFn;
+	priority?: number;
 }
 
 /**
@@ -18,41 +23,35 @@ export class ComponentShutdownError extends ApplicationError {
 	}
 }
 
-type ToNotify = {
-	name: string;
-	listener: OnShutdown;
-};
-
 /**
  * Service responsible for orchestrating a graceful shutdown of the application.
  */
 @Service()
 export class ShutdownService {
-	private readonly toNotify: ToNotify[] = [];
+	private readonly toNotify: ShutdownHook[] = [];
 
-	private shutdownPromises: Array<Promise<void>> | undefined = undefined;
+	private shutdownPromise: Promise<void> | undefined;
+
+	constructor(private readonly logger: Logger) {}
 
 	/**
 	 * Registers given listener to be notified when the application is shutting down.
 	 */
-	register(name: string, listener: OnShutdown) {
-		this.toNotify.push({
-			name,
-			listener,
-		});
+	register(hook: ShutdownHook) {
+		this.toNotify.push(hook);
 	}
 
 	/**
 	 * Signals all registered listeners that the application is shutting down.
 	 */
 	shutdown() {
-		if (this.shutdownPromises) {
+		if (this.shutdownPromise) {
 			throw new ApplicationError('App is already shutting down');
 		}
 
-		this.shutdownPromises = Array.from(this.toNotify).map(async (listener) =>
-			this.shutdownComponent(listener),
-		);
+		const hooksByPriority = this.groupAndSortShutdownHooksByPriority(this.toNotify);
+
+		this.shutdownPromise = this.shutdownByPriority(hooksByPriority);
 	}
 
 	/**
@@ -60,23 +59,48 @@ export class ShutdownService {
 	 * have shut down.
 	 */
 	async waitForShutdown(): Promise<void> {
-		if (!this.shutdownPromises) {
+		if (!this.shutdownPromise) {
 			throw new ApplicationError('App is not shutting down');
 		}
 
-		await Promise.all(this.shutdownPromises);
+		await this.shutdownPromise;
 	}
 
 	isShuttingDown() {
-		return !!this.shutdownPromises;
+		return !!this.shutdownPromise;
 	}
 
-	private async shutdownComponent(component: ToNotify) {
+	private async shutdownByPriority(hooksByPriority: Map<number, ShutdownHook[]>) {
+		for (const [priority, shutdownHooks] of hooksByPriority) {
+			this.logger.debug(`Shutting down components with priority ${priority}`);
+
+			await Promise.allSettled(shutdownHooks.map(async (hook) => this.shutdownComponent(hook)));
+		}
+	}
+
+	private async shutdownComponent(component: ShutdownHook) {
 		try {
-			await component.listener.onShutdown();
+			this.logger.debug(`Shutting down component "${component.name}"`);
+			await component.hook();
 		} catch (error) {
 			assert(error instanceof Error);
 			ErrorReporterProxy.error(new ComponentShutdownError(component.name, error));
 		}
+	}
+
+	private groupAndSortShutdownHooksByPriority(hooks: ShutdownHook[]) {
+		const hooksByPriority = new Map<number, ShutdownHook[]>();
+
+		for (const hook of hooks) {
+			const priority = hook.priority ?? 0;
+
+			if (!hooksByPriority.has(priority)) {
+				hooksByPriority.set(priority, []);
+			}
+
+			hooksByPriority.get(priority)!.push(hook);
+		}
+
+		return new Map([...hooksByPriority.entries()].sort((a, b) => b[0] - a[0]));
 	}
 }

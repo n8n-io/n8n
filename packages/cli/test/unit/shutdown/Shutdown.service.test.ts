@@ -1,37 +1,61 @@
-import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import type { ShutdownHookFn } from '@/shutdown/Shutdown.service';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { MockLogger } from '../../shared/MockLogger';
 
-class MockComponent implements OnShutdown {
-	onShutdown: OnShutdown['onShutdown'];
-
-	constructor(onAppShutdown?: OnShutdown['onShutdown']) {
-		this.onShutdown = onAppShutdown ?? jest.fn();
-	}
+class MockComponent {
+	constructor(public readonly onShutdown: ShutdownHookFn = jest.fn()) {}
 }
 
 describe('ShutdownService', () => {
 	let shutdownService: ShutdownService;
-	let mockComponent: OnShutdown;
+	let mockComponent: MockComponent;
 	let mockErrorReporterProxy: jest.SpyInstance;
 
 	const componentName = MockComponent.name;
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService();
+		shutdownService = new ShutdownService(new MockLogger());
 		mockComponent = new MockComponent();
 		mockErrorReporterProxy = jest.spyOn(ErrorReporterProxy, 'error').mockImplementation(() => {});
 	});
 
 	describe('shutdown', () => {
 		it('should signal shutdown', () => {
-			shutdownService.register(componentName, mockComponent);
+			shutdownService.register({
+				name: componentName,
+				hook: mockComponent.onShutdown,
+			});
 			shutdownService.shutdown();
 			expect(mockComponent.onShutdown).toBeCalledTimes(1);
 		});
 
+		it('should signal shutdown in the priority order', async () => {
+			const order: string[] = [];
+			const highPrio = jest.fn().mockImplementation(() => order.push('high'));
+			const lowPrio = jest.fn().mockImplementation(() => order.push('low'));
+
+			shutdownService.register({
+				name: componentName,
+				hook: lowPrio,
+				priority: 0,
+			});
+			shutdownService.register({
+				name: componentName,
+				hook: highPrio,
+				priority: 10,
+			});
+
+			shutdownService.shutdown();
+			await shutdownService.waitForShutdown();
+			expect(order).toEqual(['high', 'low']);
+		});
+
 		it('should throw error if shutdown is already in progress', () => {
-			shutdownService.register(componentName, mockComponent);
+			shutdownService.register({
+				name: componentName,
+				hook: mockComponent.onShutdown,
+			});
 			shutdownService.shutdown();
 			expect(() => shutdownService.shutdown()).toThrow('App is already shutting down');
 		});
@@ -43,7 +67,10 @@ describe('ShutdownService', () => {
 					throw componentError;
 				}),
 			);
-			shutdownService.register(componentName, mockComponent);
+			shutdownService.register({
+				name: componentName,
+				hook: mockComponent.onShutdown,
+			});
 			shutdownService.shutdown();
 
 			expect(mockErrorReporterProxy).toHaveBeenCalledTimes(1);
@@ -59,7 +86,10 @@ describe('ShutdownService', () => {
 
 	describe('waitForShutdown', () => {
 		it('should wait for shutdown', async () => {
-			shutdownService.register(componentName, mockComponent);
+			shutdownService.register({
+				name: componentName,
+				hook: mockComponent.onShutdown,
+			});
 			shutdownService.shutdown();
 			await expect(shutdownService.waitForShutdown()).resolves.toBeUndefined();
 		});
@@ -73,7 +103,10 @@ describe('ShutdownService', () => {
 
 	describe('isShuttingDown', () => {
 		it('should return true if app is shutting down', () => {
-			shutdownService.register(componentName, mockComponent);
+			shutdownService.register({
+				name: componentName,
+				hook: mockComponent.onShutdown,
+			});
 			shutdownService.shutdown();
 			expect(shutdownService.isShuttingDown()).toBe(true);
 		});

@@ -20,9 +20,9 @@ import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
-import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
-export abstract class AbstractServer implements OnShutdown {
+export abstract class AbstractServer {
 	protected logger: Logger;
 
 	protected server: Server;
@@ -253,6 +253,7 @@ export abstract class AbstractServer implements OnShutdown {
 	 * connections configured amount of time to finish their work and
 	 * then closes them forcefully.
 	 */
+	@OnShutdown()
 	async onShutdown(): Promise<void> {
 		if (!this.server) {
 			return;

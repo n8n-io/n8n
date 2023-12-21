@@ -14,8 +14,7 @@ import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { ShutdownListener } from '@/decorators/ShutdownListener';
-import type { OnShutdown } from '@/shutdown/Shutdown.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -27,8 +26,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  * @emits message when a message is received from a client
  */
 @Service()
-@ShutdownListener()
-export class Push extends EventEmitter implements OnShutdown {
+export class Push extends EventEmitter {
 	public isBidirectional = useWebSockets;
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
@@ -74,6 +72,7 @@ export class Push extends EventEmitter implements OnShutdown {
 		this.backend.sendToUsers(type, data, userIds);
 	}
 
+	@OnShutdown()
 	onShutdown(): void {
 		this.backend.closeAllConnections();
 	}
