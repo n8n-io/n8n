@@ -1,9 +1,10 @@
 <template>
 	<n8n-info-tip
+		v-if="runMetadata"
 		type="tooltip"
 		:theme="theme"
 		:tooltipPlacement="hasStaleData ? 'left' : 'right'"
-		v-if="runMetadata"
+		:data-test-id="`node-run-info-${theme}`"
 	>
 		<div>
 			<n8n-text :bold="true" size="small"
