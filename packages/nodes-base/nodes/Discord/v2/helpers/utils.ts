@@ -241,6 +241,7 @@ export function checkAccessToGuild(
 			`You do not have access to the guild with the id ${guildId}`,
 			{
 				itemIndex,
+				level: 'warning',
 			},
 		);
 	}

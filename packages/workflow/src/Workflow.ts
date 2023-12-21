@@ -1009,7 +1009,6 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	): Promise<void> {
 		const webhookExists = await this.runWebhookMethod(
 			'checkExists',
@@ -1017,18 +1016,10 @@ export class Workflow {
 			nodeExecuteFunctions,
 			mode,
 			activation,
-			isTest,
 		);
 		if (!webhookExists) {
 			// If webhook does not exist yet create it
-			await this.runWebhookMethod(
-				'create',
-				webhookData,
-				nodeExecuteFunctions,
-				mode,
-				activation,
-				isTest,
-			);
+			await this.runWebhookMethod('create', webhookData, nodeExecuteFunctions, mode, activation);
 		}
 	}
 
@@ -1037,16 +1028,8 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	) {
-		await this.runWebhookMethod(
-			'delete',
-			webhookData,
-			nodeExecuteFunctions,
-			mode,
-			activation,
-			isTest,
-		);
+		await this.runWebhookMethod('delete', webhookData, nodeExecuteFunctions, mode, activation);
 	}
 
 	private async runWebhookMethod(
@@ -1055,7 +1038,6 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node);
 
@@ -1072,7 +1054,6 @@ export class Workflow {
 			webhookData.workflowExecuteAdditionalData,
 			mode,
 			activation,
-			isTest,
 			webhookData,
 		);
 

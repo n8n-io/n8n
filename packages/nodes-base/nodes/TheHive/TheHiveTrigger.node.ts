@@ -29,7 +29,16 @@ export class TheHiveTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		properties: [...eventsDescription],
+		properties: [
+			{
+				displayName:
+					'You must set up the webhook in TheHive — instructions <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehivetrigger/#configure-a-webhook-in-thehive" target="_blank">here</a>',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			...eventsDescription,
+		],
 	};
 
 	webhookMethods = {

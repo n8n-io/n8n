@@ -247,10 +247,7 @@ export default defineComponent({
 	}
 
 	img {
-		width: 100%;
-		max-height: 90vh;
-		object-fit: cover;
-		border: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
+		max-width: 100%;
 		border-radius: var(--border-radius-large);
 	}
 

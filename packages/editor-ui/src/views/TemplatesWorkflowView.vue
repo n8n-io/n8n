@@ -36,7 +36,7 @@
 				/>
 			</div>
 			<div :class="$style.content">
-				<div :class="$style.markdown">
+				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
 						:content="template && template.description"
 						:images="template && template.image"

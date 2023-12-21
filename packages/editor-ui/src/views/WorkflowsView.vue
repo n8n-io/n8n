@@ -41,40 +41,55 @@
 				:readOnly="readOnlyEnv"
 			/>
 		</template>
+		<template #postListContent>
+			<suggested-templates-section
+				v-for="(section, key) in suggestedTemplates?.sections"
+				:key="key"
+				:section="section"
+				:title="
+					$locale.baseText('suggestedTemplates.sectionTitle', {
+						interpolate: { sectionName: section.name.toLocaleLowerCase() },
+					})
+				"
+			/>
+		</template>
 		<template #empty>
-			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						$locale.baseText(
-							currentUser.firstName
-								? 'workflows.empty.heading'
-								: 'workflows.empty.heading.userNotSetup',
-							{ interpolate: { name: currentUser.firstName } },
-						)
-					}}
-				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
-			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					@click="addWorkflow"
-					data-test-id="new-workflow-card"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+			<suggested-templates-page v-if="suggestedTemplates" />
+			<div v-else>
+				<div class="text-center mt-s">
+					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							$locale.baseText(
+								currentUser.firstName
+									? 'workflows.empty.heading'
+									: 'workflows.empty.heading.userNotSetup',
+								{ interpolate: { name: currentUser.firstName } },
+							)
+						}}
+					</n8n-heading>
+					<n8n-text size="large" color="text-base">
+						{{
+							$locale.baseText(
+								readOnlyEnv
+									? 'workflows.empty.description.readOnlyEnv'
+									: 'workflows.empty.description',
+							)
+						}}
 					</n8n-text>
-				</n8n-card>
+				</div>
+				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+					<n8n-card
+						:class="$style.emptyStateCard"
+						hoverable
+						@click="addWorkflow"
+						data-test-id="new-workflow-card"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+						<n8n-text size="large" class="mt-xs" color="text-base">
+							{{ $locale.baseText('workflows.empty.startFromScratch') }}
+						</n8n-text>
+					</n8n-card>
+				</div>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -127,6 +142,8 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
+import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
+import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -152,6 +169,8 @@ const WorkflowsView = defineComponent({
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
+		SuggestedTemplatesPage,
+		SuggestedTemplatesSection,
 	},
 	data() {
 		return {
@@ -199,6 +218,9 @@ const WorkflowsView = defineComponent({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
+		},
+		suggestedTemplates() {
+			return this.uiStore.suggestedTemplates;
 		},
 	},
 	methods: {

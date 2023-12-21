@@ -165,7 +165,7 @@ export class ExecutionsService {
 			filter,
 			sharedWorkflowIds,
 			executingWorkflowIds,
-			await req.user.hasGlobalScope('workflow:list'),
+			req.user.hasGlobalScope('workflow:list'),
 		);
 
 		const formattedExecutions = await Container.get(ExecutionRepository).searchExecutions(

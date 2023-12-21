@@ -60,7 +60,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowService } from './workflows/workflow.service';
-import { webhookNotFoundErrorMessage } from './utils';
+import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
@@ -70,9 +70,6 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { ActivationErrorsService } from '@/ActivationErrors.service';
 import type { Scope } from '@n8n/permissions';
 import { NotFoundError } from './errors/response-errors/not-found.error';
-
-const WEBHOOK_PROD_UNREGISTERED_HINT =
-	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
@@ -257,10 +254,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 		if (webhook === null) {
-			throw new NotFoundError(
-				webhookNotFoundErrorMessage(path, httpMethod),
-				WEBHOOK_PROD_UNREGISTERED_HINT,
-			);
+			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
 		}
 
 		return webhook;
@@ -277,7 +271,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Get the IDs of active workflows from storage.
 	 */
 	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
-		const isFullAccess = !options?.user || (await options.user.hasGlobalScope(options.scope));
+		const isFullAccess = !options?.user || options.user.hasGlobalScope(options.scope);
 
 		const activationErrors = await this.activationErrorsService.getAll();
 
@@ -292,7 +286,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const where = await whereClause({
+		const where = whereClause({
 			user: options.user,
 			globalScope: 'workflow:list',
 			entityType: 'workflow',
@@ -384,7 +378,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 					NodeExecuteFunctions,
 					mode,
 					activation,
-					false,
 				);
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
@@ -456,7 +449,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', false);
+			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
 		await Container.get(WorkflowService).saveStaticData(workflow);
