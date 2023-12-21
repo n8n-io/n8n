@@ -217,7 +217,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -263,6 +263,18 @@ export class ChainLlm implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [1.1, 1.2],
+					},
+				},
+			},
+			{
+				displayName: 'Prompt',
+				name: 'prompt',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.3],
 					},
 				},
 			},

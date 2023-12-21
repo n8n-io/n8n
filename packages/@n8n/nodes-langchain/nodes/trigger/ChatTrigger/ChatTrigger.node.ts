@@ -24,6 +24,19 @@ export class ChatTrigger implements INodeType {
 		defaults: {
 			name: 'Chat Trigger',
 		},
+		codex: {
+			categories: ['Core Nodes'],
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/',
+					},
+				],
+			},
+			subcategories: {
+				'Core Nodes': ['Other Trigger Nodes'],
+			},
+		},
 		// TODO: This will be reworked, so we also have to update then here
 		supportsCORS: true,
 		maxNodes: 1,
