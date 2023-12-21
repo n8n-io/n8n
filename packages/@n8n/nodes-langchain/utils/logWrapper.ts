@@ -25,6 +25,7 @@ import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { isObject } from 'lodash';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
@@ -111,6 +112,7 @@ export function callMethodSync<T>(
 export function logWrapper(
 	originalInstance:
 		| Tool
+		| ChatGoogleGenerativeAI
 		| BaseChatModel
 		| BaseChatMemory
 		| BaseLLM
@@ -225,7 +227,11 @@ export function logWrapper(
 			}
 
 			// ========== BaseChatModel ==========
-			if (originalInstance instanceof BaseLLM || originalInstance instanceof BaseChatModel) {
+			if (
+				originalInstance instanceof BaseLLM ||
+				originalInstance instanceof BaseChatModel ||
+				originalInstance instanceof ChatGoogleGenerativeAI
+			) {
 				if (prop === '_generate' && '_generate' in target) {
 					return async (
 						messages: BaseMessage[] & string[],
@@ -449,6 +455,18 @@ export function logWrapper(
 			if (originalInstance instanceof Tool) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
+						let finalQuery: string = query;
+						if (isObject(query)) {
+							const values = Object.values(query);
+							if (values.length === 1) {
+								finalQuery = values[0] as string;
+							} else {
+								try {
+									finalQuery = JSON.stringify(query);
+								} catch {}
+							}
+						}
+
 						connectionType = NodeConnectionType.AiTool;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
@@ -459,7 +477,7 @@ export function logWrapper(
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query],
+							arguments: [finalQuery],
 						})) as string;
 
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
