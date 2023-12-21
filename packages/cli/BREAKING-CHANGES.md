@@ -2,6 +2,17 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.22.0
+
+### What changed?
+
+Hash algorithm `ripemd160` is dropped from `.hash()` expressions.
+`sha3` hash algorithm now returns a valid sha3-512 has, unlike the previous implementation that returned a `Keccak` hash instead.
+
+### When is action necessary?
+
+If you are using `.hash` helpers in expressions with hash algorithm `ripemd160`, you need to switch to one of the other supported algorithms.
+
 ## 1.15.0
 
 ### What changed?
