@@ -163,8 +163,11 @@ axios.defaults.paramsSerializer = (params) => {
 	return stringify(params, { arrayFormat: 'indices' });
 };
 axios.interceptors.request.use((config) => {
-	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	config.headers.setContentType(false, false);
+	// If a POST or PUT or PATCH request has no body, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.method && ['post', 'put', 'patch'].includes(config.method) && !config.data) {
+		config.headers.setContentType(false, false);
+	}
+
 	return config;
 });
 
