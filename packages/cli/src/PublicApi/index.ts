@@ -11,11 +11,11 @@ import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
+import { UrlService } from '@/services/url.service';
 
 async function createApiRouter(
 	version: string,
@@ -29,7 +29,7 @@ async function createApiRouter(
 	// from the Swagger UI
 	swaggerDocument.server = [
 		{
-			url: `${getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
 		},
 	];
 	const apiController = express.Router();

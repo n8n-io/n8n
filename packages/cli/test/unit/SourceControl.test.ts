@@ -19,6 +19,7 @@ import { constants as fsConstants, accessSync } from 'fs';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
 import type { SourceControlPreferences } from '@/environments/sourceControl/types/sourceControlPreferences';
 import { mockInstance } from '../shared/mocking';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 
 const pushResult: SourceControlledFile[] = [
 	{
@@ -151,6 +152,7 @@ const pullResult: SourceControlledFile[] = [
 ];
 
 const license = mockInstance(License);
+mockInstance(SettingsRepository);
 
 beforeAll(async () => {
 	jest.resetAllMocks();

@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import type { User } from '@db/entities/User';
-import { RoleService } from './role.service';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { ListQuery } from '@/requests';
 import { ApplicationError } from 'n8n-workflow';
+import type { User } from '@db/entities/User';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
+import type { ListQuery } from '@/requests';
+import { CacheService } from './cache.service';
+import { RoleService } from './role.service';
 
 @Service()
 export class OwnershipService {

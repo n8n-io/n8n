@@ -1,19 +1,23 @@
 import Container from 'typedi';
 import jwt from 'jsonwebtoken';
+import { v4 as uuid } from 'uuid';
+
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '../../shared/mocking';
 import { RoleService } from '@/services/role.service';
-import { v4 as uuid } from 'uuid';
+import { Telemetry } from '@/telemetry';
+
+import { mockInstance } from '../../shared/mocking';
 
 describe('UserService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
 
 	mockInstance(Logger);
 	mockInstance(RoleService);
+	mockInstance(Telemetry);
 
 	const userRepository = mockInstance(UserRepository);
 	const userService = Container.get(UserService);

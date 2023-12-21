@@ -1,11 +1,13 @@
 import { EventEmitter } from 'events';
 import { Container, Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
+import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
-import { OwnershipService } from './ownership.service';
+import { InternalHooks } from '@/InternalHooks';
 
 @Service()
 export class EventsService extends EventEmitter {
@@ -13,6 +15,7 @@ export class EventsService extends EventEmitter {
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly ownershipService: OwnershipService,
+		internalHooks: InternalHooks,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -20,6 +23,13 @@ export class EventsService extends EventEmitter {
 		this.on('nodeFetchedData', async (workflowId, node) => this.nodeFetchedData(workflowId, node));
 		this.on('workflowExecutionCompleted', async (workflowData, runData) =>
 			this.workflowExecutionCompleted(workflowData, runData),
+		);
+
+		this.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
+			internalHooks.onFirstProductionWorkflowSuccess(metrics),
+		);
+		this.on('telemetry.onFirstWorkflowDataLoad', async (metrics) =>
+			internalHooks.onFirstWorkflowDataLoad(metrics),
 		);
 	}
 
@@ -45,7 +55,7 @@ export class EventsService extends EventEmitter {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
-				const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
+				const owner = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 				const metrics = {
 					user_id: owner.id,
 					workflow_id: workflowId,

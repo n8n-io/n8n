@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	getTagsPath,
@@ -47,11 +47,12 @@ export class SourceControlService {
 
 	constructor(
 		private readonly logger: Logger,
-		private gitService: SourceControlGitService,
-		private sourceControlPreferencesService: SourceControlPreferencesService,
-		private sourceControlExportService: SourceControlExportService,
-		private sourceControlImportService: SourceControlImportService,
-		private tagRepository: TagRepository,
+		private readonly gitService: SourceControlGitService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlExportService: SourceControlExportService,
+		private readonly sourceControlImportService: SourceControlImportService,
+		private readonly tagRepository: TagRepository,
+		private readonly internalHooks: InternalHooks,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
 		this.gitFolder = gitFolder;
@@ -291,7 +292,7 @@ export class SourceControlService {
 		});
 
 		// #region Tracking Information
-		void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+		void this.internalHooks.onSourceControlUserFinishedPushUI(
 			getTrackingInformationFromPostPushResult(statusResult),
 		);
 		// #endregion
@@ -368,7 +369,7 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+		void this.internalHooks.onSourceControlUserFinishedPullUI(
 			getTrackingInformationFromPullResult(statusResult),
 		);
 		// #endregion
@@ -421,11 +422,11 @@ export class SourceControlService {
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+			void this.internalHooks.onSourceControlUserStartedPushUI(
 				getTrackingInformationFromPrePushResult(sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+			void this.internalHooks.onSourceControlUserStartedPullUI(
 				getTrackingInformationFromPullResult(sourceControlledFiles),
 			);
 		}

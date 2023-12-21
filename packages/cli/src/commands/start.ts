@@ -15,7 +15,6 @@ import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
@@ -30,6 +29,7 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { UrlService } from '@/services/url.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -77,7 +77,7 @@ export class Start extends BaseCommand {
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		open(editorUrl, { wait: true }).catch((error: Error) => {
@@ -321,7 +321,7 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

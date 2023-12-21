@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { PullResult } from 'simple-git';
 import express from 'express';
 import { Authorized, Get, Post, Patch, RestController, RequireGlobalScope } from '@/decorators';
@@ -23,8 +23,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
 	constructor(
-		private sourceControlService: SourceControlService,
-		private sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlService: SourceControlService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly internalHooks: InternalHooks,
 	) {}
 
 	@Authorized('none')
@@ -85,7 +86,7 @@ export class SourceControlController {
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
-			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+			void this.internalHooks.onSourceControlSettingsUpdated({
 				branch_name: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				read_only_instance: resultingPreferences.branchReadOnly,
@@ -130,7 +131,7 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
-			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+			void this.internalHooks.onSourceControlSettingsUpdated({
 				branch_name: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				read_only_instance: resultingPreferences.branchReadOnly,

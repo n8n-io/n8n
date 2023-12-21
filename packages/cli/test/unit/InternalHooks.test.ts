@@ -12,7 +12,7 @@ let telemetry: Telemetry;
 describe('InternalHooks', () => {
 	beforeAll(() => {
 		telemetry = mockInstance(Telemetry);
-		internalHooks = new InternalHooks(telemetry, mock(), mock(), mock(), mock());
+		internalHooks = new InternalHooks(telemetry, mock(), mock(), mock());
 	});
 
 	it('Should be defined', () => {
@@ -41,6 +41,7 @@ describe('InternalHooks', () => {
 			licensePlanName,
 			licenseTenantId,
 			binary_data_s3: false,
+			multi_main_setup_enabled: false,
 		};
 
 		const parameters = {

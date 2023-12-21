@@ -11,9 +11,10 @@ import type {
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
+import { InstanceSettings } from 'n8n-core';
+
 import type {
 	IDiagnosticInfo,
-	IInternalHooksClass,
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
@@ -21,16 +22,14 @@ import type {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import { eventBus } from './eventbus';
-import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
-import { NodeTypes } from './NodeTypes';
+import { eventBus } from '@/eventbus';
+import type { EventPayloadWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
+import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
+import { NodeTypes } from '@/NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { RoleService } from './services/role.service';
-import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
-import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
-import { InstanceSettings } from 'n8n-core';
+import { RoleService } from '@/services/role.service';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -49,21 +48,13 @@ function userToPayload(user: User): {
 }
 
 @Service()
-export class InternalHooks implements IInternalHooksClass {
+export class InternalHooks {
 	constructor(
-		private telemetry: Telemetry,
-		private nodeTypes: NodeTypes,
-		private roleService: RoleService,
-		eventsService: EventsService,
+		private readonly telemetry: Telemetry,
+		private readonly nodeTypes: NodeTypes,
+		private readonly roleService: RoleService,
 		private readonly instanceSettings: InstanceSettings,
-	) {
-		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
-			this.onFirstProductionWorkflowSuccess(metrics),
-		);
-		eventsService.on('telemetry.onFirstWorkflowDataLoad', async (metrics) =>
-			this.onFirstWorkflowDataLoad(metrics),
-		);
-	}
+	) {}
 
 	async init() {
 		await this.telemetry.init();

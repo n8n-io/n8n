@@ -5,7 +5,6 @@ import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 
 import { Get, Post, RestController } from '@/decorators';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
@@ -24,6 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UrlService } from '@/services/url.service';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -43,6 +43,7 @@ export class PasswordResetController {
 		private readonly mfaService: MfaService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -130,7 +131,7 @@ export class PasswordResetController {
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: getInstanceBaseUrl(),
+				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({

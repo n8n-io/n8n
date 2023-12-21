@@ -1,12 +1,12 @@
+import { Service } from 'typedi';
+import type { FindManyOptions, ObjectLiteral } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 import {
 	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -22,14 +22,14 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
+interface WaitingExecution {
+	executionId: string;
+	timer: NodeJS.Timeout;
+}
+
 @Service()
 export class WaitTracker {
-	private waitingExecutions: {
-		[key: string]: {
-			executionId: string;
-			timer: NodeJS.Timeout;
-		};
-	} = {};
+	private waitingExecutions: { [executionId: string]: WaitingExecution } = {};
 
 	mainTimer: NodeJS.Timeout;
 
@@ -127,13 +127,10 @@ export class WaitTracker {
 			// if the execution ended in an unforseen, non-cancelable state, try to recover it
 			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
 			// find recovered data
-			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
+			const restoredExecution = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
 			if (!restoredExecution) {
 				throw new ApplicationError('Execution could not be recovered or canceled.', {
 					extra: { executionId },
@@ -154,10 +151,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,

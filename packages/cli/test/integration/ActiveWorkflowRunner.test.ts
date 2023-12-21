@@ -26,12 +26,14 @@ import { createWorkflow } from './shared/db/workflows';
 import { ExecutionsService } from '@/executions/executions.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { Telemetry } from '@/telemetry';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
 mockInstance(SecretsHelper);
 mockInstance(ExecutionsService);
 mockInstance(WorkflowService);
+mockInstance(Telemetry);
 
 const webhookService = mockInstance(WebhookService);
 const multiMainSetup = mockInstance(MultiMainSetup, {

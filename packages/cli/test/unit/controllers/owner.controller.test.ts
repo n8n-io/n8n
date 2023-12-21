@@ -1,7 +1,7 @@
+import { Container } from 'typedi';
 import type { CookieOptions, Response } from 'express';
 import { anyObject, captor, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
-import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { Config } from '@/config';
@@ -10,16 +10,16 @@ import { OwnerController } from '@/controllers/owner.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PasswordUtility } from '@/services/password.utility';
+import type { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../shared/mocking';
 import { badPasswords } from '../shared/testData';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { PasswordUtility } from '@/services/password.utility';
-import Container from 'typedi';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
-	const internalHooks = mock<IInternalHooksClass>();
+	const internalHooks = mock<InternalHooks>();
 	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);

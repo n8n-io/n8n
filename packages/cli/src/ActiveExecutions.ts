@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -24,11 +22,12 @@ import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
-	private activeExecutions: {
-		[index: string]: IExecutingWorkflowData;
-	} = {};
+	private activeExecutions: { [executionId: string]: IExecutingWorkflowData } = {};
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+	) {}
 
 	/**
 	 * Add a new active execution
@@ -60,7 +59,7 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			executionId = await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
@@ -75,7 +74,7 @@ export class ActiveExecutions {
 				status: executionStatus,
 			};
 
-			await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
+			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
 		this.activeExecutions[executionId] = {
@@ -212,10 +211,10 @@ export class ActiveExecutions {
 			data = this.activeExecutions[id];
 			returnData.push({
 				id,
-				retryOf: data.executionData.retryOf as string | undefined,
+				retryOf: data.executionData.retryOf,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
-				workflowId: data.executionData.workflowData.id! as string,
+				workflowId: data.executionData.workflowData.id!,
 				status: data.status,
 			});
 		}

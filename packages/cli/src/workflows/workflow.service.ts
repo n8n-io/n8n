@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
@@ -56,6 +56,7 @@ export class WorkflowService {
 		private readonly testWebhooks: TestWebhooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly internalHooks: InternalHooks,
 	) {}
 
 	async getSharing(
@@ -275,7 +276,7 @@ export class WorkflowService {
 		}
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
+		void this.internalHooks.onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
@@ -431,7 +432,7 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
-		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		void this.internalHooks.onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;

@@ -10,6 +10,7 @@ import {
 	type WorkflowExecuteMode,
 	WebhookPathTakenError,
 } from 'n8n-workflow';
+import { NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	IResponseCallbackData,
@@ -26,7 +27,6 @@ import { NotFoundError } from './errors/response-errors/not-found.error';
 import { TIME } from './constants';
 import { WorkflowMissingIdError } from './errors/workflow-missing-id.error';
 import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
-import * as NodeExecuteFunctions from 'n8n-core';
 
 @Service()
 export class TestWebhooks implements IWebhookManager {

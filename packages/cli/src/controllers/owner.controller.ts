@@ -6,12 +6,12 @@ import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
 import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import { IInternalHooksClass } from '@/Interfaces';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
@@ -19,7 +19,7 @@ export class OwnerController {
 	constructor(
 		private readonly config: Config,
 		private readonly logger: Logger,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly internalHooks: InternalHooks,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,

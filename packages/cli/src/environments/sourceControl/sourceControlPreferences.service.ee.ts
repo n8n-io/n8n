@@ -1,27 +1,29 @@
-import Container, { Service } from 'typedi';
-import { SourceControlPreferences } from './types/sourceControlPreferences';
+import { Service } from 'typedi';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
-import {
-	generateSshKeyPair,
-	isSourceControlLicensed,
-	sourceControlFoldersExistCheck,
-} from './sourceControlHelper.ee';
+import path from 'path';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+
+import config from '@/config';
+import { Logger } from '@/Logger';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+
+import type { KeyPairType } from './types/keyPairType';
+import { SourceControlPreferences } from './types/sourceControlPreferences';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_SSH_KEY_NAME,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
-import path from 'path';
-import type { KeyPairType } from './types/keyPairType';
-import config from '@/config';
-import { Logger } from '@/Logger';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import {
+	generateSshKeyPair,
+	isSourceControlLicensed,
+	sourceControlFoldersExistCheck,
+} from './sourceControlHelper.ee';
 
 @Service()
 export class SourceControlPreferencesService {
@@ -36,6 +38,7 @@ export class SourceControlPreferencesService {
 	constructor(
 		instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly settingsRepository: SettingsRepository,
 	) {
 		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -173,7 +176,7 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Container.get(SettingsRepository).save({
+				await this.settingsRepository.save({
 					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
 					value: settingsValue,
 					loadOnStartup: true,
@@ -188,7 +191,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Container.get(SettingsRepository).findOne({
+		const loadedPreferences = await this.settingsRepository.findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {

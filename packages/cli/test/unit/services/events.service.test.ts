@@ -44,6 +44,7 @@ describe('EventsService', () => {
 		mock(),
 		new WorkflowStatisticsRepository(dataSource),
 		ownershipService,
+		mock(),
 	);
 
 	const onFirstProductionWorkflowSuccess = jest.fn();

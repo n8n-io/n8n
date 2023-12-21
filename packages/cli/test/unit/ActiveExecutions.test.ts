@@ -1,33 +1,23 @@
 import { ActiveExecutions } from '@/ActiveExecutions';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import type { ExecutionRepository } from '@db/repositories/execution.repository';
 import { mock } from 'jest-mock-extended';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-const updateExistingExecution = jest.fn();
-const createNewExecution = jest.fn(async () => FAKE_EXECUTION_ID);
-
-Container.set(ExecutionRepository, {
-	updateExistingExecution,
-	createNewExecution,
-});
-
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
+	const executionRepository = mock<ExecutionRepository>();
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock());
-	});
-
-	afterEach(() => {
 		jest.clearAllMocks();
+		activeExecutions = new ActiveExecutions(mock(), executionRepository);
+		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
@@ -40,8 +30,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(createNewExecution).toHaveBeenCalledTimes(1);
-		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
+		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(1);
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
@@ -54,8 +44,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(createNewExecution).toHaveBeenCalledTimes(0);
-		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should fail attaching execution to invalid executionId', async () => {
