@@ -6,7 +6,7 @@ import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces
 import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
 import Container from 'typedi';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export class EEExecutionsService extends ExecutionsService {
 	/**
@@ -26,7 +26,7 @@ export class EEExecutionsService extends ExecutionsService {
 
 		const relations = ['shared', 'shared.user', 'shared.role'];
 
-		const workflow = (await Container.get(WorkflowService).get(
+		const workflow = (await Container.get(WorkflowRepository).get(
 			{ id: execution.workflowId },
 			{ relations },
 		)) as WorkflowWithSharingsAndCredentials;
