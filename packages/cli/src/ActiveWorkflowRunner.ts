@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -95,6 +94,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionsService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
 	async init() {
@@ -219,7 +219,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 						return reject(error);
 					}
 					// Save static data if it changed
-					await Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+					await this.workflowStaticDataService.saveStaticData(workflow);
 					resolve(data);
 				},
 			);
@@ -415,7 +415,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 		await this.webhookService.populateCache();
 
-		await Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 	}
 
 	/**
@@ -454,7 +454,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
-		await Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
@@ -527,7 +527,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+				void this.workflowStaticDataService.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -584,7 +584,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -829,7 +829,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
-		await Container.get(WorkflowStaticDataService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 	}
 
 	/**
