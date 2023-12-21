@@ -377,6 +377,8 @@ export interface IConnections {
 
 export type GenericValue = string | object | number | boolean | undefined | null;
 
+export type CloseFunction = () => Promise<void>;
+
 export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
@@ -410,7 +412,7 @@ export interface IGetExecuteTriggerFunctions {
 
 export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | null | undefined;
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
 	(
@@ -423,6 +425,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 	): IExecuteFunctions;
 }
@@ -1289,13 +1292,13 @@ export type IParameterLabel = {
 };
 
 export interface IPollResponse {
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 }
 
 export interface ITriggerResponse {
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 	// To manually trigger the run
-	manualTriggerFunction?: () => Promise<void>;
+	manualTriggerFunction?: CloseFunction;
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
@@ -1324,6 +1327,7 @@ export namespace MultiPartFormData {
 export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
+	closeFunction?: CloseFunction;
 }
 
 export interface INodeType {
