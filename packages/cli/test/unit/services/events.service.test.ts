@@ -5,7 +5,6 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from 'typeorm';
-import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
@@ -37,14 +36,9 @@ describe('EventsService', () => {
 
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
-	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
-	const eventsService = new EventsService(
-		mock(),
-		new WorkflowStatisticsRepository(dataSource),
-		ownershipService,
-	);
+	const eventsService = new EventsService(mock(), new WorkflowStatisticsRepository(dataSource));
 
 	const onFirstProductionWorkflowSuccess = jest.fn();
 	const onFirstWorkflowDataLoad = jest.fn();
@@ -87,7 +81,7 @@ describe('EventsService', () => {
 			};
 			mockDBCall();
 
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await eventsService.workflowExecutionCompleted(workflow, runData, fakeUser);
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
@@ -114,7 +108,7 @@ describe('EventsService', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await eventsService.workflowExecutionCompleted(workflow, runData, fakeUser);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 
@@ -137,7 +131,7 @@ describe('EventsService', () => {
 				startedAt: new Date(),
 			};
 			mockDBCall(2);
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await eventsService.workflowExecutionCompleted(workflow, runData, fakeUser);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 	});
@@ -154,7 +148,7 @@ describe('EventsService', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await eventsService.nodeFetchedData(workflowId, node, fakeUser);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
@@ -181,7 +175,7 @@ describe('EventsService', () => {
 					},
 				},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await eventsService.nodeFetchedData(workflowId, node, fakeUser);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
@@ -205,7 +199,7 @@ describe('EventsService', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await eventsService.nodeFetchedData(workflowId, node, fakeUser);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(0);
 		});
 	});
