@@ -1,6 +1,6 @@
 import type { KafkaConfig, SASLOptions } from 'kafkajs';
-import { Kafka as apacheKafka, logLevel } from 'kafkajs';
-
+import { CompressionCodecs, CompressionTypes, Kafka as apacheKafka, logLevel } from 'kafkajs';
+import { SnappyCodec } from 'kafkajs-snappy-typescript';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
 import type {
@@ -12,6 +12,8 @@ import type {
 	IRun,
 } from 'n8n-workflow';
 import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
+
+CompressionCodecs[CompressionTypes.Snappy] = new SnappyCodec().codec;
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
