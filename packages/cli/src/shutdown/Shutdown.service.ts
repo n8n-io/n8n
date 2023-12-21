@@ -1,18 +1,17 @@
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 
-export type ShutdownHookFn = () => Promise<void> | void;
-
-export interface ShutdownHook {
-	name: string;
-	hook: ShutdownHookFn;
-	priority?: number;
+export interface ServiceClass {
+	new (): Record<string, () => Promise<void> | void>;
 }
 
-/**
- * Error reported when a listener fails to shutdown gracefully.
- */
+export interface ShutdownHandler {
+	serviceClass: ServiceClass;
+	methodName: string;
+}
+
+/** Error reported when a listener fails to shutdown gracefully */
 export class ComponentShutdownError extends ApplicationError {
 	constructor(componentName: string, cause: Error) {
 		super('Failed to shutdown gracefully', {
@@ -23,41 +22,33 @@ export class ComponentShutdownError extends ApplicationError {
 	}
 }
 
-/**
- * Service responsible for orchestrating a graceful shutdown of the application.
- */
+/** Service responsible for orchestrating a graceful shutdown of the application */
 @Service()
 export class ShutdownService {
-	private readonly toNotify: ShutdownHook[] = [];
+	readonly handlers: ShutdownHandler[][] = [];
 
 	private shutdownPromise: Promise<void> | undefined;
 
 	constructor(private readonly logger: Logger) {}
 
-	/**
-	 * Registers given listener to be notified when the application is shutting down.
-	 */
-	register(hook: ShutdownHook) {
-		this.toNotify.push(hook);
+	/** Registers given listener to be notified when the application is shutting down */
+	register(priority: number, handler: ShutdownHandler) {
+		if (!this.handlers[priority]) {
+			this.handlers[priority] = [];
+		}
+		this.handlers[priority].push(handler);
 	}
 
-	/**
-	 * Signals all registered listeners that the application is shutting down.
-	 */
+	/** Signals all registered listeners that the application is shutting down */
 	shutdown() {
 		if (this.shutdownPromise) {
 			throw new ApplicationError('App is already shutting down');
 		}
 
-		const hooksByPriority = this.groupAndSortShutdownHooksByPriority(this.toNotify);
-
-		this.shutdownPromise = this.shutdownByPriority(hooksByPriority);
+		this.shutdownPromise = this.startShutdown();
 	}
 
-	/**
-	 * Returns a promise that resolves when all the registered listeners
-	 * have shut down.
-	 */
+	/** Returns a promise that resolves when all the registered listeners have shut down */
 	async waitForShutdown(): Promise<void> {
 		if (!this.shutdownPromise) {
 			throw new ApplicationError('App is not shutting down');
@@ -70,37 +61,25 @@ export class ShutdownService {
 		return !!this.shutdownPromise;
 	}
 
-	private async shutdownByPriority(hooksByPriority: Map<number, ShutdownHook[]>) {
-		for (const [priority, shutdownHooks] of hooksByPriority) {
-			this.logger.debug(`Shutting down components with priority ${priority}`);
-
-			await Promise.allSettled(shutdownHooks.map(async (hook) => this.shutdownComponent(hook)));
+	private async startShutdown() {
+		const handlers = Object.values(this.handlers);
+		for (const handlerGroup of handlers) {
+			await Promise.allSettled(
+				handlerGroup.map(async (handler) => this.shutdownComponent(handler)),
+			);
 		}
 	}
 
-	private async shutdownComponent(component: ShutdownHook) {
+	private async shutdownComponent({ serviceClass, methodName }: ShutdownHandler) {
+		const name = `${serviceClass.name}.${methodName}()`;
 		try {
-			this.logger.debug(`Shutting down component "${component.name}"`);
-			await component.hook();
+			this.logger.debug(`Shutting down component "${name}"`);
+			const service = Container.get(serviceClass);
+			const method = service[methodName];
+			await method.call(service);
 		} catch (error) {
 			assert(error instanceof Error);
-			ErrorReporterProxy.error(new ComponentShutdownError(component.name, error));
+			ErrorReporterProxy.error(new ComponentShutdownError(name, error));
 		}
-	}
-
-	private groupAndSortShutdownHooksByPriority(hooks: ShutdownHook[]) {
-		const hooksByPriority = new Map<number, ShutdownHook[]>();
-
-		for (const hook of hooks) {
-			const priority = hook.priority ?? 0;
-
-			if (!hooksByPriority.has(priority)) {
-				hooksByPriority.set(priority, []);
-			}
-
-			hooksByPriority.get(priority)!.push(hook);
-		}
-
-		return new Map([...hooksByPriority.entries()].sort((a, b) => b[0] - a[0]));
 	}
 }

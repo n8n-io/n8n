@@ -1,11 +1,6 @@
-import type { ShutdownHookFn } from '@/shutdown/Shutdown.service';
-import { ShutdownService } from '@/shutdown/Shutdown.service';
+import { Container } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
-
-export type OnShutdownOpts = {
-	priority?: number;
-};
+import { type ServiceClass, ShutdownService } from '@/shutdown/Shutdown.service';
 
 /**
  * Decorator that registers a method as a shutdown hook. The method will
@@ -23,25 +18,16 @@ export type OnShutdownOpts = {
  * }
  * ```
  */
-export function OnShutdown({ priority }: OnShutdownOpts = {}) {
-	return function (target: object, propertyKey: string, descriptor: PropertyDescriptor) {
-		const name = `${target.constructor.name}.${propertyKey}()`;
-		if (!descriptor) {
+export const OnShutdown =
+	(priority: number = 100): MethodDecorator =>
+	(prototype, propertyKey, descriptor) => {
+		const serviceClass = prototype.constructor as ServiceClass;
+		const methodName = String(propertyKey);
+		// TODO: assert that serviceClass is decorated with @Service
+		if (typeof descriptor?.value === 'function') {
+			Container.get(ShutdownService).register(priority, { serviceClass, methodName });
+		} else {
+			const name = `${serviceClass.name}.${methodName}()`;
 			throw new ApplicationError(`${name} must be a method to use "OnShutdown"`);
 		}
-
-		const shutdownFn = descriptor.value as ShutdownHookFn;
-		if (typeof shutdownFn !== 'function') {
-			throw new ApplicationError(`${name} must be a method to use "OnShutdown"`);
-		}
-
-		const shutdownService = Container.get(ShutdownService);
-		const targetInstance = Container.get(target.constructor);
-		shutdownService.register({
-			name,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			hook: shutdownFn.bind(targetInstance),
-			priority,
-		});
 	};
-}

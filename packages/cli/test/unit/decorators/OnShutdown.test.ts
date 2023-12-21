@@ -1,14 +1,14 @@
 import Container from 'typedi';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
-import { MockLogger } from '../../shared/MockLogger';
+import { mock } from 'jest-mock-extended';
 
 describe('OnShutdown', () => {
 	let shutdownService: ShutdownService;
 	let registerSpy: jest.SpyInstance;
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService(new MockLogger());
+		shutdownService = new ShutdownService(mock());
 		Container.set(ShutdownService, shutdownService);
 		registerSpy = jest.spyOn(shutdownService, 'register');
 	});
@@ -19,15 +19,11 @@ describe('OnShutdown', () => {
 			async onShutdown() {}
 		}
 
-		new TestClass();
 		expect(shutdownService.register).toHaveBeenCalledTimes(1);
-		expect(shutdownService.register).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'TestClass.onShutdown()',
-				hook: expect.any(Function),
-				priority: undefined,
-			}),
-		);
+		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+			methodName: 'onShutdown',
+			serviceClass: TestClass,
+		});
 	});
 
 	it('should register multiple methods in the same class', () => {
@@ -39,50 +35,27 @@ describe('OnShutdown', () => {
 			async two() {}
 		}
 
-		const testClass = new TestClass();
 		expect(shutdownService.register).toHaveBeenCalledTimes(2);
-		expect(shutdownService.register).toHaveBeenCalledWith({
-			name: 'TestClass.one()',
-			hook: testClass.one,
-			priority: undefined,
+		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+			methodName: 'one',
+			serviceClass: TestClass,
 		});
-		expect(shutdownService.register).toHaveBeenCalledWith({
-			name: 'TestClass.two()',
-			hook: testClass.two,
-			priority: undefined,
+		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+			methodName: 'two',
+			serviceClass: TestClass,
 		});
-	});
-
-	it('binds this correctly', () => {
-		let thisArg: TestClass | undefined;
-		class TestClass {
-			@OnShutdown()
-			async onShutdown() {
-				// eslint-disable-next-line @typescript-eslint/no-this-alias
-				thisArg = this;
-			}
-		}
-
-		const testClass = new TestClass();
-		shutdownService.shutdown();
-		expect(thisArg).toBe(testClass);
 	});
 
 	it('should use the given priority', () => {
 		class TestClass {
-			@OnShutdown({ priority: 10 })
+			@OnShutdown(10)
 			async onShutdown() {
 				// Will be called when the app is shutting down
 			}
 		}
 
-		new TestClass();
 		expect(shutdownService.register).toHaveBeenCalledTimes(1);
-		expect(shutdownService.register).toHaveBeenCalledWith(
-			expect.objectContaining({
-				priority: 10,
-			}),
-		);
+		expect(shutdownService.handlers[10].length).toEqual(1);
 	});
 
 	it('should throw an error if the decorated member is not a function', () => {
