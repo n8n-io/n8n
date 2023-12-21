@@ -31,6 +31,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
@@ -123,7 +124,8 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.workersView'),
 					position: 'top',
 					available:
-						this.settingsStore.isQueueModeEnabled && this.settingsStore.isWorkerViewAvailable,
+						this.settingsStore.isQueueModeEnabled &&
+						hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
 					activateOnRouteNames: [VIEWS.WORKER_VIEW],
 				},
 			];

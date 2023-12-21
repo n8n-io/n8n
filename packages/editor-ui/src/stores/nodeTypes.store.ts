@@ -96,6 +96,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		isConfigNode() {
 			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+				if (!workflow.nodes[node.name]) {
+					return false;
+				}
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (!nodeType) {
 					return false;

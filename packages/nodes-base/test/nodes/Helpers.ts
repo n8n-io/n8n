@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
+import nock from 'nock';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
 import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
@@ -229,6 +230,16 @@ const credentialTypes = new CredentialType();
 export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
 		testData = [testData];
+	}
+
+	if (testData.some((t) => !!t.nock)) {
+		beforeAll(() => {
+			nock.disableNetConnect();
+		});
+
+		afterAll(() => {
+			nock.restore();
+		});
 	}
 
 	const nodeTypes = new NodeTypes();

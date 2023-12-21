@@ -114,7 +114,12 @@ export class MemoryRedisChat implements INodeType {
 			outputKey: 'output',
 		});
 
+		async function closeFunction() {
+			void client.disconnect();
+		}
+
 		return {
+			closeFunction,
 			response: logWrapper(memory, this),
 		};
 	}
