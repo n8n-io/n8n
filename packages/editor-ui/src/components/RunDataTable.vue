@@ -52,7 +52,7 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span v-html="highlightSearchTerm(column || '')" />
+										<TextWithHighlights :content="column" :search="search" />
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
@@ -117,11 +117,7 @@
 						@mouseleave="onMouseLeaveCell"
 						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 					>
-						<span
-							v-if="isSimple(data)"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							v-html="highlightSearchTerm(data)"
-						/>
+						<TextWithHighlights v-if="isSimple(data)" :class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }" :content="data" :search="search" />
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
 								<span
@@ -141,10 +137,7 @@
 								>
 							</template>
 							<template #value="{ value }">
-								<span
-									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-									v-html="highlightSearchTerm(value)"
-								/>
+								<TextWithHighlights :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }" :content="value" :search="search" />
 							</template>
 						</n8n-tree>
 					</td>
@@ -162,7 +155,6 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { shorten } from '@/utils/typesUtils';
-import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
@@ -171,6 +163,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -178,7 +171,7 @@ type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
 	name: 'run-data-table',
-	components: { Draggable, MappingPill },
+	components: { Draggable, MappingPill, TextWithHighlights },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -370,30 +363,6 @@ export default defineComponent({
 				value === null ||
 				value === undefined
 			);
-		},
-		getValueToRender(value: unknown): string {
-			if (value === '') {
-				return this.$locale.baseText('runData.emptyString');
-			}
-			if (typeof value === 'string') {
-				return value.replaceAll('\n', '\\n');
-			}
-			if (Array.isArray(value) && value.length === 0) {
-				return this.$locale.baseText('runData.emptyArray');
-			}
-			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-				return this.$locale.baseText('runData.emptyObject');
-			}
-			if (value === null || value === undefined) {
-				return `[${value}]`;
-			}
-			if (value === true || value === false || typeof value === 'number') {
-				return value.toString();
-			}
-			return value;
-		},
-		highlightSearchTerm(value: string): string {
-			return sanitizeHtml(highlightText(this.getValueToRender(value), this.search));
 		},
 		onDragStart() {
 			this.draggedColumn = true;
@@ -621,7 +590,7 @@ export default defineComponent({
 	align-items: center;
 	padding: var(--spacing-2xs);
 
-	span {
+	> span {
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
