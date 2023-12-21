@@ -148,7 +148,7 @@ export default defineComponent({
 				expressionInputHandler(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					maxHeight: this.fillParent ? '100%' : 'calc(70vh - var(--spacing-2xl))',
+					maxHeight: this.fillParent ? '100%' : 'max(calc(100vh - 515px), 80px)', // 515px represents the height of all the various elements and padding in that page
 					minHeight: '10vh',
 					rows: this.rows,
 				}),

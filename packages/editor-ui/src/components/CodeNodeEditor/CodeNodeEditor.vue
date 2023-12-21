@@ -334,7 +334,8 @@ export default defineComponent({
 			EditorView.editable.of(!isReadOnly),
 			codeNodeEditorTheme({
 				isReadOnly,
-				maxHeight: this.fillParent ? '100%' : 'calc(70vh - var(--spacing-2xl))',
+				maxHeight: this.fillParent ? '100%' : 'max(calc(100vh - 435px), 80px)', // 435px represents the height of all the various elements and padding in that page
+				minHeight: '10vh',
 				rows: this.rows,
 			}),
 		];
