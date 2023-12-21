@@ -15,6 +15,7 @@
 					:icon="isFormTriggerNode && 'flask'"
 					:transparentBackground="transparent"
 					@click="onClick"
+					:title="$locale.baseText('ndv.execute.testNode.description')"
 				/>
 			</div>
 		</n8n-tooltip>
@@ -201,7 +202,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
-			return this.$locale.baseText('ndv.execute.executeNode');
+			return this.$locale.baseText('ndv.execute.testNode');
 		},
 	},
 	methods: {

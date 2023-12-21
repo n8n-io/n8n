@@ -127,7 +127,7 @@
 							:loading="workflowRunning"
 							:label="runButtonText"
 							size="large"
-							icon="play-circle"
+							icon="flask"
 							type="primary"
 							:disabled="isExecutionDisabled"
 							data-test-id="execute-workflow-button"
@@ -607,7 +607,7 @@ export default defineComponent({
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
-				return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
+				return this.$locale.baseText('nodeView.runButtonText.testWorkflow');
 			}
 
 			if (this.executionWaitingForWebhook) {
