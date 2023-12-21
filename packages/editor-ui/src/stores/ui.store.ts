@@ -37,6 +37,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -53,6 +54,7 @@ import type {
 	NewCredentialsModal,
 	ThemeOption,
 	AppliedThemeOption,
+	SuggestedTemplates,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -181,6 +183,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
 				open: false,
 			},
+			[SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -217,6 +222,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
+		suggestedTemplates: undefined,
+		// Notifications that should show when a view is initialized
+		// This enables us to set a queue of notifications form outside (another component)
+		// and then show them when the view is initialized
+		pendingNotificationsForViews: {},
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
@@ -641,6 +651,21 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
+		},
+		setSuggestedTemplates(templates: SuggestedTemplates) {
+			this.suggestedTemplates = templates;
+		},
+		deleteSuggestedTemplates() {
+			this.suggestedTemplates = undefined;
+		},
+		getNotificationsForView(view: VIEWS): NotificationOptions[] {
+			return this.pendingNotificationsForViews[view] ?? [];
+		},
+		setNotificationsForView(view: VIEWS, notifications: NotificationOptions[]) {
+			this.pendingNotificationsForViews[view] = notifications;
+		},
+		deleteNotificationsForView(view: VIEWS) {
+			delete this.pendingNotificationsForViews[view];
 		},
 	},
 });

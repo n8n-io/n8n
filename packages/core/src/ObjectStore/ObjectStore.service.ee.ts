@@ -7,17 +7,18 @@ import { sign } from 'aws4';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
 import { ApplicationError, LoggerProxy as Logger } from 'n8n-workflow';
 
-import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type {
 	Bucket,
 	ConfigSchemaCredentials,
 	ListPage,
+	MetadataResponseHeaders,
 	RawListPage,
 	RequestOptions,
 } from './types';
 import type { Readable } from 'stream';
-import type { BinaryData } from '..';
+import type { BinaryData } from '../BinaryData/types';
 
 @Service()
 export class ObjectStoreService {
@@ -115,19 +116,11 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
 	async getMetadata(fileId: string) {
-		type Response = {
-			headers: {
-				'content-length': string;
-				'content-type'?: string;
-				'x-amz-meta-filename'?: string;
-			} & BinaryData.PreWriteMetadata;
-		};
-
 		const path = `${this.bucket.name}/${fileId}`;
 
-		const response: Response = await this.request('HEAD', this.host, path);
+		const response = await this.request('HEAD', this.host, path);
 
-		return response.headers;
+		return response.headers as MetadataResponseHeaders;
 	}
 
 	/**
@@ -239,10 +232,16 @@ export class ObjectStoreService {
 
 		this.logger.warn(logMessage);
 
-		return { status: 403, statusText: 'Forbidden', data: logMessage, headers: {}, config: {} };
+		return {
+			status: 403,
+			statusText: 'Forbidden',
+			data: logMessage,
+			headers: {},
+			config: {} as InternalAxiosRequestConfig,
+		};
 	}
 
-	private async request(
+	private async request<T>(
 		method: Method,
 		host: string,
 		rawPath = '',
@@ -275,7 +274,7 @@ export class ObjectStoreService {
 		try {
 			this.logger.debug('Sending request to S3', { config });
 
-			return await axios.request<unknown>(config);
+			return await axios.request<T>(config);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 

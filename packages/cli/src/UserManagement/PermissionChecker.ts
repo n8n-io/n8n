@@ -32,7 +32,7 @@ export class PermissionChecker {
 			relations: ['globalRole'],
 		});
 
-		if (await user.hasGlobalScope('workflow:execute')) return;
+		if (user.hasGlobalScope('workflow:execute')) return;
 
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
