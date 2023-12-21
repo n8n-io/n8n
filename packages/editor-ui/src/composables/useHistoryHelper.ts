@@ -24,8 +24,6 @@ export function useHistoryHelper(activeRoute: Route) {
 	const { callDebounced } = useDebounceHelper();
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const isNDVOpen = ref<boolean>(ndvStore.activeNodeName !== null);
-
 	const undo = async () =>
 		callDebounced(
 			async () => {
@@ -95,29 +93,32 @@ export function useHistoryHelper(activeRoute: Route) {
 		}
 	}
 
-	function trackUndoAttempt(event: KeyboardEvent) {
-		if (isNDVOpen.value && !event.shiftKey) {
-			const activeNode = ndvStore.activeNode;
-			if (activeNode) {
-				telemetry?.track('User hit undo in NDV', { node_type: activeNode.type });
-			}
+	function trackUndoAttempt() {
+		const activeNode = ndvStore.activeNode;
+		if (activeNode) {
+			telemetry?.track('User hit undo in NDV', { node_type: activeNode.type });
 		}
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
 		const currentNodeViewTab = getNodeViewTab(activeRoute);
+		const isNDVOpen = ndvStore.isNDVOpen;
+		const isAnyModalOpen = uiStore.isAnyModalOpen;
+		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 
 		if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
-		if (isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z') {
+		if (isNDVOpen || isAnyModalOpen) {
+			if (isNDVOpen && undoKeysPressed && !event.shiftKey) {
+				trackUndoAttempt();
+			}
+			return;
+		}
+		if (undoKeysPressed) {
 			event.preventDefault();
-			if (!isNDVOpen.value) {
-				if (event.shiftKey) {
-					void redo();
-				} else {
-					void undo();
-				}
-			} else if (!event.shiftKey) {
-				trackUndoAttempt(event);
+			if (event.shiftKey) {
+				void redo();
+			} else {
+				void undo();
 			}
 		}
 	}
