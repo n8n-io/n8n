@@ -355,7 +355,7 @@ describe('Undo/Redo', () => {
 					.should('have.css', 'top', `501px`);
 	});
 
-	it.only('should not undo/redo when NDV or a modal is open', () => {
+	it('should not undo/redo when NDV or a modal is open', () => {
 		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: true });
 		// Try while NDV is open
 		WorkflowPage.actions.hitUndo();
