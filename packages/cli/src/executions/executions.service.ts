@@ -1,5 +1,13 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
+import type {
+	IWorkflowBase,
+	JsonObject,
+	ExecutionStatus,
+	ExecutionError,
+	INode,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
@@ -7,9 +15,11 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type {
+	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -18,7 +28,7 @@ import type { ExecutionRequest } from '@/requests';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -75,6 +85,7 @@ const schemaGetExecutionsQueryFilter = {
 
 const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
 
+@Service()
 export class ExecutionsService {
 	/**
 	 * Function to get the workflow Ids for a User
@@ -361,5 +372,76 @@ export class ExecutionsService {
 				ids,
 			},
 		);
+	}
+
+	async createErrorExecution(
+		error: ExecutionError,
+		node: INode,
+		workflowData: IWorkflowDb,
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+	): Promise<void> {
+		const saveDataErrorExecutionDisabled =
+			workflowData?.settings?.saveDataErrorExecution === 'none';
+
+		if (saveDataErrorExecutionDisabled) return;
+
+		const executionData: IRunExecutionData = {
+			startData: {
+				destinationNode: node.name,
+				runNodeFilter: [node.name],
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [
+					{
+						node,
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										pairedItem: {
+											item: 0,
+										},
+									},
+								],
+							],
+						},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+			resultData: {
+				runData: {
+					[node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							error,
+							source: [],
+						},
+					],
+				},
+				error,
+				lastNodeExecuted: node.name,
+			},
+		};
+
+		const fullExecutionData: ExecutionPayload = {
+			data: executionData,
+			mode,
+			finished: false,
+			startedAt: new Date(),
+			workflowData,
+			workflowId: workflow.id,
+			stoppedAt: new Date(),
+			status: 'error',
+		};
+
+		await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 	}
 }
