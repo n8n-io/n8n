@@ -1,3 +1,14 @@
+## [1.22.1](https://github.com/n8n-io/n8n/compare/n8n@1.22.0...n8n@1.22.1) (2023-12-21)
+
+
+### Bug Fixes
+
+* **core:** Handle empty executions table in pruning in migrations ([#8121](https://github.com/n8n-io/n8n/issues/8121)) ([6cbeb5d](https://github.com/n8n-io/n8n/commit/6cbeb5d78e69e7398ca8d49d86f1c08684fd7b35))
+* **core:** Remove circular dependency in WorkflowService and ActiveWorkflowRunner ([#8128](https://github.com/n8n-io/n8n/issues/8128)) ([b8e72c4](https://github.com/n8n-io/n8n/commit/b8e72c4377b759315c77a134d4791b073f2ff5fa))
+* Show public API upgrade CTA when feature is not enabled ([#8109](https://github.com/n8n-io/n8n/issues/8109)) ([fd27f73](https://github.com/n8n-io/n8n/commit/fd27f738447011b5346e04d6d1d4fddf14d589ba))
+
+
+
 # [1.22.0](https://github.com/n8n-io/n8n/compare/n8n@1.21.0...n8n@1.22.0) (2023-12-21)
 
 
