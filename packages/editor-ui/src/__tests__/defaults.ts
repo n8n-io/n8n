@@ -1,9 +1,5 @@
 import type { INodeTypeData, INodeTypeDescription } from 'n8n-workflow';
-import {
-	AGENT_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-} from '@/constants';
+import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import nodeTypesJson from '../../../nodes-base/dist/types/nodes.json';
 import aiNodeTypesJson from '../../../@n8n/nodes-langchain/dist/types/nodes.json';
 
