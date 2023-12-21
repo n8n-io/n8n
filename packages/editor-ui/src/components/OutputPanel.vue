@@ -352,6 +352,7 @@ export default defineComponent({
 }
 .titleSection {
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-2xs);

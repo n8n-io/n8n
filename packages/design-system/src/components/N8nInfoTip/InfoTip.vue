@@ -2,6 +2,7 @@
 	<div
 		:class="{
 			'n8n-info-tip': true,
+			[$style.infoTip]: true,
 			[$style[theme]]: true,
 			[$style[type]]: true,
 			[$style.bold]: bold,
@@ -104,6 +105,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.infoTip {
+	display: flex;
+}
+
 .base {
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-size-s);
