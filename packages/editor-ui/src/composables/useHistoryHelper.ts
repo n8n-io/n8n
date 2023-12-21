@@ -12,6 +12,7 @@ import { getNodeViewTab } from '@/utils/canvasUtils';
 import type { Route } from 'vue-router';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
+const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
 
 export function useHistoryHelper(activeRoute: Route) {
 	const instance = getCurrentInstance();
@@ -100,10 +101,21 @@ export function useHistoryHelper(activeRoute: Route) {
 		}
 	}
 
+	/**
+	 * Checks if there is a Element UI dialog open by querying
+	 * for the visible overlay element.
+	 */
+	function isMessageDialogOpen(): boolean {
+		return (
+			document.querySelector(`${ELEMENT_UI_OVERLAY_SELECTOR}:not([style*="display: none"])`) !==
+			null
+		);
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		const currentNodeViewTab = getNodeViewTab(activeRoute);
 		const isNDVOpen = ndvStore.isNDVOpen;
-		const isAnyModalOpen = uiStore.isAnyModalOpen;
+		const isAnyModalOpen = uiStore.isAnyModalOpen || isMessageDialogOpen();
 		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 
 		if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
