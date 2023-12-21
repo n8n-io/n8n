@@ -517,13 +517,7 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
-					middleware: ['authenticated', 'custom'],
-					middlewareOptions: {
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return settingsStore.isPublicApiEnabled;
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
