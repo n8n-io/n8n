@@ -14,7 +14,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
-import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -29,6 +28,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { WorkflowService } from './workflow.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 
 export const EEWorkflowController = express.Router();
 
@@ -169,12 +169,7 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagService).findMany({
-				select: ['id', 'name'],
-				where: {
-					id: In(tagIds),
-				},
-			});
+			newWorkflow.tags = await Container.get(TagRepository).findMany(tagIds);
 		}
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
