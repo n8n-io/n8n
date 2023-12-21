@@ -36,7 +36,6 @@
 				@mouseup.stop
 				@keydown.esc="onInputBlur"
 				@keydown.stop
-				@wheel.stop
 				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 			>
 				<n8n-input
