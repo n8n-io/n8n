@@ -48,14 +48,6 @@ export const genericHelpers = defineComponent({
 
 			return `${minutesPassed}:${secondsLeft}${this.$locale.baseText('genericHelpers.minShort')}`;
 		},
-		convertToDisplayDate(fullDate: Date | string | number): { date: string; time: string } {
-			const mask = `d mmm${
-				new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
-			}#HH:MM:ss`;
-			const formattedDate = dateformat(fullDate, mask);
-			const [date, time] = formattedDate.split('#');
-			return { date, time };
-		},
 
 		/**
 		 * @note Loading helpers extracted as composable in useLoadingService

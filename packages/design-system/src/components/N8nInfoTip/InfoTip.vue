@@ -10,11 +10,11 @@
 		<n8n-tooltip
 			v-if="type === 'tooltip'"
 			:placement="tooltipPlacement"
-			:popper-class="$style.tooltipPopper"
+			:popperClass="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
 		>
-			<span :class="$style.iconText">
-				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
+			<span :class="$style.iconText" :style="{ color: iconData.color }">
+				<n8n-icon :icon="iconData.icon" />
 			</span>
 			<template #content>
 				<span>
@@ -23,7 +23,7 @@
 			</template>
 		</n8n-tooltip>
 		<span :class="$style.iconText" v-else>
-			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
+			<n8n-icon :icon="iconData.icon" />
 			<span>
 				<slot />
 			</span>
@@ -48,7 +48,7 @@ export default defineComponent({
 			type: String,
 			default: 'info',
 			validator: (value: string): boolean =>
-				['info', 'info-light', 'warning', 'danger'].includes(value),
+				['info', 'info-light', 'warning', 'danger', 'success'].includes(value),
 		},
 		type: {
 			type: String,
@@ -62,6 +62,42 @@ export default defineComponent({
 		tooltipPlacement: {
 			type: String,
 			default: 'top',
+		},
+	},
+	computed: {
+		iconData(): { icon: string; color: string } {
+			switch (this.theme) {
+				case 'info':
+					return {
+						icon: 'info-circle',
+						color: '--color-text-light)',
+					};
+				case 'info-light':
+					return {
+						icon: 'info-circle',
+						color: 'var(--color-foreground-dark)',
+					};
+				case 'warning':
+					return {
+						icon: 'exclamation-triangle',
+						color: 'var(--color-warning)',
+					};
+				case 'danger':
+					return {
+						icon: 'exclamation-triangle',
+						color: 'var(--color-danger)',
+					};
+				case 'success':
+					return {
+						icon: 'check-circle',
+						color: 'var(--color-success)',
+					};
+				default:
+					return {
+						icon: 'info-circle',
+						color: '--color-text-light)',
+					};
+			}
 		},
 	},
 });
@@ -92,7 +128,7 @@ export default defineComponent({
 	}
 }
 
-.tooltip {
+.tooltipPopper {
 	composes: base;
 	display: inline-flex;
 }
@@ -100,21 +136,5 @@ export default defineComponent({
 .iconText {
 	display: inline-flex;
 	align-items: flex-start;
-}
-
-.info-light {
-	color: var(--color-foreground-dark);
-}
-
-.info {
-	color: var(--color-text-light);
-}
-
-.warning {
-	color: var(--color-warning);
-}
-
-.danger {
-	color: var(--color-danger);
 }
 </style>

@@ -1,6 +1,18 @@
 <template>
-	<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
+	<n8n-info-tip
+		type="tooltip"
+		:theme="theme"
+		:tooltipPlacement="hasStaleData ? 'left' : 'right'"
+		v-if="runMetadata"
+	>
 		<div>
+			<n8n-text :bold="true" size="small"
+				>{{
+					runTaskData.error
+						? $locale.baseText('runData.executionStatus.failed')
+						: $locale.baseText('runData.executionStatus.success')
+				}} </n8n-text
+			><br />
 			<n8n-text :bold="true" size="small">{{
 				$locale.baseText('runData.startTime') + ':'
 			}}</n8n-text>
@@ -16,13 +28,18 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { ITaskData } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 
 export default defineComponent({
 	props: {
 		taskData: {}, // ITaskData
+		hasStaleData: Boolean,
 	},
 
 	computed: {
+		theme(): string {
+			return this.runTaskData?.error ? 'danger' : 'success';
+		},
 		runTaskData(): ITaskData {
 			return this.taskData as ITaskData;
 		},
@@ -30,9 +47,10 @@ export default defineComponent({
 			if (!this.runTaskData) {
 				return null;
 			}
+			const { date, time } = convertToDisplayDateComponents(this.runTaskData.startTime);
 			return {
 				executionTime: this.runTaskData.executionTime,
-				startTime: new Date(this.runTaskData.startTime).toLocaleString(),
+				startTime: `${date} at ${time}`,
 			};
 		},
 	},

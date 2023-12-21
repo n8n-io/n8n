@@ -36,11 +36,11 @@
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
-					v-if="!hasPinData && runsCount === 1"
+					v-if="hasNodeRun && !hasPinData && runsCount === 1"
 					v-show="!outputPanelEditMode.enabled"
 					:taskData="runTaskData"
+					:hasStaleData="staleData"
 				/>
-
 				<n8n-info-tip
 					theme="warning"
 					type="tooltip"
