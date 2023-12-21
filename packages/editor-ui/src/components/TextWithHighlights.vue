@@ -2,7 +2,6 @@
 import type { PropType } from 'vue';
 import { GenericValue } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
-import { isString } from '@/utils/typeGuards';
 
 const i18n = useI18n();
 
@@ -36,8 +35,8 @@ const splitTextBySearch = (text = '', search = ''): {tag: 'span' | 'mark', conte
 <template>
     <span v-if="props.search && typeof props.content === 'string'">
         <template v-for="part in splitTextBySearch(props.content, props.search)">
-            <mark v-if="part.tag === 'mark'">{{ part.content }}</mark>
-            <span v-else>{{ part.content }}</span>
+            <mark v-if="part.tag === 'mark' && part.content">{{ part.content }}</mark>
+            <span v-else-if="part.content">{{ part.content }}</span>
         </template>
     </span>
     <span v-else>{{ props.content }}</span>
