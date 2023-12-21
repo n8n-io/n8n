@@ -28,6 +28,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { WorkflowService } from './workflow.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export const EEWorkflowController = express.Router();
 
@@ -129,7 +130,7 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const workflow = await Container.get(WorkflowService).get({ id: workflowId }, { relations });
+		const workflow = await Container.get(WorkflowRepository).get({ id: workflowId }, { relations });
 
 		if (!workflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);

@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -59,7 +58,6 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
-import { WorkflowService } from './workflows/workflow.service';
 import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
@@ -70,6 +68,7 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { ActivationErrorsService } from '@/ActivationErrors.service';
 import type { Scope } from '@n8n/permissions';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
@@ -95,6 +94,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionsService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
 	async init() {
@@ -214,10 +214,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				undefined,
 				request,
 				response,
-				(error: Error | null, data: object) => {
+				async (error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);
 					}
+					// Save static data if it changed
+					await this.workflowStaticDataService.saveStaticData(workflow);
 					resolve(data);
 				},
 			);
@@ -413,7 +415,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 		await this.webhookService.populateCache();
 
-		await Container.get(WorkflowService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 	}
 
 	/**
@@ -452,7 +454,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
-		await Container.get(WorkflowService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
@@ -525,7 +527,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void Container.get(WorkflowService).saveStaticData(workflow);
+				void this.workflowStaticDataService.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -582,7 +584,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void Container.get(WorkflowService).saveStaticData(workflow);
+				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -817,7 +819,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			await this.activationErrorsService.unset(workflowId);
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
-			await Container.get(WorkflowService).updateWorkflowTriggerCount(workflow.id, triggerCount);
+			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.set(workflowId, error.message);
@@ -827,7 +829,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
-		await Container.get(WorkflowService).saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 	}
 
 	/**
