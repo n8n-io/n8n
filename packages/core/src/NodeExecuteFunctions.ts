@@ -164,7 +164,14 @@ axios.defaults.paramsSerializer = (params) => {
 };
 axios.interceptors.request.use((config) => {
 	// If a POST or PUT or PATCH request has no body, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	if (config.method && ['post', 'put', 'patch'].includes(config.method) && !config.data) {
+	const isTargetMethod = config.method && ['post', 'put', 'patch'].includes(config.method);
+	const hasNoBody =
+		!config.data ||
+		(typeof config.data === 'object' &&
+			config.data !== null &&
+			Object.keys(config.data).length === 0);
+
+	if (isTargetMethod && hasNoBody) {
 		config.headers.setContentType(false, false);
 	}
 
