@@ -1346,6 +1346,7 @@ export class Workflow {
 				.map((result) => result.reason);
 
 			if (closingErrors.length > 0) {
+				if (closingErrors[0] instanceof Error) throw closingErrors[0];
 				throw new ApplicationError("Error on execution node's close function(s)", {
 					extra: { nodeName: node.name },
 					tags: { nodeType: node.type },
