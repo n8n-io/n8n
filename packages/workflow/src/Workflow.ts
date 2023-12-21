@@ -1337,14 +1337,13 @@ export class Workflow {
 					? await nodeType.execute(context)
 					: await nodeType.execute.call(context);
 
-			const closingErrors = [];
-			for (const closeFunction of closeFunctions) {
-				try {
-					await closeFunction();
-				} catch (error) {
-					closingErrors.push(error);
-				}
-			}
+			const closeFunctionsResults = await Promise.allSettled(
+				closeFunctions.map(async (fn) => fn()),
+			);
+
+			const closingErrors = closeFunctionsResults
+				.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+				.map((result) => result.reason);
 
 			if (closingErrors.length > 0) {
 				throw new ApplicationError("Error on execution node's close function(s)", {
