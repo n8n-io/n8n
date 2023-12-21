@@ -354,4 +354,21 @@ describe('Undo/Redo', () => {
 					.should('have.css', 'left', `637px`)
 					.should('have.css', 'top', `501px`);
 	});
+
+	it.only('should not undo/redo when NDV or a modal is open', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: true });
+		// Try while NDV is open
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		ndv.getters.backToCanvas().click();
+		// Try while modal is open
+		cy.getByTestId('menu-item').contains('About n8n').click({ force: true });
+		cy.getByTestId('about-modal').should('be.visible');
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		cy.getByTestId('close-about-modal-button').click();
+		// Should work now
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+	});
 });
