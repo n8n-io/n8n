@@ -1,11 +1,5 @@
-import { BasePage } from './base';
+export const getPublicApiUpgradeCTA = () => cy.getByTestId('public-api-upgrade-cta');
 
-export class PublicApiPage extends BasePage {
-	url = '/settings/api';
-	secret = '';
-
-	getters = {
-		upgradeCTA: () => cy.getByTestId('public-api-upgrade-cta'),
-	};
-	actions = {};
-}
+export const visitPublicApiPage = () => {
+	cy.visit('/settings/api');
+};

@@ -1,11 +1,16 @@
-import { BannerStack, MainSidebar, WorkflowPage, PublicApiPage } from '../pages';
+import {
+	BannerStack,
+	MainSidebar,
+	WorkflowPage,
+	visitPublicApiPage,
+	getPublicApiUpgradeCTA,
+} from '../pages';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import { INSTANCE_OWNER } from '../constants';
 
 const mainSidebar = new MainSidebar();
 const bannerStack = new BannerStack();
 const workflowPage = new WorkflowPage();
-const publicApiPage = new PublicApiPage();
 
 describe('Cloud', { disableAutoLogin: true }, () => {
 	before(() => {
@@ -106,9 +111,9 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
-			cy.visit(publicApiPage.url);
+			visitPublicApiPage();
 
-			publicApiPage.getters.upgradeCTA().should('be.visible');
+			getPublicApiUpgradeCTA().should('be.visible');
 		});
 	});
 });
