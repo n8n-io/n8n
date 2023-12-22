@@ -6,6 +6,8 @@ import CopyInput from '@/components/CopyInput.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -13,6 +15,8 @@ const IdentityProviderSettingsType = {
 };
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
@@ -100,6 +104,12 @@ const onSave = async () => {
 				await onTest();
 			}
 		}
+
+		telemetry.track('User updated single sign on settings', {
+			instance_id: rootStore.instanceId,
+			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
+			is_active: ssoStore.isSamlLoginEnabled,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;

@@ -37,7 +37,7 @@
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
-					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
+					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
@@ -212,6 +212,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		hideNodeIssues: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -373,9 +377,10 @@ export default defineComponent({
 					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
-				const outputs =
-					NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType) ||
-					([] as Array<ConnectionTypes | INodeOutputConfiguration>);
+				let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
+				if (this.workflow.nodes[this.node.name]) {
+					outputs = NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType);
+				}
 
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
@@ -487,7 +492,7 @@ export default defineComponent({
 			if (this.data.disabled) {
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
-				if (this.hasIssues) {
+				if (this.hasIssues && !this.hideNodeIssues) {
 					// Do not set red border if there is an issue with the configuration node
 					if (
 						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==

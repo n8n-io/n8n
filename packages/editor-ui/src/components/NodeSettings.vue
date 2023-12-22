@@ -864,6 +864,12 @@ export default defineComponent({
 					} else {
 						set(nodeParameters as object, parameterPath, newValue);
 					}
+					// If value is updated, remove parameter values that have invalid options
+					// so getNodeParameters checks don't fail
+					this.removeMismatchedOptionValues(nodeType, nodeParameters, {
+						name: parameterPath,
+						value: newValue,
+					});
 				}
 
 				// Get the parameters with the now new defaults according to the
@@ -918,6 +924,44 @@ export default defineComponent({
 
 				this.workflowsStore.setNodeValue(updateInformation);
 			}
+		},
+		/**
+		 * Removes node values that are not valid options for the given parameter.
+		 * This can happen when there are multiple node parameters with the same name
+		 * but different options and display conditions
+		 * @param nodeType The node type description
+		 * @param nodeParameterValues Current node parameter values
+		 * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
+		 */
+		removeMismatchedOptionValues(
+			nodeType: INodeTypeDescription,
+			nodeParameterValues: INodeParameters | null,
+			updatedParameter: { name: string; value: NodeParameterValue },
+		) {
+			nodeType.properties.forEach((prop) => {
+				const displayOptions = prop.displayOptions;
+				// Not processing parameters that are not set or don't have options
+				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+					return;
+				}
+				// Only process the parameters that should be hidden
+				const showCondition = displayOptions.show?.[updatedParameter.name];
+				const hideCondition = displayOptions.hide?.[updatedParameter.name];
+				if (showCondition === undefined && hideCondition === undefined) {
+					return;
+				}
+				// Every value should be a possible option
+				const hasValidOptions = Object.keys(nodeParameterValues).every(
+					(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+				);
+				if (
+					!hasValidOptions ||
+					showCondition !== updatedParameter.value ||
+					hideCondition === updatedParameter.value
+				) {
+					unset(nodeParameterValues as object, prop.name);
+				}
+			});
 		},
 		/**
 		 * Sets the values of the active node in the internal settings variables

@@ -64,7 +64,8 @@
 			</div>
 		</div>
 		<n8n-action-box
-			v-else-if="isTrialing"
+			v-else-if="!isPublicApiEnabled && isTrialing"
+			data-test-id="public-api-upgrade-cta"
 			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
 			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
 			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
@@ -120,6 +121,8 @@ export default defineComponent({
 		};
 	},
 	mounted() {
+		if (!this.isPublicApiEnabled) return;
+
 		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
@@ -139,6 +142,9 @@ export default defineComponent({
 		},
 		isLoadingCloudPlans(): boolean {
 			return this.cloudPlanStore.state.loadingPlan;
+		},
+		isPublicApiEnabled(): boolean {
+			return this.settingsStore.isPublicApiEnabled;
 		},
 	},
 	methods: {

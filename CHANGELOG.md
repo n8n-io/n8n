@@ -1,3 +1,52 @@
+# [1.22.0](https://github.com/n8n-io/n8n/compare/n8n@1.21.0...n8n@1.22.0) (2023-12-21)
+
+
+### Bug Fixes
+
+* **ActiveCampaign Node:** Fix pagination issue when loading tags ([#8017](https://github.com/n8n-io/n8n/issues/8017)) ([1943857](https://github.com/n8n-io/n8n/commit/19438572312cf9354c333aeb52ccbf1ab81fc51f))
+* **core:** Close db connection gracefully when exiting ([#8045](https://github.com/n8n-io/n8n/issues/8045)) ([e69707e](https://github.com/n8n-io/n8n/commit/e69707efd4bd947fdf6b9c66f373da63d34f41e9))
+* **core:** Consider timeout in shutdown an error ([#8050](https://github.com/n8n-io/n8n/issues/8050)) ([4cae976](https://github.com/n8n-io/n8n/commit/4cae976a3b428bd528fe71ef0b240c0fd6e23bbf))
+* **core:** Do not display error when stopping jobless execution in queue mode ([#8007](https://github.com/n8n-io/n8n/issues/8007)) ([8e6b951](https://github.com/n8n-io/n8n/commit/8e6b951a76e08b9ee9740fdd853f77553ad60cd6))
+* **core:** Fix shutdown if terminating before hooks are initialized ([#8047](https://github.com/n8n-io/n8n/issues/8047)) ([6ae2f5e](https://github.com/n8n-io/n8n/commit/6ae2f5efea65e23029475ccdc5a65ec7c8152423))
+* **core:** Handle multiple termination signals correctly ([#8046](https://github.com/n8n-io/n8n/issues/8046)) ([67bd8ad](https://github.com/n8n-io/n8n/commit/67bd8ad698bd0afe6ff7183d75da8bca4085598e))
+* **core:** Initialize queue once in queue mode ([#8025](https://github.com/n8n-io/n8n/issues/8025)) ([53c0b49](https://github.com/n8n-io/n8n/commit/53c0b49d15047461e3b65baed65c9d76dff99539))
+* **core:** Prevent axios from force setting a form-urlencoded content-type ([#8117](https://github.com/n8n-io/n8n/issues/8117)) ([bba9576](https://github.com/n8n-io/n8n/commit/bba95761e2f2b54af1fcab8a7b1d626ca10d537e)), closes [/github.com/axios/axios/blob/v1.x/lib/core/dispatchRequest.js#L45-L47](https://github.com//github.com/axios/axios/blob/v1.x/lib/core/dispatchRequest.js/issues/L45-L47)
+* **core:** Remove circular references before serializing executions in public API ([#8043](https://github.com/n8n-io/n8n/issues/8043)) ([989888d](https://github.com/n8n-io/n8n/commit/989888d9bcec6f4eb3c811ce10d480737d96b102)), closes [#8030](https://github.com/n8n-io/n8n/issues/8030)
+* **core:** Restore workflow ID during execution creation ([#8031](https://github.com/n8n-io/n8n/issues/8031)) ([c5e6ba8](https://github.com/n8n-io/n8n/commit/c5e6ba8cdd4a8f117ccc2e89e55497117156d8af)), closes [/github.com/n8n-io/n8n/pull/8002/files#diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224](https://github.com//github.com/n8n-io/n8n/pull/8002/files/issues/diff-c8cbb62ca9ab2ae45e5f565cd8c63fff6475809a6241ea0b90acc575615224)
+* **core:** Use relative imports for dynamic imports in SecurityAuditService ([#8086](https://github.com/n8n-io/n8n/issues/8086)) ([785bf99](https://github.com/n8n-io/n8n/commit/785bf9974e38ea84c016e210a3108f4af567510d)), closes [#8085](https://github.com/n8n-io/n8n/issues/8085)
+* **editor:** Add back credential `use` permission ([#8023](https://github.com/n8n-io/n8n/issues/8023)) ([329e5bf](https://github.com/n8n-io/n8n/commit/329e5bf9eed8556aba2bbd50bad9dbd6d3b373ad))
+* **editor:** Cleanup Executions page component ([#8053](https://github.com/n8n-io/n8n/issues/8053)) ([2689c37](https://github.com/n8n-io/n8n/commit/2689c37e87c5b3ae5029121f4d3dc878841e8844))
+* **editor:** Disable auto scroll and list size check when clicking on executions ([#7983](https://github.com/n8n-io/n8n/issues/7983)) ([fcb8b91](https://github.com/n8n-io/n8n/commit/fcb8b91f37e1fb0ef42f411c84390180e1ed7bbe))
+* **editor:** Ensure execution data overrides pinned data when copying in executions view ([#8009](https://github.com/n8n-io/n8n/issues/8009)) ([1d1cb0d](https://github.com/n8n-io/n8n/commit/1d1cb0d3c530856e0c26d8f146f60b2555625ab6))
+* **editor:** Fix copy/paste issue when switch node is in workflow ([#8103](https://github.com/n8n-io/n8n/issues/8103)) ([4b86926](https://github.com/n8n-io/n8n/commit/4b86926752fb1304a46385cb46bdf34fda0d53b6))
+* **editor:** Make keyboard shortcuts more strict; don't accept extra Ctrl/Alt/Shift keys ([#8024](https://github.com/n8n-io/n8n/issues/8024)) ([8df49e1](https://github.com/n8n-io/n8n/commit/8df49e134d886267f9f7475573d013371220dcac))
+* **editor:** Show credential share info only to appropriate users ([#8020](https://github.com/n8n-io/n8n/issues/8020)) ([b29b4d4](https://github.com/n8n-io/n8n/commit/b29b4d442bb0617aa516748ec48379eae0996cf0))
+* **editor:** Turn off executions list auto-refresh after leaving the page ([#8005](https://github.com/n8n-io/n8n/issues/8005)) ([e3c363d](https://github.com/n8n-io/n8n/commit/e3c363d72cf4ee49086d012f92a7b34be958482f))
+* **editor:** Update image sizes in template description not to be full width always ([#8037](https://github.com/n8n-io/n8n/issues/8037)) ([63a6e7e](https://github.com/n8n-io/n8n/commit/63a6e7e0340e1b00719f212ac620600a90d70ef1))
+* **HTTP Request Node:** Do not create circular references in HTTP request node output ([#8030](https://github.com/n8n-io/n8n/issues/8030)) ([5b7ea16](https://github.com/n8n-io/n8n/commit/5b7ea16d9a20880c72779b02620e99ebe9f3617a))
+* Stop binary data restoration from preventing execution from finishing ([#8082](https://github.com/n8n-io/n8n/issues/8082)) ([5ffff1b](https://github.com/n8n-io/n8n/commit/5ffff1bb22691c09c5ca8b3ada2a19d5ce155a0b))
+* Upgrade axios to address CVE-2023-45857 ([#7713](https://github.com/n8n-io/n8n/issues/7713)) ([64eb9bb](https://github.com/n8n-io/n8n/commit/64eb9bbc3624ee8f2fa90812711ad568926fdca8))
+
+
+### Features
+
+* Add config option to prefer GET request over LIST when using Hashicorp Vault ([#8049](https://github.com/n8n-io/n8n/issues/8049)) ([439a22d](https://github.com/n8n-io/n8n/commit/439a22d68f7bf32f281b1078b71607307640a09b))
+* Add option to `returnIntermediateSteps` for AI agents ([#8113](https://github.com/n8n-io/n8n/issues/8113)) ([7806a65](https://github.com/n8n-io/n8n/commit/7806a65229878a473f5526bad0b94614e8bfa8aa))
+* **core:** Add N8N_GRACEFUL_SHUTDOWN_TIMEOUT env var ([#8068](https://github.com/n8n-io/n8n/issues/8068)) ([614f488](https://github.com/n8n-io/n8n/commit/614f48838626e2af8e3f2e76ee4a144af2d40f72))
+* **editor:** Add lead enrichment suggestions to workflow list ([#8042](https://github.com/n8n-io/n8n/issues/8042)) ([36a923c](https://github.com/n8n-io/n8n/commit/36a923cf7bd4d42b8f8decbf01255c41d6dc1671)), closes [-update-workflows-list-page-to-show-fake-door-templates#comment-b6644c99](https://github.com/-update-workflows-list-page-to-show-fake-door-templates/issues/comment-b6644c99)
+* **editor:** Finalize workers view ([#8052](https://github.com/n8n-io/n8n/issues/8052)) ([edfa784](https://github.com/n8n-io/n8n/commit/edfa78414d6bce901becc05e9d860f2521139688))
+* **editor:** Gracefully ignore invalid payloads in postMessage handler ([#8096](https://github.com/n8n-io/n8n/issues/8096)) ([9d22c7a](https://github.com/n8n-io/n8n/commit/9d22c7a2782a1908f81bcf80260cd91cb296e239))
+* **editor:** Upgrade frontend tooling to address a few vulnerabilities ([#8100](https://github.com/n8n-io/n8n/issues/8100)) ([19b7f1f](https://github.com/n8n-io/n8n/commit/19b7f1ffb17dcd6ac77839f97c2544f60f4ad55e))
+* **Filter Node:** Overhaul UI by adding the new filter component ([#8016](https://github.com/n8n-io/n8n/issues/8016)) ([3d53052](https://github.com/n8n-io/n8n/commit/3d530522f828dfc985ae98e4bb551aa3a2bd44c6))
+* **Respond to Webhook Node:** Overhaul with improvements like returning all items ([#8093](https://github.com/n8n-io/n8n/issues/8093)) ([32d397e](https://github.com/n8n-io/n8n/commit/32d397eff315fdc77677c0b134a7a25bcd8ca5d0))
+
+
+### Performance Improvements
+
+* **editor:** Improve canvas rendering performance ([#8022](https://github.com/n8n-io/n8n/issues/8022)) ([b780436](https://github.com/n8n-io/n8n/commit/b780436a6b445dc5951217b5a1f2c61b34961757))
+
+
+
 # [1.21.0](https://github.com/n8n-io/n8n/compare/n8n@1.20.0...n8n@1.21.0) (2023-12-13)
 
 
