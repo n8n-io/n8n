@@ -246,9 +246,13 @@ export class NDV extends BasePage {
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
 		},
-
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
+		},
+		changeNodeOperation: (operation: string) => {
+			this.getters.parameterInput('operation').click();
+			cy.get('.el-select-dropdown__item').contains(new RegExp(`^${operation}$`)).click({ force: true });
+			this.getters.parameterInput('operation').find('input').should('have.value', operation);
 		},
 	};
 }
