@@ -12,10 +12,10 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="isFormTriggerNode && 'flask'"
+					:icon="!isListeningForEvents && 'flask'"
 					:transparentBackground="transparent"
 					@click="onClick"
-					:title="$locale.baseText('ndv.execute.testNode.description')"
+					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 				/>
 			</div>
 		</n8n-tooltip>
@@ -191,15 +191,6 @@ export default defineComponent({
 
 			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
-			}
-
-			if (
-				this.isTriggerNode &&
-				!this.isScheduleTrigger &&
-				!this.isManualTriggerNode &&
-				!this.isFormTriggerNode
-			) {
-				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
 			return this.$locale.baseText('ndv.execute.testNode');
