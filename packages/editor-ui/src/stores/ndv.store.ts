@@ -139,6 +139,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 
 			return null;
 		},
+		isNDVOpen(): boolean {
+			return this.activeNodeName !== null;
+		},
 	},
 	actions: {
 		setActiveNodeName(nodeName: string | null): void {
