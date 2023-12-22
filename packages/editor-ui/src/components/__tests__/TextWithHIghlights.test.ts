@@ -88,12 +88,15 @@ describe('TextWithHighlights', () => {
 	it('searches for special regex characters correctly', () => {
 		const wrapper = shallowMount(TextWithHighlights, {
 			props: {
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 				content: 'Test content ()^${}[] world',
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 				search: '()^${}[]',
 			},
 		});
 
 		expect(wrapper.html()).toEqual(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			'<span><span>Test content </span><mark>()^${}[]</mark><span> world</span></span>',
 		);
 	});

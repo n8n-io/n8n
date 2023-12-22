@@ -52,7 +52,10 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<TextWithHighlights :content="getValueToRender(column || '')" :search="search" />
+										<TextWithHighlights
+											:content="getValueToRender(column || '')"
+											:search="search"
+										/>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
