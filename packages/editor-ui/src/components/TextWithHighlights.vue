@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
 import { GenericValue } from 'n8n-workflow';
+import { computed } from 'vue';
 
 const props = defineProps({
 	content: {
@@ -21,18 +22,23 @@ const splitTextBySearch = (text = '', search = ''): { tag: 'span' | 'mark'; cont
 		];
 	}
 
-	const pattern = new RegExp(`(${search})`, 'g');
-	const splitText = text.split(new RegExp(pattern, 'gi'));
+	const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+	const pattern = new RegExp(`(${escapeRegExp(search)})`, 'i');
+	const splitText = text.split(pattern);
 
 	return splitText.map((t) => ({ tag: pattern.test(t) ? 'mark' : 'span', content: t }));
 };
+
+const parts = computed(() => {
+	return props.search && typeof props.content === 'string'? splitTextBySearch(props.content, props.search): [];
+});
 </script>
 
 <template>
-	<span v-if="props.search && typeof props.content === 'string'">
-		<template v-for="part in splitTextBySearch(props.content, props.search)">
-			<mark v-if="part.tag === 'mark' && part.content">{{ part.content }}</mark>
-			<span v-else-if="part.content">{{ part.content }}</span>
+	<span v-if="parts.length && typeof props.content === 'string'">
+		<template v-for="(part, index) in parts">
+			<mark v-if="part.tag === 'mark' && part.content" :key="`mark-${index}`">{{ part.content }}</mark>
+			<span v-else-if="part.content" :key="`span-${index}`">{{ part.content }}</span>
 		</template>
 	</span>
 	<span v-else>{{ props.content }}</span>
