@@ -94,4 +94,17 @@ export abstract class AbstractPush<T> extends EventEmitter {
 
 		this.sendToSessions(type, data, userSessionIds);
 	}
+
+	/**
+	 * Closes all push existing connections
+	 */
+	closeAllConnections() {
+		for (const sessionId in this.connections) {
+			// Signal the connection that we want to close it.
+			// We are not removing the sessions here because it should be
+			// the implementation's responsibility to do so once the connection
+			// has actually closed.
+			this.close(this.connections[sessionId]);
+		}
+	}
 }

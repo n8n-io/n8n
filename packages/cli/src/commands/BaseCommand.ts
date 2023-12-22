@@ -22,6 +22,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { ShutdownService } from '@/shutdown/Shutdown.service';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -38,7 +39,7 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
-	protected isShuttingDown = false;
+	protected shutdownService: ShutdownService = Container.get(ShutdownService);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -309,7 +310,7 @@ export abstract class BaseCommand extends Command {
 
 	private onTerminationSignal(signal: string) {
 		return async () => {
-			if (this.isShuttingDown) {
+			if (this.shutdownService.isShuttingDown()) {
 				this.logger.info(`Received ${signal}. Already shutting down...`);
 				return;
 			}
@@ -323,9 +324,9 @@ export abstract class BaseCommand extends Command {
 			}, this.gracefulShutdownTimeoutInS * 1000);
 
 			this.logger.info(`Received ${signal}. Shutting down...`);
-			this.isShuttingDown = true;
+			this.shutdownService.shutdown();
 
-			await this.stopProcess();
+			await Promise.all([this.stopProcess(), this.shutdownService.waitForShutdown()]);
 
 			clearTimeout(forceShutdownTimer);
 		};
