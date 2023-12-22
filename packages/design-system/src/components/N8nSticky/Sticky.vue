@@ -182,7 +182,7 @@ export default defineComponent({
 		},
 		onInputScroll(event: WheelEvent) {
 			// Pass through zoom events but hold regular scrolling
-			if (!event.ctrlKey) {
+			if (!event.ctrlKey && !event.metaKey) {
 				event.stopPropagation();
 			}
 		},
