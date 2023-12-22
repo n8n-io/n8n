@@ -100,7 +100,7 @@ export class NDV extends BasePage {
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
 		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
 		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
-		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-editor'),
+		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
 		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 	};

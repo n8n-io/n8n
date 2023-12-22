@@ -302,7 +302,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
@@ -320,7 +320,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
@@ -364,7 +364,7 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
 		ndv.actions.openCodeEditorFullscreen();
 
-		ndv.getters.codeEditorFullscreen().type('foo()');
+		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 	});
@@ -543,7 +543,10 @@ describe('NDV', () => {
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
 	it('Should handle mismatched option attributes', () => {
-		workflowPage.actions.addInitialNodeToCanvas('LDAP', { keepNdvOpen: true, action: 'Create a new entry' });
+		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
+			keepNdvOpen: true,
+			action: 'Create a new entry',
+		});
 		// Add some attributes in Create operation
 		cy.getByTestId('parameter-item').contains('Add Attributes').click();
 		ndv.actions.changeNodeOperation('Update');
@@ -552,7 +555,10 @@ describe('NDV', () => {
 	});
 	it('Should keep RLC values after operation change', () => {
 		const TEST_DOC_ID = '1111';
-		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', { keepNdvOpen: true, action: 'Append row in sheet' });
+		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', {
+			keepNdvOpen: true,
+			action: 'Append row in sheet',
+		});
 		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
