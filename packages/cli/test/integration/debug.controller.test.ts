@@ -43,16 +43,17 @@ describe('DebugController', () => {
 
 			jest
 				.spyOn(workflowRepository, 'createQueryBuilder')
-				// @ts-expect-error Mock
 				.mockImplementation(() => createQueryBuilder);
 			jest.spyOn(MultiMainSetup.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
+			jest.spyOn(MultiMainSetup.prototype, 'isLeader', 'get').mockReturnValue(true);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 
 			expect(response.body.data).toMatchObject({
 				instanceId,
 				leaderKey,
+				isLeader: true,
 				activeWorkflows: {
 					webhooks,
 					triggersAndPollers,

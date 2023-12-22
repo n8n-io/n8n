@@ -35,6 +35,7 @@ export class DebugController {
 		return {
 			instanceId: this.multiMainSetup.instanceId,
 			leaderKey,
+			isLeader: this.multiMainSetup.isLeader,
 			activeWorkflows: {
 				webhooks, // webhook-based active workflows
 				triggersAndPollers, // poller- and trigger-based active workflows
