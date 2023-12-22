@@ -308,7 +308,7 @@ export class Server extends AbstractServer {
 			Container.get(ActiveWorkflowsController),
 		];
 
-		if (Container.get(MultiMainSetup).isEnabled) {
+		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
 			const { DebugController } = await import('./controllers/debug.controller');
 			controllers.push(Container.get(DebugController));
 		}
