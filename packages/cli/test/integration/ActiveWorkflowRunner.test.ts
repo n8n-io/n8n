@@ -91,7 +91,7 @@ describe('init()', () => {
 	test('should start with no active workflows', async () => {
 		await activeWorkflowRunner.init();
 
-		const inStorage = await activeWorkflowsService.getAllActiveIds();
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
 		expect(inStorage).toHaveLength(0);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
@@ -103,7 +103,7 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = await activeWorkflowsService.getAllActiveIds();
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
 		expect(inStorage).toHaveLength(1);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
@@ -116,7 +116,7 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = await activeWorkflowsService.getAllActiveIds();
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
 		expect(inStorage).toHaveLength(2);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();

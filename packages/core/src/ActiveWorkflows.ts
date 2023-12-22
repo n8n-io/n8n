@@ -25,7 +25,7 @@ import type { IWorkflowData } from './Interfaces';
 
 @Service()
 export class ActiveWorkflows {
-	private activeWorkflows: Record<string, IWorkflowData> = {};
+	private activeWorkflows: { [workflowId: string]: IWorkflowData } = {};
 
 	/**
 	 * Returns if the workflow is active in memory.

@@ -376,7 +376,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				`/active_workflows/error/${id}`,
+				`/active-workflows/error/${id}`,
 			);
 		},
 

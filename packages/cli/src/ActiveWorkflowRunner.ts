@@ -75,7 +75,7 @@ interface QueuedActivation {
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
-	private queuedActivations: Record<string, QueuedActivation> = {};
+	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -114,7 +114,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
-		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIds();
+		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIdsInStorage();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));

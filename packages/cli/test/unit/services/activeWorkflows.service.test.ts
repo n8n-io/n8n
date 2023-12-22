@@ -21,17 +21,17 @@ describe('ActiveWorkflowsService', () => {
 
 	beforeEach(() => jest.clearAllMocks());
 
-	describe('getAllActiveIds', () => {
+	describe('getAllActiveIdsInStorage', () => {
 		it('should filter out any workflow ids that have activation errors', async () => {
 			activationErrorsService.getAll.mockResolvedValue({ 1: 'some error' });
 			workflowRepository.getActiveIds.mockResolvedValue(activeIds);
 
-			const ids = await service.getAllActiveIds();
+			const ids = await service.getAllActiveIdsInStorage();
 			expect(ids).toEqual(['2', '3', '4']);
 		});
 	});
 
-	describe('getAllActiveIdsForUser', () => {
+	describe('getAllActiveIdsFor', () => {
 		beforeEach(() => {
 			activationErrorsService.getAll.mockResolvedValue({ 1: 'some error' });
 			workflowRepository.getActiveIds.mockResolvedValue(activeIds);
@@ -39,7 +39,7 @@ describe('ActiveWorkflowsService', () => {
 
 		it('should return all workflow ids when user has full access', async () => {
 			user.hasGlobalScope.mockReturnValue(true);
-			const ids = await service.getAllActiveIdsForUser(user);
+			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
 			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
@@ -49,7 +49,7 @@ describe('ActiveWorkflowsService', () => {
 		it('should filter out workflow ids that the user does not have access to', async () => {
 			user.hasGlobalScope.mockReturnValue(false);
 			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
-			const ids = await service.getAllActiveIdsForUser(user);
+			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['3']);
 			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');

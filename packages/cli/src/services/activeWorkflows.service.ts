@@ -16,13 +16,13 @@ export class ActiveWorkflowsService {
 		private readonly activationErrorsService: ActivationErrorsService,
 	) {}
 
-	async getAllActiveIds() {
+	async getAllActiveIdsInStorage() {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
 		return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 	}
 
-	async getAllActiveIdsForUser(user: User) {
+	async getAllActiveIdsFor(user: User) {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
 
