@@ -23,6 +23,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async getActiveIds() {
+		const activeWorkflows = await this.find({
+			select: ['id'],
+			where: { active: true },
+		});
+		return activeWorkflows.map((workflow) => workflow.id);
+	}
+
 	async findById(workflowId: string) {
 		return this.findOne({
 			where: { id: workflowId },
