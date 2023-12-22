@@ -14,8 +14,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
+import { autocompletion, ifNotIn } from '@codemirror/autocomplete';
+import { history, redo, toggleComment } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import type { Line, Extension } from '@codemirror/state';

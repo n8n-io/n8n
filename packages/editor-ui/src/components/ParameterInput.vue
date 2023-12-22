@@ -79,7 +79,7 @@
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
 							fillParent
-							@update:modelValue="expressionUpdated"
+							@update:modelValue="valueChangedDebounced"
 						/>
 						<html-editor
 							v-else-if="editorType === 'htmlEditor'"
