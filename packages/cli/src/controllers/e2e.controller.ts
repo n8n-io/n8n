@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';

@@ -274,7 +274,7 @@ export class Server extends AbstractServer {
 			controllers.push(MFAController);
 		}
 
-		controllers.forEach((controller) => registerController(app, config, controller));
+		controllers.forEach((controller) => registerController(app, controller));
 	}
 
 	async configure(): Promise<void> {

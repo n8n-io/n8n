@@ -1,6 +1,9 @@
+import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import type { Config } from '@/config';
+import type { Class } from 'n8n-core';
+
+import config from '@/config';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
 import {
@@ -21,11 +24,10 @@ import type {
 	ScopeMetadata,
 } from './types';
 import type { BooleanLicenseFeature } from '@/Interfaces';
-import Container from 'typedi';
+
 import { License } from '@/License';
 import type { Scope } from '@n8n/permissions';
 import { ApplicationError } from 'n8n-workflow';
-import { Class } from 'n8n-core';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -82,11 +84,7 @@ const authFreeRoutes: string[] = [];
 export const canSkipAuth = (method: string, path: string): boolean =>
 	authFreeRoutes.includes(`${method.toLowerCase()} ${path}`);
 
-export const registerController = (
-	app: Application,
-	config: Config,
-	controllerClass: Class<object>,
-) => {
+export const registerController = (app: Application, controllerClass: Class<object>) => {
 	const controller = Container.get(controllerClass as Class<Controller>);
 	const controllerBasePath = Reflect.getMetadata(CONTROLLER_BASE_PATH, controllerClass) as
 		| string

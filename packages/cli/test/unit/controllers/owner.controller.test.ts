@@ -3,7 +3,7 @@ import { anyObject, captor, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
-import type { Config } from '@/config';
+import config from '@/config';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers/owner.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -18,7 +18,7 @@ import Container from 'typedi';
 import type { InternalHooks } from '@/InternalHooks';
 
 describe('OwnerController', () => {
-	const config = mock<Config>();
+	const configGetSpy = jest.spyOn(config, 'getEnv');
 	const internalHooks = mock<InternalHooks>();
 	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
@@ -34,14 +34,14 @@ describe('OwnerController', () => {
 
 	describe('setupOwner', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(true);
+			configGetSpy.mockReturnValue(true);
 			await expect(controller.setupOwner(mock(), mock())).rejects.toThrowError(
 				new BadRequestError('Instance owner already setup'),
 			);
 		});
 
 		it('should throw a BadRequestError if the email is invalid', async () => {
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
+			configGetSpy.mockReturnValue(false);
 			const req = mock<OwnerRequest.Post>({ body: { email: 'invalid email' } });
 			await expect(controller.setupOwner(req, mock())).rejects.toThrowError(
 				new BadRequestError('Invalid email address'),
@@ -51,7 +51,7 @@ describe('OwnerController', () => {
 		describe('should throw if the password is invalid', () => {
 			Object.entries(badPasswords).forEach(([password, errorMessage]) => {
 				it(password, async () => {
-					config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
+					configGetSpy.mockReturnValue(false);
 					const req = mock<OwnerRequest.Post>({ body: { email: 'valid@email.com', password } });
 					await expect(controller.setupOwner(req, mock())).rejects.toThrowError(
 						new BadRequestError(errorMessage),
@@ -61,7 +61,7 @@ describe('OwnerController', () => {
 		});
 
 		it('should throw a BadRequestError if firstName & lastName are missing ', async () => {
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
+			configGetSpy.mockReturnValue(false);
 			const req = mock<OwnerRequest.Post>({
 				body: { email: 'valid@email.com', password: 'NewPassword123', firstName: '', lastName: '' },
 			});
@@ -86,7 +86,7 @@ describe('OwnerController', () => {
 				user,
 			});
 			const res = mock<Response>();
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
+			configGetSpy.mockReturnValue(false);
 			userService.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
