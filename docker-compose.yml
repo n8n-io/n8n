@@ -7,7 +7,10 @@ services:
     environment:
       - N8N_PROTOCOL=https
       - N8N_HOST=${DOMAIN}
-      - WEBHOOK_URL=${DOMAIN}
+      - WEBHOOK_URL=https://${DOMAIN}/
+      - WEBHOOK_TUNNEL_URL=https://${DOMAIN}
+      - VUE_APP_URL_BASE_API=https://${DOMAIN}
+      - N8N_PUSH_BACKEND=sse
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=${POSTGRES_HOST}
       - DB_POSTGRESDB_PORT=5432
