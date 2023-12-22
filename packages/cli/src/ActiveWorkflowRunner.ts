@@ -69,6 +69,7 @@ import { ActivationErrorsService } from '@/ActivationErrors.service';
 import type { Scope } from '@n8n/permissions';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
@@ -720,6 +721,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
+	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
