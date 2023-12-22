@@ -47,7 +47,12 @@
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button @click="closeDialog" float="right" :label="$locale.baseText('about.close')" />
+				<n8n-button
+					@click="closeDialog"
+					float="right"
+					:label="$locale.baseText('about.close')"
+					data-test-id="close-about-modal-button"
+				/>
 			</div>
 		</template>
 	</Modal>

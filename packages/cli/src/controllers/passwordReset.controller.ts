@@ -96,7 +96,7 @@ export class PasswordResetController {
 		if (
 			isSamlCurrentAuthenticationMethod() &&
 			!(
-				(user && (await user.hasGlobalScope('user:resetPassword'))) === true ||
+				(user && user.hasGlobalScope('user:resetPassword')) === true ||
 				user?.settings?.allowSSOManualLogin === true
 			)
 		) {

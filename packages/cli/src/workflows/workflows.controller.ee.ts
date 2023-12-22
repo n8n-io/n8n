@@ -27,6 +27,8 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { WorkflowService } from './workflow.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export const EEWorkflowController = express.Router();
 
@@ -66,15 +68,11 @@ EEWorkflowController.put(
 		if (!ownsWorkflow || !workflow) {
 			workflow = undefined;
 			// Allow owners/admins to share
-			if (await req.user.hasGlobalScope('workflow:share')) {
-				const sharedRes = await Container.get(EnterpriseWorkflowService).getSharing(
-					req.user,
-					workflowId,
-					{
-						allowGlobalScope: true,
-						globalScope: 'workflow:share',
-					},
-				);
+			if (req.user.hasGlobalScope('workflow:share')) {
+				const sharedRes = await Container.get(WorkflowService).getSharing(req.user, workflowId, {
+					allowGlobalScope: true,
+					globalScope: 'workflow:share',
+				});
 				workflow = sharedRes?.workflow;
 			}
 			if (!workflow) {
@@ -132,20 +130,20 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
-
-		const workflow = await enterpriseWorkflowService.get({ id: workflowId }, { relations });
+		const workflow = await Container.get(WorkflowRepository).get({ id: workflowId }, { relations });
 
 		if (!workflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-		if (!userSharing && !(await req.user.hasGlobalScope('workflow:read'))) {
+		if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
 			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
+
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 
 		enterpriseWorkflowService.addOwnerAndSharings(workflow);
 		await enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
@@ -253,7 +251,7 @@ EEWorkflowController.get(
 		try {
 			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user);
 
-			const { workflows: data, count } = await Container.get(EnterpriseWorkflowService).getMany(
+			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
 				sharedWorkflowIds,
 				req.listQueryOptions,
 			);
@@ -283,7 +281,7 @@ EEWorkflowController.patch(
 			req.user,
 		);
 
-		const updatedWorkflow = await Container.get(EnterpriseWorkflowService).update(
+		const updatedWorkflow = await Container.get(WorkflowService).update(
 			req.user,
 			safeWorkflow,
 			workflowId,
@@ -313,7 +311,7 @@ EEWorkflowController.post(
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 
-		return Container.get(EnterpriseWorkflowService).runManually(
+		return Container.get(WorkflowService).runManually(
 			req.body,
 			req.user,
 			GenericHelpers.getSessionId(req),

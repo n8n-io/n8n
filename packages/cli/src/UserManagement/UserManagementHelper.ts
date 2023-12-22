@@ -6,7 +6,6 @@ import type { User } from '@db/entities/User';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import { UserRepository } from '@db/repositories/user.repository';
 import type { Scope } from '@n8n/permissions';
 
 export function isSharingEnabled(): boolean {
@@ -24,14 +23,6 @@ export function getInstanceBaseUrl(): string {
 
 export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
 	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
-}
-
-export async function getUserById(userId: string): Promise<User> {
-	const user = await Container.get(UserRepository).findOneOrFail({
-		where: { id: userId },
-		relations: ['globalRole'],
-	});
-	return user;
 }
 
 // return the difference between two arrays
@@ -58,7 +49,7 @@ export function rightDiff<T1, T2>(
  * Build a `where` clause for a TypeORM entity search,
  * checking for member access if the user is not an owner.
  */
-export async function whereClause({
+export function whereClause({
 	user,
 	entityType,
 	globalScope,
@@ -70,10 +61,10 @@ export async function whereClause({
 	globalScope: Scope;
 	entityId?: string;
 	roles?: string[];
-}): Promise<WhereClause> {
+}): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	if (!(await user.hasGlobalScope(globalScope))) {
+	if (!user.hasGlobalScope(globalScope)) {
 		where.user = { id: user.id };
 		if (roles?.length) {
 			where.role = { name: In(roles) };
