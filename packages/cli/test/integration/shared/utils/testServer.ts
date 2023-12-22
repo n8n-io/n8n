@@ -14,14 +14,13 @@ import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
+import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
-import { InternalHooks } from '@/InternalHooks';
 import { LicenseMocker } from '../license';
-import { PasswordUtility } from '@/services/password.utility';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -156,8 +155,8 @@ export const setupTestServer = ({
 					case 'eventBus':
 						const { EventBusController } = await import('@/eventbus/eventBus.controller');
 						const { EventBusControllerEE } = await import('@/eventbus/eventBus.controller.ee');
-						registerController(app, config, new EventBusController());
-						registerController(app, config, new EventBusControllerEE());
+						registerController(app, config, Container.get(EventBusController));
+						registerController(app, config, Container.get(EventBusControllerEE));
 						break;
 
 					case 'auth':
@@ -171,17 +170,11 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { handleLdapInit } = await import('@/Ldap/helpers');
 						const { LdapController } = await import('@/controllers/ldap.controller');
 						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
-						const { service, sync } = LdapManager.getInstance();
-						registerController(
-							app,
-							config,
-							new LdapController(service, sync, Container.get(InternalHooks)),
-						);
+						registerController(app, config, Container.get(LdapController));
 						break;
 
 					case 'saml':
@@ -218,70 +211,18 @@ export const setupTestServer = ({
 						break;
 
 					case 'owner':
-						const { UserService } = await import('@/services/user.service');
-						const { SettingsRepository } = await import('@db/repositories/settings.repository');
 						const { OwnerController } = await import('@/controllers/owner.controller');
-						registerController(
-							app,
-							config,
-							new OwnerController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(SettingsRepository),
-								Container.get(UserService),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, config, Container.get(OwnerController));
 						break;
 
 					case 'users':
-						const { SharedCredentialsRepository } = await import(
-							'@db/repositories/sharedCredentials.repository'
-						);
-						const { SharedWorkflowRepository } = await import(
-							'@db/repositories/sharedWorkflow.repository'
-						);
-						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-						const { UserService: US } = await import('@/services/user.service');
-						const { ExternalHooks: EH } = await import('@/ExternalHooks');
-						const { RoleService: RS } = await import('@/services/role.service');
 						const { UsersController } = await import('@/controllers/users.controller');
-						registerController(
-							app,
-							config,
-							new UsersController(
-								logger,
-								Container.get(EH),
-								Container.get(InternalHooks),
-								Container.get(SharedCredentialsRepository),
-								Container.get(SharedWorkflowRepository),
-								Container.get(ActiveWorkflowRunner),
-								Container.get(RS),
-								Container.get(US),
-								Container.get(License),
-							),
-						);
+						registerController(app, config, Container.get(UsersController));
 						break;
 
 					case 'invitations':
 						const { InvitationController } = await import('@/controllers/invitation.controller');
-						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
-						const { UserService: USE } = await import('@/services/user.service');
-
-						registerController(
-							app,
-							config,
-							new InvitationController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(EHS),
-								Container.get(USE),
-								Container.get(License),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, config, Container.get(InvitationController));
 						break;
 
 					case 'tags':

@@ -1,24 +1,23 @@
+import { Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { Authorized, Post, RestController } from '@/decorators';
-import { Config } from '@/config';
+import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 
+@Service()
 @Authorized()
 @RestController('/node-types')
 export class NodeTypesController {
-	constructor(
-		private readonly config: Config,
-		private readonly nodeTypes: NodeTypes,
-	) {}
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	@Post('/')
 	async getNodeInfo(req: Request) {
 		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
-		const defaultLocale = this.config.getEnv('defaultLocale');
+		const defaultLocale = config.getEnv('defaultLocale');
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {

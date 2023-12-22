@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
@@ -31,6 +32,7 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 // Controller
 // ----------------------------------------
 
+@Service()
 @Authorized()
 @RestController('/eventbus')
 export class EventBusController {

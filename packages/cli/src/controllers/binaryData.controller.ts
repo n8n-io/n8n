@@ -4,8 +4,8 @@ import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n
 import { Get, RestController } from '@/decorators';
 import { BinaryDataRequest } from '@/requests';
 
-@RestController('/binary-data')
 @Service()
+@RestController('/binary-data')
 export class BinaryDataController {
 	constructor(private readonly binaryDataService: BinaryDataService) {}
 

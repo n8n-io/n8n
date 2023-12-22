@@ -1,7 +1,6 @@
 import type { CookieOptions, Response } from 'express';
 import { anyObject, captor, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
-import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { Config } from '@/config';
@@ -16,20 +15,21 @@ import { badPasswords } from '../shared/testData';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
+import type { InternalHooks } from '@/InternalHooks';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
-	const internalHooks = mock<IInternalHooksClass>();
+	const internalHooks = mock<InternalHooks>();
 	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
-		config,
 		mock(),
 		internalHooks,
 		settingsRepository,
 		userService,
 		Container.get(PasswordUtility),
+		mock(),
 	);
 
 	describe('setupOwner', () => {

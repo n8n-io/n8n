@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import express from 'express';
 import { eventBus } from './MessageEventBus/MessageEventBus';
 import {
@@ -51,6 +52,7 @@ const isMessageEventBusDestinationOptions = (
 // Controller
 // ----------------------------------------
 
+@Service()
 @Authorized()
 @RestController('/eventbus')
 export class EventBusControllerEE {

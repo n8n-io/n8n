@@ -1,29 +1,31 @@
+import { Service } from 'typedi';
 import validator from 'validator';
+import { Response } from 'express';
+
+import config from '@/config';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { issueCookie } from '@/auth/jwt';
-import { Response } from 'express';
-import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import { IInternalHooksClass } from '@/Interfaces';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
 
+@Service()
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
 	constructor(
-		private readonly config: Config,
 		private readonly logger: Logger,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly internalHooks: InternalHooks,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly postHog?: PostHogClient,
+		private readonly postHog: PostHogClient,
 	) {}
 
 	/**
@@ -35,7 +37,7 @@ export class OwnerController {
 		const { email, firstName, lastName, password } = req.body;
 		const { id: userId, globalRole } = req.user;
 
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because instance owner already exists',
 				{
@@ -94,7 +96,7 @@ export class OwnerController {
 			{ value: JSON.stringify(true) },
 		);
 
-		this.config.set('userManagement.isInstanceOwnerSetUp', true);
+		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId });
 
