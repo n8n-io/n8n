@@ -57,6 +57,7 @@ describe('OnShutdown', () => {
 		}
 
 		expect(shutdownService.register).toHaveBeenCalledTimes(1);
+		// @ts-expect-error We are checking internal parts of the shutdown service
 		expect(shutdownService.handlersByPriority[10].length).toEqual(1);
 	});
 

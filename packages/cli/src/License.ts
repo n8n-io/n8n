@@ -31,7 +31,7 @@ export class License {
 
 	private redisPublisher: RedisServicePubSubPublisher;
 
-	private isShuttingdown = false;
+	private isShuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -46,7 +46,7 @@ export class License {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
-		if (this.isShuttingdown) {
+		if (this.isShuttingDown) {
 			this.logger.warn('License manager already shutting down');
 			return;
 		}
@@ -203,7 +203,7 @@ export class License {
 	async shutdown() {
 		// Shut down License manager to unclaim any floating entitlements
 		// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
-		this.isShuttingdown = true;
+		this.isShuttingDown = true;
 
 		if (!this.manager) {
 			return;

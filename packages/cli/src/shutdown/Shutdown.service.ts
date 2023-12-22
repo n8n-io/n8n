@@ -25,7 +25,7 @@ export class ComponentShutdownError extends ApplicationError {
 /** Service responsible for orchestrating a graceful shutdown of the application */
 @Service()
 export class ShutdownService {
-	readonly handlersByPriority: ShutdownHandler[][] = [];
+	private readonly handlersByPriority: ShutdownHandler[][] = [];
 
 	private shutdownPromise: Promise<void> | undefined;
 

@@ -22,7 +22,7 @@ import { type ServiceClass, ShutdownService } from '@/shutdown/Shutdown.service'
  * ```
  */
 export const OnShutdown =
-	(priority: number = 100): MethodDecorator =>
+	(priority = 100): MethodDecorator =>
 	(prototype, propertyKey, descriptor) => {
 		const serviceClass = prototype.constructor as ServiceClass;
 		const methodName = String(propertyKey);
