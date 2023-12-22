@@ -263,23 +263,12 @@ export abstract class AbstractServer {
 
 		this.logger.debug(`Shutting down ${this.protocol} server`);
 
-		const timeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+		this.server.close((error) => {
+			if (error) {
+				this.logger.error(`Error while shutting down ${this.protocol} server`, { error });
+			}
 
-		const forceConnectionCloseTimeout = setTimeout(() => {
-			this.server.closeAllConnections();
-		}, timeoutInS * 1000);
-
-		const stopServerPromise = new Promise<void>((resolve, reject) => {
-			this.server.close((error) => {
-				clearTimeout(forceConnectionCloseTimeout);
-				if (error) {
-					reject(error);
-				}
-
-				resolve();
-			});
+			this.logger.debug(`${this.protocol} server shut down`);
 		});
-
-		await stopServerPromise;
 	}
 }
