@@ -32,6 +32,7 @@ import type {
 	IWorkflowsMap,
 	WorkflowsState,
 	NodeMetadataMap,
+	WorkflowMetadata,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -653,6 +654,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow = {
 				...this.workflow,
 				tags: updated as IWorkflowDb['tags'],
+			};
+		},
+
+		setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+			this.workflow.meta = metadata;
+		},
+
+		addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+			this.workflow.meta = {
+				...this.workflow.meta,
+				...data,
 			};
 		},
 
