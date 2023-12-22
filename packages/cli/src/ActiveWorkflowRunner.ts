@@ -45,7 +45,6 @@ import type {
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
-import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionsService } from './executions/executions.service';
@@ -57,44 +56,40 @@ import {
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
-import { whereClause } from './UserManagement/UserManagementHelper';
 import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
-import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
-import type { Scope } from '@n8n/permissions';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+
+interface QueuedActivation {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
+}
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
-	activeWorkflows = new ActiveWorkflows();
-
-	private queuedActivations: {
-		[workflowId: string]: {
-			activationMode: WorkflowActivateMode;
-			lastTimeout: number;
-			timeout: NodeJS.Timeout;
-			workflowData: IWorkflowDb;
-		};
-	} = {};
+	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly activeWorkflows: ActiveWorkflows,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionsService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly activeWorkflowsService: ActiveWorkflowsService,
 	) {}
 
 	async init() {
@@ -119,7 +114,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
-		const activeWorkflows = await this.allActiveInStorage();
+		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIdsInStorage();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
@@ -270,50 +265,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Get the IDs of active workflows from storage.
-	 */
-	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
-		const isFullAccess = !options?.user || options.user.hasGlobalScope(options.scope);
-
-		const activationErrors = await this.activationErrorsService.getAll();
-
-		if (isFullAccess) {
-			const activeWorkflows = await this.workflowRepository.find({
-				select: ['id'],
-				where: { active: true },
-			});
-
-			return activeWorkflows
-				.map((workflow) => workflow.id)
-				.filter((workflowId) => !activationErrors[workflowId]);
-		}
-
-		const where = whereClause({
-			user: options.user,
-			globalScope: 'workflow:list',
-			entityType: 'workflow',
-		});
-
-		const activeWorkflows = await this.workflowRepository.find({
-			select: ['id'],
-			where: { active: true },
-		});
-
-		const activeIds = activeWorkflows.map((workflow) => workflow.id);
-
-		Object.assign(where, { workflowId: In(activeIds) });
-
-		const sharings = await this.sharedWorkflowRepository.find({
-			select: ['workflowId'],
-			where,
-		});
-
-		return sharings
-			.map((sharing) => sharing.workflowId)
-			.filter((workflowId) => !activationErrors[workflowId]);
-	}
-
-	/**
 	 * Returns if the workflow is stored as `active`.
 	 *
 	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
@@ -326,13 +277,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 
 		return !!workflow?.active;
-	}
-
-	/**
-	 * Return error if there was a problem activating the workflow
-	 */
-	async getActivationError(workflowId: string) {
-		return this.activationErrorsService.get(workflowId);
 	}
 
 	/**
