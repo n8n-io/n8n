@@ -490,4 +490,19 @@ describe('NDV', () => {
 		ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
 		ndv.actions.close();
 	});
+	it('Should handle mismatched option attributes', () => {
+		workflowPage.actions.addInitialNodeToCanvas('LDAP', { keepNdvOpen: true, action: 'Create a new entry' });
+		// Add some attributes in Create operation
+		cy.getByTestId('parameter-item').contains('Add Attributes').click();
+		ndv.actions.changeNodeOperation('Update');
+		// Attributes should be empty after operation change
+		cy.getByTestId('parameter-item').contains('Currently no items exist').should('exist');
+	});
+	it('Should keep RLC values after operation change', () => {
+		const TEST_DOC_ID = '1111';
+		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', { keepNdvOpen: true, action: 'Append row in sheet' });
+		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
+		ndv.actions.changeNodeOperation('Update Row');
+		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
+	});
 });
