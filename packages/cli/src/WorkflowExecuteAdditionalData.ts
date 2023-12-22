@@ -48,7 +48,6 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
@@ -68,6 +67,7 @@ import { Logger } from './Logger';
 import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionProgress';
 import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { UrlService } from './services/url.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -133,7 +133,7 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
+		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
 			workflowData.id
 		}/executions/${executionId}`;
 	}
@@ -965,7 +965,7 @@ export async function getBase(
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
 	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
 

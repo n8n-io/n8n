@@ -5,7 +5,6 @@ import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 
 import { Get, Post, RestController } from '@/decorators';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
@@ -19,6 +18,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
@@ -41,6 +41,7 @@ export class PasswordResetController {
 		private readonly mailer: UserManagementMailer,
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
+		private readonly urlService: UrlService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 	) {}
@@ -130,7 +131,7 @@ export class PasswordResetController {
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: getInstanceBaseUrl(),
+				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({

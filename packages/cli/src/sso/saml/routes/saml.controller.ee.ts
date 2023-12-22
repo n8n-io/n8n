@@ -1,6 +1,5 @@
 import express from 'express';
 import { Container, Service } from 'typedi';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import {
 	Authorized,
 	Get,
@@ -35,12 +34,16 @@ import url from 'url';
 import querystring from 'querystring';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 @Authorized()
 @RestController('/sso/saml')
 export class SamlController {
-	constructor(private samlService: SamlService) {}
+	constructor(
+		private readonly samlService: SamlService,
+		private readonly urlService: UrlService,
+	) {}
 
 	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
@@ -147,10 +150,10 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
+						return res.redirect(this.urlService.getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
 						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
-						return res.redirect(getInstanceBaseUrl() + redirectUrl);
+						return res.redirect(this.urlService.getInstanceBaseUrl() + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
