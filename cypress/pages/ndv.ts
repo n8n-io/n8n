@@ -98,6 +98,8 @@ export class NDV extends BasePage {
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
+		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
+		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 	};
 
 	actions = {
