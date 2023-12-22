@@ -1,7 +1,7 @@
 import Container, { Service } from 'typedi';
-import type { IDataObject, INode, IPinData } from 'n8n-workflow';
-import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n-workflow';
-import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
+import type { INode, IPinData } from 'n8n-workflow';
+import { NodeApiError, Workflow } from 'n8n-workflow';
+import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
@@ -25,7 +25,7 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
-import { isStringArray, isWorkflowIdValid } from '@/utils';
+import { isStringArray } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 import type { Scope } from '@n8n/permissions';
@@ -118,13 +118,6 @@ export class WorkflowService {
 		}
 
 		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
-	}
-
-	async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
-		return this.workflowRepository.findOne({
-			where: workflow,
-			relations: options?.relations,
-		});
 	}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
@@ -511,57 +504,5 @@ export class WorkflowService {
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
-	}
-
-	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
-		const qb = this.workflowRepository.createQueryBuilder('workflow');
-		return qb
-			.update()
-			.set({
-				triggerCount,
-				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
-						return 'updatedAt';
-					}
-					return '"updatedAt"';
-				},
-			})
-			.where('id = :id', { id })
-			.execute();
-	}
-
-	/**
-	 * Saves the static data if it changed
-	 */
-	async saveStaticData(workflow: Workflow): Promise<void> {
-		if (workflow.staticData.__dataChanged === true) {
-			// Static data of workflow changed and so has to be saved
-			if (isWorkflowIdValid(workflow.id)) {
-				// Workflow is saved so update in database
-				try {
-					await this.saveStaticDataById(workflow.id, workflow.staticData);
-					workflow.staticData.__dataChanged = false;
-				} catch (error) {
-					ErrorReporter.error(error);
-					this.logger.error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
-						{ workflowId: workflow.id },
-					);
-				}
-			}
-		}
-	}
-
-	/**
-	 * Saves the given static data on workflow
-	 *
-	 * @param {(string)} workflowId The id of the workflow to save data on
-	 * @param {IDataObject} newStaticData The static data to save
-	 */
-	async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
-		await this.workflowRepository.update(workflowId, {
-			staticData: newStaticData,
-		});
 	}
 }

@@ -37,6 +37,7 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
+	CloseFunction,
 	ConnectionTypes,
 	ContextType,
 	FieldType,
@@ -162,6 +163,13 @@ axios.defaults.paramsSerializer = (params) => {
 	}
 	return stringify(params, { arrayFormat: 'indices' });
 };
+axios.interceptors.request.use((config) => {
+	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.data === undefined) {
+		config.headers.setContentType(false, false);
+	}
+	return config;
+});
 
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
@@ -3111,6 +3119,7 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
 	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -3287,7 +3296,11 @@ export function getExecuteFunctions(
 						};
 
 						try {
-							return await nodeType.supplyData.call(context, itemIndex);
+							const response = await nodeType.supplyData.call(context, itemIndex);
+							if (response.closeFunction) {
+								closeFunctions.push(response.closeFunction);
+							}
+							return response;
 						} catch (error) {
 							// Propagate errors from sub-nodes
 							if (error.functionality === 'configuration-node') throw error;

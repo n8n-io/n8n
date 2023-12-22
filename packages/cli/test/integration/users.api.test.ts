@@ -18,6 +18,10 @@ import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+import { ExecutionsService } from '@/executions/executions.service';
+import { mockInstance } from '../shared/mocking';
+
+mockInstance(ExecutionsService);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['users'],

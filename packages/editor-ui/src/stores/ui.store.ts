@@ -410,6 +410,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			const style = getComputedStyle(document.body);
 			return Number(style.getPropertyValue('--header-height'));
 		},
+		isAnyModalOpen(): boolean {
+			return this.modalStack.length > 0;
+		},
 	},
 	actions: {
 		setTheme(theme: ThemeOption): void {
