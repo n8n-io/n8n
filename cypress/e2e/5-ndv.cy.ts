@@ -471,7 +471,8 @@ describe('NDV', () => {
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
-	})
+	});
+
 	it('should show node name and version in settings', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
 
@@ -516,5 +517,47 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
 		ndv.getters.outputDisplayMode().find('label').eq(2).click({force: true});
 		ndv.getters.outputDataContainer().findChildByTestId('run-data-schema-item').find('> span').should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
+	});
+
+	it('should properly show node execution indicator', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code');
+		workflowPage.actions.openNode('Code');
+		// Should not show run info before execution
+		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
+		ndv.getters.nodeRunErrorIndicator().should('not.exist');
+		ndv.getters.nodeExecuteButton().click();
+		ndv.getters.nodeRunSuccessIndicator().should('exist');
+	});
+
+	it('should properly show node execution indicator for multiple nodes', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code');
+		workflowPage.actions.openNode('Code');
+		ndv.actions.typeIntoParameterInput('jsCode', 'testets');
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.executeWorkflow();
+		// Manual tigger node should show success indicator
+		workflowPage.actions.openNode('When clicking "Execute Workflow"');
+		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		// Code node should show error
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.openNode('Code');
+		ndv.getters.nodeRunErrorIndicator().should('exist');
+	});
+
+	it('Should handle mismatched option attributes', () => {
+		workflowPage.actions.addInitialNodeToCanvas('LDAP', { keepNdvOpen: true, action: 'Create a new entry' });
+		// Add some attributes in Create operation
+		cy.getByTestId('parameter-item').contains('Add Attributes').click();
+		ndv.actions.changeNodeOperation('Update');
+		// Attributes should be empty after operation change
+		cy.getByTestId('parameter-item').contains('Currently no items exist').should('exist');
+	});
+
+	it('Should keep RLC values after operation change', () => {
+		const TEST_DOC_ID = '1111';
+		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', { keepNdvOpen: true, action: 'Append row in sheet' });
+		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
+		ndv.actions.changeNodeOperation('Update Row');
+		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
 	});
 });

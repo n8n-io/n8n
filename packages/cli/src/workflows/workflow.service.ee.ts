@@ -18,6 +18,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -26,6 +27,7 @@ export class EnterpriseWorkflowService {
 		private readonly userService: UserService,
 		private readonly roleService: RoleService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async isOwned(
@@ -182,7 +184,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
-		const previousVersion = await this.workflowService.get({ id: workflowId });
+		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
 		if (!previousVersion) {
 			throw new NotFoundError('Workflow not found');

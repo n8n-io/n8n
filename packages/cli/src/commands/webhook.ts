@@ -19,7 +19,7 @@ export class Webhook extends BaseCommand {
 		help: flags.help({ char: 'h' }),
 	};
 
-	protected server = new WebhookServer();
+	protected server = Container.get(WebhookServer);
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);

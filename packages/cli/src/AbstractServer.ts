@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
@@ -9,7 +9,8 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import type { N8nInstanceType, IExternalHooksClass } from '@/Interfaces';
+import { N8nInstanceType } from '@/Interfaces';
+import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
@@ -20,7 +21,9 @@ import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
+@Service()
 export abstract class AbstractServer {
 	protected logger: Logger;
 
@@ -245,5 +248,27 @@ export abstract class AbstractServer {
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
+	}
+
+	/**
+	 * Stops the HTTP(S) server from accepting new connections. Gives all
+	 * connections configured amount of time to finish their work and
+	 * then closes them forcefully.
+	 */
+	@OnShutdown()
+	async onShutdown(): Promise<void> {
+		if (!this.server) {
+			return;
+		}
+
+		this.logger.debug(`Shutting down ${this.protocol} server`);
+
+		this.server.close((error) => {
+			if (error) {
+				this.logger.error(`Error while shutting down ${this.protocol} server`, { error });
+			}
+
+			this.logger.debug(`${this.protocol} server shut down`);
+		});
 	}
 }
