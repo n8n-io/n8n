@@ -425,4 +425,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await this.delete(batch);
 		} while (executionIds.length > 0);
 	}
+
+	async getIdsSince(date: Date) {
+		return this.find({
+			select: ['id'],
+			where: {
+				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+			},
+		}).then((executions) => executions.map(({ id }) => id));
+	}
 }
