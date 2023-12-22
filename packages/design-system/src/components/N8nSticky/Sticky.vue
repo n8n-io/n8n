@@ -44,6 +44,7 @@
 					:rows="5"
 					@blur="onInputBlur"
 					@update:modelValue="onUpdateModelValue"
+					@wheel="onInputScroll"
 					ref="input"
 				/>
 			</div>
@@ -178,6 +179,12 @@ export default defineComponent({
 		onResizeStart() {
 			this.isResizing = true;
 			this.$emit('resizestart');
+		},
+		onInputScroll(event: WheelEvent) {
+			// Pass through zoom events but hold regular scrolling
+			if (!event.ctrlKey) {
+				event.stopPropagation();
+			}
 		},
 	},
 	watch: {
