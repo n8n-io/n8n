@@ -36,7 +36,6 @@ describe('Templates', () => {
 	});
 
 	it('should save template id with the workflow', () => {
-		cy.intercept('POST', '/rest/workflows').as('saveWorkflow');
 		cy.visit(templatesPage.url);
 		templatesPage.getters.firstTemplateCard().click();
 		cy.url().should('include', '/templates/');
@@ -48,12 +47,15 @@ describe('Templates', () => {
 			cy.url().should('include', '/workflow/new');
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
-			cy.wait('@saveWorkflow').then((interception) => {
-				expect(interception.request.body.meta.templateId).to.equal(templateId);
+			workflowPage.actions.selectAll();
+			workflowPage.actions.hitCopy();
+
+			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
+			// Check workflow JSON by copying it to clipboard
+			cy.readClipboard().then((workflowJSON) => {
+				expect(workflowJSON).to.contain(`"templateId": "${templateId}"`);
 			});
 		});
-
-
 	});
 
 	it('can open template with images and hides workflow screenshots', () => {
