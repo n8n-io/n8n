@@ -8,9 +8,7 @@ import { LdapConfiguration } from '@/Ldap/types';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Service } from 'typedi';
 
-@Service()
 @Authorized()
 @RestController('/ldap')
 export class LdapController {

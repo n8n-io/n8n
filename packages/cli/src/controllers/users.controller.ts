@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { FindManyOptions } from 'typeorm';
 import { In, Not } from 'typeorm';
 import { User } from '@db/entities/User';
@@ -23,7 +22,6 @@ import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 
-@Service()
 @Authorized()
 @RestController('/users')
 export class UsersController {

@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { Request } from 'express';
 import { join } from 'path';
 import { access } from 'fs/promises';
@@ -16,7 +15,6 @@ export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
 }
 
-@Service()
 @Authorized()
 @RestController('/')
 export class TranslationController {

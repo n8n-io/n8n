@@ -1,5 +1,4 @@
 import express from 'express';
-import { Service } from 'typedi';
 import {
 	Authorized,
 	Get,
@@ -36,7 +35,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UrlService } from '@/services/url.service';
 
-@Service()
 @Authorized()
 @RestController('/sso/saml')
 export class SamlController {

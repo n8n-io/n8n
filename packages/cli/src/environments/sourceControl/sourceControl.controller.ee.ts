@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { PullResult } from 'simple-git';
 import express from 'express';
 import { Authorized, Get, Post, Patch, RestController, RequireGlobalScope } from '@/decorators';
@@ -11,16 +10,15 @@ import { SourceControlRequest } from './types/requests';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import type { ImportResult } from './types/importResult';
 import { InternalHooks } from '@/InternalHooks';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-@Service()
 @Authorized()
-@RestController(`/${SOURCE_CONTROL_API_ROOT}`)
+@RestController('/source-control')
 export class SourceControlController {
 	constructor(
 		private readonly sourceControlService: SourceControlService,

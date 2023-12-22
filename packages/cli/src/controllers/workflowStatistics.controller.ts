@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Response, NextFunction } from 'express';
 import { Get, Middleware, RestController } from '@/decorators';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
@@ -18,7 +17,6 @@ interface WorkflowStatisticsData<T> {
 	manualError: T;
 }
 
-@Service()
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(

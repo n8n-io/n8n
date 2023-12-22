@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
 import {
@@ -42,7 +41,6 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
-@Service()
 @Authorized()
 @RestController('/community-packages')
 export class CommunityPackagesController {

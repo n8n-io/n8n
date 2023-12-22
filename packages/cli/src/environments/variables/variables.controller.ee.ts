@@ -1,5 +1,3 @@
-import { Service } from 'typedi';
-
 import { VariablesRequest } from '@/requests';
 import {
 	Authorized,
@@ -17,7 +15,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 
-@Service()
 @Authorized()
 @RestController('/variables')
 export class VariablesController {

@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import { Request } from 'express';
@@ -7,7 +6,6 @@ import { Authorized, Post, RestController } from '@/decorators';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 
-@Service()
 @Authorized()
 @RestController('/node-types')
 export class NodeTypesController {

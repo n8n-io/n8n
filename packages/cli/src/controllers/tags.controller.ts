@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
 import {
@@ -15,7 +14,6 @@ import { TagService } from '@/services/tag.service';
 import { TagsRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-@Service()
 @Authorized()
 @RestController('/tags')
 export class TagsController {

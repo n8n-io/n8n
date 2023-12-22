@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import validator from 'validator';
 import { Response } from 'express';
 
@@ -15,7 +14,6 @@ import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
 
-@Service()
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {

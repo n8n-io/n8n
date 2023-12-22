@@ -1,5 +1,4 @@
 import { In } from 'typeorm';
-import { Service } from 'typedi';
 import { Response } from 'express';
 
 import config from '@/config';
@@ -20,7 +19,6 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 
-@Service()
 @Authorized()
 @RestController('/invitations')
 export class InvitationController {

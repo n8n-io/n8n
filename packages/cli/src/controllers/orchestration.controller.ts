@@ -1,10 +1,8 @@
-import { Service } from 'typedi';
 import { Authorized, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
-import { License } from '../License';
+import { License } from '@/License';
 
-@Service()
 @Authorized()
 @RestController('/orchestration')
 export class OrchestrationController {
