@@ -49,7 +49,7 @@ export const pushConnection = defineComponent({
 		};
 	},
 	created() {
-		this.pushStore.addEventListener((message) => {
+		this.pushStore.addEventListener('workflowExecutions', (message) => {
 			void this.pushMessageReceived(message);
 		});
 	},
