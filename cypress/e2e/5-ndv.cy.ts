@@ -502,7 +502,7 @@ describe('NDV', () => {
 	it('should properly show node execution indicator for multiple nodes', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Code');
 		workflowPage.actions.openNode('Code');
-		ndv.actions.clearParameterInput('jsCode');
+		ndv.actions.typeIntoParameterInput('jsCode', 'testets');
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator

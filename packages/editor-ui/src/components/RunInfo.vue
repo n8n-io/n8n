@@ -1,5 +1,11 @@
 <template>
-	<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasStaleData">
+	<n8n-info-tip
+		v-if="hasStaleData"
+		theme="warning"
+		type="tooltip"
+		tooltipPlacement="right"
+		data-test-id="node-run-info-stale"
+	>
 		<span
 			v-html="
 				$locale.baseText(
