@@ -701,14 +701,26 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let shouldAddWebhooks = true;
 		let shouldAddTriggersAndPollers = true;
 
-		if (this.multiMainSetup.isEnabled && activationMode !== 'leadershipChange') {
-			shouldAddWebhooks = this.multiMainSetup.isLeader;
-			shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
-		}
-
-		if (this.multiMainSetup.isEnabled && activationMode === 'leadershipChange') {
-			shouldAddWebhooks = false;
-			shouldAddTriggersAndPollers = true;
+		/**
+		 * In a multi-main scenario, webhooks are stored in the database, while triggers
+		 * and pollers are run only by the leader main instance.
+		 *
+		 * - During a regular workflow activation (i.e. not leadership change), only the
+		 * leader should add webhooks to prevent duplicate insertions, and only the leader
+		 * should handle triggers and pollers to prevent duplicate work.
+		 *
+		 * - During a leadership change, webhooks remain in storage and so need not be added
+		 * again, and the new leader should take over the triggers and pollers that stopped
+		 * running when the former leader became unresponsive.
+		 */
+		if (this.multiMainSetup.isEnabled) {
+			if (activationMode !== 'leadershipChange') {
+				shouldAddWebhooks = this.multiMainSetup.isLeader;
+				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+			} else if (activationMode === 'leadershipChange') {
+				shouldAddWebhooks = false;
+				shouldAddTriggersAndPollers = true;
+			}
 		}
 
 		try {
