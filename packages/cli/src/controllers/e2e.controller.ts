@@ -114,7 +114,7 @@ export class E2EController {
 
 	@Post('/push')
 	async pushSend(req: PushRequest) {
-		this.push.send(req.body.type, req.body.data, req.body.sessionId);
+		this.push.broadcast(req.body.type, req.body.data);
 	}
 
 	@Patch('/feature')
