@@ -36,27 +36,12 @@
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
-					v-if="!hasPinData && runsCount === 1"
+					v-if="hasNodeRun && !hasPinData && runsCount === 1"
 					v-show="!outputPanelEditMode.enabled"
 					:taskData="runTaskData"
+					:hasStaleData="staleData"
+					:hasPinData="hasPinData"
 				/>
-
-				<n8n-info-tip
-					theme="warning"
-					type="tooltip"
-					tooltipPlacement="right"
-					v-if="hasNodeRun && staleData"
-				>
-					<span
-						v-html="
-							$locale.baseText(
-								hasPinData
-									? 'ndv.output.staleDataWarning.pinData'
-									: 'ndv.output.staleDataWarning.regular',
-							)
-						"
-					></span>
-				</n8n-info-tip>
 			</div>
 		</template>
 
@@ -352,6 +337,7 @@ export default defineComponent({
 }
 .titleSection {
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-2xs);

@@ -1,5 +1,5 @@
 <template>
-	<el-tooltip v-bind="{ ...$props, ...$attrs }" popper-class="n8n-tooltip">
+	<el-tooltip v-bind="{ ...$props, ...$attrs }" :popperClass="$props.popperClass ?? 'n8n-tooltip'">
 		<slot />
 		<template #content>
 			<slot name="content">

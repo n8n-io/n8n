@@ -14,7 +14,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
-import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -28,6 +27,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { WorkflowService } from './workflow.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 
 export const EEWorkflowController = express.Router();
 
@@ -80,7 +81,7 @@ EEWorkflowController.put(
 		}
 
 		const ownerIds = (
-			await Container.get(EnterpriseWorkflowService).getSharings(
+			await Container.get(WorkflowRepository).getSharings(
 				Db.getConnection().createEntityManager(),
 				workflowId,
 				['shared', 'shared.role'],
@@ -92,12 +93,12 @@ EEWorkflowController.put(
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			await Container.get(EnterpriseWorkflowService).pruneSharings(trx, workflowId, [
+			await Container.get(WorkflowRepository).pruneSharings(trx, workflowId, [
 				...ownerIds,
 				...shareWithIds,
 			]);
 
-			const sharings = await Container.get(EnterpriseWorkflowService).getSharings(trx, workflowId);
+			const sharings = await Container.get(WorkflowRepository).getSharings(trx, workflowId);
 
 			// extract the new sharings that need to be added
 			newShareeIds = rightDiff(
@@ -129,7 +130,7 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const workflow = await Container.get(WorkflowService).get({ id: workflowId }, { relations });
+		const workflow = await Container.get(WorkflowRepository).get({ id: workflowId }, { relations });
 
 		if (!workflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
@@ -168,12 +169,7 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagService).findMany({
-				select: ['id', 'name'],
-				where: {
-					id: In(tagIds),
-				},
-			});
+			newWorkflow.tags = await Container.get(TagRepository).findMany(tagIds);
 		}
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);

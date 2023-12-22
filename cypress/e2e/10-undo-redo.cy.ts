@@ -1,12 +1,14 @@
 import { CODE_NODE_NAME, SET_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
 
 const WorkflowPage = new WorkflowPageClass();
+const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
@@ -353,5 +355,37 @@ describe('Undo/Redo', () => {
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
 					.should('have.css', 'left', `637px`)
 					.should('have.css', 'top', `501px`);
+	});
+
+	it('should not undo/redo when NDV or a modal is open', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: true });
+		// Try while NDV is open
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		ndv.getters.backToCanvas().click();
+		// Try while modal is open
+		cy.getByTestId('menu-item').contains('About n8n').click({ force: true });
+		cy.getByTestId('about-modal').should('be.visible');
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		cy.getByTestId('close-about-modal-button').click();
+		// Should work now
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+	});
+
+	it('should not undo/redo when NDV or a prompt is open', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: false });
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
+		// Try while prompt is open
+		messageBox.getters.header().click();
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		// Close prompt and try again
+		messageBox.actions.cancel();
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});
 });

@@ -4,7 +4,6 @@ import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import localtunnel from 'localtunnel';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
@@ -64,7 +63,7 @@ export class Start extends BaseCommand {
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
-	protected server = new Server();
+	protected server = Container.get(Server);
 
 	private pruningService: PruningService;
 
@@ -101,14 +100,6 @@ export class Start extends BaseCommand {
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
 			await this.externalHooks?.run('n8n.stop', []);
-
-			// Shut down License manager to unclaim any floating entitlements
-			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
-			await Container.get(License).shutdown();
-
-			if (this.pruningService.isPruningEnabled()) {
-				this.pruningService.stopPruning();
-			}
 
 			if (Container.get(MultiMainSetup).isEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
@@ -308,14 +299,13 @@ export class Start extends BaseCommand {
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const tunnelSettings: localtunnel.TunnelConfig = {
-				host: 'https://hooks.n8n.cloud',
-				subdomain: tunnelSubdomain,
-			};
-
+			const { default: localtunnel } = await import('@n8n/localtunnel');
 			const port = config.getEnv('port');
 
-			const webhookTunnel = await localtunnel(port, tunnelSettings);
+			const webhookTunnel = await localtunnel(port, {
+				host: 'https://hooks.n8n.cloud',
+				subdomain: tunnelSubdomain,
+			});
 
 			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);

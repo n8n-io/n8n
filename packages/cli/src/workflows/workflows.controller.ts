@@ -17,7 +17,6 @@ import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowService } from './workflow.service';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -31,6 +30,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NamingService } from '@/services/naming.service';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -56,12 +56,7 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagService).findMany({
-				select: ['id', 'name'],
-				where: {
-					id: In(tagIds),
-				},
-			});
+			newWorkflow.tags = await Container.get(TagRepository).findMany(tagIds);
 		}
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
