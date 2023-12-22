@@ -15,7 +15,7 @@
 		@keydown.stop
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
+			<div class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press">
 					<div
 						v-for="message in messages"
@@ -64,6 +64,7 @@
 							</div>
 						</div>
 					</div>
+					<MessageTyping ref="messageContainer" v-if="isLoading" />
 				</div>
 				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
@@ -146,6 +147,9 @@ import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IUser } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
+// eslint-disable-next-line import/no-unresolved
+import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
 interface ChatMessage {
@@ -170,6 +174,7 @@ export default defineComponent({
 	mixins: [workflowRun],
 	components: {
 		Modal,
+		MessageTyping,
 		RunDataAi,
 	},
 	setup(props, ctx) {
@@ -331,7 +336,7 @@ export default defineComponent({
 						action: string;
 						chatHistory?: unknown[];
 						response?: {
-							chat_history?: unknown[];
+							sessionId?: unknown[];
 						};
 					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
 				)
@@ -343,12 +348,12 @@ export default defineComponent({
 			if (memoryOutputData?.chatHistory) {
 				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
 			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.chat_history as LangChainMessage[];
+				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
 			} else {
 				return [];
 			}
 
-			return chatHistory.map((message) => {
+			return (chatHistory || []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
@@ -404,7 +409,7 @@ export default defineComponent({
 				return;
 			}
 
-			let inputKey = 'chat_input';
+			let inputKey = 'chatInput';
 			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
 				inputKey = 'input';
 			}
@@ -424,9 +429,6 @@ export default defineComponent({
 						[
 							{
 								json: {
-									// TODO: I changed it temporary to "chat_history" from "sessionId" to be
-									//       identical. Probably should be renamed again.
-									chat_history: `test-${currentUser.id || 'unknown'}`,
 									sessionId: `test-${currentUser.id || 'unknown'}`,
 									action: 'sendMessage',
 									[inputKey]: message,
@@ -564,13 +566,18 @@ export default defineComponent({
 		padding-top: 1.5em;
 		margin-right: 1em;
 
+		.chat-message {
+			float: left;
+			margin: var(--spacing-2xs) var(--spacing-s);
+		}
+
 		.message {
 			float: left;
 			position: relative;
 			width: 100%;
 
 			.content {
-				border-radius: var(--border-radius-large);
+				border-radius: var(--border-radius-base);
 				line-height: 1.5;
 				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
@@ -580,8 +587,9 @@ export default defineComponent({
 
 				&.bot {
 					background-color: var(--color-lm-chat-bot-background);
-					border: 1px solid var(--color-lm-chat-bot-border);
+					color: var(--color-lm-chat-bot-color);
 					float: left;
+					border-bottom-left-radius: 0;
 
 					.message-options {
 						left: 1.5em;
@@ -590,9 +598,10 @@ export default defineComponent({
 
 				&.user {
 					background-color: var(--color-lm-chat-user-background);
-					border: 1px solid var(--color-lm-chat-user-border);
+					color: var(--color-lm-chat-user-color);
 					float: right;
 					text-align: right;
+					border-bottom-right-radius: 0;
 
 					.message-options {
 						right: 1.5em;

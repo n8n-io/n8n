@@ -85,7 +85,7 @@ export const genericHelpers = defineComponent({
 		},
 		isRedirectSafe() {
 			const redirect = this.getRedirectQueryParameter();
-			return redirect.startsWith('/');
+			return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
 		},
 		getRedirectQueryParameter() {
 			let redirect = '';

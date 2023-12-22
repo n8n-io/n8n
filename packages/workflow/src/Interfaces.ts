@@ -1634,22 +1634,24 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
-	triggerPanel?: {
-		hideContent?: boolean | string;
-		header?: string;
-		executionsHelp?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-		activationHint?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-	};
+	triggerPanel?:
+		| {
+				hideContent?: boolean | string;
+				header?: string;
+				executionsHelp?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+				activationHint?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+		  }
+		| boolean;
 	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
@@ -1682,8 +1684,8 @@ export interface IWebhookDescription {
 	restartWebhook?: boolean;
 	isForm?: boolean;
 	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
-	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
-	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
+	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
+	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
 
 export interface ProxyInput {

@@ -22,7 +22,7 @@
 		},
 		{
 			"parameters": {
-				"sessionKey": "={{ $json.chat_history }}"
+				"sessionKey": "={{ $json.sessionId }}"
 			},
 			"id": "b416df7b-4802-462f-8f74-f0a71dc4c0be",
 			"name": "Window Buffer Memory",
@@ -35,6 +35,7 @@
 		},
 		{
 			"parameters": {
+				"text": "={{ $json.chatInput }}",
 				"options": {}
 			},
 			"id": "4de25807-a2ef-4453-900e-e00e0021ecdc",
@@ -48,8 +49,7 @@
 		},
 		{
 			"parameters": {
-				"authentication": "n8nAuth",
-				"mode": "hostedChat",
+				"public": true,
 				"options": {
 					"loadPreviousSession": "memory"
 				}
@@ -110,7 +110,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "f05aa63b-fabc-4016-8412-1d4c1d89b81a",
+	"versionId": "6076136f-fdb4-48d9-b483-d1c24c95ef9e",
 	"id": "zaBHnDtj22BzEQ6K",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"

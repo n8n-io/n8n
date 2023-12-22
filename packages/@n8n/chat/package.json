@@ -1,11 +1,12 @@
 {
   "name": "@n8n/chat",
-  "version": "0.4.1",
+  "version": "0.5.2",
   "scripts": {
     "dev": "pnpm run storybook",
-    "build": "run-p type-check build:vite && npm run build:prepare",
+    "build": "run-p type-check build:vite:full && pnpm run build:individual && npm run build:prepare",
     "build:vite": "vite build && npm run build:vite:full",
     "build:vite:full": "INCLUDE_VUE=true vite build",
+    "build:individual": "unbuild",
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
@@ -29,6 +30,10 @@
     "./style.css": {
       "import": "./style.css",
       "require": "./style.css"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
     }
   },
   "dependencies": {
@@ -60,6 +65,7 @@
     "@vue/tsconfig": "^0.4.0",
     "eslint": "^8.45.0",
     "eslint-plugin-vue": "^9.15.1",
+    "fast-glob": "^3.3.2",
     "jsdom": "^22.1.0",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.0.0",
@@ -68,6 +74,7 @@
     "shelljs": "^0.8.5",
     "storybook": "^7.4.0",
     "typescript": "~5.1.6",
+    "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
     "vite": "^4.4.6",
     "vite-plugin-dts": "^3.6.0",

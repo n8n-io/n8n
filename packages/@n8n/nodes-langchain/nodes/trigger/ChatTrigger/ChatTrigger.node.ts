@@ -84,41 +84,93 @@ export class ChatTrigger implements INodeType {
 				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
+				ndvHideUrl: '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
 		activationMessage: 'You can now make calls to your production Chat URL.',
-		triggerPanel: {
-			hideContent: '={{ $parameter.mode === "testChat" }}',
-			header: 'Pull in a test chat submission',
-			executionsHelp: {
-				inactive:
-					"Chat Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test chat that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a chat submission via the Production Chat URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
-				active:
-					"Chat Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test chat that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a chat submission via the Production Chat URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
-			},
-			activationHint:
-				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new chat messages created via the Production URL.',
-		},
+		triggerPanel: false,
 		properties: [
+			/**
+			 * @note If we change this property, also update it in ChatEmbedModal.vue
+			 */
+			{
+				displayName: 'Make Chat Publicly Available',
+				name: 'public',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the chat should be publicly available or only accessible through the manual chat interface',
+			},
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Hosted Chat',
+						value: 'hostedChat',
+						description: 'Chat on a page served by n8n',
+					},
+					{
+						name: 'Embedded Chat',
+						value: 'webhook',
+						description: 'Chat through a widget embedded in another page, or by calling a webhook',
+					},
+				],
+				default: 'hostedChat',
+				displayOptions: {
+					show: {
+						public: [true],
+					},
+				},
+			},
+			{
+				displayName:
+					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+				name: 'hostedChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName:
+					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+				name: 'embeddedChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						mode: ['webhook'],
+						public: [true],
+					},
+				},
+				default: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
 				displayOptions: {
-					hide: {
-						mode: ['testChat'],
+					show: {
+						public: [true],
 					},
 				},
 				options: [
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
+						description: 'Simple username and password (the same one for all users)',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'n8n User Auth',
 						value: 'n8nUserAuth',
+						description: 'Require user to be logged in with their n8n account',
 					},
 					{
 						name: 'None',
@@ -129,57 +181,13 @@ export class ChatTrigger implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
-				displayName: 'The chat will only be accessible to authenticated n8n users',
-				name: 'notice',
-				type: 'notice',
-				displayOptions: {
-					show: {
-						authentication: ['n8nUserAuth'],
-					},
-				},
-				default: '',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Open Built-in Chat and execute workflow',
-				name: 'openChat',
-				type: 'button',
-				typeOptions: {
-					action: 'openChat',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Hosted Chat',
-						value: 'hostedChat',
-						description: 'Make webhook and Chat-Website available',
-					},
-					// TODO: Reminder, if we change value of "testChat" also update in ChatEmbedModal.vue. Delete this line before merge!
-					{
-						name: 'Test Chat',
-						value: 'testChat',
-						description: 'Only use to test with the debug Chat',
-					},
-					{
-						name: 'Webhook',
-						value: 'webhook',
-						description: 'Make webhook available',
-					},
-				],
-				default: 'testChat',
-			},
-			{
-				displayName: 'Initial Messages',
+				displayName: 'Initial Message(s)',
 				name: 'initialMessages',
 				type: 'string',
 				displayOptions: {
 					show: {
 						mode: ['hostedChat'],
+						public: [true],
 					},
 				},
 				typeOptions: {
@@ -195,6 +203,7 @@ export class ChatTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						mode: ['hostedChat', 'webhook'],
+						public: [true],
 					},
 				},
 				placeholder: 'Add Field',
@@ -220,9 +229,9 @@ export class ChatTrigger implements INodeType {
 						options: [
 							// TODO: Think about how options should be called
 							{
-								name: 'Not Supported',
+								name: 'Off',
 								value: 'notSupported',
-								description: 'Loading of messages of previous session is not supported',
+								description: 'Loading messages of previous session is turned off',
 							},
 							{
 								name: 'From Memory',
@@ -236,7 +245,7 @@ export class ChatTrigger implements INodeType {
 							},
 						],
 						default: 'notSupported',
-						description: 'If loading messages of a previous session should be supported',
+						description: 'If loading messages of a previous session should be enabled',
 					},
 					{
 						displayName: 'Response Mode',
@@ -258,7 +267,7 @@ export class ChatTrigger implements INodeType {
 						description: 'When and how to respond to the webhook',
 					},
 					{
-						displayName: 'Show Welcome Screen',
+						displayName: 'Require Button Click to Start Chat',
 						name: 'showWelcomeScreen',
 						type: 'boolean',
 						displayOptions: {
@@ -317,8 +326,9 @@ export class ChatTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = this.getResponseObject();
 
-		const nodeMode = this.getNodeParameter('mode', 'testChat') as string;
-		if (nodeMode === 'testChat') {
+		const isPublic = this.getNodeParameter('public', false) as boolean;
+		const nodeMode = this.getNodeParameter('mode', 'hostedChat') as string;
+		if (!isPublic) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
