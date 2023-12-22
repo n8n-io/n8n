@@ -1064,6 +1064,7 @@ export default defineComponent({
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = true;
@@ -1089,6 +1090,7 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowSettings(workflow.settings || {});
 			this.workflowsStore.setWorkflowPinData(workflow.pinData || {});
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
+			this.workflowsStore.setWorkflowMetadata(workflow.meta);
 
 			if (workflow.ownedBy) {
 				this.workflowsEEStore.setWorkflowOwnedBy({
@@ -1585,6 +1587,7 @@ export default defineComponent({
 			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
+						...(this.workflowsStore.workflow.meta ?? {}),
 						instanceId: this.rootStore.instanceId,
 					},
 					...data,
