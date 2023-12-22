@@ -2,7 +2,7 @@ import { Container, Service } from 'typedi';
 import type { Variables } from '@db/entities/Variables';
 import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
-import { canCreateNewVariable } from './enviromentHelpers';
+import { canCreateNewVariable } from './environmentHelpers';
 import { CacheService } from '@/services/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import type { DeepPartial } from 'typeorm';

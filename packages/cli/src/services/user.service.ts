@@ -1,10 +1,9 @@
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
-import { generateUserInviteUrl, getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { type JwtPayload, JwtService } from './jwt.service';
@@ -14,6 +13,7 @@ import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -26,6 +26,7 @@ export class UserService {
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly roleService: RoleService,
+		private readonly urlService: UrlService,
 	) {}
 
 	async findOne(options: FindOneOptions<User>) {
@@ -78,7 +79,7 @@ export class UserService {
 	}
 
 	generatePasswordResetUrl(user: User) {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
@@ -161,7 +162,7 @@ export class UserService {
 	}
 
 	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(getInstanceBaseUrl());
+		const url = new URL(this.urlService.getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
 		url.searchParams.set('inviteeId', invitee.id);
@@ -193,11 +194,11 @@ export class UserService {
 		toInviteUsers: { [key: string]: string },
 		role: 'member' | 'admin',
 	) {
-		const domain = getInstanceBaseUrl();
+		const domain = this.urlService.getInstanceBaseUrl();
 
 		return Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = generateUserInviteUrl(owner.id, id);
+				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
