@@ -46,7 +46,7 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
+import type { CurlHelper, ExecutionRequest } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -66,7 +66,6 @@ import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.c
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -112,6 +111,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
+import { ActiveWorkflowsController } from './controllers/activeWorkflows.controller';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
@@ -305,6 +305,7 @@ export class Server extends AbstractServer {
 			),
 			Container.get(VariablesController),
 			Container.get(RoleController),
+			Container.get(ActiveWorkflowsController),
 		];
 
 		if (Container.get(MultiMainSetup).isEnabled) {
@@ -442,50 +443,6 @@ export class Server extends AbstractServer {
 		} catch (error) {
 			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-		// Active Workflows
-		// ----------------------------------------
-
-		// Returns the active workflow ids
-		this.app.get(
-			`/${this.restEndpoint}/active`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage({
-					user: req.user,
-					scope: 'workflow:list',
-				});
-			}),
-		);
-
-		// Returns if the workflow with the given id had any activation errors
-		this.app.get(
-			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
-				const { id: workflowId } = req.params;
-
-				const shared = await Container.get(SharedWorkflowRepository).findOne({
-					relations: ['workflow'],
-					where: whereClause({
-						user: req.user,
-						globalScope: 'workflow:read',
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					this.logger.verbose('User attempted to access workflow errors without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-
-					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
-				}
-
-				return this.activeWorkflowRunner.getActivationError(workflowId);
-			}),
-		);
 
 		// ----------------------------------------
 		// curl-converter
