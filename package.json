@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -61,7 +61,7 @@
     "p-limit": "^3.1.0",
     "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
-    "start-server-and-test": "^2.0.0",
+    "start-server-and-test": "^2.0.3",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.7",
