@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
 import { mock } from 'jest-mock-extended';
@@ -14,6 +14,7 @@ describe('OnShutdown', () => {
 	});
 
 	it('should register a methods that is decorated with OnShutdown', () => {
+		@Service()
 		class TestClass {
 			@OnShutdown()
 			async onShutdown() {}
@@ -27,6 +28,7 @@ describe('OnShutdown', () => {
 	});
 
 	it('should register multiple methods in the same class', () => {
+		@Service()
 		class TestClass {
 			@OnShutdown()
 			async one() {}
@@ -55,11 +57,12 @@ describe('OnShutdown', () => {
 		}
 
 		expect(shutdownService.register).toHaveBeenCalledTimes(1);
-		expect(shutdownService.handlers[10].length).toEqual(1);
+		expect(shutdownService.handlersByPriority[10].length).toEqual(1);
 	});
 
 	it('should throw an error if the decorated member is not a function', () => {
 		expect(() => {
+			@Service()
 			class TestClass {
 				// @ts-expect-error Testing invalid code
 				@OnShutdown()
@@ -67,6 +70,6 @@ describe('OnShutdown', () => {
 			}
 
 			new TestClass();
-		}).toThrow('TestClass.onShutdown() must be a method to use "OnShutdown"');
+		}).toThrow('TestClass.onShutdown() must be a method on TestClass to use "OnShutdown"');
 	});
 });

@@ -25,7 +25,7 @@ export class ComponentShutdownError extends ApplicationError {
 /** Service responsible for orchestrating a graceful shutdown of the application */
 @Service()
 export class ShutdownService {
-	readonly handlers: ShutdownHandler[][] = [];
+	readonly handlersByPriority: ShutdownHandler[][] = [];
 
 	private shutdownPromise: Promise<void> | undefined;
 
@@ -33,10 +33,10 @@ export class ShutdownService {
 
 	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
-		if (!this.handlers[priority]) {
-			this.handlers[priority] = [];
+		if (!this.handlersByPriority[priority]) {
+			this.handlersByPriority[priority] = [];
 		}
-		this.handlers[priority].push(handler);
+		this.handlersByPriority[priority].push(handler);
 	}
 
 	/** Signals all registered listeners that the application is shutting down */
@@ -62,7 +62,7 @@ export class ShutdownService {
 	}
 
 	private async startShutdown() {
-		const handlers = Object.values(this.handlers);
+		const handlers = Object.values(this.handlersByPriority).reverse();
 		for (const handlerGroup of handlers) {
 			await Promise.allSettled(
 				handlerGroup.map(async (handler) => this.shutdownComponent(handler)),

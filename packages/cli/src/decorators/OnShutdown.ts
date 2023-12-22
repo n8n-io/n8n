@@ -8,8 +8,11 @@ import { type ServiceClass, ShutdownService } from '@/shutdown/Shutdown.service'
  *
  * Priority is used to determine the order in which the hooks are called.
  *
+ * NOTE: Requires also @Service() decorator to be used on the class.
+ *
  * @example
  * ```ts
+ * @Service()
  * class MyClass {
  *   @OnShutdown()
  *   async shutdown() {
@@ -28,6 +31,8 @@ export const OnShutdown =
 			Container.get(ShutdownService).register(priority, { serviceClass, methodName });
 		} else {
 			const name = `${serviceClass.name}.${methodName}()`;
-			throw new ApplicationError(`${name} must be a method to use "OnShutdown"`);
+			throw new ApplicationError(
+				`${name} must be a method on ${serviceClass.name} to use "OnShutdown"`,
+			);
 		}
 	};
