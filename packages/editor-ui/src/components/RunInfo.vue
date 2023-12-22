@@ -1,10 +1,21 @@
 <template>
+	<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasStaleData">
+		<span
+			v-html="
+				$locale.baseText(
+					hasPinData
+						? 'ndv.output.staleDataWarning.pinData'
+						: 'ndv.output.staleDataWarning.regular',
+				)
+			"
+		></span>
+	</n8n-info-tip>
 	<n8n-info-tip
-		v-if="runMetadata"
+		v-else-if="runMetadata"
 		type="tooltip"
 		:theme="theme"
-		:tooltipPlacement="hasStaleData ? 'left' : 'right'"
 		:data-test-id="`node-run-info-${theme}`"
+		tooltipPlacement="right"
 	>
 		<div>
 			<n8n-text :bold="true" size="small"
@@ -35,6 +46,7 @@ export default defineComponent({
 	props: {
 		taskData: {}, // ITaskData
 		hasStaleData: Boolean,
+		hasPinData: Boolean,
 	},
 
 	computed: {
