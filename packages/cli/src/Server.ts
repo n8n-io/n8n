@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Container, Service } from 'typedi';
 import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
@@ -84,7 +85,6 @@ import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
-import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { License } from './License';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
@@ -124,6 +124,7 @@ import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
 
+@Service()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
 

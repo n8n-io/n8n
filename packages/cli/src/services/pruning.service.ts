@@ -10,6 +10,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { jsonStringify } from 'n8n-workflow';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
 export class PruningService {
@@ -23,6 +24,8 @@ export class PruningService {
 	public softDeletionInterval: NodeJS.Timer | undefined;
 
 	public hardDeletionTimeout: NodeJS.Timeout | undefined;
+
+	private isShuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -54,6 +57,11 @@ export class PruningService {
 	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
+		if (this.isShuttingDown) {
+			this.logger.warn('[Pruning] Cannot start pruning while shutting down');
+			return;
+		}
+
 		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
 
 		this.setSoftDeletionInterval();
@@ -156,6 +164,12 @@ export class PruningService {
 		}
 
 		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
+	}
+
+	@OnShutdown()
+	shutdown(): void {
+		this.isShuttingDown = true;
+		this.stopPruning();
 	}
 
 	/**

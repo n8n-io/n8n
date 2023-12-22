@@ -65,6 +65,7 @@ import { ActivationErrorsService } from '@/ActivationErrors.service';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -664,6 +665,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
+	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
