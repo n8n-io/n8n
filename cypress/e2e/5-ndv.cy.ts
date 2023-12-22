@@ -512,6 +512,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Code');
 		ndv.getters.nodeRunErrorIndicator().should('exist');
+	});
 	it('Should handle mismatched option attributes', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', { keepNdvOpen: true, action: 'Create a new entry' });
 		// Add some attributes in Create operation
