@@ -373,7 +373,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/active-workflows/error/${id}`,
+			);
 		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {

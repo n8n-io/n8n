@@ -14,6 +14,7 @@ import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -69,6 +70,11 @@ export class Push extends EventEmitter {
 
 	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
+	}
+
+	@OnShutdown()
+	onShutdown(): void {
+		this.backend.closeAllConnections();
 	}
 }
 
