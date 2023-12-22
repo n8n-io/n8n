@@ -1,7 +1,6 @@
-import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
-import { In, Not } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { UserService } from '@/services/user.service';
 import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
@@ -60,18 +59,6 @@ export class EECredentialsService extends CredentialsService {
 			relations,
 		});
 		return credential?.shared ?? [];
-	}
-
-	static async pruneSharings(
-		transaction: EntityManager,
-		credentialId: string,
-		userIds: string[],
-	): Promise<DeleteResult> {
-		const conditions: FindOptionsWhere<SharedCredentials> = {
-			credentialsId: credentialId,
-			userId: Not(In(userIds)),
-		};
-		return transaction.delete(SharedCredentials, conditions);
 	}
 
 	static async share(
