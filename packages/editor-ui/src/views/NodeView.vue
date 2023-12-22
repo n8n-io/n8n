@@ -60,6 +60,7 @@
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						:workflow="currentWorkflowObject"
 						:disablePointerEvents="!canOpenNDV"
+						:hideNodeIssues="hideNodeIssues"
 					>
 						<template #custom-tooltip>
 							<span
@@ -746,6 +747,7 @@ export default defineComponent({
 			eventsAttached: false,
 			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 			canOpenNDV: true,
+			hideNodeIssues: false,
 		};
 	},
 	methods: {
@@ -1028,7 +1030,6 @@ export default defineComponent({
 			if (data.workflow.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
-
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 		},
@@ -1167,7 +1168,13 @@ export default defineComponent({
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
 
-			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+			const ctrlModifier = this.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
+			const shiftModifier = e.shiftKey && !e.altKey && !this.isCtrlKeyPressed(e);
+			const ctrlAltModifier = this.isCtrlKeyPressed(e) && e.altKey && !e.shiftKey;
+			const noModifierKeys = !this.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
+			const readOnly = this.isReadOnlyRoute || this.readOnlyEnv;
+
+			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
 
@@ -1200,7 +1207,7 @@ export default defineComponent({
 				return;
 			}
 
-			if (e.key === 'Escape') {
+			if (e.key === 'Escape' && noModifierKeys) {
 				this.createNodeActive = false;
 				if (this.activeNode) {
 					void this.externalHooks.run('dataDisplay.nodeEditingFinished');
@@ -1219,42 +1226,37 @@ export default defineComponent({
 				.map((node) => node && this.workflowsStore.getNodeByName(node.name))
 				.filter((node) => !!node) as INode[];
 
-			if (e.key === 'd' && !this.isCtrlKeyPressed(e)) {
+			if (e.key === 'd' && noModifierKeys && !readOnly) {
 				void this.callDebounced('toggleActivationNodes', { debounceTime: 350 }, selectedNodes);
-			} else if (e.key === 'd' && this.isCtrlKeyPressed(e)) {
+			} else if (e.key === 'd' && ctrlModifier && !readOnly) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
 					void this.duplicateNodes(selectedNodes);
 				}
-			} else if (e.key === 'p' && !this.isCtrlKeyPressed(e)) {
+			} else if (e.key === 'p' && noModifierKeys && !readOnly) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
 					this.togglePinNodes(selectedNodes, 'keyboard-shortcut');
 				}
-			} else if (e.key === 'Delete' || e.key === 'Backspace') {
+			} else if ((e.key === 'Delete' || e.key === 'Backspace') && noModifierKeys && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
 
 				void this.callDebounced('deleteNodes', { debounceTime: 500 }, selectedNodes);
-			} else if (e.key === 'Tab') {
+			} else if (e.key === 'Tab' && noModifierKeys && !readOnly) {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
-			} else if (
-				e.key === 'Enter' &&
-				this.isCtrlKeyPressed(e) &&
-				!this.isReadOnlyRoute &&
-				!this.readOnlyEnv
-			) {
+			} else if (e.key === 'Enter' && ctrlModifier && !readOnly) {
 				void this.onRunWorkflow();
-			} else if (e.key === 'S' && e.shiftKey && !this.isReadOnlyRoute && !this.readOnlyEnv) {
+			} else if (e.key === 'S' && shiftModifier && !readOnly) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
 				this.moveCanvasKeyPressed = true;
-			} else if (e.key === 'F2' && !this.isReadOnlyRoute && !this.readOnlyEnv) {
+			} else if (e.key === 'F2' && noModifierKeys && !readOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 					void this.callDebounced(
@@ -1263,21 +1265,21 @@ export default defineComponent({
 						lastSelectedNode.name,
 					);
 				}
-			} else if (e.key === 'a' && this.isCtrlKeyPressed(e)) {
+			} else if (e.key === 'a' && ctrlModifier) {
 				// Select all nodes
 				e.stopPropagation();
 				e.preventDefault();
 
 				void this.callDebounced('selectAllNodes', { debounceTime: 1000 });
-			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
+			} else if (e.key === 'c' && ctrlModifier) {
 				void this.callDebounced('copyNodes', { debounceTime: 1000 }, selectedNodes);
-			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
+			} else if (e.key === 'x' && ctrlModifier && !readOnly) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
 				void this.callDebounced('cutNodes', { debounceTime: 1000 }, selectedNodes);
-			} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
+			} else if (e.key === 'n' && ctrlAltModifier) {
 				// Create a new workflow
 				e.stopPropagation();
 				e.preventDefault();
@@ -1295,7 +1297,7 @@ export default defineComponent({
 					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
-			} else if (e.key === 'Enter') {
+			} else if (e.key === 'Enter' && noModifierKeys) {
 				// Activate the last selected node
 				const lastSelectedNode = this.lastSelectedNode;
 
@@ -1308,13 +1310,13 @@ export default defineComponent({
 					}
 					this.ndvStore.activeNodeName = lastSelectedNode.name;
 				}
-			} else if (e.key === 'ArrowRight' && e.shiftKey) {
+			} else if (e.key === 'ArrowRight' && shiftModifier) {
 				// Select all downstream nodes
 				e.stopPropagation();
 				e.preventDefault();
 
 				void this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
-			} else if (e.key === 'ArrowRight') {
+			} else if (e.key === 'ArrowRight' && noModifierKeys) {
 				// Set child node active
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode === null) {
@@ -1336,13 +1338,13 @@ export default defineComponent({
 					false,
 					true,
 				);
-			} else if (e.key === 'ArrowLeft' && e.shiftKey) {
+			} else if (e.key === 'ArrowLeft' && shiftModifier) {
 				// Select all downstream nodes
 				e.stopPropagation();
 				e.preventDefault();
 
 				void this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
-			} else if (e.key === 'ArrowLeft') {
+			} else if (e.key === 'ArrowLeft' && noModifierKeys) {
 				// Set parent node active
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode === null) {
@@ -1368,7 +1370,7 @@ export default defineComponent({
 					false,
 					true,
 				);
-			} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+			} else if (['ArrowUp', 'ArrowDown'].includes(e.key) && noModifierKeys) {
 				// Set sibling node as active
 
 				// Check first if it has a parent node
@@ -3304,6 +3306,9 @@ export default defineComponent({
 
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 			window.addEventListener('unload', this.onUnload);
+			// Once view is initialized, pick up all toast notifications
+			// waiting in the store and display them
+			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 		},
 		getOutputEndpointUUID(
 			nodeName: string,
@@ -4347,7 +4352,7 @@ export default defineComponent({
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
-			if (!message?.data?.includes?.('"command"')) {
+			if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
 				return;
 			}
 			try {
@@ -4356,6 +4361,7 @@ export default defineComponent({
 					try {
 						await this.importWorkflowExact(json);
 						this.canOpenNDV = json.canOpenNDV ?? true;
+						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = false;
 					} catch (e) {
 						if (window.top) {
@@ -4381,6 +4387,7 @@ export default defineComponent({
 
 						await this.openExecution(json.executionId);
 						this.canOpenNDV = json.canOpenNDV ?? true;
+						this.hideNodeIssues = json.hideNodeIssues ?? false;
 						this.isExecutionPreview = true;
 					} catch (e) {
 						if (window.top) {

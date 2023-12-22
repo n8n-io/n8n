@@ -153,6 +153,9 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
+		/** https://typescript-eslint.io/rules/await-thenable/ */
+		'@typescript-eslint/await-thenable': 'error',
+
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
@@ -477,7 +480,6 @@ const config = (module.exports = {
 					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 
 				// TODO: Remove these
-				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
 				'import/no-duplicates': 'off',

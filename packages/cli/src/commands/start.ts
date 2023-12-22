@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Container } from 'typedi';
@@ -316,7 +315,6 @@ export class Start extends BaseCommand {
 
 			const port = config.getEnv('port');
 
-			// @ts-ignore
 			const webhookTunnel = await localtunnel(port, tunnelSettings);
 
 			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;

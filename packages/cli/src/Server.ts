@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -46,7 +46,7 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper, ExecutionRequest, WorkflowRequest } from '@/requests';
+import type { CurlHelper, ExecutionRequest } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -66,8 +66,6 @@ import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.c
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { UserManagementMailer } from '@/UserManagement/email';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -79,7 +77,7 @@ import { WaitTracker } from '@/WaitTracker';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
-import { licenseController } from './license/license.controller';
+import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
@@ -113,6 +111,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
+import { ActiveWorkflowsController } from './controllers/activeWorkflows.controller';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
@@ -249,7 +248,6 @@ export class Server extends AbstractServer {
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MfaService);
@@ -258,6 +256,7 @@ export class Server extends AbstractServer {
 			new EventBusController(),
 			new EventBusControllerEE(),
 			Container.get(AuthController),
+			Container.get(LicenseController),
 			Container.get(OAuth1CredentialController),
 			Container.get(OAuth2CredentialController),
 			new OwnerController(
@@ -306,6 +305,7 @@ export class Server extends AbstractServer {
 			),
 			Container.get(VariablesController),
 			Container.get(RoleController),
+			Container.get(ActiveWorkflowsController),
 		];
 
 		if (Container.get(MultiMainSetup).isEnabled) {
@@ -424,11 +424,6 @@ export class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
-		// License
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/license`, licenseController);
-
-		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
 
@@ -448,50 +443,6 @@ export class Server extends AbstractServer {
 		} catch (error) {
 			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-		// Active Workflows
-		// ----------------------------------------
-
-		// Returns the active workflow ids
-		this.app.get(
-			`/${this.restEndpoint}/active`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				return this.activeWorkflowRunner.allActiveInStorage({
-					user: req.user,
-					scope: 'workflow:list',
-				});
-			}),
-		);
-
-		// Returns if the workflow with the given id had any activation errors
-		this.app.get(
-			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.GetActivationError) => {
-				const { id: workflowId } = req.params;
-
-				const shared = await Container.get(SharedWorkflowRepository).findOne({
-					relations: ['workflow'],
-					where: await whereClause({
-						user: req.user,
-						globalScope: 'workflow:read',
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					this.logger.verbose('User attempted to access workflow errors without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-
-					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
-				}
-
-				return this.activeWorkflowRunner.getActivationError(workflowId);
-			}),
-		);
 
 		// ----------------------------------------
 		// curl-converter
@@ -687,8 +638,8 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
-							extra: { jobId: req.params.id },
+						this.logger.debug('Could not stop job because it is no longer in queue', {
+							jobId: req.params.id,
 						});
 					} else {
 						await queue.stopJob(job);
