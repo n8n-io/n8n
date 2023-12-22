@@ -75,7 +75,7 @@ export const setupTestServer = ({
 	app.use(cookieParser());
 
 	// Mock all telemetry and logging
-	const logger = mockInstance(Logger);
+	mockInstance(Logger);
 	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
 

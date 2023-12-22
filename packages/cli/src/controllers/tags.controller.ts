@@ -21,7 +21,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 export class TagsController {
 	private config = config;
 
-	constructor(private tagService: TagService) {}
+	constructor(private readonly tagService: TagService) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()

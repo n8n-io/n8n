@@ -21,7 +21,7 @@ import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-re
 @Authorized()
 @RestController('/variables')
 export class VariablesController {
-	constructor(private variablesService: VariablesService) {}
+	constructor(private readonly variablesService: VariablesService) {}
 
 	@Get('/')
 	@RequireGlobalScope('variable:list')

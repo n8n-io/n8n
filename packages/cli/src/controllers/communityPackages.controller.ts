@@ -47,9 +47,9 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 @RestController('/community-packages')
 export class CommunityPackagesController {
 	constructor(
-		private push: Push,
-		private internalHooks: InternalHooks,
-		private communityPackagesService: CommunityPackagesService,
+		private readonly push: Push,
+		private readonly internalHooks: InternalHooks,
+		private readonly communityPackagesService: CommunityPackagesService,
 	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`

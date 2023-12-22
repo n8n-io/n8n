@@ -22,8 +22,8 @@ interface WorkflowStatisticsData<T> {
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
-		private sharedWorkflowRepository: SharedWorkflowRepository,
-		private workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly logger: Logger,
 	) {}
 
