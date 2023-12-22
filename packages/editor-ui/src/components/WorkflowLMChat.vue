@@ -413,6 +413,9 @@ export default defineComponent({
 			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
 				inputKey = 'input';
 			}
+			if (triggerNode.type === CHAT_TRIGGER_NODE_TYPE) {
+				inputKey = 'chatInput';
+			}
 
 			const usersStore = useUsersStore();
 			const currentUser = usersStore.currentUser ?? ({} as IUser);
