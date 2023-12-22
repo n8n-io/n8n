@@ -71,4 +71,30 @@ describe('TextWithHighlights', () => {
 			'<span><span>Test </span><mark>con</mark><span>tent hello world</span></span>',
 		);
 	});
+
+	it('handles special regex characters in search correctly', () => {
+		const wrapper = shallowMount(TextWithHighlights, {
+			props: {
+				content: 'Test content (hello) world',
+				search: '(hello)',
+			},
+		});
+
+		expect(wrapper.html()).toEqual(
+			'<span><span>Test content </span><mark>(hello)</mark><span> world</span></span>',
+		);
+	});
+
+	it('searches for special regex characters correctly', () => {
+		const wrapper = shallowMount(TextWithHighlights, {
+			props: {
+				content: 'Test content ()^${}[] world',
+				search: '()^${}[]',
+			},
+		});
+
+		expect(wrapper.html()).toEqual(
+			'<span><span>Test content </span><mark>()^${}[]</mark><span> world</span></span>',
+		);
+	});
 });
