@@ -17,7 +17,7 @@ import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 
-import { InstanceSettings } from 'n8n-core';
+import { type Class, InstanceSettings } from 'n8n-core';
 
 import type { ExecutionStatus, IExecutionsSummary, IN8nUISettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -219,59 +219,59 @@ export class Server extends AbstractServer {
 		const { app } = this;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const controllers: object[] = [
-			Container.get(EventBusController),
-			Container.get(EventBusControllerEE),
-			Container.get(AuthController),
-			Container.get(LicenseController),
-			Container.get(OAuth1CredentialController),
-			Container.get(OAuth2CredentialController),
-			Container.get(OwnerController),
-			Container.get(MeController),
-			Container.get(DynamicNodeParametersController),
-			Container.get(NodeTypesController),
-			Container.get(PasswordResetController),
-			Container.get(TagsController),
-			Container.get(TranslationController),
-			Container.get(UsersController),
-			Container.get(SamlController),
-			Container.get(SourceControlController),
-			Container.get(WorkflowStatisticsController),
-			Container.get(ExternalSecretsController),
-			Container.get(OrchestrationController),
-			Container.get(WorkflowHistoryController),
-			Container.get(BinaryDataController),
-			Container.get(VariablesController),
-			Container.get(InvitationController),
-			Container.get(VariablesController),
-			Container.get(RoleController),
-			Container.get(ActiveWorkflowsController),
+		const controllers: Array<Class<object>> = [
+			EventBusController,
+			EventBusControllerEE,
+			AuthController,
+			LicenseController,
+			OAuth1CredentialController,
+			OAuth2CredentialController,
+			OwnerController,
+			MeController,
+			DynamicNodeParametersController,
+			NodeTypesController,
+			PasswordResetController,
+			TagsController,
+			TranslationController,
+			UsersController,
+			SamlController,
+			SourceControlController,
+			WorkflowStatisticsController,
+			ExternalSecretsController,
+			OrchestrationController,
+			WorkflowHistoryController,
+			BinaryDataController,
+			VariablesController,
+			InvitationController,
+			VariablesController,
+			RoleController,
+			ActiveWorkflowsController,
 		];
 
 		if (Container.get(MultiMainSetup).isEnabled) {
 			const { DebugController } = await import('./controllers/debug.controller');
-			controllers.push(Container.get(DebugController));
+			controllers.push(DebugController);
 		}
 
 		if (isLdapEnabled()) {
 			const { LdapController } = await require('@/controllers/ldap.controller');
-			controllers.push(Container.get(LdapController));
+			controllers.push(LdapController);
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			const { CommunityPackagesController } = await import(
 				'@/controllers/communityPackages.controller'
 			);
-			controllers.push(Container.get(CommunityPackagesController));
+			controllers.push(CommunityPackagesController);
 		}
 
 		if (inE2ETests) {
 			const { E2EController } = await import('./controllers/e2e.controller');
-			controllers.push(Container.get(E2EController));
+			controllers.push(E2EController);
 		}
 
 		if (isMfaFeatureEnabled()) {
-			controllers.push(Container.get(MFAController));
+			controllers.push(MFAController);
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));

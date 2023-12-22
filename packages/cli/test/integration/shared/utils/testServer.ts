@@ -139,12 +139,12 @@ export const setupTestServer = ({
 						const { VariablesController } = await import(
 							'@/environments/variables/variables.controller.ee'
 						);
-						registerController(app, config, Container.get(VariablesController));
+						registerController(app, config, VariablesController);
 						break;
 
 					case 'license':
 						const { LicenseController } = await import('@/license/license.controller');
-						registerController(app, config, Container.get(LicenseController));
+						registerController(app, config, LicenseController);
 						break;
 
 					case 'metrics':
@@ -155,18 +155,18 @@ export const setupTestServer = ({
 					case 'eventBus':
 						const { EventBusController } = await import('@/eventbus/eventBus.controller');
 						const { EventBusControllerEE } = await import('@/eventbus/eventBus.controller.ee');
-						registerController(app, config, Container.get(EventBusController));
-						registerController(app, config, Container.get(EventBusControllerEE));
+						registerController(app, config, EventBusController);
+						registerController(app, config, EventBusControllerEE);
 						break;
 
 					case 'auth':
 						const { AuthController } = await import('@/controllers/auth.controller');
-						registerController(app, config, Container.get(AuthController));
+						registerController(app, config, AuthController);
 						break;
 
 					case 'mfa':
 						const { MFAController } = await import('@/controllers/mfa.controller');
-						registerController(app, config, Container.get(MFAController));
+						registerController(app, config, MFAController);
 						break;
 
 					case 'ldap':
@@ -174,89 +174,89 @@ export const setupTestServer = ({
 						const { LdapController } = await import('@/controllers/ldap.controller');
 						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
-						registerController(app, config, Container.get(LdapController));
+						registerController(app, config, LdapController);
 						break;
 
 					case 'saml':
 						const { setSamlLoginEnabled } = await import('@/sso/saml/samlHelpers');
 						const { SamlController } = await import('@/sso/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
-						registerController(app, config, Container.get(SamlController));
+						registerController(app, config, SamlController);
 						break;
 
 					case 'sourceControl':
 						const { SourceControlController } = await import(
 							'@/environments/sourceControl/sourceControl.controller.ee'
 						);
-						registerController(app, config, Container.get(SourceControlController));
+						registerController(app, config, SourceControlController);
 						break;
 
 					case 'community-packages':
 						const { CommunityPackagesController } = await import(
 							'@/controllers/communityPackages.controller'
 						);
-						registerController(app, config, Container.get(CommunityPackagesController));
+						registerController(app, config, CommunityPackagesController);
 						break;
 
 					case 'me':
 						const { MeController } = await import('@/controllers/me.controller');
-						registerController(app, config, Container.get(MeController));
+						registerController(app, config, MeController);
 						break;
 
 					case 'passwordReset':
 						const { PasswordResetController } = await import(
 							'@/controllers/passwordReset.controller'
 						);
-						registerController(app, config, Container.get(PasswordResetController));
+						registerController(app, config, PasswordResetController);
 						break;
 
 					case 'owner':
 						const { OwnerController } = await import('@/controllers/owner.controller');
-						registerController(app, config, Container.get(OwnerController));
+						registerController(app, config, OwnerController);
 						break;
 
 					case 'users':
 						const { UsersController } = await import('@/controllers/users.controller');
-						registerController(app, config, Container.get(UsersController));
+						registerController(app, config, UsersController);
 						break;
 
 					case 'invitations':
 						const { InvitationController } = await import('@/controllers/invitation.controller');
-						registerController(app, config, Container.get(InvitationController));
+						registerController(app, config, InvitationController);
 						break;
 
 					case 'tags':
 						const { TagsController } = await import('@/controllers/tags.controller');
-						registerController(app, config, Container.get(TagsController));
+						registerController(app, config, TagsController);
 						break;
 
 					case 'externalSecrets':
 						const { ExternalSecretsController } = await import(
 							'@/ExternalSecrets/ExternalSecrets.controller.ee'
 						);
-						registerController(app, config, Container.get(ExternalSecretsController));
+						registerController(app, config, ExternalSecretsController);
 						break;
 
 					case 'workflowHistory':
 						const { WorkflowHistoryController } = await import(
 							'@/workflows/workflowHistory/workflowHistory.controller.ee'
 						);
-						registerController(app, config, Container.get(WorkflowHistoryController));
+						registerController(app, config, WorkflowHistoryController);
 						break;
 
 					case 'binaryData':
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
-						registerController(app, config, Container.get(BinaryDataController));
+						registerController(app, config, BinaryDataController);
 						break;
 
 					case 'role':
 						const { RoleController } = await import('@/controllers/role.controller');
-						registerController(app, config, Container.get(RoleController));
+						registerController(app, config, RoleController);
 						break;
 
 					case 'debug':
 						const { DebugController } = await import('@/controllers/debug.controller');
-						registerController(app, config, Container.get(DebugController));
+						registerController(app, config, DebugController);
 						break;
 				}
 			}
