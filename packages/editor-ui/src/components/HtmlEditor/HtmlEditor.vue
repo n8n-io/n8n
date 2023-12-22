@@ -14,7 +14,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
+import { insertNewlineAndIndent, history, redo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -42,6 +42,7 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -97,15 +98,15 @@ export default defineComponent({
 				autoCloseTags,
 				expressionInputHandler(),
 				keymap.of([
-					indentWithTab,
+					...tabKeyMap,
 					{ key: 'Enter', run: insertNewlineAndIndent },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					maxHeight: this.fillParent ? '100%' : 'max(calc(100vh - 435px), 80px)', // 435px represents the height of all the various elements and padding in that page
-					minHeight: '10vh',
+					maxHeight: this.fillParent ? '100%' : '40vh',
+					minHeight: '20vh',
 					rows: this.rows,
 					highlightColors: 'html',
 				}),

@@ -48,6 +48,7 @@ import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
+import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -148,7 +149,7 @@ export default defineComponent({
 				expressionInputHandler(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					maxHeight: this.fillParent ? '100%' : 'max(calc(100vh - 515px), 80px)', // 515px represents the height of all the various elements and padding in that page
+					maxHeight: this.fillParent ? '100%' : '40vh',
 					minHeight: '10vh',
 					rows: this.rows,
 				}),
@@ -168,10 +169,9 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					keymap.of([
+						...tabKeyMap,
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
-						{ key: 'Tab', run: acceptCompletion },
-						indentWithTab,
 					]),
 					autocompletion(),
 					indentOnInput(),

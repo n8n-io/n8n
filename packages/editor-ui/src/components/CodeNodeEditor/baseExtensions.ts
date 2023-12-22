@@ -6,12 +6,14 @@ import {
 	highlightSpecialChars,
 	keymap,
 	lineNumbers,
+	type KeyBinding,
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { acceptCompletion } from '@codemirror/autocomplete';
 import {
 	history,
-	indentWithTab,
+	indentLess,
+	indentMore,
 	insertNewlineAndIndent,
 	toggleComment,
 	redo,
@@ -28,6 +30,21 @@ export const readOnlyEditorExtensions: readonly Extension[] = [
 	highlightSpecialChars(),
 ];
 
+export const tabKeyMap: KeyBinding[] = [
+	{
+		key: 'Tab',
+		run: (editor) => {
+			const hasAcceptedCompletion = acceptCompletion(editor);
+			editor.focus();
+			if (!hasAcceptedCompletion) {
+				return indentMore(editor);
+			}
+			return hasAcceptedCompletion;
+		},
+	},
+	{ key: 'Shift-Tab', run: indentLess },
+];
+
 export const writableEditorExtensions: readonly Extension[] = [
 	history(),
 	lintGutter(),
@@ -39,12 +56,11 @@ export const writableEditorExtensions: readonly Extension[] = [
 	highlightActiveLine(),
 	highlightActiveLineGutter(),
 	keymap.of([
+		...tabKeyMap,
 		{ key: 'Enter', run: insertNewlineAndIndent },
-		{ key: 'Tab', run: acceptCompletion },
 		{ key: 'Enter', run: acceptCompletion },
 		{ key: 'Mod-/', run: toggleComment },
 		{ key: 'Mod-Shift-z', run: redo },
 		{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
-		indentWithTab,
 	]),
 ];
