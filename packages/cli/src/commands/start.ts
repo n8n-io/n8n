@@ -4,7 +4,6 @@ import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import localtunnel from 'localtunnel';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
@@ -308,14 +307,13 @@ export class Start extends BaseCommand {
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const tunnelSettings: localtunnel.TunnelConfig = {
-				host: 'https://hooks.n8n.cloud',
-				subdomain: tunnelSubdomain,
-			};
-
+			const { default: localtunnel } = await import('@n8n/localtunnel');
 			const port = config.getEnv('port');
 
-			const webhookTunnel = await localtunnel(port, tunnelSettings);
+			const webhookTunnel = await localtunnel(port, {
+				host: 'https://hooks.n8n.cloud',
+				subdomain: tunnelSubdomain,
+			});
 
 			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
