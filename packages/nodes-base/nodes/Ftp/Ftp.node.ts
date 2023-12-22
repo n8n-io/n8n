@@ -469,7 +469,7 @@ export class Ftp implements INodeType {
 							host: credentials.host as string,
 							port: credentials.port as number,
 							username: credentials.username as string,
-							password: credentials.password as string,
+							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 						});
@@ -521,7 +521,7 @@ export class Ftp implements INodeType {
 						host: credentials.host as string,
 						port: credentials.port as number,
 						username: credentials.username as string,
-						password: credentials.password as string,
+						password: (credentials.password as string) || undefined,
 						privateKey: formatPrivateKey(credentials.privateKey as string),
 						passphrase: credentials.passphrase as string | undefined,
 					});
