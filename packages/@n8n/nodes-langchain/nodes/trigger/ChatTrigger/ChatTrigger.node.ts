@@ -88,7 +88,7 @@ export class ChatTrigger implements INodeType {
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
-		activationMessage: 'You can now make calls to your production Chat URL.',
+		activationMessage: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
 			/**
