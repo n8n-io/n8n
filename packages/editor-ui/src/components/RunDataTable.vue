@@ -167,7 +167,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { shorten } from '@/utils/typesUtils';
+import { isN8nBinaryProperty, shorten } from '@/utils/typesUtils';
 import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -447,7 +447,7 @@ export default defineComponent({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isBinary(data: unknown): boolean {
-			return !!data && typeof data === 'object' && '@type' in data && data['@type'] === 'binary';
+			return isN8nBinaryProperty(data);
 		},
 		isSimple(data: unknown): boolean {
 			return (

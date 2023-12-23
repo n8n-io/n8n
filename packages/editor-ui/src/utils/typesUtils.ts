@@ -156,3 +156,7 @@ export const isValidDate = (input: string | number | Date): boolean => {
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 	Object.keys(o) as K[];
+
+export const isN8nBinaryProperty = (data: unknown): boolean => {
+	return !!data && typeof data === 'object' && '@type' in data && data['@type'] === 'binary';
+};
