@@ -172,4 +172,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		return { workflows, count };
 	}
+
+	async findStartingWith(workflowName: string): Promise<Array<{ name: string }>> {
+		return this.find({
+			select: ['name'],
+			where: { name: Like(`${workflowName}%`) },
+		});
+	}
 }

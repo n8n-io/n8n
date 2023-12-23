@@ -471,7 +471,8 @@ describe('NDV', () => {
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters.selectedNodes().first().should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
-	})
+	});
+
 	it('should show node name and version in settings', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
 
@@ -490,6 +491,34 @@ describe('NDV', () => {
 		ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
 		ndv.actions.close();
 	});
+
+	it('Should render xml and html tags as strings and can search', () => {
+		cy.createFixtureWorkflow('Test_workflow_xml_output.json', `test`);
+
+		workflowPage.actions.executeWorkflow();
+
+		workflowPage.actions.openNode('Edit Fields');
+
+		ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
+
+		ndv.getters.outputTableRow(1).should('include.text', '<?xml version="1.0" encoding="UTF-8"?> <library>');
+
+		cy.document().trigger('keyup', { key: '/' });
+		ndv.getters.searchInput().filter(':focus').type('<lib');
+
+		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib')
+
+		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(1).click();
+
+		ndv.getters.outputDataContainer().should('have.text', '[{"body": "<?xml version="1.0" encoding="UTF-8"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]');
+		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib')
+
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(2).click({force: true});
+		ndv.getters.outputDataContainer().findChildByTestId('run-data-schema-item').find('> span').should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
+	});
+
 	it('should properly show node execution indicator', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Code');
 		workflowPage.actions.openNode('Code');
@@ -499,6 +528,7 @@ describe('NDV', () => {
 		ndv.getters.nodeExecuteButton().click();
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 	});
+
 	it('should properly show node execution indicator for multiple nodes', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Code');
 		workflowPage.actions.openNode('Code');
@@ -513,6 +543,7 @@ describe('NDV', () => {
 		workflowPage.actions.openNode('Code');
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
+
 	it('Should handle mismatched option attributes', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', { keepNdvOpen: true, action: 'Create a new entry' });
 		// Add some attributes in Create operation
@@ -521,6 +552,7 @@ describe('NDV', () => {
 		// Attributes should be empty after operation change
 		cy.getByTestId('parameter-item').contains('Currently no items exist').should('exist');
 	});
+
 	it('Should keep RLC values after operation change', () => {
 		const TEST_DOC_ID = '1111';
 		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', { keepNdvOpen: true, action: 'Append row in sheet' });

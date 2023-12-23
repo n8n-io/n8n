@@ -418,7 +418,8 @@ toSnakeCase.doc = {
 
 toTitleCase.doc = {
 	name: 'toTitleCase',
-	description: 'Formats a string to title case. Example: "This Is a Title".',
+	description:
+		'Formats a string to title case. Example: "This Is a Title". Will not change already uppercase letters to prevent losing information from acronyms and trademarks such as iPhone or FAANG.',
 	returnType: 'string',
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toTitleCase',
