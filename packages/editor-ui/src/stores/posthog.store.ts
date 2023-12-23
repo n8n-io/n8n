@@ -14,6 +14,8 @@ const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
 
+export type PosthogStore = ReturnType<typeof usePostHog>;
+
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
@@ -37,6 +39,13 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
+	};
+
+	/**
+	 * Checks if the given feature flag is enabled. Should only be used for boolean flags
+	 */
+	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
+		return featureFlags.value?.[experiment] === true;
 	};
 
 	if (!window.featureFlags) {
@@ -65,7 +74,7 @@ export const usePostHog = defineStore('posthog', () => {
 			},
 
 			getVariant,
-			getAll: () => featureFlags.value || {},
+			getAll: () => featureFlags.value ?? {},
 		};
 	}
 
@@ -89,6 +98,25 @@ export const usePostHog = defineStore('posthog', () => {
 			...overrides.value,
 		};
 	};
+
+	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		const variant = featFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+			name,
+			variant,
+		});
+
+		trackedDemoExp.value[name] = variant;
+	};
+
+	const trackExperiments = (featFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {
@@ -143,25 +171,6 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const trackExperiments = (featureFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	};
-	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
-
-	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
-		const variant = featureFlags[name];
-		if (!variant || trackedDemoExp.value[name] === variant) {
-			return;
-		}
-
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
-
-		trackedDemoExp.value[name] = variant;
-	};
-
 	const capture = (event: string, properties: IDataObject) => {
 		if (typeof window.posthog?.capture === 'function') {
 			window.posthog.capture(event, properties);
@@ -181,6 +190,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
 		reset,

@@ -11,7 +11,12 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return { fields: [] };
+
+	const { mode, value } = documentId;
+
 	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);

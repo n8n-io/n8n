@@ -16,6 +16,7 @@ import type {
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type {
 	AxiosError,
+	AxiosHeaders,
 	AxiosPromise,
 	AxiosProxyConfig,
 	AxiosRequestConfig,
@@ -36,6 +37,7 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
+	CloseFunction,
 	ConnectionTypes,
 	ContextType,
 	FieldType,
@@ -161,6 +163,13 @@ axios.defaults.paramsSerializer = (params) => {
 	}
 	return stringify(params, { arrayFormat: 'indices' });
 };
+axios.interceptors.request.use((config) => {
+	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.data === undefined) {
+		config.headers.setContentType(false, false);
+	}
+	return config;
+});
 
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
@@ -186,23 +195,24 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-function searchForHeader(headers: IDataObject, headerName: string) {
-	if (headers === undefined) {
+
+function searchForHeader(config: AxiosRequestConfig, headerName: string) {
+	if (config.headers === undefined) {
 		return undefined;
 	}
 
-	const headerNames = Object.keys(headers);
+	const headerNames = Object.keys(config.headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
 }
 
-async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
-	if (!formData?.getLength) {
+async function generateContentLengthHeader(config: AxiosRequestConfig) {
+	if (!(config.data instanceof FormData)) {
 		return;
 	}
 	try {
-		const length = await new Promise((res, rej) => {
-			formData.getLength((error: Error | null, length: number) => {
+		const length = await new Promise<number>((res, rej) => {
+			config.data.getLength((error: Error | null, length: number) => {
 				if (error) {
 					rej(error);
 					return;
@@ -210,9 +220,10 @@ async function generateContentLengthHeader(formData: FormData, headers: IDataObj
 				res(length);
 			});
 		});
-		headers = Object.assign(headers, {
+		config.headers = {
+			...config.headers,
 			'content-length': length,
-		});
+		};
 	} catch (error) {
 		Logger.error('Unable to calculate form data length', { error });
 	}
@@ -228,7 +239,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as string;
+		axiosConfig.headers = requestObject.headers as AxiosHeaders;
 	}
 
 	// Let's start parsing the hardest part, which is the request body.
@@ -246,7 +257,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		);
 	const contentType =
 		contentTypeHeaderKeyName &&
-		(axiosConfig.headers[contentTypeHeaderKeyName] as string | undefined);
+		(axiosConfig.headers?.[contentTypeHeaderKeyName] as string | undefined);
 	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
 		// there are nodes incorrectly created, informing the content type header
 		// and also using formData. Request lib takes precedence for the formData.
@@ -265,7 +276,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 				axiosConfig.data = stringify(allData);
 			}
 		}
-	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
+	} else if (contentType?.includes('multipart/form-data')) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
 		} else {
@@ -278,10 +289,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		}
 		// replace the existing header with a new one that
 		// contains the boundary property.
-		delete axiosConfig.headers[contentTypeHeaderKeyName];
+		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
 		const headers = axiosConfig.data.getHeaders();
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-		await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
+		await generateContentLengthHeader(axiosConfig);
 	} else {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
@@ -291,7 +302,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 					? stringify(requestObject.form, { format: 'RFC3986' })
 					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
-				const headerName = searchForHeader(axiosConfig.headers, 'content-type');
+				const headerName = searchForHeader(axiosConfig, 'content-type');
 				if (headerName) {
 					delete axiosConfig.headers[headerName];
 				}
@@ -305,9 +316,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// remove any "content-type" that might exist.
 			if (axiosConfig.headers !== undefined) {
 				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) =>
-					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
-				);
+				headers.forEach((header) => {
+					if (header.toLowerCase() === 'content-type') {
+						delete axiosConfig.headers?.[header];
+					}
+				});
 			}
 
 			if (requestObject.formData instanceof FormData) {
@@ -318,7 +331,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// Mix in headers as FormData creates the boundary.
 			const headers = axiosConfig.data.getHeaders();
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-			await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
+			await generateContentLengthHeader(axiosConfig);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined && requestObject.body) {
@@ -722,14 +735,6 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	Logger.debug(
-		'Proxying request to axios',
-		// {
-		// 	originalConfig: configObject,
-		// 	parsedConfig: axiosConfig,
-		// }
-	);
-
 	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
@@ -763,7 +768,7 @@ export async function proxyRequestToAxios(
 		return configObject.resolveWithFullResponse
 			? {
 					body,
-					headers: response.headers,
+					headers: { ...response.headers },
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
@@ -860,7 +865,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	const { body } = n8nRequest;
 	if (body) {
 		// Let's add some useful header standards here.
-		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
+		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
 			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
@@ -874,7 +879,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		} else if (
-			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
+			axiosRequest.headers?.[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
 		) {
 			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
 		}
@@ -887,19 +892,25 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	}
 
 	if (n8nRequest.json) {
-		const key = searchForHeader(axiosRequest.headers, 'accept');
+		const key = searchForHeader(axiosRequest, 'accept');
 		// If key exists, then the user has set both accept
 		// header and the json flag. Header should take precedence.
 		if (!key) {
-			axiosRequest.headers.Accept = 'application/json';
+			axiosRequest.headers = {
+				...axiosRequest.headers,
+				Accept: 'application/json',
+			};
 		}
 	}
 
-	const userAgentHeader = searchForHeader(axiosRequest.headers, 'user-agent');
+	const userAgentHeader = searchForHeader(axiosRequest, 'user-agent');
 	// If key exists, then the user has set both accept
 	// header and the json flag. Header should take precedence.
 	if (!userAgentHeader) {
-		axiosRequest.headers['User-Agent'] = 'n8n';
+		axiosRequest.headers = {
+			...axiosRequest.headers,
+			'User-Agent': 'n8n',
+		};
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
@@ -1564,7 +1575,7 @@ export async function httpRequestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1758,7 +1769,7 @@ export async function requestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1835,11 +1846,13 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
 	return {
 		$execution: {
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			resumeFormUrl,
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
@@ -1917,7 +1930,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials defined!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1928,7 +1941,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-				{ severity: 'warning' },
+				{ level: 'warning' },
 			);
 		}
 
@@ -1953,14 +1966,14 @@ export async function getCredentials(
 			// Credentials are required so error
 			if (!node.credentials) {
 				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
-					severity: 'warning',
+					level: 'warning',
 				});
 			}
 			if (!node.credentials[type]) {
 				throw new NodeOperationError(
 					node,
 					`Node does not have any credentials set for "${type}"!`,
-					{ severity: 'warning' },
+					{ level: 'warning' },
 				);
 			}
 		} else {
@@ -2085,12 +2098,9 @@ const validateResourceMapperValue = (
 		}
 
 		if (schemaEntry?.type) {
-			const validationResult = validateFieldType(
-				key,
-				resolvedValue,
-				schemaEntry.type,
-				schemaEntry.options,
-			);
+			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
+				valueOptions: schemaEntry.options,
+			});
 			if (!validationResult.valid) {
 				return { ...validationResult, fieldName: key };
 			} else {
@@ -2151,12 +2161,9 @@ const validateCollection = (
 		for (const key of Object.keys(value)) {
 			if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(
-				key,
-				value[key],
-				validationMap[key].type,
-				validationMap[key].options,
-			);
+			const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+				valueOptions: validationMap[key].options,
+			});
 
 			if (!fieldValidationResult.valid) {
 				throw new ExpressionError(
@@ -2314,7 +2321,7 @@ export function getNodeParameter(
 
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType);
+		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined
@@ -2939,7 +2946,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			throw error.code === 'ENOENT'
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
-						severity: 'warning',
+						level: 'warning',
 				  })
 				: error;
 		}
@@ -2947,7 +2954,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 		return createReadStream(filePath);
@@ -2960,7 +2967,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	async writeContentToFile(filePath, content, flag) {
 		if (isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 		return fsWriteFile(filePath, content, { encoding: 'binary', flag });
@@ -3148,6 +3155,7 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
 	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -3192,6 +3200,7 @@ export function getExecuteFunctions(
 						parentWorkflowId: workflow.id?.toString(),
 						inputData,
 						parentWorkflowSettings: workflow.settings,
+						node,
 					})
 					.then(async (result) =>
 						Container.get(BinaryDataService).duplicateBinaryData(
@@ -3323,8 +3332,14 @@ export function getExecuteFunctions(
 						};
 
 						try {
-							return await nodeType.supplyData.call(context, itemIndex);
+							const response = await nodeType.supplyData.call(context, itemIndex);
+							if (response.closeFunction) {
+								closeFunctions.push(response.closeFunction);
+							}
+							return response;
 						} catch (error) {
+							// Propagate errors from sub-nodes
+							if (error.functionality === 'configuration-node') throw error;
 							if (!(error instanceof ExecutionBaseError)) {
 								error = new NodeOperationError(connectedNode, error, {
 									itemIndex,
@@ -3802,7 +3817,6 @@ export function getExecuteHookFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
-	isTest?: boolean,
 	webhookData?: IWebhookData,
 ): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
@@ -3844,7 +3858,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					getAdditionalKeys(additionalData, mode, null),
-					isTest,
+					webhookData?.isTest,
 				);
 			},
 			getWebhookName(): string {

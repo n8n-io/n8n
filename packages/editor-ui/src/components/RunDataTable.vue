@@ -172,12 +172,12 @@ import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import BinaryData from './BinaryData.vue';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -185,7 +185,6 @@ type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
 	name: 'run-data-table',
-	mixins: [externalHooks],
 	components: { BinaryData, Draggable, MappingPill },
 	props: {
 		node: {
@@ -218,6 +217,12 @@ export default defineComponent({
 		search: {
 			type: String,
 		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	data() {
 		return {
@@ -436,7 +441,7 @@ export default defineComponent({
 					...mappingTelemetry,
 				};
 
-				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

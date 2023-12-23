@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.19.0",
+  "version": "1.22.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -50,12 +50,11 @@
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
     "aws4": "1.11.0",
-    "axios": "0.21.4",
+    "axios": "1.6.2",
     "concat-stream": "2.0.0",
     "cron": "1.7.2",
     "fast-glob": "3.2.12",
     "file-type": "16.5.4",
-    "flatted": "3.2.7",
     "form-data": "4.0.0",
     "lodash": "4.17.21",
     "mime-types": "2.1.35",

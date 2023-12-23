@@ -60,9 +60,7 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult =
-				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
-			executionId = executionResult.id;
+			executionId = await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}

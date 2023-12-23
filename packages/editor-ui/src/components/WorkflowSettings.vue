@@ -380,7 +380,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast } from '@/composables/useToast';
 import type {
@@ -408,15 +407,19 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
-	mixins: [externalHooks, genericHelpers],
+	mixins: [genericHelpers],
 	components: {
 		Modal,
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 		};
 	},
@@ -594,7 +597,7 @@ export default defineComponent({
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+		void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 			dialogVisible: true,
 		});
 		this.$telemetry.track('User opened workflow settings', {
@@ -609,7 +612,7 @@ export default defineComponent({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
 		},
@@ -885,7 +888,7 @@ export default defineComponent({
 
 			this.closeDialog();
 
-			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

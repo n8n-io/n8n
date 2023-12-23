@@ -37,11 +37,15 @@ const props = withDefaults(
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
+		canOpenNDV?: boolean;
+		hideNodeIssues?: boolean;
 	}>(),
 	{
 		loading: false,
 		mode: 'workflow',
 		loaderType: 'image',
+		canOpenNDV: true,
+		hideNodeIssues: false,
 	},
 );
 
@@ -82,6 +86,8 @@ const loadWorkflow = () => {
 			JSON.stringify({
 				command: 'openWorkflow',
 				workflow: props.workflow,
+				canOpenNDV: props.canOpenNDV,
+				hideNodeIssues: props.hideNodeIssues,
 			}),
 			'*',
 		);
@@ -104,6 +110,7 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode || '',
+				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',
 		);
@@ -136,21 +143,22 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
-	if (data?.includes('"command"')) {
-		try {
-			const json = JSON.parse(data);
-			if (json.command === 'n8nReady') {
-				ready.value = true;
-			} else if (json.command === 'openNDV') {
-				nodeViewDetailsOpened.value = true;
-			} else if (json.command === 'closeNDV') {
-				nodeViewDetailsOpened.value = false;
-			} else if (json.command === 'error') {
-				emit('close');
-			}
-		} catch (e) {
-			console.error(e);
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
+	try {
+		const json = JSON.parse(data);
+		if (json.command === 'n8nReady') {
+			ready.value = true;
+		} else if (json.command === 'openNDV') {
+			nodeViewDetailsOpened.value = true;
+		} else if (json.command === 'closeNDV') {
+			nodeViewDetailsOpened.value = false;
+		} else if (json.command === 'error') {
+			emit('close');
 		}
+	} catch (e) {
+		console.error(e);
 	}
 };
 const onDocumentScroll = () => {

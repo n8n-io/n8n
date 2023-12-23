@@ -15,7 +15,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
-import { WorkflowsService } from './workflows.services';
+import { WorkflowService } from './workflow.service';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
@@ -30,6 +30,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NamingService } from '@/services/naming.service';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -119,7 +120,7 @@ workflowsController.get(
 		try {
 			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
 
-			const { workflows: data, count } = await WorkflowsService.getMany(
+			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
 				sharedWorkflowIds,
 				req.listQueryOptions,
 			);
@@ -139,12 +140,9 @@ workflowsController.get(
 workflowsController.get(
 	'/new',
 	ResponseHelper.send(async (req: WorkflowRequest.NewName) => {
-		const requestedName =
-			req.query.name && req.query.name !== ''
-				? req.query.name
-				: config.getEnv('workflows.defaultName');
+		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');
 
-		const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+		const name = await Container.get(NamingService).getUniqueWorkflowName(requestedName);
 
 		const onboardingFlowEnabled =
 			!config.getEnv('workflows.onboardingFlowDisabled') &&
@@ -211,7 +209,7 @@ workflowsController.get(
 
 		const shared = await Container.get(SharedWorkflowRepository).findOne({
 			relations,
-			where: await whereClause({
+			where: whereClause({
 				user: req.user,
 				entityType: 'workflow',
 				globalScope: 'workflow:read',
@@ -247,7 +245,7 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const updatedWorkflow = await WorkflowsService.update(
+		const updatedWorkflow = await Container.get(WorkflowService).update(
 			req.user,
 			updateData,
 			workflowId,
@@ -269,7 +267,7 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		const workflow = await WorkflowsService.delete(req.user, workflowId);
+		const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
 		if (!workflow) {
 			Container.get(Logger).verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
@@ -290,6 +288,10 @@ workflowsController.delete(
 workflowsController.post(
 	'/run',
 	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
-		return WorkflowsService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
+		return Container.get(WorkflowService).runManually(
+			req.body,
+			req.user,
+			GenericHelpers.getSessionId(req),
+		);
 	}),
 );

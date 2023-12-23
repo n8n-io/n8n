@@ -100,6 +100,8 @@ describe('WorkflowPreview', () => {
 				JSON.stringify({
 					command: 'openWorkflow',
 					workflow,
+					canOpenNDV: true,
+					hideNodeIssues: false,
 				}),
 				'*',
 			);
@@ -140,6 +142,7 @@ describe('WorkflowPreview', () => {
 					command: 'openExecution',
 					executionId,
 					executionMode: '',
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -168,6 +171,7 @@ describe('WorkflowPreview', () => {
 					command: 'openExecution',
 					executionId,
 					executionMode: '',
+					canOpenNDV: true,
 				}),
 				'*',
 			);
@@ -203,6 +207,8 @@ describe('WorkflowPreview', () => {
 				JSON.stringify({
 					command: 'openWorkflow',
 					workflow,
+					canOpenNDV: true,
+					hideNodeIssues: false,
 				}),
 				'*',
 			);
@@ -218,6 +224,30 @@ describe('WorkflowPreview', () => {
 
 		await waitFor(() => {
 			expect(iframe?.classList.toString()).not.toContain('openNDV');
+		});
+	});
+
+	it('should pass the "Disable NDV" & "Hide issues" flags to using PostMessage', async () => {
+		const nodes = [{ name: 'Start' }] as INodeUi[];
+		const workflow = { nodes } as IWorkflowDb;
+		renderComponent({
+			pinia,
+			props: {
+				workflow,
+				canOpenNDV: false,
+			},
+		});
+		sendPostMessageCommand('n8nReady');
+		await waitFor(() => {
+			expect(postMessageSpy).toHaveBeenCalledWith(
+				JSON.stringify({
+					command: 'openWorkflow',
+					workflow,
+					canOpenNDV: false,
+					hideNodeIssues: false,
+				}),
+				'*',
+			);
 		});
 	});
 
@@ -241,6 +271,20 @@ describe('WorkflowPreview', () => {
 		});
 
 		window.postMessage('commando', '*');
+
+		await waitFor(() => {
+			expect(console.error).not.toHaveBeenCalled();
+			expect(emitted()).toEqual({});
+		});
+	});
+
+	it('should not do anything if no "command" is sent in the message and the `includes` method cannot be applied to the data', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage(null, '*');
 
 		await waitFor(() => {
 			expect(console.error).not.toHaveBeenCalled();

@@ -173,10 +173,13 @@ export async function executeErrorWorkflow(
 		});
 
 		try {
+			const failedNode = workflowErrorData.execution?.lastNodeExecuted
+				? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
+				: undefined;
 			await PermissionChecker.checkSubworkflowExecutePolicy(
 				workflowInstance,
-				runningUser.id,
-				workflowErrorData.workflow.id,
+				workflowErrorData.workflow.id!,
+				failedNode ?? undefined,
 			);
 		} catch (error) {
 			const initialNode = workflowInstance.getStartNode();
@@ -419,7 +422,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  */
 export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (!(await user.hasGlobalScope('workflow:read'))) {
+	if (!user.hasGlobalScope('workflow:read')) {
 		where.userId = user.id;
 	}
 	if (roles?.length) {

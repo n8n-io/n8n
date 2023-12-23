@@ -24,11 +24,15 @@ import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import { ExecutionsService } from '@/executions/executions.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
 mockInstance(Push);
 mockInstance(SecretsHelper);
+mockInstance(ExecutionsService);
+mockInstance(WorkflowService);
 
 const webhookService = mockInstance(WebhookService);
 const multiMainSetup = mockInstance(MultiMainSetup, {

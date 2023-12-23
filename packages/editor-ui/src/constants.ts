@@ -56,6 +56,7 @@ export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
+export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -127,6 +128,9 @@ export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
+export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
+export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -157,6 +161,17 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
+export const DATETIME_NODE_TYPE = 'n8n-nodes-base.dateTime';
+export const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
+export const SPLIT_OUT_NODE_TYPE = 'n8n-nodes-base.splitOut';
+export const LIMIT_NODE_TYPE = 'n8n-nodes-base.limit';
+export const SUMMARIZE_NODE_TYPE = 'n8n-nodes-base.summarize';
+export const AGGREGATE_NODE_TYPE = 'n8n-nodes-base.aggregate';
+export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
+export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
+export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
+export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
+export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -511,6 +526,7 @@ export const enum EnterpriseEditionFeature {
 	DebugInEditor = 'debugInEditor',
 	WorkflowHistory = 'workflowHistory',
 	WorkerView = 'workerView',
+	AdvancedPermissions = 'advancedPermissions',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -602,7 +618,9 @@ export const ASK_AI_EXPERIMENT = {
 	gpt4: 'gpt4',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name];
+export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '016_template_credential_setup';
+
+export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
@@ -667,3 +685,5 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
+
+export const SUGGESTED_TEMPLATES_FLAG = 'SHOW_N8N_SUGGESTED_TEMPLATES';

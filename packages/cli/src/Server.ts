@@ -27,7 +27,7 @@ import type {
 	IExecutionsSummary,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -67,7 +67,6 @@ import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.con
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { UserManagementMailer } from '@/UserManagement/email';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -79,7 +78,7 @@ import { WaitTracker } from '@/WaitTracker';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
-import { licenseController } from './license/license.controller';
+import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
@@ -120,6 +119,8 @@ import { CollaborationService } from './collaboration/collaboration.service';
 import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { PasswordUtility } from './services/password.utility';
 
 const exec = promisify(callbackExec);
 
@@ -247,7 +248,6 @@ export class Server extends AbstractServer {
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MfaService);
@@ -256,6 +256,7 @@ export class Server extends AbstractServer {
 			new EventBusController(),
 			new EventBusControllerEE(),
 			Container.get(AuthController),
+			Container.get(LicenseController),
 			Container.get(OAuth1CredentialController),
 			Container.get(OAuth2CredentialController),
 			new OwnerController(
@@ -264,6 +265,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				Container.get(SettingsRepository),
 				userService,
+				Container.get(PasswordUtility),
 				postHog,
 			),
 			Container.get(MeController),
@@ -298,11 +300,17 @@ export class Server extends AbstractServer {
 				externalHooks,
 				Container.get(UserService),
 				Container.get(License),
+				Container.get(PasswordUtility),
 				postHog,
 			),
 			Container.get(VariablesController),
 			Container.get(RoleController),
 		];
+
+		if (Container.get(MultiMainSetup).isEnabled) {
+			const { DebugController } = await import('./controllers/debug.controller');
+			controllers.push(Container.get(DebugController));
+		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();
@@ -415,11 +423,6 @@ export class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
-		// License
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/license`, licenseController);
-
-		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
 
@@ -463,7 +466,7 @@ export class Server extends AbstractServer {
 
 				const shared = await Container.get(SharedWorkflowRepository).findOne({
 					relations: ['workflow'],
-					where: await whereClause({
+					where: whereClause({
 						user: req.user,
 						globalScope: 'workflow:read',
 						entityType: 'workflow',
@@ -678,8 +681,8 @@ export class Server extends AbstractServer {
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
-						throw new ApplicationError('Could not stop job because it is no longer in queue.', {
-							extra: { jobId: req.params.id },
+						this.logger.debug('Could not stop job because it is no longer in queue', {
+							jobId: req.params.id,
 						});
 					} else {
 						await queue.stopJob(job);

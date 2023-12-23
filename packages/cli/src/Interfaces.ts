@@ -261,7 +261,10 @@ export interface IExternalHooksClass {
 
 export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
 
-export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+export type WebhookRequest = Request<{ path: string }> & {
+	method: IHttpRequestMethods;
+	params: Record<string, string>;
+};
 
 export type WaitingWebhookRequest = WebhookRequest & {
 	params: WebhookRequest['path'] & { suffix?: string };
@@ -356,6 +359,13 @@ export interface IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 		email_sent: boolean;
+		invitee_role: string;
+	}): Promise<void>;
+	onUserRoleChange(userInviteData: {
+		user: User;
+		target_user_id: string;
+		public_api: boolean;
+		target_user_new_role: string;
 	}): Promise<void>;
 	onUserReinvite(userReinviteData: {
 		user: User;
@@ -867,3 +877,11 @@ export abstract class SecretsProvider {
 }
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
+
+export type RegisteredWebhook = {
+	sessionId?: string;
+	timeout: NodeJS.Timeout;
+	workflowEntity: IWorkflowDb;
+	workflow: Workflow;
+	destinationNode?: string;
+};

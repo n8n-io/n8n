@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
+import { MIN_PASSWORD_CHAR_LENGTH, MAX_PASSWORD_CHAR_LENGTH } from '@/constants';
 import type { CredentialPayload } from './types';
 import { v4 as uuid } from 'uuid';
 
@@ -31,14 +31,14 @@ export const randomPositiveDigit = (): number => {
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
 export const randomValidPassword = () =>
-	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - 2) +
+	randomString(MIN_PASSWORD_CHAR_LENGTH, MAX_PASSWORD_CHAR_LENGTH - 2) +
 	randomUppercaseLetter() +
 	randomDigit();
 
 export const randomInvalidPassword = () =>
 	chooseRandomly([
-		randomString(1, MIN_PASSWORD_LENGTH - 1),
-		randomString(MAX_PASSWORD_LENGTH + 2, MAX_PASSWORD_LENGTH + 100),
+		randomString(1, MIN_PASSWORD_CHAR_LENGTH - 1),
+		randomString(MAX_PASSWORD_CHAR_LENGTH + 2, MAX_PASSWORD_CHAR_LENGTH + 100),
 		'abcdefgh', // valid length, no number, no uppercase
 		'abcdefg1', // valid length, has number, no uppercase
 		'abcdefgA', // valid length, no number, has uppercase

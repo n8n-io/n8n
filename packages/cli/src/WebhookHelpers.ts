@@ -37,7 +37,6 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -61,7 +60,6 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
-import { WorkflowsService } from './workflows/workflows.services';
 import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
@@ -133,16 +131,7 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			if (
-				error.errorCode === 404 &&
-				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
-			) {
-				const isTestWebhook = req.originalUrl.includes('webhook-test');
-				res.status(404);
-				return res.render('form-trigger-404', { isTestWebhook });
-			} else {
-				return ResponseHelper.sendErrorResponse(res, error as Error);
-			}
+			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
 
 		// Don't respond, if already responded
@@ -304,14 +293,20 @@ export async function executeWebhook(
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
-	const binaryData = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		'={{$parameter["options"]["binaryData"]}}',
-		executionMode,
-		additionalKeys,
-		undefined,
-		false,
-	);
+	let binaryData;
+
+	const nodeVersion = workflowStartNode.typeVersion;
+	if (nodeVersion === 1) {
+		// binaryData option is removed in versions higher than 1
+		binaryData = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			'={{$parameter["options"]["binaryData"]}}',
+			executionMode,
+			additionalKeys,
+			undefined,
+			false,
+		);
+	}
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
@@ -321,6 +316,7 @@ export async function executeWebhook(
 		let webhookResultData: IWebhookResponseData;
 
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
+		// always falsy for versions higher than 1
 		if (!binaryData) {
 			const { contentType, encoding } = req;
 			if (contentType === 'multipart/form-data') {
@@ -337,7 +333,19 @@ export async function executeWebhook(
 					});
 				});
 			} else {
-				await parseBody(req);
+				if (nodeVersion > 1) {
+					if (
+						contentType?.startsWith('application/json') ||
+						contentType?.startsWith('text/plain') ||
+						contentType?.startsWith('application/x-www-form-urlencoded') ||
+						contentType?.endsWith('/xml') ||
+						contentType?.endsWith('+xml')
+					) {
+						await parseBody(req);
+					}
+				} else {
+					await parseBody(req);
+				}
 			}
 		}
 
@@ -376,9 +384,6 @@ export async function executeWebhook(
 				workflowData: [[{ json: {} }]],
 			};
 		}
-
-		// Save static data if it changed
-		await WorkflowsService.saveStaticData(workflow);
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,
@@ -541,10 +546,27 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
+						const headers = response.headers;
+						let responseCode = response.statusCode;
+						let data = response.body as IDataObject;
+
+						// for formTrigger node redirection has to be handled by sending redirectURL in response body
+						if (
+							nodeType.description.name === 'formTrigger' &&
+							headers.location &&
+							String(responseCode).startsWith('3')
+						) {
+							responseCode = 200;
+							data = {
+								redirectURL: headers.location,
+							};
+							headers.location = undefined;
+						}
+
 						responseCallback(null, {
-							data: response.body as IDataObject,
-							headers: response.headers,
-							responseCode: response.statusCode,
+							data,
+							headers,
+							responseCode,
 						});
 					}
 

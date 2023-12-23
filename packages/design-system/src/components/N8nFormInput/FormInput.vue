@@ -51,6 +51,7 @@
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
+					:disabled="!!option.disabled"
 					size="small"
 				/>
 			</n8n-select>
@@ -118,7 +119,7 @@ export interface Props {
 	validationRules?: Array<Rule | RuleGroup>;
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
-	options?: Array<{ value: string | number; label: string }>;
+	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
 	autocomplete?: string;
 	name?: string;
 	focusInitially?: boolean;

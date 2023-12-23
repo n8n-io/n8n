@@ -14,7 +14,7 @@ import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
@@ -123,9 +123,15 @@ export class UserService {
 
 	async toPublic(
 		user: User,
-		options?: { withInviteUrl?: boolean; posthog?: PostHogClient; withScopes?: boolean },
+		options?: {
+			withInviteUrl?: boolean;
+			inviterId?: string;
+			posthog?: PostHogClient;
+			withScopes?: boolean;
+		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, apiKey, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } =
+			user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -135,30 +141,34 @@ export class UserService {
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
-		if (options?.withScopes) {
-			publicUser.globalScopes = user.globalScopes;
+		if (options?.withInviteUrl && !options?.inviterId) {
+			throw new ApplicationError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && publicUser.isPending) {
-			publicUser = this.addInviteUrl(publicUser, user.id);
+		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
+		if (options?.withScopes) {
+			publicUser.globalScopes = user.globalScopes;
+		}
+
 		return publicUser;
 	}
 
-	private addInviteUrl(user: PublicUser, inviterId: string) {
+	private addInviteUrl(inviterId: string, invitee: PublicUser) {
 		const url = new URL(getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', user.id);
+		url.searchParams.set('inviteeId', invitee.id);
 
-		user.inviteAcceptUrl = url.toString();
+		invitee.inviteAcceptUrl = url.toString();
 
-		return user;
+		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -178,7 +188,11 @@ export class UserService {
 		return Promise.race([fetchPromise, timeoutPromise]);
 	}
 
-	private async sendEmails(owner: User, toInviteUsers: { [key: string]: string }) {
+	private async sendEmails(
+		owner: User,
+		toInviteUsers: { [key: string]: string },
+		role: 'member' | 'admin',
+	) {
 		const domain = getInstanceBaseUrl();
 
 		return Promise.all(
@@ -215,6 +229,7 @@ export class UserService {
 						target_user_id: Object.values(toInviteUsers),
 						public_api: false,
 						email_sent: result.emailSent,
+						invitee_role: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
@@ -284,7 +299,11 @@ export class UserService {
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));
 
-		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
+		const usersInvited = await this.sendEmails(
+			owner,
+			Object.fromEntries(createdUsers),
+			toCreateUsers[0].role, // same role for all invited users
+		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}

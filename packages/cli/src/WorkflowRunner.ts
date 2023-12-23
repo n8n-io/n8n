@@ -217,7 +217,11 @@ export class WorkflowRunner {
 
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
-		if (executionsMode !== 'queue' || data.executionMode === 'manual') {
+		if (
+			executionsMode !== 'queue' ||
+			config.getEnv('generic.instanceType') === 'worker' ||
+			data.executionMode === 'manual'
+		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			const externalHooks = Container.get(ExternalHooks);
 			postExecutePromise

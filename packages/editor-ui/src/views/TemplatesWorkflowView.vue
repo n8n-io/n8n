@@ -36,7 +36,7 @@
 				/>
 			</div>
 			<div :class="$style.content">
-				<div :class="$style.markdown">
+				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
 						:content="template && template.description"
 						:images="template && template.image"
@@ -69,7 +69,8 @@ import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
-import { FeatureFlag, isFeatureFlagEnabled } from '@/utils/featureFlag';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -78,6 +79,13 @@ export default defineComponent({
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
@@ -99,7 +107,7 @@ export default defineComponent({
 	},
 	methods: {
 		async openTemplateSetup(id: string, e: PointerEvent) {
-			if (!isFeatureFlagEnabled(FeatureFlag.templateCredentialsSetup)) {
+			if (!this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
 				const telemetryPayload = {
 					source: 'workflow',
 					template_id: id,
@@ -109,10 +117,11 @@ export default defineComponent({
 				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
 					withPostHog: true,
 				});
-				await this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+				await this.externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 			}
 
 			await openTemplateCredentialSetup({
+				posthogStore: this.posthogStore,
 				router: this.$router,
 				templateId: id,
 				inNewBrowserTab: e.metaKey || e.ctrlKey,
@@ -143,7 +152,7 @@ export default defineComponent({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
+		if (this.template && this.template.full) {
 			this.loading = false;
 			return;
 		}

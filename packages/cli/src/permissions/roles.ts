@@ -4,7 +4,6 @@ export const ownerPermissions: Scope[] = [
 	'auditLogs:manage',
 	'credential:create',
 	'credential:read',
-	'credential:update',
 	'credential:delete',
 	'credential:list',
 	'credential:share',
@@ -35,6 +34,7 @@ export const ownerPermissions: Scope[] = [
 	'externalSecret:use',
 	'ldap:manage',
 	'ldap:sync',
+	'license:manage',
 	'logStreaming:manage',
 	'orchestration:read',
 	'orchestration:list',
@@ -66,6 +66,7 @@ export const ownerPermissions: Scope[] = [
 	'workflow:list',
 	'workflow:share',
 	'workflow:execute',
+	'workersView:manage',
 ];
 export const adminPermissions: Scope[] = ownerPermissions.concat();
 export const memberPermissions: Scope[] = [
