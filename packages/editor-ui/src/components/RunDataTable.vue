@@ -123,7 +123,7 @@
 							v-html="highlightSearchTerm(data)"
 						/>
 						<span
-							v-else-if="isBinary(data)"
+							v-else-if="isN8nBinaryProperty(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 						>
 							<BinaryData :data="data"></BinaryData>
@@ -264,6 +264,7 @@ export default defineComponent({
 	},
 	methods: {
 		shorten,
+		isN8nBinaryProperty,
 		isHoveringRow(row: number): boolean {
 			if (row === this.activeRow) {
 				return true;
@@ -445,9 +446,6 @@ export default defineComponent({
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
-		},
-		isBinary(data: unknown): boolean {
-			return isN8nBinaryProperty(data);
 		},
 		isSimple(data: unknown): boolean {
 			return (
