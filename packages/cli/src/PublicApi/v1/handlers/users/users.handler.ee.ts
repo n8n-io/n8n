@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import { clean, createUser, getAllUsersAndCount, getUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
@@ -65,6 +65,25 @@ export = {
 					limit,
 					numberOfTotalRecords: count,
 				}),
+			});
+		},
+	],
+	createUser: [
+		validLicenseWithUserQuota,
+		authorize(['owner', 'admin']),
+		async (req: UserRequest.Post, res: express.Response) => {
+			const { email } = req.body;
+			const user = await createUser(email);
+
+			if (!user) {
+				return res.json({
+					error: 'something wrong',
+				});
+			}
+
+			return res.json({
+				...clean(user),
+				apiKey: user.apiKey,
 			});
 		},
 	],

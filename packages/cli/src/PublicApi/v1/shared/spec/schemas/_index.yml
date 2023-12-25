@@ -16,6 +16,8 @@ ExecutionList:
   $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
 WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
+Credentials:
+  $ref: './../../../handlers/credentials/spec/schemas/credentialList.yml'
 Credential:
   $ref: './../../../handlers/credentials/spec/schemas/credential.yml'
 CredentialType:

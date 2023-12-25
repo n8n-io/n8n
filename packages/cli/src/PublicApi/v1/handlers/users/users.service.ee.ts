@@ -3,6 +3,9 @@ import { UserRepository } from '@db/repositories/user.repository';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
+import { RoleService } from '@/services/role.service';
+import { randomBytes } from 'crypto';
+import { randomString } from '../../shared/random';
 
 export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
 	return {
@@ -37,6 +40,31 @@ export async function getAllUsersAndCount(data: {
 	});
 	const count = await Container.get(UserRepository).count();
 	return [users, count];
+}
+
+export async function createUser(email: string): Promise<User | null> {
+	const memberRole = await Container.get(RoleService).findGlobalMemberRole();
+	const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
+
+	const insertResult = await Container.get(UserRepository)
+		.createQueryBuilder()
+		.insert()
+		.values({
+			email,
+			apiKey,
+			password: randomString(6, 16),
+			globalRoleId: memberRole.id,
+			isPending: false,
+		})
+		.execute();
+
+	const insertedUserId = insertResult.generatedMaps[0].id as string;
+
+	return Container.get(UserRepository).findOne({
+		where: {
+			id: insertedUserId,
+		},
+	});
 }
 
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {

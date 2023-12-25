@@ -12,6 +12,7 @@ import { validCredentialsProperties, validCredentialType } from './credentials.m
 import {
 	createCredential,
 	encryptCredential,
+	getAllCredentials,
 	getCredentials,
 	getSharedCredentials,
 	removeCredential,
@@ -93,6 +94,26 @@ export = {
 				.filter((property) => property.type !== 'hidden');
 
 			return res.json(toJsonSchema(schema));
+		},
+	],
+
+	getCredentials: [
+		authorize(['owner', 'admin', 'member']),
+		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
+			try {
+				const credentials = await getAllCredentials(req.user, {
+					id: true,
+					name: true,
+					type: true,
+					nodesAccess: true,
+					data: true,
+					createdAt: true,
+					updatedAt: true,
+				});
+				return res.json(credentials);
+			} catch (error) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
 		},
 	],
 };

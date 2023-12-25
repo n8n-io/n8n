@@ -12,9 +12,31 @@ import { Container } from 'typedi';
 import { RoleService } from '@/services/role.service';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { In, type FindOptionsSelect } from 'typeorm';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+}
+
+async function getAccessibleCredentials(userId: string) {
+	const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+		where: {
+			userId,
+		},
+	});
+
+	return sharedCredentials.map((s) => s.credentialsId);
+}
+
+export async function getAllCredentials(user: User, select?: FindOptionsSelect<CredentialsEntity>) {
+	const sharedCredentialsIds = await getAccessibleCredentials(user.id);
+
+	const credentials = await Container.get(CredentialsRepository).find({
+		select,
+		where: { id: In(sharedCredentialsIds) },
+	});
+
+	return credentials;
 }
 
 export async function getSharedCredentials(
