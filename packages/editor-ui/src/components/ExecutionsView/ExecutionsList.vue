@@ -329,7 +329,7 @@ export default defineComponent({
 			const activeExecutionId = this.$route.params.executionId;
 
 			try {
-				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
+				await this.workflowsStore.stopActiveExecution(activeExecutionId);
 
 				this.showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),

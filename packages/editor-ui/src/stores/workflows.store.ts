@@ -64,7 +64,7 @@ import { findLast } from 'lodash-es';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import {
 	getActiveWorkflows,
-	getCurrentExecutions,
+	getActiveExecutions,
 	getExecutionData,
 	getExecutions,
 	getNewWorkflow,
@@ -1276,7 +1276,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
-		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+		async getActiveExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
 			let sendData = {};
 			if (filter) {
 				sendData = {
@@ -1284,12 +1284,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'GET',
-				'/executions-current',
-				sendData,
-			);
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/active-executions', sendData);
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1350,12 +1345,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			);
 		},
 
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
+		async stopActiveExecution(executionId: string): Promise<IExecutionsStopData> {
 			const rootStore = useRootStore();
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
-				`/executions-current/${executionId}/stop`,
+				`/active-executions/${executionId}/stop`,
 			);
 		},
 
@@ -1370,7 +1365,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			try {
 				const rootStore = useRootStore();
 				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
-					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
+					activeExecutions = await getActiveExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});
 				}

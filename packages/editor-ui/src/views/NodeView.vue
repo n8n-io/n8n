@@ -1890,7 +1890,7 @@ export default defineComponent({
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.workflowsStore.stopCurrentExecution(executionId);
+				await this.workflowsStore.stopActiveExecution(executionId);
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
