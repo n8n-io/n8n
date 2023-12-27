@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Response, NextFunction } from 'express';
 import { Get, Middleware, RestController } from '@/decorators';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
@@ -18,12 +17,11 @@ interface WorkflowStatisticsData<T> {
 	manualError: T;
 }
 
-@Service()
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
-		private sharedWorkflowRepository: SharedWorkflowRepository,
-		private workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly logger: Logger,
 	) {}
 

@@ -1,9 +1,7 @@
 import { License } from '@/License';
 import { Get, RestController } from '@/decorators';
 import { RoleService } from '@/services/role.service';
-import { Service } from 'typedi';
 
-@Service()
 @RestController('/roles')
 export class RoleController {
 	constructor(

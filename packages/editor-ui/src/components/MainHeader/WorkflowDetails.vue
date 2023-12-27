@@ -537,6 +537,7 @@ export default defineComponent({
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
+							...(this.workflowsStore.workflow.meta || {}),
 							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map((tagId) => {

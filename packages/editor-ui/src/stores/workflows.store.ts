@@ -32,6 +32,7 @@ import type {
 	IWorkflowsMap,
 	WorkflowsState,
 	NodeMetadataMap,
+	WorkflowMetadata,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -374,7 +375,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/active-workflows/error/${id}`,
+			);
 		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
@@ -650,6 +655,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow = {
 				...this.workflow,
 				tags: updated as IWorkflowDb['tags'],
+			};
+		},
+
+		setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+			this.workflow.meta = metadata;
+		},
+
+		addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+			this.workflow.meta = {
+				...this.workflow.meta,
+				...data,
 			};
 		},
 

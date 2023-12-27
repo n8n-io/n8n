@@ -44,6 +44,7 @@ import type { CredentialsRepository } from '@db/repositories/credentials.reposit
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { ExternalHooks } from './ExternalHooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
@@ -254,11 +255,6 @@ export interface IExternalHooksFunctions {
 	};
 }
 
-export interface IExternalHooksClass {
-	init(): Promise<void>;
-	run(hookName: string, hookParameters?: any[]): Promise<void>;
-}
-
 export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
 
 export type WebhookRequest = Request<{ path: string }> & {
@@ -324,134 +320,6 @@ export interface ITelemetryUserDeletionData {
 	migration_strategy?: 'transfer_data' | 'delete_data';
 	target_user_id?: string;
 	migration_user_id?: string;
-}
-
-export interface IInternalHooksClass {
-	onN8nStop(): Promise<void>;
-	onServerStarted(
-		diagnosticInfo: IDiagnosticInfo,
-		firstWorkflowCreatedAt?: Date,
-	): Promise<unknown[]>;
-	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
-	onWorkflowCreated(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
-	onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void>;
-	onWorkflowSaved(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
-	onWorkflowBeforeExecute(executionId: string, data: IWorkflowExecutionDataProcess): Promise<void>;
-	onWorkflowPostExecute(
-		executionId: string,
-		workflow: IWorkflowBase,
-		runData?: IRun,
-		userId?: string,
-	): Promise<void>;
-	onNodeBeforeExecute(
-		executionId: string,
-		workflow: IWorkflowBase,
-		nodeName: string,
-	): Promise<void>;
-	onNodePostExecute(executionId: string, workflow: IWorkflowBase, nodeName: string): Promise<void>;
-	onUserDeletion(userDeletionData: {
-		user: User;
-		telemetryData: ITelemetryUserDeletionData;
-		publicApi: boolean;
-	}): Promise<void>;
-	onUserInvite(userInviteData: {
-		user: User;
-		target_user_id: string[];
-		public_api: boolean;
-		email_sent: boolean;
-		invitee_role: string;
-	}): Promise<void>;
-	onUserRoleChange(userInviteData: {
-		user: User;
-		target_user_id: string;
-		public_api: boolean;
-		target_user_new_role: string;
-	}): Promise<void>;
-	onUserReinvite(userReinviteData: {
-		user: User;
-		target_user_id: string;
-		public_api: boolean;
-	}): Promise<void>;
-	onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void>;
-	onUserInviteEmailClick(userInviteClickData: { inviter: User; invitee: User }): Promise<void>;
-	onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void>;
-	onUserTransactionalEmail(
-		userTransactionalEmailData: {
-			user_id: string;
-			message_type: 'Reset password' | 'New user invite' | 'Resend invite';
-			public_api: boolean;
-		},
-		user?: User,
-	): Promise<void>;
-	onEmailFailed(failedEmailData: {
-		user: User;
-		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
-		public_api: boolean;
-	}): Promise<void>;
-	onUserCreatedCredentials(userCreatedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-		public_api: boolean;
-	}): Promise<void>;
-
-	onUserSharedCredentials(userSharedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-		user_id_sharer: string;
-		user_ids_sharees_added: string[];
-		sharees_removed: number | null;
-	}): Promise<void>;
-	onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void>;
-	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }, user?: User): Promise<void>;
-	onUserSignup(
-		user: User,
-		userSignupData: {
-			user_type: AuthProviderType;
-			was_disabled_ldap_user: boolean;
-		},
-	): Promise<void>;
-	onCommunityPackageInstallFinished(installationData: {
-		user: User;
-		input_string: string;
-		package_name: string;
-		success: boolean;
-		package_version?: string;
-		package_node_names?: string[];
-		package_author?: string;
-		package_author_email?: string;
-		failure_reason?: string;
-	}): Promise<void>;
-	onCommunityPackageUpdateFinished(updateData: {
-		user: User;
-		package_name: string;
-		package_version_current: string;
-		package_version_new: string;
-		package_node_names: string[];
-		package_author?: string;
-		package_author_email?: string;
-	}): Promise<void>;
-	onCommunityPackageDeleteFinished(deleteData: {
-		user: User;
-		package_name: string;
-		package_version?: string;
-		package_node_names?: string[];
-		package_author?: string;
-		package_author_email?: string;
-	}): Promise<void>;
-	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
-	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
-	onVariableCreated(createData: { variable_type: string }): Promise<void>;
-	onExternalSecretsProviderSettingsSaved(saveData: {
-		user_id?: string;
-		vault_type: string;
-		is_valid: boolean;
-		is_new: boolean;
-		error_message?: string;
-	}): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -839,7 +707,7 @@ export interface PublicUser {
 export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
-	externalHooks: IExternalHooksClass;
+	externalHooks: ExternalHooks;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
 

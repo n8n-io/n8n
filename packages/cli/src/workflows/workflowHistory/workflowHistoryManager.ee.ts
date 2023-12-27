@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import { LessThan } from 'typeorm';
 import { DateTime } from 'luxon';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { WORKFLOW_HISTORY_PRUNE_INTERVAL } from './constants';
@@ -38,8 +37,6 @@ export class WorkflowHistoryManager {
 		}
 		const pruneDateTime = DateTime.now().minus({ hours: pruneHours }).toJSDate();
 
-		await this.workflowHistoryRepo.delete({
-			createdAt: LessThan(pruneDateTime),
-		});
+		await this.workflowHistoryRepo.deleteEarlierThan(pruneDateTime);
 	}
 }

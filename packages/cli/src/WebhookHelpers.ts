@@ -49,7 +49,6 @@ import type {
 	WebhookCORSRequest,
 	WebhookRequest,
 } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -515,11 +514,16 @@ export async function executeWebhook(
 			Object.assign(runExecutionData, runExecutionDataMerge);
 		}
 
+		if (workflowData.pinData) {
+			runExecutionData.resultData.pinData = workflowData.pinData;
+		}
+
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			pinData: workflowData.pinData,
 			userId: user.id,
 		};
 
@@ -819,15 +823,4 @@ export async function executeWebhook(
 		responseCallback(error, {});
 		return;
 	}
-}
-
-/**
- * Returns the base URL of the webhooks
- */
-export function getWebhookBaseUrl() {
-	let urlBaseWebhook = process.env.WEBHOOK_URL ?? GenericHelpers.getBaseUrl();
-	if (!urlBaseWebhook.endsWith('/')) {
-		urlBaseWebhook += '/';
-	}
-	return urlBaseWebhook;
 }

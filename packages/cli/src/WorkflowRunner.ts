@@ -293,6 +293,7 @@ export class WorkflowRunner {
 			nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
+			pinData: data.pinData || data.workflowData.pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
