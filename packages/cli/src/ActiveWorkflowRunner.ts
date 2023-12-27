@@ -292,6 +292,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
 
+		if (webhooks.length === 0) return;
+
+		this.logger.debug(`Adding webhooks for workflow "${workflow.name}" (ID ${workflow.id})`);
+
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
@@ -699,14 +703,26 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let shouldAddWebhooks = true;
 		let shouldAddTriggersAndPollers = true;
 
-		if (this.multiMainSetup.isEnabled && activationMode !== 'leadershipChange') {
-			shouldAddWebhooks = this.multiMainSetup.isLeader;
-			shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
-		}
-
-		if (this.multiMainSetup.isEnabled && activationMode === 'leadershipChange') {
-			shouldAddWebhooks = false;
-			shouldAddTriggersAndPollers = true;
+		/**
+		 * In a multi-main scenario, webhooks are stored in the database, while triggers
+		 * and pollers are run only by the leader main instance.
+		 *
+		 * - During a regular workflow activation (i.e. not leadership change), only the
+		 * leader should add webhooks to prevent duplicate insertions, and only the leader
+		 * should handle triggers and pollers to prevent duplicate work.
+		 *
+		 * - During a leadership change, webhooks remain in storage and so need not be added
+		 * again, and the new leader should take over the triggers and pollers that stopped
+		 * running when the former leader became unresponsive.
+		 */
+		if (this.multiMainSetup.isEnabled) {
+			if (activationMode !== 'leadershipChange') {
+				shouldAddWebhooks = this.multiMainSetup.isLeader;
+				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+			} else {
+				shouldAddWebhooks = false;
+				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+			}
 		}
 
 		try {
@@ -744,14 +760,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
 
 			if (shouldAddWebhooks) {
-				this.logger.debug(`Adding webhooks for workflow ${dbWorkflow.display()}`);
-
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
 			}
 
 			if (shouldAddTriggersAndPollers) {
-				this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
-
 				await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',
@@ -936,6 +948,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
+			this.logger.debug(`Adding triggers and pollers for workflow "${dbWorkflow.display()}"`);
+
 			await this.activeWorkflows.add(
 				workflow.id,
 				workflow,
