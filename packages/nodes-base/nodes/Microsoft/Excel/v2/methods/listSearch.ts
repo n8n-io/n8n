@@ -101,7 +101,7 @@ export async function getWorksheetTables(
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 	const workbookId = workbookRLC.value as string;
-	let workbookURL = workbookRLC.cachedResultUrl as string;
+	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
