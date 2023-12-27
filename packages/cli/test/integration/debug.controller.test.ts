@@ -25,22 +25,39 @@ describe('DebugController', () => {
 	describe('GET /debug/multi-main-setup', () => {
 		test('should return multi-main setup details', async () => {
 			const workflowId = generateNanoId();
-			const activeWorkflows = [{ id: workflowId, name: randomName() }] as WorkflowEntity[];
+			const webhooks = [{ id: workflowId, name: randomName() }] as WorkflowEntity[];
+			const triggersAndPollers = [{ id: workflowId, name: randomName() }] as WorkflowEntity[];
 			const activationErrors = { [workflowId]: 'Failed to activate' };
 			const instanceId = 'main-71JdWtq306epIFki';
+			const leaderKey = 'some-leader-key';
 
-			workflowRepository.find.mockResolvedValue(activeWorkflows);
+			const createQueryBuilder = {
+				select: () => createQueryBuilder,
+				innerJoin: () => createQueryBuilder,
+				execute: () => webhooks,
+			};
+
+			workflowRepository.find.mockResolvedValue(triggersAndPollers);
 			activeWorkflowRunner.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowRunner.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
+
+			jest
+				.spyOn(workflowRepository, 'createQueryBuilder')
+				.mockImplementation(() => createQueryBuilder);
 			jest.spyOn(MultiMainSetup.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
-			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue('some-leader-key');
+			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
+			jest.spyOn(MultiMainSetup.prototype, 'isLeader', 'get').mockReturnValue(true);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 
 			expect(response.body.data).toMatchObject({
 				instanceId,
-				leaderKey: 'some-leader-key',
-				activeWorkflows,
+				leaderKey,
+				isLeader: true,
+				activeWorkflows: {
+					webhooks,
+					triggersAndPollers,
+				},
 				activationErrors,
 			});
 		});
