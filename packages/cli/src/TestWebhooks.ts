@@ -38,16 +38,14 @@ export class TestWebhooks implements IWebhookManager {
 
 	private registeredWebhooks: { [webhookKey: string]: RegisteredWebhook } = {};
 
-	private webhookUrls: { [webhookKey: string]: IWebhookData[] } = {};
+	private webhookUrls: { [webhookKey: string]: IWebhookData } = {};
 
 	get webhooksByWorkflow() {
 		const result: { [workflowId: string]: IWebhookData[] } = {};
 
-		for (const webhooks of Object.values(this.webhookUrls)) {
-			for (const webhook of webhooks) {
-				result[webhook.workflowId] ||= [];
-				result[webhook.workflowId].push(webhook);
-			}
+		for (const webhook of Object.values(this.webhookUrls)) {
+			result[webhook.workflowId] ||= [];
+			result[webhook.workflowId].push(webhook);
 		}
 
 		return result;
@@ -288,13 +286,8 @@ export class TestWebhooks implements IWebhookManager {
 			throw new WebhookPathTakenError(webhook.node);
 		}
 
-		// Make the webhook available directly because sometimes to create it successfully
-		// it gets called
-		if (!this.webhookUrls[key]) {
-			this.webhookUrls[key] = [];
-		}
 		webhook.isTest = true;
-		this.webhookUrls[key].push(webhook);
+		this.webhookUrls[key] = webhook;
 
 		try {
 			await workflow.createWebhookIfNotExists(
@@ -304,12 +297,7 @@ export class TestWebhooks implements IWebhookManager {
 				activationMode,
 			);
 		} catch (error) {
-			// If there was a problem unregister the webhook again
-			if (this.webhookUrls[key].length <= 1) {
-				delete this.webhookUrls[key];
-			} else {
-				this.webhookUrls[key] = this.webhookUrls[key].filter((w) => w.path !== w.path);
-			}
+			if (this.webhookUrls[key]) delete this.webhookUrls[key];
 
 			throw error;
 		}
@@ -326,19 +314,19 @@ export class TestWebhooks implements IWebhookManager {
 		const pathElementsSet = new Set(path.split('/'));
 		// check if static elements match in path
 		// if more results have been returned choose the one with the most static-route matches
-		this.webhookUrls[key].forEach((dynamicWebhook) => {
-			const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
-			const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
+		const dynamicWebhook = this.webhookUrls[key];
 
-			if (allStaticExist && staticElements.length > maxMatches) {
-				maxMatches = staticElements.length;
-				webhook = dynamicWebhook;
-			}
-			// handle routes with no static elements
-			else if (staticElements.length === 0 && !webhook) {
-				webhook = dynamicWebhook;
-			}
-		});
+		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
+		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
+
+		if (allStaticExist && staticElements.length > maxMatches) {
+			maxMatches = staticElements.length;
+			webhook = dynamicWebhook;
+		}
+		// handle routes with no static elements
+		else if (staticElements.length === 0 && !webhook) {
+			webhook = dynamicWebhook;
+		}
 
 		return webhook;
 	}
