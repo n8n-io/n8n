@@ -14,24 +14,27 @@ describe('ExecutionRepository', () => {
 	const executionRepository = Container.get(ExecutionRepository);
 
 	describe('getWaitingExecutions()', () => {
-		test.each(['sqlite', 'postgres'])('should be called with expected args', async (dbType) => {
-			jest.spyOn(config, 'getEnv').mockReturnValueOnce(dbType);
-			jest.spyOn(executionRepository, 'findMultipleExecutions').mockResolvedValueOnce([]);
+		test.each(['sqlite', 'postgres'])(
+			'on %s, should be called with expected args',
+			async (dbType) => {
+				jest.spyOn(config, 'getEnv').mockReturnValueOnce(dbType);
+				jest.spyOn(executionRepository, 'findMultipleExecutions').mockResolvedValueOnce([]);
 
-			await executionRepository.getWaitingExecutions();
+				await executionRepository.getWaitingExecutions();
 
-			const expectedQuery = expect.objectContaining({
-				order: { waitTill: 'ASC' },
-				select: ['id', 'waitTill'],
-				where: expect.objectContaining({
-					waitTill: expect.objectContaining({
-						_type: 'lessThanOrEqual',
-						_value: expect.any(String),
+				const expectedQuery = expect.objectContaining({
+					order: { waitTill: 'ASC' },
+					select: ['id', 'waitTill'],
+					where: expect.objectContaining({
+						waitTill: expect.objectContaining({
+							_type: 'lessThanOrEqual',
+							_value: expect.any(String),
+						}),
 					}),
-				}),
-			});
+				});
 
-			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(expectedQuery);
-		});
+				expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(expectedQuery);
+			},
+		);
 	});
 });
