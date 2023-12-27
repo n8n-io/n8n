@@ -10,7 +10,6 @@ import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
-import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
@@ -31,7 +30,7 @@ export abstract class AbstractServer {
 
 	readonly app: express.Application;
 
-	protected externalHooks: IExternalHooksClass;
+	protected externalHooks: ExternalHooks;
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 

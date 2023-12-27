@@ -1,6 +1,5 @@
 import { Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { Service } from 'typedi';
 import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 
@@ -31,7 +30,6 @@ const throttle = rateLimit({
 	message: { message: 'Too many requests' },
 });
 
-@Service()
 @RestController()
 export class PasswordResetController {
 	constructor(

@@ -1,9 +1,7 @@
-import { Service } from 'typedi';
 import { Authorized, Get, RestController } from '@/decorators';
 import { WorkflowRequest } from '@/requests';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
-@Service()
 @Authorized()
 @RestController('/active-workflows')
 export class ActiveWorkflowsController {
