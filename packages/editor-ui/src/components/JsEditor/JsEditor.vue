@@ -41,7 +41,8 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			editor: {} as EditorView,
+			editor: null as EditorView | null,
+			editorState: null as EditorState | null,
 		};
 	},
 	computed: {
@@ -87,6 +88,7 @@ export default defineComponent({
 		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 		const parent = this.$refs.jsEditor as HTMLDivElement;
 		this.editor = new EditorView({ parent, state });
+		this.editorState = this.editor.state;
 	},
 });
 </script>

@@ -41,7 +41,8 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			editor: {} as EditorView,
+			editor: null as EditorView | null,
+			editorState: null as EditorState | null,
 		};
 	},
 	computed: {
@@ -73,8 +74,6 @@ export default defineComponent({
 					bracketMatching(),
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
-
-						this.editorState = this.editor.state;
 						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
@@ -86,6 +85,7 @@ export default defineComponent({
 		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 		const parent = this.$refs.jsonEditor as HTMLDivElement;
 		this.editor = new EditorView({ parent, state });
+		this.editorState = this.editor.state;
 	},
 });
 </script>

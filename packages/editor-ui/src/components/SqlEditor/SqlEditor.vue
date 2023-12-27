@@ -60,6 +60,7 @@ const SQL_DIALECTS = {
 
 type SQLEditorData = {
 	editor: EditorView | null;
+	editorState: EditorState | null;
 	isFocused: boolean;
 	skipSegments: string[];
 	expressionsDocsUrl: string;
@@ -95,6 +96,7 @@ export default defineComponent({
 	data(): SQLEditorData {
 		return {
 			editor: null,
+			editorState: null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
@@ -191,6 +193,7 @@ export default defineComponent({
 		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
+		this.editorState = this.editor.state;
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {
