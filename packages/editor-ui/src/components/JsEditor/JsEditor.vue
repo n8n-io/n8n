@@ -75,8 +75,8 @@ export default defineComponent({
 					foldGutter(),
 					dropCursor(),
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-						if (!viewUpdate.docChanged) return;
-						this.$emit('update:modelValue', this.doc);
+						if (!viewUpdate.docChanged || !this.editor) return;
+						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
 			}
