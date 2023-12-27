@@ -301,7 +301,7 @@ export class TestWebhooks implements IWebhookManager {
 		}
 	}
 
-	private getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
+	getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
 		const key = this.toWebhookKey({ httpMethod, path, webhookId });
 		if (this.registrations[key] === undefined) {
 			return undefined;
@@ -348,7 +348,7 @@ export class TestWebhooks implements IWebhookManager {
 	/**
 	 * Deactivate all registered webhooks of a workflow.
 	 */
-	private async deactivateWebhooks(workflow: Workflow) {
+	async deactivateWebhooks(workflow: Workflow) {
 		const webhooks = this.webhooksByWorkflow[workflow.id];
 
 		if (!webhooks) return false; // nothing to deactivate
@@ -362,5 +362,15 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return true;
+	}
+
+	clearRegistrations() {
+		this.registrations = {};
+	}
+
+	setRegistration(registration: WebhookRegistration) {
+		const key = this.toWebhookKey(registration.webhook);
+
+		this.registrations[key] = registration;
 	}
 }
