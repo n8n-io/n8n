@@ -717,7 +717,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			if (activationMode !== 'leadershipChange') {
 				shouldAddWebhooks = this.multiMainSetup.isLeader;
 				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
-			} else if (activationMode === 'leadershipChange') {
+			} else {
 				shouldAddWebhooks = false;
 				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
 			}
