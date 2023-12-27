@@ -3,6 +3,7 @@ import Container from 'typedi';
 import { EntityManager, DataSource } from 'typeorm';
 import { mockInstance } from '../../shared/mocking';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import config from '@/config';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockInstance(EntityManager);
@@ -13,7 +14,8 @@ describe('ExecutionRepository', () => {
 	const executionRepository = Container.get(ExecutionRepository);
 
 	describe('getWaitingExecutions()', () => {
-		test('should', async () => {
+		test.each(['sqlite', 'postgres'])('should be called with expected args', async (dbType) => {
+			jest.spyOn(config, 'getEnv').mockReturnValueOnce(dbType);
 			jest.spyOn(executionRepository, 'findMultipleExecutions').mockResolvedValueOnce([]);
 
 			await executionRepository.getWaitingExecutions();
