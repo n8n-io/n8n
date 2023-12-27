@@ -1,3 +1,18 @@
+## [1.22.2](https://github.com/n8n-io/n8n/compare/n8n@1.22.1...n8n@1.22.2) (2023-12-27)
+
+
+### Bug Fixes
+
+* **Asana Node:** Omit body from GET, HEAD, and DELETE requests ([#8057](https://github.com/n8n-io/n8n/issues/8057)) ([fc2f528](https://github.com/n8n-io/n8n/commit/fc2f5287e604495b987e0887dd8ff782cee9393a))
+* **core:** Fix issue that pinnedData is not used with Test-Webhooks ([#8123](https://github.com/n8n-io/n8n/issues/8123)) ([8b6921e](https://github.com/n8n-io/n8n/commit/8b6921e7e284ad2722f9ea950b55b1b52d73f16c))
+* **editor:** Avoid sanitizing output to search node data ([#8126](https://github.com/n8n-io/n8n/issues/8126)) ([9a3c133](https://github.com/n8n-io/n8n/commit/9a3c133cc2382f9e7e2037f8ecef570e480d6e24))
+* **editor:** Fix operation change failing in certain conditions ([#8114](https://github.com/n8n-io/n8n/issues/8114)) ([228d95a](https://github.com/n8n-io/n8n/commit/228d95a2f8f01b4692f02adb3bcd334d11b76053)), closes [/github.com/n8n-io/n8n/blob/7806a65229878a473f5526bad0b94614e8bfa8aa/packages/workflow/src/NodeHelpers.ts#L786](https://github.com//github.com/n8n-io/n8n/blob/7806a65229878a473f5526bad0b94614e8bfa8aa/packages/workflow/src/NodeHelpers.ts/issues/L786)
+* **editor:** Prevent browser zoom when scrolling inside sticky edit mode ([#8116](https://github.com/n8n-io/n8n/issues/8116)) ([98ad3d4](https://github.com/n8n-io/n8n/commit/98ad3d4a265257a714e0261fc8d36bf095b93582))
+* **editor:** Prevent canvas undo/redo when NDV is open ([#8118](https://github.com/n8n-io/n8n/issues/8118)) ([51b3f3b](https://github.com/n8n-io/n8n/commit/51b3f3b61a24b60fb90b1d4616ff8358565dbc16))
+* **Redis Trigger Node:** Activating a workflow with a Redis trigger fails ([#8129](https://github.com/n8n-io/n8n/issues/8129)) ([fb439d2](https://github.com/n8n-io/n8n/commit/fb439d2ee828535b43efbb2a5890d7feb1bd9e75))
+
+
+
 ## [1.22.1](https://github.com/n8n-io/n8n/compare/n8n@1.22.0...n8n@1.22.1) (2023-12-21)
 
 
