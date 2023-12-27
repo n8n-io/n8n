@@ -389,7 +389,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(async (req: CurlHelper.ToJson): Promise<{ [key: string]: string }> => {
+			ResponseHelper.send(async (req: CurlHelper.ToJson) => {
 				const curlCommand = req.body.curlCommand ?? '';
 
 				try {
@@ -632,11 +632,10 @@ export class Server extends AbstractServer {
 			// Returns the current settings for the UI
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(async (req: express.Request): Promise<IN8nUISettings> => {
-					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
-
-					return frontendService.getSettings();
-				}),
+				ResponseHelper.send(
+					async (req: express.Request): Promise<IN8nUISettings> =>
+						frontendService.getSettings(req.headers.sessionid as string),
+				),
 			);
 		}
 
