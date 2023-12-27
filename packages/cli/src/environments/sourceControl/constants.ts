@@ -10,7 +10,6 @@ export const SOURCE_CONTROL_SSH_FOLDER = 'ssh';
 export const SOURCE_CONTROL_SSH_KEY_NAME = 'key';
 export const SOURCE_CONTROL_DEFAULT_BRANCH = 'main';
 export const SOURCE_CONTROL_ORIGIN = 'origin';
-export const SOURCE_CONTROL_API_ROOT = 'source-control';
 export const SOURCE_CONTROL_README = `
 # n8n Source Control
 `;
