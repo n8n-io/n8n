@@ -14,6 +14,7 @@ import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
+	ObjectLiteral,
 	SelectQueryBuilder,
 } from 'typeorm';
 import { parse, stringify } from 'flatted';
@@ -515,5 +516,30 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async deleteByIds(executionIds: string[]) {
 		return this.delete({ id: In(executionIds) });
+	}
+
+	async getWaitingExecutions() {
+		// Find all the executions which should be triggered in the next 70 seconds
+		const findQuery: FindManyOptions<ExecutionEntity> = {
+			select: ['id', 'waitTill'],
+			where: {
+				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
+			},
+			order: {
+				waitTill: 'ASC',
+			},
+		};
+
+		const dbType = config.getEnv('database.type');
+		if (dbType === 'sqlite') {
+			// This is needed because of issue in TypeORM <> SQLite:
+			// https://github.com/typeorm/typeorm/issues/2286
+			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
+			);
+		}
+
+		return this.findMultipleExecutions(findQuery);
 	}
 }
