@@ -41,6 +41,13 @@ export class UserService {
 		return this.userRepository.find(options);
 	}
 
+	async findManybyIds(userIds: string[]) {
+		return this.findMany({
+			where: { id: In(userIds) },
+			relations: ['globalRole'],
+		});
+	}
+
 	async findOneBy(options: FindOptionsWhere<User>) {
 		return this.userRepository.findOneBy(options);
 	}

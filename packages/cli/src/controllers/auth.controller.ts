@@ -1,5 +1,4 @@
 import validator from 'validator';
-import { In } from 'typeorm';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -186,10 +185,8 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userService.findManybyIds([inviterId, inviteeId]);
+
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
