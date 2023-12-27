@@ -28,6 +28,7 @@ describe('TestWebhooks', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		testWebhooks.registrations = {};
 	});
 
 	describe('needsWebhook()', () => {
@@ -132,7 +133,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
 
 			// @ts-expect-error Private property
-			testWebhooks.registeredWebhooks[`${keyPart}|${workflowId}`] = {
+			testWebhooks.registrations[`${keyPart}|${workflowId}`] = {
 				sessionId: 'some-session-id',
 				timeout: setTimeout(() => {}, 0),
 				workflowEntity: {} as IWorkflowDb,
@@ -146,9 +147,6 @@ describe('TestWebhooks', () => {
 			const promise = testWebhooks.executeWebhook(request, response);
 
 			await expect(promise).rejects.toThrowError(NotFoundError);
-
-			// @ts-expect-error Private property
-			delete testWebhooks.registeredWebhooks[`${keyPart}|${workflowId}`];
 		});
 	});
 });
