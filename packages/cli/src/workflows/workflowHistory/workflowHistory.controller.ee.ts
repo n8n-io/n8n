@@ -1,6 +1,5 @@
 import { Authorized, RestController, Get, Middleware } from '@/decorators';
 import { WorkflowHistoryRequest } from '@/requests';
-import { Service } from 'typedi';
 import { WorkflowHistoryService } from './workflowHistory.service.ee';
 import { Request, Response, NextFunction } from 'express';
 import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflowHistoryHelper.ee';
@@ -12,7 +11,6 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 
 const DEFAULT_TAKE = 20;
 
-@Service()
 @Authorized()
 @RestController('/workflow-history')
 export class WorkflowHistoryController {
