@@ -514,11 +514,16 @@ export async function executeWebhook(
 			Object.assign(runExecutionData, runExecutionDataMerge);
 		}
 
+		if (workflowData.pinData) {
+			runExecutionData.resultData.pinData = workflowData.pinData;
+		}
+
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			pinData: workflowData.pinData,
 			userId: user.id,
 		};
 
