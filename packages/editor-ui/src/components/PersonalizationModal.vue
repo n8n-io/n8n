@@ -207,7 +207,11 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		canRegisterForEnterpriseTrial() {
-			if (this.settingsStore.isCloudDeployment || this.domainBlocklist.length === 0) {
+			if (
+				this.settingsStore.isCloudDeployment ||
+				this.domainBlocklist.length === 0 ||
+				!this.currentUser?.email
+			) {
 				return false;
 			}
 
@@ -215,7 +219,7 @@ export default defineComponent({
 				this.formValues[COMPANY_SIZE_KEY],
 			);
 
-			const emailParts = (this.currentUser?.email || '@').split('@');
+			const emailParts = this.currentUser.email.split('@');
 			const emailDomain = emailParts[emailParts.length - 1];
 			const isEmailEligible = !this.domainBlocklist.find(
 				(blocklistedDomain) => emailDomain === blocklistedDomain,
