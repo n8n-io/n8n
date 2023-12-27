@@ -1,5 +1,15 @@
 <template>
-	<div :class="$style.pill" :title="fileType">
+	<div
+		:title="fileType"
+		data-target="mappable"
+		:data-value="mappingData.value"
+		:data-name="mappingData.name"
+		:class="{
+			[$style.pill]: true,
+			[$style.mappable]: mappingEnabled,
+			[$style.dragged]: draggingPath === mappingData.value,
+		}"
+	>
 		<span :class="$style.label">
 			<font-awesome-icon :icon="fileIcon" size="sm" />
 			<span>
@@ -74,6 +84,18 @@ export default defineComponent({
 		data: {
 			type: Object as PropType<BinaryObject>,
 		},
+		dataValue: {
+			type: String,
+		},
+		draggingPath: {
+			type: String,
+		},
+		mappingEnabled: {
+			type: Boolean,
+		},
+		path: {
+			type: String,
+		},
 	},
 	computed: {
 		binaryData() {
@@ -96,6 +118,12 @@ export default defineComponent({
 		},
 		fileType() {
 			return this.binaryData.fileType || 'unknown';
+		},
+		mappingData() {
+			return {
+				value: this.dataValue,
+				name: this.fileName,
+			};
 		},
 	},
 });

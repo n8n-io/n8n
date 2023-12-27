@@ -130,7 +130,12 @@
 							v-else-if="isN8nBinaryProperty(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 						>
-							<BinaryData :data="data"></BinaryData>
+							<BinaryData
+								:data="data"
+								:data-value="[tableData.columns[index2]].join('.')"
+								:draggingPath="draggingPath"
+								:mappingEnabled="mappingEnabled"
+							></BinaryData>
 						</span>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
