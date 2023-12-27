@@ -12,6 +12,7 @@ import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	IPinData,
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -284,6 +285,11 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
+		let pinData: IPinData | undefined;
+		if (data.executionMode === 'manual') {
+			pinData = data.pinData ?? data.workflowData.pinData;
+		}
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: data.workflowData.name,
@@ -293,7 +299,7 @@ export class WorkflowRunner {
 			nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
-			pinData: data.pinData || data.workflowData.pinData,
+			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
