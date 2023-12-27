@@ -1,6 +1,5 @@
 import validator from 'validator';
 import { In } from 'typeorm';
-import { Service } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -27,7 +26,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { ApplicationError } from 'n8n-workflow';
 
-@Service()
 @RestController()
 export class AuthController {
 	constructor(
