@@ -408,12 +408,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	HTML_NODE_TYPE,
-	NODES_USING_CODE_NODE_EDITOR,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
 
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
