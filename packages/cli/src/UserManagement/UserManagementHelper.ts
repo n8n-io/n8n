@@ -1,28 +1,13 @@
 import { In } from 'typeorm';
 import { Container } from 'typedi';
+import type { Scope } from '@n8n/permissions';
 
 import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import config from '@/config';
 import { License } from '@/License';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import type { Scope } from '@n8n/permissions';
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
-}
-
-/**
- * Return the n8n instance base URL without trailing slash.
- */
-export function getInstanceBaseUrl(): string {
-	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
-
-	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
-}
-
-export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
-	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 }
 
 // return the difference between two arrays

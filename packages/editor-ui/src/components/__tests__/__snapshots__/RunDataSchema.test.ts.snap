@@ -320,7 +320,7 @@ exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
     class="schemaWrapper"
   >
     <div
-      class="n8n-info-tip info note bold"
+      class="n8n-info-tip infoTip info note bold"
     >
       <span
         class="iconText"

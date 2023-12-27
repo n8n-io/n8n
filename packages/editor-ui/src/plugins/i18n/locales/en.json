@@ -1345,6 +1345,8 @@
 	"runData.editOutputInvalid.onLine": "On line {line}:",
 	"runData.editOutputInvalid.atPosition": "(at position {position})",
 	"runData.editValue": "Edit Value",
+	"runData.executionStatus.success": "Executed successfully",
+	"runData.executionStatus.failed": "Execution failed",
 	"runData.downloadBinaryData": "Download",
 	"runData.executeNode": "Execute Node",
 	"runData.executionTime": "Execution Time",

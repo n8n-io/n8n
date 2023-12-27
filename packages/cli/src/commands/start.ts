@@ -4,7 +4,6 @@ import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import localtunnel from 'localtunnel';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
@@ -16,7 +15,6 @@ import config from '@/config';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
@@ -28,6 +26,7 @@ import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { UrlService } from '@/services/url.service';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -64,7 +63,7 @@ export class Start extends BaseCommand {
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
-	protected server = new Server();
+	protected server = Container.get(Server);
 
 	private pruningService: PruningService;
 
@@ -78,7 +77,7 @@ export class Start extends BaseCommand {
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		open(editorUrl, { wait: true }).catch((error: Error) => {
@@ -101,14 +100,6 @@ export class Start extends BaseCommand {
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
 			await this.externalHooks?.run('n8n.stop', []);
-
-			// Shut down License manager to unclaim any floating entitlements
-			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
-			await Container.get(License).shutdown();
-
-			if (this.pruningService.isPruningEnabled()) {
-				this.pruningService.stopPruning();
-			}
 
 			if (Container.get(MultiMainSetup).isEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
@@ -308,14 +299,13 @@ export class Start extends BaseCommand {
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const tunnelSettings: localtunnel.TunnelConfig = {
-				host: 'https://hooks.n8n.cloud',
-				subdomain: tunnelSubdomain,
-			};
-
+			const { default: localtunnel } = await import('@n8n/localtunnel');
 			const port = config.getEnv('port');
 
-			const webhookTunnel = await localtunnel(port, tunnelSettings);
+			const webhookTunnel = await localtunnel(port, {
+				host: 'https://hooks.n8n.cloud',
+				subdomain: tunnelSubdomain,
+			});
 
 			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
@@ -331,7 +321,7 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

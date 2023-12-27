@@ -663,6 +663,7 @@ export const workflowHelpers = defineComponent({
 				settings: this.workflowsStore.workflow.settings,
 				tags: this.workflowsStore.workflowTags,
 				versionId: this.workflowsStore.workflow.versionId,
+				meta: this.workflowsStore.workflow.meta,
 			};
 
 			const workflowId = this.workflowsStore.workflowId;

@@ -1,8 +1,7 @@
 import Container, { Service } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
-import { In, Like } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
@@ -14,7 +13,7 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import { type WorkflowRequest, type ListQuery, hasSharing } from '@/requests';
+import { type WorkflowRequest, hasSharing, type ListQuery } from '@/requests';
 import { TagService } from '@/services/tag.service';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -25,7 +24,6 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
-import { isStringArray } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 import type { Scope } from '@n8n/permissions';
@@ -121,74 +119,7 @@ export class WorkflowService {
 	}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
-		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
-
-		const where: FindOptionsWhere<WorkflowEntity> = {
-			...options?.filter,
-			id: In(sharedWorkflowIds),
-		};
-
-		const reqTags = options?.filter?.tags;
-
-		if (isStringArray(reqTags)) {
-			where.tags = reqTags.map((tag) => ({ name: tag }));
-		}
-
-		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
-
-		const select: Select = options?.select
-			? { ...options.select } // copy to enable field removal without affecting original
-			: {
-					name: true,
-					active: true,
-					createdAt: true,
-					updatedAt: true,
-					versionId: true,
-					shared: { userId: true, roleId: true },
-			  };
-
-		delete select?.ownedBy; // remove non-entity field, handled after query
-
-		const relations: string[] = [];
-
-		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
-		const isDefaultSelect = options?.select === undefined;
-		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
-		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
-
-		if (areTagsEnabled && areTagsRequested) {
-			relations.push('tags');
-			select.tags = { id: true, name: true };
-		}
-
-		if (isOwnedByIncluded) relations.push('shared', 'shared.role', 'shared.user');
-
-		if (typeof where.name === 'string' && where.name !== '') {
-			where.name = Like(`%${where.name}%`);
-		}
-
-		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select: { ...select, id: true },
-			where,
-		};
-
-		if (isDefaultSelect || options?.select?.updatedAt === true) {
-			findManyOptions.order = { updatedAt: 'ASC' };
-		}
-
-		if (relations.length > 0) {
-			findManyOptions.relations = relations;
-		}
-
-		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
-		}
-
-		const [workflows, count] = (await this.workflowRepository.findAndCount(findManyOptions)) as [
-			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
-			number,
-		];
+		const { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
 
 		return hasSharing(workflows)
 			? {

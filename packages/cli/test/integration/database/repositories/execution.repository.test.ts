@@ -24,6 +24,7 @@ describe('ExecutionRepository', () => {
 			const executionId = await executionRepo.createNewExecution({
 				workflowId: workflow.id,
 				data: {
+					//@ts-expect-error This is not needed for tests
 					resultData: {},
 				},
 				workflowData: workflow,
