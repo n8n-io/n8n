@@ -13,7 +13,7 @@
 			</div>
 		</template>
 		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
+			<div ref="cardActions" :class="$style.cardActions">
 				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
 					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
 						{{ $locale.baseText('workflowActivator.active') }}
@@ -26,8 +26,7 @@
 				<el-switch
 					class="mr-s"
 					:disabled="readonly"
-					:modelValue="nodeParameters.enabled"
-					@update:modelValue="onEnabledSwitched($event, destination.id)"
+					:model-value="nodeParameters.enabled"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -36,6 +35,7 @@
 					active-color="#13ce66"
 					inactive-color="#8899AA"
 					data-test-id="workflow-activate-switch"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 				>
 				</el-switch>
 
@@ -63,18 +63,18 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
+	components: {},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
 		};
 	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
-	components: {},
 	props: {
 		eventBus: {
 			type: Object as PropType<EventBus>,

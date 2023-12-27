@@ -1,20 +1,20 @@
 <template>
 	<div
+		v-on-click-outside="onClickOutside"
 		:class="{ 'tags-container': true, focused }"
 		@keydown.stop
-		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
+			ref="selectRef"
 			:teleported="true"
-			:modelValue="appliedTags"
+			:model-value="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			filterable
 			multiple
-			:allowCreate="createEnabled"
+			:allow-create="createEnabled"
 			:reserve-keyword="false"
-			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
 			data-test-id="tags-dropdown"
@@ -25,9 +25,9 @@
 			<n8n-option
 				v-if="options.length === 0 && filter && createEnabled"
 				:key="CREATE_KEY"
+				ref="createRef"
 				:value="CREATE_KEY"
 				class="ops"
-				ref="createRef"
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
@@ -45,12 +45,12 @@
 			<!-- key is id+index for keyboard navigation to work well with filter -->
 			<n8n-option
 				v-for="(tag, i) in options"
-				:value="tag.id"
 				:key="tag.id + '_' + i"
+				ref="tagRefs"
+				:value="tag.id"
 				:label="tag.name"
 				class="tag"
 				data-test-id="tag"
-				ref="tagRefs"
 			/>
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">

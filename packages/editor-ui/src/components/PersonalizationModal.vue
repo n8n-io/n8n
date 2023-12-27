@@ -3,11 +3,11 @@
 		:name="PERSONALIZATION_MODAL_KEY"
 		:title="$locale.baseText('personalizationModal.customizeN8n')"
 		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:centerTitle="true"
-		:showClose="false"
-		:eventBus="modalBus"
-		:closeOnClickModal="false"
-		:closeOnPressEscape="false"
+		:center-title="true"
+		:show-close="false"
+		:event-bus="modalBus"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
 		width="460px"
 		data-test-id="personalization-form"
 		@enter="onSave"
@@ -17,10 +17,10 @@
 				<n8n-form-inputs
 					v-model="formValues"
 					:inputs="survey"
-					:columnView="true"
-					:eventBus="formBus"
+					:column-view="true"
+					:event-bus="formBus"
 					:teleported="teleported"
-					tagSize="small"
+					tag-size="small"
 					@submit="onSubmit"
 				/>
 				<n8n-card v-if="canRegisterForEnterpriseTrial">
@@ -42,10 +42,10 @@
 		<template #footer>
 			<div>
 				<n8n-button
-					@click="onSave"
 					:loading="isSaving"
 					:label="$locale.baseText('personalizationModal.getStarted')"
 					float="right"
+					@click="onSave"
 				/>
 			</div>
 		</template>
@@ -160,13 +160,22 @@ import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
-	mixins: [workflowHelpers],
 	components: { Modal },
+	mixins: [workflowHelpers],
 	props: {
 		teleported: {
 			type: Boolean,
 			default: true,
 		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -179,15 +188,6 @@ export default defineComponent({
 			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
-		};
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	computed: {
