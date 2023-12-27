@@ -6,7 +6,7 @@
     "build": "pnpm type-check && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
     "build:vite": "vite build && npm run build:vite:full",
     "build:vite:full": "INCLUDE_VUE=true vite build",
-    "build:individual": "#unbuild #FIX THIS",
+    "build:individual": "unbuild",
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
@@ -46,6 +46,7 @@
     "@iconify-json/mdi": "^1.1.54",
     "n8n-design-system": "workspace:*",
     "shelljs": "^0.8.5",
+    "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
     "vite-plugin-dts": "^3.6.4"
   },
