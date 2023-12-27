@@ -207,7 +207,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		canRegisterForEnterpriseTrial() {
-			if (this.settingsStore.isCloudDeployment) {
+			if (this.settingsStore.isCloudDeployment || this.domainBlocklist.length === 0) {
 				return false;
 			}
 
@@ -217,9 +217,9 @@ export default defineComponent({
 
 			const emailParts = (this.currentUser?.email || '@').split('@');
 			const emailDomain = emailParts[emailParts.length - 1];
-			const isEmailEligible =
-				this.domainBlocklist.length > 0 &&
-				!this.domainBlocklist.find((blocklistedDomain) => emailDomain.includes(blocklistedDomain));
+			const isEmailEligible = !this.domainBlocklist.find(
+				(blocklistedDomain) => emailDomain === blocklistedDomain,
+			);
 
 			return isSizeEligible && isEmailEligible;
 		},
