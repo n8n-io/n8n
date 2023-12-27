@@ -116,7 +116,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[PERSONALIZATION_MODAL_KEY]: {
-				open: false,
+				open: true,
 			},
 			[INVITE_USER_MODAL_KEY]: {
 				open: false,

@@ -179,6 +179,7 @@ export default defineComponent({
 			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
+			domainBlocklist: [] as string[],
 		};
 	},
 	setup() {
@@ -189,6 +190,9 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 		};
+	},
+	mounted() {
+		void this.loadDomainBlocklist();
 	},
 	computed: {
 		...mapStores(
@@ -213,18 +217,9 @@ export default defineComponent({
 
 			const emailParts = (this.currentUser?.email || '@').split('@');
 			const emailDomain = emailParts[emailParts.length - 1];
-			const emailDomainParts = emailDomain.split('.');
-			const isEmailEligible = ![
-				'gmail',
-				'yahoo',
-				'hotmail',
-				'aol',
-				'live',
-				'outlook',
-				'icloud',
-				'mail',
-				'email',
-			].find((provider) => emailDomainParts.includes(provider));
+			const isEmailEligible =
+				this.domainBlocklist.length > 0 &&
+				!this.domainBlocklist.find((blocklistedDomain) => emailDomain.includes(blocklistedDomain));
 
 			return isSizeEligible && isEmailEligible;
 		},
@@ -687,6 +682,11 @@ export default defineComponent({
 			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
 				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 			}
+		},
+		async loadDomainBlocklist() {
+			try {
+				this.domainBlocklist = (await import('email-providers/common.json')).default;
+			} catch (error) {}
 		},
 		onSave() {
 			this.formBus.emit('submit');

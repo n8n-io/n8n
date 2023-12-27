@@ -1041,6 +1041,9 @@ importers:
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
+      email-providers:
+        specifier: ^2.0.1
+        version: 2.0.1
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -9673,7 +9676,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.25
+      vue-component-type-helpers: 1.8.27
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -14258,6 +14261,11 @@ packages:
       vue: 3.3.4
     transitivePeerDependencies:
       - '@vue/composition-api'
+    dev: false
+
+  /email-providers@2.0.1:
+    resolution: {integrity: sha512-lFWdT7sJilGO0UOO25D3urNH7Np1XTB/7GD/9nGM4YxNqAzkunuJyt9ZyG4cZ+UEGqH/lbK4vczg0B6NtyPflw==}
+    engines: {node: '>=16'}
     dev: false
 
   /emittery@0.13.1:
@@ -25725,6 +25733,10 @@ packages:
 
   /vue-component-type-helpers@1.8.25:
     resolution: {integrity: sha512-NCA6sekiJIMnMs4DdORxATXD+/NRkQpS32UC+I1KQJUasx+Z7MZUb3Y+MsKsFmX+PgyTYSteb73JW77AibaCCw==}
+    dev: true
+
+  /vue-component-type-helpers@1.8.27:
+    resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.3.4):
