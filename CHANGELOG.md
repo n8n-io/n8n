@@ -1,3 +1,12 @@
+## [1.22.3](https://github.com/n8n-io/n8n/compare/n8n@1.22.2...n8n@1.22.3) (2023-12-27)
+
+
+### Bug Fixes
+
+* **core:** Use pinned data only for manual mode ([#8164](https://github.com/n8n-io/n8n/issues/8164)) ([38a9cfb](https://github.com/n8n-io/n8n/commit/38a9cfb179b6dc852459d1a6edb0c5369a8be811))
+
+
+
 ## [1.22.2](https://github.com/n8n-io/n8n/compare/n8n@1.22.1...n8n@1.22.2) (2023-12-27)
 
 
