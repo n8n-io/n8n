@@ -220,14 +220,14 @@ export class TestWebhooks implements IWebhookManager {
 
 			activatedKeys.push(key);
 
-			this.registrations[key] = {
+			this.setRegistration({
 				sessionId,
 				timeout,
 				workflow,
 				workflowEntity,
 				destinationNode,
 				webhook,
-			};
+			});
 
 			try {
 				await this.activateWebhook(workflow, webhook, executionMode, activationMode);

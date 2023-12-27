@@ -7,7 +7,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
 import type { IWorkflowDb, WebhookRegistration, WebhookRequest } from '@/Interfaces';
-import type express from 'express';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -94,9 +93,10 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'getActiveWebhook').mockReturnValue(webhook);
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
-			const request = { params: { path } } as WebhookRequest;
-			const response = {} as express.Response;
-			const promise = testWebhooks.executeWebhook(request, response);
+			const promise = testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path } }),
+				mock(),
+			);
 
 			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
 		});
@@ -116,7 +116,7 @@ describe('TestWebhooks', () => {
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
-				mock<express.Response>(),
+				mock(),
 			);
 
 			await expect(promise).rejects.toThrowError(NotFoundError);
