@@ -9,9 +9,6 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async findManybyIds(userIds: string[]) {
-		return this.find({
-			where: { id: In(userIds) },
-			relations: ['globalRole'],
-		});
+		return this.find({ where: { id: In(userIds) } });
 	}
 }
