@@ -83,7 +83,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 			jest.spyOn(testWebhooks, 'toWebhookKey').mockReturnValue(keyPart);
 			jest.spyOn(testWebhooks, 'activateWebhook').mockRejectedValue(new Error(msg));
-			const deactivateSpy = jest.spyOn(testWebhooks, 'deactivateWebhooksFor');
+			const deactivateSpy = jest.spyOn(testWebhooks, 'deactivateWebhooks');
 
 			const needsWebhook = testWebhooks.needsWebhook(...args);
 
