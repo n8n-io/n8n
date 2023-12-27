@@ -25,6 +25,7 @@ import type {
 	IHttpRequestMethods,
 	IN8nHttpFullResponse,
 	INode,
+	IPinData,
 	IRunExecutionData,
 	IWebhookData,
 	IWebhookResponseData,
@@ -514,9 +515,9 @@ export async function executeWebhook(
 			Object.assign(runExecutionData, runExecutionDataMerge);
 		}
 
-		let pinData;
-
-		if (executionMode === 'manual' && workflowData.pinData) {
+		let pinData: IPinData | undefined;
+		const usePinData = executionMode === 'manual';
+		if (usePinData) {
 			pinData = workflowData.pinData;
 			runExecutionData.resultData.pinData = pinData;
 		}
@@ -623,8 +624,8 @@ export async function executeWebhook(
 						return undefined;
 					}
 
-					if (workflowData.pinData) {
-						data.data.resultData.pinData = workflowData.pinData;
+					if (usePinData) {
+						data.data.resultData.pinData = pinData;
 					}
 
 					const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
