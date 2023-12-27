@@ -307,11 +307,13 @@ export class WorkflowService {
 
 		await this.multiMainSetup.init();
 
-		if (this.multiMainSetup.isEnabled) {
+		const newState = updatedWorkflow.active;
+
+		if (this.multiMainSetup.isEnabled && oldState !== newState) {
 			await this.multiMainSetup.broadcastWorkflowActiveStateChanged({
 				workflowId,
 				oldState,
-				newState: updatedWorkflow.active,
+				newState,
 				versionId: shared.workflow.versionId,
 			});
 		}
