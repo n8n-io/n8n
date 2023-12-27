@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
@@ -6,7 +5,6 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { In } from 'typeorm';
 
 @RestController('/debug')
-@Service()
 export class DebugController {
 	constructor(
 		private readonly multiMainSetup: MultiMainSetup,

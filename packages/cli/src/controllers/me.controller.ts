@@ -1,7 +1,6 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
-import { Service } from 'typedi';
 import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
@@ -22,7 +21,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-@Service()
 @Authorized()
 @RestController('/me')
 export class MeController {
