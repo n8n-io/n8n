@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
 
@@ -20,5 +20,14 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 		if (!sharedCredential) return null;
 		return sharedCredential.credentials;
+	}
+
+	async findByCredentialIds(credentialIds: string[]) {
+		return this.find({
+			relations: ['credentials', 'role', 'user'],
+			where: {
+				credentialsId: In(credentialIds),
+			},
+		});
 	}
 }

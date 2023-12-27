@@ -53,6 +53,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async findByIds(workflowIds: string[]) {
+		return this.find({ where: { id: In(workflowIds) } });
+	}
+
 	async getActiveTriggerCount() {
 		const totalTriggerCount = await this.sum('triggerCount', {
 			active: true,
