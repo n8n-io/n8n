@@ -24,6 +24,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { ApplicationError } from 'n8n-workflow';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @RestController()
 export class AuthController {
@@ -33,6 +34,7 @@ export class AuthController {
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
+		private readonly userRepository: UserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -185,7 +187,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findManybyIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(

@@ -1,4 +1,3 @@
-import { In } from 'typeorm';
 import { Response } from 'express';
 
 import config from '@/config';
@@ -18,6 +17,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized()
 @RestController('/invitations')
@@ -29,6 +29,7 @@ export class InvitationController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
+		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 	) {}
 
@@ -135,10 +136,7 @@ export class InvitationController {
 
 		const validPassword = this.passwordUtility.validate(password);
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(
