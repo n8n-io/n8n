@@ -516,4 +516,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async deleteByIds(executionIds: string[]) {
 		return this.delete({ id: In(executionIds) });
 	}
+
+	async getWaitingExecutions() {
+		// Find all the executions which should be triggered in the next 70 seconds
+		const waitTill = new Date(Date.now() + 70000);
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: LessThanOrEqual(waitTill),
+			status: Not('crashed'),
+		};
+
+		const dbType = config.getEnv('database.type');
+		if (dbType === 'sqlite') {
+			// This is needed because of issue in TypeORM <> SQLite:
+			// https://github.com/typeorm/typeorm/issues/2286
+			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
+		}
+
+		return this.findMultipleExecutions({
+			select: ['id', 'waitTill'],
+			where,
+			order: {
+				waitTill: 'ASC',
+			},
+		});
+	}
 }
