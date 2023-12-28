@@ -11,7 +11,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
+import { indentWithTab, insertNewlineAndIndent, history, redo, undo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -92,6 +92,7 @@ export default defineComponent({
 				keymap.of([
 					indentWithTab,
 					{ key: 'Enter', run: insertNewlineAndIndent },
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
