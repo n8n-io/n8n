@@ -59,7 +59,7 @@ type JsonPathData = {
 };
 
 export default defineComponent({
-	name: 'run-data-json-actions',
+	name: 'RunDataJsonActions',
 	mixins: [genericHelpers, pinData, copyPaste],
 
 	props: {

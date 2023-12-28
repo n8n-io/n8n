@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack :users="activeUsersSorted" :currentUserEmail="currentUserEmail" />
+		<n8n-user-stack :users="activeUsersSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

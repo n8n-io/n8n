@@ -1,7 +1,7 @@
 <template>
-	<n8n-text :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
-		<font-awesome-icon :icon="icon" :spin="spin" :class="$style[size]" />
-	</n8n-text>
+	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
+		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
+	</N8nText>
 </template>
 
 <script lang="ts">
@@ -11,7 +11,7 @@ import N8nText from '../N8nText';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-icon',
+	name: 'N8nIcon',
 	components: {
 		FontAwesomeIcon,
 		N8nText,

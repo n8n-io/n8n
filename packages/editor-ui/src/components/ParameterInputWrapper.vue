@@ -1,24 +1,24 @@
 <template>
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
-		<parameter-input
+		<ParameterInput
 			ref="param"
-			:inputSize="inputSize"
+			:input-size="inputSize"
 			:parameter="parameter"
-			:modelValue="modelValue"
+			:model-value="modelValue"
 			:path="path"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:droppable="droppable"
-			:activeDrop="activeDrop"
-			:forceShowExpression="forceShowExpression"
-			:hideIssues="hideIssues"
-			:documentationUrl="documentationUrl"
-			:errorHighlight="errorHighlight"
-			:isForCredential="isForCredential"
-			:eventSource="eventSource"
-			:expressionEvaluated="expressionValueComputed"
-			:additionalExpressionData="resolvedAdditionalExpressionData"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="expressionValueComputed"
+			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
-			:isSingleLine="isSingleLine"
+			:is-single-line="isSingleLine"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -29,15 +29,15 @@
 		/>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
 			<div>
-				<input-hint
+				<InputHint
 					v-if="expressionOutput"
 					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
 					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
 					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
 					:hint="expressionOutput"
-					:singleLine="true"
+					:single-line="true"
 				/>
-				<input-hint v-else-if="parameterHint" :renderHTML="true" :hint="parameterHint" />
+				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
 			</div>
 			<slot v-if="$slots.options" name="options" />
 		</div>
@@ -71,12 +71,12 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
-	name: 'parameter-input-wrapper',
-	mixins: [workflowHelpers],
+	name: 'ParameterInputWrapper',
 	components: {
 		ParameterInput,
 		InputHint,
 	},
+	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,

@@ -2,7 +2,7 @@
 	<div :class="alertBoxClassNames" role="alert">
 		<div :class="$style.content">
 			<span v-if="showIcon || $slots.icon" :class="$style.icon">
-				<n8n-icon v-if="showIcon" :icon="icon" />
+				<N8nIcon v-if="showIcon" :icon="icon" />
 				<slot v-else-if="$slots.icon" name="icon" />
 			</span>
 			<div :class="$style.text">

@@ -62,18 +62,6 @@ export default defineComponent({
 			required: true,
 		},
 	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
-
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
 	setup() {
 		const i18n = useI18n();
 
@@ -86,18 +74,6 @@ export default defineComponent({
 			editor: null as EditorView | null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
-		});
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
 	},
 	computed: {
 		resolvedExpression(): string {
@@ -126,6 +102,30 @@ export default defineComponent({
 				})
 				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
 		},
+	},
+	watch: {
+		segments() {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
+			});
+
+			highlighter.addColor(this.editor, this.resolvedSegments);
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+		},
+	},
+	mounted() {
+		this.editor = new EditorView({
+			parent: this.$refs.root as HTMLDivElement,
+			state: EditorState.create({
+				doc: this.resolvedExpression,
+				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
+			}),
+		});
+	},
+	beforeUnmount() {
+		this.editor?.destroy();
 	},
 });
 </script>
