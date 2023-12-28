@@ -1,8 +1,9 @@
 import { Service } from 'typedi';
-import { DataSource, type FindOptionsWhere, Repository, In } from 'typeorm';
+import { DataSource, type FindOptionsWhere, Repository, In, Not } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
+import type { Role } from '../entities/Role';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -66,5 +67,9 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		if (extraRelations) relations.push(...extraRelations);
 
 		return this.findOne({ relations, where });
+	}
+
+	async makeOwnerOfAllWorkflows(user: User, role: Role) {
+		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
 	}
 }
