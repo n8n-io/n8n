@@ -1,7 +1,7 @@
 <template>
 	<div class="n8n-tree">
 		<span v-if="isN8nBinaryProperty(value)">
-			<slot name="value" v-bind:value="value" />
+			<slot name="value" v-bind:value="value" v-bind:path="path" />
 		</span>
 		<div v-else v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
 			<div :class="$style.simple" v-if="isSimple(value[label])">

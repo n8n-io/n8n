@@ -132,7 +132,7 @@
 						>
 							<BinaryData
 								:data="data"
-								:data-value="[tableData.columns[index2]].join('.')"
+								:data-value="generatePath('', [tableData.columns[index2]])"
 								:draggingPath="draggingPath"
 								:mappingEnabled="mappingEnabled"
 							/>
@@ -155,11 +155,11 @@
 									>{{ label || $locale.baseText('runData.unnamedField') }}</span
 								>
 							</template>
-							<template #value="{ value }">
+							<template #value="{ value, path }">
 								<div v-if="isN8nBinaryProperty(value)" :class="$style.binarySublevel">
 									<BinaryData
 										:data="value"
-										:data-value="[tableData.columns[index2]].join('.')"
+										:data-value="generatePath('', [tableData.columns[index2], ...path])"
 										:draggingPath="draggingPath"
 										:mappingEnabled="mappingEnabled"
 									/>
@@ -194,7 +194,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import BinaryData from './BinaryData.vue';
 import MappingPill from './MappingPill.vue';
-import { getMappedExpression } from '@/utils/mappingUtils';
+import { generatePath, getMappedExpression } from '@/utils/mappingUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
@@ -283,6 +283,7 @@ export default defineComponent({
 	},
 	methods: {
 		shorten,
+		generatePath,
 		isN8nBinaryProperty,
 		isHoveringRow(row: number): boolean {
 			if (row === this.activeRow) {
