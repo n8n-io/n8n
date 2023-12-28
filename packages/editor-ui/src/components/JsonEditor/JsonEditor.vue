@@ -24,7 +24,7 @@ import {
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 export default defineComponent({
-	name: 'json-editor',
+	name: 'JsonEditor',
 	props: {
 		modelValue: {
 			type: String,
@@ -36,7 +36,7 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 	},
 	data() {

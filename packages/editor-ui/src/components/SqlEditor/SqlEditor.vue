@@ -90,7 +90,7 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 	},
 	data(): SQLEditorData {

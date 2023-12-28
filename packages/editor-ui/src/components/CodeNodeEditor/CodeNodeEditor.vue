@@ -95,10 +95,9 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 		modelValue: {
 			type: String,
