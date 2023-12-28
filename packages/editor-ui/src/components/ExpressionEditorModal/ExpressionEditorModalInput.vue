@@ -26,12 +26,15 @@ export default defineComponent({
 	props: {
 		modelValue: {
 			type: String,
+			required: true,
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
