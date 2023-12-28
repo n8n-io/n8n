@@ -37,7 +37,7 @@ describe('DebugController', () => {
 				execute: () => webhooks,
 			};
 
-			workflowRepository.find.mockResolvedValue(triggersAndPollers);
+			workflowRepository.findIn.mockResolvedValue(triggersAndPollers);
 			activeWorkflowRunner.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowRunner.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
