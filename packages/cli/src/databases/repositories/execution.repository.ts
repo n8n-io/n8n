@@ -14,7 +14,6 @@ import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
-	ObjectLiteral,
 	SelectQueryBuilder,
 } from 'typeorm';
 import { parse, stringify } from 'flatted';
