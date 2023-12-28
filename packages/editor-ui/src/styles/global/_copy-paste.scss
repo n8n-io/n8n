@@ -1,0 +1,19 @@
+.hidden-copy-paste {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 10px;
+	height: 10px;
+	display: block;
+	font-size: 1px;
+	z-index: -1;
+	color: transparent;
+	background: transparent;
+	overflow: hidden;
+	border: none;
+	padding: 0;
+	resize: none;
+	outline: none;
+	-webkit-user-select: text;
+	user-select: text;
+}

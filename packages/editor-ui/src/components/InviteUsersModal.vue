@@ -64,7 +64,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useToast } from '@/composables/useToast';
-import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { ROLE } from '@/utils/userUtils';
@@ -73,6 +72,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useCopyPaste } from '@/composables/useCopyPaste';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -90,14 +90,16 @@ function getEmail(email: string): string {
 export default defineComponent({
 	name: 'InviteUsersModal',
 	components: { Modal },
-	mixins: [copyPaste],
 	props: {
 		modalName: {
 			type: String,
 		},
 	},
 	setup() {
+		const copyPaste = useCopyPaste();
+
 		return {
+			copyPaste,
 			...useToast(),
 		};
 	},
@@ -258,7 +260,7 @@ export default defineComponent({
 
 				if (successfulUrlInvites.length) {
 					if (successfulUrlInvites.length === 1) {
-						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
+						this.copyPaste.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
 					this.showMessage({
@@ -328,7 +330,7 @@ export default defineComponent({
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				this.copyPaste.copyToClipboard(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
 		},

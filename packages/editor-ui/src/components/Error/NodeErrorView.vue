@@ -121,7 +121,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
@@ -134,16 +133,19 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCopyPaste } from '@/composables/useCopyPaste';
 
 export default defineComponent({
 	name: 'NodeErrorView',
 	components: {
 		VueJsonPretty,
 	},
-	mixins: [copyPaste],
 	props: ['error'],
 	setup() {
+		const copyPaste = useCopyPaste();
+
 		return {
+			copyPaste,
 			...useToast(),
 		};
 	},
@@ -283,7 +285,7 @@ export default defineComponent({
 			return [currentParameter];
 		},
 		copyCause() {
-			this.copyToClipboard(JSON.stringify(this.error.cause));
+			this.copyPaste.copyToClipboard(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {

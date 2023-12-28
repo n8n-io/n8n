@@ -91,7 +91,6 @@ import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/consta
 
 import type { IUser, IUserListAction } from '@/Interface';
 import { useToast } from '@/composables/useToast';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -102,9 +101,11 @@ import { ROLE } from '@/utils/userUtils';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
-	mixins: [copyPaste],
 	setup() {
+		const copyPaste = useCopyPaste();
+
 		return {
+			copyPaste,
 			...useToast(),
 		};
 	},
@@ -222,7 +223,7 @@ export default defineComponent({
 		async onCopyInviteLink(userId: string) {
 			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				this.copyPaste.copyToClipboard(user.inviteAcceptUrl);
 
 				this.showToast({
 					type: 'success',
@@ -235,7 +236,7 @@ export default defineComponent({
 			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
-				this.copyToClipboard(url.link);
+				this.copyPaste.copyToClipboard(url.link);
 
 				this.showToast({
 					type: 'success',
