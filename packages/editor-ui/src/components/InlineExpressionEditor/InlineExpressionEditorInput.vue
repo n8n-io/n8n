@@ -8,7 +8,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { history, redo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv.store';
@@ -103,6 +103,7 @@ export default defineComponent({
 							return false;
 						},
 					},
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),

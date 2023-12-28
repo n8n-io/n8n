@@ -6,7 +6,7 @@
 import { defineComponent } from 'vue';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { history, redo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -56,6 +56,7 @@ export default defineComponent({
 							return false;
 						},
 					},
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
