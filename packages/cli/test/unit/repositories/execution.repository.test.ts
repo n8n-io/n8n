@@ -1,39 +1,51 @@
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import { EntityManager, DataSource } from 'typeorm';
-import { mockInstance } from '../../shared/mocking';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { EntityMetadata } from 'typeorm';
+import { EntityManager, DataSource, Not, LessThanOrEqual } from 'typeorm';
+
 import config from '@/config';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+
+import { mockInstance } from '../../shared/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockInstance(EntityManager);
 	const dataSource = mockInstance(DataSource, { manager: entityManager });
-	dataSource.getMetadata.mockReturnValue(mock());
+	dataSource.getMetadata.mockReturnValue(mock<EntityMetadata>({ target: ExecutionEntity }));
 	Object.assign(entityManager, { connection: dataSource });
 
 	const executionRepository = Container.get(ExecutionRepository);
+	const mockDate = new Date('2023-12-28 12:34:56.789Z');
+
+	beforeAll(() => {
+		jest.clearAllMocks();
+		jest.useFakeTimers().setSystemTime(mockDate);
+	});
+
+	afterAll(() => jest.useRealTimers());
 
 	describe('getWaitingExecutions()', () => {
 		test.each(['sqlite', 'postgres'])(
 			'on %s, should be called with expected args',
 			async (dbType) => {
 				jest.spyOn(config, 'getEnv').mockReturnValueOnce(dbType);
-				jest.spyOn(executionRepository, 'findMultipleExecutions').mockResolvedValueOnce([]);
+				entityManager.find.mockResolvedValueOnce([]);
 
 				await executionRepository.getWaitingExecutions();
 
-				const expectedQuery = expect.objectContaining({
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
 					order: { waitTill: 'ASC' },
 					select: ['id', 'waitTill'],
-					where: expect.objectContaining({
-						waitTill: expect.objectContaining({
-							_type: 'lessThanOrEqual',
-							_value: expect.any(String),
-						}),
-					}),
+					where: {
+						status: Not('crashed'),
+						waitTill: LessThanOrEqual(
+							dbType === 'sqlite'
+								? '2023-12-28 12:36:06.789'
+								: new Date('2023-12-28T12:36:06.789Z'),
+						),
+					},
 				});
-
-				expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(expectedQuery);
 			},
 		);
 	});
