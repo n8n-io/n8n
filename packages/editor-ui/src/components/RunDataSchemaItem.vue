@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive } from '@/utils/typeGuards';
-import { isN8nBinaryProperty, shorten } from '@/utils/typesUtils';
+import { shorten } from '@/utils/typesUtils';
 import BinaryData from './BinaryData.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';

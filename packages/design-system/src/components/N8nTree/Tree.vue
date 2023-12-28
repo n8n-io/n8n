@@ -1,6 +1,9 @@
 <template>
 	<div class="n8n-tree">
-		<div v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
+		<span v-if="isN8nBinaryProperty(value)">
+			<slot name="value" v-bind:value="value" />
+		</span>
+		<div v-else v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
 			<div :class="$style.simple" v-if="isSimple(value[label])">
 				<slot v-if="$slots.label" name="label" v-bind:label="label" v-bind:path="getPath(label)" />
 				<span v-else>{{ label }}</span>
@@ -57,6 +60,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		isN8nBinaryProperty(data: unknown): boolean {
+			return !!data && typeof data === 'object' && '@type' in data && data['@type'] === 'binary';
+		},
 		isSimple(data: unknown): boolean {
 			if (data === null || data === undefined) {
 				return true;

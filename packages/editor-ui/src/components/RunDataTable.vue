@@ -135,7 +135,7 @@
 								:data-value="[tableData.columns[index2]].join('.')"
 								:draggingPath="draggingPath"
 								:mappingEnabled="mappingEnabled"
-							></BinaryData>
+							/>
 						</span>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
@@ -156,7 +156,16 @@
 								>
 							</template>
 							<template #value="{ value }">
+								<div v-if="isN8nBinaryProperty(value)" :class="$style.binarySublevel">
+									<BinaryData
+										:data="value"
+										:data-value="[tableData.columns[index2]].join('.')"
+										:draggingPath="draggingPath"
+										:mappingEnabled="mappingEnabled"
+									/>
+								</div>
 								<TextWithHighlights
+									v-else
 									:content="getValueToRender(value)"
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
@@ -555,6 +564,11 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.binarySublevel {
+	display: inline-block;
+	padding-left: var(--spacing-s);
+}
+
 .dataDisplay {
 	position: absolute;
 	top: 0;
