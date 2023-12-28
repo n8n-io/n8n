@@ -1,10 +1,10 @@
 <template>
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
-		:eventBus="modalBus"
-		:beforeClose="closeDialog"
+		:event-bus="modalBus"
+		:before-close="closeDialog"
 		:modal="false"
-		:wrapperClosable="false"
+		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
 		:class="$style.valueSurvey"
@@ -22,8 +22,8 @@
 							<n8n-button
 								type="tertiary"
 								:label="(value - 1).toString()"
-								@click="selectSurveyValue((value - 1).toString())"
 								square
+								@click="selectSurveyValue((value - 1).toString())"
 							/>
 						</div>
 					</div>
@@ -40,7 +40,7 @@
 							@update:modelValue="onInputChange"
 						/>
 						<div :class="$style.button">
-							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+							<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
 						</div>
 					</div>
 					<div :class="$style.disclaimer">
@@ -76,11 +76,11 @@ const DEFAULT_FEEDBACK_TITLE =
 
 export default defineComponent({
 	name: 'ValueSurvey',
-	mixins: [workflowHelpers],
-	props: ['isActive'],
 	components: {
 		ModalDrawer,
 	},
+	mixins: [workflowHelpers],
+	props: ['isActive'],
 	setup() {
 		return {
 			...useToast(),

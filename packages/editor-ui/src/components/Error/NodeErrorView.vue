@@ -2,7 +2,7 @@
 	<div>
 		<div class="error-header">
 			<div class="error-message" v-text="getErrorMessage()" />
-			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
+			<div v-if="error.description" class="error-description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
@@ -76,19 +76,19 @@
 							</div>
 						</template>
 						<div>
-							<div class="copy-button" v-if="displayCause">
+							<div v-if="displayCause" class="copy-button">
 								<n8n-icon-button
-									@click="copyCause"
 									:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 									icon="copy"
+									@click="copyCause"
 								/>
 							</div>
-							<vue-json-pretty
+							<VueJsonPretty
 								v-if="displayCause"
 								:data="error.cause"
 								:deep="3"
-								:showLength="true"
-								selectableType="single"
+								:show-length="true"
+								selectable-type="single"
 								path="error"
 								class="json-data"
 							/>
@@ -137,11 +137,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
 	name: 'NodeErrorView',
-	mixins: [copyPaste],
-	props: ['error'],
 	components: {
 		VueJsonPretty,
 	},
+	mixins: [copyPaste],
+	props: ['error'],
 	setup() {
 		return {
 			...useToast(),

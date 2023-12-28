@@ -1,5 +1,5 @@
 <template>
-	<n8n-button square v-bind="{ ...$attrs, ...$props }" />
+	<N8nButton square v-bind="{ ...$attrs, ...$props }" />
 </template>
 
 <script lang="ts">
@@ -8,7 +8,7 @@ import N8nButton from '../N8nButton';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-icon-button',
+	name: 'N8nIconButton',
 	components: {
 		N8nButton,
 	},

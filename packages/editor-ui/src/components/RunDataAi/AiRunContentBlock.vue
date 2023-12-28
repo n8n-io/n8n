@@ -8,10 +8,10 @@
 			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
 			<el-switch
 				v-if="contentParsed"
-				@click.stop
+				v-model="isShowRaw"
 				:class="$style.rawSwitch"
 				active-text="RAW JSON"
-				v-model="isShowRaw"
+				@click.stop
 			/>
 		</header>
 		<main
@@ -21,24 +21,24 @@
 			}"
 		>
 			<div
-				:key="index"
 				v-for="({ parsedContent, raw }, index) in parsedRun"
+				:key="index"
 				:class="$style.contentText"
 				:data-content-type="parsedContent?.type"
 			>
 				<template v-if="parsedContent && !isShowRaw">
 					<template v-if="parsedContent.type === 'json'">
-						<vue-markdown
+						<VueMarkdown
 							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
 							:class="$style.markdown"
 						/>
 					</template>
 					<template v-if="parsedContent.type === 'markdown'">
-						<vue-markdown :source="parsedContent.data" :class="$style.markdown" />
+						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
 					</template>
 					<p
-						:class="$style.runText"
 						v-if="parsedContent.type === 'text'"
+						:class="$style.runText"
 						v-text="parsedContent.data"
 					/>
 				</template>
@@ -49,11 +49,11 @@
 							size="small"
 							:class="$style.copyToClipboard"
 							type="secondary"
-							@click="copyToClipboard(raw)"
 							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 							icon="copy"
+							@click="copyToClipboard(raw)"
 						/>
-						<vue-markdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
 					</div>
 				</template>
 			</div>

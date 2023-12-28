@@ -17,6 +17,7 @@ import { isStringArray } from '@/utils';
 import config from '@/config';
 import { WorkflowEntity } from '../entities/WorkflowEntity';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
+import { WebhookEntity } from '../entities/WebhookEntity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
@@ -51,6 +52,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		});
+	}
+
+	async findByIds(workflowIds: string[]) {
+		return this.find({ where: { id: In(workflowIds) } });
 	}
 
 	async getActiveTriggerCount() {
@@ -178,5 +183,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select: ['name'],
 			where: { name: Like(`${workflowName}%`) },
 		});
+	}
+
+	async findIn(workflowIds: string[]) {
+		return this.find({
+			select: ['id', 'name'],
+			where: { id: In(workflowIds) },
+		});
+	}
+
+	async findWebhookBasedActiveWorkflows() {
+		return this.createQueryBuilder('workflow')
+			.select('DISTINCT workflow.id, workflow.name')
+			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
+			.execute() as Promise<Array<{ id: string; name: string }>>;
 	}
 }

@@ -20,13 +20,7 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'variable-table',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			values: {} as Record<string, string>,
-		};
-	},
+	name: 'VariableTable',
 	props: {
 		variables: {
 			type: Array as PropType<string[]>,
@@ -36,6 +30,12 @@ export default defineComponent({
 			type: String,
 			default: '',
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			values: {} as Record<string, string>,
+		};
 	},
 	created() {
 		const setValues = () => {
