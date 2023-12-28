@@ -20,11 +20,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
-	IWebhookData,
-	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
-	NodeHelpers,
 	Workflow,
 	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
@@ -32,16 +29,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type express from 'express';
-
-import type {
-	IResponseCallbackData,
-	IWebhookManager,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
-	WebhookAccessControlOptions,
-	WebhookRequest,
-} from '@/Interfaces';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
@@ -56,13 +44,11 @@ import {
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
-import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
-import { NotFoundError } from './errors/response-errors/not-found.error';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
@@ -75,7 +61,7 @@ interface QueuedActivation {
 }
 
 @Service()
-export class ActiveWorkflowRunner implements IWebhookManager {
+export class ActiveWorkflowRunner {
 	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
 
 	constructor(
@@ -126,136 +112,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 
 		await Promise.all(removePromises);
-	}
-
-	/**
-	 * Checks if a webhook for the given method and path exists and executes the workflow.
-	 */
-	async executeWebhook(
-		request: WebhookRequest,
-		response: express.Response,
-	): Promise<IResponseCallbackData> {
-		const httpMethod = request.method;
-		const path = request.params.path;
-
-		this.logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
-
-		// Reset request parameters
-		request.params = {} as WebhookRequest['params'];
-
-		const webhook = await this.findWebhook(path, httpMethod);
-
-		if (webhook.isDynamic) {
-			const pathElements = path.split('/').slice(1);
-
-			// extracting params from path
-			// @ts-ignore
-			webhook.webhookPath.split('/').forEach((ele, index) => {
-				if (ele.startsWith(':')) {
-					// write params to req.params
-					// @ts-ignore
-					request.params[ele.slice(1)] = pathElements[index];
-				}
-			});
-		}
-
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
-		});
-
-		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
-		}
-
-		const workflow = new Workflow({
-			id: webhook.workflowId,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
-
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflow.getNode(webhook.node) as INode,
-			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
-
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
-
-		if (workflowStartNode === null) {
-			throw new NotFoundError('Could not find node to process webhook.');
-		}
-
-		return new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				workflowData,
-				workflowStartNode,
-				executionMode,
-				undefined,
-				undefined,
-				undefined,
-				request,
-				response,
-				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
-				},
-			);
-		});
-	}
-
-	async getWebhookMethods(path: string) {
-		return this.webhookService.getWebhookMethods(path);
-	}
-
-	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const webhook = await this.findWebhook(path, httpMethod);
-
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			select: ['nodes'],
-		});
-
-		const nodes = workflowData?.nodes;
-		const webhookNode = nodes?.find(
-			({ type, parameters, typeVersion }) =>
-				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod &&
-				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
-		);
-		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
-	}
-
-	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
-
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		if (webhook === null) {
-			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
-		}
-
-		return webhook;
 	}
 
 	/**

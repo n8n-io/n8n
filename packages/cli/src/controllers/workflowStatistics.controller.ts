@@ -5,7 +5,6 @@ import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { ExecutionRequest } from '@/requests';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -33,17 +32,10 @@ export class WorkflowStatisticsController {
 	async hasWorkflowAccess(req: ExecutionRequest.Get, res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
-		const allowed = await this.sharedWorkflowRepository.exist({
-			relations: ['workflow'],
-			where: whereClause({
-				user,
-				globalScope: 'workflow:read',
-				entityType: 'workflow',
-				entityId: workflowId,
-			}),
-		});
 
-		if (allowed) {
+		const hasAccess = await this.sharedWorkflowRepository.hasAccess(workflowId, user);
+
+		if (hasAccess) {
 			next();
 		} else {
 			this.logger.verbose('User attempted to read a workflow without permissions', {
