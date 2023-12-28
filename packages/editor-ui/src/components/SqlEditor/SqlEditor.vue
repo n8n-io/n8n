@@ -1,11 +1,11 @@
 <template>
-	<div :class="$style.sqlEditor" v-on-click-outside="onBlur">
+	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
 		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -66,7 +66,7 @@ type SQLEditorData = {
 };
 
 export default defineComponent({
-	name: 'sql-editor',
+	name: 'SqlEditor',
 	components: {
 		InlineExpressionEditorOutput,
 	},
@@ -99,21 +99,6 @@ export default defineComponent({
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
-	},
-	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
-
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
-		},
 	},
 	computed: {
 		doc(): string {
@@ -186,6 +171,21 @@ export default defineComponent({
 				);
 			}
 			return extensions;
+		},
+	},
+	watch: {
+		'ndvStore.ndvInputData'() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.modelValue,
+				},
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
+			});
 		},
 	},
 	mounted() {

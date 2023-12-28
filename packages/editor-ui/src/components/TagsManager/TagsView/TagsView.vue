@@ -7,17 +7,17 @@
 			@createEnable="onCreateEnable"
 		/>
 		<TagsTable
+			ref="tagsTable"
 			:rows="rows"
-			:isLoading="isLoading"
-			:isSaving="isSaving"
-			:newName="newName"
+			:is-loading="isLoading"
+			:is-saving="isSaving"
+			:new-name="newName"
+			data-test-id="tags-table"
 			@newNameChange="onNewNameChange"
 			@updateEnable="onUpdateEnable"
 			@deleteEnable="onDeleteEnable"
 			@cancelOperation="cancelOperation"
 			@applyOperation="applyOperation"
-			ref="tagsTable"
-			data-test-id="tags-table"
 		/>
 	</div>
 </template>

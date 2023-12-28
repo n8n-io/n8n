@@ -77,7 +77,7 @@ onUnmounted(() => {
 			[$style.ioSearchOpened]: opened,
 		}"
 		:style="{ maxWidth }"
-		:modelValue="modelValue"
+		:model-value="modelValue"
 		:placeholder="placeholder"
 		size="small"
 		@update:modelValue="onSearchUpdate"

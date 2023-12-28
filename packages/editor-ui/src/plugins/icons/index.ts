@@ -316,6 +316,6 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faXmark);
 		addIcon(faDownload);
 
-		app.component('font-awesome-icon', FontAwesomeIcon);
+		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
 };

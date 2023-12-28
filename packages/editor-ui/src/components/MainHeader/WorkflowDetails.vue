@@ -1,24 +1,24 @@
 <template>
-	<div class="container" v-if="workflowName">
-		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
+	<div v-if="workflowName" class="container">
+		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
-					testId="workflow-name-input"
+					test-id="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:modelValue="workflowName"
-							:previewValue="shortenedName"
-							:isEditEnabled="isNameEditEnabled"
-							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							:model-value="workflowName"
+							:preview-value="shortenedName"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:disabled="readOnly"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
 						/>
 					</template>
 				</ShortenName>
@@ -28,11 +28,11 @@
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<TagsDropdown
 				v-if="isTagsEditEnabled && !readOnly"
-				v-model="appliedTagIds"
-				:createEnabled="true"
-				:eventBus="tagsEditBus"
-				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				ref="dropdown"
+				v-model="appliedTagIds"
+				:create-enabled="true"
+				:event-bus="tagsEditBus"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
 				@blur="onTagsBlur"
@@ -45,12 +45,12 @@
 			</div>
 			<TagsContainer
 				v-else
-				:tagIds="currentWorkflowTagIds"
+				:key="currentWorkflowId"
+				:tag-ids="currentWorkflowTagIds"
 				:clickable="true"
 				:responsive="true"
-				:key="currentWorkflowId"
-				@click="onTagsEditEnable"
 				data-test-id="workflow-tags"
+				@click="onTagsEditEnable"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -61,11 +61,11 @@
 			</span>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
-					<collaboration-pane />
+					<CollaborationPane />
 					<n8n-button
 						type="secondary"
-						@click="onShareButtonClick"
 						data-test-id="workflow-share-button"
+						@click="onShareButtonClick"
 					>
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
@@ -99,7 +99,7 @@
 			<div :class="$style.group">
 				<SaveButton
 					type="primary"
-					:saved="!this.isDirty && !this.isNewWorkflow"
+					:saved="!isDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
@@ -121,9 +121,9 @@
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
+					ref="importFile"
 					:class="$style.hiddenInput"
 					type="file"
-					ref="importFile"
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
@@ -197,7 +197,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -209,6 +208,7 @@ export default defineComponent({
 		BreakpointsObserver,
 		CollaborationPane,
 	},
+	mixins: [workflowHelpers, genericHelpers],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -373,6 +373,12 @@ export default defineComponent({
 		},
 		isWorkflowHistoryButtonDisabled(): boolean {
 			return this.workflowsStore.isNewWorkflow;
+		},
+	},
+	watch: {
+		currentWorkflowId() {
+			this.isTagsEditEnabled = false;
+			this.isNameEditEnabled = false;
 		},
 	},
 	methods: {
@@ -657,12 +663,6 @@ export default defineComponent({
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
-		},
-	},
-	watch: {
-		currentWorkflowId() {
-			this.isTagsEditEnabled = false;
-			this.isNameEditEnabled = false;
 		},
 	},
 });

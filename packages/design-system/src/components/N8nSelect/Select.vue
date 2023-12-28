@@ -9,22 +9,22 @@
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
-		<el-select
+		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
-			:modelValue="modelValue"
+			ref="innerSelect"
+			:model-value="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			ref="innerSelect"
 		>
-			<template #prefix v-if="$slots.prefix">
+			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />
 			</template>
-			<template #suffix v-if="$slots.suffix">
+			<template v-if="$slots.suffix" #suffix>
 				<slot name="suffix" />
 			</template>
 			<slot></slot>
-		</el-select>
+		</ElSelect>
 	</div>
 </template>
 
@@ -41,7 +41,7 @@ export interface IProps {
 }
 
 export default defineComponent({
-	name: 'n8n-select',
+	name: 'N8nSelect',
 	components: {
 		ElSelect,
 	},
