@@ -8,8 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { In, Like } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 
 import type { Scope } from '@n8n/permissions';
 
@@ -42,95 +41,33 @@ export class CredentialsService {
 		});
 	}
 
-	private static toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
-
-		type Select = Array<keyof CredentialsEntity>;
-
-		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
-		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
-
-		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
-
-		const { filter, select, take, skip } = listQueryOptions;
-
-		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
-		}
-
-		if (typeof filter?.type === 'string' && filter?.type !== '') {
-			filter.type = Like(`%${filter.type}%`);
-		}
-
-		if (filter) findManyOptions.where = filter;
-		if (select) findManyOptions.select = select;
-		if (take) findManyOptions.take = take;
-		if (skip) findManyOptions.skip = skip;
-
-		if (take && select && !select?.id) {
-			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-		}
-
-		if (!findManyOptions.select) {
-			findManyOptions.select = defaultSelect;
-			findManyOptions.relations = defaultRelations;
-		}
-
-		return findManyOptions;
-	}
-
 	static async getMany(
 		user: User,
 		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
 	) {
-		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
-
 		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
-			const credentials = await Container.get(CredentialsRepository).find(findManyOptions);
+			const credentials = await Container.get(CredentialsRepository).findMany(
+				options.listQueryOptions,
+			);
 
 			return isDefaultSelect
 				? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
 				: credentials;
 		}
 
-		const ids = await this.getAccessibleCredentials(user.id);
+		const ids = await Container.get(SharedCredentialsRepository).getAccessibleCredentials(user.id);
 
-		const credentials = await Container.get(CredentialsRepository).find({
-			...findManyOptions,
-			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
-		});
+		const credentials = await Container.get(CredentialsRepository).findMany(
+			options.listQueryOptions,
+			ids, // only accessible credentials
+		);
 
 		return isDefaultSelect
 			? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
 			: credentials;
-	}
-
-	/**
-	 * Get the IDs of all credentials owned by or shared with a user.
-	 */
-	private static async getAccessibleCredentials(userId: string) {
-		const sharings = await Container.get(SharedCredentialsRepository).find({
-			relations: ['role'],
-			where: {
-				userId,
-				role: { name: In(['owner', 'user']), scope: 'credential' },
-			},
-		});
-
-		return sharings.map((s) => s.credentialsId);
-	}
-
-	static async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
-		const options: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
-
-		if (withSharings) {
-			options.relations = ['shared', 'shared.user', 'shared.role'];
-		}
-
-		return Container.get(CredentialsRepository).find(options);
 	}
 
 	/**

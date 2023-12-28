@@ -31,19 +31,11 @@ describe('DebugController', () => {
 			const instanceId = 'main-71JdWtq306epIFki';
 			const leaderKey = 'some-leader-key';
 
-			const createQueryBuilder = {
-				select: () => createQueryBuilder,
-				innerJoin: () => createQueryBuilder,
-				execute: () => webhooks,
-			};
-
-			workflowRepository.find.mockResolvedValue(triggersAndPollers);
+			workflowRepository.findIn.mockResolvedValue(triggersAndPollers);
+			workflowRepository.findWebhookBasedActiveWorkflows.mockResolvedValue(webhooks);
 			activeWorkflowRunner.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowRunner.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
-			jest
-				.spyOn(workflowRepository, 'createQueryBuilder')
-				.mockImplementation(() => createQueryBuilder);
 			jest.spyOn(MultiMainSetup.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
 			jest.spyOn(MultiMainSetup.prototype, 'isLeader', 'get').mockReturnValue(true);
