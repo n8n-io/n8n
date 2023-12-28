@@ -35,4 +35,19 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	async makeOwnerOfAllCredentials(user: User, role: Role) {
 		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
 	}
+
+	/**
+	 * Get the IDs of all credentials owned by or shared with a user.
+	 */
+	async getAccessibleCredentials(userId: string) {
+		const sharings = await this.find({
+			relations: ['role'],
+			where: {
+				userId,
+				role: { name: In(['owner', 'user']), scope: 'credential' },
+			},
+		});
+
+		return sharings.map((s) => s.credentialsId);
+	}
 }

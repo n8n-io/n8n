@@ -12,12 +12,13 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -111,7 +112,7 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await CredentialsService.getManyByIds(
+		const workflowCredentials = await Container.get(CredentialsRepository).getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);
