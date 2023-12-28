@@ -23,7 +23,7 @@ describe('TestWebhooks', () => {
 	});
 
 	afterEach(() => {
-		testWebhooks.clearRegistrations();
+		testWebhooks.deregisterAll();
 	});
 
 	const httpMethod = 'GET';
@@ -112,7 +112,7 @@ describe('TestWebhooks', () => {
 				workflow: mock<Workflow>(),
 			});
 
-			testWebhooks.setRegistration(registration);
+			testWebhooks.register(registration);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
