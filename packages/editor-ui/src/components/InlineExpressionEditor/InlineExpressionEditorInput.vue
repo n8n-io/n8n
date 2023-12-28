@@ -29,6 +29,7 @@ export default defineComponent({
 	props: {
 		modelValue: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -40,6 +41,7 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		additionalData: {
 			type: Object as PropType<IDataObject>,
