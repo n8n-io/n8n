@@ -183,4 +183,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where: { name: Like(`${workflowName}%`) },
 		});
 	}
+
+	async findIn(workflowIds: string[]) {
+		return this.find({
+			select: ['id', 'name'],
+			where: { id: In(workflowIds) },
+		});
+	}
 }
