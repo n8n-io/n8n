@@ -1,10 +1,4 @@
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import type { IZepConfig } from 'langchain/vectorstores/zep';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
 import type { Embeddings } from 'langchain/embeddings/base';
@@ -49,11 +43,11 @@ export class VectorStoreZepLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: ['ai_vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -97,10 +91,7 @@ export class VectorStoreZepLoad implements INodeType {
 			apiKey?: string;
 			apiUrl: string;
 		};
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,

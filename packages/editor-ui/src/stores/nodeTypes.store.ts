@@ -11,7 +11,7 @@ import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
-	ConnectionTypes,
+	ConnectionType,
 	INode,
 	INodeListSearchResult,
 	INodeOutputConfiguration,
@@ -21,7 +21,7 @@ import type {
 	ResourceMapperFields,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
@@ -107,7 +107,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 				return outputTypes
-					? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+					? outputTypes.filter((output) => output !== 'main').length > 0
 					: false;
 			};
 		},
@@ -121,7 +121,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
 				return inputTypes
-					? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+					? inputTypes.filter((input) => input !== 'main').length > 0
 					: false;
 			};
 		},
@@ -153,7 +153,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				(acc, node) => {
 					const outputTypes = node.outputs;
 					if (Array.isArray(outputTypes)) {
-						outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+						outputTypes.forEach((value: ConnectionType | INodeOutputConfiguration) => {
 							const outputType = typeof value === 'string' ? value : value.type;
 							if (!acc[outputType]) {
 								acc[outputType] = [];
@@ -163,18 +163,18 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 					} else {
 						// If outputs is not an array, it must be a string expression
 						// in which case we'll try to match all possible non-main output types that are supported
-						const connectorTypes: ConnectionTypes[] = [
-							NodeConnectionType.AiVectorStore,
-							NodeConnectionType.AiChain,
-							NodeConnectionType.AiDocument,
-							NodeConnectionType.AiEmbedding,
-							NodeConnectionType.AiLanguageModel,
-							NodeConnectionType.AiMemory,
-							NodeConnectionType.AiOutputParser,
-							NodeConnectionType.AiTextSplitter,
-							NodeConnectionType.AiTool,
+						const connectorTypes: ConnectionType[] = [
+							'ai_vectorStore',
+							'ai_chain',
+							'ai_document',
+							'ai_embedding',
+							'ai_languageModel',
+							'ai_memory',
+							'ai_outputParser',
+							'ai_textSplitter',
+							'ai_tool',
 						];
-						connectorTypes.forEach((outputType: ConnectionTypes) => {
+						connectorTypes.forEach((outputType: ConnectionType) => {
 							if (outputTypes.includes(outputType)) {
 								acc[outputType] = acc[outputType] || [];
 								acc[outputType].push(node.name);
@@ -194,7 +194,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				(acc, node) => {
 					const inputTypes = node.inputs;
 					if (Array.isArray(inputTypes)) {
-						inputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+						inputTypes.forEach((value: ConnectionType | INodeOutputConfiguration) => {
 							const outputType = typeof value === 'string' ? value : value.type;
 							if (!acc[outputType]) {
 								acc[outputType] = [];

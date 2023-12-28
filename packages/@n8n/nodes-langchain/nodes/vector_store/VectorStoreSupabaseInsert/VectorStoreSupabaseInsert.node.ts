@@ -1,9 +1,8 @@
-import {
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type INodeExecutionData,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
@@ -50,21 +49,21 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			},
 		],
 		inputs: [
-			NodeConnectionType.Main,
+			'main',
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: NodeConnectionType.AiDocument,
+				type: 'ai_document',
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName:
@@ -101,14 +100,11 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
+		const documentInput = (await this.getInputConnectionData('ai_document', 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(

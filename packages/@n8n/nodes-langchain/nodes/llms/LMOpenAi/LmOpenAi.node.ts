@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType } from 'n8n-workflow';
+import { ConnectionType } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeType,
@@ -52,7 +52,7 @@ export class LmOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: ['ai_languageModel'],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -66,7 +66,7 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
 				displayName: 'Model',
 				name: 'model',

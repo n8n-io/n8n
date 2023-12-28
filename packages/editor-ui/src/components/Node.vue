@@ -161,7 +161,7 @@ import { nodeBase } from '@/mixins/nodeBase';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 import type {
-	ConnectionTypes,
+	ConnectionType,
 	IExecutionsSummary,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -169,7 +169,7 @@ import type {
 	ITaskData,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -336,7 +336,7 @@ export default defineComponent({
 			if (this.outputs.length) {
 				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
 				const otherOutputs = outputTypes.filter(
-					(outputName) => outputName !== NodeConnectionType.Main,
+					(outputName) => outputName !== 'main',
 				);
 				if (otherOutputs.length) {
 					otherOutputs.forEach((outputName) => {
@@ -358,10 +358,10 @@ export default defineComponent({
 			if (this.node && this.nodeType) {
 				const inputs =
 					NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType) ||
-					([] as Array<ConnectionTypes | INodeInputConfiguration>);
+					([] as Array<ConnectionType | INodeInputConfiguration>);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-				const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
+				const nonMainInputs = inputTypes.filter((input) => input !== 'main');
 				if (nonMainInputs.length) {
 					const requiredNonMainInputs = inputs.filter(
 						(input) => typeof input !== 'string' && input.required,
@@ -377,14 +377,14 @@ export default defineComponent({
 					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
-				let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
+				let outputs = [] as Array<ConnectionType | INodeOutputConfiguration>;
 				if (this.workflow.nodes[this.node.name]) {
 					outputs = NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType);
 				}
 
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				const mainOutputs = outputTypes.filter((output) => output === NodeConnectionType.Main);
+				const mainOutputs = outputTypes.filter((output) => output === 'main');
 				styles['--node-main-output-count'] = mainOutputs.length;
 			}
 

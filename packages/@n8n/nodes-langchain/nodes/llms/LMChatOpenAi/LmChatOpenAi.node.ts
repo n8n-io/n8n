@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -40,7 +40,7 @@ export class LmChatOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: ['ai_languageModel'],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -54,7 +54,7 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',

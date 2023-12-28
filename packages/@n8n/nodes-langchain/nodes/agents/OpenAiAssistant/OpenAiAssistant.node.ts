@@ -2,7 +2,7 @@ import { AgentExecutor } from 'langchain/agents';
 import { OpenAI as OpenAIClient } from 'openai';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import { type Tool } from 'langchain/tools';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -40,10 +40,10 @@ export class OpenAiAssistant implements INodeType {
 			},
 		},
 		inputs: [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: 'main' },
+			{ type: 'ai_tool', displayName: 'Tools' },
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -293,7 +293,7 @@ export class OpenAiAssistant implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		const tools = (await this.getInputConnectionData('ai_tool', 0)) as Tool[];
 		const credentials = await this.getCredentials('openAiApi');
 
 		const items = this.getInputData();

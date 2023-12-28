@@ -1,6 +1,6 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
+	ConnectionType,
 	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
@@ -24,29 +24,29 @@ import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 // display based on the agent type
 function getInputs(
 	agent: 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<ConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
-		type: ConnectionTypes;
+		type: ConnectionType;
 		filter?: INodeInputFilter;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
-	): Array<ConnectionTypes | INodeInputConfiguration> => {
+	): Array<ConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
-			[NodeConnectionType.AiLanguageModel]: 'Model',
-			[NodeConnectionType.AiMemory]: 'Memory',
-			[NodeConnectionType.AiTool]: 'Tool',
-			[NodeConnectionType.AiOutputParser]: 'Output Parser',
+			['ai_languageModel']: 'Model',
+			['ai_memory']: 'Memory',
+			['ai_tool']: 'Tool',
+			['ai_outputParser']: 'Output Parser',
 		};
 
 		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
-				required: type === NodeConnectionType.AiLanguageModel,
-				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
-					type as NodeConnectionType,
+				required: type === 'ai_languageModel',
+				maxConnections: ['ai_languageModel', 'ai_memory'].includes(
+					type as ConnectionType,
 				)
 					? 1
 					: undefined,
@@ -65,7 +65,7 @@ function getInputs(
 	if (agent === 'conversationalAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -76,66 +76,66 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'openAiFunctionsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'reActAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'sqlAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	}
 
-	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
+	return ['main', ...getInputData(specialInputs)];
 }
 
 export class Agent implements INodeType {
@@ -167,7 +167,7 @@ export class Agent implements INodeType {
 			},
 		},
 		inputs: `={{ ((agent) => { ${getInputs.toString()}; return getInputs(agent) })($parameter.agent) }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

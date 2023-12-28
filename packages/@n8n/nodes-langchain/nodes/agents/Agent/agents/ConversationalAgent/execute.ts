@@ -1,7 +1,6 @@
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -19,7 +18,7 @@ export async function conversationalAgentExecute(
 	this.logger.verbose('Executing Conversational Agent');
 
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		'ai_languageModel',
 		0,
 	)) as BaseChatModel;
 
@@ -27,12 +26,12 @@ export async function conversationalAgentExecute(
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	const memory = (await this.getInputConnectionData('ai_memory', 0)) as
 		| BaseChatMemory
 		| undefined;
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = (await this.getInputConnectionData('ai_tool', 0)) as Tool[];
 	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
+		'ai_outputParser',
 		0,
 	)) as BaseOutputParser[];
 

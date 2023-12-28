@@ -569,7 +569,7 @@ import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
-	ConnectionTypes,
+	ConnectionType,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -579,7 +579,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	IExecutionResponse,
@@ -710,7 +710,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			connectionType: NodeConnectionType.Main,
+			connectionType: 'main',
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -792,7 +792,7 @@ export default defineComponent({
 			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
 			const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
+			const nonMainInputs = !!inputNames.find((inputName) => inputName !== 'main');
 
 			return (
 				!nonMainInputs &&
@@ -1279,7 +1279,7 @@ export default defineComponent({
 		getRawInputData(
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = NodeConnectionType.Main,
+			connectionType: ConnectionType = 'main',
 		): INodeExecutionData[] {
 			let inputData: INodeExecutionData[] = [];
 
@@ -1324,7 +1324,7 @@ export default defineComponent({
 		getDataCount(
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = NodeConnectionType.Main,
+			connectionType: ConnectionType = 'main',
 		) {
 			if (!this.node) {
 				return 0;
@@ -1343,12 +1343,12 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
-			let outputTypes: ConnectionTypes[] = [];
+			let outputTypes: ConnectionType[] = [];
 			if (this.nodeType !== null && this.node !== null) {
 				const outputs = this.getResolvedNodeOutputs();
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);
 			}
-			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
+			this.connectionType = outputTypes.length === 0 ? 'main' : outputTypes[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',

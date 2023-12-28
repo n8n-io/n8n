@@ -38,7 +38,7 @@ import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
 	CloseFunction,
-	ConnectionTypes,
+	ConnectionType,
 	ContextType,
 	FieldType,
 	FileSystemHelperFunctions,
@@ -985,7 +985,7 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	const binaryKeyData = inputData.main?.[inputIndex]?.[itemIndex]?.binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(node, 'No binary data exists on item!', {
 			itemIndex,
@@ -1011,7 +1011,7 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main![inputIndex][itemIndex]!.binary![propertyName]!;
 	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -2398,7 +2398,7 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: ConnectionTypes,
+	connectionType: ConnectionType,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
@@ -3178,7 +3178,7 @@ export function getExecuteFunctions(
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: ConnectionType,
 				itemIndex: number,
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
@@ -3372,26 +3372,26 @@ export function getExecuteFunctions(
 					return output;
 				});
 			},
-			getInputData: (inputIndex = 0, inputName = 'main') => {
+			getInputData: (inputIndex = 0, inputName: ConnectionType = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input
 					return [];
 				}
 
 				// TODO: Check if nodeType has input with that index defined
-				if (inputData[inputName].length < inputIndex) {
+				if (inputData[inputName]!.length < inputIndex) {
 					throw new ApplicationError('Could not get input with given index', {
 						extra: { inputIndex, inputName },
 					});
 				}
 
-				if (inputData[inputName][inputIndex] === null) {
+				if (inputData[inputName]![inputIndex] === null) {
 					throw new ApplicationError('Value of input was not set', {
 						extra: { inputIndex, inputName },
 					});
 				}
 
-				return inputData[inputName][inputIndex] as INodeExecutionData[];
+				return inputData[inputName]![inputIndex] as INodeExecutionData[];
 			},
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
@@ -3475,7 +3475,7 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: ConnectionTypes,
+				connectionType: ConnectionType,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
@@ -3505,7 +3505,7 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: ConnectionTypes,
+				connectionType: ConnectionType,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
@@ -3605,13 +3605,13 @@ export function getExecuteSingleFunctions(
 				}
 
 				// TODO: Check if nodeType has input with that index defined
-				if (inputData[inputName].length < inputIndex) {
+				if (inputData[inputName]!.length < inputIndex) {
 					throw new ApplicationError('Could not get input index', {
 						extra: { inputIndex, inputName },
 					});
 				}
 
-				const allItems = inputData[inputName][inputIndex];
+				const allItems = inputData[inputName]![inputIndex];
 
 				if (allItems === null) {
 					throw new ApplicationError('Input index was not set', {

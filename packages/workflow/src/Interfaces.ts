@@ -10,7 +10,12 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
 import type { AuthenticationMethod } from './Authentication';
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
+import type {
+	CODE_EXECUTION_MODES,
+	CODE_LANGUAGES,
+	CONNECTION_TYPES,
+	LOG_LEVELS,
+} from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
 import type { ExpressionError } from './errors/expression.error';
@@ -793,7 +798,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputData?: INodeExecutionData[],
 		): Promise<any>;
 		getInputConnectionData(
-			inputName: ConnectionTypes,
+			inputName: ConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -805,12 +810,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
-			connectionType: ConnectionTypes,
+			connectionType: ConnectionType,
 			data: INodeExecutionData[][] | ExecutionError,
 			runIndex?: number,
 		): { index: number };
 		addOutputData(
-			connectionType: ConnectionTypes,
+			connectionType: ConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
@@ -1543,47 +1548,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes =
-	| 'ai_agent'
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_tool'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore'
-	| 'main';
-
-export const enum NodeConnectionType {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiAgent = 'ai_agent',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiChain = 'ai_chain',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiDocument = 'ai_document',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiEmbedding = 'ai_embedding',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiLanguageModel = 'ai_languageModel',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiMemory = 'ai_memory',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiOutputParser = 'ai_outputParser',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiRetriever = 'ai_retriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiTextSplitter = 'ai_textSplitter',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiVectorStore = 'ai_vectorStore',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	Main = 'main',
-}
+export type ConnectionType = (typeof CONNECTION_TYPES)[number];
 
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
@@ -1597,14 +1562,14 @@ export interface INodeInputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	filter?: INodeInputFilter;
-	type: ConnectionTypes;
+	type: ConnectionType;
 }
 
 export interface INodeOutputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: ConnectionType;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
@@ -1612,10 +1577,10 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionType | INodeInputConfiguration> | string;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionType | INodeInputConfiguration> | string;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -1840,12 +1805,12 @@ export interface ISourceData {
 }
 
 // The data for all the different kind of connections (like main) and all the indexes
-export interface ITaskDataConnections {
-	// Key for each input type and because there can be multiple inputs of the same type it is an array
-	// null is also allowed because if we still need data for a later while executing the workflow set temporary to null
-	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
-	[key: string]: Array<INodeExecutionData[] | null>;
-}
+// Key for each input type and because there can be multiple inputs of the same type it is an array
+// null is also allowed because if we still need data for a later while executing the workflow set temporary to null
+// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
+export type ITaskDataConnections = Partial<
+	Record<ConnectionType, Array<INodeExecutionData[] | null>>
+>;
 
 // Keeps data while workflow gets executed and allows when provided to restart execution
 export interface IWaitingForExecution {

@@ -1,7 +1,7 @@
 import { useHistoryStore } from '@/stores/history.store';
 import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -9,7 +9,7 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	ConnectionTypes,
+	ConnectionType,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
@@ -294,7 +294,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+		let inputs: Array<ConnectionType | INodeInputConfiguration> = [];
 		if (nodeType && workflowNode) {
 			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 		}
@@ -523,7 +523,7 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: ConnectionType = 'main',
 	): INodeExecutionData[] {
 		if (node === null) {
 			return [];
@@ -560,7 +560,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: ConnectionType = 'main',
 	): INodeExecutionData[] {
 		if (
 			!connectionsData ||
@@ -579,7 +579,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: ConnectionType = 'main',
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];

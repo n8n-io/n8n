@@ -40,7 +40,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
+import { WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
@@ -297,7 +297,7 @@ export default defineComponent({
 		 * @param {string} filterText Filter text for parameters
 		 * @param {number} [itemIndex=0] The index of the item
 		 * @param {number} [runIndex=0] The index of the run
-		 * @param {string} [inputName=NodeConnectionType.Main] The name of the input
+		 * @param {string} [inputName='main'] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
 		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
@@ -307,7 +307,7 @@ export default defineComponent({
 			filterText: string,
 			itemIndex = 0,
 			runIndex = 0,
-			inputName = NodeConnectionType.Main,
+			inputName = 'main',
 			outputIndex = 0,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
@@ -469,7 +469,7 @@ export default defineComponent({
 			filterText: string,
 		): IVariableSelectorOption[] | null {
 			const itemIndex = 0;
-			const inputName = NodeConnectionType.Main;
+			const inputName = 'main';
 			const runIndex = 0;
 			const returnData: IVariableSelectorOption[] = [];
 
@@ -586,7 +586,7 @@ export default defineComponent({
 			return returnParameters;
 		},
 		getFilterResults(filterText: string, itemIndex: number): IVariableSelectorOption[] {
-			const inputName = NodeConnectionType.Main;
+			const inputName = 'main';
 
 			if (this.activeNode === null) {
 				return [];

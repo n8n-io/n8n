@@ -9,12 +9,7 @@ import type {
 	ITaskData,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import {
-	NodeHelpers,
-	NodeConnectionType,
-	TelemetryHelpers,
-	FORM_TRIGGER_PATH_IDENTIFIER,
-} from 'n8n-workflow';
+import { NodeHelpers, TelemetryHelpers, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -168,7 +163,7 @@ export const workflowRun = defineComponent({
 				if (options.destinationNode !== undefined) {
 					directParentNodes = workflow.getParentNodes(
 						options.destinationNode,
-						NodeConnectionType.Main,
+						'main',
 						1,
 					);
 				}
@@ -186,7 +181,7 @@ export const workflowRun = defineComponent({
 					for (const directParentNode of directParentNodes) {
 						// Go over the parents of that node so that we can get a start
 						// node for each of the branches
-						const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
+						const parentNodes = workflow.getParentNodes(directParentNode, 'main');
 
 						// Add also the enabled direct parent to be checked
 						if (workflow.nodes[directParentNode].disabled) continue;
@@ -222,7 +217,7 @@ export const workflowRun = defineComponent({
 					startNodes.push(options.destinationNode);
 				} else if ('triggerNode' in options && 'nodeData' in options) {
 					startNodes.push(
-						...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
+						...workflow.getChildNodes(options.triggerNode, 'main', 1),
 					);
 					newRunData = {
 						[options.triggerNode]: [options.nodeData],

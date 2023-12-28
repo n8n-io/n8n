@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 	NodeOperationError,
-	NodeConnectionType,
+	ConnectionType,
 } from 'n8n-workflow';
 
 import { parseSchema } from 'json-schema-to-zod';
@@ -108,10 +108,10 @@ export class OutputParserStructured implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+		outputs: ['ai_outputParser'],
 		outputNames: ['Output Parser'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
 				displayName: 'JSON Schema',
 				name: 'jsonSchema',

@@ -144,7 +144,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { jsonParse, NodeHelpers } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
@@ -382,7 +382,7 @@ export default defineComponent({
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+			if (outputs.some((output) => output !== 'main')) {
 				node = this.activeNode;
 			}
 
@@ -590,7 +590,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: NodeConnectionType.Main,
+					pane: 'main',
 					type: 'i-wish-this-node-would',
 				});
 			}

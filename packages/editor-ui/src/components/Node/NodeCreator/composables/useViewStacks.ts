@@ -26,7 +26,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
+import type { INodeInputFilter, ConnectionType } from 'n8n-workflow';
 
 interface ViewStack {
 	uuid?: string;
@@ -121,7 +121,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
 
 	async function gotoCompatibleConnectionView(
-		connectionType: NodeConnectionType,
+		connectionType: ConnectionType,
 		isOutput?: boolean,
 		filter?: INodeInputFilter,
 	) {

@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -58,16 +58,16 @@ export class MemoryChatRetriever implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			'main',
 			{
 				displayName: 'Memory',
 				maxConnections: 1,
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Simplify Output',
@@ -82,7 +82,7 @@ export class MemoryChatRetriever implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Chat Memory Retriever');
 
-		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+		const memory = (await this.getInputConnectionData('ai_memory', 0)) as
 			| BaseChatMemory
 			| undefined;
 		const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;

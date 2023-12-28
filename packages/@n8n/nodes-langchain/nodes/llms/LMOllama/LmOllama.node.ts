@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -39,7 +39,7 @@ export class LmOllama implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: ['ai_languageModel'],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -52,7 +52,7 @@ export class LmOllama implements INodeType {
 			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
 				displayName: 'Model',
 				name: 'model',

@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { ConnectionType } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -23,11 +23,11 @@ function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
 	const inputs = [
-		{ displayName: '', type: NodeConnectionType.Main },
+		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
-			type: NodeConnectionType.AiLanguageModel,
+			type: 'ai_languageModel',
 			required: true,
 		},
 	];
@@ -35,7 +35,7 @@ function getInputs(parameters: IDataObject) {
 	if (operationMode === 'documentLoader') {
 		inputs.push({
 			displayName: 'Document',
-			type: NodeConnectionType.AiDocument,
+			type: 'ai_document',
 			required: true,
 			maxConnections: 1,
 		});
@@ -45,7 +45,7 @@ function getInputs(parameters: IDataObject) {
 	if (chunkingMode === 'advanced') {
 		inputs.push({
 			displayName: 'Text Splitter',
-			type: NodeConnectionType.AiTextSplitter,
+			type: 'ai_textSplitter',
 			required: false,
 			maxConnections: 1,
 		});
@@ -67,7 +67,7 @@ export class ChainSummarizationV2 implements INodeType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-			outputs: [NodeConnectionType.Main],
+			outputs: ['main'],
 			credentials: [],
 			properties: [
 				getTemplateNoticeField(1951),
@@ -320,7 +320,7 @@ export class ChainSummarizationV2 implements INodeType {
 			| 'advanced';
 
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			'ai_languageModel',
 			0,
 		)) as BaseLanguageModel;
 
@@ -353,7 +353,7 @@ export class ChainSummarizationV2 implements INodeType {
 			// Use dedicated document loader input to load documents
 			if (operationMode === 'documentLoader') {
 				const documentInput = (await this.getInputConnectionData(
-					NodeConnectionType.AiDocument,
+					'ai_document',
 					0,
 				)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
 
@@ -387,7 +387,7 @@ export class ChainSummarizationV2 implements INodeType {
 					// In advanced mode user can connect text splitter node so we just retrieve it
 					case 'advanced':
 						textSplitter = (await this.getInputConnectionData(
-							NodeConnectionType.AiTextSplitter,
+							'ai_textSplitter',
 							0,
 						)) as TextSplitter | undefined;
 						break;

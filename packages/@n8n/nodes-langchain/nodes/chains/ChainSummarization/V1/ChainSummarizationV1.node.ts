@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type INodeTypeBaseDescription,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -30,21 +30,21 @@ export class ChainSummarizationV1 implements INodeType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: [
-				NodeConnectionType.Main,
+				'main',
 				{
 					displayName: 'Model',
 					maxConnections: 1,
-					type: NodeConnectionType.AiLanguageModel,
+					type: 'ai_languageModel',
 					required: true,
 				},
 				{
 					displayName: 'Document',
 					maxConnections: 1,
-					type: NodeConnectionType.AiDocument,
+					type: 'ai_document',
 					required: true,
 				},
 			],
-			outputs: [NodeConnectionType.Main],
+			outputs: ['main'],
 			credentials: [],
 			properties: [
 				getTemplateNoticeField(1951),
@@ -166,11 +166,11 @@ export class ChainSummarizationV1 implements INodeType {
 		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			'ai_languageModel',
 			0,
 		)) as BaseLanguageModel;
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
+		const documentInput = (await this.getInputConnectionData('ai_document', 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 

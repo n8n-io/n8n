@@ -1,10 +1,5 @@
 import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
-import {
-	type ITaskDataConnections,
-	type IDataObject,
-	type INodeExecutionData,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { ITaskDataConnections, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { merge } from 'lodash-es';
 import { generatePath } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
@@ -69,7 +64,7 @@ export function useDataSchema() {
 		outputIndex: number,
 	): INodeExecutionData[] {
 		if (
-			!connectionsData?.hasOwnProperty(NodeConnectionType.Main) ||
+			!connectionsData?.hasOwnProperty('main') ||
 			connectionsData.main === undefined ||
 			connectionsData.main.length < outputIndex ||
 			connectionsData.main[outputIndex] === null

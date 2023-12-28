@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 	type INodeOutputConfiguration,
 	type SupplyData,
-	NodeConnectionType,
+	ConnectionType,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
@@ -24,16 +24,16 @@ const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: exte
 
 // TODO: Replace
 const connectorTypes = {
-	[NodeConnectionType.AiChain]: 'Chain',
-	[NodeConnectionType.AiDocument]: 'Document',
-	[NodeConnectionType.AiEmbedding]: 'Embedding',
-	[NodeConnectionType.AiLanguageModel]: 'Language Model',
-	[NodeConnectionType.AiMemory]: 'Memory',
-	[NodeConnectionType.AiOutputParser]: 'Output Parser',
-	[NodeConnectionType.AiTextSplitter]: 'Text Splitter',
-	[NodeConnectionType.AiTool]: 'Tool',
-	[NodeConnectionType.AiVectorStore]: 'Vector Store',
-	[NodeConnectionType.Main]: 'Main',
+	['ai_chain']: 'Chain',
+	['ai_document']: 'Document',
+	['ai_embedding']: 'Embedding',
+	['ai_languageModel']: 'Language Model',
+	['ai_memory']: 'Memory',
+	['ai_outputParser']: 'Output Parser',
+	['ai_textSplitter']: 'Text Splitter',
+	['ai_tool']: 'Tool',
+	['ai_vectorStore']: 'Vector Store',
+	['main']: 'Main',
 };
 
 const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompts');
@@ -297,7 +297,7 @@ export class Code implements INodeType {
 
 		const outputs = this.getNodeOutputs();
 		const mainOutputs: INodeOutputConfiguration[] = outputs.filter(
-			(output) => output.type === NodeConnectionType.Main,
+			(output) => output.type === 'main',
 		);
 
 		const options = { multiOutput: mainOutputs.length !== 1 };

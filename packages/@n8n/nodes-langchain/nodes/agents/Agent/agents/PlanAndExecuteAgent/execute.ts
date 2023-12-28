@@ -1,7 +1,7 @@
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	ConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -17,14 +17,14 @@ export async function planAndExecuteAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		'ai_languageModel',
 		0,
 	)) as BaseChatModel;
 
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = (await this.getInputConnectionData('ai_tool', 0)) as Tool[];
 
 	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
+		'ai_outputParser',
 		0,
 	)) as BaseOutputParser[];
 

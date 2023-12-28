@@ -38,7 +38,6 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 	NodeHelpers,
-	NodeConnectionType,
 	ApplicationError,
 } from 'n8n-workflow';
 import get from 'lodash/get';
@@ -1070,7 +1069,7 @@ export class WorkflowExecute {
 									);
 									const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 									const mainOutputTypes = outputTypes.filter(
-										(output) => output === NodeConnectionType.Main,
+										(output) => output === 'main',
 									);
 
 									const errorItems: INodeExecutionData[] = [];
@@ -1131,7 +1130,7 @@ export class WorkflowExecute {
 													const pairedItemInputIndex = pairedItemData.input || 0;
 
 													const sourceData =
-														executionData!.source[NodeConnectionType.Main][pairedItemInputIndex];
+														executionData!.source['main'][pairedItemInputIndex];
 
 													const constPairedItem = dataProxy.$getPairedItem(
 														sourceData!.previousNode,

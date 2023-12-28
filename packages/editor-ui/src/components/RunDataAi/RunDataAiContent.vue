@@ -79,7 +79,7 @@ import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeTypeDescription,
-	NodeConnectionType,
+	ConnectionType,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -90,7 +90,7 @@ interface RunMeta {
 	executionTimeMs: number;
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
-	connectionType: NodeConnectionType;
+	connectionType: ConnectionType;
 }
 const props = defineProps<{
 	inputData: IAiData;

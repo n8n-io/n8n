@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -38,10 +38,10 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTextSplitter],
+		outputs: ['ai_textSplitter'],
 		outputNames: ['Text Splitter'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
+			getConnectionHintNoticeField(['ai_document']),
 			{
 				displayName: 'Separator',
 				name: 'separator',

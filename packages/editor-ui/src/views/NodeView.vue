@@ -282,16 +282,9 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
-	ConnectionTypes,
 	INodeOutputConfiguration,
 } from 'n8n-workflow';
-import {
-	deepCopy,
-	jsonParse,
-	NodeConnectionType,
-	NodeHelpers,
-	TelemetryHelpers,
-} from 'n8n-workflow';
+import { deepCopy, jsonParse, ConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -858,7 +851,7 @@ export default defineComponent({
 				node,
 				creatorview,
 			}: {
-				connectiontype: NodeConnectionType;
+				connectiontype: ConnectionType;
 				node: string;
 				creatorview?: string;
 			}) => {
@@ -2387,7 +2380,7 @@ export default defineComponent({
 							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
 
 							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
-								(output) => output === NodeConnectionType.Main,
+								(output) => output === 'main',
 							);
 
 							if (sourceNodeOutputMainOutputs.length > 1) {
@@ -2400,7 +2393,7 @@ export default defineComponent({
 						}
 					}
 
-					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+					let outputs: Array<ConnectionType | INodeOutputConfiguration> = [];
 					try {
 						// It fails when the outputs are an expression. As those nodes have
 						// normally no outputs by default and the only reason we need the
@@ -2418,7 +2411,7 @@ export default defineComponent({
 					// If node has only scoped outputs, position it below the last selected node
 					if (
 						outputTypes.length > 0 &&
-						outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+						outputTypes.every((outputName) => outputName !== 'main')
 					) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
@@ -2429,7 +2422,7 @@ export default defineComponent({
 						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
 						const scopedConnectionIndex = (lastSelectedInputTypes || [])
-							.filter((input) => input !== NodeConnectionType.Main)
+							.filter((input) => input !== 'main')
 							.findIndex((inputType) => outputs[0] === inputType);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
@@ -2453,7 +2446,7 @@ export default defineComponent({
 						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
 
 						let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
-						if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+						if (!!inputsTypes.find((input) => input !== 'main')) {
 							// If the node has scoped inputs, push it down a bit more
 							pushOffset += 150;
 						}
@@ -2531,8 +2524,8 @@ export default defineComponent({
 			sourceNodeName: string,
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
-			targetNodeOuputIndex: number,
-			type: ConnectionTypes,
+			targetNodeOutputIndex: number,
+			type: ConnectionType,
 		): IConnection | undefined {
 			const nodeConnections =
 				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName)[type];
@@ -2542,7 +2535,7 @@ export default defineComponent({
 				if (connections) {
 					return connections.find(
 						(connection: IConnection) =>
-							connection.node === targetNodeName && connection.index === targetNodeOuputIndex,
+							connection.node === targetNodeName && connection.index === targetNodeOutputIndex,
 					);
 				}
 			}
@@ -2554,7 +2547,7 @@ export default defineComponent({
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOutputIndex: number,
-			type: ConnectionTypes,
+			type: ConnectionType,
 		) {
 			this.uiStore.stateIsDirty = true;
 
@@ -2636,10 +2629,10 @@ export default defineComponent({
 					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
-						lastSelectedEndpoint.scope as NodeConnectionType,
+						lastSelectedEndpoint.scope as ConnectionType,
 					)
 				) {
-					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
+					const connectionType = lastSelectedEndpoint.scope as ConnectionType;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
 					const viableConnection = newNodeConnections.find((conn) => {
@@ -2671,7 +2664,7 @@ export default defineComponent({
 						0,
 						targetNodeName,
 						targetOutputIndex,
-						NodeConnectionType.Main,
+						'main',
 					);
 				}
 
@@ -2681,12 +2674,12 @@ export default defineComponent({
 					outputIndex,
 					newNodeData.name,
 					0,
-					NodeConnectionType.Main,
+					'main',
 				);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
-		getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
+		getNodeCreatorFilter(nodeName: string, outputType?: ConnectionType) {
 			let filter;
 			const workflow = this.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(nodeName);
@@ -2721,10 +2714,10 @@ export default defineComponent({
 			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 			nodeCreatorView?: string;
-			outputType?: NodeConnectionType;
+			outputType?: ConnectionType;
 			endpointUuid?: string;
 		}) {
-			const type = info.outputType ?? NodeConnectionType.Main;
+			const type = info.outputType ?? 'main';
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
 			// to it.
@@ -2753,7 +2746,7 @@ export default defineComponent({
 			// after the node creator is opened
 			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
 			const isScopedConnection =
-				type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
+				type !== 'main' && Object.values(ConnectionType).includes(type);
 
 			if (isScopedConnection) {
 				useViewStacks()
@@ -2773,7 +2766,7 @@ export default defineComponent({
 				}
 				if (this.pullConnActiveNodeName) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
-					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
+					const connectionType = connection.parameters.type ?? 'main';
 					const overrideTargetEndpoint = connection?.connector
 						?.overrideTargetEndpoint as Endpoint | null;
 
@@ -2812,7 +2805,7 @@ export default defineComponent({
 		checkNodeConnectionAllowed(
 			sourceNode: INodeUi,
 			targetNode: INodeUi,
-			targetInfoType: NodeConnectionType,
+			targetInfoType: ConnectionType,
 		): boolean {
 			const targetNodeType = this.nodeTypesStore.getNodeType(
 				targetNode.type,
@@ -2822,7 +2815,7 @@ export default defineComponent({
 			if (targetNodeType?.inputs?.length) {
 				const workflow = this.getCurrentWorkflow();
 				const workflowNode = workflow.getNode(targetNode.name);
-				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				let inputs: Array<ConnectionType | INodeInputConfiguration> = [];
 				if (targetNodeType) {
 					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
 				}
@@ -2970,7 +2963,7 @@ export default defineComponent({
 						info.connection,
 						OVERLAY_ENDPOINT_ARROW_ID,
 					);
-					if (sourceInfo.type !== NodeConnectionType.Main) {
+					if (sourceInfo.type !== 'main') {
 						// Not "main" connections get a different connection style
 						info.connection.setPaintStyle(
 							getConnectorPaintStyleData(info.connection, info.sourceEndpoint.parameters.category),
@@ -3172,7 +3165,7 @@ export default defineComponent({
 						outputIndex,
 						this.pullConnActiveNodeName,
 						overrideTargetEndpoint?.parameters?.index ?? 0,
-						NodeConnectionType.Main,
+						'main',
 					);
 					this.pullConnActiveNodeName = null;
 					await this.$nextTick();
@@ -3204,7 +3197,7 @@ export default defineComponent({
 				NodeViewUtils.hideConnectionActions(connection);
 				NodeViewUtils.resetConnection(connection);
 
-				const scope = connection.scope as ConnectionTypes;
+				const scope = connection.scope as ConnectionType;
 				const scopedEndpoints = Array.from(
 					document.querySelectorAll(`[data-jtk-scope-${scope}=true]`),
 				);
@@ -3324,7 +3317,7 @@ export default defineComponent({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: endpoint.scope as ConnectionTypes,
+					outputType: endpoint.scope as ConnectionType,
 					endpointUuid: endpoint.uuid,
 				});
 			}
@@ -3336,7 +3329,7 @@ export default defineComponent({
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.ADD_INPUT_ENDPOINT,
 					nodeCreatorView: AI_NODE_CREATOR_VIEW,
-					outputType: endpoint.scope as ConnectionTypes,
+					outputType: endpoint.scope as ConnectionType,
 					endpointUuid: endpoint.uuid,
 				});
 			}
@@ -3538,7 +3531,7 @@ export default defineComponent({
 		},
 		getOutputEndpointUUID(
 			nodeName: string,
-			connectionType: ConnectionTypes,
+			connectionType: ConnectionType,
 			index: number,
 		): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3548,7 +3541,7 @@ export default defineComponent({
 
 			return NodeViewUtils.getOutputEndpointUUID(node.id, connectionType, index);
 		},
-		getInputEndpointUUID(nodeName: string, connectionType: ConnectionTypes, index: number) {
+		getInputEndpointUUID(nodeName: string, connectionType: ConnectionType, index: number) {
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return null;
@@ -3559,12 +3552,12 @@ export default defineComponent({
 		__addConnection(connection: [IConnection, IConnection]) {
 			const outputUuid = this.getOutputEndpointUUID(
 				connection[0].node,
-				connection[0].type as ConnectionTypes,
+				connection[0].type as ConnectionType,
 				connection[0].index,
 			);
 			const inputUuid = this.getInputEndpointUUID(
 				connection[1].node,
-				connection[1].type as ConnectionTypes,
+				connection[1].type as ConnectionType,
 				connection[1].index,
 			);
 			if (!outputUuid || !inputUuid) {
@@ -3596,7 +3589,7 @@ export default defineComponent({
 					sourceNode.typeVersion,
 				);
 				const sourceNodeOutput =
-					sourceNodeType?.outputs?.[connection[0].index] || NodeConnectionType.Main;
+					sourceNodeType?.outputs?.[connection[0].index] || 'main';
 				const sourceNodeOutputName =
 					typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 				const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3636,12 +3629,12 @@ export default defineComponent({
 					{
 						index: connection.__meta?.sourceOutputIndex,
 						node: connection.__meta.sourceNodeName,
-						type: NodeConnectionType.Main,
+						type: 'main',
 					},
 					{
 						index: connection.__meta?.targetOutputIndex,
 						node: connection.__meta.targetNodeName,
-						type: NodeConnectionType.Main,
+						type: 'main',
 					},
 				];
 				const removeCommand = new RemoveConnectionCommand(connectionData, this);
@@ -3673,7 +3666,7 @@ export default defineComponent({
 			sourceOutputIndex: number,
 			targetNodeName: string,
 			targetInputIndex: number,
-			connectionType: ConnectionTypes,
+			connectionType: ConnectionType,
 		): Connection | undefined {
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
 			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
@@ -3700,7 +3693,7 @@ export default defineComponent({
 				sourceNode.typeVersion,
 			);
 			const sourceNodeOutput =
-				sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
+				sourceNodeType?.outputs?.[sourceOutputIndex] || 'main';
 			const sourceNodeOutputName =
 				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3806,7 +3799,7 @@ export default defineComponent({
 			const outputMap = NodeViewUtils.getOutputSummary(
 				data,
 				nodeConnections || [],
-				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
+				(connectionType as ConnectionType) ?? 'main',
 			);
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
@@ -3818,7 +3811,7 @@ export default defineComponent({
 									parseInt(sourceOutputIndex, 10),
 									targetNodeName,
 									parseInt(targetInputIndex, 10),
-									connectionType as ConnectionTypes,
+									connectionType as ConnectionType,
 								);
 
 								if (connection) {
@@ -3910,8 +3903,8 @@ export default defineComponent({
 
 			const workflow = this.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(node.name);
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
-			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+			let inputs: Array<ConnectionType | INodeInputConfiguration> = [];
+			let outputs: Array<ConnectionType | INodeOutputConfiguration> = [];
 			if (nodeType) {
 				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
 				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeType);
@@ -3927,15 +3920,15 @@ export default defineComponent({
 						const sourceNodeName = conn1.__meta.sourceNodeName;
 						const sourceNodeOutputIndex = conn1.__meta.sourceOutputIndex;
 						const targetNodeName = conn2.__meta.targetNodeName;
-						const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
+						const targetNodeOutputIndex = conn2.__meta.targetOutputIndex;
 
 						setTimeout(() => {
 							this.connectTwoNodes(
 								sourceNodeName,
 								sourceNodeOutputIndex,
 								targetNodeName,
-								targetNodeOuputIndex,
-								NodeConnectionType.Main,
+								targetNodeOutputIndex,
+								'main',
 							);
 
 							if (waitForNewConnection) {
@@ -4753,7 +4746,7 @@ export default defineComponent({
 					from.outputIndex ?? 0,
 					toNode.name,
 					to.inputIndex ?? 0,
-					NodeConnectionType.Main,
+					'main',
 				);
 			}
 

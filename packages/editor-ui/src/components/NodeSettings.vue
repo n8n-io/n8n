@@ -179,7 +179,7 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -257,7 +257,7 @@ export default defineComponent({
 				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+				if (!inputNames.includes('main') && !this.isTriggerNode) {
 					return false;
 				}
 			}

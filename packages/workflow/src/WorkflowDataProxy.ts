@@ -705,7 +705,7 @@ export class WorkflowDataProxy {
 					];
 
 				const previousNodeOutput = sourceData.previousNodeOutput || 0;
-				if (previousNodeOutput >= taskData.data!.main.length) {
+				if (taskData.data?.main && previousNodeOutput >= taskData.data.main.length) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionOverrides: {
@@ -718,7 +718,10 @@ export class WorkflowDataProxy {
 					});
 				}
 
-				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+				if (
+					taskData.data?.main &&
+					pairedItem.item >= taskData.data.main[previousNodeOutput]!.length
+				) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
@@ -741,7 +744,7 @@ export class WorkflowDataProxy {
 				}
 
 				const itemPreviousNode: INodeExecutionData =
-					taskData.data!.main[previousNodeOutput]![pairedItem.item];
+					taskData.data!.main![previousNodeOutput]![pairedItem.item];
 
 				if (itemPreviousNode.pairedItem === undefined) {
 					throw createExpressionError('Can’t get data for expression', {
@@ -875,7 +878,7 @@ export class WorkflowDataProxy {
 				];
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
-			if (previousNodeOutput >= taskData.data!.main.length) {
+			if (taskData.data?.main && previousNodeOutput >= taskData.data.main.length) {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 					functionality: 'pairedItem',
@@ -888,7 +891,10 @@ export class WorkflowDataProxy {
 				});
 			}
 
-			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+			if (
+				taskData.data?.main &&
+				pairedItem.item >= taskData.data.main[previousNodeOutput]!.length
+			) {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 					functionality: 'pairedItem',
@@ -910,7 +916,7 @@ export class WorkflowDataProxy {
 				});
 			}
 
-			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
+			return taskData.data!.main![previousNodeOutput]![pairedItem.item];
 		};
 
 		const base = {

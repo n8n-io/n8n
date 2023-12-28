@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -37,9 +37,9 @@ export class ToolCalculator implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: ['ai_tool'],
 		outputNames: ['Tool'],
-		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
+		properties: [getConnectionHintNoticeField(['ai_agent'])],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {

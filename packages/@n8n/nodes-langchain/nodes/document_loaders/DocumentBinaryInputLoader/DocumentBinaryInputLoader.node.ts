@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -52,15 +52,15 @@ export class DocumentBinaryInputLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
+				type: 'ai_textSplitter',
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+		outputs: ['ai_document'],
 		outputNames: ['Document'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField(['ai_vectorStore']),
 			{
 				displayName: 'Loader Type',
 				name: 'loader',
@@ -180,7 +180,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supply Data for Binary Input Loader');
 		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
+			'ai_textSplitter',
 			0,
 		)) as TextSplitter | undefined;
 

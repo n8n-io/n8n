@@ -1,7 +1,7 @@
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	ConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -28,7 +28,7 @@ export async function sqlAgentAgentExecute(
 	this.logger.verbose('Executing SQL Agent');
 
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		'ai_languageModel',
 		0,
 	)) as BaseLanguageModel;
 	const items = this.getInputData();

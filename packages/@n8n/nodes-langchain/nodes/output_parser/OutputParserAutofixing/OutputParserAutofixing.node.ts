@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -42,18 +42,18 @@ export class OutputParserAutofixing implements INodeType {
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				required: true,
 			},
 			{
 				displayName: 'Output Parser',
 				maxConnections: 1,
 				required: true,
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+		outputs: ['ai_outputParser'],
 		outputNames: ['Output Parser'],
 		properties: [
 			{
@@ -63,17 +63,17 @@ export class OutputParserAutofixing implements INodeType {
 				type: 'notice',
 				default: '',
 			},
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			'ai_languageModel',
 			itemIndex,
 		)) as BaseLanguageModel;
 		const outputParser = (await this.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
+			'ai_outputParser',
 			itemIndex,
 		)) as BaseOutputParser;
 

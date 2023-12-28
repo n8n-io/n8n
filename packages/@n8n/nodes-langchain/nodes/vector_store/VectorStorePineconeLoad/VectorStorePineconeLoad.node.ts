@@ -1,10 +1,4 @@
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -52,11 +46,11 @@ export class VectorStorePineconeLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: ['ai_vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
 			pineconeIndexRLC,
@@ -92,10 +86,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		}) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			itemIndex,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', itemIndex)) as Embeddings;
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,

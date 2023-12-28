@@ -140,7 +140,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
@@ -276,9 +276,9 @@ export default defineComponent({
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 					if (
-						inputTypes.includes(NodeConnectionType.AiLanguageModel) &&
-						inputTypes.includes(NodeConnectionType.Main) &&
-						outputTypes.includes(NodeConnectionType.Main)
+						inputTypes.includes('ai_languageModel') &&
+						inputTypes.includes('main') &&
+						outputTypes.includes('main')
 					) {
 						isCustomChainOrAgent = true;
 					}

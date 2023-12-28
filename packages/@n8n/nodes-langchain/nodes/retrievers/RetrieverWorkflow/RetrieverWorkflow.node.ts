@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteWorkflowInfo,
@@ -63,7 +63,7 @@ export class RetrieverWorkflow implements INodeType {
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: 'ai_retriever',
 			},
 		],
 		properties: [

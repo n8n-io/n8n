@@ -165,9 +165,9 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
+	ConnectionType,
 	IConnectedNode,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
@@ -269,17 +269,17 @@ export default defineComponent({
 			} else {
 				// If we can not figure out the node type we set no outputs
 				if (!Array.isArray(inputs)) {
-					inputs = [] as ConnectionTypes[];
+					inputs = [] as ConnectionType[];
 				}
 				if (!Array.isArray(outputs)) {
-					outputs = [] as ConnectionTypes[];
+					outputs = [] as ConnectionType[];
 				}
 			}
 
 			if (
 				inputs.length === 0 ||
-				(inputs.every((input) => this.filterOutConnectionType(input, NodeConnectionType.Main)) &&
-					outputs.find((output) => this.filterOutConnectionType(output, NodeConnectionType.Main)))
+				(inputs.every((input) => this.filterOutConnectionType(input, 'main')) &&
+					outputs.find((output) => this.filterOutConnectionType(output, 'main')))
 			) {
 				return true;
 			}
@@ -422,8 +422,8 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration,
-			type: ConnectionTypes,
+			item: ConnectionType | INodeOutputConfiguration,
+			type: ConnectionType,
 		) {
 			if (!item) return false;
 

@@ -41,7 +41,7 @@ import type {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
-	ConnectionTypes,
+	ConnectionType,
 	CloseFunction,
 } from './Interfaces';
 import { Node } from './Interfaces';
@@ -51,7 +51,7 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
-import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import { CONNECTION_TYPES, NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -563,11 +563,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {ConnectionType} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type: ConnectionTypes = 'main',
+		type: ConnectionType = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -647,7 +647,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: ConnectionType | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -656,12 +656,12 @@ export class Workflow {
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {ConnectionType} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: ConnectionType | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -671,13 +671,13 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {ConnectionType} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		connectionType: ConnectionType | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -693,13 +693,13 @@ export class Workflow {
 			return [];
 		}
 
-		let types: ConnectionTypes[];
+		let types: ConnectionType[];
 		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+			types = Object.keys(connections[nodeName]) as ConnectionType[];
 		} else if (connectionType === 'ALL_NON_MAIN') {
 			types = Object.keys(connections[nodeName]).filter(
 				(type) => type !== 'main',
-			) as ConnectionTypes[];
+			) as ConnectionType[];
 		} else {
 			types = [connectionType];
 		}
@@ -783,7 +783,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: ConnectionTypes = 'main';
+		const type: ConnectionType = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -849,7 +849,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: ConnectionTypes = 'main',
+		type: ConnectionType = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
@@ -1227,7 +1227,7 @@ export class Workflow {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+			if (inputData.main?.length) {
 				// If the node is disabled simply return the data from the first main input
 				if (inputData.main[0] === null) {
 					return { data: undefined };
@@ -1250,13 +1250,13 @@ export class Workflow {
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.main?.length > 0) {
+			if (inputData.main?.length) {
 				// We always use the data of main input and the first input for execute
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
 			}
 
 			const forceInputNodeExecution = this.settings.executionOrder !== 'v1';
-			if (!forceInputNodeExecution) {
+			if (!forceInputNodeExecution && inputData.main) {
 				// If the nodes do not get force executed data of some inputs may be missing
 				// for that reason do we use the data of the first one that contains any
 				for (const mainData of inputData.main) {
@@ -1289,11 +1289,12 @@ export class Workflow {
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
 			const newInputData: ITaskDataConnections = {};
-			for (const inputName of Object.keys(inputData)) {
-				newInputData[inputName] = inputData[inputName].map((input) => {
-					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-					return input && input.slice(0, 1);
-				});
+			for (const connectionType of CONNECTION_TYPES) {
+				if (connectionType in inputData) {
+					newInputData[connectionType] = inputData[connectionType]?.map(
+						(input) => input?.slice(0, 1) ?? null,
+					);
+				}
 			}
 			inputData = newInputData;
 		}

@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	ConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -46,15 +46,15 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
+				type: 'ai_textSplitter',
 			},
 		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+		outputs: ['ai_document'],
 		outputNames: ['Document'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField(['ai_vectorStore']),
 			{
 				displayName: 'Repository Link',
 				name: 'repository',
@@ -105,7 +105,7 @@ export class DocumentGithubLoader implements INodeType {
 		};
 
 		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
+			'ai_textSplitter',
 			0,
 		)) as CharacterTextSplitter | undefined;
 

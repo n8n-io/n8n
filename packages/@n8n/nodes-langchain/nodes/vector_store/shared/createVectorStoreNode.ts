@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { VectorStore } from 'langchain/vectorstores/base';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeCredentialDescription,
 	INodeProperties,
@@ -98,14 +98,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+				const inputs = [{ displayName: "Embedding", type: "${'ai_embedding'}", required: true, maxConnections: 1}]
 
 				if (['insert', 'load'].includes(mode)) {
-					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
+					inputs.push({ displayName: "", type: "${'main'}"})
 				}
 
 				if (mode === 'insert') {
-					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
+					inputs.push({ displayName: "Document", type: "${'ai_document'}", required: true, maxConnections: 1})
 				}
 				return inputs
 			})($parameter)
@@ -114,9 +114,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			((parameters) => {
 				const mode = parameters?.mode ?? 'retrieve';
 				if (mode === 'retrieve') {
-					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
+					return [{ displayName: "Vector Store", type: "${'ai_vectorStore'}"}]
 				}
-				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
+				return [{ displayName: "", type: "${'main'}"}]
 			})($parameter)
 		}}`,
 			properties: [
@@ -148,7 +148,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					],
 				},
 				{
-					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
+					...getConnectionHintNoticeField(['ai_retriever']),
 					displayOptions: {
 						show: {
 							mode: ['retrieve'],
@@ -195,7 +195,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 
 			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
+				'ai_embedding',
 				0,
 			)) as Embeddings;
 
@@ -246,7 +246,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const items = this.getInputData();
 
 				const documentInput = (await this.getInputConnectionData(
-					NodeConnectionType.AiDocument,
+					'ai_document',
 					0,
 				)) as N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>;
 
@@ -280,7 +280,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
 			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
+				'ai_embedding',
 				0,
 			)) as Embeddings;
 

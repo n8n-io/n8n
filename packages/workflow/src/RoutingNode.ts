@@ -86,7 +86,7 @@ export class RoutingNode {
 		credentialsDecrypted?: ICredentialsDecrypted,
 		abortSignal?: AbortSignal,
 	): Promise<INodeExecutionData[][] | null | undefined> {
-		const items = inputData.main[0] as INodeExecutionData[];
+		const items = inputData.main?.[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 

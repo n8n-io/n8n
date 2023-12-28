@@ -1,5 +1,5 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { isObjectEmpty, NodeConnectionType } from 'n8n-workflow';
+import type { ConnectionType, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
 
 interface MemoryMessage {
 	lc: number;
@@ -15,8 +15,8 @@ interface LmGeneration {
 	message: MemoryMessage;
 }
 
-type ExcludedKeys = NodeConnectionType.Main | NodeConnectionType.AiChain;
-type AllowedEndpointType = Exclude<NodeConnectionType, ExcludedKeys>;
+type ExcludedKeys = 'main' | 'ai_chain' | 'ai_vectorRetriever';
+type AllowedEndpointType = Exclude<ConnectionType, ExcludedKeys>;
 
 const fallbackParser = (execData: IDataObject) => ({
 	type: 'json' as 'json' | 'text' | 'markdown',
@@ -31,7 +31,7 @@ const outputTypeParsers: {
 		parsed: boolean;
 	};
 } = {
-	[NodeConnectionType.AiLanguageModel](execData: IDataObject) {
+	['ai_languageModel'](execData: IDataObject) {
 		const response = (execData.response as IDataObject) ?? execData;
 		if (!response) throw new Error('No response from Language Model');
 
@@ -49,7 +49,7 @@ const outputTypeParsers: {
 		}
 		// Use the memory parser if the response is a memory-like(chat) object
 		if (response.messages && Array.isArray(response.messages)) {
-			return outputTypeParsers[NodeConnectionType.AiMemory](execData);
+			return outputTypeParsers['ai_memory'](execData);
 		}
 		if (response.generations) {
 			const generations = response.generations as LmGeneration[];
@@ -80,9 +80,9 @@ const outputTypeParsers: {
 			parsed: true,
 		};
 	},
-	[NodeConnectionType.AiTool]: fallbackParser,
-	[NodeConnectionType.AiAgent]: fallbackParser,
-	[NodeConnectionType.AiMemory](execData: IDataObject) {
+	['ai_tool']: fallbackParser,
+	['ai_agent']: fallbackParser,
+	['ai_memory'](execData: IDataObject) {
 		const chatHistory =
 			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
 		if (Array.isArray(chatHistory)) {
@@ -139,9 +139,9 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[NodeConnectionType.AiOutputParser]: fallbackParser,
-	[NodeConnectionType.AiRetriever]: fallbackParser,
-	[NodeConnectionType.AiVectorStore](execData: IDataObject) {
+	['ai_outputParser']: fallbackParser,
+	['ai_retriever']: fallbackParser,
+	['ai_vectorStore'](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -152,7 +152,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[NodeConnectionType.AiEmbedding](execData: IDataObject) {
+	['ai_embedding'](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -163,7 +163,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[NodeConnectionType.AiDocument](execData: IDataObject) {
+	['ai_document'](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -174,7 +174,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[NodeConnectionType.AiTextSplitter](execData: IDataObject) {
+	['ai_textSplitter'](execData: IDataObject) {
 		const arrayData = Array.isArray(execData.response)
 			? execData.response
 			: [execData.textSplitter];
@@ -197,9 +197,9 @@ export type ParsedAiContent = Array<{
 export const useAiContentParsers = () => {
 	const parseAiRunData = (
 		executionData: INodeExecutionData[],
-		endpointType: NodeConnectionType,
+		endpointType: ConnectionType,
 	): ParsedAiContent => {
-		if ([NodeConnectionType.AiChain, NodeConnectionType.Main].includes(endpointType)) {
+		if (['ai_chain', 'main'].includes(endpointType)) {
 			return executionData.map((data) => ({ raw: data.json, parsedContent: null }));
 		}
 

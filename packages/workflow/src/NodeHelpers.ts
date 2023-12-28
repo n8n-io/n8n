@@ -36,7 +36,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	ResourceMapperValue,
-	ConnectionTypes,
+	ConnectionType,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
@@ -1034,8 +1034,8 @@ export function getNodeWebhookUrl(
 }
 
 export function getConnectionTypes(
-	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
-): ConnectionTypes[] {
+	connections: Array<ConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
+): ConnectionType[] {
 	return connections
 		.map((connection) => {
 			if (typeof connection === 'string') {
@@ -1050,7 +1050,7 @@ export function getNodeInputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<ConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
@@ -1062,7 +1062,7 @@ export function getNodeInputs(
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as ConnectionTypes[];
+		) || []) as ConnectionType[];
 	} catch (e) {
 		throw new ApplicationError('Could not calculate inputs dynamically for node', {
 			extra: { nodeName: node.name },
@@ -1074,8 +1074,8 @@ export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeOutputConfiguration> {
-	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+): Array<ConnectionType | INodeOutputConfiguration> {
+	let outputs: Array<ConnectionType | INodeOutputConfiguration> = [];
 
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
@@ -1087,7 +1087,7 @@ export function getNodeOutputs(
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as ConnectionTypes[];
+			) || []) as ConnectionType[];
 		} catch (e) {
 			throw new ApplicationError('Could not calculate outputs dynamically for node', {
 				extra: { nodeName: node.name },

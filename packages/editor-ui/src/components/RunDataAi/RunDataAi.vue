@@ -65,8 +65,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { ConnectionType, ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -130,7 +129,7 @@ function getReferencedData(
 			returnData.push({
 				data: data[type][0],
 				inOut,
-				type: type as NodeConnectionType,
+				type: type as ConnectionType,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
@@ -219,7 +218,7 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 	}
 
 	const nonMainConnectionsKeys = Object.keys(connections).filter(
-		(key) => key !== NodeConnectionType.Main,
+		(key) => key !== 'main',
 	);
 	const children = nonMainConnectionsKeys.flatMap((key) =>
 		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),

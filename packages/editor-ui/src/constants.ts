@@ -1,5 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { ConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -243,10 +243,10 @@ export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
 // Node Connection Types
-export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	NodeConnectionType.AiTool,
+export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: ConnectionType[] = [
+	'ai_tool',
 
-	NodeConnectionType.Main,
+	'main',
 ];
 
 // General
