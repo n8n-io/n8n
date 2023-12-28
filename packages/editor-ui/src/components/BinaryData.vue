@@ -135,7 +135,7 @@ export default defineComponent({
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-dark);
+	border: 1px solid var(--color-foreground-xdark);
 	border-radius: 4px;
 	background-color: var(--color-background-light);
 	font-size: var(--font-size-2xs);
@@ -159,8 +159,8 @@ export default defineComponent({
 		&:hover {
 			&,
 			span span {
-				background-color: var(--color-background-light);
-				border-color: var(--color-foreground-base);
+				background-color: var(--color-background-xlight);
+				border-color: var(--color-foreground-dark);
 			}
 		}
 	}
@@ -190,7 +190,7 @@ export default defineComponent({
 	> span {
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
-		border-left: 1px solid var(--color-foreground-dark);
+		border-left: 1px solid var(--color-foreground-xdark);
 	}
 }
 </style>
