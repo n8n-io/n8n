@@ -21,6 +21,7 @@ import {
 } from './credentials.service';
 import { Container } from 'typedi';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { date } from 'express-openapi-validator/dist/framework/base.serdes';
 
 export = {
 	createCredential: [
@@ -80,7 +81,7 @@ export = {
 				data: decodedData,
 				type: credential.type,
 				shared: credential.shared,
-				lastUpdate: credential.updatedAt,
+				updatedAt: credential.updatedAt,
 				nodeAccess: credential.nodesAccess,
 			});
 		},

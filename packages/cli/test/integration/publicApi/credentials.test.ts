@@ -12,6 +12,7 @@ import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { Cipher } from '../../../../../packages/core/src/Cipher';
 
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -86,6 +87,48 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
+	});
+});
+describe('GET /credentials/:id', () => {
+	test('should retrieve credentials', async () => {
+		const cipher = Container.get(Cipher);
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type, data, updatedAt, nodeAccess } = response.body;
+
+		const savedCredentialDecryptedAsObject = JSON.parse(cipher.decrypt(savedCredential.data));
+		expect(id).toBe(savedCredential.id);
+		expect(name).toBe(savedCredential.name);
+		expect(type).toBe(savedCredential.type);
+		expect(data).toStrictEqual(savedCredentialDecryptedAsObject);
+		expect(updatedAt).toBe(savedCredential.updatedAt.toISOString());
+		expect(nodeAccess).toStrictEqual(savedCredential.nodesAccess);
+	});
+
+	test('should fail with invalid id', async () => {
+		const fakeID = 'THIS_IS_A_FAKE_ID';
+		const response = await authOwnerAgent.get(`/credentials/${fakeID}`).send();
+		expect(response.statusCode === 404).toBe(true);
+	});
+
+	test('should succeed with valid id regardless of payload', async () => {
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const savedCredential = await saveCredential(dbCredential(), { user: owner });
+			const response = await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.send(invalidPayload);
+			expect(response.statusCode === 200).toBe(true);
+		}
+	});
+
+	test('should fail with valid id if not the owner of credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+		expect(response.statusCode === 404).toBe(true);
 	});
 });
 
