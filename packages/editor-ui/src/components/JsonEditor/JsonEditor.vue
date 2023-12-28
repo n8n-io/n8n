@@ -5,7 +5,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo } from '@codemirror/commands';
+import { indentWithTab, history, redo, undo } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { lintGutter, linter as createLinter } from '@codemirror/lint';
@@ -62,7 +62,11 @@ export default defineComponent({
 			if (!isReadOnly) {
 				extensions.push(
 					history(),
-					keymap.of([indentWithTab, { key: 'Mod-Shift-z', run: redo }]),
+					keymap.of([
+						indentWithTab,
+						{ key: 'Mod-z', run: undo },
+						{ key: 'Mod-Shift-z', run: redo },
+					]),
 					createLinter(jsonParseLinter()),
 					lintGutter(),
 					autocompletion(),

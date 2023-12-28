@@ -5,7 +5,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
+import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
 import { foldGutter, indentOnInput } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import { lintGutter } from '@codemirror/lint';
@@ -63,6 +63,7 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					keymap.of([
+						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
 						{ key: 'Tab', run: acceptCompletion },
