@@ -7,7 +7,7 @@
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnlyRoute && !readOnlyEnv">
+			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
 				<n8n-link
 					theme="secondary"
 					size="small"
@@ -33,8 +33,8 @@
 		</n8n-callout>
 
 		<BinaryDataDisplay
-			:windowVisible="binaryDataDisplayVisible"
-			:displayData="binaryDataDisplayData"
+			:window-visible="binaryDataDisplayVisible"
+			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"
 		/>
 
@@ -43,15 +43,15 @@
 
 			<div
 				v-show="!hasRunError"
-				@click.stop
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
+				@click.stop
 			>
 				<n8n-radio-buttons
 					v-show="
 						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
-					:modelValue="displayMode"
+					:model-value="displayMode"
 					:options="buttons"
 					data-test-id="ndv-run-data-display-mode"
 					@update:modelValue="onDisplayModeChange"
@@ -69,16 +69,16 @@
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
-					placement="bottom-end"
 					v-if="canPinData && rawInputData.length"
 					v-show="!editMode.enabled"
+					placement="bottom-end"
 					:visible="
 						isControlledPinDataTooltip
 							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
 							: undefined
 					"
 				>
-					<template #content v-if="!isControlledPinDataTooltip">
+					<template v-if="!isControlledPinDataTooltip" #content>
 						<div :class="$style.tooltipContainer">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -90,7 +90,7 @@
 							</n8n-text>
 						</div>
 					</template>
-					<template #content v-else>
+					<template v-else #content>
 						<div :class="$style.tooltipContainer">
 							{{ $locale.baseText('node.discovery.pinData.ndv') }}
 						</div>
@@ -106,12 +106,12 @@
 							isReadOnlyRoute ||
 							readOnlyEnv
 						"
-						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
+						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
 
-				<div :class="$style.editModeActions" v-show="editMode.enabled">
+				<div v-show="editMode.enabled" :class="$style.editModeActions">
 					<n8n-button
 						type="tertiary"
 						:label="$locale.baseText('runData.editor.cancel')"
@@ -128,28 +128,28 @@
 		</div>
 
 		<div
-			:class="$style.runSelector"
 			v-if="maxRunIndex > 0"
 			v-show="!editMode.enabled"
+			:class="$style.runSelector"
 			data-test-id="run-selector"
 		>
 			<div :class="$style.runSelectorWrapper">
 				<n8n-select
 					size="small"
-					:modelValue="runIndex"
+					:model-value="runIndex"
+					teleported
 					@update:modelValue="onRunIndexChange"
 					@click.stop
-					teleported
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 					<n8n-option
 						v-for="option in maxRunIndex + 1"
+						:key="option"
 						:label="getRunLabel(option)"
 						:value="option - 1"
-						:key="option"
 					></n8n-option>
 				</n8n-select>
-				<n8n-tooltip placement="right" v-if="canLinkRuns">
+				<n8n-tooltip v-if="canLinkRuns" placement="right">
 					<template #content>
 						{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 					</template>
@@ -164,11 +164,11 @@
 				</n8n-tooltip>
 				<slot name="run-info"></slot>
 			</div>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
@@ -180,15 +180,15 @@
 			data-test-id="branches"
 		>
 			<n8n-tabs
-				:modelValue="currentOutputIndex"
+				:model-value="currentOutputIndex"
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
@@ -219,16 +219,16 @@
 					})
 				}}
 			</n8n-text>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
 
-		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
+		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
@@ -236,8 +236,8 @@
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<code-node-editor
-						:modelValue="editMode.value"
+					<CodeNodeEditor
+						:model-value="editMode.value"
 						language="json"
 						@update:modelValue="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
@@ -284,7 +284,7 @@
 						})
 					}}
 				</n8n-text>
-				<slot name="content" v-else-if="$slots['content']"></slot>
+				<slot v-else-if="$slots['content']" name="content"></slot>
 				<NodeErrorView
 					v-else
 					:error="workflowRunData[node.name][runIndex].error"
@@ -347,7 +347,7 @@
 			</div>
 
 			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
-			<slot name="content" v-else-if="hasNodeRun && $slots['content']"></slot>
+			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
 
 			<div
 				v-else-if="
@@ -383,15 +383,15 @@
 			</div>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
-				<run-data-table
+				<RunDataTable
 					:node="node"
-					:inputData="inputDataPage"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
-					:runIndex="runIndex"
-					:pageOffset="currentPageOffset"
-					:totalRuns="maxRunIndex"
-					:hasDefaultHoverState="paneType === 'input' && !search"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:page-offset="currentPageOffset"
+					:total-runs="maxRunIndex"
+					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
 					@mounted="$emit('tableMounted', $event)"
 					@activeRowChanged="onItemHover"
@@ -400,33 +400,33 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
-				<run-data-json
-					:paneType="paneType"
-					:editMode="editMode"
-					:sessioId="sessionId"
+				<RunDataJson
+					:pane-type="paneType"
+					:edit-mode="editMode"
+					:sessio-id="sessionId"
 					:node="node"
-					:inputData="inputDataPage"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
-					:runIndex="runIndex"
-					:totalRuns="maxRunIndex"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
 					:search="search"
 				/>
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputHtml="inputDataPage[0].json.html" />
+				<RunDataHtml :input-html="inputDataPage[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
-				<run-data-schema
+				<RunDataSchema
 					:data="jsonData"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
 					:node="node"
-					:paneType="paneType"
-					:runIndex="runIndex"
-					:totalRuns="maxRunIndex"
+					:pane-type="paneType"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
 					:search="search"
 				/>
 			</Suspense>
@@ -439,7 +439,7 @@
 
 			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
 				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div :class="$style.binaryIndex" v-if="binaryData.length > 1">
+					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
 						<div>
 							{{ index + 1 }}
 						</div>
@@ -447,9 +447,9 @@
 
 					<div :class="$style.binaryRow">
 						<div
-							:class="$style.binaryCell"
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
+							:class="$style.binaryCell"
 						>
 							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
@@ -520,7 +520,6 @@
 			</div>
 		</div>
 		<div
-			:class="$style.pagination"
 			v-if="
 				hasNodeRun &&
 				!hasRunError &&
@@ -530,6 +529,7 @@
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
+			:class="$style.pagination"
 			data-test-id="ndv-data-pagination"
 		>
 			<el-pagination
@@ -539,17 +539,17 @@
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@update:current-page="onCurrentPageChange"
 				:total="dataCount"
+				@update:current-page="onCurrentPageChange"
 			>
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
 					size="mini"
-					:modelValue="pageSize"
-					@update:modelValue="onPageSizeChange"
+					:model-value="pageSize"
 					teleported
+					@update:modelValue="onPageSizeChange"
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
@@ -633,7 +633,6 @@ export type EnterEditModeArgs = {
 
 export default defineComponent({
 	name: 'RunData',
-	mixins: [genericHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
@@ -644,6 +643,7 @@ export default defineComponent({
 		RunDataHtml,
 		RunDataSearch,
 	},
+	mixins: [genericHelpers, pinData],
 	props: {
 		nodeUi: {
 			type: Object as PropType<INodeUi>,

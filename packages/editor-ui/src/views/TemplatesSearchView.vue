@@ -24,7 +24,7 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
-						:sortOnPopulate="areCategoriesPrepopulated"
+						:sort-on-populate="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
 						@clear="onCategoryUnselected"
@@ -34,17 +34,17 @@
 				</div>
 				<div :class="$style.search">
 					<n8n-input
-						:modelValue="search"
+						:model-value="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						clearable
 						@update:modelValue="onSearchInput"
 						@blur="trackSearch"
-						clearable
 					>
 						<template #prefix>
 							<font-awesome-icon icon="search" />
 						</template>
 					</n8n-input>
-					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
+					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
 						<div :class="$style.header">
 							<n8n-heading :bold="true" size="medium" color="text-light">
 								{{ $locale.baseText('templates.collections') }}
@@ -112,13 +112,13 @@ interface ISearchEvent {
 
 export default defineComponent({
 	name: 'TemplatesSearchView',
-	mixins: [genericHelpers, debounceHelper],
 	components: {
 		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [genericHelpers, debounceHelper],
 	setup() {
 		return {
 			...useToast(),
@@ -180,6 +180,38 @@ export default defineComponent({
 				this.collections.length === 0
 			);
 		},
+	},
+	watch: {
+		workflows(newWorkflows) {
+			if (newWorkflows.length === 0) {
+				this.scrollTo(0);
+			}
+		},
+	},
+	async mounted() {
+		setPageTitle('n8n - Templates');
+		void this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
+
+		setTimeout(() => {
+			// Check if there is scroll position saved in route and scroll to it
+			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
+				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
+			}
+		}, 100);
+	},
+	async created() {
+		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
+			this.search = this.$route.query.search;
+		}
+
+		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+			this.categories = this.$route.query.categories
+				.split(',')
+				.map((categoryId) => parseInt(categoryId, 10));
+			this.areCategoriesPrepopulated = true;
+		}
 	},
 	methods: {
 		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
@@ -351,13 +383,6 @@ export default defineComponent({
 			}, 0);
 		},
 	},
-	watch: {
-		workflows(newWorkflows) {
-			if (newWorkflows.length === 0) {
-				this.scrollTo(0);
-			}
-		},
-	},
 	beforeRouteLeave(to, from, next) {
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
@@ -372,31 +397,6 @@ export default defineComponent({
 
 		this.trackSearch();
 		next();
-	},
-	async mounted() {
-		setPageTitle('n8n - Templates');
-		void this.loadCategories();
-		void this.loadWorkflowsAndCollections(true);
-		void this.usersStore.showPersonalizationSurvey();
-
-		setTimeout(() => {
-			// Check if there is scroll position saved in route and scroll to it
-			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
-				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
-			}
-		}, 100);
-	},
-	async created() {
-		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
-			this.search = this.$route.query.search;
-		}
-
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories
-				.split(',')
-				.map((categoryId) => parseInt(categoryId, 10));
-			this.areCategoriesPrepopulated = true;
-		}
 	},
 });
 </script>

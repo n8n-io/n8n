@@ -104,16 +104,16 @@ listenForCredentialChanges({
 					[$style.invisible]: !props.selectedCredentialId,
 				}"
 				:title="i18n.baseText('nodeCredentials.updateCredential')"
-				@click="editCredential()"
 				data-test-id="credential-edit-button"
+				@click="editCredential()"
 			/>
 		</div>
 
 		<n8n-button
 			v-else
 			:label="`Create new ${props.appName} credential`"
-			@click="createNewCredential"
 			data-test-id="create-credential"
+			@click="createNewCredential"
 		/>
 	</div>
 </template>

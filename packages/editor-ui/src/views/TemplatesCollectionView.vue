@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -12,7 +12,7 @@
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{
 					$locale.baseText('templates.collectionsNotFound')
 				}}</n8n-text>
@@ -21,7 +21,7 @@
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
+					<div v-if="loading || (collection && collection.description)" :class="$style.markdown">
 						<n8n-markdown
 							:content="collection && collection.description"
 							:images="collection && collection.image"
@@ -74,12 +74,12 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -111,6 +111,30 @@ export default defineComponent({
 			loading: true,
 			notFoundError: false,
 		};
+	},
+	watch: {
+		collection(collection: ITemplatesCollection) {
+			if (collection) {
+				setPageTitle(`n8n - Template collection: ${collection.name}`);
+			} else {
+				setPageTitle('n8n - Templates');
+			}
+		},
+	},
+	async mounted() {
+		this.scrollToTop();
+
+		if (this.collection && this.collection.full) {
+			this.loading = false;
+			return;
+		}
+
+		try {
+			await this.templatesStore.fetchCollectionById(this.collectionId);
+		} catch (e) {
+			this.notFoundError = true;
+		}
+		this.loading = false;
 	},
 	methods: {
 		scrollToTop() {
@@ -156,30 +180,6 @@ export default defineComponent({
 				void this.$router.push({ name: page, params: { id } });
 			}
 		},
-	},
-	watch: {
-		collection(collection: ITemplatesCollection) {
-			if (collection) {
-				setPageTitle(`n8n - Template collection: ${collection.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
-
-		if (this.collection && this.collection.full) {
-			this.loading = false;
-			return;
-		}
-
-		try {
-			await this.templatesStore.fetchCollectionById(this.collectionId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-		this.loading = false;
 	},
 });
 </script>

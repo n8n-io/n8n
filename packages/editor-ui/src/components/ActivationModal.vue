@@ -25,10 +25,10 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :modelValue="checked" @update:modelValue="handleCheckboxChange">{{
+				<el-checkbox :model-value="checked" @update:modelValue="handleCheckboxChange">{{
 					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
-				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
+				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
 	</Modal>

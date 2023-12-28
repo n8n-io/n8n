@@ -129,46 +129,46 @@ function getIssues(index: number): string[] {
 		<n8n-input-label
 			:label="parameter.displayName"
 			:underline="true"
-			:showOptions="true"
-			:showExpressionSelector="false"
+			:show-options="true"
+			:show-expression-selector="false"
 			color="text-dark"
 		>
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
-					<combinator-select
+					<CombinatorSelect
 						v-if="index !== 0"
-						:readOnly="index !== 1"
+						:read-only="index !== 1"
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
 						@combinatorChange="onCombinatorChange"
 					/>
 
-					<condition
+					<Condition
 						:condition="condition"
 						:index="index"
 						:options="state.paramValue.options"
-						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
-						:canRemove="index !== 0 || state.paramValue.conditions.length > 1"
+						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
-					></condition>
+					></Condition>
 				</div>
 			</div>
 			<div :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
-					@click="addCondition"
 					:class="$style.addCondition"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 					:disabled="maxConditionsReached"
 					data-test-id="filter-add-condition"
+					@click="addCondition"
 				/>
 			</div>
 		</div>

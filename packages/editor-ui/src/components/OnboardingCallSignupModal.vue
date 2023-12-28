@@ -2,10 +2,10 @@
 	<Modal
 		:name="ONBOARDING_CALL_SIGNUP_MODAL_KEY"
 		:title="$locale.baseText('onboardingCallSignupModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:center="true"
-		:showClose="false"
-		:beforeClose="onModalClose"
+		:show-close="false"
+		:before-close="onModalClose"
 		width="460px"
 	>
 		<template #content>

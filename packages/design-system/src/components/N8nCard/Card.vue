@@ -1,16 +1,16 @@
 <template>
 	<div :class="classes" v-bind="$attrs">
-		<div :class="$style.icon" v-if="$slots.prepend">
+		<div v-if="$slots.prepend" :class="$style.icon">
 			<slot name="prepend" />
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.header" v-if="$slots.header">
+			<div v-if="$slots.header" :class="$style.header">
 				<slot name="header" />
 			</div>
-			<div :class="$style.body" v-if="$slots.default">
+			<div v-if="$slots.default" :class="$style.body">
 				<slot />
 			</div>
-			<div :class="$style.footer" v-if="$slots.footer">
+			<div v-if="$slots.footer" :class="$style.footer">
 				<slot name="footer" />
 			</div>
 		</div>
@@ -24,7 +24,7 @@
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-card',
+	name: 'N8nCard',
 	inheritAttrs: true,
 	props: {
 		hoverable: {
