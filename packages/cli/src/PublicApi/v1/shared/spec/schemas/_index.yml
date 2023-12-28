@@ -20,6 +20,8 @@ Credential:
   $ref: './../../../handlers/credentials/spec/schemas/credential.yml'
 CredentialType:
   $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
+CredentialList:
+  $ref: './../../../handlers/credentials/spec/schemas/credentialList.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
 Pull:

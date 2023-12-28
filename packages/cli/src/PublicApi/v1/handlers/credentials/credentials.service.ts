@@ -1,6 +1,12 @@
 import { Credentials } from 'n8n-core';
-import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	INodeProperties,
+	IDataObject,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import * as Db from '@/Db';
+import type { FindManyOptions, UpdateResult } from 'typeorm';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -12,6 +18,7 @@ import { Container } from 'typedi';
 import { RoleService } from '@/services/role.service';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -29,6 +36,18 @@ export async function getSharedCredentials(
 		},
 		relations,
 	});
+}
+export async function getCredentialsAndCount(
+	options: FindManyOptions<CredentialsEntity>,
+): Promise<[CredentialsEntity[], number]> {
+	return Container.get(CredentialsRepository).findAndCount(options);
+}
+
+export async function decryptCredential(
+	credential: CredentialsEntity,
+): Promise<ICredentialDataDecryptedObject> {
+	const coreCredential = createCredentialsFromCredentialsEntity(credential);
+	return coreCredential.getData();
 }
 
 export async function createCredential(
@@ -119,6 +138,13 @@ export function sanitizeCredentials(
 	});
 
 	return argIsArray ? sanitizedCredentials : sanitizedCredentials[0];
+}
+
+export async function updateCredential(
+	credentialId: string,
+	updateData: CredentialsEntity,
+): Promise<UpdateResult> {
+	return Container.get(CredentialsRepository).update(credentialId, updateData);
 }
 
 /**

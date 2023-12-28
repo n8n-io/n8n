@@ -8,7 +8,6 @@ import type { CredentialRequest } from '@/requests';
 import type { CredentialTypeRequest } from '../../../types';
 import { authorize } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
-
 import {
 	createCredential,
 	encryptCredential,
@@ -18,8 +17,10 @@ import {
 	sanitizeCredentials,
 	saveCredential,
 	toJsonSchema,
+	decryptCredential,
 } from './credentials.service';
 import { Container } from 'typedi';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 export = {
 	createCredential: [
@@ -44,6 +45,44 @@ export = {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				return res.status(httpStatusCode ?? 500).json({ message });
 			}
+		},
+	],
+	getCredential: [
+		authorize(['owner', 'admin', 'member']),
+		async (
+			req: CredentialRequest.Get,
+			res: express.Response,
+		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+			const { id: credentialId } = req.params;
+			let credential: CredentialsEntity | undefined;
+
+			if (!['owner', 'admin'].includes(req.user.globalRole.name)) {
+				const shared = await getSharedCredentials(req.user.id, credentialId, [
+					'credentials',
+					'role',
+				]);
+
+				if (shared?.role.name === 'owner') {
+					credential = shared.credentials;
+				}
+			} else {
+				credential = (await getCredentials(credentialId)) as CredentialsEntity;
+			}
+
+			if (!credential) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const decodedData: ICredentialDataDecryptedObject = await decryptCredential(credential);
+			return res.json({
+				id: credential.id,
+				name: credential.name,
+				data: decodedData,
+				type: credential.type,
+				shared: credential.shared,
+				lastUpdate: credential.updatedAt,
+				nodeAccess: credential.nodesAccess,
+			});
 		},
 	],
 	deleteCredential: [
@@ -76,7 +115,6 @@ export = {
 			return res.json(sanitizeCredentials(credential));
 		},
 	],
-
 	getCredentialType: [
 		authorize(['owner', 'admin', 'member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
