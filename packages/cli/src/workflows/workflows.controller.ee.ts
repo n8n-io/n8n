@@ -12,8 +12,6 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { CredentialsService } from '../credentials/credentials.service';
-import type { IExecutionPushResponse } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -285,31 +283,5 @@ EEWorkflowController.patch(
 		);
 
 		return updatedWorkflow;
-	}),
-);
-
-/**
- * (EE) POST /workflows/run
- */
-EEWorkflowController.post(
-	'/run',
-	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
-		const workflow = new WorkflowEntity();
-		Object.assign(workflow, req.body.workflowData);
-
-		if (req.body.workflowData.id !== undefined) {
-			const safeWorkflow = await Container.get(EnterpriseWorkflowService).preventTampering(
-				workflow,
-				workflow.id,
-				req.user,
-			);
-			req.body.workflowData.nodes = safeWorkflow.nodes;
-		}
-
-		return Container.get(WorkflowService).runManually(
-			req.body,
-			req.user,
-			GenericHelpers.getSessionId(req),
-		);
 	}),
 );

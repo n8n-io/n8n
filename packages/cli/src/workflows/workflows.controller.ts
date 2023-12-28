@@ -16,7 +16,7 @@ import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowService } from './workflow.service';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -31,6 +31,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NamingService } from '@/services/naming.service';
 import { TagRepository } from '@/databases/repositories/tag.repository';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -283,6 +285,19 @@ workflowsController.delete(
 workflowsController.post(
 	'/run',
 	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
+		if (isSharingEnabled()) {
+			const workflow = Container.get(WorkflowRepository).create(req.body.workflowData);
+
+			if (req.body.workflowData.id !== undefined) {
+				const safeWorkflow = await Container.get(EnterpriseWorkflowService).preventTampering(
+					workflow,
+					workflow.id,
+					req.user,
+				);
+				req.body.workflowData.nodes = safeWorkflow.nodes;
+			}
+		}
+
 		return Container.get(WorkflowService).runManually(
 			req.body,
 			req.user,
