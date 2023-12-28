@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { DataSource, type FindOptionsWhere, Repository, In } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
+import type { Scope } from '@n8n/permissions';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -40,5 +41,30 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				workflowId: In(workflowIds),
 			},
 		});
+	}
+
+	async findSharing(
+		workflowId: string,
+		user: User,
+		scope: Scope,
+		{ roles, extraRelations }: { roles?: string[]; extraRelations?: string[] } = {},
+	) {
+		const where: FindOptionsWhere<SharedWorkflow> = {
+			workflow: { id: workflowId },
+		};
+
+		if (!user.hasGlobalScope(scope)) {
+			where.user = { id: user.id };
+		}
+
+		if (roles) {
+			where.role = { name: In(roles) };
+		}
+
+		const relations = ['workflow', 'role'];
+
+		if (extraRelations) relations.push(...extraRelations);
+
+		return this.findOne({ relations, where });
 	}
 }
