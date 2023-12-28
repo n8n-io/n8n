@@ -86,6 +86,7 @@ export default defineComponent({
 		mode: {
 			type: String as PropType<CodeExecutionMode>,
 			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
+			required: true,
 		},
 		language: {
 			type: String as PropType<CodeNodeEditorLanguage>,
@@ -103,6 +104,7 @@ export default defineComponent({
 		},
 		modelValue: {
 			type: String,
+			required: true,
 		},
 	},
 	setup() {

@@ -19,6 +19,7 @@ export default defineComponent({
 	props: {
 		segments: {
 			type: Array as PropType<Segment[]>,
+			required: true,
 		},
 	},
 	data() {

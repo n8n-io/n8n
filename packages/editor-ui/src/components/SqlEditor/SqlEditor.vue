@@ -13,7 +13,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
+import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import type { Line, Extension } from '@codemirror/state';
@@ -146,6 +146,7 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					keymap.of([
+						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
 						{ key: 'Tab', run: acceptCompletion },
