@@ -149,6 +149,19 @@ export const copyPaste = defineComponent({
 		// @ts-ignore
 		document.addEventListener('paste', this.onPaste);
 	},
+	beforeUnmount() {
+		if (this.hiddenInput) {
+			this.hiddenInput.remove();
+		}
+		if (this.onPaste) {
+			// @ts-ignore
+			document.removeEventListener('paste', this.onPaste);
+		}
+		if (this.onBeforePaste) {
+			// @ts-ignore
+			document.removeEventListener('beforepaste', this.onBeforePaste);
+		}
+	},
 	methods: {
 		receivedCopyPasteData(plainTextData: string, event?: ClipboardEvent): void {
 			// THIS HAS TO BE DEFINED IN COMPONENT!
@@ -225,18 +238,5 @@ export const copyPaste = defineComponent({
 				selection.addRange(selected); // Restore the original selection
 			}
 		},
-	},
-	beforeUnmount() {
-		if (this.hiddenInput) {
-			this.hiddenInput.remove();
-		}
-		if (this.onPaste) {
-			// @ts-ignore
-			document.removeEventListener('paste', this.onPaste);
-		}
-		if (this.onBeforePaste) {
-			// @ts-ignore
-			document.removeEventListener('beforepaste', this.onBeforePaste);
-		}
 	},
 });

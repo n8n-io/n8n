@@ -40,13 +40,13 @@ const onCredentialSelected = (credentialId: string) => {
 <template>
 	<n8n-select
 		size="small"
-		:modelValue="props.selectedCredentialId"
+		:model-value="props.selectedCredentialId"
 		@update:modelValue="onCredentialSelected"
 	>
 		<n8n-option
 			v-for="item in props.credentialOptions"
-			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:key="item.id"
+			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:label="item.name"
 			:value="item.id"
 		>
@@ -56,8 +56,8 @@ const onCredentialSelected = (credentialId: string) => {
 			</div>
 		</n8n-option>
 		<n8n-option
-			data-test-id="node-credentials-select-item-new"
 			:key="NEW_CREDENTIALS_TEXT"
+			data-test-id="node-credentials-select-item-new"
 			:value="NEW_CREDENTIALS_TEXT"
 			:label="NEW_CREDENTIALS_TEXT"
 		>

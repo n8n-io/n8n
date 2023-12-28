@@ -16,7 +16,7 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<executions-info-accordion />
+				<ExecutionsInfoAccordion />
 			</div>
 		</div>
 	</div>
@@ -31,7 +31,7 @@ import { defineComponent } from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
 export default defineComponent({
-	name: 'executions-landing-page',
+	name: 'ExecutionsLandingPage',
 	components: {
 		ExecutionsInfoAccordion,
 	},

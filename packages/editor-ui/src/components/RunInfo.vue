@@ -3,7 +3,7 @@
 		v-if="hasStaleData"
 		theme="warning"
 		type="tooltip"
-		tooltipPlacement="right"
+		tooltip-placement="right"
 		data-test-id="node-run-info-stale"
 	>
 		<span
@@ -21,7 +21,7 @@
 		type="tooltip"
 		:theme="theme"
 		:data-test-id="`node-run-info-${theme}`"
-		tooltipPlacement="right"
+		tooltip-placement="right"
 	>
 		<div>
 			<n8n-text :bold="true" size="small"

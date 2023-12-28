@@ -57,6 +57,12 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 
 export const nodeBase = defineComponent({
 	mixins: [deviceSupportHelpers],
+	data() {
+		return {
+			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
+			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
+		};
+	},
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {
@@ -67,12 +73,6 @@ export const nodeBase = defineComponent({
 				// Shouldn't affect anything
 			}
 		}
-	},
-	data() {
-		return {
-			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
-			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
-		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),

@@ -1,21 +1,21 @@
 <template>
 	<div class="n8n-tree">
 		<div v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
-			<div :class="$style.simple" v-if="isSimple(value[label])">
-				<slot v-if="$slots.label" name="label" v-bind:label="label" v-bind:path="getPath(label)" />
+			<div v-if="isSimple(value[label])" :class="$style.simple">
+				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
 				<span v-else>{{ label }}</span>
 				<span>:</span>
-				<slot v-if="$slots.value" name="value" v-bind:value="value[label]" />
+				<slot v-if="$slots.value" name="value" :value="value[label]" />
 				<span v-else>{{ value[label] }}</span>
 			</div>
 			<div v-else>
-				<slot v-if="$slots.label" name="label" v-bind:label="label" v-bind:path="getPath(label)" />
+				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
 				<span v-else>{{ label }}</span>
 				<n8n-tree
 					:path="getPath(label)"
 					:depth="depth + 1"
 					:value="value[label]"
-					:nodeClass="nodeClass"
+					:node-class="nodeClass"
 				>
 					<template v-for="(index, name) in $slots" #[name]="data">
 						<slot :name="name" v-bind="data"></slot>
@@ -31,7 +31,7 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-tree',
+	name: 'N8nTree',
 	components: {},
 	props: {
 		value: {

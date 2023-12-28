@@ -6,55 +6,55 @@
 			[$style.demoZoomMenu]: isDemo,
 		}"
 	>
-		<keyboard-shortcut-tooltip
+		<KeyboardShortcutTooltip
 			:label="$locale.baseText('nodeView.zoomToFit')"
 			:shortcut="{ keys: ['1'] }"
 		>
 			<n8n-icon-button
-				@click="zoomToFit"
 				type="tertiary"
 				size="large"
 				icon="expand"
 				data-test-id="zoom-to-fit"
+				@click="zoomToFit"
 			/>
-		</keyboard-shortcut-tooltip>
-		<keyboard-shortcut-tooltip
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
 			:label="$locale.baseText('nodeView.zoomIn')"
 			:shortcut="{ keys: ['+'] }"
 		>
 			<n8n-icon-button
-				@click="zoomIn"
 				type="tertiary"
 				size="large"
 				icon="search-plus"
 				data-test-id="zoom-in-button"
+				@click="zoomIn"
 			/>
-		</keyboard-shortcut-tooltip>
-		<keyboard-shortcut-tooltip
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
 			:label="$locale.baseText('nodeView.zoomOut')"
 			:shortcut="{ keys: ['-'] }"
 		>
 			<n8n-icon-button
-				@click="zoomOut"
 				type="tertiary"
 				size="large"
 				icon="search-minus"
 				data-test-id="zoom-out-button"
+				@click="zoomOut"
 			/>
-		</keyboard-shortcut-tooltip>
-		<keyboard-shortcut-tooltip
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
 			:label="$locale.baseText('nodeView.resetZoom')"
 			:shortcut="{ keys: ['0'] }"
 		>
 			<n8n-icon-button
 				v-if="nodeViewScale !== 1 && !isDemo"
-				@click="resetZoom"
 				type="tertiary"
 				size="large"
 				icon="undo"
 				data-test-id="reset-zoom-button"
+				@click="resetZoom"
 			/>
-		</keyboard-shortcut-tooltip>
+		</KeyboardShortcutTooltip>
 	</div>
 </template>
 <script lang="ts" setup>

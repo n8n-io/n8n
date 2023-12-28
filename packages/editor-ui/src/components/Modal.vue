@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:modelValue="uiStore.isModalOpen(this.name)"
+		:model-value="uiStore.isModalOpen(name)"
 		:before-close="closeDialog"
 		:class="{
 			'dialog-wrapper': true,
@@ -14,13 +14,13 @@
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		:append-to-body="appendToBody"
-		:data-test-id="`${this.name}-modal`"
+		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"
 	>
-		<template #header v-if="$slots.header">
-			<slot name="header" v-if="!loading" />
+		<template v-if="$slots.header" #header>
+			<slot v-if="!loading" name="header" />
 		</template>
-		<template #title v-else-if="title">
+		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
 					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
@@ -37,7 +37,7 @@
 			@keydown.esc="closeDialog"
 		>
 			<slot v-if="!loading" name="content" />
-			<div :class="$style.loader" v-else>
+			<div v-else :class="$style.loader">
 				<n8n-spinner />
 			</div>
 		</div>

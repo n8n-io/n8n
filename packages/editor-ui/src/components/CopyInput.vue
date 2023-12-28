@@ -8,8 +8,8 @@
 					[$style.collapsed]: collapse,
 					'ph-no-capture': redactValue,
 				}"
-				@click="copy"
 				data-test-id="copy-input"
+				@click="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
 				<div :class="$style.copyButton">

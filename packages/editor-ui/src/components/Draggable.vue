@@ -1,15 +1,15 @@
 <template>
 	<component
 		:is="tag"
+		ref="wrapper"
 		:class="{ [$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
-		ref="wrapper"
 	>
-		<slot :isDragging="isDragging"></slot>
+		<slot :is-dragging="isDragging"></slot>
 
 		<Teleport to="body">
-			<div ref="draggable" :class="$style.draggable" :style="draggableStyle" v-show="isDragging">
-				<slot name="preview" :canDrop="canDrop" :el="draggingEl"></slot>
+			<div v-show="isDragging" ref="draggable" :class="$style.draggable" :style="draggableStyle">
+				<slot name="preview" :can-drop="canDrop" :el="draggingEl"></slot>
 			</div>
 		</Teleport>
 	</component>
@@ -22,7 +22,7 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'draggable',
+	name: 'Draggable',
 	props: {
 		disabled: {
 			type: Boolean,
