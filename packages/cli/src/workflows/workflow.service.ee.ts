@@ -12,7 +12,7 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,6 +28,7 @@ export class EnterpriseWorkflowService {
 		private readonly roleService: RoleService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	async isOwned(
@@ -112,7 +113,7 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await Container.get(CredentialsRepository).getManyByIds(
+		const workflowCredentials = await this.credentialsRepository.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);

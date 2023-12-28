@@ -2,7 +2,6 @@ import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { WebhookEntity } from '@/databases/entities/WebhookEntity';
 
 @RestController('/debug')
 export class DebugController {
@@ -20,11 +19,7 @@ export class DebugController {
 			this.activeWorkflowRunner.allActiveInMemory(),
 		);
 
-		const webhooks = (await this.workflowRepository
-			.createQueryBuilder('workflow')
-			.select('DISTINCT workflow.id, workflow.name')
-			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
-			.execute()) as Array<{ id: string; name: string }>;
+		const webhooks = await this.workflowRepository.findWebhookBasedActiveWorkflows();
 
 		const activationErrors = await this.activeWorkflowRunner.getAllWorkflowActivationErrors();
 
