@@ -118,15 +118,15 @@ export class CacheService extends EventEmitter {
 	 * @param options.refreshTtl Optional ttl for the refreshFunction's set call
 	 * @param options.fallbackValue Optional value returned is cache is not hit and refreshFunction is not provided
 	 */
-	async getMany(
+	async getMany<T = unknown[]>(
 		keys: string[],
 		options: {
-			fallbackValues?: unknown[];
-			refreshFunctionEach?: (key: string) => Promise<unknown>;
-			refreshFunctionMany?: (keys: string[]) => Promise<unknown[]>;
+			fallbackValues?: T[];
+			refreshFunctionEach?: (key: string) => Promise<T>;
+			refreshFunctionMany?: (keys: string[]) => Promise<T[]>;
 			refreshTtl?: number;
 		} = {},
-	): Promise<unknown[]> {
+	): Promise<T[]> {
 		if (keys.length === 0) {
 			return [];
 		}
@@ -136,7 +136,7 @@ export class CacheService extends EventEmitter {
 		}
 		if (!values.includes(undefined)) {
 			this.emit(this.metricsCounterEvents.cacheHit);
-			return values;
+			return values as T[];
 		}
 		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunctionEach) {
@@ -155,7 +155,7 @@ export class CacheService extends EventEmitter {
 					values[i] = refreshValue;
 				}
 			}
-			return values;
+			return values as T[];
 		}
 		if (options.refreshFunctionMany) {
 			this.emit(this.metricsCounterEvents.cacheUpdate);
@@ -170,9 +170,9 @@ export class CacheService extends EventEmitter {
 				newKV.push([keys[i], refreshValues[i]]);
 			}
 			await this.setMany(newKV, options.refreshTtl);
-			return refreshValues;
+			return refreshValues as T[];
 		}
-		return options.fallbackValues ?? values;
+		return (options.fallbackValues ?? values) as T[];
 	}
 
 	/**
