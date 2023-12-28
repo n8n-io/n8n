@@ -28,4 +28,17 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 		return sharedWorkflows.map((sharing) => sharing.workflowId);
 	}
+
+	async findByWorkflowIds(workflowIds: string[]) {
+		return this.find({
+			relations: ['role', 'user'],
+			where: {
+				role: {
+					name: 'owner',
+					scope: 'workflow',
+				},
+				workflowId: In(workflowIds),
+			},
+		});
+	}
 }
