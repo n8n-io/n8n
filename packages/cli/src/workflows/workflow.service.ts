@@ -20,7 +20,6 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -137,16 +136,12 @@ export class WorkflowService {
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
-		const shared = await this.sharedWorkflowRepository.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user,
-				globalScope: 'workflow:update',
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles,
-			}),
-		});
+		const shared = await this.sharedWorkflowRepository.findSharing(
+			workflowId,
+			user,
+			'workflow:update',
+			{ roles },
+		);
 
 		if (!shared) {
 			this.logger.verbose('User attempted to update a workflow without permissions', {
@@ -403,16 +398,12 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user,
-				globalScope: 'workflow:delete',
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
+		const sharedWorkflow = await this.sharedWorkflowRepository.findSharing(
+			workflowId,
+			user,
+			'workflow:delete',
+			{ roles: ['owner'] },
+		);
 
 		if (!sharedWorkflow) {
 			return;
