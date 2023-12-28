@@ -6,7 +6,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import type { ListQuery, WorkflowRequest } from '@/requests';
+import type { WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -15,8 +15,6 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import * as utils from '@/utils';
-import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { Logger } from '@/Logger';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
@@ -232,30 +230,6 @@ EEWorkflowController.post(
 
 		return savedWorkflow;
 	}),
-);
-
-/**
- * (EE) GET /workflows
- */
-EEWorkflowController.get(
-	'/',
-	listQueryMiddleware,
-	async (req: ListQuery.Request, res: express.Response) => {
-		try {
-			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user);
-
-			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
-				sharedWorkflowIds,
-				req.listQueryOptions,
-			);
-
-			res.json({ count, data });
-		} catch (maybeError) {
-			const error = utils.toError(maybeError);
-			ResponseHelper.reportError(error);
-			ResponseHelper.sendErrorResponse(res, error);
-		}
-	},
 );
 
 EEWorkflowController.patch(

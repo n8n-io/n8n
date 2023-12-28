@@ -33,6 +33,7 @@ import { NamingService } from '@/services/naming.service';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { RoleNames } from '@/databases/entities/Role';
 
 export const workflowsController = express.Router();
 workflowsController.use('/', EEWorkflowController);
@@ -115,7 +116,8 @@ workflowsController.get(
 	listQueryMiddleware,
 	async (req: ListQuery.Request, res: express.Response) => {
 		try {
-			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
+			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, roles);
 
 			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
 				sharedWorkflowIds,
