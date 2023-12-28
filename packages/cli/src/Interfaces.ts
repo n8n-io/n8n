@@ -23,6 +23,7 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
+	IWebhookData,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -746,10 +747,11 @@ export abstract class SecretsProvider {
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
 
-export type RegisteredWebhook = {
+export type WebhookRegistration = {
 	sessionId?: string;
 	timeout: NodeJS.Timeout;
 	workflowEntity: IWorkflowDb;
 	workflow: Workflow;
 	destinationNode?: string;
+	webhook: IWebhookData;
 };
