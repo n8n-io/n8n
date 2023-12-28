@@ -300,7 +300,7 @@ workflowsController.patch(
 			workflowId,
 			tags,
 			isSharingEnabled() ? forceSave : true,
-			isSharingEnabled() ? [] : ['owner'],
+			isSharingEnabled() ? undefined : ['owner'],
 		);
 
 		return updatedWorkflow;
