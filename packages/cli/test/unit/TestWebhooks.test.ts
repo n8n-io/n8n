@@ -58,6 +58,7 @@ describe('TestWebhooks', () => {
 		/**
 		 * @TODO
 		 */
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 		test.skip('should return true and activate webhook if needed', async () => {
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 			const activateWebhookSpy = jest.spyOn(testWebhooks, 'activateWebhook');
