@@ -371,7 +371,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -461,7 +461,7 @@ export default defineComponent({
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
 			locale,
@@ -469,7 +469,7 @@ export default defineComponent({
 			dataSchema,
 			nodeHelpers,
 			externalHooks,
-			copyPaste,
+			clipboard,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -750,7 +750,7 @@ export default defineComponent({
 		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
-		this.copyPaste.onClipboardPasteEvent.value = this.onClipboardPasteEvent;
+		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.startLoading();
 		const loadPromises = [
@@ -1819,7 +1819,7 @@ export default defineComponent({
 
 				const nodeData = JSON.stringify(workflowToCopy, null, 2);
 
-				this.copyPaste.copyToClipboard(nodeData);
+				this.clipboard.copy(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({

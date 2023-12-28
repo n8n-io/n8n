@@ -72,7 +72,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -96,10 +96,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -260,7 +260,7 @@ export default defineComponent({
 
 				if (successfulUrlInvites.length) {
 					if (successfulUrlInvites.length === 1) {
-						this.copyPaste.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
+						this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
 					this.showMessage({
@@ -330,7 +330,7 @@ export default defineComponent({
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				this.copyPaste.copyToClipboard(user.inviteAcceptUrl);
+				this.clipboard.copy(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
 		},

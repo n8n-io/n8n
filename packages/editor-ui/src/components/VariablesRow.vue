@@ -4,14 +4,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getVariablesPermissions } from '@/permissions';
 
 const i18n = useI18n();
-const { copyToClipboard } = useCopyPaste();
+const clipboard = useClipboard();
 const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
@@ -120,7 +120,7 @@ function onValidate(key: string, value: boolean) {
 }
 
 function onUsageClick() {
-	copyToClipboard(usage.value);
+	clipboard.copy(usage.value);
 	showMessage({
 		title: i18n.baseText('variables.row.usage.copiedToClipboard'),
 		type: 'success',

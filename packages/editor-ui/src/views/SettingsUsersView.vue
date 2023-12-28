@@ -98,14 +98,15 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
 import { ROLE } from '@/utils/userUtils';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -223,7 +224,7 @@ export default defineComponent({
 		async onCopyInviteLink(userId: string) {
 			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
-				this.copyPaste.copyToClipboard(user.inviteAcceptUrl);
+				this.clipboard.copy(user.inviteAcceptUrl);
 
 				this.showToast({
 					type: 'success',
@@ -236,7 +237,7 @@ export default defineComponent({
 			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
-				this.copyPaste.copyToClipboard(url.link);
+				this.clipboard.copy(url.link);
 
 				this.showToast({
 					type: 'success',

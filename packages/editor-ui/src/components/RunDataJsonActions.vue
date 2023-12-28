@@ -51,7 +51,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 type JsonPathData = {
 	path: string;
@@ -95,12 +95,12 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
 			i18n,
 			nodeHelpers,
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -224,7 +224,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.copyPaste.copyToClipboard(value);
+			this.clipboard.copy(value);
 		},
 	},
 });

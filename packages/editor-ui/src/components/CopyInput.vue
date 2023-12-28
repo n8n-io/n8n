@@ -25,7 +25,7 @@
 import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	props: {
@@ -67,17 +67,17 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
-			this.copyPaste.copyToClipboard(this.value);
+			this.clipboard.copy(this.value);
 
 			this.showMessage({
 				title: this.toastTitle,

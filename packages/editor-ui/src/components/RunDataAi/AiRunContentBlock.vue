@@ -68,7 +68,7 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
@@ -78,7 +78,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { copyToClipboard } = useCopyPaste();
+const clipboard = useClipboard();
 const { showMessage } = useToast();
 const contentParsers = useAiContentParsers();
 
@@ -159,7 +159,7 @@ function onBlockHeaderClick() {
 
 function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	try {
-		copyToClipboard(JSON.stringify(content, undefined, 2));
+		clipboard.copy(JSON.stringify(content, undefined, 2));
 		showMessage({
 			title: i18n.baseText('generic.copiedToClipboard'),
 			type: 'success',

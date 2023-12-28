@@ -133,7 +133,7 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeErrorView',
@@ -142,10 +142,10 @@ export default defineComponent({
 	},
 	props: ['error'],
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -285,7 +285,7 @@ export default defineComponent({
 			return [currentParameter];
 		},
 		copyCause() {
-			this.copyPaste.copyToClipboard(JSON.stringify(this.error.cause));
+			this.clipboard.copy(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {

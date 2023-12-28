@@ -144,7 +144,7 @@ import { mfaEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 export default defineComponent({
 	name: 'MfaSetupModal',
 	components: {
@@ -152,10 +152,10 @@ export default defineComponent({
 		QrcodeVue,
 	},
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -201,7 +201,7 @@ export default defineComponent({
 				});
 		},
 		onCopySecretToClipboard() {
-			this.copyPaste.copyToClipboard(this.secret);
+			this.clipboard.copy(this.secret);
 			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),

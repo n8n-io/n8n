@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 
@@ -31,12 +31,12 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { copyToClipboard } = useCopyPaste();
+const clipboard = useClipboard();
 const { showMessage } = useToast();
 
 function onCopyToClipboard(content: string) {
 	try {
-		copyToClipboard(content);
+		clipboard.copy(content);
 		showMessage({
 			title: i18n.baseText('workerList.item.copyAddressToClipboard'),
 			type: 'success',

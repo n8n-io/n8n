@@ -67,7 +67,7 @@ import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useCopyPaste } from '@/composables/useCopyPaste';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
@@ -77,10 +77,10 @@ export default defineComponent({
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
-		const copyPaste = useCopyPaste();
+		const clipboard = useClipboard();
 
 		return {
-			copyPaste,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -139,7 +139,7 @@ export default defineComponent({
 	methods: {
 		copyWebhookUrl(webhookData: IWebhookDescription): void {
 			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-			this.copyPaste.copyToClipboard(webhookUrl);
+			this.clipboard.copy(webhookUrl);
 
 			this.showMessage({
 				title: this.baseText.copyTitle,
