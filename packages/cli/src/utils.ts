@@ -73,3 +73,7 @@ export const isIntegerString = (value: string) => /^\d+$/.test(value);
 export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
+
+export function removeTrailingSlash(path: string) {
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}
