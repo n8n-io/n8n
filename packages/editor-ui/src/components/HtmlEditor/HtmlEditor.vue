@@ -11,7 +11,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
+import { indentWithTab, insertNewlineAndIndent, history, redo, undo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -92,6 +92,7 @@ export default defineComponent({
 				keymap.of([
 					indentWithTab,
 					{ key: 'Enter', run: insertNewlineAndIndent },
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
@@ -174,6 +175,27 @@ export default defineComponent({
 				(a, b) => a.range[0] - b.range[0],
 			);
 		},
+	},
+
+	mounted() {
+		htmlEditorEventBus.on('format-html', this.format);
+
+		let doc = this.modelValue;
+
+		if (this.modelValue === '' && this.rows > 0) {
+			doc = '\n'.repeat(this.rows - 1);
+		}
+
+		const state = EditorState.create({ doc, extensions: this.extensions });
+
+		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
+
+		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
+	},
+
+	beforeUnmount() {
+		htmlEditorEventBus.off('format-html', this.format);
 	},
 
 	methods: {
@@ -263,27 +285,6 @@ export default defineComponent({
 
 			return highlighter;
 		},
-	},
-
-	mounted() {
-		htmlEditorEventBus.on('format-html', this.format);
-
-		let doc = this.modelValue;
-
-		if (this.modelValue === '' && this.rows > 0) {
-			doc = '\n'.repeat(this.rows - 1);
-		}
-
-		const state = EditorState.create({ doc, extensions: this.extensions });
-
-		this.editor = new EditorView({ parent: this.root(), state });
-		this.editorState = this.editor.state;
-
-		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
-	},
-
-	beforeUnmount() {
-		htmlEditorEventBus.off('format-html', this.format);
 	},
 });
 </script>

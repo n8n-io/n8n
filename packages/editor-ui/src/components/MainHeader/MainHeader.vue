@@ -1,12 +1,12 @@
 <template>
 	<div>
-		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
+		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :readOnly="readOnly" />
-				<tab-bar
+				<WorkflowDetails :read-only="readOnly" />
+				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
-					:activeTab="activeHeaderTab"
+					:active-tab="activeHeaderTab"
 					@select="onTabSelected"
 				/>
 			</div>
@@ -89,14 +89,14 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
-	mounted() {
-		this.dirtyState = this.uiStore.stateIsDirty;
-		this.syncTabsWithRoute(this.$route);
-	},
 	watch: {
 		$route(to, from) {
 			this.syncTabsWithRoute(to);
 		},
+	},
+	mounted() {
+		this.dirtyState = this.uiStore.stateIsDirty;
+		this.syncTabsWithRoute(this.$route);
 	},
 	methods: {
 		syncTabsWithRoute(route: Route): void {

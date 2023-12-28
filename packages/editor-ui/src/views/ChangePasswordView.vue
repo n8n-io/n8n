@@ -2,7 +2,7 @@
 	<AuthView
 		v-if="config"
 		:form="config"
-		:formLoading="loading"
+		:form-loading="loading"
 		@submit="onSubmit"
 		@update="onInput"
 	/>

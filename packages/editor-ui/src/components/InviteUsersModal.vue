@@ -1,7 +1,6 @@
 <template>
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
-		@enter="onSubmit"
 		:title="
 			$locale.baseText(
 				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
@@ -9,7 +8,8 @@
 		"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
 		<template #content>
 			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
@@ -42,8 +42,8 @@
 			<n8n-form-inputs
 				v-else
 				:inputs="config"
-				:eventBus="formBus"
-				:columnView="true"
+				:event-bus="formBus"
+				:column-view="true"
 				@update="onInput"
 				@submit="onSubmit"
 			/>
@@ -53,8 +53,8 @@
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"
-				@click="onSubmitClick"
 				float="right"
+				@click="onSubmitClick"
 			/>
 		</template>
 	</Modal>
@@ -89,8 +89,8 @@ function getEmail(email: string): string {
 
 export default defineComponent({
 	name: 'InviteUsersModal',
-	mixins: [copyPaste],
 	components: { Modal },
+	mixins: [copyPaste],
 	props: {
 		modalName: {
 			type: String,

@@ -33,8 +33,8 @@ async function onCloseClick() {
 	<n8n-callout
 		:theme="props.theme"
 		:icon="props.customIcon"
-		iconSize="medium"
-		:roundCorners="false"
+		icon-size="medium"
+		:round-corners="false"
 		:data-test-id="`banners-${props.name}`"
 	>
 		<div :class="[$style.mainContent, !hasTrailingContent ? $style.keepSpace : '']">

@@ -1,11 +1,11 @@
 <template>
-	<div :class="$style.sqlEditor" v-on-click-outside="onBlur">
+	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
 		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -13,7 +13,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
+import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import type { Line, Extension } from '@codemirror/state';
@@ -66,7 +66,7 @@ type SQLEditorData = {
 };
 
 export default defineComponent({
-	name: 'sql-editor',
+	name: 'SqlEditor',
 	components: {
 		InlineExpressionEditorOutput,
 	},
@@ -99,21 +99,6 @@ export default defineComponent({
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
-	},
-	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
-
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
-		},
 	},
 	computed: {
 		doc(): string {
@@ -161,6 +146,7 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					keymap.of([
+						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
 						{ key: 'Tab', run: acceptCompletion },
@@ -186,6 +172,21 @@ export default defineComponent({
 				);
 			}
 			return extensions;
+		},
+	},
+	watch: {
+		'ndvStore.ndvInputData'() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.modelValue,
+				},
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
+			});
 		},
 	},
 	mounted() {

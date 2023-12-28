@@ -18,6 +18,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -27,6 +28,7 @@ export class EnterpriseWorkflowService {
 		private readonly roleService: RoleService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	async isOwned(
@@ -111,7 +113,7 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await CredentialsService.getManyByIds(
+		const workflowCredentials = await this.credentialsRepository.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);

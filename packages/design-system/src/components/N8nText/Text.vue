@@ -7,7 +7,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 export default defineComponent({
-	name: 'n8n-text',
+	name: 'N8nText',
 	props: {
 		bold: {
 			type: Boolean,
