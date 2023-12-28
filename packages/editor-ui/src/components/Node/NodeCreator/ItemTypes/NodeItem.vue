@@ -2,23 +2,24 @@
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<n8n-node-creator-node
 		:draggable="!showActionArrow"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
 		:class="$style.nodeItem"
 		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
 	>
 		<template #icon>
 			<div v-if="isSubNode" :class="$style.subNodeBackground"></div>
-			<node-icon :class="$style.nodeIcon" :nodeType="nodeType" />
+			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template #tooltip v-if="isCommunityNode">
+		<template v-if="isCommunityNode" #tooltip>
 			<p
 				:class="$style.communityNodeIcon"
+				@click="onCommunityNodeTooltipClick"
 				v-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
@@ -27,13 +28,12 @@
 						},
 					})
 				"
-				@click="onCommunityNodeTooltipClick"
 			/>
 		</template>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
-			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
-				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
+			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
 			</div>
 		</template>
 	</n8n-node-creator-node>

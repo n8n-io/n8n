@@ -12,6 +12,12 @@ export default defineComponent({
 	name: 'ExecutionTime',
 	mixins: [genericHelpers],
 	props: ['startTime'],
+	data() {
+		return {
+			nowTime: -1,
+			intervalTimer: null as null | NodeJS.Timeout,
+		};
+	},
 	computed: {
 		time(): string {
 			if (!this.startTime) {
@@ -20,12 +26,6 @@ export default defineComponent({
 			const msPassed = this.nowTime - new Date(this.startTime).getTime();
 			return this.displayTimer(msPassed);
 		},
-	},
-	data() {
-		return {
-			nowTime: -1,
-			intervalTimer: null as null | NodeJS.Timeout,
-		};
 	},
 	mounted() {
 		this.setNow();

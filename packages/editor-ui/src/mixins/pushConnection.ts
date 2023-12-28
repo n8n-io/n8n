@@ -41,6 +41,7 @@ import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const pushConnection = defineComponent({
+	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
@@ -48,17 +49,16 @@ export const pushConnection = defineComponent({
 			nodeHelpers: useNodeHelpers(),
 		};
 	},
-	created() {
-		this.pushStore.addEventListener((message) => {
-			void this.pushMessageReceived(message);
-		});
-	},
-	mixins: [workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
 		};
+	},
+	created() {
+		this.pushStore.addEventListener((message) => {
+			void this.pushMessageReceived(message);
+		});
 	},
 	computed: {
 		...mapStores(

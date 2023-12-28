@@ -6,7 +6,7 @@
 				? $locale.baseText('mfa.setup.step1.title')
 				: $locale.baseText('mfa.setup.step2.title')
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
 		:center="true"
 		:loading="loadingQrCode"
@@ -27,8 +27,8 @@
 							<template #part2>
 								<a
 									:class="$style.secret"
-									@click="onCopySecretToClipboard"
 									data-test-id="mfa-secret-button"
+									@click="onCopySecretToClipboard"
 									>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
@@ -36,7 +36,7 @@
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">
-					<qrcode-vue :value="qrCode" size="150" level="H" />
+					<QrcodeVue :value="qrCode" size="150" level="H" />
 				</div>
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
@@ -55,9 +55,9 @@
 							type="text"
 							:maxlength="6"
 							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
-							@input="onInput"
 							:required="true"
 							data-test-id="mfa-token-input"
+							@input="onInput"
 						/>
 					</n8n-input-label>
 					<div :class="[$style.infoText, 'mt-4xs']">
@@ -147,11 +147,11 @@ import { useToast } from '@/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
 export default defineComponent({
 	name: 'MfaSetupModal',
-	mixins: [copyPaste],
 	components: {
 		Modal,
 		QrcodeVue,
 	},
+	mixins: [copyPaste],
 	setup() {
 		return {
 			...useToast(),
@@ -175,6 +175,9 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useUIStore, useUsersStore),
+	},
+	async mounted() {
+		await this.getMfaQR();
 	},
 	methods: {
 		closeDialog(): void {
@@ -264,9 +267,6 @@ export default defineComponent({
 				this.loadingQrCode = false;
 			}
 		},
-	},
-	async mounted() {
-		await this.getMfaQR();
 	},
 });
 </script>

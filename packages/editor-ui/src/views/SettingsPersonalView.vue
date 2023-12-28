@@ -9,8 +9,8 @@
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
 				<n8n-avatar
-					:firstName="currentUser.firstName"
-					:lastName="currentUser.lastName"
+					:first-name="currentUser.firstName"
+					:last-name="currentUser.lastName"
 					size="large"
 				/>
 			</div>
@@ -25,7 +25,7 @@
 				<n8n-form-inputs
 					v-if="formInputs"
 					:inputs="formInputs"
-					:eventBus="formBus"
+					:event-bus="formBus"
 					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
@@ -38,7 +38,7 @@
 			</div>
 			<div class="mb-s">
 				<n8n-input-label :label="i18n.baseText('auth.password')">
-					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
+					<n8n-link data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
 					}}</n8n-link>
 				</n8n-input-label>
@@ -87,9 +87,9 @@
 						:class="$style.themeSelect"
 						data-test-id="theme-select"
 						size="small"
-						@update:modelValue="selectTheme"
-						:modelValue="currentTheme"
+						:model-value="currentTheme"
 						filterable
+						@update:modelValue="selectTheme"
 					>
 						<n8n-option
 							v-for="item in themeOptions"

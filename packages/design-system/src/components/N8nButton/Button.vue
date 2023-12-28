@@ -9,9 +9,9 @@
 		aria-live="polite"
 		v-bind="$attrs"
 	>
-		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner v-if="loading" :size="size" />
-			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
+		<span v-if="loading || icon" :class="$style.icon">
+			<N8nSpinner v-if="loading" :size="size" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>

@@ -53,18 +53,18 @@ function getHex(hsl: string): string {
 }
 
 export default defineComponent({
-	name: 'color-circles',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			hsl: {} as { [color: string]: string },
-		};
-	},
+	name: 'ColorCircles',
 	props: {
 		colors: {
 			type: Array as PropType<string[]>,
 			required: true,
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			hsl: {} as { [color: string]: string },
+		};
 	},
 	created() {
 		const setColors = () => {

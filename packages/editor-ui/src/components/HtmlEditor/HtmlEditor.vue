@@ -175,6 +175,27 @@ export default defineComponent({
 		},
 	},
 
+	mounted() {
+		htmlEditorEventBus.on('format-html', this.format);
+
+		let doc = this.modelValue;
+
+		if (this.modelValue === '' && this.rows > 0) {
+			doc = '\n'.repeat(this.rows - 1);
+		}
+
+		const state = EditorState.create({ doc, extensions: this.extensions });
+
+		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
+
+		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
+	},
+
+	beforeUnmount() {
+		htmlEditorEventBus.off('format-html', this.format);
+	},
+
 	methods: {
 		root() {
 			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
@@ -262,27 +283,6 @@ export default defineComponent({
 
 			return highlighter;
 		},
-	},
-
-	mounted() {
-		htmlEditorEventBus.on('format-html', this.format);
-
-		let doc = this.modelValue;
-
-		if (this.modelValue === '' && this.rows > 0) {
-			doc = '\n'.repeat(this.rows - 1);
-		}
-
-		const state = EditorState.create({ doc, extensions: this.extensions });
-
-		this.editor = new EditorView({ parent: this.root(), state });
-		this.editorState = this.editor.state;
-
-		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
-	},
-
-	beforeUnmount() {
-		htmlEditorEventBus.off('format-html', this.format);
 	},
 });
 </script>

@@ -17,9 +17,9 @@
 					placement="bottom-end"
 					size="small"
 					color="foreground-xdark"
-					iconSize="small"
+					icon-size="small"
 					:actions="actions"
-					:iconOrientation="iconOrientation"
+					:icon-orientation="iconOrientation"
 					@action="(action) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
@@ -27,7 +27,7 @@
 			<n8n-radio-buttons
 				v-if="shouldShowExpressionSelector"
 				size="small"
-				:modelValue="selectedView"
+				:model-value="selectedView"
 				:disabled="isReadOnly"
 				:options="[
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
@@ -48,7 +48,7 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
-	name: 'parameter-options',
+	name: 'ParameterOptions',
 	props: {
 		parameter: {
 			type: Object,
