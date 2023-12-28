@@ -2,9 +2,11 @@
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive } from '@/utils/typeGuards';
-import { shorten } from '@/utils/typesUtils';
+import { isN8nBinaryProperty, shorten } from '@/utils/typesUtils';
+import BinaryData from './BinaryData.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { IDataObject } from 'n8n-workflow';
 
 type Props = {
 	schema: Schema;
@@ -17,6 +19,39 @@ type Props = {
 	distanceFromActive: number;
 	node: INodeUi | null;
 	search: string;
+};
+
+const isSchemaN8nBinaryProperty = (data: string | Schema[]) => {
+	if (!Array.isArray(data)) {
+		return false;
+	}
+	return !!data.filter((value) => {
+		return value.type === 'string' && value.key === '@type' && value.value === 'binary';
+	}).length;
+};
+
+const reverseSchema = (schema: Schema | Schema[]) => {
+	if (typeof schema === 'object') {
+		let values: Schema[] | string;
+		if (Array.isArray(schema)) {
+			values = schema;
+		} else {
+			values = schema.value;
+		}
+		if (typeof values === 'string') return undefined;
+
+		const fullData: IDataObject = {};
+		values.forEach((data) => {
+			fullData[data.key as string] =
+				data.type === 'object' && typeof data.value === 'object'
+					? reverseSchema(data.value)
+					: data.value;
+		});
+
+		return fullData;
+	}
+
+	return undefined;
 };
 
 const props = defineProps<Props>();
@@ -48,12 +83,14 @@ const getJsonParameterPath = (path: string): string =>
 
 const transitionDelay = (i: number) => `${i * 0.033}s`;
 
-const getIconBySchemaType = (type: Schema['type']): string => {
-	switch (type) {
+const getIconBySchemaType = (schema: Schema): string => {
+	switch (schema.type) {
 		case 'object':
 			return 'cube';
 		case 'array':
 			return 'list';
+		case 'file':
+			return 'file';
 		case 'string':
 		case 'null':
 			return 'font';
@@ -94,7 +131,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:data-depth="level"
 				data-target="mappable"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+				<font-awesome-icon :icon="getIconBySchemaType(schema)" size="sm" />
 				<TextWithHighlights
 					v-if="isSchemaParentTypeArray"
 					:content="props.parent?.key"
@@ -108,28 +145,38 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				/>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
-		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
-		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<font-awesome-icon icon="angle-up" />
-		</label>
-		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
-			<run-data-schema-item
-				v-for="(s, i) in schema.value"
-				:key="`${s.type}-${level}-${i}`"
-				:schema="s"
-				:level="level + 1"
-				:parent="schema"
-				:paneType="paneType"
-				:subKey="`${paneType}_${s.type}-${level}-${i}`"
-				:mappingEnabled="mappingEnabled"
+		<span :class="$style.binary" v-if="isSchemaN8nBinaryProperty(schema.value)">
+			<BinaryData
+				:data="reverseSchema(schema)"
+				:data-value="schema.path.slice(1)"
 				:draggingPath="draggingPath"
-				:distanceFromActive="distanceFromActive"
-				:node="node"
-				:style="{ transitionDelay: transitionDelay(i) }"
-				:search="search"
+				:mappingEnabled="mappingEnabled"
 			/>
-		</div>
+		</span>
+		<span v-else>
+			<span if="text" :class="$style.text">{{ text }}</span>
+			<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
+			<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
+				<font-awesome-icon icon="angle-up" />
+			</label>
+			<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
+				<span v-for="(s, i) in schema.value" :key="`${s.type}-${level}-${i}`">
+					<run-data-schema-item
+						:schema="s"
+						:level="level + 1"
+						:parent="schema"
+						:paneType="paneType"
+						:subKey="`${paneType}_${s.type}-${level}-${i}`"
+						:mappingEnabled="mappingEnabled"
+						:draggingPath="draggingPath"
+						:distanceFromActive="distanceFromActive"
+						:node="node"
+						:style="{ transitionDelay: transitionDelay(i) }"
+						:search="search"
+					/>
+				</span>
+			</div>
+		</span>
 	</div>
 </template>
 
@@ -253,6 +300,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			}
 		}
 	}
+}
+
+.binary {
+	display: block;
+	padding-left: var(--spacing-2xs);
+	overflow: hidden;
 }
 
 .label {

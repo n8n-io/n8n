@@ -1484,6 +1484,7 @@ export type Optional<T> = T | undefined | null;
 export type SchemaType =
 	| 'string'
 	| 'number'
+	| 'file'
 	| 'boolean'
 	| 'bigint'
 	| 'symbol'

@@ -61,7 +61,7 @@
 							<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
 						</div>
 					</template>
-					<font-awesome-icon icon="info-circle" size="sm" />
+					<font-awesome-icon :class="$style.infoIcon" icon="info-circle" size="sm" />
 				</n8n-tooltip>
 			</span>
 		</span>
@@ -135,9 +135,9 @@ export default defineComponent({
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
+	border: 1px solid var(--color-foreground-dark);
 	border-radius: 4px;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color-background-light);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
 
@@ -180,13 +180,17 @@ export default defineComponent({
 			}
 		}
 	}
+
+	.infoIcon {
+		margin-left: 4px;
+	}
 }
 
 .label {
 	> span {
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
-		border-left: 1px solid var(--color-foreground-light);
+		border-left: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

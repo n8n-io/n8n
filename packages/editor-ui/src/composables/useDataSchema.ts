@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 import { merge } from 'lodash-es';
 import { generatePath } from '@/utils/mappingUtils';
+import { isN8nBinaryProperty } from '@/utils/typesUtils';
 import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -34,7 +35,7 @@ export function useDataSchema() {
 					};
 				} else if (isObj(input)) {
 					schema = {
-						type: 'object',
+						type: isN8nBinaryProperty(input) ? 'file' : 'object',
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
 							...getSchema(v, generatePath(path, [k]), excludeValues),
