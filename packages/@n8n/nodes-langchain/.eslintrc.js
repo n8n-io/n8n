@@ -17,7 +17,6 @@ module.exports = {
 		'import/extensions': 'warn',
 		'import/order': 'warn',
 		'prefer-spread': 'warn',
-		'import/no-extraneous-dependencies': 'warn',
 
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
