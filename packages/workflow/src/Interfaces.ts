@@ -1007,8 +1007,6 @@ export interface INodeExecutionData {
 		| NodeOperationError
 		| number
 		| undefined;
-	// data?: DataMixedObject;
-	// json: IDataObject;
 	json: DataMixedObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
@@ -1025,14 +1023,6 @@ export interface BinaryObject {
 export interface DataMixedObject {
 	[key: string]: GenericValue | DataMixedObject | GenericValue[] | DataMixedObject[] | BinaryObject;
 }
-// export interface INodeExecutionDataNew {
-// 	data: DataObject;
-// 	error?: NodeApiError | NodeOperationError;
-// 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
-// 	index?: number;
-// }
-
-// export type INodeExecutionData = INodeExecutionDataOld | INodeExecutionDataNew;
 
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
