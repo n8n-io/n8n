@@ -60,6 +60,7 @@ const SQL_DIALECTS = {
 
 type SQLEditorData = {
 	editor: EditorView | null;
+	editorState: EditorState | null;
 	isFocused: boolean;
 	skipSegments: string[];
 	expressionsDocsUrl: string;
@@ -89,12 +90,13 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 	},
 	data(): SQLEditorData {
 		return {
 			editor: null,
+			editorState: null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
@@ -132,7 +134,6 @@ export default defineComponent({
 				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
-				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.domEventHandlers({
 					focus: () => {
 						this.isFocused = true;
@@ -161,8 +162,6 @@ export default defineComponent({
 					bracketMatching(),
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
-
-						this.editorState = this.editor.state;
 
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
