@@ -580,6 +580,8 @@ import type {
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
+	DataMixedObject,
+	GenericValue,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -612,7 +614,7 @@ import { pinData } from '@/mixins/pinData';
 import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { clearJsonKey, isEmpty, isN8nBinaryProperty } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { searchInObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -1441,10 +1443,32 @@ export default defineComponent({
 
 			return nodeType.outputNames[outputIndex];
 		},
+		getNonBinaryData(data: DataMixedObject | GenericValue) {
+			if (data === null || typeof data !== 'object') {
+				return data;
+			}
+
+			return Object.keys(data).reduce((acc, key) => {
+				const value = data[key];
+				if (Array.isArray(value)) {
+					acc[key] = value.map((item) => this.getNonBinaryData(item));
+				} else if (typeof value === 'object') {
+					if (isN8nBinaryProperty(value)) {
+						// Is binary so ignore
+						acc[key] = '';
+					} else {
+						acc[key] = this.getNonBinaryData(value);
+					}
+				} else {
+					acc[key] = value;
+				}
+				return acc;
+			}, {});
+		},
 		refreshDataSize() {
 			// Hide by default the data from being displayed
 			this.showData = false;
-			const jsonItems = this.inputDataPage.map((item) => item.json);
+			const jsonItems = this.inputDataPage.map((item) => this.getNonBinaryData(item.json));
 			this.dataSize = JSON.stringify(jsonItems).length;
 			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
 				// Data is reasonable small (< 200kb) so display it directly
