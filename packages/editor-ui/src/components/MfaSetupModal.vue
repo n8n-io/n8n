@@ -140,20 +140,22 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUsersStore } from '@/stores/users.store';
-import { copyPaste } from '@/mixins/copyPaste';
 import { mfaEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
+import { useClipboard } from '@/composables/useClipboard';
 export default defineComponent({
 	name: 'MfaSetupModal',
 	components: {
 		Modal,
 		QrcodeVue,
 	},
-	mixins: [copyPaste],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -199,7 +201,7 @@ export default defineComponent({
 				});
 		},
 		onCopySecretToClipboard() {
-			this.copyToClipboard(this.secret);
+			void this.clipboard.copy(this.secret);
 			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),

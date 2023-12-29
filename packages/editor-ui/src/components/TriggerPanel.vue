@@ -117,15 +117,11 @@ import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { N8nInfoAccordion } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
-
-type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 
 export default defineComponent({
 	name: 'TriggerPanel',
@@ -134,7 +130,7 @@ export default defineComponent({
 		CopyInput,
 		NodeIcon,
 	},
-	mixins: [workflowHelpers, copyPaste],
+	mixins: [workflowHelpers],
 	props: {
 		nodeName: {
 			type: String,
