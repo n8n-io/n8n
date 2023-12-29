@@ -6,6 +6,7 @@ import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
+import { toError } from '@/utils';
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -196,7 +197,20 @@ export class CacheService extends EventEmitter {
 				throw new ApplicationError('Value is not cacheable');
 			}
 		}
-		await this.cache?.store.set(key, value, ttl);
+		try {
+			await this.cache?.store.set(key, value, ttl);
+		} catch (e) {
+			const error = toError(e);
+
+			/**
+			 * `lodash.cloneDeep` inside `node-cache-manager` throws this error
+			 * when setting any object as value in the cache. Retrieval
+			 * of the cached object works fine though.
+			 */
+			if (error.message === 'Maximum call stack size exceeded') return;
+
+			throw error;
+		}
 	}
 
 	/**
