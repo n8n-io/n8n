@@ -11,63 +11,64 @@
 		}"
 	>
 		<span :class="$style.label">
-			<font-awesome-icon :icon="fileIcon" size="sm" />
+			<n8n-tooltip placement="top">
+				<template #content>
+					<div>
+						<div v-if="binaryData.fileName">
+							<div>
+								<n8n-text size="small" :bold="true"
+									>{{ $locale.baseText('runData.fileName') }}:
+								</n8n-text>
+							</div>
+							<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
+						</div>
+						<div v-if="binaryData.directory">
+							<div>
+								<n8n-text size="small" :bold="true"
+									>{{ $locale.baseText('runData.directory') }}:
+								</n8n-text>
+							</div>
+							<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
+						</div>
+						<div v-if="binaryData.fileExtension">
+							<div>
+								<n8n-text size="small" :bold="true"
+									>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
+								>
+							</div>
+							<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
+						</div>
+						<div v-if="binaryData.mimeType">
+							<div>
+								<n8n-text size="small" :bold="true"
+									>{{ $locale.baseText('runData.mimeType') }}:
+								</n8n-text>
+							</div>
+							<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
+						</div>
+						<div v-if="binaryData.fileSize">
+							<div>
+								<n8n-text size="small" :bold="true"
+									>{{ $locale.baseText('runData.fileSize') }}:
+								</n8n-text>
+							</div>
+							<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
+						</div>
+
+						<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
+					</div>
+				</template>
+				<font-awesome-icon :icon="fileIcon" size="sm" />
+			</n8n-tooltip>
 			<span>
 				{{ fileName }}
-				<n8n-tooltip placement="top">
-					<template #content>
-						<div>
-							<div v-if="binaryData.fileName">
-								<div>
-									<n8n-text size="small" :bold="true"
-										>{{ $locale.baseText('runData.fileName') }}:
-									</n8n-text>
-								</div>
-								<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
-							</div>
-							<div v-if="binaryData.directory">
-								<div>
-									<n8n-text size="small" :bold="true"
-										>{{ $locale.baseText('runData.directory') }}:
-									</n8n-text>
-								</div>
-								<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
-							</div>
-							<div v-if="binaryData.fileExtension">
-								<div>
-									<n8n-text size="small" :bold="true"
-										>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
-									>
-								</div>
-								<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
-							</div>
-							<div v-if="binaryData.mimeType">
-								<div>
-									<n8n-text size="small" :bold="true"
-										>{{ $locale.baseText('runData.mimeType') }}:
-									</n8n-text>
-								</div>
-								<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
-							</div>
-							<div v-if="binaryData.fileSize">
-								<div>
-									<n8n-text size="small" :bold="true"
-										>{{ $locale.baseText('runData.fileSize') }}:
-									</n8n-text>
-								</div>
-								<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
-							</div>
-
-							<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
-						</div>
-					</template>
-					<font-awesome-icon
-						:class="$style.infoIcon"
-						icon="info-circle"
-						size="sm"
-						@click="displayBinaryData(itemIndex || 0, mappingData.path!)"
-					/>
-				</n8n-tooltip>
+				<font-awesome-icon
+					:class="$style.infoIcon"
+					icon="search"
+					title="Show Binary Data"
+					size="sm"
+					@click="displayBinaryData(itemIndex || 0, mappingData.path!)"
+				/>
 			</span>
 		</span>
 	</div>
@@ -107,7 +108,6 @@ export default defineComponent({
 	},
 	methods: {
 		displayBinaryData(index: number, key: string) {
-			console.log('BinaryData.displayBinaryData', index, key);
 			this.$emit('displayBinaryData', index, key);
 		},
 	},
@@ -174,8 +174,8 @@ export default defineComponent({
 		&:hover {
 			&,
 			span span {
-				background-color: var(--color-background-xlight);
-				border-color: var(--color-foreground-dark);
+				background-color: var(--color-background-default);
+				border-color: var(--color-foreground-xdark);
 			}
 		}
 	}
@@ -198,6 +198,7 @@ export default defineComponent({
 
 	.infoIcon {
 		margin-left: 4px;
+		cursor: pointer;
 	}
 }
 
