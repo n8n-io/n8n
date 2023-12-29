@@ -1218,8 +1218,11 @@ export class Workflow {
 			responseData.data.forEach((outputData) => {
 				outputData.forEach((item) => {
 					if (item.binary) {
+						// Copy data, else it will spill over to other nodes or even input data
+						item.json = { ...item.json };
 						for (const key of Object.keys(item.binary)) {
-							// TODO: Later allow dot-notation, no idea what should happen right now if it already exists
+							// TODO: Later potentially also allow dot-notation. Then above copy code also has to be changed
+							// no idea what should happen right now if it already exists
 							item.json[key] = {
 								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@type': 'binary',
