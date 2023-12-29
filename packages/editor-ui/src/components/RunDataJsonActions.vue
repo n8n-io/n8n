@@ -41,7 +41,6 @@ import { mapStores } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
@@ -52,6 +51,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
+import { useClipboard } from '@/composables/useClipboard';
 
 type JsonPathData = {
 	path: string;
@@ -60,8 +60,7 @@ type JsonPathData = {
 
 export default defineComponent({
 	name: 'RunDataJsonActions',
-	mixins: [genericHelpers, pinData, copyPaste],
-
+	mixins: [genericHelpers, pinData],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -96,9 +95,12 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
+		const clipboard = useClipboard();
+
 		return {
 			i18n,
 			nodeHelpers,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -222,7 +224,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.copyToClipboard(value);
+			void this.clipboard.copy(value);
 		},
 	},
 });

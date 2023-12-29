@@ -134,7 +134,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .item {
 	display: block;

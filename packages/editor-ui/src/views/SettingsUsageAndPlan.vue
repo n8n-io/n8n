@@ -240,7 +240,7 @@ const openPricingPage = () => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .center > div {
 	justify-content: center;
