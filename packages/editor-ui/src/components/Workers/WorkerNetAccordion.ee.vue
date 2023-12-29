@@ -36,7 +36,7 @@ const { showMessage } = useToast();
 
 function onCopyToClipboard(content: string) {
 	try {
-		clipboard.copy(content);
+		void clipboard.copy(content);
 		showMessage({
 			title: i18n.baseText('workerList.item.copyAddressToClipboard'),
 			type: 'success',

@@ -224,7 +224,7 @@ export default defineComponent({
 		async onCopyInviteLink(userId: string) {
 			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
-				this.clipboard.copy(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 
 				this.showToast({
 					type: 'success',
@@ -237,7 +237,7 @@ export default defineComponent({
 			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
-				this.clipboard.copy(url.link);
+				void this.clipboard.copy(url.link);
 
 				this.showToast({
 					type: 'success',

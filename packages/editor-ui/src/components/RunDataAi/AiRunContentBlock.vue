@@ -159,7 +159,7 @@ function onBlockHeaderClick() {
 
 function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	try {
-		clipboard.copy(JSON.stringify(content, undefined, 2));
+		void clipboard.copy(JSON.stringify(content, undefined, 2));
 		showMessage({
 			title: i18n.baseText('generic.copiedToClipboard'),
 			type: 'success',

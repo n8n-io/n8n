@@ -18,7 +18,9 @@ const TestComponent = defineComponent({
 			h('div', [
 				h('button', {
 					'data-test-id': 'copy',
-					onClick: () => clipboard.copy(testValue),
+					onClick: () => {
+						void clipboard.copy(testValue);
+					},
 				}),
 				h('div', { 'data-test-id': 'paste' }, pasted.value),
 			]);

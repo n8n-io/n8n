@@ -260,7 +260,7 @@ export default defineComponent({
 
 				if (successfulUrlInvites.length) {
 					if (successfulUrlInvites.length === 1) {
-						this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
+						void this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
 					this.showMessage({
@@ -330,7 +330,7 @@ export default defineComponent({
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				this.clipboard.copy(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
 		},

@@ -201,7 +201,7 @@ export default defineComponent({
 				});
 		},
 		onCopySecretToClipboard() {
-			this.clipboard.copy(this.secret);
+			void this.clipboard.copy(this.secret);
 			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),

@@ -139,7 +139,7 @@ export default defineComponent({
 	methods: {
 		copyWebhookUrl(webhookData: IWebhookDescription): void {
 			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-			this.clipboard.copy(webhookUrl);
+			void this.clipboard.copy(webhookUrl);
 
 			this.showMessage({
 				title: this.baseText.copyTitle,

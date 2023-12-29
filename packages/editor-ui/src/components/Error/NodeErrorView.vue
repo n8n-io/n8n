@@ -285,7 +285,7 @@ export default defineComponent({
 			return [currentParameter];
 		},
 		copyCause() {
-			this.clipboard.copy(JSON.stringify(this.error.cause));
+			void this.clipboard.copy(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {

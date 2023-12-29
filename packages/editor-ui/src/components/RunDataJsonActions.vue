@@ -224,7 +224,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.clipboard.copy(value);
+			void this.clipboard.copy(value);
 		},
 	},
 });

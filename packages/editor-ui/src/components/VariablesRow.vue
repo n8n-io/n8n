@@ -120,7 +120,7 @@ function onValidate(key: string, value: boolean) {
 }
 
 function onUsageClick() {
-	clipboard.copy(usage.value);
+	void clipboard.copy(usage.value);
 	showMessage({
 		title: i18n.baseText('variables.row.usage.copiedToClipboard'),
 		type: 'success',
