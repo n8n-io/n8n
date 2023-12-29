@@ -20,11 +20,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
-	IWebhookData,
-	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
-	NodeHelpers,
 	Workflow,
 	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
@@ -32,20 +29,10 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type express from 'express';
-
-import type {
-	IResponseCallbackData,
-	IWebhookManager,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
-	WebhookAccessControlOptions,
-	WebhookRequest,
-} from '@/Interfaces';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
-import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionsService } from './executions/executions.service';
@@ -57,44 +44,39 @@ import {
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
-import { whereClause } from './UserManagement/UserManagementHelper';
-import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
-import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
-import type { Scope } from '@n8n/permissions';
-import { NotFoundError } from './errors/response-errors/not-found.error';
+import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
+
+interface QueuedActivation {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
+}
 
 @Service()
-export class ActiveWorkflowRunner implements IWebhookManager {
-	activeWorkflows = new ActiveWorkflows();
-
-	private queuedActivations: {
-		[workflowId: string]: {
-			activationMode: WorkflowActivateMode;
-			lastTimeout: number;
-			timeout: NodeJS.Timeout;
-			workflowData: IWorkflowDb;
-		};
-	} = {};
+export class ActiveWorkflowRunner {
+	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly activeWorkflows: ActiveWorkflows,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionsService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly activeWorkflowsService: ActiveWorkflowsService,
 	) {}
 
 	async init() {
@@ -119,7 +101,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
-		const activeWorkflows = await this.allActiveInStorage();
+		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIdsInStorage();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
@@ -133,184 +115,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Checks if a webhook for the given method and path exists and executes the workflow.
-	 */
-	async executeWebhook(
-		request: WebhookRequest,
-		response: express.Response,
-	): Promise<IResponseCallbackData> {
-		const httpMethod = request.method;
-		const path = request.params.path;
-
-		this.logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
-
-		// Reset request parameters
-		request.params = {} as WebhookRequest['params'];
-
-		const webhook = await this.findWebhook(path, httpMethod);
-
-		if (webhook.isDynamic) {
-			const pathElements = path.split('/').slice(1);
-
-			// extracting params from path
-			// @ts-ignore
-			webhook.webhookPath.split('/').forEach((ele, index) => {
-				if (ele.startsWith(':')) {
-					// write params to req.params
-					// @ts-ignore
-					request.params[ele.slice(1)] = pathElements[index];
-				}
-			});
-		}
-
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
-		});
-
-		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
-		}
-
-		const workflow = new Workflow({
-			id: webhook.workflowId,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
-
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflow.getNode(webhook.node) as INode,
-			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
-
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
-
-		if (workflowStartNode === null) {
-			throw new NotFoundError('Could not find node to process webhook.');
-		}
-
-		return new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				workflowData,
-				workflowStartNode,
-				executionMode,
-				undefined,
-				undefined,
-				undefined,
-				request,
-				response,
-				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
-				},
-			);
-		});
-	}
-
-	async getWebhookMethods(path: string) {
-		return this.webhookService.getWebhookMethods(path);
-	}
-
-	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const webhook = await this.findWebhook(path, httpMethod);
-
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			select: ['nodes'],
-		});
-
-		const nodes = workflowData?.nodes;
-		const webhookNode = nodes?.find(
-			({ type, parameters, typeVersion }) =>
-				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod &&
-				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
-		);
-		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
-	}
-
-	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
-
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		if (webhook === null) {
-			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
-		}
-
-		return webhook;
-	}
-
-	/**
 	 * Returns the ids of the currently active workflows from memory.
 	 */
 	allActiveInMemory() {
 		return this.activeWorkflows.allActiveWorkflows();
-	}
-
-	/**
-	 * Get the IDs of active workflows from storage.
-	 */
-	async allActiveInStorage(options?: { user: User; scope: Scope | Scope[] }) {
-		const isFullAccess = !options?.user || options.user.hasGlobalScope(options.scope);
-
-		const activationErrors = await this.activationErrorsService.getAll();
-
-		if (isFullAccess) {
-			const activeWorkflows = await this.workflowRepository.find({
-				select: ['id'],
-				where: { active: true },
-			});
-
-			return activeWorkflows
-				.map((workflow) => workflow.id)
-				.filter((workflowId) => !activationErrors[workflowId]);
-		}
-
-		const where = whereClause({
-			user: options.user,
-			globalScope: 'workflow:list',
-			entityType: 'workflow',
-		});
-
-		const activeWorkflows = await this.workflowRepository.find({
-			select: ['id'],
-			where: { active: true },
-		});
-
-		const activeIds = activeWorkflows.map((workflow) => workflow.id);
-
-		Object.assign(where, { workflowId: In(activeIds) });
-
-		const sharings = await this.sharedWorkflowRepository.find({
-			select: ['workflowId'],
-			where,
-		});
-
-		return sharings
-			.map((sharing) => sharing.workflowId)
-			.filter((workflowId) => !activationErrors[workflowId]);
 	}
 
 	/**
@@ -329,13 +137,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Return error if there was a problem activating the workflow
-	 */
-	async getActivationError(workflowId: string) {
-		return this.activationErrorsService.get(workflowId);
-	}
-
-	/**
 	 * Register workflow-defined webhooks in the `workflow_entity` table.
 	 */
 	async addWebhooks(
@@ -346,6 +147,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
+
+		if (webhooks.length === 0) return;
+
+		this.logger.debug(`Adding webhooks for workflow "${workflow.name}" (ID ${workflow.id})`);
 
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
@@ -720,6 +525,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
+	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
@@ -753,14 +559,26 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let shouldAddWebhooks = true;
 		let shouldAddTriggersAndPollers = true;
 
-		if (this.multiMainSetup.isEnabled && activationMode !== 'leadershipChange') {
-			shouldAddWebhooks = this.multiMainSetup.isLeader;
-			shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
-		}
-
-		if (this.multiMainSetup.isEnabled && activationMode === 'leadershipChange') {
-			shouldAddWebhooks = false;
-			shouldAddTriggersAndPollers = true;
+		/**
+		 * In a multi-main scenario, webhooks are stored in the database, while triggers
+		 * and pollers are run only by the leader main instance.
+		 *
+		 * - During a regular workflow activation (i.e. not leadership change), only the
+		 * leader should add webhooks to prevent duplicate insertions, and only the leader
+		 * should handle triggers and pollers to prevent duplicate work.
+		 *
+		 * - During a leadership change, webhooks remain in storage and so need not be added
+		 * again, and the new leader should take over the triggers and pollers that stopped
+		 * running when the former leader became unresponsive.
+		 */
+		if (this.multiMainSetup.isEnabled) {
+			if (activationMode !== 'leadershipChange') {
+				shouldAddWebhooks = this.multiMainSetup.isLeader;
+				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+			} else {
+				shouldAddWebhooks = false;
+				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+			}
 		}
 
 		try {
@@ -798,14 +616,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
 
 			if (shouldAddWebhooks) {
-				this.logger.debug(`Adding webhooks for workflow ${dbWorkflow.display()}`);
-
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
 			}
 
 			if (shouldAddTriggersAndPollers) {
-				this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
-
 				await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',
@@ -990,6 +804,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
+			this.logger.debug(`Adding triggers and pollers for workflow "${dbWorkflow.display()}"`);
+
 			await this.activeWorkflows.add(
 				workflow.id,
 				workflow,

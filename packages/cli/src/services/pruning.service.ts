@@ -1,15 +1,11 @@
 import { Service } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import type { FindOptionsWhere } from 'typeorm';
-import { Brackets, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
-
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { jsonStringify } from 'n8n-workflow';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
 export class PruningService {
@@ -23,6 +19,8 @@ export class PruningService {
 	public softDeletionInterval: NodeJS.Timer | undefined;
 
 	public hardDeletionTimeout: NodeJS.Timeout | undefined;
+
+	private isShuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -54,6 +52,11 @@ export class PruningService {
 	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
+		if (this.isShuttingDown) {
+			this.logger.warn('[Pruning] Cannot start pruning while shutting down');
+			return;
+		}
+
 		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
 
 		this.setSoftDeletionInterval();
@@ -105,50 +108,7 @@ export class PruningService {
 	async softDeleteOnPruningCycle() {
 		this.logger.debug('[Pruning] Starting soft-deletion of executions');
 
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
-
-		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
-		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
-
-		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
-			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
-		];
-
-		if (maxCount > 0) {
-			const executions = await this.executionRepository.find({
-				select: ['id'],
-				skip: maxCount,
-				take: 1,
-				order: { id: 'DESC' },
-			});
-
-			if (executions[0]) {
-				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
-			}
-		}
-
-		const [timeBasedWhere, countBasedWhere] = toPrune;
-
-		const result = await this.executionRepository
-			.createQueryBuilder()
-			.update(ExecutionEntity)
-			.set({ deletedAt: new Date() })
-			.where({
-				deletedAt: IsNull(),
-				// Only mark executions as deleted if they are in an end state
-				status: Not(In(['new', 'running', 'waiting'])),
-			})
-			.andWhere(
-				new Brackets((qb) =>
-					countBasedWhere
-						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
-						: qb.where(timeBasedWhere),
-				),
-			)
-			.execute();
+		const result = await this.executionRepository.softDeletePrunableExecutions();
 
 		if (result.affected === 0) {
 			this.logger.debug('[Pruning] Found no executions to soft-delete');
@@ -158,45 +118,33 @@ export class PruningService {
 		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
 	}
 
+	@OnShutdown()
+	shutdown(): void {
+		this.isShuttingDown = true;
+		this.stopPruning();
+	}
+
 	/**
 	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
 	 * @return Delay in ms after which the next cycle should be started
 	 */
 	private async hardDeleteOnPruningCycle() {
-		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		const ids = await this.executionRepository.hardDeleteSoftDeletedExecutions();
 
-		const workflowIdsAndExecutionIds = (
-			await this.executionRepository.find({
-				select: ['workflowId', 'id'],
-				where: {
-					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
-				},
-				take: this.hardDeletionBatchSize,
-
-				/**
-				 * @important This ensures soft-deleted executions are included,
-				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
-				 */
-				withDeleted: true,
-			})
-		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
-
-		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+		const executionIds = ids.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
 			this.logger.debug('[Pruning] Found no executions to hard-delete');
+
 			return this.rates.hardDeletion;
 		}
 
 		try {
-			this.logger.debug('[Pruning] Starting hard-deletion of executions', {
-				executionIds,
-			});
+			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
 
-			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+			await this.binaryDataService.deleteMany(ids);
 
-			await this.executionRepository.delete({ id: In(executionIds) });
+			await this.executionRepository.deleteByIds(executionIds);
 
 			this.logger.debug('[Pruning] Hard-deleted executions', { executionIds });
 		} catch (error) {
@@ -211,7 +159,7 @@ export class PruningService {
 		 * to prevent high concurrency from causing duplicate deletions.
 		 */
 		const isHighVolume = executionIds.length >= this.hardDeletionBatchSize;
-		const rate = isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
-		return rate;
+
+		return isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
 	}
 }

@@ -1,7 +1,6 @@
 <template>
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
-		@enter="onSubmit"
 		:title="
 			$locale.baseText(
 				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
@@ -9,7 +8,8 @@
 		"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
 		<template #content>
 			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
@@ -42,8 +42,8 @@
 			<n8n-form-inputs
 				v-else
 				:inputs="config"
-				:eventBus="formBus"
-				:columnView="true"
+				:event-bus="formBus"
+				:column-view="true"
 				@update="onInput"
 				@submit="onSubmit"
 			/>
@@ -53,8 +53,8 @@
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"
-				@click="onSubmitClick"
 				float="right"
+				@click="onSubmitClick"
 			/>
 		</template>
 	</Modal>
@@ -64,7 +64,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useToast } from '@/composables/useToast';
-import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { ROLE } from '@/utils/userUtils';
@@ -73,6 +72,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -89,7 +89,6 @@ function getEmail(email: string): string {
 
 export default defineComponent({
 	name: 'InviteUsersModal',
-	mixins: [copyPaste],
 	components: { Modal },
 	props: {
 		modalName: {
@@ -97,7 +96,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -258,7 +260,7 @@ export default defineComponent({
 
 				if (successfulUrlInvites.length) {
 					if (successfulUrlInvites.length === 1) {
-						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
+						void this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
 					this.showMessage({
@@ -328,7 +330,7 @@ export default defineComponent({
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
 		},

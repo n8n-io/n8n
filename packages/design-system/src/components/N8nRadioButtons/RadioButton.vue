@@ -27,7 +27,7 @@
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-radio-button',
+	name: 'N8nRadioButton',
 	props: {
 		label: {
 			type: String,

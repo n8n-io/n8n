@@ -99,17 +99,17 @@ const switchBetweenEditorAndHistory = () => {
 
 	workflowPage.getters.canvasNodes().first().should('be.visible');
 	workflowPage.getters.canvasNodes().last().should('be.visible');
-}
+};
 
 const switchBetweenEditorAndWorkflowlist = () => {
 	cy.getByTestId('menu-item').first().click();
-	cy.wait(['@getUsers', '@getWorkflows', '@getActive', '@getCredentials']);
+	cy.wait(['@getUsers', '@getWorkflows', '@getActiveWorkflows', '@getCredentials']);
 
 	cy.getByTestId('resources-list-item').first().click();
 
 	workflowPage.getters.canvasNodes().first().should('be.visible');
 	workflowPage.getters.canvasNodes().last().should('be.visible');
-}
+};
 
 const zoomInAndCheckNodes = () => {
 	cy.getByTestId('zoom-in-button').click();
@@ -119,7 +119,7 @@ const zoomInAndCheckNodes = () => {
 
 	workflowPage.getters.canvasNodes().first().should('not.be.visible');
 	workflowPage.getters.canvasNodes().last().should('not.be.visible');
-}
+};
 
 describe('Editor actions should work', () => {
 	beforeEach(() => {
@@ -199,7 +199,7 @@ describe('Editor zoom should work after route changes', () => {
 		cy.intercept('GET', '/rest/workflow-history/workflow/*').as('getHistory');
 		cy.intercept('GET', '/rest/users').as('getUsers');
 		cy.intercept('GET', '/rest/workflows').as('getWorkflows');
-		cy.intercept('GET', '/rest/active').as('getActive');
+		cy.intercept('GET', '/rest/active-workflows').as('getActiveWorkflows');
 		cy.intercept('GET', '/rest/credentials').as('getCredentials');
 
 		switchBetweenEditorAndHistory();

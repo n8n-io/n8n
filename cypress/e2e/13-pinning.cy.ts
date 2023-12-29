@@ -3,6 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
+	BACKEND_BASE_URL,
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
@@ -149,6 +150,21 @@ describe('Data pinning', () => {
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
 
 		cy.get('div').contains(output).should('be.visible');
+	});
+
+	it('should use pin data in manual executions that are started by a webhook', () => {
+		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
+
+		workflowPage.actions.executeWorkflow();
+
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then((response) => {
+			expect(response.status).to.eq(200);
+		});
+
+		workflowPage.actions.openNode('End');
+
+		ndv.getters.outputTableRow(1).should('exist')
+		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
 	});
 });
 

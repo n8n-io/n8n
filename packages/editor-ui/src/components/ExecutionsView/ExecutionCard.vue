@@ -37,7 +37,7 @@
 						size="small"
 					>
 						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
-						<execution-time :start-time="execution.startedAt" />
+						<ExecutionTime :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -62,7 +62,7 @@
 					v-if="executionUIDetails.name === 'error'"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
-					activatorIcon="redo"
+					activator-icon="redo"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
@@ -90,16 +90,11 @@ import { VIEWS } from '@/constants';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
 export default defineComponent({
-	name: 'execution-card',
-	mixins: [executionHelpers],
+	name: 'ExecutionCard',
 	components: {
 		ExecutionTime,
 	},
-	data() {
-		return {
-			VIEWS,
-		};
-	},
+	mixins: [executionHelpers],
 	props: {
 		execution: {
 			type: Object as () => IExecutionsSummary,
@@ -113,6 +108,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	data() {
+		return {
+			VIEWS,
+		};
 	},
 	computed: {
 		retryExecutionActions(): object[] {

@@ -11,7 +11,7 @@
 			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
+					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
 				</div>
 			</div>
 		</div>
@@ -37,9 +37,9 @@ import WorkerCard from './Workers/WorkerCard.ee.vue';
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
+	mixins: [pushConnection, genericHelpers, executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,

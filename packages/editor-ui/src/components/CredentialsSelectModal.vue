@@ -1,12 +1,12 @@
 <template>
 	<Modal
 		:name="CREDENTIAL_SELECT_MODAL_KEY"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		width="50%"
 		:center="true"
 		:loading="loading"
-		maxWidth="460px"
-		minHeight="250px"
+		max-width="460px"
+		min-height="250px"
 	>
 		<template #header>
 			<h2 :class="$style.title">
@@ -19,22 +19,22 @@
 					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
 				</div>
 				<n8n-select
+					ref="select"
 					filterable
-					defaultFirstOption
+					default-first-option
 					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
-					ref="select"
-					:modelValue="selected"
-					@update:modelValue="onSelect"
+					:model-value="selected"
 					data-test-id="new-credential-type-select"
+					@update:modelValue="onSelect"
 				>
 					<template #prefix>
 						<font-awesome-icon icon="search" />
 					</template>
 					<n8n-option
 						v-for="credential in credentialsStore.allCredentialTypes"
-						:value="credential.name"
 						:key="credential.name"
+						:value="credential.name"
 						:label="credential.displayName"
 						filterable
 						data-test-id="new-credential-type-select-option"
@@ -49,8 +49,8 @@
 					float="right"
 					size="large"
 					:disabled="!selected"
-					@click="openCredentialType"
 					data-test-id="new-credential-type-button"
+					@click="openCredentialType"
 				/>
 			</div>
 		</template>
@@ -79,6 +79,14 @@ export default defineComponent({
 			externalHooks,
 		};
 	},
+	data() {
+		return {
+			modalBus: createEventBus(),
+			selected: '',
+			loading: true,
+			CREDENTIAL_SELECT_MODAL_KEY,
+		};
+	},
 	async mounted() {
 		try {
 			await this.credentialsStore.fetchCredentialTypes(false);
@@ -91,14 +99,6 @@ export default defineComponent({
 				elementRef.focus();
 			}
 		}, 0);
-	},
-	data() {
-		return {
-			modalBus: createEventBus(),
-			selected: '',
-			loading: true,
-			CREDENTIAL_SELECT_MODAL_KEY,
-		};
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),

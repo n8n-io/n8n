@@ -43,8 +43,8 @@ import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
-	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
+	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,
