@@ -24,7 +24,7 @@ import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
-import { isObject } from 'lodash';
+import _, { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
@@ -122,7 +122,9 @@ export function logWrapper(
 		| N8nBinaryLoader
 		| N8nJsonLoader,
 	executeFunctions: IExecuteFunctions,
+	extraArgs?: Record<string, unknown>,
 ) {
+
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
 			let connectionType: ConnectionTypes | undefined;
@@ -229,8 +231,34 @@ export function logWrapper(
 						runManager?: CallbackManagerForLLMRun,
 					): Promise<ChatResult> => {
 						connectionType = NodeConnectionType.AiLanguageModel;
+						let _messages = messages;
+						if (extraArgs?.systemMessage) {
+							// @ts-ignore
+							_messages = _messages.map((message) => {
+								if (typeof message === "string") return (extraArgs.systemMessage as string).trim() + " " + message;
+								if (typeof message.content === "string") {
+									message.content = (extraArgs.systemMessage as string).trim() + " " + message.content
+									return message as BaseMessage;
+								}
+
+								if (message.content.length > 0) {
+									return {
+										...message, content: message.content.map((_content) => {
+											if (_content.type === "image_url") {
+												return _content;
+											}
+											return { ..._content, text: (extraArgs.systemMessage as string).trim() + " " + _content.text };
+										})
+									} as BaseMessage;
+								}
+
+								return { ...message, text: (extraArgs.systemMessage as string).trim() + " " + message.text } as BaseMessage;
+
+							});
+						}
+
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { messages, options } }],
+							[{ json: { messages: _messages, options } }],
 						]);
 
 						try {
@@ -240,7 +268,7 @@ export function logWrapper(
 								currentNodeRunIndex: index,
 								method: target[prop],
 								arguments: [
-									messages,
+									_messages,
 									{ ...options, signal: executeFunctions.getExecutionCancelSignal() },
 									runManager,
 								],

@@ -176,6 +176,13 @@ export class LmOpenAi implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'System message',
+				name: 'systemMessage',
+				type: 'string',
+				default: '',
+				description: 'A system message to send along with the prompt',
+			}
 		],
 	};
 
@@ -218,6 +225,8 @@ export class LmOpenAi implements INodeType {
 			extractValue: true,
 		}) as string;
 
+		const systemMessage = this.getNodeParameter('systemMessage', itemIndex, '') as string;
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			frequencyPenalty?: number;
@@ -228,7 +237,7 @@ export class LmOpenAi implements INodeType {
 			maxRetries?: number;
 			topP?: number;
 		};
-
+		this.addInputData
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
@@ -244,7 +253,7 @@ export class LmOpenAi implements INodeType {
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: logWrapper(model, this, { systemMessage }),
 		};
 	}
 }
