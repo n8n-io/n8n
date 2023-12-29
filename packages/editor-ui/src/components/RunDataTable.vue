@@ -133,10 +133,10 @@
 							<BinaryData
 								:data="data"
 								:data-value="generateBinaryPath([tableData.columns[index2]])"
-								:draggingPath="draggingPath"
-								:mappingEnabled="mappingEnabled"
-								:itemIndex="index1"
-								@displayBinaryData="displayBinaryData"
+								:dragging-path="draggingPath"
+								:mapping-enabled="mappingEnabled"
+								:item-index="index1"
+								@display-binary-data="displayBinaryData"
 							/>
 						</span>
 						<n8n-tree :node-class="$style.nodeClass" v-else :value="data">
@@ -162,9 +162,9 @@
 									<BinaryData
 										:data="value"
 										:data-value="generateBinaryPath([tableData.columns[index2], ...path])"
-										:draggingPath="draggingPath"
-										:mappingEnabled="mappingEnabled"
-										:itemIndex="index1"
+										:dragging-path="draggingPath"
+										:mapping-enabled="mappingEnabled"
+										:item-index="index1"
 										@displayBinaryData="displayBinaryData"
 									/>
 								</div>

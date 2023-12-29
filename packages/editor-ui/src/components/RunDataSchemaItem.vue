@@ -158,9 +158,9 @@ const displayBinaryData = (index: number, key: string) => {
 			<BinaryData
 				:data="reverseSchema(schema)"
 				:data-value="schema.path.slice(1)"
-				:draggingPath="draggingPath"
-				:mappingEnabled="mappingEnabled"
-				:itemIndex="0"
+				:dragging-path="draggingPath"
+				:mapping-enabled="mappingEnabled"
+				:item-index="0"
 				@displayBinaryData="displayBinaryData"
 			/>
 		</span>
