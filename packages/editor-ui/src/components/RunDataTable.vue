@@ -132,9 +132,11 @@
 						>
 							<BinaryData
 								:data="data"
-								:data-value="generatePath('', [tableData.columns[index2]])"
+								:data-value="generateBinaryPath([tableData.columns[index2]])"
 								:draggingPath="draggingPath"
 								:mappingEnabled="mappingEnabled"
+								:itemIndex="index1"
+								@displayBinaryData="displayBinaryData"
 							/>
 						</span>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
@@ -159,9 +161,11 @@
 								<div v-if="isN8nBinaryProperty(value)" :class="$style.binarySublevel">
 									<BinaryData
 										:data="value"
-										:data-value="generatePath('', [tableData.columns[index2], ...path])"
+										:data-value="generateBinaryPath([tableData.columns[index2], ...path])"
 										:draggingPath="draggingPath"
 										:mappingEnabled="mappingEnabled"
+										:itemIndex="index1"
+										@displayBinaryData="displayBinaryData"
 									/>
 								</div>
 								<TextWithHighlights
@@ -283,7 +287,6 @@ export default defineComponent({
 	},
 	methods: {
 		shorten,
-		generatePath,
 		isN8nBinaryProperty,
 		isHoveringRow(row: number): boolean {
 			if (row === this.activeRow) {
@@ -349,6 +352,9 @@ export default defineComponent({
 			const expr = this.getCellExpression(path, colIndex);
 
 			return this.hoveringPath === expr;
+		},
+		generateBinaryPath(path: Array<string | number>): string {
+			return generatePath('', path).slice(1);
 		},
 		getExpression(column: string) {
 			if (!this.node) {
@@ -549,6 +555,9 @@ export default defineComponent({
 		},
 		switchToJsonView() {
 			this.$emit('displayModeChange', 'json');
+		},
+		displayBinaryData(index: number, key: string) {
+			this.$emit('displayBinaryData', index, key);
 		},
 	},
 	watch: {

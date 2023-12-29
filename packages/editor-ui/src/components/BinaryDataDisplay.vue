@@ -21,6 +21,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { get } from 'lodash-es';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
@@ -48,27 +49,33 @@ export default defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		binaryData(): IBinaryData | null {
+			console.log('BinaryDataDisplay');
+			console.log(JSON.stringify(this.displayData, null, 2));
+			const settings = this.workflowsStore.workflowSettings;
+
 			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.displayData.node,
 				this.displayData.runIndex,
 				this.displayData.outputIndex,
+				settings.binaryMode ?? 'separate',
 			);
 
 			if (binaryData.length === 0) {
 				return null;
 			}
 
-			if (
-				this.displayData.index >= binaryData.length ||
-				binaryData[this.displayData.index][this.displayData.key] === undefined
-			) {
+			const binaryDataItem = get(binaryData[this.displayData.index], this.displayData.key);
+
+			if (this.displayData.index >= binaryData.length || binaryDataItem === undefined) {
 				return null;
 			}
 
-			const binaryDataItem: IBinaryData = binaryData[this.displayData.index][this.displayData.key];
+			if (settings.binaryMode === 'separate') {
+				return binaryDataItem;
+			}
 
-			return binaryDataItem;
+			return binaryDataItem.data as IBinaryData;
 		},
 
 		workflowRunData(): IRunData | null {

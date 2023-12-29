@@ -2,7 +2,7 @@
 	<div
 		:title="fileType"
 		data-target="mappable"
-		:data-value="mappingData.value"
+		:data-value="mappingData.path"
 		:data-name="mappingData.name"
 		:class="{
 			[$style.pill]: true,
@@ -61,7 +61,12 @@
 							<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
 						</div>
 					</template>
-					<font-awesome-icon :class="$style.infoIcon" icon="info-circle" size="sm" />
+					<font-awesome-icon
+						:class="$style.infoIcon"
+						icon="info-circle"
+						size="sm"
+						@click="displayBinaryData(itemIndex || 0, mappingData.path!)"
+					/>
 				</n8n-tooltip>
 			</span>
 		</span>
@@ -90,11 +95,20 @@ export default defineComponent({
 		draggingPath: {
 			type: String,
 		},
+		itemIndex: {
+			type: Number,
+		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		path: {
 			type: String,
+		},
+	},
+	methods: {
+		displayBinaryData(index: number, key: string) {
+			console.log('BinaryData.displayBinaryData', index, key);
+			this.$emit('displayBinaryData', index, key);
 		},
 	},
 	computed: {
@@ -123,6 +137,7 @@ export default defineComponent({
 			return {
 				value: this.dataValue,
 				name: this.fileName,
+				path: this.dataValue,
 			};
 		},
 	},

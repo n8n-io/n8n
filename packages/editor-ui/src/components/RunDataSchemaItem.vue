@@ -6,7 +6,7 @@ import { shorten } from '@/utils/typesUtils';
 import BinaryData from './BinaryData.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 type Props = {
 	schema: Schema;
@@ -20,6 +20,10 @@ type Props = {
 	node: INodeUi | null;
 	search: string;
 };
+
+const emit = defineEmits<{
+	(event: 'displayBinaryData', index: number, key: string): void;
+}>();
 
 const isSchemaN8nBinaryProperty = (data: string | Schema[]) => {
 	if (!Array.isArray(data)) {
@@ -110,6 +114,10 @@ const getIconBySchemaType = (schema: Schema): string => {
 
 	checkExhaustive(type);
 };
+
+const displayBinaryData = (index: number, key: string) => {
+	emit('displayBinaryData', index, key);
+};
 </script>
 
 <template>
@@ -146,11 +154,14 @@ const getIconBySchemaType = (schema: Schema): string => {
 			</span>
 		</div>
 		<span :class="$style.binary" v-if="isSchemaN8nBinaryProperty(schema.value)">
+			<!-- TODO: We still have to get and set the correct itemIndex -->
 			<BinaryData
 				:data="reverseSchema(schema)"
 				:data-value="schema.path.slice(1)"
 				:draggingPath="draggingPath"
 				:mappingEnabled="mappingEnabled"
+				:itemIndex="0"
+				@displayBinaryData="displayBinaryData"
 			/>
 		</span>
 		<span v-else>
@@ -173,6 +184,7 @@ const getIconBySchemaType = (schema: Schema): string => {
 						:node="node"
 						:style="{ transitionDelay: transitionDelay(i) }"
 						:search="search"
+						@displayBinaryData="displayBinaryData"
 					/>
 				</span>
 			</div>

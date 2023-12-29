@@ -27,6 +27,10 @@ const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
 });
 
+const emit = defineEmits<{
+	(event: 'displayBinaryData', index: number, key: string): void;
+}>();
+
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
 const { getSchemaForExecutionData } = useDataSchema();
@@ -65,6 +69,10 @@ const onDragEnd = (el: HTMLElement) => {
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
+
+const displayBinaryData = (index: number, key: string) => {
+	emit('displayBinaryData', index, key);
+};
 </script>
 
 <template>
@@ -95,6 +103,7 @@ const onDragEnd = (el: HTMLElement) => {
 					:distanceFromActive="distanceFromActive"
 					:node="node"
 					:search="search"
+					@displayBinaryData="displayBinaryData"
 				/>
 			</div>
 		</draggable>

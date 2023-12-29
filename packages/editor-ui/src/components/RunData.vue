@@ -396,6 +396,7 @@
 					@mounted="$emit('tableMounted', $event)"
 					@activeRowChanged="onItemHover"
 					@displayModeChange="onDisplayModeChange"
+					@displayBinaryData="displayBinaryData"
 				/>
 			</Suspense>
 
@@ -428,6 +429,7 @@
 					:runIndex="runIndex"
 					:totalRuns="maxRunIndex"
 					:search="search"
+					@displayBinaryData="displayBinaryData"
 				/>
 			</Suspense>
 
@@ -933,11 +935,20 @@ export default defineComponent({
 				return [];
 			}
 
+			const settings = this.workflowsStore.workflowSettings;
+
+			if (settings.binaryMode === 'combined') {
+				// In "combined" mode we do not display the binary selector as
+				// Binary data does get displayed inline
+				return [];
+			}
+
 			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.node.name,
 				this.runIndex,
 				this.currentOutputIndex,
+				'separate',
 			);
 			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 		},

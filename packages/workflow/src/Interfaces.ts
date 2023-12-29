@@ -1984,6 +1984,7 @@ export interface IWorkflowHooksOptionalParameters {
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+	export type IBinaryMode = 'separate' | 'combined';
 }
 
 export interface IWorkflowSettings {
@@ -1997,7 +1998,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	binaryMode?: 'separate' | 'combined';
+	binaryMode?: WorkflowSettings.IBinaryMode;
 }
 
 export interface WorkflowFEMeta {

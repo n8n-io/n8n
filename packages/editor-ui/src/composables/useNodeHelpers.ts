@@ -1,7 +1,12 @@
 import { useHistoryStore } from '@/stores/history.store';
 import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	ExpressionEvaluatorProxy,
+	type WorkflowSettings,
+} from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -579,6 +584,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
+		mode: WorkflowSettings.IBinaryMode,
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
@@ -592,6 +598,11 @@ export function useNodeHelpers() {
 		}
 
 		const inputData = getInputData(runData[node][runIndex].data!, outputIndex, connectionType);
+
+		if (mode === 'combined') {
+			// In combined mode the binary data does get saved in json
+			return inputData.map((item) => item.json as IBinaryKeyData);
+		}
 
 		const returnData: IBinaryKeyData[] = [];
 		for (let i = 0; i < inputData.length; i++) {

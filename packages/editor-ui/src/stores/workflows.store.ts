@@ -57,6 +57,7 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
+	WorkflowSettings,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
@@ -91,7 +92,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	connections: {},
 	nodes: [],
 	settings: {
-		binaryMode: 'combined',
+		binaryMode: 'combined' as WorkflowSettings.IBinaryMode,
 		executionOrder: 'v1',
 	},
 	tags: [],
