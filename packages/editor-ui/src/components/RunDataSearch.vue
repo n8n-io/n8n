@@ -91,7 +91,7 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .ioSearch {
 	margin-right: var(--spacing-s);

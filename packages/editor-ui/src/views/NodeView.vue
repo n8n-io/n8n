@@ -239,7 +239,6 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
 } from '@/constants';
-import { copyPaste } from '@/mixins/copyPaste';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 
@@ -372,6 +371,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useClipboard } from '@/composables/useClipboard';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -394,15 +394,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 	},
-	mixins: [
-		copyPaste,
-		genericHelpers,
-		moveNodeWorkflow,
-		workflowHelpers,
-		workflowRun,
-		debounceHelper,
-		pinData,
-	],
+	mixins: [genericHelpers, moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper, pinData],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -469,6 +461,7 @@ export default defineComponent({
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
+		const clipboard = useClipboard();
 
 		return {
 			locale,
@@ -476,6 +469,7 @@ export default defineComponent({
 			dataSchema,
 			nodeHelpers,
 			externalHooks,
+			clipboard,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -755,6 +749,8 @@ export default defineComponent({
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
+
+		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.startLoading();
 		const loadPromises = [
@@ -1823,7 +1819,7 @@ export default defineComponent({
 
 				const nodeData = JSON.stringify(workflowToCopy, null, 2);
 
-				this.copyToClipboard(nodeData);
+				this.clipboard.copy(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
@@ -1928,7 +1924,7 @@ export default defineComponent({
 		/**
 		 * This method gets called when data got pasted into the window
 		 */
-		async receivedCopyPasteData(plainTextData: string): Promise<void> {
+		async onClipboardPasteEvent(plainTextData: string): Promise<void> {
 			if (this.readOnlyEnv) {
 				return;
 			}
@@ -1948,17 +1944,17 @@ export default defineComponent({
 					}
 
 					const importConfirm = await this.confirm(
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.message', {
+						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
 							interpolate: { plainTextData },
 						}),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
+						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
 						{
 							type: 'warning',
 							confirmButtonText: this.$locale.baseText(
-								'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
+								'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
 							),
 							cancelButtonText: this.$locale.baseText(
-								'nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText',
+								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
 							dangerouslyUseHTMLString: true,
 						},
