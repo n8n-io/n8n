@@ -29,6 +29,8 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { WorkflowService } from './workflow.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export const EEWorkflowController = express.Router();
 
@@ -69,10 +71,14 @@ EEWorkflowController.put(
 			workflow = undefined;
 			// Allow owners/admins to share
 			if (req.user.hasGlobalScope('workflow:share')) {
-				const sharedRes = await Container.get(WorkflowService).getSharing(req.user, workflowId, {
-					allowGlobalScope: true,
-					globalScope: 'workflow:share',
-				});
+				const sharedRes = await Container.get(SharedWorkflowRepository).getSharing(
+					req.user,
+					workflowId,
+					{
+						allowGlobalScope: true,
+						globalScope: 'workflow:share',
+					},
+				);
 				workflow = sharedRes?.workflow;
 			}
 			if (!workflow) {
@@ -107,7 +113,23 @@ EEWorkflowController.put(
 			);
 
 			if (newShareeIds.length) {
-				await Container.get(EnterpriseWorkflowService).share(trx, workflow!, newShareeIds);
+				const users = await Container.get(UserRepository).getByIds(trx, shareWithIds);
+				const role = await Container.get(RoleService).findWorkflowEditorRole();
+
+				const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
+					if (user.isPending) {
+						return acc;
+					}
+					const entity: Partial<SharedWorkflow> = {
+						workflowId: workflow!.id,
+						userId: user.id,
+						roleId: role?.id,
+					};
+					acc.push(Container.get(SharedWorkflowRepository).create(entity));
+					return acc;
+				}, []);
+
+				await trx.save(newSharedWorkflows);
 			}
 		});
 
