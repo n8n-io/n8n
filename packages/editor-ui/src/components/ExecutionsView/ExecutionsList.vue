@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.container">
-		<executions-sidebar
+		<ExecutionsSidebar
 			:executions="executions"
 			:loading="loading && !executions.length"
-			:loadingMore="loadingMore"
-			:temporaryExecution="temporaryExecution"
+			:loading-more="loadingMore"
+			:temporary-execution="temporaryExecution"
 			:auto-refresh="autoRefresh"
 			@update:autoRefresh="onAutoRefreshToggle"
 			@reloadExecutions="setExecutions"
@@ -12,7 +12,7 @@
 			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
 		/>
-		<div :class="$style.content" v-if="!hidePreview">
+		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
 				@deleteCurrentExecution="onDeleteCurrentExecution"
@@ -76,10 +76,19 @@ const MAX_LOADING_ATTEMPTS = 5;
 const LOAD_MORE_PAGE_SIZE = 100;
 
 export default defineComponent({
-	name: 'executions-list',
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	name: 'ExecutionsList',
 	components: {
 		ExecutionsSidebar,
+	},
+	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -89,15 +98,6 @@ export default defineComponent({
 			temporaryExecution: null as IExecutionsSummary | null,
 			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
-		};
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	computed: {

@@ -23,6 +23,7 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
+	IWebhookData,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -30,7 +31,6 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -605,8 +605,6 @@ export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }
 
-export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
-
 // ----------------------------------
 //          community nodes
 // ----------------------------------
@@ -746,10 +744,11 @@ export abstract class SecretsProvider {
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
 
-export type RegisteredWebhook = {
+export type WebhookRegistration = {
 	sessionId?: string;
 	timeout: NodeJS.Timeout;
 	workflowEntity: IWorkflowDb;
 	workflow: Workflow;
 	destinationNode?: string;
+	webhook: IWebhookData;
 };

@@ -176,11 +176,11 @@ const displayBinaryData = (index: number, key: string) => {
 						:schema="s"
 						:level="level + 1"
 						:parent="schema"
-						:paneType="paneType"
-						:subKey="`${paneType}_${s.type}-${level}-${i}`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
+						:pane-type="paneType"
+						:sub-key="`${paneType}_${s.type}-${level}-${i}`"
+						:mapping-enabled="mappingEnabled"
+						:dragging-path="draggingPath"
+						:distance-from-active="distanceFromActive"
 						:node="node"
 						:style="{ transitionDelay: transitionDelay(i) }"
 						:search="search"
@@ -193,7 +193,7 @@ const displayBinaryData = (index: number, key: string) => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .item {
 	display: block;

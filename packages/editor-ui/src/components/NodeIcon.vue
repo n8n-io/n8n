@@ -7,9 +7,9 @@
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
-		:nodeTypeName="nodeName ?? nodeType?.displayName ?? ''"
-		:showTooltip="showTooltip"
-		:tooltipPosition="tooltipPosition"
+		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:show-tooltip="showTooltip"
+		:tooltip-position="tooltipPosition"
 		:badge="badge"
 		@click="(e) => $emit('click')"
 	></n8n-node-icon>

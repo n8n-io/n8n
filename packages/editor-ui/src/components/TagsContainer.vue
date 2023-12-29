@@ -1,12 +1,12 @@
 <template>
 	<IntersectionObserver
+		ref="tagsContainer"
 		:threshold="1.0"
-		@observed="onObserved"
 		class="tags-container"
 		:style="style"
 		:enabled="responsive"
 		:event-bus="intersectionEventBus"
-		ref="tagsContainer"
+		@observed="onObserved"
 	>
 		<span class="tags">
 			<span
@@ -16,21 +16,21 @@
 				@click="(e) => onClick(e, tag)"
 			>
 				<el-tag
+					v-if="tag.isCount"
 					:title="tag.title"
 					type="info"
 					size="small"
-					v-if="tag.isCount"
 					class="count-container"
 					:disable-transitions="true"
 				>
 					{{ tag.name }}
 				</el-tag>
 				<IntersectionObserved
+					v-else
 					:class="{ hidden: tag.hidden }"
 					:data-id="tag.id"
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
-					v-else
 				>
 					<el-tag
 						:title="tag.name"

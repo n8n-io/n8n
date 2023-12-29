@@ -3,14 +3,14 @@
 		<div
 			class="clickable headline"
 			:class="{ expanded: !isMinimized }"
-			@click="isMinimized = !isMinimized"
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
+			@click="isMinimized = !isMinimized"
 		>
 			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
-			<div class="node-webhooks" v-if="!isMinimized">
+			<div v-if="!isMinimized" class="node-webhooks">
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="24">
@@ -66,18 +66,21 @@ import { defineComponent } from 'vue';
 
 import { useToast } from '@/composables/useToast';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
-import { copyPaste } from '@/mixins/copyPaste';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
-	mixins: [copyPaste, workflowHelpers],
+	mixins: [workflowHelpers],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -128,10 +131,15 @@ export default defineComponent({
 			}
 		},
 	},
+	watch: {
+		node() {
+			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
+	},
 	methods: {
 		copyWebhookUrl(webhookData: IWebhookDescription): void {
 			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-			this.copyToClipboard(webhookUrl);
+			void this.clipboard.copy(webhookUrl);
 
 			this.showMessage({
 				title: this.baseText.copyTitle,
@@ -148,11 +156,6 @@ export default defineComponent({
 				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
 			}
 			return '';
-		},
-	},
-	watch: {
-		node() {
-			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
 		},
 	},
 });

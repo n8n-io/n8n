@@ -4,11 +4,6 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
-
-import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
 import type {
 	IExecutionResponse,
@@ -18,7 +13,6 @@ import type {
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
@@ -48,28 +42,8 @@ export class WaitTracker {
 
 	async getWaitingExecutions() {
 		this.logger.debug('Wait tracker querying database for waiting executions');
-		// Find all the executions which should be triggered in the next 70 seconds
-		const findQuery: FindManyOptions<ExecutionEntity> = {
-			select: ['id', 'waitTill'],
-			where: {
-				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
-				status: Not('crashed'),
-			},
-			order: {
-				waitTill: 'ASC',
-			},
-		};
 
-		const dbType = config.getEnv('database.type');
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
-			);
-		}
-
-		const executions = await this.executionRepository.findMultipleExecutions(findQuery);
+		const executions = await this.executionRepository.getWaitingExecutions();
 
 		if (executions.length === 0) {
 			return;

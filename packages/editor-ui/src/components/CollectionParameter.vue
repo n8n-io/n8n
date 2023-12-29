@@ -1,18 +1,18 @@
 <template>
-	<div @keydown.stop class="collection-parameter">
+	<div class="collection-parameter" @keydown.stop>
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<Suspense>
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="getProperties"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="path"
-					:hideDelete="hideDelete"
+					:hide-delete="hideDelete"
 					:indent="true"
-					:isReadOnly="isReadOnly"
+					:is-read-only="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</Suspense>
@@ -22,16 +22,16 @@
 					v-if="(parameter.options ?? []).length === 1"
 					type="tertiary"
 					block
-					@click="optionSelected((parameter.options ?? [])[0].name)"
 					:label="getPlaceholderText"
+					@click="optionSelected((parameter.options ?? [])[0].name)"
 				/>
 				<div v-else class="add-option">
 					<n8n-select
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@update:modelValue="optionSelected"
 						filterable
+						@update:modelValue="optionSelected"
 					>
 						<n8n-option
 							v-for="item in parameterOptions"
