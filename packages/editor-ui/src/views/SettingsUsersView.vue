@@ -91,7 +91,6 @@ import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/consta
 
 import type { IUser, IUserListAction } from '@/Interface';
 import { useToast } from '@/composables/useToast';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -99,12 +98,15 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
 import { ROLE } from '@/utils/userUtils';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
-	mixins: [copyPaste],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -222,7 +224,7 @@ export default defineComponent({
 		async onCopyInviteLink(userId: string) {
 			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 
 				this.showToast({
 					type: 'success',
@@ -235,7 +237,7 @@ export default defineComponent({
 			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
-				this.copyToClipboard(url.link);
+				void this.clipboard.copy(url.link);
 
 				this.showToast({
 					type: 'success',

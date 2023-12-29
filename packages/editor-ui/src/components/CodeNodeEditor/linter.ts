@@ -1,7 +1,6 @@
 import { defineComponent } from 'vue';
 import type { Diagnostic } from '@codemirror/lint';
 import { linter as createLinter } from '@codemirror/lint';
-import { jsonParseLinter } from '@codemirror/lang-json';
 import type { EditorView } from '@codemirror/view';
 import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
@@ -21,8 +20,6 @@ export const linterExtension = defineComponent({
 			switch (language) {
 				case 'javaScript':
 					return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
-				case 'json':
-					return createLinter(jsonParseLinter());
 			}
 			return undefined;
 		},
