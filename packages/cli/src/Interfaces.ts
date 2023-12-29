@@ -31,7 +31,6 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -605,8 +604,6 @@ export interface IWorkflowExecuteProcess {
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }
-
-export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
 
 // ----------------------------------
 //          community nodes

@@ -16,7 +16,6 @@ import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowService } from './workflow.service';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
@@ -196,22 +195,14 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		let relations = ['workflow', 'workflow.tags', 'role'];
+		const extraRelations = config.getEnv('workflowTagsDisabled') ? [] : ['workflow.tags'];
 
-		if (config.getEnv('workflowTagsDisabled')) {
-			relations = relations.filter((relation) => relation !== 'workflow.tags');
-		}
-
-		const shared = await Container.get(SharedWorkflowRepository).findOne({
-			relations,
-			where: whereClause({
-				user: req.user,
-				entityType: 'workflow',
-				globalScope: 'workflow:read',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
+		const shared = await Container.get(SharedWorkflowRepository).findSharing(
+			workflowId,
+			req.user,
+			'workflow:read',
+			{ extraRelations },
+		);
 
 		if (!shared) {
 			Container.get(Logger).verbose('User attempted to access a workflow without permissions', {
