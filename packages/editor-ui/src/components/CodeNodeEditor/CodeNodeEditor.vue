@@ -52,7 +52,6 @@ import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
@@ -97,10 +96,9 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 		modelValue: {
 			type: String,
@@ -177,8 +175,6 @@ export default defineComponent({
 		// eslint-disable-next-line vue/return-in-computed-property
 		languageExtensions(): [LanguageSupport, ...Extension[]] {
 			switch (this.language) {
-				case 'json':
-					return [json()];
 				case 'javaScript':
 					return [javascript(), this.autocompletionExtension('javaScript')];
 				case 'python':

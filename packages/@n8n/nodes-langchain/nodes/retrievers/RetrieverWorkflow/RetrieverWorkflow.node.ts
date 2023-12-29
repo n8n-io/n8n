@@ -117,9 +117,8 @@ export class RetrieverWorkflow implements INodeType {
 			{
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
-					editor: 'json',
 					rows: 10,
 				},
 				displayOptions: {
@@ -257,11 +256,9 @@ export class RetrieverWorkflow implements INodeType {
 							{
 								displayName: 'Value',
 								name: 'objectValue',
-								type: 'string',
+								type: 'json',
 								default: '={}',
 								typeOptions: {
-									editor: 'json',
-									editorLanguage: 'json',
 									rows: 2,
 								},
 								displayOptions: {
