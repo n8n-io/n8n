@@ -1210,14 +1210,9 @@ export class Workflow {
 	}
 
 	convertResponseData(responseData: IRunNodeResponse): IRunNodeResponse {
-		// this.settings.binaryMode = 'combined';
-
-		console.log('convertResponseData: 1');
 		if (!this.settings.binaryMode || this.settings.binaryMode === 'separate') {
-			console.log('convertResponseData: 2');
 			return responseData;
 		}
-		console.log('convertResponseData: 3');
 
 		if (responseData.data?.length) {
 			responseData.data.forEach((outputData) => {

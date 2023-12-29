@@ -986,10 +986,8 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	console.log('assertBinaryData: 1');
 	let binaryPropertyData: IBinaryData | undefined;
 	if (workflow.settings.binaryMode === 'combined') {
-		console.log('assertBinaryData: 2, combined');
 		const binaryData = get(inputData.main[inputIndex]![itemIndex]!.json, propertyName);
 		if (
 			!binaryData ||
@@ -1004,8 +1002,6 @@ export function assertBinaryData(
 
 		binaryPropertyData = binaryData.data as IBinaryData;
 	} else {
-		console.log('assertBinaryData: 3, separate');
-
 		// binaryMode: separate
 		const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
 
