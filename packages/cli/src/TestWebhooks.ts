@@ -232,16 +232,18 @@ export class TestWebhooks implements IWebhookManager {
 
 			activatedKeys.push(key);
 
-			// @ts-expect-error Additional data is not needed for the test webhook
-			// to be executed. It also has circular refs so cannot be cached.
-			delete webhook.workflowExecuteAdditionalData;
+			/**
+			 * Additional data is not needed for the test webhook to be executed.
+			 * Also this data contains circular refs that cannot be cached.
+			 */
+			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
 
 			await this.register({
 				sessionId,
 				timeout,
 				workflowEntity,
 				destinationNode,
-				webhook,
+				webhook: rest as IWebhookData,
 			});
 
 			try {
