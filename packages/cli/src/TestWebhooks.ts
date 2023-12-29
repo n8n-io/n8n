@@ -5,11 +5,11 @@ import {
 	type IWebhookData,
 	type IWorkflowExecuteAdditionalData,
 	type IHttpRequestMethods,
-	type Workflow,
 	type WorkflowActivateMode,
 	type WorkflowExecuteMode,
 	WebhookPathTakenError,
 	ApplicationError,
+	Workflow,
 } from 'n8n-workflow';
 
 import type {
@@ -103,8 +103,9 @@ export class TestWebhooks implements IWebhookManager {
 				webhookMethods: await this.getWebhookMethods(path),
 			});
 
-		const { destinationNode, sessionId, workflow, workflowEntity, timeout } =
-			await this.getRegistration(key);
+		const { destinationNode, sessionId, workflowEntity, timeout } = await this.getRegistration(key);
+
+		const workflow = this.toWorkflow(workflowEntity);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
 
@@ -177,7 +178,10 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!webhookKey) return;
 
-		const { workflow } = this.registrations[webhookKey];
+		const { workflowEntity } = this.registrations[webhookKey];
+
+		const workflow = this.toWorkflow(workflowEntity);
+
 		const webhookNode = Object.values(workflow.nodes).find(
 			({ type, parameters, typeVersion }) =>
 				parameters?.path === path &&
@@ -194,14 +198,15 @@ export class TestWebhooks implements IWebhookManager {
 	 */
 	async needsWebhook(
 		workflowEntity: IWorkflowDb,
-		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionMode: WorkflowExecuteMode,
 		activationMode: WorkflowActivateMode,
 		sessionId?: string,
 		destinationNode?: string,
 	) {
-		if (!workflow.id) throw new WorkflowMissingIdError(workflow);
+		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
+
+		const workflow = this.toWorkflow(workflowEntity);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
@@ -213,8 +218,6 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
 		}
-
-		// 1+ webhook(s) required, so activate webhook(s)
 
 		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), 2 * TIME.MINUTE);
 
@@ -229,24 +232,15 @@ export class TestWebhooks implements IWebhookManager {
 
 			activatedKeys.push(key);
 
-			// delete webhook.workflowExecuteAdditionalData;
+			// @ts-expect-error Additional data is not needed for the test webhook
+			// to be executed. It also has circular refs so cannot be cached.
+			delete webhook.workflowExecuteAdditionalData;
 
 			await this.register({
 				sessionId,
 				timeout,
-				workflow,
 				workflowEntity,
 				destinationNode,
-
-				/**
-				 * @todo Storing `webhook.workflowExecuteAdditionalData` triggers this error
-				 * from a `lodash.cloneDeep` call
-				 *
-				 * RangeError: Maximum call stack size exceeded
-				 * at baseClone (/Users/ivov/Development/n8n/node_modules/.pnpm/lodash.clonedeep@4.5.0/node_modules/lodash.clonedeep/index.js:841:19)
-				 *
-				 * @ref https://github.com/node-cache-manager/node-cache-manager/blob/847507676807481cbd7f11fc48f20af012171cf1/src/stores/memory.ts#L8
-				 */
 				webhook,
 			});
 
@@ -270,7 +264,9 @@ export class TestWebhooks implements IWebhookManager {
 		const allWebhookKeys = await this.getAllKeys();
 
 		for (const key of allWebhookKeys) {
-			const { sessionId, timeout, workflow, workflowEntity } = await this.getRegistration(key);
+			const { sessionId, workflowEntity, timeout } = await this.getRegistration(key);
+
+			const workflow = this.toWorkflow(workflowEntity);
 
 			if (workflowEntity.id !== workflowId) continue;
 
@@ -389,11 +385,7 @@ export class TestWebhooks implements IWebhookManager {
 	async register(registration: WebhookRegistration) {
 		const key = this.toWebhookKey(registration.webhook);
 
-		try {
-			await this.cacheService.set(key, registration);
-		} catch (e) {
-			console.log('e', e);
-		}
+		await this.cacheService.set(key, registration);
 	}
 
 	async isRegistered(key: string) {
@@ -452,5 +444,18 @@ export class TestWebhooks implements IWebhookManager {
 		const testWebhookKeys = await this.getAllKeys();
 
 		await this.cacheService.deleteMany(testWebhookKeys);
+	}
+
+	toWorkflow(workflowEntity: IWorkflowDb) {
+		return new Workflow({
+			id: workflowEntity.id,
+			name: workflowEntity.name,
+			nodes: workflowEntity.nodes,
+			connections: workflowEntity.connections,
+			active: false,
+			nodeTypes: this.nodeTypes,
+			staticData: undefined,
+			settings: workflowEntity.settings,
+		});
 	}
 }

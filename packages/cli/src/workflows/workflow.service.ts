@@ -345,22 +345,10 @@ export class WorkflowService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const workflow = new Workflow({
-				id: workflowData.id?.toString(),
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: false,
-				nodeTypes: this.nodeTypes,
-				staticData: undefined,
-				settings: workflowData.settings,
-			});
-
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
-				workflow,
 				additionalData,
 				EXECUTION_MODE,
 				ACTIVATION_MODE,

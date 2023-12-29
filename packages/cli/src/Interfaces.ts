@@ -751,7 +751,6 @@ export type WebhookRegistration = {
 	sessionId?: string;
 	timeout: NodeJS.Timeout;
 	workflowEntity: IWorkflowDb;
-	workflow: Workflow;
 	destinationNode?: string;
 	webhook: IWebhookData;
 };
