@@ -15,7 +15,7 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
-	updateRole,
+	updateGlobalRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -379,9 +379,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			await confirmEmail(useRootStore().getRestApiContext);
 		},
 
-		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+		async updateGlobalRole({ id, roleName }: { id: string; roleName: Exclude<IRole, 'owner'> }) {
 			const rootStore = useRootStore();
-			await updateRole(rootStore.getRestApiContext, { id, role });
+			await updateGlobalRole(rootStore.getRestApiContext, { id, roleName });
 			await this.fetchUsers();
 		},
 	},

@@ -39,12 +39,10 @@ export class UsersController {
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
-			MISSING_NEW_ROLE_KEY: 'Expected `newRole` to exist',
-			MISSING_NEW_ROLE_VALUE: 'Expected `newRole` to have `name` and `scope`',
+			INVALID_PAYLOAD: 'Invalid role in request body',
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
-			NO_USER_TO_OWNER: 'Cannot promote user to global owner',
 			NO_ADMIN_IF_UNLICENSED: 'Admin role is not available without a license',
 		},
 	} as const;
@@ -329,73 +327,47 @@ export class UsersController {
 
 	@Patch('/:id/role')
 	@RequireGlobalScope('user:changeRole')
-	async changeRole(req: UserRequest.ChangeRole) {
+	async changeGlobalRole(req: UserRequest.ChangeRole) {
 		const {
-			MISSING_NEW_ROLE_KEY,
-			MISSING_NEW_ROLE_VALUE,
+			INVALID_PAYLOAD,
 			NO_ADMIN_ON_OWNER,
-			NO_USER_TO_OWNER,
 			NO_USER,
 			NO_OWNER_ON_OWNER,
 			NO_ADMIN_IF_UNLICENSED,
 		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const { newRole } = req.body;
-
-		if (!newRole) {
-			throw new BadRequestError(MISSING_NEW_ROLE_KEY);
+		const { roleName: newRole } = req.body;
+		if (!newRole || !['member', 'admin'].includes(newRole)) {
+			throw new BadRequestError(INVALID_PAYLOAD);
 		}
 
-		if (!newRole.name || !newRole.scope) {
-			throw new BadRequestError(MISSING_NEW_ROLE_VALUE);
-		}
-
-		if (newRole.scope === 'global' && newRole.name === 'owner') {
-			throw new UnauthorizedError(NO_USER_TO_OWNER);
+		if (!this.license.isAdvancedPermissionsLicensed()) {
+			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
 		}
 
 		const targetUser = await this.userService.findOne({
 			where: { id: req.params.id },
 		});
-
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (
-			newRole.scope === 'global' &&
-			newRole.name === 'admin' &&
-			!this.license.isAdvancedPermissionsLicensed()
-		) {
-			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
-		}
-
-		if (
-			req.user.globalRole.scope === 'global' &&
-			req.user.globalRole.name === 'admin' &&
-			targetUser.globalRole.scope === 'global' &&
-			targetUser.globalRole.name === 'owner'
-		) {
+		if (req.user.globalRole.name === 'admin' && targetUser.globalRole.name === 'owner') {
 			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (
-			req.user.globalRole.scope === 'global' &&
-			req.user.globalRole.name === 'owner' &&
-			targetUser.globalRole.scope === 'global' &&
-			targetUser.globalRole.name === 'owner'
-		) {
+		if (req.user.globalRole.name === 'owner' && targetUser.globalRole.name === 'owner') {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		const roleToSet = await this.roleService.findCached(newRole.scope, newRole.name);
+		const roleToSet = await this.roleService.findCached('global', newRole);
 
-		await this.userService.update(targetUser.id, { globalRole: roleToSet });
+		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
 
 		void this.internalHooks.onUserRoleChange({
 			user: req.user,
 			target_user_id: targetUser.id,
-			target_user_new_role: [newRole.scope, newRole.name].join(' '),
+			target_user_new_role: ['global', newRole].join(' '),
 			public_api: false,
 		});
 

@@ -280,8 +280,8 @@ export default defineComponent({
 		goToUpgradeAdvancedPermissions() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
-		async onRoleChange(user: IUser, name: IRole) {
-			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });
+		async onRoleChange(user: IUser, roleName: Exclude<IRole, 'owner'>) {
+			await this.usersStore.updateGlobalRole({ id: user.id, roleName });
 		},
 	},
 });

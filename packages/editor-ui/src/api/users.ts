@@ -146,9 +146,9 @@ export async function submitPersonalizationSurvey(
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
 }
 
-export async function updateRole(
+export async function updateGlobalRole(
 	context: IRestApiContext,
-	{ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } },
+	{ id, roleName }: { id: string; roleName: Exclude<IRole, 'owner'> },
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRole: role });
+	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { roleName });
 }

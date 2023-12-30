@@ -361,15 +361,8 @@ describe('PATCH /users/:id/role', () => {
 	let memberAgent: SuperAgentTest;
 	let authlessAgent: SuperAgentTest;
 
-	const {
-		MISSING_NEW_ROLE_KEY,
-		MISSING_NEW_ROLE_VALUE,
-		NO_ADMIN_ON_OWNER,
-		NO_USER_TO_OWNER,
-		NO_USER,
-		NO_OWNER_ON_OWNER,
-		NO_ADMIN_IF_UNLICENSED,
-	} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+	const { INVALID_PAYLOAD, NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, NO_ADMIN_IF_UNLICENSED } =
+		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 	const UNAUTHORIZED = 'Unauthorized';
 
@@ -393,7 +386,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('unauthenticated user', () => {
 		test('should receive 401', async () => {
 			const response = await authlessAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(401);
@@ -403,7 +396,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('member', () => {
 		test('should fail to demote owner to member', async () => {
 			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -412,7 +405,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to admin', async () => {
 			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -421,7 +414,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote admin to member', async () => {
 			const response = await memberAgent.patch(`/users/${admin.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -430,7 +423,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote other member to owner', async () => {
 			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
+				roleName: 'owner',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -439,7 +432,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote other member to admin', async () => {
 			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -448,7 +441,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote self to admin', async () => {
 			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -457,7 +450,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote self to owner', async () => {
 			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
+				roleName: 'owner',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -470,21 +463,21 @@ describe('PATCH /users/:id/role', () => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({});
 
 			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(MISSING_NEW_ROLE_KEY);
+			expect(response.body.message).toBe(INVALID_PAYLOAD);
 
 			const _response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRole: {},
+				roleName: 'owner',
 			});
 
 			expect(_response.statusCode).toBe(400);
-			expect(_response.body.message).toBe(MISSING_NEW_ROLE_VALUE);
+			expect(_response.body.message).toBe(INVALID_PAYLOAD);
 		});
 
 		test('should receive 404 on unknown target user', async () => {
 			const response = await adminAgent
 				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
 				.send({
-					newRole: { scope: 'global', name: 'member' },
+					roleName: 'member',
 				});
 
 			expect(response.statusCode).toBe(404);
@@ -493,7 +486,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to admin', async () => {
 			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -502,36 +495,18 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to member', async () => {
 			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
 			expect(response.body.message).toBe(NO_ADMIN_ON_OWNER);
 		});
 
-		test('should fail to promote member to owner', async () => {
-			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_USER_TO_OWNER);
-		});
-
-		test('should fail to promote admin to owner', async () => {
-			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_USER_TO_OWNER);
-		});
-
 		test('should fail to promote member to admin if not licensed', async () => {
 			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -540,7 +515,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote admin to member', async () => {
 			const response = await adminAgent.patch(`/users/${otherAdmin.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -559,7 +534,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote self to member', async () => {
 			const response = await adminAgent.patch(`/users/${admin.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -578,7 +553,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to promote member to admin if licensed', async () => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -599,7 +574,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('owner', () => {
 		test('should fail to demote self to admin', async () => {
 			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -608,36 +583,18 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote self to member', async () => {
 			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
 			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
 		});
 
-		test('should fail to promote admin to owner', async () => {
-			const response = await ownerAgent.patch(`/users/${admin.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_USER_TO_OWNER);
-		});
-
-		test('should fail to promote member to owner', async () => {
-			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'owner' },
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_USER_TO_OWNER);
-		});
-
 		test('should fail to promote member to admin if not licensed', async () => {
 			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -646,7 +603,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to promote member to admin if licensed', async () => {
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
-				newRole: { scope: 'global', name: 'admin' },
+				roleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -665,7 +622,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote admin to member', async () => {
 			const response = await ownerAgent.patch(`/users/${admin.id}/role`).send({
-				newRole: { scope: 'global', name: 'member' },
+				roleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);
