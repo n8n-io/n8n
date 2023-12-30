@@ -85,6 +85,7 @@
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/CrowdStrikeOAuth2Api.credentials.js",
       "dist/credentials/CrowdDevApi.credentials.js",
+      "dist/credentials/Crypto.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",
