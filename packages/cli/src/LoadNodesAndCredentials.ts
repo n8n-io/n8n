@@ -3,7 +3,7 @@ import { Container, Service } from 'typedi';
 import path from 'path';
 import fsPromises from 'fs/promises';
 
-import type { DirectoryLoader, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	InstanceSettings,
@@ -250,7 +250,7 @@ export class LoadNodesAndCredentials {
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
 	private async runDirectoryLoader<T extends DirectoryLoader>(
-		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);

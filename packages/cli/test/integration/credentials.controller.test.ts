@@ -1,4 +1,4 @@
-import type { Credentials } from '@/requests';
+import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils/';
@@ -21,7 +21,7 @@ beforeEach(async () => {
 	member = await createMember();
 });
 
-type GetAllResponse = { body: { data: Credentials.WithOwnedByAndSharedWith[] } };
+type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
 
 describe('GET /credentials', () => {
 	describe('should return', () => {
@@ -278,7 +278,7 @@ describe('GET /credentials', () => {
 	});
 });
 
-function validateCredential(credential: Credentials.WithOwnedByAndSharedWith) {
+function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');

@@ -2,8 +2,12 @@ import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
 import { getGlobalMemberRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
+	mockInstance(ActiveWorkflowRunner);
+
 	const testServer = utils.setupTestServer({
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
 	});

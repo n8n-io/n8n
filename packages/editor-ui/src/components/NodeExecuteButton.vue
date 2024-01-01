@@ -13,7 +13,7 @@
 					:type="type"
 					:size="size"
 					:icon="isFormTriggerNode && 'flask'"
-					:transparentBackground="transparent"
+					:transparent-background="transparent"
 					@click="onClick"
 				/>
 			</div>
@@ -42,8 +42,8 @@ import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
-	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
+	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,

@@ -1,6 +1,4 @@
 import validator from 'validator';
-import { In } from 'typeorm';
-import { Service } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -26,8 +24,8 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { ApplicationError } from 'n8n-workflow';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Service()
 @RestController()
 export class AuthController {
 	constructor(
@@ -36,6 +34,7 @@ export class AuthController {
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
+		private readonly userRepository: UserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -188,10 +187,8 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
+
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',

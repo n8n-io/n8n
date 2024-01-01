@@ -1,6 +1,5 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import dateformat from 'dateformat';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -47,14 +46,6 @@ export const genericHelpers = defineComponent({
 			const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
 
 			return `${minutesPassed}:${secondsLeft}${this.$locale.baseText('genericHelpers.minShort')}`;
-		},
-		convertToDisplayDate(fullDate: Date | string | number): { date: string; time: string } {
-			const mask = `d mmm${
-				new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
-			}#HH:MM:ss`;
-			const formattedDate = dateformat(fullDate, mask);
-			const [date, time] = formattedDate.split('#');
-			return { date, time };
 		},
 
 		/**

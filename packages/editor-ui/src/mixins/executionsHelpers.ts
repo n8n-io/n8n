@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
 import { genericHelpers } from './genericHelpers';
 import type { IExecutionsSummary } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 
 export interface IExecutionUIData {
 	name: string;
@@ -72,7 +73,7 @@ export const executionHelpers = defineComponent({
 			return status;
 		},
 		formatDate(fullDate: Date | string | number) {
-			const { date, time } = this.convertToDisplayDate(fullDate);
+			const { date, time } = convertToDisplayDateComponents(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 	},

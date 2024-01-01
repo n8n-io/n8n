@@ -14,14 +14,13 @@ import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
+import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
-import { InternalHooks } from '@/InternalHooks';
 import { LicenseMocker } from '../license';
-import { PasswordUtility } from '@/services/password.utility';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -76,7 +75,7 @@ export const setupTestServer = ({
 	app.use(cookieParser());
 
 	// Mock all telemetry and logging
-	const logger = mockInstance(Logger);
+	mockInstance(Logger);
 	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
 
@@ -140,12 +139,12 @@ export const setupTestServer = ({
 						const { VariablesController } = await import(
 							'@/environments/variables/variables.controller.ee'
 						);
-						registerController(app, config, Container.get(VariablesController));
+						registerController(app, VariablesController);
 						break;
 
 					case 'license':
 						const { LicenseController } = await import('@/license/license.controller');
-						registerController(app, config, Container.get(LicenseController));
+						registerController(app, LicenseController);
 						break;
 
 					case 'metrics':
@@ -156,166 +155,108 @@ export const setupTestServer = ({
 					case 'eventBus':
 						const { EventBusController } = await import('@/eventbus/eventBus.controller');
 						const { EventBusControllerEE } = await import('@/eventbus/eventBus.controller.ee');
-						registerController(app, config, new EventBusController());
-						registerController(app, config, new EventBusControllerEE());
+						registerController(app, EventBusController);
+						registerController(app, EventBusControllerEE);
 						break;
 
 					case 'auth':
 						const { AuthController } = await import('@/controllers/auth.controller');
-						registerController(app, config, Container.get(AuthController));
+						registerController(app, AuthController);
 						break;
 
 					case 'mfa':
 						const { MFAController } = await import('@/controllers/mfa.controller');
-						registerController(app, config, Container.get(MFAController));
+						registerController(app, MFAController);
 						break;
 
 					case 'ldap':
-						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { handleLdapInit } = await import('@/Ldap/helpers');
 						const { LdapController } = await import('@/controllers/ldap.controller');
 						testServer.license.enable('feat:ldap');
 						await handleLdapInit();
-						const { service, sync } = LdapManager.getInstance();
-						registerController(
-							app,
-							config,
-							new LdapController(service, sync, Container.get(InternalHooks)),
-						);
+						registerController(app, LdapController);
 						break;
 
 					case 'saml':
 						const { setSamlLoginEnabled } = await import('@/sso/saml/samlHelpers');
 						const { SamlController } = await import('@/sso/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
-						registerController(app, config, Container.get(SamlController));
+						registerController(app, SamlController);
 						break;
 
 					case 'sourceControl':
 						const { SourceControlController } = await import(
 							'@/environments/sourceControl/sourceControl.controller.ee'
 						);
-						registerController(app, config, Container.get(SourceControlController));
+						registerController(app, SourceControlController);
 						break;
 
 					case 'community-packages':
 						const { CommunityPackagesController } = await import(
 							'@/controllers/communityPackages.controller'
 						);
-						registerController(app, config, Container.get(CommunityPackagesController));
+						registerController(app, CommunityPackagesController);
 						break;
 
 					case 'me':
 						const { MeController } = await import('@/controllers/me.controller');
-						registerController(app, config, Container.get(MeController));
+						registerController(app, MeController);
 						break;
 
 					case 'passwordReset':
 						const { PasswordResetController } = await import(
 							'@/controllers/passwordReset.controller'
 						);
-						registerController(app, config, Container.get(PasswordResetController));
+						registerController(app, PasswordResetController);
 						break;
 
 					case 'owner':
-						const { UserService } = await import('@/services/user.service');
-						const { SettingsRepository } = await import('@db/repositories/settings.repository');
 						const { OwnerController } = await import('@/controllers/owner.controller');
-						registerController(
-							app,
-							config,
-							new OwnerController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(SettingsRepository),
-								Container.get(UserService),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, OwnerController);
 						break;
 
 					case 'users':
-						const { SharedCredentialsRepository } = await import(
-							'@db/repositories/sharedCredentials.repository'
-						);
-						const { SharedWorkflowRepository } = await import(
-							'@db/repositories/sharedWorkflow.repository'
-						);
-						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-						const { UserService: US } = await import('@/services/user.service');
-						const { ExternalHooks: EH } = await import('@/ExternalHooks');
-						const { RoleService: RS } = await import('@/services/role.service');
 						const { UsersController } = await import('@/controllers/users.controller');
-						registerController(
-							app,
-							config,
-							new UsersController(
-								logger,
-								Container.get(EH),
-								Container.get(InternalHooks),
-								Container.get(SharedCredentialsRepository),
-								Container.get(SharedWorkflowRepository),
-								Container.get(ActiveWorkflowRunner),
-								Container.get(RS),
-								Container.get(US),
-								Container.get(License),
-							),
-						);
+						registerController(app, UsersController);
 						break;
 
 					case 'invitations':
 						const { InvitationController } = await import('@/controllers/invitation.controller');
-						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
-						const { UserService: USE } = await import('@/services/user.service');
-
-						registerController(
-							app,
-							config,
-							new InvitationController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(EHS),
-								Container.get(USE),
-								Container.get(License),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, InvitationController);
 						break;
 
 					case 'tags':
 						const { TagsController } = await import('@/controllers/tags.controller');
-						registerController(app, config, Container.get(TagsController));
+						registerController(app, TagsController);
 						break;
 
 					case 'externalSecrets':
 						const { ExternalSecretsController } = await import(
 							'@/ExternalSecrets/ExternalSecrets.controller.ee'
 						);
-						registerController(app, config, Container.get(ExternalSecretsController));
+						registerController(app, ExternalSecretsController);
 						break;
 
 					case 'workflowHistory':
 						const { WorkflowHistoryController } = await import(
 							'@/workflows/workflowHistory/workflowHistory.controller.ee'
 						);
-						registerController(app, config, Container.get(WorkflowHistoryController));
+						registerController(app, WorkflowHistoryController);
 						break;
 
 					case 'binaryData':
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
-						registerController(app, config, Container.get(BinaryDataController));
+						registerController(app, BinaryDataController);
 						break;
 
 					case 'role':
 						const { RoleController } = await import('@/controllers/role.controller');
-						registerController(app, config, Container.get(RoleController));
+						registerController(app, RoleController);
 						break;
 
 					case 'debug':
 						const { DebugController } = await import('@/controllers/debug.controller');
-						registerController(app, config, Container.get(DebugController));
+						registerController(app, DebugController);
 						break;
 				}
 			}
