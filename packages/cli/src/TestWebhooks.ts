@@ -151,7 +151,8 @@ export class TestWebhooks implements IWebhookManager {
 
 			// Delete webhook also if an error is thrown
 			if (timeout) clearTimeout(timeout);
-			await this.deregister(key);
+
+			await this.deregisterAll();
 
 			await this.deactivateWebhooks(workflow);
 		});
@@ -439,7 +440,7 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async deregister(key: string) {
-		return this.cacheService.delete(key);
+		await this.cacheService.delete(key);
 	}
 
 	async deregisterAll() {

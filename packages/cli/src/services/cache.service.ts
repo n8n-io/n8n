@@ -204,7 +204,7 @@ export class CacheService extends EventEmitter {
 
 			/**
 			 * `lodash.cloneDeep` inside `node-cache-manager` throws this error
-			 * when setting any object as value in the cache. Retrieval
+			 * when setting _any_ object as value in the cache. Retrieval
 			 * of the cached object works fine though.
 			 */
 			if (error.message === 'Maximum call stack size exceeded') return;
