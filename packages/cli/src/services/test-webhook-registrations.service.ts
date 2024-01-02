@@ -14,6 +14,8 @@ export type TestWebhookRegistration = {
 export class TestWebhookRegistrationsService {
 	constructor(private readonly cacheService: CacheService) {}
 
+	private readonly cacheKey = 'test-webhook';
+
 	async register(registration: TestWebhookRegistration) {
 		const key = this.toKey(registration.webhook);
 
@@ -48,9 +50,12 @@ export class TestWebhookRegistrationsService {
 	async getAllKeys() {
 		const keys = await this.cacheService.keys();
 
+		const CACHE_PREFIX = 'n8n:cache';
+		const FULL_CACHE_KEY = `${CACHE_PREFIX}:${this.cacheKey}`;
+
 		return keys
-			.filter((key) => key.startsWith('n8n:cache:test-webhook'))
-			.map((key) => key.slice('n8n:cache:'.length));
+			.filter((key) => key.startsWith(FULL_CACHE_KEY))
+			.map((key) => key.slice(`${CACHE_PREFIX}:`.length));
 	}
 
 	async getAllRegistrations() {
@@ -82,7 +87,7 @@ export class TestWebhookRegistrationsService {
 	toKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {
 		const { webhookId, httpMethod, path: webhookPath } = webhook;
 
-		if (!webhookId) return `test-webhook:${httpMethod}|${webhookPath}`;
+		if (!webhookId) return `${this.cacheKey}:${httpMethod}|${webhookPath}`;
 
 		let path = webhookPath;
 
@@ -92,6 +97,6 @@ export class TestWebhookRegistrationsService {
 			path = path.slice(cutFromIndex);
 		}
 
-		return `test-webhook:${httpMethod}|${webhookId}|${path.split('/').length}`;
+		return `${this.cacheKey}:${httpMethod}|${webhookId}|${path.split('/').length}`;
 	}
 }
