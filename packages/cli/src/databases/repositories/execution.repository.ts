@@ -1,5 +1,14 @@
 import { Service } from 'typedi';
-import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Not,
+	Repository,
+} from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -178,17 +187,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
 	): Promise<IExecutionFlattedDb | IExecutionResponse | IExecutionBase | undefined> {
-		const whereClause: FindOneOptions<ExecutionEntity> = {
+		const findOptions: FindOneOptions<ExecutionEntity> = {
 			where: {
 				id,
 				...options?.where,
 			},
 		};
 		if (options?.includeData) {
-			whereClause.relations = ['executionData'];
+			findOptions.relations = ['executionData'];
 		}
 
-		const execution = await this.findOne(whereClause);
+		const execution = await this.findOne(findOptions);
 
 		if (!execution) {
 			return undefined;
@@ -424,5 +433,111 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const batch = executionIds.splice(0, this.hardDeletionBatchSize);
 			await this.delete(batch);
 		} while (executionIds.length > 0);
+	}
+
+	async getIdsSince(date: Date) {
+		return this.find({
+			select: ['id'],
+			where: {
+				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+			},
+		}).then((executions) => executions.map(({ id }) => id));
+	}
+
+	async softDeletePrunableExecutions() {
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+
+		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
+		const date = new Date();
+		date.setHours(date.getHours() - maxAge);
+
+		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
+			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
+		];
+
+		if (maxCount > 0) {
+			const executions = await this.find({
+				select: ['id'],
+				skip: maxCount,
+				take: 1,
+				order: { id: 'DESC' },
+			});
+
+			if (executions[0]) {
+				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+			}
+		}
+
+		const [timeBasedWhere, countBasedWhere] = toPrune;
+
+		return this.createQueryBuilder()
+			.update(ExecutionEntity)
+			.set({ deletedAt: new Date() })
+			.where({
+				deletedAt: IsNull(),
+				// Only mark executions as deleted if they are in an end state
+				status: Not(In(['new', 'running', 'waiting'])),
+			})
+			.andWhere(
+				new Brackets((qb) =>
+					countBasedWhere
+						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
+						: qb.where(timeBasedWhere),
+				),
+			)
+			.execute();
+	}
+
+	async hardDeleteSoftDeletedExecutions() {
+		const date = new Date();
+		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+
+		const workflowIdsAndExecutionIds = (
+			await this.find({
+				select: ['workflowId', 'id'],
+				where: {
+					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				},
+				take: this.hardDeletionBatchSize,
+
+				/**
+				 * @important This ensures soft-deleted executions are included,
+				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
+				 */
+				withDeleted: true,
+			})
+		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
+
+		return workflowIdsAndExecutionIds;
+	}
+
+	async deleteByIds(executionIds: string[]) {
+		return this.delete({ id: In(executionIds) });
+	}
+
+	async getWaitingExecutions() {
+		// Find all the executions which should be triggered in the next 70 seconds
+		const waitTill = new Date(Date.now() + 70000);
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: LessThanOrEqual(waitTill),
+			status: Not('crashed'),
+		};
+
+		const dbType = config.getEnv('database.type');
+		if (dbType === 'sqlite') {
+			// This is needed because of issue in TypeORM <> SQLite:
+			// https://github.com/typeorm/typeorm/issues/2286
+			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
+		}
+
+		return this.findMultipleExecutions({
+			select: ['id', 'waitTill'],
+			where,
+			order: {
+				waitTill: 'ASC',
+			},
+		});
 	}
 }

@@ -9,14 +9,17 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { mock } from 'jest-mock-extended';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let workflowService: WorkflowService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
+let multiMainSetup: MultiMainSetup;
 
 beforeAll(async () => {
 	await testDb.init();
 
 	activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+	multiMainSetup = mockInstance(MultiMainSetup);
 	mockInstance(Telemetry);
 
 	workflowService = new WorkflowService(
@@ -29,7 +32,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		multiMainSetup,
 		mock(),
 		mock(),
 		mock(),
@@ -81,5 +84,28 @@ describe('update()', () => {
 		expect(removedWorkflowId).toBe(workflow.id);
 
 		expect(addSpy).not.toHaveBeenCalled();
+	});
+
+	test('should broadcast active workflow state change if state changed', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: true }, owner);
+
+		const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowActiveStateChanged');
+
+		workflow.active = false;
+		await workflowService.update(owner, workflow, workflow.id);
+
+		expect(broadcastSpy).toHaveBeenCalledTimes(1);
+	});
+
+	test('should not broadcast active workflow state change if state did not change', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: true }, owner);
+
+		const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowActiveStateChanged');
+
+		await workflowService.update(owner, workflow, workflow.id);
+
+		expect(broadcastSpy).not.toHaveBeenCalled();
 	});
 });

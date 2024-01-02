@@ -2,13 +2,13 @@
 	<Modal
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="true"
 	>
 		<template #content>
@@ -109,12 +109,12 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								v-model="workflowSettings.callerIds"
-								@update:modelValue="onCallerIdsInput"
 								data-test-id="workflow-caller-policy-workflow-ids"
+								@update:modelValue="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -279,10 +279,10 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:modelValue="workflowSettings.executionTimeout > -1"
-								@update:modelValue="toggleTimeout"
+								:model-value="workflowSettings.executionTimeout > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
+								@update:modelValue="toggleTimeout"
 							></el-switch>
 						</div>
 					</el-col>
@@ -304,9 +304,9 @@
 						<el-col :span="4">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.hours"
-								@update:modelValue="(value) => setTimeout('hours', value)"
+								:model-value="timeoutHMS.hours"
 								:min="0"
+								@update:modelValue="(value) => setTimeout('hours', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -314,7 +314,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.minutes"
+								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('minutes', value)"
@@ -325,7 +325,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.seconds"
+								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('seconds', value)"
@@ -386,10 +386,10 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
-	mixins: [genericHelpers],
 	components: {
 		Modal,
 	},
+	mixins: [genericHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 

@@ -35,7 +35,7 @@ export class WorkflowsPage extends BasePage {
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
 		suggestedTemplatesPageContainer: () => cy.getByTestId('suggested-templates-page-container'),
-		suggestedTemplatesCards: () => cy.getByTestId('templates-info-card').filter(':visible'),
+		suggestedTemplatesCards: () => cy.get('.agile__slides--regular [data-test-id=templates-info-card]'),
 		suggestedTemplatesNewWorkflowButton: () => cy.getByTestId('suggested-templates-new-workflow-button'),
 		suggestedTemplatesSectionContainer: () => cy.getByTestId('suggested-templates-section-container'),
 		suggestedTemplatesPreviewModal: () => cy.getByTestId('suggested-templates-preview-modal'),
