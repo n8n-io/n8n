@@ -79,7 +79,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findWithPassword(email);
+		const user = await this.userRepository.findNonShellUser(email);
 
 		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(

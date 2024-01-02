@@ -37,7 +37,7 @@ export class UserRepository extends Repository<User> {
 		return this.delete({ id: In(userIds) });
 	}
 
-	async findWithPassword(email: string) {
+	async findNonShellUser(email: string) {
 		return this.findOne({
 			where: {
 				email,
