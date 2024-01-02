@@ -7,21 +7,25 @@
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
 				<el-checkbox
-					:label="$locale.baseText('templates.allCategories')"
 					:model-value="allSelected"
 					@update:modelValue="(value) => resetCategories(value)"
-				/>
+				>
+					{{ $locale.baseText('templates.allCategories') }} <n8n-tag :text="String(totalCount)" />
+				</el-checkbox>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, expandLimit) : sortedCategories"
-				:key="category.id"
+				v-for="(category, index) in collapsed
+					? sortedCategories.slice(0, expandLimit)
+					: sortedCategories"
+				:key="index"
 				:class="$style.item"
 			>
 				<el-checkbox
-					:label="category.name"
-					:model-value="isSelected(category.id)"
+					:model-value="isSelected(category.name)"
 					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
-				/>
+				>
+					{{ category.name }} <n8n-tag :text="String(category.result_count)" />
+				</el-checkbox>
 			</li>
 		</ul>
 		<div
@@ -39,7 +43,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import type { ITemplatesCategory } from '@/Interface';
+import type { TemplateCategoryFilter } from '@/Interface';
+import type { PropType } from 'vue';
 
 export default defineComponent({
 	name: 'TemplateFilters',
@@ -50,7 +55,8 @@ export default defineComponent({
 			default: false,
 		},
 		categories: {
-			type: Array,
+			type: Array as PropType<TemplateCategoryFilter[]>,
+			default: [],
 		},
 		expandLimit: {
 			type: Number,
@@ -61,12 +67,17 @@ export default defineComponent({
 		},
 		selected: {
 			type: Array,
+			default: [],
+		},
+		totalCount: {
+			type: Number,
+			default: 0,
 		},
 	},
 	data() {
 		return {
 			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
+			sortedCategories: [] as TemplateCategoryFilter[],
 		};
 	},
 	computed: {
@@ -76,7 +87,7 @@ export default defineComponent({
 	},
 	watch: {
 		categories: {
-			handler(categories: ITemplatesCategory[]) {
+			handler(categories: TemplateCategoryFilter[]) {
 				if (!this.sortOnPopulate) {
 					this.sortedCategories = categories;
 				} else {
@@ -93,7 +104,7 @@ export default defineComponent({
 		collapseAction() {
 			this.collapsed = false;
 		},
-		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
+		handleCheckboxChanged(value: boolean, selectedCategory: TemplateCategoryFilter) {
 			this.$emit(value ? 'select' : 'clear', selectedCategory.id);
 		},
 		isSelected(categoryId: string) {

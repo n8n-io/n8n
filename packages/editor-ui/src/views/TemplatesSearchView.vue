@@ -25,8 +25,9 @@
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
 						:sort-on-populate="areCategoriesPrepopulated"
-						:loading="loadingCategories"
+						:loading="loadingWorkflows"
 						:selected="categories"
+						:total-count="totalWorkflows"
 						@clear="onCategoryUnselected"
 						@clearAll="onCategoriesCleared"
 						@select="onCategorySelected"
@@ -129,7 +130,6 @@ export default defineComponent({
 			areCategoriesPrepopulated: false,
 			categories: [] as number[],
 			loading: true,
-			loadingCategories: true,
 			loadingCollections: true,
 			loadingWorkflows: true,
 			search: '',
@@ -190,7 +190,6 @@ export default defineComponent({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
-		void this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();
 
@@ -331,12 +330,6 @@ export default defineComponent({
 			} finally {
 				this.loadingWorkflows = false;
 			}
-		},
-		async loadCategories() {
-			try {
-				await this.templatesStore.getCategories();
-			} catch (e) {}
-			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {

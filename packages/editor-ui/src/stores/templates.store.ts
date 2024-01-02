@@ -10,6 +10,8 @@ import type {
 	ITemplatesWorkflow,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
+	TemplateCategoryFilter,
+	TemplateSearchFacet,
 } from '@/Interface';
 import { useSettingsStore } from './settings.store';
 import {
@@ -30,7 +32,7 @@ function getSearchKey(query: ITemplatesQuery): string {
 
 export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 	state: (): ITemplateState => ({
-		categories: {},
+		categories: [],
 		collections: {},
 		workflows: {},
 		collectionSearches: {},
@@ -39,10 +41,8 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		previousSessionId: '',
 	}),
 	getters: {
-		allCategories(): ITemplatesCategory[] {
-			return Object.values(this.categories).sort((a: ITemplatesCategory, b: ITemplatesCategory) =>
-				a.name > b.name ? 1 : -1,
-			);
+		allCategories(): TemplateCategoryFilter[] {
+			return this.categories;
 		},
 		getTemplateById() {
 			return (id: string): null | ITemplatesWorkflow => this.workflows[id];
@@ -109,14 +109,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 	},
 	actions: {
-		addCategories(categories: ITemplatesCategory[]): void {
-			categories.forEach((category: ITemplatesCategory) => {
-				this.categories = {
-					...this.categories,
-					[category.id]: category,
-				};
-			});
-		},
 		addCollections(collections: Array<ITemplatesCollection | ITemplatesCollectionFull>): void {
 			collections.forEach((collection) => {
 				const workflows = (collection.workflows || []).map((workflow) => ({ id: workflow.id }));
@@ -173,6 +165,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 					[searchKey]: {
 						workflowIds: workflowIds as unknown as string[],
 						totalWorkflows: data.totalWorkflows,
+						categories: this.categories,
 					},
 				};
 
@@ -184,6 +177,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				[searchKey]: {
 					workflowIds: [...cachedResults.workflowIds, ...workflowIds] as string[],
 					totalWorkflows: data.totalWorkflows,
+					categories: this.categories,
 				},
 			};
 		},
@@ -252,20 +246,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			this.addWorkflows(response.collection.workflows);
 			return this.getCollectionById(collectionId);
 		},
-		async getCategories(): Promise<ITemplatesCategory[]> {
-			const cachedCategories = this.allCategories;
-			if (cachedCategories.length) {
-				return cachedCategories;
-			}
-			const settingsStore = useSettingsStore();
-			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
-			const response = await getCategories(apiEndpoint, { 'n8n-version': versionCli });
-			const categories = response.categories;
-
-			this.addCategories(categories);
-			return categories;
-		},
 		async getCollections(query: ITemplatesQuery): Promise<ITemplatesCollection[]> {
 			const cachedResults = this.getSearchedCollections(query);
 			if (cachedResults) {
@@ -289,6 +269,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		async getWorkflows(query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> {
 			const cachedResults = this.getSearchedWorkflows(query);
 			if (cachedResults) {
+				this.categories = this.workflowSearches[getSearchKey(query)].categories ?? [];
 				return cachedResults;
 			}
 
@@ -303,8 +284,19 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			);
 
 			this.addWorkflows(payload.workflows);
+			this.setCategories(payload.filters);
 			this.addWorkflowsSearch({ ...payload, query });
 			return this.getSearchedWorkflows(query) || [];
+		},
+		setCategories(facets: TemplateSearchFacet[]): void {
+			const categories = facets.find((facet) => facet.field_name === 'categories');
+			if (!categories) {
+				return;
+			}
+			this.categories = categories.counts.map((category) => ({
+				name: category.value,
+				result_count: category.count,
+			}));
 		},
 		async getMoreWorkflows(query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> {
 			if (this.isSearchLoadingMore(query) && !this.isSearchFinished(query)) {
@@ -324,6 +316,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 
 				this.setWorkflowSearchLoaded(query);
 				this.addWorkflows(payload.workflows);
+				this.setCategories(payload.filters);
 				this.addWorkflowsSearch({ ...payload, query });
 
 				return this.getSearchedWorkflows(query) || [];
