@@ -1,5 +1,5 @@
 <template>
-	<el-skeleton
+	<ElSkeleton
 		:loading="loading"
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
@@ -13,7 +13,7 @@
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
 			<div v-else-if="variant === 'p'">
@@ -24,15 +24,15 @@
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
-			<div :class="$style.custom" v-else-if="variant === 'custom'">
-				<el-skeleton-item />
+			<div v-else-if="variant === 'custom'" :class="$style.custom">
+				<ElSkeletonItem />
 			</div>
-			<el-skeleton-item v-else :variant="variant" />
+			<ElSkeletonItem v-else :variant="variant" />
 		</template>
-	</el-skeleton>
+	</ElSkeleton>
 </template>
 
 <script lang="ts">
@@ -40,7 +40,7 @@ import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-loading',
+	name: 'N8nLoading',
 	components: {
 		ElSkeleton,
 		ElSkeletonItem,

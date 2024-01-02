@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { RequestHandler } from 'express';
 import { NextFunction, Response } from 'express';
 import type {
@@ -22,7 +21,6 @@ const assertMethodName: RequestHandler = (req, res, next) => {
 	next();
 };
 
-@Service()
 @Authorized()
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {

@@ -2,7 +2,7 @@
 	<Modal
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
 		width="80%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('chat.window.title', {
 				interpolate: {
@@ -10,7 +10,7 @@
 				},
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="false"
 		@keydown.stop
 	>
@@ -20,18 +20,18 @@
 					<div
 						v-for="message in messages"
 						:key="`${message.executionId}__${message.sender}`"
-						:class="['message', message.sender]"
 						ref="messageContainer"
+						:class="['message', message.sender]"
 					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
 
 							<div class="message-options no-select-on-click">
 								<n8n-info-tip
+									v-if="message.sender === 'bot'"
 									type="tooltip"
 									theme="info-light"
-									tooltipPlacement="right"
-									v-if="message.sender === 'bot'"
+									tooltip-placement="right"
 								>
 									<div v-if="message.executionId">
 										<n8n-text :bold="true" size="small">
@@ -44,20 +44,20 @@
 								</n8n-info-tip>
 
 								<div
-									@click="repostMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 									data-test-id="repost-message-button"
-									v-if="message.sender === 'user'"
+									@click="repostMessage(message)"
 								>
 									<font-awesome-icon icon="redo" />
 								</div>
 								<div
-									@click="reuseMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 									data-test-id="reuse-message-button"
-									v-if="message.sender === 'user'"
+									@click="reuseMessage(message)"
 								>
 									<font-awesome-icon icon="copy" />
 								</div>
@@ -70,7 +70,7 @@
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div class="logs">
-						<run-data-ai :node="node" hide-title slim :key="messages.length" />
+						<RunDataAi :key="messages.length" :node="node" hide-title slim />
 					</div>
 				</div>
 			</div>
@@ -78,11 +78,11 @@
 		<template #footer>
 			<div class="workflow-lm-chat-footer">
 				<n8n-input
+					ref="inputField"
 					v-model="currentMessage"
 					class="message-input"
 					type="textarea"
 					:minlength="1"
-					ref="inputField"
 					m
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
 					data-test-id="workflow-chat-input"
@@ -90,7 +90,6 @@
 				/>
 				<n8n-tooltip :disabled="currentMessage.length > 0">
 					<n8n-button
-						@click.stop="sendChatMessage(currentMessage)"
 						class="send-button"
 						:disabled="currentMessage === ''"
 						:loading="isLoading"
@@ -99,6 +98,7 @@
 						icon="comment"
 						type="primary"
 						data-test-id="workflow-chat-send-button"
+						@click.stop="sendChatMessage(currentMessage)"
 					/>
 					<template #content>
 						{{ $locale.baseText('chat.window.chat.provideMessage') }}
@@ -165,11 +165,11 @@ interface LangChainMessage {
 // - display errors better
 export default defineComponent({
 	name: 'WorkflowLMChat',
-	mixins: [workflowRun],
 	components: {
 		Modal,
 		RunDataAi,
 	},
+	mixins: [workflowRun],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 

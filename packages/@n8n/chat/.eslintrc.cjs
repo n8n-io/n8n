@@ -15,7 +15,6 @@ module.exports = {
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',
 		'import/no-default-export': 'warn',
-		'import/no-extraneous-dependencies': 'warn',
 		'import/order': 'off',
 		'import/no-cycle': 'warn',
 		'import/no-duplicates': 'warn',

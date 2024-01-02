@@ -1,12 +1,10 @@
 import { Authorized, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
-import { Service } from 'typedi';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
-import { License } from '../License';
+import { License } from '@/License';
 
 @Authorized()
 @RestController('/orchestration')
-@Service()
 export class OrchestrationController {
 	constructor(
 		private readonly singleMainSetup: SingleMainSetup,

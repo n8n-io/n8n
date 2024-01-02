@@ -1,7 +1,8 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
+import type { Role } from '../entities/Role';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -20,5 +21,33 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 		if (!sharedCredential) return null;
 		return sharedCredential.credentials;
+	}
+
+	async findByCredentialIds(credentialIds: string[]) {
+		return this.find({
+			relations: ['credentials', 'role', 'user'],
+			where: {
+				credentialsId: In(credentialIds),
+			},
+		});
+	}
+
+	async makeOwnerOfAllCredentials(user: User, role: Role) {
+		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
+	}
+
+	/**
+	 * Get the IDs of all credentials owned by or shared with a user.
+	 */
+	async getAccessibleCredentials(userId: string) {
+		const sharings = await this.find({
+			relations: ['role'],
+			where: {
+				userId,
+				role: { name: In(['owner', 'user']), scope: 'credential' },
+			},
+		});
+
+		return sharings.map((s) => s.credentialsId);
 	}
 }

@@ -1,7 +1,7 @@
 <template>
-	<div class="expression-edit" v-if="dialogVisible" @keydown.stop>
+	<div v-if="dialogVisible" class="expression-edit" @keydown.stop>
 		<el-dialog
-			:modelValue="dialogVisible"
+			:model-value="dialogVisible"
 			class="expression-dialog classic"
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"
@@ -19,11 +19,11 @@
 					</div>
 
 					<div class="variable-selector">
-						<variable-selector
+						<VariableSelector
 							:path="path"
-							:redactValues="redactValues"
+							:redact-values="redactValues"
 							@itemSelected="itemSelected"
-						></variable-selector>
+						></VariableSelector>
 					</div>
 				</el-col>
 				<el-col :span="16" class="right-side">
@@ -48,14 +48,14 @@
 						</div>
 						<div class="expression-editor">
 							<ExpressionEditorModalInput
-								:modelValue="modelValue"
-								:isReadOnly="isReadOnlyRoute"
+								ref="inputFieldExpression"
+								:model-value="modelValue"
+								:is-read-only="isReadOnlyRoute"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
+								data-test-id="expression-modal-input"
 								@change="valueChanged"
 								@close="closeDialog"
-								ref="inputFieldExpression"
-								data-test-id="expression-modal-input"
 							/>
 						</div>
 					</div>
@@ -66,8 +66,8 @@
 						</div>
 						<div :class="{ 'ph-no-capture': redactValues }">
 							<ExpressionEditorModalOutput
-								:segments="segments"
 								ref="expressionResult"
+								:segments="segments"
 								data-test-id="expression-modal-output"
 							/>
 						</div>
@@ -101,6 +101,11 @@ import type { Segment } from '@/types/expressions';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
+	components: {
+		ExpressionEditorModalInput,
+		ExpressionEditorModalOutput,
+		VariableSelector,
+	},
 	mixins: [genericHelpers, debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	setup() {
@@ -108,11 +113,6 @@ export default defineComponent({
 		return {
 			externalHooks,
 		};
-	},
-	components: {
-		ExpressionEditorModalInput,
-		ExpressionEditorModalOutput,
-		VariableSelector,
 	},
 	data() {
 		return {
@@ -124,6 +124,38 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
+	},
+	watch: {
+		dialogVisible(newValue) {
+			this.displayValue = this.modelValue;
+			this.latestValue = this.modelValue;
+
+			const resolvedExpressionValue =
+				(
+					this.$refs.expressionResult as {
+						getValue: () => string;
+					}
+				)?.getValue() || '';
+			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
+				dialogVisible: newValue,
+				parameter: this.parameter,
+				value: this.modelValue,
+				resolvedExpressionValue,
+			});
+
+			if (!newValue) {
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.modelValue,
+					this.workflowsStore.workflowId,
+					this.ndvStore.sessionId,
+					this.ndvStore.activeNode?.type ?? '',
+				);
+
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				void this.externalHooks.run('expressionEdit.closeDialog', telemetryPayload);
+			}
+		},
 	},
 	methods: {
 		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
@@ -226,38 +258,6 @@ export default defineComponent({
 				'User inserted item from Expression Editor variable selector',
 				trackProperties,
 			);
-		},
-	},
-	watch: {
-		dialogVisible(newValue) {
-			this.displayValue = this.modelValue;
-			this.latestValue = this.modelValue;
-
-			const resolvedExpressionValue =
-				(
-					this.$refs.expressionResult as {
-						getValue: () => string;
-					}
-				)?.getValue() || '';
-			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
-				dialogVisible: newValue,
-				parameter: this.parameter,
-				value: this.modelValue,
-				resolvedExpressionValue,
-			});
-
-			if (!newValue) {
-				const telemetryPayload = createExpressionTelemetryPayload(
-					this.segments,
-					this.modelValue,
-					this.workflowsStore.workflowId,
-					this.ndvStore.sessionId,
-					this.ndvStore.activeNode?.type ?? '',
-				);
-
-				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				void this.externalHooks.run('expressionEdit.closeDialog', telemetryPayload);
-			}
 		},
 	},
 });
