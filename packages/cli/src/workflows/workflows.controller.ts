@@ -386,10 +386,14 @@ workflowsController.put(
 			workflow = undefined;
 			// Allow owners/admins to share
 			if (req.user.hasGlobalScope('workflow:share')) {
-				const sharedRes = await Container.get(WorkflowService).getSharing(req.user, workflowId, {
-					allowGlobalScope: true,
-					globalScope: 'workflow:share',
-				});
+				const sharedRes = await Container.get(SharedWorkflowRepository).getSharing(
+					req.user,
+					workflowId,
+					{
+						allowGlobalScope: true,
+						globalScope: 'workflow:share',
+					},
+				);
 				workflow = sharedRes?.workflow;
 			}
 			if (!workflow) {
