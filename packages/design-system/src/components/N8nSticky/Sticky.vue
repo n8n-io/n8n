@@ -1,62 +1,59 @@
 <template>
 	<div
-		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
 		:style="styles"
 		@keydown.prevent
 	>
-		<n8n-resize-wrapper
-			:isResizingEnabled="!readOnly"
+		<N8nResizeWrapper
+			:is-resizing-enabled="!readOnly"
 			:height="height"
 			:width="width"
-			:minHeight="minHeight"
-			:minWidth="minWidth"
+			:min-height="minHeight"
+			:min-width="minWidth"
 			:scale="scale"
-			:gridSize="gridSize"
+			:grid-size="gridSize"
 			@resizeend="onResizeEnd"
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
-			<template>
-				<div
-					v-show="!editMode"
-					class="ph-no-capture"
-					:class="$style.wrapper"
-					@dblclick.stop="onDoubleClick"
-				>
-					<n8n-markdown
-						theme="sticky"
-						:content="content"
-						:withMultiBreaks="true"
-						@markdown-click="onMarkdownClick"
-					/>
-				</div>
-				<div
-					v-show="editMode"
-					@click.stop
-					@mousedown.stop
-					@mouseup.stop
-					@keydown.esc="onInputBlur"
-					@keydown.stop
-					@wheel.stop
-					class="sticky-textarea ph-no-capture"
-					:class="{ 'full-height': !shouldShowFooter }"
-				>
-					<n8n-input
-						:value="content"
-						type="textarea"
-						:rows="5"
-						@blur="onInputBlur"
-						@input="onInput"
-						ref="input"
-					/>
-				</div>
-				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-					<n8n-text size="xsmall" aligh="right">
-						<span v-html="t('sticky.markdownHint')"></span>
-					</n8n-text>
-				</div>
-			</template>
-		</n8n-resize-wrapper>
+			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+				<N8nMarkdown
+					theme="sticky"
+					:content="modelValue"
+					:with-multi-breaks="true"
+					@markdown-click="onMarkdownClick"
+				/>
+			</div>
+			<div
+				v-show="editMode"
+				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
+				@click.stop
+				@mousedown.stop
+				@mouseup.stop
+				@keydown.esc="onInputBlur"
+				@keydown.stop
+			>
+				<N8nInput
+					ref="input"
+					:model-value="modelValue"
+					type="textarea"
+					:rows="5"
+					@blur="onInputBlur"
+					@update:modelValue="onUpdateModelValue"
+					@wheel="onInputScroll"
+				/>
+			</div>
+			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+				<N8nText size="xsmall" aligh="right">
+					<span v-html="t('sticky.markdownHint')"></span>
+				</N8nText>
+			</div>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -69,10 +66,16 @@ import Locale from '../../mixins/locale';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-sticky',
+	name: 'N8nSticky',
+	components: {
+		N8nInput,
+		N8nMarkdown,
+		N8nResizeWrapper,
+		N8nText,
+	},
 	mixins: [Locale],
 	props: {
-		content: {
+		modelValue: {
 			type: String,
 		},
 		height: {
@@ -114,12 +117,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-	},
-	components: {
-		N8nInput,
-		N8nMarkdown,
-		N8nResizeWrapper,
-		N8nText,
+		backgroundColor: {
+			value: [Number, String],
+			default: 1,
+		},
 	},
 	data() {
 		return {
@@ -140,13 +141,28 @@ export default defineComponent({
 			return this.width;
 		},
 		styles(): { height: string; width: string } {
-			return {
+			const styles: { height: string; width: string } = {
 				height: `${this.resHeight}px`,
 				width: `${this.resWidth}px`,
 			};
+
+			return styles;
 		},
 		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
+		},
+	},
+	watch: {
+		editMode(newMode, prevMode) {
+			setTimeout(() => {
+				if (newMode && !prevMode && this.$refs.input) {
+					const textarea = this.$refs.input as HTMLTextAreaElement;
+					if (this.defaultText === this.modelValue) {
+						textarea.select();
+					}
+					textarea.focus();
+				}
+			}, 100);
 		},
 	},
 	methods: {
@@ -160,8 +176,8 @@ export default defineComponent({
 				this.$emit('edit', false);
 			}
 		},
-		onInput(value: string) {
-			this.$emit('input', value);
+		onUpdateModelValue(value: string) {
+			this.$emit('update:modelValue', value);
 		},
 		onMarkdownClick(link: string, event: Event) {
 			this.$emit('markdown-click', link, event);
@@ -177,18 +193,11 @@ export default defineComponent({
 			this.isResizing = true;
 			this.$emit('resizestart');
 		},
-	},
-	watch: {
-		editMode(newMode, prevMode) {
-			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input) {
-					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.content) {
-						textarea.select();
-					}
-					textarea.focus();
-				}
-			}, 100);
+		onInputScroll(event: WheelEvent) {
+			// Pass through zoom events but hold regular scrolling
+			if (!event.ctrlKey && !event.metaKey) {
+				event.stopPropagation();
+			}
 		},
 	},
 });
@@ -197,9 +206,19 @@ export default defineComponent({
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	background-color: var(--color-sticky-default-background);
-	border: 1px solid var(--color-sticky-default-border);
 	border-radius: var(--border-radius-base);
+
+	background-color: var(--color-sticky-background);
+	border: 1px solid var(--color-sticky-border);
+
+	.wrapper::after {
+		opacity: 0.15;
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-background) 0.01%,
+			var(--color-sticky-border)
+		);
+	}
 }
 
 .clickable {
@@ -220,12 +239,6 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky-default-background),
-			#fff5d600 0.01%,
-			var(--color-sticky-default-background)
-		);
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -234,6 +247,36 @@ export default defineComponent({
 	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
 	display: flex;
 	justify-content: flex-end;
+}
+
+.color-2 {
+	--color-sticky-background: var(--color-sticky-background-2);
+	--color-sticky-border: var(--color-sticky-border-2);
+}
+
+.color-3 {
+	--color-sticky-background: var(--color-sticky-background-3);
+	--color-sticky-border: var(--color-sticky-border-3);
+}
+
+.color-4 {
+	--color-sticky-background: var(--color-sticky-background-4);
+	--color-sticky-border: var(--color-sticky-border-4);
+}
+
+.color-5 {
+	--color-sticky-background: var(--color-sticky-background-5);
+	--color-sticky-border: var(--color-sticky-border-5);
+}
+
+.color-6 {
+	--color-sticky-background: var(--color-sticky-background-6);
+	--color-sticky-border: var(--color-sticky-border-6);
+}
+
+.color-7 {
+	--color-sticky-background: var(--color-sticky-background-7);
+	--color-sticky-border: var(--color-sticky-border-7);
 }
 </style>
 

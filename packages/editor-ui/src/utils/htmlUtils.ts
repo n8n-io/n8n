@@ -33,11 +33,6 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function getStyleTokenValue(name: string): string {
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
-}
-
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }

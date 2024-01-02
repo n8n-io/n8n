@@ -1,9 +1,10 @@
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { render } from '@testing-library/vue';
-import { PiniaVuePlugin } from 'pinia';
 
-export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
+export const retry = async (
+	assertion: () => ReturnType<typeof expect>,
+	{ interval = 20, timeout = 1000 } = {},
+) => {
 	return new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
@@ -21,12 +22,6 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 	});
 };
 
-type RenderParams = Parameters<typeof render>;
-export const renderComponent = (Component: RenderParams[0], renderOptions: RenderParams[1] = {}) =>
-	render(Component, renderOptions, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
-
 export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
@@ -34,6 +29,9 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		allowedModules: {},
 		communityNodesEnabled: false,
 		defaultLocale: '',
+		endpointForm: '',
+		endpointFormTest: '',
+		endpointFormWaiting: '',
 		endpointWebhook: '',
 		endpointWebhookTest: '',
 		enterprise: {
@@ -98,6 +96,19 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		},
 		variables: {
 			limit: 100,
+		},
+		expressions: {
+			evaluator: 'tournament',
+		},
+		banners: {
+			dismissed: [],
+		},
+		ai: {
+			enabled: false,
+		},
+		workflowHistory: {
+			pruneTime: -1,
+			licensePruneTime: -1,
 		},
 	},
 	promptsData: {

@@ -1,26 +1,26 @@
 <template>
 	<el-dialog
-		:visible="(!!activeNode || renaming) && !isActiveStickyNode"
+		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
-		custom-class="data-display-wrapper"
-		class="ndv-wrapper"
+		class="data-display-wrapper ndv-wrapper"
+		overlay-class="data-display-overlay"
 		width="auto"
 		append-to-body
 		data-test-id="ndv"
+		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
-			:value="showTriggerWaitingWarning"
+			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			manual
 		>
 			<template #content>
 				<div :class="$style.triggerWarning">
 					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
 				</div>
 			</template>
-			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
+			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
 					{{ $locale.baseText('ndv.backToCanvas') }}
@@ -30,90 +30,99 @@
 
 		<div
 			v-if="activeNode"
-			class="data-display"
 			ref="container"
-			@keydown.capture="onKeyDown"
+			class="data-display"
 			tabindex="0"
+			@keydown.capture="onKeyDown"
 		>
-			<div @click="close" :class="$style.modalBackground"></div>
+			<div :class="$style.modalBackground" @click="close"></div>
 			<NDVDraggablePanels
-				:isTriggerNode="isTriggerNode"
-				:hideInputAndOutput="activeNodeType === null"
+				:key="activeNode.name"
+				:is-trigger-node="isTriggerNode"
+				:hide-input-and-output="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
-				:isDraggable="!isTriggerNode"
-				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
-				:nodeType="activeNodeType"
+				:is-draggable="!isTriggerNode"
+				:has-double-width="activeNodeType?.parameterPane === 'wide'"
+				:node-type="activeNodeType"
+				@switchSelectedNode="onSwitchSelectedNode"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #input>
+				<template v-if="showTriggerPanel || !isTriggerNode" #input>
 					<TriggerPanel
 						v-if="showTriggerPanel"
-						:nodeName="activeNode.name"
-						:sessionId="sessionId"
+						:node-name="activeNode.name"
+						:session-id="sessionId"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
 						:workflow="workflow"
-						:canLinkRuns="canLinkRuns"
-						:runIndex="inputRun"
-						:linkedRuns="linked"
-						:currentNodeName="inputNodeName"
-						:sessionId="sessionId"
-						:readOnly="readOnly || hasForeignCredential"
-						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:can-link-runs="canLinkRuns"
+						:run-index="inputRun"
+						:linked-runs="linked"
+						:current-node-name="inputNodeName"
+						:session-id="sessionId"
+						:read-only="readOnly || hasForeignCredential"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isInputPaneActive"
+						@activatePane="activateInputPane"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
 						@openSettings="openSettings"
-						@select="onInputSelect"
+						@changeInputNode="onInputNodeChange"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:canLinkRuns="canLinkRuns"
-						:runIndex="outputRun"
-						:linkedRuns="linked"
-						:sessionId="sessionId"
-						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
-						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:can-link-runs="canLinkRuns"
+						:run-index="outputRun"
+						:linked-runs="linked"
+						:session-id="sessionId"
+						:is-read-only="readOnly || hasForeignCredential"
+						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isOutputPaneActive"
+						@activatePane="activateOutputPane"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
 						@tableMounted="onOutputTableMounted"
 						@itemHover="onOutputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #main>
 					<NodeSettings
-						:eventBus="settingsEventBus"
+						:event-bus="settingsEventBus"
 						:dragging="isDragging"
-						:sessionId="sessionId"
-						:nodeType="activeNodeType"
-						:foreignCredentials="foreignCredentials"
-						:readOnly="readOnly"
-						:blockUI="blockUi && showTriggerPanel"
+						:session-id="sessionId"
+						:node-type="activeNodeType"
+						:foreign-credentials="foreignCredentials"
+						:read-only="readOnly"
+						:block-u-i="blockUi && showTriggerPanel"
 						:executable="!readOnly"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
+						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
 					/>
 					<a
 						v-if="featureRequestUrl"
-						@click="onFeatureRequestClick"
 						:class="$style.featureRequest"
 						target="_blank"
+						@click="onFeatureRequestClick"
 					>
 						<font-awesome-icon icon="lightbulb" />
 						{{ $locale.baseText('ndv.featureRequest') }}
@@ -127,7 +136,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
 	INodeTypeDescription,
@@ -135,11 +144,8 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -164,12 +170,13 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import useDeviceSupport from '@/composables/useDeviceSupport';
-import { useMessage } from '@/composables';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useMessage } from '@/composables/useMessage';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -177,6 +184,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
+	mixins: [workflowHelpers, workflowActivate, pinData],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -189,16 +197,23 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+
 		return {
+			externalHooks,
+			nodeHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
-			...workflowActivate.setup?.(props),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	data() {
 		return {
 			settingsEventBus: createEventBus(),
+			redrawRequired: false,
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -209,12 +224,15 @@ export default defineComponent({
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
+			isInputPaneActive: false,
+			isOutputPaneActive: false,
+			isPairedItemHoveringEnabled: true,
 		};
 	},
 	mounted() {
 		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
-	destroyed() {
+	beforeUnmount() {
 		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {
@@ -264,6 +282,15 @@ export default defineComponent({
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
 		},
+		hasOutputConnection() {
+			if (!this.activeNode) return false;
+			const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
+				this.activeNode.name,
+			) as INodeConnections;
+
+			// Check if there's at-least one output connection
+			return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
+		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
 				return (
@@ -274,6 +301,21 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
+			const pinData = this.workflowsStore.getPinData;
+
+			// Return the first parent node that contains data
+			for (const parentNodeName of this.parentNodes) {
+				// Check first for pinned data
+				if (pinData[parentNodeName]) {
+					return parentNodeName;
+				}
+
+				// Check then the data of the current execution
+				if (this.workflowRunData?.[parentNodeName]) {
+					return parentNodeName;
+				}
+			}
+
 			return this.parentNodes[0];
 		},
 		isExecutableTriggerNode(): boolean {
@@ -299,7 +341,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -329,18 +371,27 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null) {
+			if (this.inputNode === null || this.activeNode === null) {
 				return 0;
 			}
+
+			const workflowNode = this.workflow.getNode(this.activeNode.name);
+			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
+
+			let node = this.inputNode;
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.inputNode.name)) {
+			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+				node = this.activeNode;
+			}
+
+			if (!node || !runData || !runData.hasOwnProperty(node.name)) {
 				return 0;
 			}
 
-			if (runData[this.inputNode.name].length) {
-				return runData[this.inputNode.name].length - 1;
+			if (runData[node.name].length) {
+				return runData[node.name].length - 1;
 			}
 
 			return 0;
@@ -419,16 +470,20 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(this.ndvStore.setNDVSessionId, 0);
-				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
+				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
+				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
+					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
+						node,
+						this.activeNodeType,
+						this.getCurrentWorkflow(),
+					),
 				});
 
 				setTimeout(() => {
 					if (this.activeNode) {
 						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 							this.activeNode.name,
-						) as INodeConnections;
+						);
 
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -443,8 +498,7 @@ export default defineComponent({
 								: this.ndvStore.inputPanelDisplayMode,
 							selected_view_outputs: this.ndvStore.outputPanelDisplayMode,
 							input_connectors: this.parentNodes.length,
-							output_connectors:
-								outgoingConnections && outgoingConnections.main && outgoingConnections.main.length,
+							output_connectors: outgoingConnections?.main?.length,
 							input_displayed_run_index: this.inputRun,
 							output_displayed_run_index: this.outputRun,
 							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
@@ -490,10 +544,7 @@ export default defineComponent({
 			}
 		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (!this.inputNodeName) {
-				return;
-			}
-			if (e === null) {
+			if (e === null || !this.inputNodeName || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -507,7 +558,7 @@ export default defineComponent({
 			this.ndvStore.setHoveringItem(item);
 		},
 		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (e === null || !this.activeNode) {
+			if (e === null || !this.activeNode || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -539,7 +590,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
 			}
@@ -602,12 +653,30 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+		async onSwitchSelectedNode(nodeTypeName: string) {
+			this.$emit('switchSelectedNode', nodeTypeName);
+		},
 		async close() {
 			if (this.isDragging) {
 				return;
 			}
 
-			if (this.outputPanelEditMode.enabled) {
+			if (
+				this.activeNode &&
+				(typeof this.activeNodeType?.outputs === 'string' ||
+					typeof this.activeNodeType?.inputs === 'string' ||
+					this.redrawRequired)
+			) {
+				// TODO: We should keep track of if it actually changed and only do if required
+				// Whenever a node with custom inputs and outputs gets closed redraw it in case
+				// they changed
+				const nodeName = this.activeNode.name;
+				setTimeout(() => {
+					this.$emit('redrawNode', nodeName);
+				}, 1);
+			}
+
+			if (this.outputPanelEditMode.enabled && this.activeNode) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
@@ -619,32 +688,17 @@ export default defineComponent({
 
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
-
-					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'data-too-large',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
-					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'invalid-json',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
-					if (this.activeNode) {
-						this.workflowsStore.pinData({ node: this.activeNode, data: jsonParse(value) });
+					try {
+						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+					} catch (error) {
+						console.error(error);
 					}
 				}
 
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
@@ -673,7 +727,7 @@ export default defineComponent({
 				pane,
 			});
 		},
-		onInputSelect(value: string, index: number) {
+		onInputNodeChange(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.isLinkingEnabled = true;
 			this.selectedInput = value;
@@ -689,19 +743,35 @@ export default defineComponent({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		activateInputPane() {
+			this.isInputPaneActive = true;
+			this.isOutputPaneActive = false;
+		},
+		activateOutputPane() {
+			this.isInputPaneActive = false;
+			this.isOutputPaneActive = true;
+		},
+		onSearch(search: string) {
+			this.isPairedItemHoveringEnabled = !search;
+		},
 	},
 });
 </script>
 
 <style lang="scss">
+// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
+[data-has-output-connection='true'] .ndv-connection-hint-notice {
+	display: none;
+}
 .ndv-wrapper {
-	overflow: hidden;
+	overflow: visible;
+	margin-top: 0;
 }
 
 .data-display-wrapper {
-	height: 93%;
-	width: 100%;
+	height: calc(100% - var(--spacing-2xl));
 	margin-top: var(--spacing-xl) !important;
+	width: 100%;
 	background: none;
 	border: none;
 
@@ -713,7 +783,7 @@ export default defineComponent({
 		padding: 0 !important;
 		height: 100%;
 		min-height: 400px;
-		overflow: hidden;
+		overflow: visible;
 		border-radius: 8px;
 	}
 }
@@ -742,6 +812,10 @@ $main-panel-width: 360px;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
 
+	span {
+		color: var(--color-ndv-back-font);
+	}
+
 	&:hover {
 		cursor: pointer;
 	}
@@ -762,7 +836,7 @@ $main-panel-width: 360px;
 	position: absolute;
 	bottom: var(--spacing-4xs);
 	left: calc(100% + var(--spacing-s));
-	color: var(--color-text-xlight);
+	color: var(--color-feature-request-font);
 	font-size: var(--font-size-2xs);
 	white-space: nowrap;
 

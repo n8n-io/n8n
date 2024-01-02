@@ -17,6 +17,7 @@ export class CortexApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'cortexApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

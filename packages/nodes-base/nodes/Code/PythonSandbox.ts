@@ -39,6 +39,10 @@ export class PythonSandbox extends Sandbox {
 		}, {} as PythonSandboxContext);
 	}
 
+	async runCode(): Promise<unknown> {
+		return this.runCodeInPython<unknown>();
+	}
+
 	async runCodeAllItems() {
 		const executionResult = await this.runCodeInPython<INodeExecutionData[]>();
 		return this.validateRunCodeAllItems(executionResult);
@@ -67,10 +71,7 @@ export class PythonSandbox extends Sandbox {
 				globalsDict.set(key, value);
 			}
 
-			await pyodide.runPythonAsync(`
-if 'printOverwrite' in globals():
-	print = printOverwrite
-			`);
+			pyodide.setStdout({ batched: (str) => this.emit('output', str) });
 
 			const runCode = `
 async def __main():

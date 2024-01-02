@@ -1,19 +1,19 @@
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
 		<n8n-button
-			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
 			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
 			:label="$locale.baseText('binaryDataDisplay.backToList')"
+			@click.stop="closeWindow"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
 				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
-			<BinaryDataDisplayEmbed v-else :binaryData="binaryData" />
+			<BinaryDataDisplayEmbed v-else :binary-data="binaryData" />
 		</div>
 	</div>
 </template>
@@ -25,13 +25,12 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 export default defineComponent({
 	name: 'BinaryDataDisplay',
-	mixins: [nodeHelpers],
+
 	components: {
 		BinaryDataDisplayEmbed,
 	},
@@ -39,10 +38,17 @@ export default defineComponent({
 		'displayData', // IBinaryData
 		'windowVisible', // boolean
 	],
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+
+		return {
+			nodeHelpers,
+		};
+	},
 	computed: {
 		...mapStores(useWorkflowsStore),
 		binaryData(): IBinaryData | null {
-			const binaryData = this.getBinaryData(
+			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.displayData.node,
 				this.displayData.runIndex,

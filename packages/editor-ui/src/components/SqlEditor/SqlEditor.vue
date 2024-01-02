@@ -1,12 +1,11 @@
 <template>
-	<div :class="$style.sqlEditor" v-click-outside="onBlur">
-		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
+	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
+		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:value="query"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -14,10 +13,10 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
+import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
-import type { Extension } from '@codemirror/state';
+import type { Line, Extension } from '@codemirror/state';
 import {
 	dropCursor,
 	EditorView,
@@ -26,6 +25,7 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	MSSQL,
 	MySQL,
@@ -60,19 +60,20 @@ const SQL_DIALECTS = {
 
 type SQLEditorData = {
 	editor: EditorView | null;
+	editorState: EditorState | null;
 	isFocused: boolean;
 	skipSegments: string[];
 	expressionsDocsUrl: string;
 };
 
 export default defineComponent({
-	name: 'sql-editor',
+	name: 'SqlEditor',
 	components: {
 		InlineExpressionEditorOutput,
 	},
 	mixins: [expressionManager],
 	props: {
-		query: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -87,29 +88,19 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		rows: {
+			type: Number,
+			default: 4,
+		},
 	},
 	data(): SQLEditorData {
 		return {
 			editor: null,
+			editorState: null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
-	},
-	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.query,
-				},
-			});
-
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
-		},
 	},
 	computed: {
 		doc(): string {
@@ -136,10 +127,13 @@ export default defineComponent({
 			const extensions = [
 				sqlWithN8nLanguageSupport(),
 				expressionInputHandler(),
-				codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
+				codeNodeEditorTheme({
+					isReadOnly: this.isReadOnly,
+					customMaxHeight: '350px',
+					customMinHeight: this.rows,
+				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
-				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.domEventHandlers({
 					focus: () => {
 						this.isFocused = true;
@@ -153,6 +147,7 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					keymap.of([
+						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
 						{ key: 'Tab', run: acceptCompletion },
@@ -165,42 +160,70 @@ export default defineComponent({
 					foldGutter(),
 					dropCursor(),
 					bracketMatching(),
-					EditorView.updateListener.of((viewUpdate) => {
+					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
 
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
-						this.$emit('valueChanged', this.doc);
+						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
 			}
 			return extensions;
 		},
 	},
+	watch: {
+		'ndvStore.ndvInputData'() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.modelValue,
+				},
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
+			});
+		},
+	},
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
-		const state = EditorState.create({ doc: this.query, extensions: this.extensions });
+		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
+
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
+		this.editorState = this.editor.state;
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {
 		onBlur() {
 			this.isFocused = false;
 		},
-		highlightLine(line: number | 'final') {
+		line(lineNumber: number): Line | null {
+			try {
+				return this.editor?.state.doc.line(lineNumber) ?? null;
+			} catch {
+				return null;
+			}
+		},
+		highlightLine(lineNumber: number | 'final') {
 			if (!this.editor) return;
 
-			if (line === 'final') {
+			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.query.length },
+					selection: { anchor: this.modelValue.length },
 				});
 				return;
 			}
 
+			const line = this.line(lineNumber);
+
+			if (!line) return;
+
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
+				selection: { anchor: line.from },
 			});
 		},
 	},

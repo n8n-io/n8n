@@ -17,16 +17,16 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:calloutText="actionBoxConfig.calloutText"
-				:calloutTheme="actionBoxConfig.calloutTheme"
+				:callout-text="actionBoxConfig.calloutText"
+				:callout-theme="actionBoxConfig.calloutTheme"
 			/>
 		</div>
-		<div :class="$style.cardsContainer" v-else-if="loading">
-			<community-package-card
+		<div v-else-if="loading" :class="$style.cardsContainer">
+			<CommunityPackageCard
 				v-for="n in 2"
 				:key="'index-' + n"
 				:loading="true"
-			></community-package-card>
+			></CommunityPackageCard>
 		</div>
 		<div
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
@@ -35,18 +35,18 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:buttonText="getEmptyStateButtonText"
-				:calloutText="actionBoxConfig.calloutText"
-				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="onClickEmptyStateButton"
+				:button-text="getEmptyStateButtonText"
+				:callout-text="actionBoxConfig.calloutText"
+				:callout-theme="actionBoxConfig.calloutTheme"
+				@click:button="onClickEmptyStateButton"
 			/>
 		</div>
-		<div :class="$style.cardsContainer" v-else>
-			<community-package-card
+		<div v-else :class="$style.cardsContainer">
+			<CommunityPackageCard
 				v-for="communityPackage in communityNodesStore.getInstalledPackages"
 				:key="communityPackage.packageName"
-				:communityPackage="communityPackage"
-			></community-package-card>
+				:community-package="communityPackage"
+			></CommunityPackageCard>
 		</div>
 	</div>
 </template>
@@ -55,10 +55,11 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -67,19 +68,24 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 export default defineComponent({
 	name: 'SettingsCommunityNodesView',
-	mixins: [pushConnection],
 	components: {
 		CommunityPackageCard,
 	},
-	setup(props) {
+	mixins: [pushConnection],
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
-			...pushConnection.setup?.(props),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -89,10 +95,10 @@ export default defineComponent({
 	},
 	async mounted() {
 		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushConnect();
+		this.pushStore.pushConnect();
 
 		try {
-			this.$data.loading = true;
+			this.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
 
 			const installedPackages: PublicInstalledPackage[] =
@@ -126,16 +132,16 @@ export default defineComponent({
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
 			);
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 		try {
 			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 	},
-	beforeDestroy() {
-		this.pushDisconnect();
+	beforeUnmount() {
+		this.pushStore.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
@@ -189,7 +195,7 @@ export default defineComponent({
 			if (this.settingsStore.isQueueModeEnabled) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
-						interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL },
+						interpolate: { docURL: COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL },
 					}),
 					calloutTheme: 'warning',
 					hideButton: true,
@@ -212,11 +218,7 @@ export default defineComponent({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			const linkUrl = `${this.$locale.baseText(
-				'contextual.upgradeLinkUrl.desktop',
-			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
-
-			window.open(linkUrl, '_blank');
+			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
 		},
 		openInstallModal(): void {
 			const telemetryPayload = {
@@ -224,10 +226,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 
-			void this.$externalHooks().run(
-				'settingsCommunityNodesView.openInstallModal',
-				telemetryPayload,
-			);
+			void this.externalHooks.run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

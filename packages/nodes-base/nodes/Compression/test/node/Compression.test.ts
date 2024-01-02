@@ -1,22 +1,21 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { WorkflowTestData } from '@test/nodes/types';
+import path from 'path';
+import os from 'node:os';
 import type { IDataObject } from 'n8n-workflow';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 import {
 	getResultNodeData,
 	setup,
-	initBinaryDataManager,
+	initBinaryDataService,
 	readJsonFileSync,
 } from '@test/nodes/Helpers';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
-import path from 'path';
-import os from 'node:os';
-
 if (os.platform() !== 'win32') {
 	describe('Execute Compression Node', () => {
 		beforeEach(async () => {
-			await initBinaryDataManager();
+			await initBinaryDataService();
 		});
 
 		const workflowData = readJsonFileSync('nodes/Compression/test/node/workflow.compression.json');

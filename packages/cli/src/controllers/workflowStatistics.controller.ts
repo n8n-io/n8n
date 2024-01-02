@@ -1,14 +1,13 @@
-import { Service } from 'typedi';
 import { Response, NextFunction } from 'express';
-import { ILogger } from 'n8n-workflow';
 import { Get, Middleware, RestController } from '@/decorators';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { SharedWorkflowRepository, WorkflowStatisticsRepository } from '@db/repositories';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { ExecutionRequest } from '@/requests';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { NotFoundError } from '@/ResponseHelper';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
+import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 interface WorkflowStatisticsData<T> {
 	productionSuccess: T;
@@ -17,13 +16,12 @@ interface WorkflowStatisticsData<T> {
 	manualError: T;
 }
 
-@Service()
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
-		private sharedWorkflowRepository: SharedWorkflowRepository,
-		private workflowStatisticsRepository: WorkflowStatisticsRepository,
-		private readonly logger: ILogger,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -34,16 +32,10 @@ export class WorkflowStatisticsController {
 	async hasWorkflowAccess(req: ExecutionRequest.Get, res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
-		const allowed = await this.sharedWorkflowRepository.exist({
-			relations: ['workflow'],
-			where: whereClause({
-				user,
-				entityType: 'workflow',
-				entityId: workflowId,
-			}),
-		});
 
-		if (allowed) {
+		const hasAccess = await this.sharedWorkflowRepository.hasAccess(workflowId, user);
+
+		if (hasAccess) {
 			next();
 		} else {
 			this.logger.verbose('User attempted to read a workflow without permissions', {

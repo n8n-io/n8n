@@ -1,58 +1,56 @@
 <template>
 	<n8n-input-label
 		:label="$locale.credText().inputLabelDisplayName(parameter)"
-		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
+		:tooltip-text="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
-		:showTooltip="focused"
-		:showOptions="menuExpanded"
+		:show-tooltip="focused"
+		:show-options="menuExpanded"
 		:data-test-id="parameter.name"
 		:size="label.size"
 	>
 		<template #options>
-			<parameter-options
+			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="false"
-				:showOptions="true"
-				:isValueExpression="isValueExpression"
-				@optionSelected="optionSelected"
+				:is-read-only="false"
+				:show-options="true"
+				:is-value-expression="isValueExpression"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<parameter-input-wrapper
-				ref="param"
-				inputSize="large"
-				:parameter="parameter"
-				:value="value"
-				:path="parameter.name"
-				:hideIssues="true"
-				:documentationUrl="documentationUrl"
-				:errorHighlight="showRequiredErrors"
-				:isForCredential="true"
-				:eventSource="eventSource"
-				:hint="!showRequiredErrors ? hint : ''"
-				:event-bus="eventBus"
-				@focus="onFocus"
-				@blur="onBlur"
-				@textInput="valueChanged"
-				@valueChanged="valueChanged"
-			/>
-			<div :class="$style.errors" v-if="showRequiredErrors">
-				<n8n-text color="danger" size="small">
-					{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-					<n8n-link
-						v-if="documentationUrl"
-						:to="documentationUrl"
-						size="small"
-						:underline="true"
-						@click="onDocumentationUrlClick"
-					>
-						{{ $locale.baseText('parameterInputExpanded.openDocs') }}
-					</n8n-link>
-				</n8n-text>
-			</div>
-		</template>
+		<ParameterInputWrapper
+			ref="param"
+			input-size="large"
+			:parameter="parameter"
+			:model-value="value"
+			:path="parameter.name"
+			:hide-issues="true"
+			:documentation-url="documentationUrl"
+			:error-highlight="showRequiredErrors"
+			:is-for-credential="true"
+			:event-source="eventSource"
+			:hint="!showRequiredErrors ? hint : ''"
+			:event-bus="eventBus"
+			@focus="onFocus"
+			@blur="onBlur"
+			@textInput="valueChanged"
+			@update="valueChanged"
+		/>
+		<div v-if="showRequiredErrors" :class="$style.errors">
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link
+					v-if="documentationUrl"
+					:to="documentationUrl"
+					size="small"
+					:underline="true"
+					@click="onDocumentationUrlClick"
+				>
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
+		</div>
 	</n8n-input-label>
 </template>
 
@@ -62,16 +60,14 @@ import ParameterOptions from './ParameterOptions.vue';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { isValueExpression } from '@/utils';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
 import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
-type ParamRef = InstanceType<typeof ParameterInputWrapper>;
-
 export default defineComponent({
-	name: 'parameter-input-expanded',
+	name: 'ParameterInputExpanded',
 	components: {
 		ParameterOptions,
 		ParameterInputWrapper,
@@ -118,6 +114,10 @@ export default defineComponent({
 				}
 
 				if (this.parameter.type === 'number') {
+					if (typeof this.value === 'string' && this.value.startsWith('=')) {
+						return false;
+					}
+
 					return typeof this.value !== 'number';
 				}
 			}
@@ -153,7 +153,7 @@ export default defineComponent({
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('change', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {

@@ -9,6 +9,9 @@
 	line-height: var.$switch-height;
 	height: var.$switch-height;
 	vertical-align: middle;
+	& .el-loading-mask {
+		border-radius: 10px;
+	}
 	@include mixins.when(disabled) {
 		& .el-switch__core,
 		& .el-switch__label {
@@ -63,7 +66,9 @@
 		box-sizing: border-box;
 		background: var.$switch-off-color;
 		cursor: pointer;
-		transition: border-color 0.1s, background-color 0.1s;
+		transition:
+			border-color 0.1s,
+			background-color 0.1s;
 		vertical-align: middle;
 
 		&:after {
@@ -75,7 +80,7 @@
 			transition: all 0.1s;
 			width: var.$switch-button-size;
 			height: var.$switch-button-size;
-			background-color: var.$color-white;
+			background-color: var.$switch-toggle-color;
 		}
 	}
 
@@ -109,7 +114,7 @@
 		}
 	}
 
-	& .label-fade-enter,
+	& .label-fade-enter-from,
 	& .label-fade-leave-active {
 		opacity: 0;
 	}

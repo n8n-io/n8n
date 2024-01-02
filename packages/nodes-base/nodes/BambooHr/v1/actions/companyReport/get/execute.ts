@@ -11,9 +11,10 @@ export async function get(this: IExecuteFunctions, index: number) {
 	const reportId = this.getNodeParameter('reportId', index) as string;
 	const format = this.getNodeParameter('format', 0) as string;
 	const fd = this.getNodeParameter('options.fd', index, true) as boolean;
+	const onlyCurrent = this.getNodeParameter('options.onlyCurrent', index, true) as boolean;
 
 	//endpoint
-	const endpoint = `reports/${reportId}/?format=${format}&fd=${fd}`;
+	const endpoint = `reports/${reportId}/?format=${format}&fd=${fd}&onlyCurrent=${onlyCurrent}`;
 
 	if (format === 'JSON') {
 		const responseData = await apiRequest.call(
@@ -66,5 +67,5 @@ export async function get(this: IExecuteFunctions, index: number) {
 		),
 	};
 
-	return this.prepareOutputData(newItem as unknown as INodeExecutionData[]);
+	return [newItem as unknown as INodeExecutionData[]];
 }

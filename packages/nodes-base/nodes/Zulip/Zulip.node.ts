@@ -8,10 +8,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { snakeCase } from 'change-case';
 import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
-import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userFields, userOperations } from './UserDescription';
 import type { IPrincipal, IStream } from './StreamInterface';
@@ -468,6 +468,6 @@ export class Zulip implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

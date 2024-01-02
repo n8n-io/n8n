@@ -7,16 +7,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import type { OptionsWithUri } from 'request';
+
+import { omit } from 'lodash';
 import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
 	LoadedUser,
 	RolesParameter,
 } from './types';
-
-import type { OptionsWithUri } from 'request';
-
-import { omit } from 'lodash';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,

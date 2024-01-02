@@ -1,10 +1,19 @@
+import FormData from 'form-data';
 import type { BinaryFileType, JsonObject } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+// NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
+// as well as the flatted stringify method. This is a workaround for that.
+BigInt.prototype.toJSON = function () {
+	return this.toString();
+};
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
+		if (obj instanceof FormData) return obj.getLengthSync() === 0;
 		if (Array.isArray(obj)) return obj.length === 0;
 		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
 		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
@@ -69,7 +78,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+			throw new ApplicationError(options.errorMessage);
 		}
 
 		throw error;
@@ -80,7 +89,7 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -104,9 +113,12 @@ export const sleep = async (ms: number): Promise<void> =>
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('text/html')) return 'html';
 	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('audio/')) return 'audio';
 	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/')) return 'text';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
+	if (mimeType.startsWith('application/pdf')) return 'pdf';
 	return;
 }
 
@@ -129,13 +141,7 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 }
 
 export const isTraversableObject = (value: any): value is JsonObject => {
-	return (
-		value &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		!!Object.keys(value).length
-	);
+	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 };
 
 export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {

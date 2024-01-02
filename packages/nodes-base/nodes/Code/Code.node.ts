@@ -13,6 +13,8 @@ import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
 
+const { CODE_ENABLE_STDOUT } = process.env;
+
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
@@ -21,7 +23,7 @@ export class Code implements INodeType {
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
-		description: 'Run custom JavaScript code',
+		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
 			color: '#FF9922',
@@ -92,8 +94,9 @@ export class Code implements INodeType {
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
 
+		const node = this.getNode();
 		const language: CodeNodeEditorLanguage =
-			this.getNode()?.typeVersion === 2
+			node.typeVersion === 2
 				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
@@ -107,16 +110,18 @@ export class Code implements INodeType {
 				context.item = context.$input.item;
 			}
 
-			if (language === 'python') {
-				context.printOverwrite = workflowMode === 'manual' ? this.sendMessageToUI : null;
-				return new PythonSandbox(context, code, index, this.helpers);
-			} else {
-				const sandbox = new JavaScriptSandbox(context, code, index, workflowMode, this.helpers);
-				if (workflowMode === 'manual') {
-					sandbox.vm.on('console.log', this.sendMessageToUI);
-				}
-				return sandbox;
-			}
+			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
+			const sandbox = new Sandbox(context, code, index, this.helpers);
+			sandbox.on(
+				'output',
+				workflowMode === 'manual'
+					? this.sendMessageToUI
+					: CODE_ENABLE_STDOUT === 'true'
+					  ? (...args) =>
+								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
+					  : () => {},
+			);
+			return sandbox;
 		};
 
 		// ----------------------------------
@@ -127,7 +132,7 @@ export class Code implements INodeType {
 			const sandbox = getSandbox();
 			let items: INodeExecutionData[];
 			try {
-				items = await sandbox.runCodeAllItems();
+				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
 				if (!this.continueOnFail()) throw error;
 				items = [{ json: { error: error.message } }];
@@ -137,7 +142,7 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return this.prepareOutputData(items);
+			return [items];
 		}
 
 		// ----------------------------------
@@ -155,7 +160,12 @@ export class Code implements INodeType {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
 				if (!this.continueOnFail()) throw error;
-				returnData.push({ json: { error: error.message } });
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: {
+						item: index,
+					},
+				});
 			}
 
 			if (result) {
@@ -167,6 +177,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -126,7 +126,7 @@ export class RabbitMQTrigger implements INodeType {
 						default: false,
 						description: 'Whether to return only the content property',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 					{
 						displayName: 'Parallel Message Processing Limit',
 						name: 'parallelMessages',
@@ -138,6 +138,39 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						description: 'Max number of executions at a time. Use -1 for no limit.',
+					},
+					{
+						displayName: 'Binding',
+						name: 'binding',
+						placeholder: 'Add Binding',
+						description: 'Add binding to queu',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'bindings',
+								displayName: 'Binding',
+								values: [
+									{
+										displayName: 'Exchange',
+										name: 'exchange',
+										type: 'string',
+										default: '',
+										placeholder: 'exchange',
+									},
+									{
+										displayName: 'RoutingKey',
+										name: 'routingKey',
+										type: 'string',
+										default: '',
+										placeholder: 'routing-key',
+									},
+								],
+							},
+						],
 					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {

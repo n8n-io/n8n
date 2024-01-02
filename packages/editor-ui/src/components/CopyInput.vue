@@ -2,9 +2,14 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div
-				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
-				@click="copy"
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					'ph-no-capture': redactValue,
+				}"
 				data-test-id="copy-input"
+				@click="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
 				<div :class="$style.copyButton">
@@ -18,11 +23,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { i18n } from '@/plugins/i18n';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
-	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
@@ -36,13 +41,13 @@ export default defineComponent({
 		copyButtonText: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copy');
+				return i18n.baseText('generic.copy');
 			},
 		},
 		toastTitle: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copiedToClipboard');
+				return i18n.baseText('generic.copiedToClipboard');
 			},
 		},
 		toastMessage: {
@@ -56,16 +61,23 @@ export default defineComponent({
 			type: String,
 			default: 'large',
 		},
+		redactValue: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
-			this.copyToClipboard(this.value);
+			void this.clipboard.copy(this.value);
 
 			this.showMessage({
 				title: this.toastTitle,

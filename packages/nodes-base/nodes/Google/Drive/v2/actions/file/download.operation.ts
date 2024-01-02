@@ -6,9 +6,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 								displayName: 'Google Docs',
 								name: 'docsToFormat',
 								type: 'options',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 								options: [
 									{
 										name: 'HTML',

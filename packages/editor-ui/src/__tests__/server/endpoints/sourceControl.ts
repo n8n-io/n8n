@@ -9,13 +9,12 @@ export function routesForSourceControl(server: Server) {
 	const defaultSourceControlPreferences: SourceControlPreferences = {
 		branchName: '',
 		branches: [],
-		authorName: '',
-		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
 		branchColor: '#1d6acb',
 		connected: false,
 		publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHEX+25m',
+		keyGeneratorType: 'ed25519',
 	};
 
 	server.get(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {

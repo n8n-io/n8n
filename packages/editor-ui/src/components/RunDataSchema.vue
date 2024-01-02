@@ -1,16 +1,16 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { merge } from 'lodash-es';
-import type { INodeUi, Schema } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty, runExternalHook } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
+import { useDataSchema } from '@/composables/useDataSchema';
 
 type Props = {
 	data: IDataObject[];
@@ -20,6 +20,7 @@ type Props = {
 	totalRuns: number;
 	paneType: 'input' | 'output';
 	node: INodeUi | null;
+	search: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,19 +29,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
-const webhooksStore = useWebhooksStore();
+const { getSchemaForExecutionData } = useDataSchema();
 
-const schema = computed<Schema>(() => {
-	const [head, ...tail] = props.data;
-	return getSchema(merge({}, head, ...tail, head));
-});
+const schema = computed(() => getSchemaForExecutionData(props.data));
 
-const isDataEmpty = computed(() => {
-	return isEmpty(props.data);
-});
+const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
-	if (el && el.dataset?.path) {
+	if (el?.dataset?.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
@@ -64,7 +60,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		void runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
@@ -76,10 +72,10 @@ const onDragEnd = (el: HTMLElement) => {
 		<n8n-info-tip v-if="isDataEmpty">{{
 			i18n.baseText('dataMapping.schemaView.emptyData')
 		}}</n8n-info-tip>
-		<draggable
+		<Draggable
 			v-else
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -87,22 +83,21 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:paneType="paneType"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
-		</draggable>
+			<div :class="$style.schema">
+				<RunDataSchemaItem
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:pane-type="paneType"
+					:sub-key="`${schema.type}-0-0`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
+					:node="node"
+					:search="search"
+				/>
+			</div>
+		</Draggable>
 	</div>
 </template>
 
@@ -118,7 +113,6 @@ const onDragEnd = (el: HTMLElement) => {
 	word-break: normal;
 	height: 100%;
 	width: 100%;
-	background-color: var(--color-background-base);
 
 	> div[class*='info'] {
 		padding: 0 var(--spacing-s);

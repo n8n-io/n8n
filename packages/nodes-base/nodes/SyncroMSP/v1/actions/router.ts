@@ -54,5 +54,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		}
 	}
 
-	return this.prepareOutputData(operationResult);
+	return [operationResult];
 }

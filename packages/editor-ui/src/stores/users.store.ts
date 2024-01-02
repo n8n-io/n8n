@@ -1,17 +1,13 @@
 import {
 	changePassword,
 	deleteUser,
-	getInviteLink,
 	getPasswordResetLink,
 	getUsers,
-	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
-	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
-	signup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -19,9 +15,11 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
+	updateRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
+	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
@@ -29,27 +27,32 @@ import type {
 	IUser,
 	IUserResponse,
 	IUsersState,
+	CurrentUserResponse,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
+import { useCloudPlanStore } from './cloudPlan.store';
+import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
+import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
+import { useRBACStore } from '@/stores/rbac.store';
+import type { Scope, ScopeLevel } from '@n8n/permissions';
+import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
-const isDefaultUser = (user: IUserResponse | null) =>
-	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
-
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
-
-const isInstanceOwner = (user: IUserResponse | null) =>
-	Boolean(user?.globalRole?.name === ROLE.Owner);
+const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
+const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
+		initialized: false,
 		currentUserId: null,
 		users: {},
+		currentUserCloudInfo: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
@@ -67,34 +70,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		isInstanceOwner(): boolean {
 			return isInstanceOwner(this.currentUser);
 		},
+		mfaEnabled(): boolean {
+			return this.currentUser?.mfaEnabled ?? false;
+		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},
 		globalRoleName(): IRole {
 			return this.currentUser?.globalRole?.name ?? 'default';
 		},
-		canUserDeleteTags(): boolean {
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
-		},
-		canUserActivateLicense(): boolean {
-			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
-		},
-		canUserAccessSidebarUserInfo() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, currentUser);
-			}
-			return false;
-		},
-		showUMSetupWarning() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
-			}
-			return false;
-		},
 		personalizedNodeTypes(): string[] {
-			const user = this.currentUser as IUser | null;
+			const user = this.currentUser;
 			if (!user) {
 				return [];
 			}
@@ -114,6 +100,29 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			try {
+				await this.loginWithCookie();
+				this.initialized = true;
+			} catch (e) {}
+		},
+		setCurrentUser(user: CurrentUserResponse) {
+			this.addUsers([user]);
+			this.currentUserId = user.id;
+
+			const defaultScopes: Scope[] = [];
+			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
+			usePostHog().init(user.featureFlags);
+		},
+		unsetCurrentUser() {
+			this.currentUserId = null;
+			this.currentUserCloudInfo = null;
+			useRBACStore().setGlobalScopes([]);
+		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
 				const prevUser = this.users[userResponse.id] || {};
@@ -128,7 +137,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {
@@ -161,28 +170,29 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
-		async loginWithCreds(params: { email: string; password: string }): Promise<void> {
+		async loginWithCreds(params: {
+			email: string;
+			password: string;
+			mfaToken?: string;
+			mfaRecoveryCode?: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
 			if (!user) {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
-			this.currentUserId = null;
+			this.unsetCurrentUser();
+			useCloudPlanStore().reset();
 			usePostHog().reset();
+			useUIStore().clearBannerStack();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -194,8 +204,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await setupOwner(rootStore.getRestApiContext, params);
 			const settingsStore = useSettingsStore();
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+				this.setCurrentUser(user);
 				settingsStore.stopShowingSetupPage();
 			}
 		},
@@ -206,7 +215,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return validateSignupToken(rootStore.getRestApiContext, params);
 		},
-		async signup(params: {
+		async acceptInvitation(params: {
 			inviteeId: string;
 			inviterId: string;
 			firstName: string;
@@ -214,26 +223,23 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await signup(rootStore.getRestApiContext, params);
+			const user = await acceptInvitation(rootStore.getRestApiContext, params);
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+				this.setCurrentUser(user);
 			}
-
-			usePostHog().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
 		},
-		async validatePasswordToken(params: { token: string; userId: string }): Promise<void> {
+		async validatePasswordToken(params: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
 		async changePassword(params: {
 			token: string;
 			password: string;
-			userId: string;
+			mfaToken?: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
@@ -295,19 +301,26 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
+		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
+			this.addUsers(
+				users.map(({ user }, index) => ({
+					isPending: true,
+					globalRole: { name: params[index].role },
+					...user,
+				})),
+			);
 			return users;
 		},
-		async reinviteUser(params: { id: string }): Promise<void> {
+		async reinviteUser(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await reinvite(rootStore.getRestApiContext, params);
-		},
-		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
-			const rootStore = useRootStore();
-			return getInviteLink(rootStore.getRestApiContext, params);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
+				{ email: params.email },
+			]);
+			if (!invitationResponse[0].user.emailSent) {
+				throw Error(invitationResponse[0].error);
+			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
@@ -326,6 +339,50 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 			}
+		},
+		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
+			const rootStore = useRootStore();
+			return getMfaQR(rootStore.getRestApiContext);
+		},
+		async verifyMfaToken(data: { token: string }): Promise<void> {
+			const rootStore = useRootStore();
+			return verifyMfaToken(rootStore.getRestApiContext, data);
+		},
+		async enableMfa(data: { token: string }) {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await enableMfa(rootStore.getRestApiContext, data);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = true;
+			}
+		},
+		async disabledMfa() {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await disableMfa(rootStore.getRestApiContext);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = false;
+			}
+		},
+		async fetchUserCloudAccount() {
+			let cloudUser: Cloud.UserAccount | null = null;
+			try {
+				cloudUser = await getCloudUserInfo(useRootStore().getRestApiContext);
+				this.currentUserCloudInfo = cloudUser;
+			} catch (error) {
+				throw new Error(error);
+			}
+		},
+		async confirmEmail() {
+			await confirmEmail(useRootStore().getRestApiContext);
+		},
+
+		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+			const rootStore = useRootStore();
+			await updateRole(rootStore.getRestApiContext, { id, role });
+			await this.fetchUsers();
 		},
 	},
 });

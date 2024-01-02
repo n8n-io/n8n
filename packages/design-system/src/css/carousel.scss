@@ -148,13 +148,13 @@
 	}
 }
 
-.carousel-arrow-left-enter,
+.carousel-arrow-left-enter-from,
 .carousel-arrow-left-leave-active {
 	transform: translateY(-50%) translateX(-10px);
 	opacity: 0;
 }
 
-.carousel-arrow-right-enter,
+.carousel-arrow-right-enter-from,
 .carousel-arrow-right-leave-active {
 	transform: translateY(-50%) translateX(10px);
 	opacity: 0;

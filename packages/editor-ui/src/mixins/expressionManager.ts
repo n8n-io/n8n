@@ -2,6 +2,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
+import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
@@ -19,11 +20,16 @@ export const expressionManager = defineComponent({
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
 		},
+		additionalData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 	},
 	data() {
 		return {
 			editor: {} as EditorView,
 			skipSegments: [] as string[],
+			editorState: undefined,
 		};
 	},
 	watch: {
@@ -72,24 +78,24 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
-			if (!this.editor?.state) return [];
+			if (!this.editorState || !this.editorState) return [];
 
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
-				this.editor.state,
-				this.editor.state.doc.length,
+				this.editorState,
+				this.editorState.doc.length,
 				EXPRESSION_EDITOR_PARSER_TIMEOUT,
 			);
 
 			if (fullTree === null) {
-				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
+				throw new Error(`Failed to parse expression: ${this.editorValue}`);
 			}
 
 			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
 
 			fullTree.cursor().iterate((node) => {
-				const text = this.editor.state.sliceDoc(node.from, node.to);
+				const text = this.editorState.sliceDoc(node.from, node.to);
 
 				if (skipSegments.includes(node.type.name)) return;
 
@@ -193,7 +199,7 @@ export const expressionManager = defineComponent({
 				const ndvStore = useNDVStore();
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
-					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
+					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
 				} else {
 					let opts;
 					if (ndvStore.isInputParentOfActiveNode) {
@@ -202,6 +208,7 @@ export const expressionManager = defineComponent({
 							inputNodeName: this.ndvStore.ndvInputNodeName,
 							inputRunIndex: this.ndvStore.ndvInputRunIndex,
 							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+							additionalKeys: this.additionalData,
 						};
 					}
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);

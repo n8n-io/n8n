@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
-import {
-	useEnvironmentsStore,
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useSourceControlStore,
-} from '@/stores';
-import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type {
 	DatatableColumn,
 	EnvironmentVariable,
@@ -26,7 +27,7 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
 let sourceControlStoreUnsubscribe = () => {};
@@ -183,7 +184,7 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 
 async function deleteVariable(data: EnvironmentVariable) {
 	try {
-		await message.confirm(
+		const confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
@@ -191,11 +192,11 @@ async function deleteVariable(data: EnvironmentVariable) {
 				cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
 			},
 		);
-	} catch (e) {
-		return;
-	}
 
-	try {
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+
 		await environmentsStore.deleteVariable(data);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {
@@ -204,7 +205,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	uiStore.goToUpgrade('variables', 'upgrade-variables');
+	void uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {
@@ -229,15 +230,16 @@ onBeforeUnmount(() => {
 <template>
 	<ResourcesListLayout
 		ref="layoutRef"
+		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="allVariables"
 		:initialize="initialize"
 		:shareable="false"
-		:displayName="displayName"
-		:sortFns="sortFns"
-		:sortOptions="['nameAsc', 'nameDesc']"
-		:showFiltersDropdown="false"
+		:display-name="displayName"
+		:sort-fns="sortFns"
+		:sort-options="['nameAsc', 'nameDesc']"
+		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
 		@sort="resetNewVariablesList"
@@ -250,8 +252,8 @@ onBeforeUnmount(() => {
 						size="large"
 						block
 						:disabled="!canCreateVariables"
-						@click="addTemporaryVariable"
 						data-test-id="resources-list-add"
+						@click="addTemporaryVariable"
 					>
 						{{ $locale.baseText(`variables.add`) }}
 					</n8n-button>
@@ -273,9 +275,9 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
-				@click="goToUpgrade"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
+				@click:button="goToUpgrade"
 			/>
 		</template>
 		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
@@ -287,9 +289,9 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
-				@click="goToUpgrade"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
+				@click:button="goToUpgrade"
 			/>
 			<n8n-action-box
 				v-else-if="!canCreateVariables"
@@ -331,43 +333,45 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use 'n8n-design-system/css/common/var.scss';
 
-:deep(.datatable) {
-	table {
-		table-layout: fixed;
-	}
-
-	th,
-	td {
-		width: 25%;
-
-		@media screen and (max-width: var.$md) {
-			width: 33.33%;
+.variables-view {
+	:deep(.datatable) {
+		table {
+			table-layout: fixed;
 		}
 
-		&.variables-value-column,
-		&.variables-key-column,
-		&.variables-usage-column {
-			> div {
-				width: 100%;
+		th,
+		td {
+			width: 25%;
 
-				> span {
-					max-width: 100%;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
-					height: 18px;
-				}
+			@media screen and (max-width: var.$md) {
+				width: 33.33%;
+			}
 
+			&.variables-value-column,
+			&.variables-key-column,
+			&.variables-usage-column {
 				> div {
 					width: 100%;
+
+					> span {
+						max-width: 100%;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+						height: 18px;
+					}
+
+					> div {
+						width: 100%;
+					}
 				}
 			}
 		}
-	}
 
-	.variables-usage-column {
-		@media screen and (max-width: var.$md) {
-			display: none;
+		.variables-usage-column {
+			@media screen and (max-width: var.$md) {
+				display: none;
+			}
 		}
 	}
 }

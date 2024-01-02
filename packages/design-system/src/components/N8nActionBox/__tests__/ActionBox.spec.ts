@@ -11,7 +11,9 @@ describe('N8NActionBox', () => {
 					'Long description that you should know something is the way it is because of how it is. ',
 				buttonText: 'Do something',
 			},
-			stubs: ['n8n-heading', 'n8n-text', 'n8n-button', 'n8n-callout'],
+			global: {
+				stubs: ['n8n-heading', 'n8n-text', 'n8n-button', 'n8n-callout'],
+			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});

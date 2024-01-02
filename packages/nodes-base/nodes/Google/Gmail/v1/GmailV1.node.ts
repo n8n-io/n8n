@@ -11,6 +11,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
 import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
@@ -27,8 +28,6 @@ import { messageLabelFields, messageLabelOperations } from './MessageLabelDescri
 import { labelFields, labelOperations } from './LabelDescription';
 
 import { draftFields, draftOperations } from './DraftDescription';
-
-import isEmpty from 'lodash/isEmpty';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
@@ -834,6 +833,6 @@ export class GmailV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

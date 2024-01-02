@@ -6,7 +6,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -28,12 +27,7 @@ import type {
  * Make an authenticated API request to Copper.
  */
 export async function copperApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},

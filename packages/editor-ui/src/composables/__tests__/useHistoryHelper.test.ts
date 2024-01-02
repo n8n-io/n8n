@@ -22,8 +22,14 @@ vi.mock('@/stores/history.store', () => {
 		}),
 	};
 });
-vi.mock('@/stores/ui.store');
-vi.mock('vue-router/composables', () => ({
+vi.mock('@/stores/ui.store', () => {
+	return {
+		useUIStore: () => ({
+			isAnyModalOpen: false,
+		}),
+	};
+});
+vi.mock('vue-router', () => ({
 	useRoute: () => ({}),
 }));
 

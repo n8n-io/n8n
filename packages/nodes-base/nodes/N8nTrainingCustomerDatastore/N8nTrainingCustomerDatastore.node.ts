@@ -145,6 +145,6 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				returnData.push({ json: responseData });
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

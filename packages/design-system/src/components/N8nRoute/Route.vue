@@ -1,19 +1,17 @@
 <template>
-	<span>
-		<router-link v-if="useRouterLink" :to="to" v-on="$listeners">
-			<slot></slot>
-		</router-link>
-		<a v-else :href="to" :target="openNewWindow ? '_blank' : '_self'" v-on="$listeners">
-			<slot></slot>
-		</a>
-	</span>
+	<router-link v-if="useRouterLink" :to="to" v-bind="$attrs">
+		<slot></slot>
+	</router-link>
+	<a v-else :href="to" :target="openNewWindow ? '_blank' : '_self'" v-bind="$attrs">
+		<slot></slot>
+	</a>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-route',
+	name: 'N8nRoute',
 	props: {
 		to: {
 			type: String || Object,

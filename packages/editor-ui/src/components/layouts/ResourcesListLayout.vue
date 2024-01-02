@@ -1,31 +1,31 @@
 <template>
-	<page-view-layout>
-		<template #aside v-if="showAside">
+	<PageViewLayout>
+		<template v-if="showAside" #aside>
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`${resourceKey}.heading`) }}
+					{{ i18n.baseText(`${resourceKey}.heading`) }}
 				</n8n-heading>
 			</div>
 
 			<div class="mt-xs mb-l">
-				<slot name="add-button">
+				<slot name="add-button" :disabled="disabled">
 					<n8n-button
 						size="large"
 						block
 						:disabled="disabled"
-						@click="$emit('click:add', $event)"
 						data-test-id="resources-list-add"
+						@click="$emit('click:add', $event)"
 					>
-						{{ $locale.baseText(`${resourceKey}.add`) }}
+						{{ i18n.baseText(`${resourceKey}.add`) }}
 					</n8n-button>
 				</slot>
 			</div>
 
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
-				<resource-ownership-select
+			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
+				<ResourceOwnershipSelect
 					v-model="isOwnerSubview"
-					:my-resources-label="$locale.baseText(`${resourceKey}.menu.my`)"
-					:all-resources-label="$locale.baseText(`${resourceKey}.menu.all`)"
+					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
+					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
 				/>
 			</enterprise-edition>
 		</template>
@@ -42,7 +42,7 @@
 						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="
-							$locale.baseText(
+							i18n.baseText(
 								usersStore.currentUser.firstName
 									? `${resourceKey}.empty.heading`
 									: `${resourceKey}.empty.heading.userNotSetup`,
@@ -51,63 +51,64 @@
 								},
 							)
 						"
-						:description="$locale.baseText(`${resourceKey}.empty.description`)"
-						:buttonText="$locale.baseText(`${resourceKey}.empty.button`)"
-						buttonType="secondary"
-						@click="$emit('click:add', $event)"
+						:description="i18n.baseText(`${resourceKey}.empty.description`)"
+						:button-text="i18n.baseText(`${resourceKey}.empty.button`)"
+						button-type="secondary"
+						@click:button="$emit('click:add', $event)"
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list :overflow="type !== 'list'" v-else>
+			<PageViewLayoutList v-else :overflow="type !== 'list'">
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
 							<n8n-input
-								:class="[$style['search'], 'mr-2xs']"
-								:placeholder="$locale.baseText(`${resourceKey}.search.placeholder`)"
-								v-model="filters.search"
-								size="medium"
-								clearable
 								ref="search"
+								:model-value="filtersModel.search"
+								:class="[$style['search'], 'mr-2xs']"
+								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
+								clearable
 								data-test-id="resources-list-search"
+								@update:modelValue="onSearch"
 							>
 								<template #prefix>
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
+										data-test-id="resources-list-sort-item"
 										:value="sortOption"
-										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
+										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
 									/>
 								</n8n-select>
-								<resource-filters-dropdown
+								<ResourceFiltersDropdown
 									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
-									:value="filters"
+									:model-value="filtersModel"
 									:shareable="shareable"
-									@input="$emit('update:filters', $event)"
+									@update:modelValue="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>
 									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
 									</template>
-								</resource-filters-dropdown>
+								</ResourceFiltersDropdown>
 							</div>
 						</div>
 					</div>
 
 					<slot name="callout"></slot>
 
-					<div v-show="hasFilters" class="mt-xs">
+					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
-							{{ $locale.baseText(`${resourceKey}.filters.active`) }}
-							<n8n-link @click="resetFilters" size="small">
-								{{ $locale.baseText(`${resourceKey}.filters.active.reset`) }}
+							{{ i18n.baseText(`${resourceKey}.filters.active`) }}
+							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
+								{{ i18n.baseText(`${resourceKey}.filters.active.reset`) }}
 							</n8n-link>
 						</n8n-info-tip>
 					</div>
@@ -119,8 +120,8 @@
 
 				<div
 					v-if="filteredAndSortedSubviewResources.length > 0"
-					:class="$style.listWrapper"
 					ref="listWrapperRef"
+					:class="$style.listWrapper"
 				>
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
@@ -131,7 +132,10 @@
 						item-key="id"
 					>
 						<template #default="{ item, updateItemSize }">
-							<slot :data="item" :updateItemSize="updateItemSize" />
+							<slot :data="item" :update-item-size="updateItemSize" />
+						</template>
+						<template #postListContent>
+							<slot name="postListContent" />
 						</template>
 					</n8n-recycle-scroller>
 					<n8n-datatable
@@ -140,8 +144,8 @@
 						:class="$style.datatable"
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
-						:currentPage="currentPage"
-						:rowsPerPage="rowsPerPage"
+						:current-page="currentPage"
+						:rows-per-page="rowsPerPage"
 						@update:currentPage="setCurrentPage"
 						@update:rowsPerPage="setRowsPerPage"
 					>
@@ -151,23 +155,21 @@
 					</n8n-datatable>
 				</div>
 
-				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
-					{{ $locale.baseText(`${resourceKey}.noResults`) }}
+				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+					{{ i18n.baseText(`${resourceKey}.noResults`) }}
 					<template v-if="shouldSwitchToAllSubview">
-						<span v-if="!filters.search">
-							({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
+						<span v-if="!filtersModel.search">
+							({{ i18n.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
 							<n8n-link @click="setOwnerSubview(false)">
-								{{ $locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
+								{{ i18n.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
 							>)
 						</span>
 
 						<span v-else>
-							({{
-								$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`)
-							}}
+							({{ i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`) }}
 							<n8n-link @click="setOwnerSubview(false)">
 								{{
-									$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
+									i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
 								}} </n8n-link
 							>)
 						</span>
@@ -175,9 +177,9 @@
 				</n8n-text>
 
 				<slot name="postamble" />
-			</page-view-layout-list>
+			</PageViewLayoutList>
 		</template>
-	</page-view-layout>
+	</PageViewLayout>
 </template>
 
 <script lang="ts">
@@ -194,8 +196,8 @@ import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { N8nInput } from 'n8n-design-system';
-import type { DatatableColumn } from 'n8n-design-system';
+import type { N8nInput, DatatableColumn } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 export interface IResource {
 	id: string;
@@ -218,14 +220,14 @@ type IResourceKeyType = 'credentials' | 'workflows';
 type SearchRef = InstanceType<typeof N8nInput>;
 
 export default defineComponent({
-	name: 'resources-list-layout',
-	mixins: [debounceHelper],
+	name: 'ResourcesListLayout',
 	components: {
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
+	mixins: [debounceHelper],
 	props: {
 		resourceKey: {
 			type: String,
@@ -285,12 +287,20 @@ export default defineComponent({
 			}),
 		},
 	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
+	},
 	data() {
 		return {
 			loading: true,
 			isOwnerSubview: false,
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
+			filtersModel: { ...this.filters },
 			currentPage: 1,
 			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
@@ -316,33 +326,31 @@ export default defineComponent({
 			});
 		},
 		filterKeys(): string[] {
-			return Object.keys(this.filters);
+			return Object.keys(this.filtersModel);
 		},
 		filteredAndSortedSubviewResources(): IResource[] {
 			const filtered: IResource[] = this.subviewResources.filter((resource: IResource) => {
 				let matches = true;
 
-				if (this.filters.ownedBy) {
-					matches = matches && !!(resource.ownedBy && resource.ownedBy.id === this.filters.ownedBy);
+				if (this.filtersModel.ownedBy) {
+					matches =
+						matches && !!(resource.ownedBy && resource.ownedBy.id === this.filtersModel.ownedBy);
 				}
 
-				if (this.filters.sharedWith) {
+				if (this.filtersModel.sharedWith) {
 					matches =
 						matches &&
-						!!(
-							resource.sharedWith &&
-							resource.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith)
-						);
+						!!resource.sharedWith?.find((sharee) => sharee.id === this.filtersModel.sharedWith);
 				}
 
-				if (this.filters.search) {
-					const searchString = this.filters.search.toLowerCase();
+				if (this.filtersModel.search) {
+					const searchString = this.filtersModel.search.toLowerCase();
 
 					matches = matches && this.displayName(resource).toLowerCase().includes(searchString);
 				}
 
 				if (this.additionalFiltersHandler) {
-					matches = this.additionalFiltersHandler(resource, this.filters, matches);
+					matches = this.additionalFiltersHandler(resource, this.filtersModel, matches);
 				}
 
 				return matches;
@@ -351,20 +359,20 @@ export default defineComponent({
 			return filtered.sort((a, b) => {
 				switch (this.sortBy) {
 					case 'lastUpdated':
-						return this.sortFns['lastUpdated']
-							? this.sortFns['lastUpdated'](a, b)
+						return this.sortFns.lastUpdated
+							? this.sortFns.lastUpdated(a, b)
 							: new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
 					case 'lastCreated':
-						return this.sortFns['lastCreated']
-							? this.sortFns['lastCreated'](a, b)
+						return this.sortFns.lastCreated
+							? this.sortFns.lastCreated(a, b)
 							: new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return this.sortFns['nameAsc']
-							? this.sortFns['nameAsc'](a, b)
+						return this.sortFns.nameAsc
+							? this.sortFns.nameAsc(a, b)
 							: this.displayName(a).trim().localeCompare(this.displayName(b).trim());
 					case 'nameDesc':
-						return this.sortFns['nameDesc']
-							? this.sortFns['nameDesc'](a, b)
+						return this.sortFns.nameDesc
+							? this.sortFns.nameDesc(a, b)
 							: this.displayName(b).trim().localeCompare(this.displayName(a).trim());
 					default:
 						return this.sortFns[this.sortBy] ? this.sortFns[this.sortBy](a, b) : 0;
@@ -380,12 +388,57 @@ export default defineComponent({
 			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
 		},
 	},
+	watch: {
+		isOwnerSubview() {
+			this.sendSubviewTelemetry();
+		},
+		filters(value) {
+			this.filtersModel = value;
+		},
+		'filtersModel.ownedBy'(value) {
+			if (value) {
+				this.setOwnerSubview(false);
+			}
+			this.sendFiltersTelemetry('ownedBy');
+		},
+		'filtersModel.sharedWith'() {
+			this.sendFiltersTelemetry('sharedWith');
+		},
+		'filtersModel.search'() {
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
+		},
+		sortBy(newValue) {
+			this.$emit('sort', newValue);
+			this.sendSortingTelemetry();
+		},
+	},
+	mounted() {
+		void this.onMounted();
+	},
 	methods: {
 		async onMounted() {
 			await this.initialize();
 
 			this.loading = false;
-			this.$nextTick(this.focusSearchInput);
+			await this.$nextTick();
+			this.focusSearchInput();
+
+			if (this.hasAppliedFilters()) {
+				this.hasFilters = true;
+			}
+		},
+		hasAppliedFilters(): boolean {
+			return !!this.filterKeys.find(
+				(key) =>
+					key !== 'search' &&
+					(Array.isArray(this.filters[key])
+						? this.filters[key].length > 0
+						: this.filters[key] !== ''),
+			);
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;
@@ -394,8 +447,8 @@ export default defineComponent({
 			this.rowsPerPage = rowsPerPage;
 		},
 		resetFilters() {
-			Object.keys(this.filters).forEach((key) => {
-				this.filters[key] = Array.isArray(this.filters[key]) ? [] : '';
+			Object.keys(this.filtersModel).forEach((key) => {
+				this.filtersModel[key] = Array.isArray(this.filtersModel[key]) ? [] : '';
 			});
 
 			this.resettingFilters = true;
@@ -410,7 +463,7 @@ export default defineComponent({
 			this.isOwnerSubview = active;
 		},
 		getTelemetrySubview(): string {
-			return this.$locale.baseText(
+			return this.i18n.baseText(
 				`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`,
 			);
 		},
@@ -436,7 +489,7 @@ export default defineComponent({
 				setTimeout(() => (this.resettingFilters = false), 1500);
 			}
 
-			const filters = this.filters as Record<string, string[] | string | boolean>;
+			const filters = this.filtersModel as Record<string, string[] | string | boolean>;
 			const filtersSet: string[] = [];
 			const filterValues: Array<string[] | string | boolean | null> = [];
 
@@ -458,33 +511,9 @@ export default defineComponent({
 		onUpdateFiltersLength(length: number) {
 			this.hasFilters = length > 0;
 		},
-	},
-	mounted() {
-		void this.onMounted();
-	},
-	watch: {
-		isOwnerSubview() {
-			this.sendSubviewTelemetry();
-		},
-		'filters.ownedBy'(value) {
-			if (value) {
-				this.setOwnerSubview(false);
-			}
-			this.sendFiltersTelemetry('ownedBy');
-		},
-		'filters.sharedWith'() {
-			this.sendFiltersTelemetry('sharedWith');
-		},
-		'filters.search'() {
-			void this.callDebounced(
-				'sendFiltersTelemetry',
-				{ debounceTime: 1000, trailing: true },
-				'search',
-			);
-		},
-		sortBy(newValue) {
-			this.$emit('sort', newValue);
-			this.sendSortingTelemetry();
+		onSearch(search: string) {
+			this.filtersModel.search = search;
+			this.$emit('update:filters', this.filtersModel);
 		},
 	},
 });

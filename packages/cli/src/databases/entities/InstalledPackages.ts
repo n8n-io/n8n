@@ -1,9 +1,9 @@
 import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
 import type { InstalledNodes } from './InstalledNodes';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
 
 @Entity()
-export class InstalledPackages extends AbstractEntity {
+export class InstalledPackages extends WithTimestamps {
 	@PrimaryColumn()
 	packageName: string;
 

@@ -1,7 +1,5 @@
-import * as path from 'path';
-import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, getVersionedNodeTypeAll, LoggerProxy as Logger } from 'n8n-workflow';
+import { readFile } from 'fs/promises';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -9,15 +7,23 @@ import type {
 	ICredentialTypeData,
 	INodeType,
 	INodeTypeBaseDescription,
-	INodeTypeDescription,
 	INodeTypeData,
+	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
+import {
+	ApplicationError,
+	LoggerProxy as Logger,
+	getCredentialsForNode,
+	getVersionedNodeTypeAll,
+	jsonParse,
+} from 'n8n-workflow';
+import * as path from 'path';
+import { loadClassInIsolation } from './ClassLoader';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
-import { loadClassInIsolation } from './ClassLoader';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -43,6 +49,8 @@ export abstract class DirectoryLoader {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	types: Types = { nodes: [], credentials: [] };
+
+	protected nodesByCredential: Record<string, string[]> = {};
 
 	constructor(
 		readonly directory: string,
@@ -109,8 +117,9 @@ export abstract class DirectoryLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				throw new Error(
-					`"executeSingle" has been removed. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
+				throw new ApplicationError(
+					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead!',
+					{ extra: { nodeName: `${this.packageName}.${nodeName}` } },
 				);
 			}
 		} else {
@@ -140,12 +149,19 @@ export abstract class DirectoryLoader {
 		getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
 			this.types.nodes.push(description);
 		});
+
+		for (const credential of getCredentialsForNode(tempNode)) {
+			if (!this.nodesByCredential[credential.name]) {
+				this.nodesByCredential[credential.name] = [];
+			}
+			this.nodesByCredential[credential.name].push(fullNodeName);
+		}
 	}
 
-	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
+	protected loadCredentialFromFile(credentialClassName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
-			tempCredential = loadClassInIsolation(filePath, credentialName);
+			tempCredential = loadClassInIsolation(filePath, credentialClassName);
 
 			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
 			// gets mapped to the authenticate attribute before it is sent to the client.
@@ -156,8 +172,9 @@ export abstract class DirectoryLoader {
 			this.fixIconPath(tempCredential, filePath);
 		} catch (e) {
 			if (e instanceof TypeError) {
-				throw new Error(
-					`Class with name "${credentialName}" could not be found. Please check if the class is named correctly!`,
+				throw new ApplicationError(
+					'Class could not be found. Please check if the class is named correctly.',
+					{ extra: { credentialClassName } },
 				);
 			} else {
 				throw e;
@@ -165,9 +182,10 @@ export abstract class DirectoryLoader {
 		}
 
 		this.known.credentials[tempCredential.name] = {
-			className: credentialName,
+			className: credentialClassName,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
+			supportedNodes: this.nodesByCredential[tempCredential.name],
 		};
 
 		this.credentialTypes[tempCredential.name] = {
@@ -276,19 +294,24 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	packageName = 'CUSTOM';
 
 	override async loadAll() {
-		const filePaths = await glob('**/*.@(node|credentials).js', {
+		const nodes = await glob('**/*.node.js', {
 			cwd: this.directory,
 			absolute: true,
 		});
 
-		for (const filePath of filePaths) {
-			const [fileName, type] = path.parse(filePath).name.split('.');
+		for (const nodePath of nodes) {
+			const [fileName] = path.parse(nodePath).name.split('.');
+			this.loadNodeFromFile(fileName, nodePath);
+		}
 
-			if (type === 'node') {
-				this.loadNodeFromFile(fileName, filePath);
-			} else if (type === 'credentials') {
-				this.loadCredentialFromFile(fileName, filePath);
-			}
+		const credentials = await glob('**/*.credentials.js', {
+			cwd: this.directory,
+			absolute: true,
+		});
+
+		for (const credentialPath of credentials) {
+			const [fileName] = path.parse(credentialPath).name.split('.');
+			this.loadCredentialFromFile(fileName, credentialPath);
 		}
 	}
 }
@@ -315,21 +338,21 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		const { nodes, credentials } = n8n;
 
-		if (Array.isArray(credentials)) {
-			for (const credential of credentials) {
-				const filePath = this.resolvePath(credential);
-				const [credentialName] = path.parse(credential).name.split('.');
-
-				this.loadCredentialFromFile(credentialName, filePath);
-			}
-		}
-
 		if (Array.isArray(nodes)) {
 			for (const node of nodes) {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
 				this.loadNodeFromFile(nodeName, filePath);
+			}
+		}
+
+		if (Array.isArray(credentials)) {
+			for (const credential of credentials) {
+				const filePath = this.resolvePath(credential);
+				const [credentialName] = path.parse(credential).name.split('.');
+
+				this.loadCredentialFromFile(credentialName, filePath);
 			}
 		}
 
@@ -346,7 +369,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		try {
 			return jsonParse<T>(fileString);
 		} catch (error) {
-			throw new Error(`Failed to parse JSON from ${filePath}`);
+			throw new ApplicationError('Failed to parse JSON', { extra: { filePath } });
 		}
 	}
 }
@@ -371,7 +394,9 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			if (this.includeNodes.length) {
 				const allowedNodes: typeof this.known.nodes = {};
 				for (const nodeName of this.includeNodes) {
-					allowedNodes[nodeName] = this.known.nodes[nodeName];
+					if (nodeName in this.known.nodes) {
+						allowedNodes[nodeName] = this.known.nodes[nodeName];
+					}
 				}
 				this.known.nodes = allowedNodes;
 

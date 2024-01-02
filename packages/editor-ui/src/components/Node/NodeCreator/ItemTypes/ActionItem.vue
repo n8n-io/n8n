@@ -1,21 +1,21 @@
 <template>
 	<n8n-node-creator-node
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
-		:isTrigger="isTriggerAction(action)"
+		:is-trigger="isTriggerAction(action)"
 		data-keyboard-nav="true"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
 	>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
-			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
-				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
+			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
 			</div>
 		</template>
 		<template #icon>
-			<node-icon :nodeType="action" />
+			<NodeIcon :node-type="action" />
 		</template>
 	</n8n-node-creator-node>
 </template>
@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/constants';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -41,7 +41,7 @@ const props = defineProps<Props>();
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
 
-const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } = useActions();
+const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({
@@ -72,13 +72,13 @@ function onDragStart(event: DragEvent): void {
 	 */
 	document.body.addEventListener('dragover', onDragOver);
 	const { pageX: x, pageY: y } = event;
-	if (event.dataTransfer) {
+	if (event.dataTransfer && actionData.value.key) {
 		event.dataTransfer.effectAllowed = 'copy';
 		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
 		event.dataTransfer.setData(
-			'nodeTypeName',
-			getNodeTypesWithManualTrigger(actionData.value?.key).join(','),
+			DRAG_EVENT_DATA_KEY,
+			JSON.stringify(getAddedNodesAndConnections([{ type: actionData.value.key }])),
 		);
 		if (telemetry) {
 			state.storeWatcher = setAddedNodeActionParameters(

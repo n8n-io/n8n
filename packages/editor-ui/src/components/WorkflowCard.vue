@@ -1,20 +1,14 @@
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
-			<n8n-heading
-				tag="h2"
-				bold
-				class="ph-no-capture"
-				:class="$style.cardHeading"
-				data-test-id="workflow-card-name"
-			>
+			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }} <time-ago :date="data.updatedAt" /> |
+					>{{ $locale.baseText('workflows.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
 					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
@@ -25,36 +19,36 @@
 				>
 					<n8n-tags
 						:tags="data.tags"
-						:truncateAt="3"
+						:truncate-at="3"
 						truncate
-						@click="onClickTag"
-						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
+						@click:tag="onClickTag"
+						@expand="onExpandTags"
 					/>
 				</span>
 			</n8n-text>
 		</div>
 		<template #append>
-			<div :class="$style.cardActions">
+			<div ref="cardActions" :class="$style.cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
 
-				<workflow-activator
+				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
-					ref="activator"
 					data-test-id="workflow-card-activator"
 				/>
 
 				<n8n-action-toggle
 					:actions="actions"
 					theme="dark"
-					@action="onAction"
 					data-test-id="workflow-card-actions"
+					@action="onAction"
+					@click.stop
 				/>
 			</div>
 		</template>
@@ -71,7 +65,8 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
@@ -83,8 +78,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 
-type ActivatorRef = InstanceType<typeof WorkflowActivator>;
-
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -93,17 +86,6 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
 	components: {
 		TimeAgo,
 		WorkflowActivator,
@@ -129,6 +111,17 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
@@ -176,21 +169,22 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick(event?: PointerEvent) {
-			if (event) {
-				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
-					return;
-				}
+		async onClick(event: Event) {
+			if (
+				this.$refs.cardActions === event.target ||
+				this.$refs.cardActions?.contains(event.target)
+			) {
+				return;
+			}
 
-				if (event.metaKey || event.ctrlKey) {
-					const route = this.$router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.data.id },
-					});
-					window.open(route.href, '_blank');
+			if (event.metaKey || event.ctrlKey) {
+				const route = this.$router.resolve({
+					name: VIEWS.WORKFLOW,
+					params: { name: this.data.id },
+				});
+				window.open(route.href, '_blank');
 
-					return;
-				}
+				return;
 			}
 
 			await this.$router.push({
@@ -272,6 +266,8 @@ export default defineComponent({
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0;
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
@@ -281,12 +277,14 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	word-break: break-word;
+	padding: var(--spacing-s) 0 0 var(--spacing-s);
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 }
 
 .cardActions {
@@ -294,5 +292,8 @@ export default defineComponent({
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>

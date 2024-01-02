@@ -44,7 +44,7 @@ export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePrope
 		returnData.push({
 			name: field.name as string,
 			value: field.name as string,
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+
 			description:
 				`type: ${field.type as string}` + (field.mode ? ` mode: ${field.mode as string}` : ''),
 		});

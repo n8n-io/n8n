@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
 import { genericHelpers } from './genericHelpers';
 import type { IExecutionsSummary } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 
 export interface IExecutionUIData {
 	name: string;
@@ -41,19 +42,15 @@ export const executionHelpers = defineComponent({
 				runningTime: '',
 			};
 
-			if (execution.status === 'waiting' || execution.waitTill) {
+			if (execution.status === 'waiting') {
 				status.name = 'waiting';
 				status.label = this.$locale.baseText('executionsList.waiting');
 			} else if (execution.status === 'canceled') {
 				status.label = this.$locale.baseText('executionsList.canceled');
-			} else if (
-				execution.status === 'running' ||
-				execution.status === 'new' ||
-				execution.stoppedAt === undefined
-			) {
+			} else if (execution.status === 'running' || execution.status === 'new') {
 				status.name = 'running';
 				status.label = this.$locale.baseText('executionsList.running');
-			} else if (execution.status === 'success' || execution.finished) {
+			} else if (execution.status === 'success') {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
 			} else if (execution.status === 'failed' || execution.status === 'crashed') {
@@ -76,7 +73,7 @@ export const executionHelpers = defineComponent({
 			return status;
 		},
 		formatDate(fullDate: Date | string | number) {
-			const { date, time } = this.convertToDisplayDate(fullDate);
+			const { date, time } = convertToDisplayDateComponents(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 	},

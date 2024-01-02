@@ -1,0 +1,60 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "test",
+				"options": {
+					"binaryData": false
+				}
+			},
+			"id": "ec188f16-b2c5-44e3-bd83-259a94f15c94",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"webhookId": "a59a3be7-6d43-47e7-951d-86b8172c2006"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[]]
+		}
+	},
+	"trigger": {
+		"mode": "webhook",
+		"input": {
+			"json": {
+				"headers": {
+					"host": "localhost:5678",
+					"user-agent": "curl/8.2.0",
+					"accept": "*/*",
+					"content-length": "137",
+					"content-type": "multipart/form-data; boundary=--boundary"
+				},
+				"params": { "path": "test" },
+				"query": {},
+				"body": { "a": ["b"] }
+			}
+		}
+	},
+	"pinData": {
+		"Webhook": [
+			{
+				"json": {
+					"headers": {
+						"host": "localhost:5678",
+						"user-agent": "curl/8.2.0",
+						"accept": "*/*",
+						"content-length": "137",
+						"content-type": "multipart/form-data; boundary=--boundary"
+					},
+					"params": { "path": "test" },
+					"query": {},
+					"body": {
+						"a": ["b"]
+					}
+				}
+			}
+		]
+	}
+}

@@ -1,3 +1,6 @@
+import { parse as pathParse } from 'path';
+import { writeFile as fsWriteFile } from 'fs';
+import { promisify } from 'util';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,9 +14,6 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
-import { parse as pathParse } from 'path';
-import { writeFile as fsWriteFile } from 'fs';
-import { promisify } from 'util';
 const fsWriteFileAsync = promisify(fsWriteFile);
 import getSystemFonts from 'get-system-fonts';
 
@@ -1108,7 +1108,6 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
@@ -1284,7 +1283,6 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
@@ -1327,6 +1325,6 @@ export class EditImage implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

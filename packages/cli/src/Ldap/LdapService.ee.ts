@@ -1,10 +1,10 @@
-/* eslint-disable no-underscore-dangle */
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import type { LdapConfig } from './types';
 import { formatUrl, getMappingAttributes } from './helpers';
 import { BINARY_AD_ATTRIBUTES } from './constants';
 import type { ConnectionOptions } from 'tls';
+import { ApplicationError } from 'n8n-workflow';
 
 export class LdapService {
 	private client: Client | undefined;
@@ -26,7 +26,7 @@ export class LdapService {
 	 */
 	private async getClient() {
 		if (this._config === undefined) {
-			throw new Error('Service cannot be used without setting the property config');
+			throw new ApplicationError('Service cannot be used without setting the property config');
 		}
 		if (this.client === undefined) {
 			const url = formatUrl(

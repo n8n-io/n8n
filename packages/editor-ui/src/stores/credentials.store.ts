@@ -1,4 +1,12 @@
-import type { INodeUi, IUsedCredential } from '../Interface';
+import type {
+	INodeUi,
+	IUsedCredential,
+	ICredentialMap,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+	ICredentialsState,
+	ICredentialTypeMap,
+} from '@/Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -15,19 +23,11 @@ import { setCredentialSharedWith } from '@/api/credentials.ee';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import type {
-	ICredentialMap,
-	ICredentialsDecryptedResponse,
-	ICredentialsResponse,
-	ICredentialsState,
-	ICredentialTypeMap,
-} from '@/Interface';
 import { i18n } from '@/plugins/i18n';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
-	INodeProperties,
 	INodeTypeDescription,
 	IUser,
 } from 'n8n-workflow';
@@ -40,6 +40,8 @@ import { useUsersStore } from './users.store';
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
 const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth', 'oAuth1Api'];
+
+export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 	state: (): ICredentialsState => ({
@@ -77,7 +79,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			return (node: INodeUi): ICredentialsResponse[] => {
 				let credentials: ICredentialsResponse[] = [];
 				const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-				if (nodeType && nodeType.credentials) {
+				if (nodeType?.credentials) {
 					nodeType.credentials.forEach((cred) => {
 						credentials = credentials.concat(this.allUsableCredentialsByType[cred.name]);
 					});
@@ -106,7 +108,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			);
 		},
 		getCredentialTypeByName() {
-			return (type: string): ICredentialType => this.credentialTypes[type];
+			return (type: string): ICredentialType | undefined => this.credentialTypes[type];
 		},
 		getCredentialById() {
 			return (id: string): ICredentialsResponse => this.credentials[id];
@@ -130,9 +132,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getNodesWithAccess() {
 			return (credentialTypeName: string) => {
 				const nodeTypesStore = useNodeTypesStore();
-				const allLatestNodeTypes: INodeTypeDescription[] = nodeTypesStore.allLatestNodeTypes;
+				const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
@@ -149,9 +151,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		getScopesByCredentialType() {
 			return (credentialTypeName: string) => {
-				const credentialType = this.getCredentialTypeByName(credentialTypeName) as {
-					properties: INodeProperties[];
-				};
+				const credentialType = this.getCredentialTypeByName(credentialTypeName);
+				if (!credentialType) {
+					return [];
+				}
 
 				const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
 
@@ -189,6 +192,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 				return this.getCredentialOwnerName(credential);
 			};
+		},
+		httpOnlyCredentialTypes(): ICredentialType[] {
+			return this.allCredentialTypes.filter((credentialType) => credentialType.httpRequestNode);
 		},
 	},
 	actions: {
@@ -232,7 +238,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			// enable oauth event to track change between modals
 		},
 		async fetchCredentialTypes(forceFetch: boolean): Promise<void> {
-			if (this.allCredentialTypes.length > 0 && forceFetch !== true) {
+			if (this.allCredentialTypes.length > 0 && !forceFetch) {
 				return;
 			}
 			const rootStore = useRootStore();
@@ -297,14 +303,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 						credentialId: credential.id,
 						ownedBy: data.ownedBy,
 					});
-
-					const usersStore = useUsersStore();
-					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						await this.setCredentialSharedWith({
-							credentialId: credential.id,
-							sharedWith: data.sharedWith,
-						});
-					}
 				}
 			} else {
 				this.upsertCredential(credential);
@@ -337,8 +335,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				const { credentialTypeName } = params;
 				let newName = DEFAULT_CREDENTIAL_NAME;
 				if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
-					const { displayName } = this.getCredentialTypeByName(credentialTypeName);
-					newName = getAppNameFromCredType(displayName);
+					const cred = this.getCredentialTypeByName(credentialTypeName);
+					newName = cred ? getAppNameFromCredType(cred.displayName) : '';
 					newName =
 						newName.length > 0
 							? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}`
@@ -359,7 +357,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				ownedBy: payload.ownedBy,
 			};
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string }) {
+		async setCredentialSharedWith(payload: {
+			sharedWith: IUser[];
+			credentialId: string;
+		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
@@ -370,6 +371,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					sharedWith: payload.sharedWith,
 				};
 			}
+			return this.credentials[payload.credentialId];
 		},
 		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
 			this.credentials[payload.credentialId] = {
@@ -396,3 +398,42 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForCredentialChanges = (opts: {
+	store: CredentialsStore;
+	onCredentialCreated?: (credential: ICredentialsResponse) => void;
+	onCredentialUpdated?: (credential: ICredentialsResponse) => void;
+	onCredentialDeleted?: (credentialId: string) => void;
+}): void => {
+	const { store, onCredentialCreated, onCredentialDeleted, onCredentialUpdated } = opts;
+	const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
+
+	store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async (returnValue) => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'createNewCredential':
+					const createdCredential = returnValue as ICredentialsResponse;
+					onCredentialCreated?.(createdCredential);
+					break;
+
+				case 'updateCredential':
+					const updatedCredential = returnValue as ICredentialsResponse;
+					onCredentialUpdated?.(updatedCredential);
+					break;
+
+				case 'deleteCredential':
+					const credentialId = args[0].id;
+					onCredentialDeleted?.(credentialId);
+					break;
+			}
+		});
+	});
+};

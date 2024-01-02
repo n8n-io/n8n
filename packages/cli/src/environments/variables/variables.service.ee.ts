@@ -1,48 +1,92 @@
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { Variables } from '@db/entities/Variables';
-import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
-import { canCreateNewVariable } from './enviromentHelpers';
-import { VariablesService } from './variables.service';
+import { canCreateNewVariable } from './environmentHelpers';
+import { CacheService } from '@/services/cache.service';
+import { VariablesRepository } from '@db/repositories/variables.repository';
+import type { DeepPartial } from 'typeorm';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
 
-export class VariablesLicenseError extends Error {}
-export class VariablesValidationError extends Error {}
+@Service()
+export class VariablesService {
+	constructor(
+		protected cacheService: CacheService,
+		protected variablesRepository: VariablesRepository,
+	) {}
 
-export class EEVariablesService extends VariablesService {
-	static async getCount(): Promise<number> {
-		return collections.Variables.count();
+	async getAllCached(): Promise<Variables[]> {
+		const variables = await this.cacheService.get('variables', {
+			async refreshFunction() {
+				// TODO: log refresh cache metric
+				return Container.get(VariablesService).findAll();
+			},
+		});
+		return (variables as Array<DeepPartial<Variables>>).map((v) =>
+			this.variablesRepository.create(v),
+		);
 	}
 
-	static validateVariable(variable: Omit<Variables, 'id'>): void {
+	async getCount(): Promise<number> {
+		return (await this.getAllCached()).length;
+	}
+
+	async getCached(id: string): Promise<Variables | null> {
+		const variables = await this.getAllCached();
+		const foundVariable = variables.find((variable) => variable.id === id);
+		if (!foundVariable) {
+			return null;
+		}
+		return this.variablesRepository.create(foundVariable as DeepPartial<Variables>);
+	}
+
+	async delete(id: string): Promise<void> {
+		await this.variablesRepository.delete(id);
+		await this.updateCache();
+	}
+
+	async updateCache(): Promise<void> {
+		// TODO: log update cache metric
+		const variables = await this.findAll();
+		await this.cacheService.set('variables', variables);
+	}
+
+	async findAll(): Promise<Variables[]> {
+		return this.variablesRepository.find();
+	}
+
+	validateVariable(variable: Omit<Variables, 'id'>): void {
 		if (variable.key.length > 50) {
-			throw new VariablesValidationError('key cannot be longer than 50 characters');
+			throw new VariableValidationError('key cannot be longer than 50 characters');
 		}
 		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
-			throw new VariablesValidationError('key can only contain characters A-Za-z0-9_');
+			throw new VariableValidationError('key can only contain characters A-Za-z0-9_');
 		}
-		if (variable.value.length > 255) {
-			throw new VariablesValidationError('value cannot be longer than 255 characters');
+		if (variable.value?.length > 255) {
+			throw new VariableValidationError('value cannot be longer than 255 characters');
 		}
 	}
 
-	static async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
+	async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
 		if (!canCreateNewVariable(await this.getCount())) {
-			throw new VariablesLicenseError('Variables limit reached');
+			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 		this.validateVariable(variable);
 
 		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		return collections.Variables.save({
+		const saveResult = await this.variablesRepository.save({
 			...variable,
 			id: generateNanoId(),
 		});
+		await this.updateCache();
+		return saveResult;
 	}
 
-	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
+	async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
-		await collections.Variables.update(id, variable);
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		return (await this.get(id))!;
+		await this.variablesRepository.update(id, variable);
+		await this.updateCache();
+		return (await this.getCached(id))!;
 	}
 }

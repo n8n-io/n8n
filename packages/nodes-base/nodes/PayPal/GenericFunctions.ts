@@ -4,7 +4,6 @@ import type {
 	JsonObject,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -19,12 +18,7 @@ function getEnvironment(env: string) {
 }
 
 async function getAccessToken(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 ): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials.env as string);
@@ -52,12 +46,7 @@ async function getAccessToken(
 }
 
 export async function payPalApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
 	method: string,
 
@@ -101,7 +90,7 @@ function getNext(links: IDataObject[]): string | undefined {
  * and return all results
  */
 export async function payPalApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	endpoint: string,
 	method: string,

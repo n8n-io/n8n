@@ -1,9 +1,13 @@
 import type { INode } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { type Workflow } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { getNodesWithInaccessibleCreds, validateWorkflowCredentialUsage } from '@/WorkflowHelpers';
-import { getLogger } from '@/Logger';
+import {
+	getExecutionStartNode,
+	getNodesWithInaccessibleCreds,
+	validateWorkflowCredentialUsage,
+} from '@/WorkflowHelpers';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';
@@ -12,10 +16,6 @@ const THIRD_CREDENTIAL_ID = '3';
 const NODE_WITH_NO_CRED = '0133467b-df4a-473d-9295-fdd9d01fa45a';
 const NODE_WITH_ONE_CRED = '4673f869-f2dc-4a33-b053-ca3193bc5226';
 const NODE_WITH_TWO_CRED = '9b4208bd-8f10-4a6a-ad3b-da47a326f7da';
-
-beforeAll(() => {
-	LoggerProxy.init(getLogger());
-});
 
 describe('WorkflowHelpers', () => {
 	describe('getNodesWithInaccessibleCreds', () => {
@@ -145,6 +145,46 @@ describe('WorkflowHelpers', () => {
 			}).toThrow();
 		});
 	});
+	describe('getExecutionStartNode', () => {
+		it('Should return undefined', () => {
+			const data = {
+				pinData: {},
+				startNodes: [],
+			} as unknown as IWorkflowExecutionDataProcess;
+			const workflow = {
+				getNode(nodeName: string) {
+					return {
+						name: nodeName,
+					};
+				},
+			} as unknown as Workflow;
+			const executionStartNode = getExecutionStartNode(data, workflow);
+			expect(executionStartNode).toBeUndefined();
+		});
+		it('Should return startNode', () => {
+			const data = {
+				pinData: {
+					node1: {},
+					node2: {},
+				},
+				startNodes: ['node2'],
+			} as unknown as IWorkflowExecutionDataProcess;
+			const workflow = {
+				getNode(nodeName: string) {
+					if (nodeName === 'node2') {
+						return {
+							name: 'node2',
+						};
+					}
+					return undefined;
+				},
+			} as unknown as Workflow;
+			const executionStartNode = getExecutionStartNode(data, workflow);
+			expect(executionStartNode).toEqual({
+				name: 'node2',
+			});
+		});
+	});
 });
 
 function generateCredentialEntity(credentialId: string) {
@@ -153,7 +193,7 @@ function generateCredentialEntity(credentialId: string) {
 	return credentialEntity;
 }
 
-function getWorkflow(options?: {
+export function getWorkflow(options?: {
 	addNodeWithoutCreds?: boolean;
 	addNodeWithOneCred?: boolean;
 	addNodeWithTwoCreds?: boolean;

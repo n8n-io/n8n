@@ -8,8 +8,10 @@ describe('components', () => {
 	describe('N8nSelect', () => {
 		it('should render correctly', () => {
 			const wrapper = render(N8nSelect, {
-				components: {
-					N8nOption,
+				global: {
+					components: {
+						'n8n-option': N8nOption,
+					},
 				},
 				slots: {
 					default: [
@@ -24,15 +26,6 @@ describe('components', () => {
 
 		it('should select an option', async () => {
 			const n8nSelectTestComponent = defineComponent({
-				components: {
-					N8nSelect,
-					N8nOption,
-				},
-				template: `
-					<n8n-select v-model="selected">
-						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
-					</n8n-select>
-				`,
 				setup() {
 					const options = ref(['1', '2', '3']);
 					const selected = ref('');
@@ -42,12 +35,27 @@ describe('components', () => {
 						selected,
 					};
 				},
+				template: `
+					<n8n-select v-model="selected">
+						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
+					</n8n-select>
+				`,
 			});
 
-			const { container, getByRole } = render(n8nSelectTestComponent);
+			const { container } = render(n8nSelectTestComponent, {
+				props: {
+					teleported: false,
+				},
+				global: {
+					components: {
+						'n8n-select': N8nSelect,
+						'n8n-option': N8nOption,
+					},
+				},
+			});
 			const getOption = (value: string) => within(container as HTMLElement).getByText(value);
-			const textbox = getByRole('textbox');
 
+			const textbox = container.querySelector('input')!;
 			await userEvent.click(textbox);
 			await waitFor(() => expect(getOption('1')).toBeVisible());
 			await userEvent.click(getOption('1'));

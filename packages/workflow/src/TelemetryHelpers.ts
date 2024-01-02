@@ -9,6 +9,7 @@ import type {
 	INodeTypes,
 	INodeType,
 } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
 
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
@@ -95,7 +96,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new Error('Malformed URL');
+		if (!url.hostname) throw new ApplicationError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {
@@ -154,6 +155,7 @@ export function generateNodesGraph(
 			const nodeItem: INodeGraphItem = {
 				id: node.id,
 				type: node.type,
+				version: node.typeVersion,
 				position: node.position,
 			};
 
@@ -161,7 +163,7 @@ export function generateNodesGraph(
 				nodeItem.src_instance_id = options.sourceInstanceId;
 			}
 
-			if (node.id && options?.nodeIdMap && options.nodeIdMap[node.id]) {
+			if (node.id && options?.nodeIdMap?.[node.id]) {
 				nodeItem.src_node_id = options.nodeIdMap[node.id];
 			}
 

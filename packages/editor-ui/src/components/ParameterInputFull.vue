@@ -1,73 +1,90 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel ? '' : $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : $locale.nodeText().inputLabelDescription(parameter, path)"
-		:showTooltip="focused"
-		:showOptions="menuExpanded || focused || forceShowExpression"
+		:class="$style.wrapper"
+		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
+		:show-tooltip="focused"
+		:show-options="menuExpanded || focused || forceShowExpression"
+		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
 	>
-		<template #options>
-			<parameter-options
-				v-if="displayOptions"
+		<template v-if="displayOptions && optionsPosition === 'top'" #options>
+			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="isReadOnly"
-				:showOptions="displayOptions"
-				:showExpressionSelector="showExpressionSelector"
-				@optionSelected="optionSelected"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<draggable-target
-				type="mapping"
-				:disabled="isDropDisabled"
-				:sticky="true"
-				:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
-				@drop="onDrop"
-			>
-				<template #default="{ droppable, activeDrop }">
-					<n8n-tooltip
-						placement="left"
-						:manual="true"
-						:value="showMappingTooltip"
-						:buttons="dataMappingTooltipButtons"
-					>
-						<template #content>
-							<span
-								v-html="
-									$locale.baseText(`dataMapping.${displayMode}Hint`, {
-										interpolate: { name: parameter.displayName },
-									})
-								"
-							/>
-						</template>
-						<parameter-input-wrapper
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							:hint="hint"
-							:hide-issues="hideIssues"
-							:label="label"
-							:event-bus="eventBus"
-							@valueChanged="valueChanged"
-							@textInput="onTextInput"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small"
+		<DraggableTarget
+			type="mapping"
+			:disabled="isDropDisabled"
+			:sticky="true"
+			:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<n8n-tooltip
+					placement="left"
+					:visible="showMappingTooltip"
+					:buttons="dataMappingTooltipButtons"
+				>
+					<template #content>
+						<span
+							v-html="
+								i18n.baseText(`dataMapping.${displayMode}Hint`, {
+									interpolate: { name: parameter.displayName },
+								})
+							"
 						/>
-					</n8n-tooltip>
-				</template>
-			</draggable-target>
-		</template>
+					</template>
+					<ParameterInputWrapper
+						ref="param"
+						:parameter="parameter"
+						:model-value="value"
+						:path="path"
+						:is-read-only="isReadOnly"
+						:is-single-line="isSingleLine"
+						:droppable="droppable"
+						:active-drop="activeDrop"
+						:force-show-expression="forceShowExpression"
+						:hint="hint"
+						:hide-hint="hideHint"
+						:hide-issues="hideIssues"
+						:label="label"
+						:event-bus="eventBus"
+						input-size="small"
+						@update="valueChanged"
+						@textInput="onTextInput"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+					/>
+				</n8n-tooltip>
+			</template>
+		</DraggableTarget>
+		<div
+			:class="{
+				[$style.options]: true,
+				[$style.visible]: menuExpanded || focused || forceShowExpression,
+			}"
+		>
+			<ParameterOptions
+				v-if="optionsPosition === 'bottom'"
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				@update:modelValue="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
 	</n8n-input-label>
 </template>
 
@@ -80,62 +97,50 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useToast } from '@/composables';
-import {
-	hasExpressionMapping,
-	isResourceLocatorValue,
-	hasOnlyListMode,
-	isValueExpression,
-} from '@/utils';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import type {
-	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
-import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
-
-type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default defineComponent({
-	name: 'parameter-input-full',
-	mixins: [externalHooks],
+	name: 'ParameterInputFull',
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
-	},
-	setup() {
-		const eventBus = createEventBus();
-
-		return {
-			eventBus,
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			focused: false,
-			menuExpanded: false,
-			forceShowExpression: false,
-			dataMappingTooltipButtons: [] as IN8nButton[],
-			mappingTooltipEnabled: false,
-		};
 	},
 	props: {
 		displayOptions: {
 			type: Boolean,
 			default: false,
 		},
+		optionsPosition: {
+			type: String as PropType<'bottom' | 'top'>,
+			default: 'top',
+		},
+		hideHint: {
+			type: Boolean,
+			default: false,
+		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		isSingleLine: {
 			type: Boolean,
 			default: false,
 		},
@@ -154,7 +159,7 @@ export default defineComponent({
 			type: String,
 		},
 		value: {
-			type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
+			type: [Number, String, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		label: {
 			type: Object as PropType<IParameterLabel>,
@@ -163,16 +168,35 @@ export default defineComponent({
 			}),
 		},
 	},
-	created() {
+	setup() {
+		const eventBus = createEventBus();
+		const i18n = useI18n();
+
+		return {
+			i18n,
+			eventBus,
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			focused: false,
+			menuExpanded: false,
+			forceShowExpression: false,
+			dataMappingTooltipButtons: [] as IN8nButton[],
+			mappingTooltipEnabled: false,
+		};
+	},
+	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 		this.dataMappingTooltipButtons = [
 			{
 				attrs: {
-					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					label: this.i18n.baseText('_reusableBaseText.dismiss' as BaseTextKey),
 					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
-					click: mappingTooltipDismissHandler,
+					onClick: mappingTooltipDismissHandler,
 				},
 			},
 		];
@@ -183,7 +207,7 @@ export default defineComponent({
 			return this.ndvStore.activeNode;
 		},
 		hint(): string | null {
-			return this.$locale.nodeText().hint(this.parameter, this.path);
+			return this.i18n.nodeText().hint(this.parameter, this.path);
 		},
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
@@ -242,7 +266,7 @@ export default defineComponent({
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
 			if (isValueExpression(this.parameter, parameterData.value)) {
@@ -299,12 +323,12 @@ export default defineComponent({
 						};
 					}
 
-					this.$emit('valueChanged', parameterData);
+					this.valueChanged(parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({
-							title: this.$locale.baseText('dataMapping.success.title'),
-							message: this.$locale.baseText('dataMapping.success.moreInfo'),
+							title: this.i18n.baseText('dataMapping.success.title'),
+							message: this.i18n.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 							dangerouslyUseHTMLString: true,
 						});
@@ -344,3 +368,26 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style module>
+.wrapper {
+	position: relative;
+
+	&:hover {
+		.options {
+			opacity: 1;
+		}
+	}
+}
+.options {
+	position: absolute;
+	bottom: -22px;
+	right: 0;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+</style>

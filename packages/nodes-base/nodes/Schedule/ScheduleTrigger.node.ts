@@ -8,7 +8,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
 import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 
@@ -27,7 +27,7 @@ export class ScheduleTrigger implements INodeType {
 			name: 'Schedule Trigger',
 			color: '#31C49F',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [

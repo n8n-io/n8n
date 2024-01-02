@@ -1,11 +1,12 @@
 import { flags } from '@oclif/command';
-import { audit } from '@/audit';
-import { RISK_CATEGORIES } from '@/audit/constants';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
-import type { Risk } from '@/audit/types';
+import type { Risk } from '@/security-audit/types';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ApplicationError } from 'n8n-workflow';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -46,10 +47,13 @@ export class SecurityAudit extends BaseCommand {
 
 			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
 
-			throw new Error([message, hint].join('. '));
+			throw new ApplicationError([message, hint].join('. '));
 		}
 
-		const result = await audit(categories, auditFlags['days-abandoned-workflow']);
+		const result = await Container.get(SecurityAuditService).run(
+			categories,
+			auditFlags['days-abandoned-workflow'],
+		);
 
 		if (Array.isArray(result) && result.length === 0) {
 			this.logger.info('No security issues found');

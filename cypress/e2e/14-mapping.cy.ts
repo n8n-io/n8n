@@ -4,6 +4,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
 import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -11,11 +12,6 @@ const ndv = new NDV();
 describe('Data mapping', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window().then((win) => {
-			// @ts-ignore
-			win.preventNodeViewBeforeUnload = true;
-		});
 	});
 
 	it('maps expressions from table header', () => {
@@ -28,11 +24,7 @@ describe('Data mapping', () => {
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
 		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
-		ndv.getters
-			.nodeParameters()
-			.find('.el-select-dropdown__list li:nth-child(3)')
-			.should('have.text', 'String')
-			.click();
+		getVisibleSelect().find('li:nth-child(3)').should('have.text', 'String').click();
 		ndv.getters
 			.parameterInput('name')
 			.should('have.length', 1)
@@ -88,14 +80,14 @@ describe('Data mapping', () => {
 			.parameterExpressionPreview('value')
 			.should('include.text', '0')
 			.invoke('css', 'color')
-			.should('equal', 'rgb(125, 125, 135)');
+			.should('equal', 'rgb(113, 116, 122)');
 
 		ndv.getters.inputTbodyCell(2, 0).realHover();
 		ndv.getters
 			.parameterExpressionPreview('value')
 			.should('include.text', '1')
 			.invoke('css', 'color')
-			.should('equal', 'rgb(125, 125, 135)');
+			.should('equal', 'rgb(113, 116, 122)');
 
 		ndv.actions.execute();
 
@@ -104,14 +96,14 @@ describe('Data mapping', () => {
 			.parameterExpressionPreview('value')
 			.should('include.text', '0')
 			.invoke('css', 'color')
-			.should('equal', 'rgb(125, 125, 135)'); // todo update color
+			.should('equal', 'rgb(113, 116, 122)'); // todo update color
 
 		ndv.getters.outputTbodyCell(2, 0).realHover();
 		ndv.getters
 			.parameterExpressionPreview('value')
 			.should('include.text', '1')
 			.invoke('css', 'color')
-			.should('equal', 'rgb(125, 125, 135)');
+			.should('equal', 'rgb(113, 116, 122)');
 	});
 
 	it('maps expressions from json view', () => {
@@ -128,7 +120,7 @@ describe('Data mapping', () => {
 			.find('.json-data')
 			.should(
 				'have.text',
-				'[{"input":[{"count":0,"with space":"!!","with.dot":"!!","with"quotes":"!!"}]},{"input":[{"count":1}]}]',
+				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
 			)
 			.find('span')
 			.contains('"count"')
@@ -178,6 +170,7 @@ describe('Data mapping', () => {
 
 	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
@@ -242,10 +235,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.close();
 
-		workflowPage.actions.addNodeToCanvas('Item Lists');
-		workflowPage.actions.openNode('Item Lists');
-
-		ndv.getters.parameterInput('operation').click().find('li').contains('Sort').click();
+		workflowPage.actions.addNodeToCanvas('Sort');
+		workflowPage.actions.openNode('Sort');
 
 		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
 
@@ -274,6 +265,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
+		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 

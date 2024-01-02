@@ -1,77 +1,57 @@
-import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
-import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
-import {
-	BadRequestError,
-	InternalServerError,
-	NotFoundError,
-	UnauthorizedError,
-	UnprocessableRequestError,
-} from '@/ResponseHelper';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
-import type { UserManagementMailer } from '@/UserManagement/email';
-
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
-import type { UserRepository } from '@db/repositories';
+import { rateLimit } from 'express-rate-limit';
+import { IsNull, Not } from 'typeorm';
+import validator from 'validator';
+
+import { Get, Post, RestController } from '@/decorators';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
-import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { Container } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, inTest } from '@/constants';
+import { MfaService } from '@/Mfa/mfa.service';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import { UrlService } from '@/services/url.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+
+const throttle = rateLimit({
+	windowMs: 5 * 60 * 1000, // 5 minutes
+	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
+	message: { message: 'Too many requests' },
+});
 
 @RestController()
 export class PasswordResetController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly externalHooks: IExternalHooksClass;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly mailer: UserManagementMailer;
-
-	private readonly userRepository: UserRepository;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		mailer,
-		repositories,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		mailer: UserManagementMailer;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.mailer = mailer;
-		this.userRepository = repositories.User;
-	}
+	constructor(
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
+		private readonly mailer: UserManagementMailer,
+		private readonly userService: UserService,
+		private readonly mfaService: MfaService,
+		private readonly urlService: UrlService,
+		private readonly license: License,
+		private readonly passwordUtility: PasswordUtility,
+	) {}
 
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password')
+	@Post('/forgot-password', {
+		middlewares: !inTest ? [throttle] : [],
+	})
 	async forgotPassword(req: PasswordResetRequest.Email) {
-		if (this.config.getEnv('userManagement.emails.mode') === '') {
+		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
 				'Request to send password reset email failed because emailing was not set up',
 			);
@@ -98,7 +78,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOne({
+		const user = await this.userService.findOne({
 			where: {
 				email,
 				password: Not(IsNull()),
@@ -106,7 +86,7 @@ export class PasswordResetController {
 			relations: ['authIdentities', 'globalRole'],
 		});
 
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
@@ -114,7 +94,10 @@ export class PasswordResetController {
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
-			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+			!(
+				(user && user.hasGlobalScope('user:resetPassword')) === true ||
+				user?.settings?.allowSSOManualLogin === true
+			)
 		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
@@ -137,17 +120,16 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		const baseUrl = getInstanceBaseUrl();
-		const { id, firstName, lastName } = user;
-		const url = await UserService.generatePasswordResetUrl(user);
+		const url = this.userService.generatePasswordResetUrl(user);
 
+		const { id, firstName, lastName } = user;
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: baseUrl,
+				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
@@ -175,11 +157,11 @@ export class PasswordResetController {
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token: resetPasswordToken, userId: id } = req.query;
+		const { token } = req.query;
 
-		if (!resetPasswordToken || !id) {
+		if (!token) {
 			this.logger.debug(
-				'Request to resolve password token failed because of missing password reset token or user ID in query string',
+				'Request to resolve password token failed because of missing password reset token',
 				{
 					queryString: req.query,
 				},
@@ -187,47 +169,29 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		const user = await this.userService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
-		const user = await this.userRepository.findOne({
-			where: {
-				id,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			},
-			relations: ['globalRole'],
-		});
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: id },
+				{ userId: user.id },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-				{
-					userId: id,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
-		}
 
-		this.logger.info('Reset-password token resolved successfully', { userId: id });
+		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
 		void this.internalHooks.onUserPasswordResetEmailClick({ user });
 	}
 
 	/**
-	 * Verify password reset token and user ID and update password.
+	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, userId, password } = req.body;
+		const { token, password, mfaToken } = req.body;
 
-		if (!resetPasswordToken || !userId || !password) {
+		if (!token || !password) {
 			this.logger.debug(
 				'Request to change password failed because of missing user ID or password or reset password token in payload',
 				{
@@ -237,40 +201,26 @@ export class PasswordResetController {
 			throw new BadRequestError('Missing user ID or password or reset password token');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		const user = await this.userService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
-		const user = await this.userRepository.findOne({
-			where: {
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			},
-			relations: ['authIdentities'],
-		});
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
 
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-				{
-					userId,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
-		const passwordHash = await hashPassword(validPassword);
+		const passwordHash = await this.passwordUtility.hash(validPassword);
 
-		await this.userRepository.update(userId, {
-			password: passwordHash,
-			resetPasswordToken: null,
-			resetPasswordTokenExpiration: null,
-		});
+		await this.userService.update(user.id, { password: passwordHash });
 
-		this.logger.info('User password updated successfully', { userId });
+		this.logger.info('User password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
 

@@ -3,16 +3,15 @@ import type { OptionsWithUrl } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function twitterApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
@@ -91,7 +90,7 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 
 		return tweetIdMatch?.[3] as string;
 	} else {
-		throw new Error(`The mode ${tweetId.mode} is not valid!`);
+		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
 }
 
@@ -121,5 +120,8 @@ export async function returnIdFromUsername(
 			{},
 		)) as { id: string };
 		return list.id;
-	} else throw new Error(`The username mode ${usernameRlc.mode} is not valid!`);
+	} else
+		throw new ApplicationError(`The username mode ${usernameRlc.mode} is not valid!`, {
+			level: 'warning',
+		});
 }

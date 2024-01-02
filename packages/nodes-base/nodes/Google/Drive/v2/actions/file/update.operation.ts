@@ -6,7 +6,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import {
 	getItemBinaryData,
 	prepareQueryString,
@@ -15,6 +14,7 @@ import {
 } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 import { fileRLC, updateCommonOptions } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

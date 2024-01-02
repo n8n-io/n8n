@@ -591,6 +591,6 @@ export class GoogleSlides implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

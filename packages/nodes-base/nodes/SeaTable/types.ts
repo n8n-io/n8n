@@ -9,8 +9,8 @@ export type TSeaTableServerEdition = 'enterprise edition';
 //         dtable
 // ----------------------------------
 
-import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
 
 export type TInheritColumnTypeTime = 'ctime' | 'mtime';
 export type TInheritColumnTypeUser = 'creator' | 'last-modifier';
@@ -56,16 +56,12 @@ export type TEndpointVariableName = 'access_token' | 'dtable_uuid' | 'server';
 
 // Template Literal Types requires-ts-4.1.5 -- deferred
 export type TMethod = 'GET' | 'POST';
-type TDeferredEndpoint = string;
-type TDeferredEndpointExpr = string;
 type TEndpoint =
 	| '/api/v2.1/dtable/app-access-token/'
-	| '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/'
-	| TDeferredEndpoint;
-export type TEndpointExpr = TEndpoint | TDeferredEndpointExpr;
+	| '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/';
+export type TEndpointExpr = TEndpoint;
 export type TEndpointResolvedExpr =
-	| TEndpoint
-	| string; /* deferred: but already in use for header values, e.g. authentication */
+	TEndpoint; /* deferred: but already in use for header values, e.g. authentication */
 
 export type TDateTimeFormat = 'YYYY-MM-DDTHH:mm:ss.SSSZ' /* moment.js */;
 

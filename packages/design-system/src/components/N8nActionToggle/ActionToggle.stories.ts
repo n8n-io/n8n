@@ -1,6 +1,6 @@
 import N8nActionToggle from './ActionToggle.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionToggle',
@@ -25,12 +25,14 @@ const methods = {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nActionToggle,
 	},
-	template:
-		'<div style="height:300px;width:300px;display:flex;align-items:center;justify-content:center"><n8n-action-toggle v-bind="$props" @action="onAction" /></div>',
+	template: `<div style="height:300px; width:300px; display:flex; align-items:center; justify-content:center">
+			<n8n-action-toggle v-bind="args" @action="onAction" />
+		</div>`,
 	methods,
 });
 

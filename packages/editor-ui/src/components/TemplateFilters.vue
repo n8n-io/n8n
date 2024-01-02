@@ -8,8 +8,8 @@
 			<li :class="$style.item">
 				<el-checkbox
 					:label="$locale.baseText('templates.allCategories')"
-					:value="allSelected"
-					@change="(value) => resetCategories(value)"
+					:model-value="allSelected"
+					@update:modelValue="(value) => resetCategories(value)"
 				/>
 			</li>
 			<li
@@ -19,14 +19,14 @@
 			>
 				<el-checkbox
 					:label="category.name"
-					:value="isSelected(category.id)"
-					@change="(value) => handleCheckboxChanged(value, category)"
+					:model-value="isSelected(category.id)"
+					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
 				/>
 			</li>
 		</ul>
 		<div
-			:class="$style.button"
 			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
+			:class="$style.button"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
@@ -63,6 +63,17 @@ export default defineComponent({
 			type: Array,
 		},
 	},
+	data() {
+		return {
+			collapsed: true,
+			sortedCategories: [] as ITemplatesCategory[],
+		};
+	},
+	computed: {
+		allSelected(): boolean {
+			return this.selected.length === 0;
+		},
+	},
 	watch: {
 		categories: {
 			handler(categories: ITemplatesCategory[]) {
@@ -76,17 +87,6 @@ export default defineComponent({
 				}
 			},
 			immediate: true,
-		},
-	},
-	data() {
-		return {
-			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
-		};
-	},
-	computed: {
-		allSelected(): boolean {
-			return this.selected.length === 0;
 		},
 	},
 	methods: {

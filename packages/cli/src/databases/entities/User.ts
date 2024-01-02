@@ -17,16 +17,20 @@ import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
+import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
+import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 
-export const MIN_PASSWORD_LENGTH = 8;
-
-export const MAX_PASSWORD_LENGTH = 64;
+const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
+	owner: ownerPermissions,
+	member: memberPermissions,
+	admin: adminPermissions,
+};
 
 @Entity()
-export class User extends AbstractEntity implements IUser {
+export class User extends WithTimestamps implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -54,13 +58,6 @@ export class User extends AbstractEntity implements IUser {
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
 	password: string;
-
-	@Column({ type: String, nullable: true })
-	resetPasswordToken?: string | null;
-
-	// Expiration timestamp saved in seconds
-	@Column({ type: Number, nullable: true })
-	resetPasswordTokenExpiration?: number | null;
 
 	@Column({
 		type: jsonColumnType,
@@ -103,6 +100,15 @@ export class User extends AbstractEntity implements IUser {
 	@Index({ unique: true })
 	apiKey?: string | null;
 
+	@Column({ type: Boolean, default: false })
+	mfaEnabled: boolean;
+
+	@Column({ type: String, nullable: true, select: false })
+	mfaSecret?: string | null;
+
+	@Column({ type: 'simple-array', default: '', select: false })
+	mfaRecoveryCodes: string[];
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */
@@ -122,5 +128,19 @@ export class User extends AbstractEntity implements IUser {
 	@AfterLoad()
 	computeIsOwner(): void {
 		this.isOwner = this.globalRole?.name === 'owner';
+	}
+
+	get globalScopes() {
+		return STATIC_SCOPE_MAP[this.globalRole?.name] ?? [];
+	}
+
+	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {
+		return hasScope(
+			scope,
+			{
+				global: this.globalScopes,
+			},
+			scopeOptions,
+		);
 	}
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import * as employee from './employee';

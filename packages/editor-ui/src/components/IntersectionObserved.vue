@@ -22,16 +22,15 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
-	mounted() {
+	async mounted() {
 		if (!this.enabled) {
 			return;
 		}
 
-		this.$nextTick(() => {
-			this.eventBus.emit('observe', this.$refs.observed);
-		});
+		await this.$nextTick();
+		this.eventBus.emit('observe', this.$refs.observed);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.enabled) {
 			this.eventBus.emit('unobserve', this.$refs.observed);
 		}

@@ -1,17 +1,13 @@
-import type { IDataObject } from 'n8n-workflow';
-
+import type { Server } from 'net';
+import { createServer } from 'net';
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
 
-import type { Server } from 'net';
-import { createServer } from 'net';
+import type { IDataObject } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-
-import { rm, writeFile } from 'fs/promises';
-import { file } from 'tmp-promise';
-
 import type { PgpDatabase } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -22,14 +18,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
@@ -51,7 +44,7 @@ export async function configurePostgres(
 		noWarnings: true,
 	});
 
-	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {
@@ -146,9 +139,6 @@ export async function configurePostgres(
 			});
 
 			sshClient.on('end', async () => {
-				if (tunnelConfig.privateKey) {
-					await rm(tunnelConfig.privateKey as string, { force: true });
-				}
 				if (proxy) proxy.close();
 			});
 		}).catch((err) => {

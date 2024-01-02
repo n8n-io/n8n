@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nSpinner from './Spinner.vue';
 
 export default {
@@ -8,24 +8,25 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large'],
 			},
+			options: ['small', 'medium', 'large'],
 		},
 		type: {
 			control: {
 				type: 'select',
-				options: ['dots', 'ring'],
 			},
+			options: ['dots', 'ring'],
 		},
 	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nSpinner,
 	},
-	template: '<n8n-spinner v-bind="$props" />',
+	template: '<n8n-spinner v-bind="args" />',
 });
 
 export const Spinner = Template.bind({});

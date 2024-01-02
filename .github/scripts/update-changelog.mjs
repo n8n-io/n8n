@@ -1,15 +1,11 @@
-import addStream from 'add-stream';
 import createTempFile from 'tempfile';
 import conventionalChangelog from 'conventional-changelog';
 import { resolve } from 'path';
 import { createReadStream, createWriteStream } from 'fs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import packageJson from '../../package.json' assert { type: 'json' };
-
-const pipeline = promisify(stream.pipeline);
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const fullChangelogFile = resolve(baseDir, 'CHANGELOG.md');
@@ -27,16 +23,13 @@ const changelogStream = conventionalChangelog({
 	process.exit(1);
 });
 
-// We need to duplicate the stream here to pipe the changelog into two separate files
-const stream1 = new stream.PassThrough();
-const stream2 = new stream.PassThrough();
-changelogStream.pipe(stream1);
-changelogStream.pipe(stream2);
-
-await pipeline(stream1, createWriteStream(versionChangelogFile));
+// Write the new changelog to a new temporary file, so that the contents can be used in the PR description
+await pipeline(changelogStream, createWriteStream(versionChangelogFile));
 
 // Since we can't read and write from the same file at the same time,
 // we use a temporary file to output the updated changelog to.
 const tmpFile = createTempFile();
-await pipeline(stream2, addStream(createReadStream(fullChangelogFile)), createWriteStream(tmpFile)),
-	await pipeline(createReadStream(tmpFile), createWriteStream(fullChangelogFile));
+const tmpStream = createWriteStream(tmpFile);
+await pipeline(createReadStream(versionChangelogFile), tmpStream, { end: false });
+await pipeline(createReadStream(fullChangelogFile), tmpStream);
+await pipeline(createReadStream(tmpFile), createWriteStream(fullChangelogFile));

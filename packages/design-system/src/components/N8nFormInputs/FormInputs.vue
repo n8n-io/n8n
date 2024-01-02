@@ -8,8 +8,8 @@
 					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
-						color="text-base"
 						v-if="input.properties.type === 'info'"
+						color="text-base"
 						tag="div"
 						:size="input.properties.labelSize"
 						:align="input.properties.labelAlignment"
@@ -17,17 +17,18 @@
 					>
 						{{ input.properties.label }}
 					</n8n-text>
-					<n8n-form-input
+					<N8nFormInput
 						v-else
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
-						:value="values[input.name]"
+						:model-value="values[input.name]"
 						:data-test-id="input.name"
-						:showValidationWarnings="showValidationWarnings"
-						@input="(value) => onInput(input.name, value)"
+						:show-validation-warnings="showValidationWarnings"
+						:teleported="teleported"
+						:tag-size="tagSize"
+						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
-						@change="(value) => onInput(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -46,7 +47,7 @@ import type { EventBus } from '../../utils';
 import { createEventBus } from '../../utils';
 
 export default defineComponent({
-	name: 'n8n-form-inputs',
+	name: 'N8nFormInputs',
 	components: {
 		N8nFormInput,
 		ResizeObserver,
@@ -69,6 +70,15 @@ export default defineComponent({
 			default: '',
 			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+		tagSize: {
+			type: String,
+			default: 'small',
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
+		},
 	},
 	data() {
 		return {
@@ -76,17 +86,6 @@ export default defineComponent({
 			values: {} as { [key: string]: unknown },
 			validity: {} as { [key: string]: boolean },
 		};
-	},
-	mounted() {
-		this.inputs.forEach((input) => {
-			if (input.hasOwnProperty('initialValue')) {
-				this.$set(this.values, input.name, input.initialValue);
-			}
-		});
-
-		if (this.eventBus) {
-			this.eventBus.on('submit', () => this.onSubmit());
-		}
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
@@ -104,16 +103,39 @@ export default defineComponent({
 			return true;
 		},
 	},
+	watch: {
+		isReadyToSubmit(ready: boolean) {
+			this.$emit('ready', ready);
+		},
+	},
+	mounted() {
+		this.inputs.forEach((input) => {
+			if (input.hasOwnProperty('initialValue')) {
+				this.values = {
+					...this.values,
+					[input.name]: input.initialValue,
+				};
+			}
+		});
+
+		if (this.eventBus) {
+			this.eventBus.on('submit', () => this.onSubmit());
+		}
+	},
 	methods: {
-		onInput(name: string, value: unknown) {
+		onUpdateModelValue(name: string, value: unknown) {
 			this.values = {
 				...this.values,
 				[name]: value,
 			};
-			this.$emit('input', { name, value });
+			this.$emit('update', { name, value });
+			this.$emit('update:modelValue', this.values);
 		},
 		onValidate(name: string, valid: boolean) {
-			this.$set(this.validity, name, valid);
+			this.validity = {
+				...this.validity,
+				[name]: valid,
+			};
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
@@ -127,11 +149,6 @@ export default defineComponent({
 				}, {});
 				this.$emit('submit', toSubmit);
 			}
-		},
-	},
-	watch: {
-		isReadyToSubmit(ready: boolean) {
-			this.$emit('ready', ready);
 		},
 	},
 });

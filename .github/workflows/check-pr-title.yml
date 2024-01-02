@@ -16,11 +16,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check out branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.5.3
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3.7.0
         with:
           node-version: 18.x
           cache: 'pnpm'

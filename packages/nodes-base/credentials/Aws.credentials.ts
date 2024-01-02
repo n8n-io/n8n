@@ -134,7 +134,7 @@ export class Aws implements ICredentialType {
 
 	documentationUrl = 'aws';
 
-	icon = 'file:AWS.svg';
+	icon = 'file:icons/AWS.svg';
 
 	properties: INodeProperties[] = [
 		{
@@ -165,7 +165,6 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'Temporary Security Credentials',
 			name: 'temporaryCredentials',
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description: 'Support for temporary credentials from AWS STS',
 			type: 'boolean',
 			default: false,

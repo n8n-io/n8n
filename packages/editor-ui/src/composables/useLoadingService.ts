@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { Loading } from 'element-ui';
+import { ElLoading as Loading } from 'element-plus';
 
 interface LoadingService {
 	text: string;
@@ -8,7 +8,7 @@ interface LoadingService {
 }
 
 export function useLoadingService() {
-	const { i18n } = useI18n();
+	const i18n = useI18n();
 	const loadingService = ref<LoadingService | null>(null);
 
 	function startLoading(text?: string) {
@@ -19,8 +19,7 @@ export function useLoadingService() {
 		loadingService.value = Loading.service({
 			lock: true,
 			text: text || i18n.baseText('genericHelpers.loading'),
-			spinner: 'el-icon-loading',
-			background: 'rgba(255, 255, 255, 0.8)',
+			background: 'var(--color-dialog-overlay-background)',
 		}) as unknown as LoadingService;
 	}
 
@@ -38,6 +37,7 @@ export function useLoadingService() {
 	}
 
 	return {
+		loadingService,
 		startLoading,
 		setLoadingText,
 		stopLoading,

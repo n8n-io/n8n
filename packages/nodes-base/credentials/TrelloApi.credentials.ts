@@ -26,6 +26,7 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
@@ -33,6 +34,7 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'OAuth Secret',
 			name: 'oauthSecret',
 			type: 'hidden',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

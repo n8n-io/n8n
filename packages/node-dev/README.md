@@ -1,6 +1,6 @@
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-# n8n-node-dev 
+# n8n-node-dev
 
 Currently very simple and not very sophisticated CLI which makes it easier
 to create credentials and nodes in TypeScript for n8n.
@@ -114,7 +114,7 @@ export class MyNode implements INodeType {
 			item.json['myString'] = myString;
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 
 	}
 }
@@ -131,13 +131,11 @@ Method is called when the workflow gets executed
 - `execute`: Executed once no matter how many items
 
 By default, `execute` should always be used, especially when creating a
-third-party integration. The reason for this is that it provides much more 
+third-party integration. The reason for this is that it provides much more
 flexibility and allows, for example, returning a different number of items than
 it received as input. This becomes crucial when a node needs to query data such as _return
 all users_. In such cases, the node typically receives only one input item but returns as
 many items as there are users. Therefore, when in doubt, it is recommended to use `execute`!
-
-
 
 **Trigger node**
 
@@ -217,7 +215,7 @@ All properties are optional. However, most only work when the node-property is o
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
+n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
 Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
 

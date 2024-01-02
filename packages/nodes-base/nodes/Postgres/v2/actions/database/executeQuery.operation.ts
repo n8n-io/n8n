@@ -6,13 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -27,6 +26,7 @@ const properties: INodeProperties[] = [
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
 			editor: 'sqlEditor',
+			rows: 5,
 			sqlDialect: 'PostgreSQL',
 		},
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
@@ -61,22 +61,48 @@ export async function execute(
 			query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 		}
 
-		let values: IDataObject[] = [];
+		let values: Array<IDataObject | string> = [];
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
 
-		if (typeof queryReplacement === 'string') {
-			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+		if (typeof queryReplacement === 'number') {
+			queryReplacement = String(queryReplacement);
 		}
 
-		if (Array.isArray(queryReplacement)) {
-			values = queryReplacement as IDataObject[];
+		if (typeof queryReplacement === 'string') {
+			const node = this.getNode();
+
+			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
+
+			if (rawReplacements) {
+				const rawValues = rawReplacements
+					.replace(/^=+/, '')
+					.split(',')
+					.filter((entry) => entry)
+					.map((entry) => entry.trim());
+
+				for (const rawValue of rawValues) {
+					const resolvables = getResolvables(rawValue);
+
+					if (resolvables.length) {
+						for (const resolvable of resolvables) {
+							values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+						}
+					} else {
+						values.push(rawValue);
+					}
+				}
+			}
 		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Query Replacement must be a string of comma-separated values, or an array of values',
-				{ itemIndex: i },
-			);
+			if (Array.isArray(queryReplacement)) {
+				values = queryReplacement as IDataObject[];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Query Parameters must be a string of comma-separated values or an array of values',
+					{ itemIndex: i },
+				);
+			}
 		}
 
 		queries.push({ query, values });

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
@@ -89,7 +88,7 @@ export class MessageEventBusDestinationSentry
 				sendResult = true;
 			}
 		} catch (error) {
-			if (error.message) LoggerProxy.debug(error.message as string);
+			if (error.message) this.logger.debug(error.message as string);
 		}
 		return sendResult;
 	}

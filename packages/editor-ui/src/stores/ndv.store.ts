@@ -1,3 +1,4 @@
+import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
@@ -8,7 +9,9 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { INodeIssues, IRunData } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
+import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 
 export const useNDVStore = defineStore(STORES.NDV, {
@@ -43,10 +46,10 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			isDragging: false,
 			type: '',
 			data: '',
-			canDrop: false,
+			activeTargetId: null,
 			stickyPosition: null,
 		},
-		isMappingOnboarded: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
+		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -91,7 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return this.draggable.data;
 		},
 		canDraggableDrop(): boolean {
-			return this.draggable.canDrop;
+			return this.draggable.activeTargetId !== null;
 		},
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
@@ -123,7 +126,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				return false;
 			}
 			const workflow = useWorkflowsStore().getCurrentWorkflow();
-			const parentNodes = workflow.getParentNodes(this.activeNode.name, 'main', 1);
+			const parentNodes = workflow.getParentNodes(this.activeNode.name, NodeConnectionType.Main, 1);
 			return parentNodes.includes(inputNodeName);
 		},
 		hoveringItemNumber(): number {
@@ -136,8 +139,14 @@ export const useNDVStore = defineStore(STORES.NDV, {
 
 			return null;
 		},
+		isNDVOpen(): boolean {
+			return this.activeNodeName !== null;
+		},
 	},
 	actions: {
+		setActiveNodeName(nodeName: string | null): void {
+			this.activeNodeName = nodeName;
+		},
 		setInputNodeName(nodeName: string | undefined): void {
 			this.input = {
 				...this.input,
@@ -163,7 +172,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			};
 		},
 		setNDVSessionId(): void {
-			this.sessionId = `ndv-${Math.random().toString(36).slice(-8)}`;
+			this.sessionId = `ndv-${uuid()}`;
 		},
 		resetNDVSessionId(): void {
 			this.sessionId = '';
@@ -185,7 +194,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: true,
 				type,
 				data,
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
@@ -194,15 +203,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
 		setDraggableStickyPos(position: XYPosition | null): void {
 			this.draggable.stickyPosition = position;
 		},
-		setDraggableCanDrop(canDrop: boolean): void {
-			this.draggable.canDrop = canDrop;
+		setDraggableTargetId(id: string | null): void {
+			this.draggable.activeTargetId = id;
 		},
 		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
 			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };
@@ -222,7 +231,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		disableMappingHint(store = true) {
 			this.isMappingOnboarded = true;
 			if (store) {
-				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
 			}
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {

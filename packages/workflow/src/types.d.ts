@@ -12,3 +12,7 @@ declare module '@n8n_io/riot-tmpl' {
 	let brackets: Brackets;
 	let tmpl: Tmpl;
 }
+
+interface BigInt {
+	toJSON(): string;
+}

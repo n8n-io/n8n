@@ -7,7 +7,7 @@
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" manual :value="showTooltip">
+			<n8n-tooltip placement="top" :visible="showTooltip">
 				<template #content>
 					<div v-text="nodeType.displayName"></div>
 				</template>
@@ -84,7 +84,7 @@ export default defineComponent({
 		},
 		iconStyleData(): object {
 			const nodeType = this.nodeType as ITemplatesNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
+			const color = nodeType ? nodeType.defaults && nodeType.defaults.color : '';
 			if (!this.size) {
 				return { color };
 			}

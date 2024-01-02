@@ -12,7 +12,7 @@ describe('components', () => {
 	describe('N8nRecycleScroller', () => {
 		it('should render correctly', () => {
 			const wrapper = render(N8nRecycleScroller, {
-				propsData: {
+				props: {
 					itemSize,
 					itemKey,
 					items,

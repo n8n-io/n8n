@@ -1,127 +1,119 @@
-/* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-param-reassign */
 import type express from 'express';
 import { Service } from 'typedi';
 
-import type {
-	IWebhookData,
-	IWorkflowExecuteAdditionalData,
-	WebhookHttpMethod,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
+import {
+	type IWebhookData,
+	type IWorkflowExecuteAdditionalData,
+	type IHttpRequestMethods,
+	type Workflow,
+	type WorkflowActivateMode,
+	type WorkflowExecuteMode,
+	WebhookPathTakenError,
 } from 'n8n-workflow';
 
-import { ActiveWebhooks } from '@/ActiveWebhooks';
-import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import type {
+	IResponseCallbackData,
+	IWebhookManager,
+	IWorkflowDb,
+	WebhookRegistration,
+	WebhookAccessControlOptions,
+	WebhookRequest,
+} from '@/Interfaces';
 import { Push } from '@/push';
-import * as ResponseHelper from '@/ResponseHelper';
+import { NodeTypes } from '@/NodeTypes';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { webhookNotFoundErrorMessage } from './utils';
-
-const WEBHOOK_TEST_UNREGISTERED_HINT =
-	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { TIME } from './constants';
+import { WorkflowMissingIdError } from './errors/workflow-missing-id.error';
+import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
+import * as NodeExecuteFunctions from 'n8n-core';
+import { removeTrailingSlash } from './utils';
 
 @Service()
-export class TestWebhooks {
-	private testWebhookData: {
-		[key: string]: {
-			sessionId?: string;
-			timeout: NodeJS.Timeout;
-			workflowData: IWorkflowDb;
-			workflow: Workflow;
-			destinationNode?: string;
-		};
-	} = {};
+export class TestWebhooks implements IWebhookManager {
+	constructor(
+		private readonly push: Push,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
-	constructor(private activeWebhooks: ActiveWebhooks, private push: Push) {
-		activeWebhooks.testWebhooks = true;
+	private registrations: { [webhookKey: string]: WebhookRegistration } = {};
+
+	private get webhooksByWorkflow() {
+		const result: { [workflowId: string]: IWebhookData[] } = {};
+
+		for (const registration of Object.values(this.registrations)) {
+			result[registration.webhook.workflowId] ||= [];
+			result[registration.webhook.workflowId].push(registration.webhook);
+		}
+
+		return result;
 	}
 
 	/**
-	 * Executes a test-webhook and returns the data. It also makes sure that the
-	 * data gets additionally send to the UI. After the request got handled it
-	 * automatically remove the test-webhook.
+	 * Return a promise that resolves when the test webhook is called.
+	 * Also inform the FE of the result and remove the test webhook.
 	 */
-	async callTestWebhook(
-		httpMethod: WebhookHttpMethod,
-		path: string,
-		request: express.Request,
+	async executeWebhook(
+		request: WebhookRequest,
 		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		// Reset request parameters
-		request.params = {};
+		const httpMethod = request.method;
 
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
+		let path = removeTrailingSlash(request.params.path);
 
-		const { activeWebhooks, push, testWebhookData } = this;
+		request.params = {} as WebhookRequest['params'];
 
-		let webhookData: IWebhookData | undefined = activeWebhooks.get(httpMethod, path);
+		let webhook = this.getActiveWebhook(httpMethod, path);
 
-		// check if path is dynamic
-		if (webhookData === undefined) {
-			const pathElements = path.split('/');
-			const webhookId = pathElements.shift();
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
-			if (webhookData === undefined) {
-				// The requested webhook is not registered
-				const methods = await this.getWebhookMethods(path);
-				throw new ResponseHelper.NotFoundError(
-					webhookNotFoundErrorMessage(path, httpMethod, methods),
-					WEBHOOK_TEST_UNREGISTERED_HINT,
-				);
-			}
+		if (!webhook) {
+			// no static webhook, so check if dynamic
+			// e.g. `/webhook-test/<uuid>/user/:id/create`
 
-			path = webhookData.path;
-			// extracting params from path
-			path.split('/').forEach((ele, index) => {
-				if (ele.startsWith(':')) {
-					// write params to req.params
-					request.params[ele.slice(1)] = pathElements[index];
+			const [webhookId, ...segments] = path.split('/');
+
+			webhook = this.getActiveWebhook(httpMethod, segments.join('/'), webhookId);
+
+			if (!webhook)
+				throw new WebhookNotFoundError({
+					path,
+					httpMethod,
+					webhookMethods: await this.getWebhookMethods(path),
+				});
+
+			path = webhook.path;
+
+			path.split('/').forEach((segment, index) => {
+				if (segment.startsWith(':')) {
+					request.params[segment.slice(1)] = segments[index];
 				}
 			});
 		}
 
-		const { workflowId } = webhookData;
-		const webhookKey = `${activeWebhooks.getWebhookKey(
-			webhookData.httpMethod,
-			webhookData.path,
-			webhookData.webhookId,
-		)}|${workflowId}`;
+		const key = this.toWebhookKey(webhook);
 
-		// TODO: Clean that duplication up one day and improve code generally
-		if (testWebhookData[webhookKey] === undefined) {
-			// The requested webhook is not registered
-			const methods = await this.getWebhookMethods(path);
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path, httpMethod, methods),
-				WEBHOOK_TEST_UNREGISTERED_HINT,
-			);
-		}
+		if (!this.registrations[key])
+			throw new WebhookNotFoundError({
+				path,
+				httpMethod,
+				webhookMethods: await this.getWebhookMethods(path),
+			});
 
-		const { destinationNode, sessionId, workflow, workflowData, timeout } =
-			testWebhookData[webhookKey];
+		const { destinationNode, sessionId, workflow, workflowEntity, timeout } =
+			this.registrations[key];
 
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
+		const workflowStartNode = workflow.getNode(webhook.node);
+
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
 				const executionId = await WebhookHelpers.executeWebhook(
 					workflow,
-					webhookData!,
-					workflowData,
+					webhook!,
+					workflowEntity,
 					workflowStartNode,
 					executionMode,
 					sessionId,
@@ -143,96 +135,107 @@ export class TestWebhooks {
 
 				// Inform editor-ui that webhook got received
 				if (sessionId !== undefined) {
-					push.send('testWebhookReceived', { workflowId, executionId }, sessionId);
+					this.push.send(
+						'testWebhookReceived',
+						{ workflowId: webhook?.workflowId, executionId },
+						sessionId,
+					);
 				}
 			} catch {}
 
 			// Delete webhook also if an error is thrown
 			if (timeout) clearTimeout(timeout);
-			delete testWebhookData[webhookKey];
+			delete this.registrations[key];
 
-			await activeWebhooks.removeWorkflow(workflow);
+			await this.deactivateWebhooks(workflow);
 		});
 	}
 
-	/**
-	 * Gets all request methods associated with a single test webhook
-	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
-		if (!webhookMethods.length) {
-			// The requested webhook is not registered
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path),
-				WEBHOOK_TEST_UNREGISTERED_HINT,
-			);
-		}
+	async getWebhookMethods(path: string) {
+		const webhookMethods = Object.keys(this.registrations)
+			.filter((key) => key.includes(path))
+			.map((key) => key.split('|')[0] as IHttpRequestMethods);
+
+		if (!webhookMethods.length) throw new WebhookNotFoundError({ path });
 
 		return webhookMethods;
 	}
 
+	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		const webhookKey = Object.keys(this.registrations).find(
+			(key) => key.includes(path) && key.startsWith(httpMethod),
+		);
+
+		if (!webhookKey) return;
+
+		const { workflow } = this.registrations[webhookKey];
+		const webhookNode = Object.values(workflow.nodes).find(
+			({ type, parameters, typeVersion }) =>
+				parameters?.path === path &&
+				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
+		);
+
+		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
+	}
+
 	/**
-	 * Checks if it has to wait for webhook data to execute the workflow.
-	 * If yes it waits for it and resolves with the result of the workflow if not it simply resolves with undefined
+	 * Return whether activating a workflow requires listening for webhook calls.
+	 * For every webhook call to listen for, also activate the webhook.
 	 */
-	async needsWebhookData(
-		workflowData: IWorkflowDb,
+	async needsWebhook(
+		workflowEntity: IWorkflowDb,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
+		executionMode: WorkflowExecuteMode,
+		activationMode: WorkflowActivateMode,
 		sessionId?: string,
 		destinationNode?: string,
-	): Promise<boolean> {
+	) {
+		if (!workflow.id) throw new WorkflowMissingIdError(workflow);
+
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
 			destinationNode,
 			true,
 		);
-		if (!webhooks.find((webhook) => webhook.webhookDescription.restartWebhook !== true)) {
-			// No webhooks found to start a workflow
-			return false;
+
+		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
+			return false; // no webhooks found to start a workflow
 		}
 
-		if (workflow.id === undefined) {
-			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
-		}
+		// 1+ webhook(s) required, so activate webhook(s)
 
-		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
-		const timeout = setTimeout(() => {
-			this.cancelTestWebhook(workflowData.id);
-		}, 120000);
+		const timeout = setTimeout(() => this.cancelWebhook(workflow.id), 2 * TIME.MINUTE);
 
-		const { activeWebhooks, testWebhookData } = this;
+		const activatedKeys: string[] = [];
 
-		let key: string;
-		const activatedKey: string[] = [];
-		// eslint-disable-next-line no-restricted-syntax
-		for (const webhookData of webhooks) {
-			key = `${activeWebhooks.getWebhookKey(
-				webhookData.httpMethod,
-				webhookData.path,
-				webhookData.webhookId,
-			)}|${workflowData.id}`;
+		for (const webhook of webhooks) {
+			const key = this.toWebhookKey(webhook);
 
-			activatedKey.push(key);
+			if (this.registrations[key] && !webhook.webhookId) {
+				throw new WebhookPathTakenError(webhook.node);
+			}
 
-			testWebhookData[key] = {
+			activatedKeys.push(key);
+
+			this.setRegistration({
 				sessionId,
 				timeout,
 				workflow,
-				workflowData,
+				workflowEntity,
 				destinationNode,
-			};
+				webhook,
+			});
 
 			try {
-				// eslint-disable-next-line no-await-in-loop
-				await activeWebhooks.add(workflow, webhookData, mode, activation);
+				await this.activateWebhook(workflow, webhook, executionMode, activationMode);
 			} catch (error) {
-				activatedKey.forEach((deleteKey) => delete testWebhookData[deleteKey]);
-				// eslint-disable-next-line no-await-in-loop
-				await activeWebhooks.removeWorkflow(workflow);
+				activatedKeys.forEach((k) => delete this.registrations[k]);
+
+				await this.deactivateWebhooks(workflow);
+
 				throw error;
 			}
 		}
@@ -240,39 +243,29 @@ export class TestWebhooks {
 		return true;
 	}
 
-	/**
-	 * Removes a test webhook of the workflow with the given id
-	 *
-	 */
-	cancelTestWebhook(workflowId: string): boolean {
+	cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
-		const { activeWebhooks, push, testWebhookData } = this;
-		// eslint-disable-next-line no-restricted-syntax
-		for (const webhookKey of Object.keys(testWebhookData)) {
-			const { sessionId, timeout, workflow, workflowData } = testWebhookData[webhookKey];
 
-			if (workflowData.id !== workflowId) {
-				// eslint-disable-next-line no-continue
-				continue;
-			}
+		for (const key of Object.keys(this.registrations)) {
+			const { sessionId, timeout, workflow, workflowEntity } = this.registrations[key];
+
+			if (workflowEntity.id !== workflowId) continue;
 
 			clearTimeout(timeout);
 
-			// Inform editor-ui that webhook got received
 			if (sessionId !== undefined) {
 				try {
-					push.send('testWebhookDeleted', { workflowId }, sessionId);
+					this.push.send('testWebhookDeleted', { workflowId }, sessionId);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
 			}
 
-			// Remove the webhook
-			delete testWebhookData[webhookKey];
+			delete this.registrations[key];
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				void activeWebhooks.removeWorkflow(workflow);
+				void this.deactivateWebhooks(workflow);
 			}
 
 			foundWebhook = true;
@@ -281,11 +274,103 @@ export class TestWebhooks {
 		return foundWebhook;
 	}
 
+	async activateWebhook(
+		workflow: Workflow,
+		webhook: IWebhookData,
+		executionMode: WorkflowExecuteMode,
+		activationMode: WorkflowActivateMode,
+	) {
+		webhook.path = removeTrailingSlash(webhook.path);
+
+		const key = this.toWebhookKey(webhook);
+
+		webhook.isTest = true;
+		this.registrations[key].webhook = webhook;
+
+		try {
+			await workflow.createWebhookIfNotExists(
+				webhook,
+				NodeExecuteFunctions,
+				executionMode,
+				activationMode,
+			);
+		} catch (error) {
+			if (this.registrations[key]) delete this.registrations[key];
+
+			throw error;
+		}
+	}
+
+	getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
+		const key = this.toWebhookKey({ httpMethod, path, webhookId });
+		if (this.registrations[key] === undefined) {
+			return undefined;
+		}
+
+		let webhook: IWebhookData | undefined;
+		let maxMatches = 0;
+		const pathElementsSet = new Set(path.split('/'));
+		// check if static elements match in path
+		// if more results have been returned choose the one with the most static-route matches
+		const dynamicWebhook = this.registrations[key].webhook;
+
+		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
+		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
+
+		if (allStaticExist && staticElements.length > maxMatches) {
+			maxMatches = staticElements.length;
+			webhook = dynamicWebhook;
+		}
+		// handle routes with no static elements
+		else if (staticElements.length === 0 && !webhook) {
+			webhook = dynamicWebhook;
+		}
+
+		return webhook;
+	}
+
+	private toWebhookKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {
+		const { webhookId, httpMethod, path: webhookPath } = webhook;
+
+		if (!webhookId) return `${httpMethod}|${webhookPath}`;
+
+		let path = webhookPath;
+
+		if (path.startsWith(webhookId)) {
+			const cutFromIndex = path.indexOf('/') + 1;
+
+			path = path.slice(cutFromIndex);
+		}
+
+		return `${httpMethod}|${webhookId}|${path.split('/').length}`;
+	}
+
 	/**
-	 * Removes all the currently active test webhooks
+	 * Deactivate all registered webhooks of a workflow.
 	 */
-	async removeAll(): Promise<void> {
-		const workflows = Object.values(this.testWebhookData).map(({ workflow }) => workflow);
-		return this.activeWebhooks.removeAll(workflows);
+	async deactivateWebhooks(workflow: Workflow) {
+		const webhooks = this.webhooksByWorkflow[workflow.id];
+
+		if (!webhooks) return false; // nothing to deactivate
+
+		for (const webhook of webhooks) {
+			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
+
+			const key = this.toWebhookKey(webhook);
+
+			delete this.registrations[key];
+		}
+
+		return true;
+	}
+
+	clearRegistrations() {
+		this.registrations = {};
+	}
+
+	setRegistration(registration: WebhookRegistration) {
+		const key = this.toWebhookKey(registration.webhook);
+
+		this.registrations[key] = registration;
 	}
 }

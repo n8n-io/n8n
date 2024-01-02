@@ -633,6 +633,6 @@ export class Intercom implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

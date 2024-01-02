@@ -1,4 +1,3 @@
-/* eslint-disable n8n-local-rules/no-unneeded-backticks */
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 export class MigrateIntegerKeysToString1690000000000 implements IrreversibleMigration {

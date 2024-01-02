@@ -1,18 +1,20 @@
-import { UserSettings, Credentials } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
+import { RoleService } from '@/services/role.service';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
-	return Db.collections.Credentials.findOneBy({ id: credentialId });
+	return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
@@ -20,7 +22,7 @@ export async function getSharedCredentials(
 	credentialId: string,
 	relations?: string[],
 ): Promise<SharedCredentials | null> {
-	return Db.collections.SharedCredentials.findOne({
+	return Container.get(SharedCredentialsRepository).findOne({
 		where: {
 			userId,
 			credentialsId: credentialId,
@@ -46,7 +48,6 @@ export async function createCredential(
 	} else {
 		// Add the added date for node access permissions
 		newCredential.nodesAccess.forEach((nodeAccess) => {
-			// eslint-disable-next-line no-param-reassign
 			nodeAccess.date = new Date();
 		});
 	}
@@ -59,7 +60,7 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+	const role = await Container.get(RoleService).findCredentialOwnerRole();
 
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
@@ -84,12 +85,10 @@ export async function saveCredential(
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
-	return Db.collections.Credentials.remove(credentials);
+	return Container.get(CredentialsRepository).remove(credentials);
 }
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	// Encrypt the data
 	const coreCredential = new Credentials(
 		{ id: null, name: credential.name },
@@ -98,7 +97,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
+	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
@@ -115,7 +114,6 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});
@@ -191,7 +189,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			let dependantValue: string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
-				// eslint-disable-next-line prefer-destructuring
 				dependantValue = displayOptionsValues[0];
 			}
 

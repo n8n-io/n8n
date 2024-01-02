@@ -17,23 +17,23 @@
 					placement="bottom-end"
 					size="small"
 					color="foreground-xdark"
-					iconSize="small"
+					icon-size="small"
 					:actions="actions"
-					:iconOrientation="iconOrientation"
-					@action="(action) => $emit('optionSelected', action)"
+					:icon-orientation="iconOrientation"
+					@action="(action) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
 			<n8n-radio-buttons
 				v-if="shouldShowExpressionSelector"
 				size="small"
-				:value="selectedView"
+				:model-value="selectedView"
 				:disabled="isReadOnly"
-				@input="onViewSelected"
 				:options="[
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 				]"
+				@update:modelValue="onViewSelected"
 			/>
 		</div>
 	</div>
@@ -43,10 +43,12 @@
 import type { NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
-	name: 'parameter-options',
+	name: 'ParameterOptions',
 	props: {
 		parameter: {
 			type: Object,
@@ -81,7 +83,7 @@ export default defineComponent({
 		loadingMessage: {
 			type: String,
 			default() {
-				return this.$locale.baseText('genericHelpers.loading');
+				return i18n.baseText('genericHelpers.loading');
 			},
 		},
 	},
@@ -99,7 +101,7 @@ export default defineComponent({
 			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
 		},
 		shouldShowOptions(): boolean {
-			if (this.isReadOnly === true) {
+			if (this.isReadOnly) {
 				return false;
 			}
 
@@ -111,7 +113,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.showOptions === true) {
+			if (this.showOptions) {
 				return true;
 			}
 
@@ -173,11 +175,14 @@ export default defineComponent({
 		},
 		onViewSelected(selected: string) {
 			if (selected === 'expression') {
-				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
+				this.$emit(
+					'update:modelValue',
+					this.isValueExpression ? 'openExpression' : 'addExpression',
+				);
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
-				this.$emit('optionSelected', 'removeExpression');
+				this.$emit('update:modelValue', 'removeExpression');
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
@@ -199,12 +204,18 @@ export default defineComponent({
 .container {
 	display: flex;
 }
-.loader > span {
-	line-height: 1em;
-}
 
+.loader {
+	padding-bottom: var(--spacing-4xs);
+
+	& > span {
+		line-height: 1em;
+	}
+}
 .controlsContainer {
 	display: flex;
+	align-items: center;
+	flex-direction: row;
 }
 
 .noExpressionSelector {

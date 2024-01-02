@@ -1,9 +1,8 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -13,7 +12,7 @@ function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 		.map((node: INodeUi) => node.name);
 }
 
-export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const baseCompletions = defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 	},
@@ -45,7 +44,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 		/**
 		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
-		 * $jmespath $('nodeName')` in both modes.
+		 * $jmespath $ifEmpt $('nodeName')` in both modes.
 		 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
 		 */
 		baseCompletions(context: CompletionContext): CompletionResult | null {
@@ -58,6 +57,10 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: `${prefix}execution`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
+				},
+				{
+					label: `${prefix}ifEmpty()`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$ifEmpty'),
 				},
 				{ label: `${prefix}input`, info: this.$locale.baseText('codeNodeEditor.completer.$input') },
 				{

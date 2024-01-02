@@ -7,10 +7,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import get from 'lodash/get';
 import { disableDotNotationBoolean } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 type AggregationType =
 	| 'append'
@@ -32,7 +31,6 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-// eslint-disable-next-line no-restricted-syntax
 const AggregationDisplayNames = {
 	append: 'appended_',
 	average: 'average_',

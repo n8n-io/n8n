@@ -12,9 +12,10 @@ export class ItemLists extends VersionedNodeType {
 			name: 'itemLists',
 			icon: 'file:itemLists.svg',
 			group: ['input'],
+			hidden: true,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Helper for working with lists of items and transforming arrays',
-			defaultVersion: 3,
+			defaultVersion: 3.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -23,6 +24,7 @@ export class ItemLists extends VersionedNodeType {
 			2.1: new ItemListsV2(baseDescription),
 			2.2: new ItemListsV2(baseDescription),
 			3: new ItemListsV3(baseDescription),
+			3.1: new ItemListsV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

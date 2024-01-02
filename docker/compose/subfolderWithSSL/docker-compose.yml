@@ -19,6 +19,13 @@ services:
     volumes:
       - ${DATA_FOLDER}/letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  initContainer:
+    image: busybox
+    command: ['sh', '-c', 'chown -R 1000:1000 /home/node/.n8n']
+    volumes:
+      - ${DATA_FOLDER}/.n8n:/home/node/.n8n
+
   n8n:
     image: docker.n8n.io/n8nio/n8n
     ports:
@@ -50,3 +57,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_FOLDER}/.n8n:/home/node/.n8n
+    depends_on:
+      initContainer:
+        condition: service_completed_successfully

@@ -1,11 +1,15 @@
 <template>
-	<n8n-tabs :options="options" :value="value" @input="onTabSelect" @tooltipClick="onTooltipClick" />
+	<n8n-tabs
+		:options="options"
+		:model-value="modelValue"
+		@update:modelValue="onTabSelect"
+		@tooltipClick="onTooltipClick"
+	/>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { externalHooks } from '@/mixins/externalHooks';
 import {
 	BUILTIN_NODES_DOCS_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -15,20 +19,28 @@ import type { INodeUi, ITab } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'NodeSettingsTabs',
-	mixins: [externalHooks],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
 		nodeType: {},
 		sessionId: {
 			type: String,
 		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
@@ -116,7 +128,7 @@ export default defineComponent({
 	methods: {
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
-				void this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
+				void this.externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 					nodeType: this.nodeType as INodeTypeDescription,
 					documentationUrl: this.documentationUrl,
 				});
@@ -124,7 +136,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'docs',
 				});
 			}
@@ -137,7 +149,7 @@ export default defineComponent({
 			}
 
 			if (tab === 'settings' || tab === 'params') {
-				this.$emit('input', tab);
+				this.$emit('update:modelValue', tab);
 			}
 		},
 		onTooltipClick(tab: string, event: MouseEvent) {

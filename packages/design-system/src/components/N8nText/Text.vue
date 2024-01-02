@@ -1,5 +1,5 @@
 <template>
-	<component :is="tag" :class="['n8n-text', ...classes]" v-on="$listeners">
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
@@ -7,7 +7,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 export default defineComponent({
-	name: 'n8n-text',
+	name: 'N8nText',
 	props: {
 		bold: {
 			type: Boolean,
@@ -50,7 +50,6 @@ export default defineComponent({
 		classes() {
 			const applied = [];
 			if (this.align) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
@@ -61,7 +60,6 @@ export default defineComponent({
 				applied.push('compact');
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
 			applied.push(this.bold ? 'bold' : 'regular');
@@ -131,7 +129,7 @@ export default defineComponent({
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color-text-danger);
 }
 
 .success {

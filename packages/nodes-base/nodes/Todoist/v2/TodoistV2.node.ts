@@ -742,6 +742,6 @@ export class TodoistV2 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

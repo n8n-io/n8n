@@ -1,5 +1,6 @@
 import { action } from '@storybook/addon-actions';
 import N8nResizeWrapper from './ResizeWrapper.vue';
+import { ref } from 'vue';
 
 export default {
 	title: 'Atoms/ResizeWrapper',
@@ -8,27 +9,33 @@ export default {
 
 const methods = {
 	onInput: action('input'),
-	onResize(resizeData) {
-		action('resize', resizeData);
-		this.newHeight = resizeData.height;
-		this.newWidth = resizeData.width;
-	},
 	onResizeEnd: action('resizeend'),
 	onResizeStart: action('resizestart'),
 };
 
 const Template = (args, { argTypes }) => ({
+	setup: () => {
+		const newWidth = ref(args.width);
+		const newHeight = ref(args.height);
+
+		function onResize(resizeData) {
+			action('resize', resizeData);
+			newHeight.value = resizeData.height;
+			newWidth.value = resizeData.width;
+		}
+
+		return {
+			onResize,
+			newWidth,
+			newHeight,
+			background:
+				'linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)',
+			args,
+		};
+	},
 	props: Object.keys(argTypes),
 	components: {
 		N8nResizeWrapper,
-	},
-	data() {
-		return {
-			newWidth: this.width,
-			newHeight: this.height,
-			background:
-				'linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)',
-		};
 	},
 	computed: {
 		containerStyles() {
@@ -41,7 +48,7 @@ const Template = (args, { argTypes }) => ({
 	},
 	template: `<div style="width: fit-content; height: fit-content">
 			<n8n-resize-wrapper
-				v-bind="$props"
+				v-bind="args"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 				@resizestart="onResizeStart"

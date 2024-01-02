@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
-
 import * as amqplib from 'amqplib';
+import { formatPrivateKey } from '@utils/utilities';
 
 export async function rabbitmqConnect(
 	this: IExecuteFunctions | ITriggerFunctions,
@@ -20,10 +20,17 @@ export async function rabbitmqConnect(
 	if (credentials.ssl === true) {
 		credentialData.protocol = 'amqps';
 
-		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
+		optsData.ca =
+			credentials.ca === '' ? undefined : [Buffer.from(formatPrivateKey(credentials.ca as string))];
 		if (credentials.passwordless === true) {
-			optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
-			optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+			optsData.cert =
+				credentials.cert === ''
+					? undefined
+					: Buffer.from(formatPrivateKey(credentials.cert as string));
+			optsData.key =
+				credentials.key === ''
+					? undefined
+					: Buffer.from(formatPrivateKey(credentials.key as string));
 			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 			optsData.credentials = amqplib.credentials.external();
 		}
@@ -69,6 +76,19 @@ export async function rabbitmqConnectQueue(
 	return new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertQueue(queue, options);
+
+			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
+				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
+					async (binding: IDataObject) => {
+						await channel.bindQueue(
+							queue,
+							binding.exchange as string,
+							binding.routingKey as string,
+						);
+					},
+				);
+			}
+
 			resolve(channel);
 		} catch (error) {
 			reject(error);

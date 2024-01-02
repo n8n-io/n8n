@@ -14,60 +14,54 @@
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
 				<el-row
-					:gutter="10"
 					v-for="item in sortedItemKeysByLabel"
 					:key="item.key"
+					:gutter="10"
 					:class="$style.destinationItem"
 				>
 					<el-col v-if="logStreamingStore.items[item.key]?.destination">
-						<event-destination-card
+						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
-							:eventBus="eventBus"
-							:isInstanceOwner="isInstanceOwner"
+							:event-bus="eventBus"
+							:readonly="!canManageLogStreaming"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</el-col>
 				</el-row>
 				<div class="mt-m text-right">
-					<n8n-button v-if="isInstanceOwner" size="large" @click="addDestination">
+					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
 						{{ $locale.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
 			</template>
-			<template v-else>
-				<div data-test-id="action-box-licensed">
-					<n8n-action-box
-						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
-						@click="addDestination"
-					>
-						<template #heading>
-							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
-						</template>
-					</n8n-action-box>
-				</div>
-			</template>
+			<div v-else data-test-id="action-box-licensed">
+				<n8n-action-box
+					:button-text="$locale.baseText(`settings.log-streaming.add`)"
+					@click:button="addDestination"
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+					</template>
+				</n8n-action-box>
+			</div>
 		</template>
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click="goToUpgrade"
+					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
+					@click:button="goToUpgrade"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
@@ -79,40 +73,38 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '../stores/workflows.store';
-import { useUsersStore } from '../stores/users.store';
-import { useCredentialsStore } from '../stores/credentials.store';
-import { useLogStreamingStore } from '../stores/logStreaming.store';
-import { useSettingsStore } from '../stores/settings.store';
-import { useUIStore } from '../stores/ui.store';
-import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { hasPermission } from '@/rbac/permissions';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
-	props: {},
 	components: {
 		EventDestinationCard,
 	},
+	props: {},
 	data() {
 		return {
 			eventBus: createEventBus(),
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
-			isInstanceOwner: false,
 		};
 	},
 	async mounted() {
 		if (!this.isLicensed) return;
 
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		await this.credentialsStore.fetchAllCredentials();
@@ -136,7 +128,7 @@ export default defineComponent({
 		// listen to modal closing and remove nodes from store
 		this.eventBus.on('closing', this.onBusClosing);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
 		this.eventBus.off('remove', this.onRemove);
 		this.eventBus.off('closing', this.onBusClosing);
@@ -147,7 +139,6 @@ export default defineComponent({
 			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
-			useUsersStore,
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
@@ -161,8 +152,11 @@ export default defineComponent({
 			return process.env.NODE_ENV;
 		},
 		isLicensed(): boolean {
-			if (this.disableLicense === true) return false;
+			if (this.disableLicense) return false;
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
+		},
+		canManageLogStreaming(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 		},
 	},
 	methods: {
@@ -194,7 +188,7 @@ export default defineComponent({
 			this.$forceUpdate();
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
@@ -203,6 +197,7 @@ export default defineComponent({
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
 			newDestination.id = uuid();
 			this.logStreamingStore.addDestination(newDestination);
+			await nextTick();
 			this.uiStore.openModalWithData({
 				name: LOG_STREAM_MODAL_KEY,
 				data: {

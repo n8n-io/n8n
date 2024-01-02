@@ -2,7 +2,7 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
-import type { ResourceMapperFields } from 'n8n-workflow';
+import type { ResourceMapperFields, ResourceMapperValue } from 'n8n-workflow';
 
 export const NODE_PARAMETER_VALUES = {
 	authentication: 'oAuth2',
@@ -101,6 +101,7 @@ export const DEFAULT_SETUP = {
 		dependentParametersValues: 'gid=0',
 		inputSize: 'small',
 		labelSize: 'small',
+		teleported: false,
 		node: {
 			parameters: NODE_PARAMETER_VALUES,
 			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',
@@ -200,15 +201,16 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 			type: 'string',
 			canBeUsedToMatch: true,
 		},
-		{
-			id: 'Last Name',
-			displayName: 'Last Name',
-			match: false,
-			required: false,
-			defaultMatch: false,
-			display: true,
-			type: 'string',
-			canBeUsedToMatch: true,
-		},
 	],
 };
+
+// Gets the latest `valueChanged` event emitted by the component
+// This will be used to inspect current resource mapper value set in node parameters
+export function getLatestValueChangeEvent(emitted: Record<string, unknown[]>) {
+	const valueChangeEmits = emitted.valueChanged as [];
+	return valueChangeEmits[valueChangeEmits.length - 1] as Array<{
+		name: string;
+		value: ResourceMapperValue;
+		node: string;
+	}>;
+}

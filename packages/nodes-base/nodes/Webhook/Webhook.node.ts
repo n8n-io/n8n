@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
+import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -6,14 +9,12 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	MultiPartFormData,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
-import fs from 'fs';
-import stream from 'stream';
-import { promisify } from 'util';
+import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
-import formidable from 'formidable';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
 
@@ -30,8 +31,6 @@ import {
 } from './description';
 import { WebhookAuthorizationError } from './error';
 
-const pipeline = promisify(stream.pipeline);
-
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
 
@@ -40,13 +39,14 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
 		defaults: {
 			name: 'Webhook',
 		},
+		supportsCORS: true,
 		triggerPanel: {
 			header: '',
 			executionsHelp: {
@@ -118,13 +118,23 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		const mimeType = req.headers['content-type'] ?? 'application/json';
-		if (mimeType.includes('multipart/form-data')) {
+		if (options.binaryData) {
+			return this.handleBinaryData(context);
+		}
+
+		if (req.contentType === 'multipart/form-data') {
 			return this.handleFormData(context);
 		}
 
-		if (options.binaryData) {
-			return this.handleBinaryData(context);
+		const nodeVersion = context.getNode().typeVersion;
+		if (nodeVersion > 1 && !req.body && !options.rawBody) {
+			try {
+				return await this.handleBinaryData(context);
+			} catch (error) {}
+		}
+
+		if (options.rawBody && !req.rawBody) {
+			await req.readRawBody();
 		}
 
 		const response: INodeExecutionData = {
@@ -137,8 +147,8 @@ export class Webhook extends Node {
 			binary: options.rawBody
 				? {
 						data: {
-							data: req.rawBody.toString(BINARY_ENCODING),
-							mimeType,
+							data: (req.rawBody ?? '').toString(BINARY_ENCODING),
+							mimeType: req.contentType ?? 'application/json',
 						},
 				  }
 				: undefined,
@@ -202,86 +212,91 @@ export class Webhook extends Node {
 	}
 
 	private async handleFormData(context: IWebhookFunctions) {
-		const req = context.getRequestObject();
+		const req = context.getRequestObject() as MultiPartFormData.Request;
 		const options = context.getNodeParameter('options', {}) as IDataObject;
+		const { data, files } = req.body;
 
-		const form = new formidable.IncomingForm({ multiples: true });
+		const returnItem: INodeExecutionData = {
+			json: {
+				headers: req.headers,
+				params: req.params,
+				query: req.query,
+				body: data,
+			},
+		};
 
-		return new Promise<IWebhookResponseData>((resolve, _reject) => {
-			form.parse(req, async (err, data, files) => {
-				const returnItem: INodeExecutionData = {
-					binary: {},
-					json: {
-						headers: req.headers,
-						params: req.params,
-						query: req.query,
-						body: data,
-					},
-				};
+		if (files?.length) {
+			returnItem.binary = {};
+		}
 
-				let count = 0;
-				for (const xfile of Object.keys(files)) {
-					const processFiles: formidable.File[] = [];
-					let multiFile = false;
-					if (Array.isArray(files[xfile])) {
-						processFiles.push(...(files[xfile] as formidable.File[]));
-						multiFile = true;
-					} else {
-						processFiles.push(files[xfile] as formidable.File);
-					}
+		let count = 0;
 
-					let fileCount = 0;
-					for (const file of processFiles) {
-						let binaryPropertyName = xfile;
-						if (binaryPropertyName.endsWith('[]')) {
-							binaryPropertyName = binaryPropertyName.slice(0, -2);
-						}
-						if (multiFile) {
-							binaryPropertyName += fileCount++;
-						}
-						if (options.binaryPropertyName) {
-							binaryPropertyName = `${options.binaryPropertyName}${count}`;
-						}
+		for (const key of Object.keys(files)) {
+			const processFiles: MultiPartFormData.File[] = [];
+			let multiFile = false;
+			if (Array.isArray(files[key])) {
+				processFiles.push(...(files[key] as MultiPartFormData.File[]));
+				multiFile = true;
+			} else {
+				processFiles.push(files[key] as MultiPartFormData.File);
+			}
 
-						const fileJson = file.toJSON();
-						returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-							file.path,
-							fileJson.name || fileJson.filename,
-							fileJson.type as string,
-						);
-
-						count += 1;
-					}
+			let fileCount = 0;
+			for (const file of processFiles) {
+				let binaryPropertyName = key;
+				if (binaryPropertyName.endsWith('[]')) {
+					binaryPropertyName = binaryPropertyName.slice(0, -2);
 				}
-				resolve({ workflowData: [[returnItem]] });
-			});
-		});
+				if (multiFile) {
+					binaryPropertyName += fileCount++;
+				}
+				if (options.binaryPropertyName) {
+					binaryPropertyName = `${options.binaryPropertyName}${count}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+					file.filepath,
+					file.originalFilename ?? file.newFilename,
+					file.mimetype,
+				);
+
+				count += 1;
+			}
+		}
+
+		return { workflowData: [[returnItem]] };
 	}
 
 	private async handleBinaryData(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = context.getRequestObject();
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 
+		// TODO: create empty binaryData placeholder, stream into that path, and then finalize the binaryData
 		const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
 		try {
-			await pipeline(req, fs.createWriteStream(binaryFile.path));
+			await pipeline(req, createWriteStream(binaryFile.path));
 
 			const returnItem: INodeExecutionData = {
-				binary: {},
 				json: {
 					headers: req.headers,
 					params: req.params,
 					query: req.query,
-					body: req.body,
+					body: {},
 				},
 			};
 
-			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-				binaryFile.path,
-				req.headers['content-type'] ?? 'application/octet-stream',
-			);
+			const stats = await stat(binaryFile.path);
+			if (stats.size) {
+				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const fileName = req.contentDisposition?.filename ?? uuid();
+				const binaryData = await context.nodeHelpers.copyBinaryFile(
+					binaryFile.path,
+					fileName,
+					req.contentType ?? 'application/octet-stream',
+				);
+				returnItem.binary = { [binaryPropertyName]: binaryData };
+			}
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {

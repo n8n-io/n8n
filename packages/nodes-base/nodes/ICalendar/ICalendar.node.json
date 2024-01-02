@@ -10,6 +10,7 @@
 			}
 		]
 	},
+	"alias": ["ics", ".ics"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

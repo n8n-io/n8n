@@ -1,10 +1,9 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES_JS } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
 import { useSettingsStore } from '@/stores/settings.store';
 
-export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const requireCompletions = defineComponent({
 	methods: {
 		/**
 		 * Complete `req`	to `require('moduleName')` based on modules available in context.

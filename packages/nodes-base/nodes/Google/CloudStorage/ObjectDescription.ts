@@ -1,5 +1,11 @@
+import type { Readable } from 'stream';
 import FormData from 'form-data';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [
@@ -144,33 +150,40 @@ export const objectOperations: INodeProperties[] = [
 								});
 
 								// Determine content and content type
-								let content: string | Buffer;
+								let content: string | Buffer | Readable;
 								let contentType: string;
+								let contentLength: number;
 								if (useBinary) {
 									const binaryPropertyName = this.getNodeParameter(
 										'createBinaryPropertyName',
 									) as string;
 
 									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
-
-									// Decode from base64 for upload
-									content = Buffer.from(binaryData.data, 'base64');
-									contentType = binaryData.mimeType;
+									if (binaryData.id) {
+										content = await this.helpers.getBinaryStream(binaryData.id);
+										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
+										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
+										contentLength = binaryMetadata.fileSize;
+									} else {
+										content = Buffer.from(binaryData.data, BINARY_ENCODING);
+										contentType = binaryData.mimeType;
+										contentLength = content.length;
+									}
 								} else {
 									content = this.getNodeParameter('createContent') as string;
 									contentType = 'text/plain';
+									contentLength = content.length;
 								}
-								body.append('file', content, { contentType });
+								body.append('file', content, { contentType, knownLength: contentLength });
 
 								// Set the headers
 								if (!requestOptions.headers) requestOptions.headers = {};
 								requestOptions.headers['Content-Length'] = body.getLengthSync();
-								requestOptions.headers[
-									'Content-Type'
-								] = `multipart/related; boundary=${body.getBoundary()}`;
+								requestOptions.headers['Content-Type'] =
+									`multipart/related; boundary=${body.getBoundary()}`;
 
 								// Return the request data
-								requestOptions.body = body.getBuffer();
+								requestOptions.body = body;
 								return requestOptions;
 							},
 						],

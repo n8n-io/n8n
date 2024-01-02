@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
@@ -176,6 +177,7 @@ export class MicrosoftExcelV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
@@ -249,7 +251,7 @@ export class MicrosoftExcelV1 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
-						{ itemData: { item: 0 } },
+						{ itemData },
 					);
 
 					returnData.push(...executionData);
@@ -257,7 +259,7 @@ export class MicrosoftExcelV1 implements INodeType {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData: { item: 0 } },
+							{ itemData },
 						);
 						returnData.push(...executionErrorData);
 					} else {
@@ -686,6 +688,6 @@ export class MicrosoftExcelV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -2,7 +2,7 @@
 	<div :class="$style.actionsGroup">
 		<n8n-icon-button
 			v-if="noSelection"
-			:title="$locale.baseText('runData.copyToClipboard')"
+			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="copy"
 			type="tertiary"
 			:circle="false"
@@ -11,7 +11,7 @@
 		<el-dropdown v-else trigger="click" @command="handleCopyClick">
 			<span class="el-dropdown-link">
 				<n8n-icon-button
-					:title="$locale.baseText('runData.copyToClipboard')"
+					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="copy"
 					type="tertiary"
 					:circle="false"
@@ -20,13 +20,13 @@
 			<template #dropdown>
 				<el-dropdown-menu>
 					<el-dropdown-item :command="{ command: 'value' }">
-						{{ $locale.baseText('runData.copyValue') }}
+						{{ i18n.baseText('runData.copyValue') }}
 					</el-dropdown-item>
 					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
-						{{ $locale.baseText('runData.copyItemPath') }}
+						{{ i18n.baseText('runData.copyItemPath') }}
 					</el-dropdown-item>
 					<el-dropdown-item :command="{ command: 'parameterPath' }">
-						{{ $locale.baseText('runData.copyParameterPath') }}
+						{{ i18n.baseText('runData.copyParameterPath') }}
 					</el-dropdown-item>
 				</el-dropdown-menu>
 			</template>
@@ -41,27 +41,26 @@ import { mapStores } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
+import { clearJsonKey, convertPath } from '@/utils/typesUtils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { nonExistingJsonPath } from '@/constants';
+import { useClipboard } from '@/composables/useClipboard';
 
 type JsonPathData = {
 	path: string;
 	startPath: string;
 };
 
-// A path that does not exist so that nothing is selected by default
-export const nonExistingJsonPath = '_!^&*';
-
 export default defineComponent({
-	name: 'run-data-json-actions',
-	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
-
+	name: 'RunDataJsonActions',
+	mixins: [genericHelpers, pinData],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -94,7 +93,14 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const i18n = useI18n();
+		const nodeHelpers = useNodeHelpers();
+		const clipboard = useClipboard();
+
 		return {
+			i18n,
+			nodeHelpers,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -114,11 +120,14 @@ export default defineComponent({
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
 			if (this.noSelection) {
-				if (this.hasPinData) {
+				const inExecutionsFrame =
+					window !== window.parent && window.parent.location.pathname.includes('/executions');
+
+				if (this.hasPinData && !inExecutionsFrame) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
 					selectedValue = executionDataToJson(
-						this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
+						this.nodeHelpers.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
 					);
 				}
 			}
@@ -161,7 +170,7 @@ export default defineComponent({
 				value = this.getJsonValue();
 
 				this.showToast({
-					title: this.$locale.baseText('runData.copyValue.toast'),
+					title: this.i18n.baseText('runData.copyValue.toast'),
 					message: '',
 					type: 'success',
 					duration: 2000,
@@ -175,7 +184,7 @@ export default defineComponent({
 					path = jsonItemPath.path;
 
 					this.showToast({
-						title: this.$locale.baseText('runData.copyItemPath.toast'),
+						title: this.i18n.baseText('runData.copyItemPath.toast'),
 						message: '',
 						type: 'success',
 						duration: 2000,
@@ -186,7 +195,7 @@ export default defineComponent({
 					path = jsonParameterPath.path;
 
 					this.showToast({
-						title: this.$locale.baseText('runData.copyParameterPath.toast'),
+						title: this.i18n.baseText('runData.copyParameterPath.toast'),
 						message: '',
 						type: 'success',
 						duration: 2000,
@@ -215,7 +224,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.copyToClipboard(value);
+			void this.clipboard.copy(value);
 		},
 	},
 });

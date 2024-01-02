@@ -11,7 +11,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 
 import type { UserManagementMailer } from '@/UserManagement/email';
 
-import type { Risk } from '@/audit/types';
+import type { Risk } from '@/security-audit/types';
 
 export type AuthlessRequest<
 	RouteParams = {},

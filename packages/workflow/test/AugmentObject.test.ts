@@ -570,6 +570,7 @@ describe('AugmentObject', () => {
 
 			augmentedObject.x.z = 5;
 			expect('z' in augmentedObject.x).toBe(true);
+			expect('y' in augmentedObject.x).toBe(true);
 		});
 	});
 });

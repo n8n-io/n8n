@@ -14,11 +14,10 @@ import type {
 
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
-import { copyInputItems, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -43,7 +42,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -146,7 +145,7 @@ export async function execute(
 					}, [] as string[]),
 				),
 			];
-			insertItems = copyInputItems(items, columns);
+			insertItems = this.helpers.copyInputItems(items, columns);
 		}
 
 		if (dataMode === DATA_MODE.MANUAL) {

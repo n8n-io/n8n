@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { OptionsWithUri } from 'request';
 import {
 	elasticSecurityApiRequest,
 	getConnector,
@@ -38,8 +39,6 @@ import type {
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
-
-import type { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -590,6 +589,6 @@ export class ElasticSecurity implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

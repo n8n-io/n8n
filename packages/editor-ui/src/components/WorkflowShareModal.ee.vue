@@ -2,10 +2,10 @@
 	<Modal
 		width="460px"
 		:title="modalTitle"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
-		:beforeClose="onCloseModal"
+		:before-close="onCloseModal"
 	>
 		<template #content>
 			<div v-if="!isSharingEnabled" :class="$style.container">
@@ -23,7 +23,7 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.isOwner" :bold="false" class="mb-s">
+				<n8n-info-tip v-if="!workflowPermissions.updateSharing" :bold="false" class="mb-s">
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -36,10 +36,10 @@
 						class="mb-s"
 						size="large"
 						:users="usersList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="workflow-sharing-modal-users-select"
-						@input="onAddSharee"
+						@update:modelValue="onAddSharee"
 					>
 						<template #prefix>
 							<n8n-icon icon="search" />
@@ -48,16 +48,16 @@
 					<n8n-users-list
 						:actions="[]"
 						:users="sharedWithList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
 					>
 						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
-								value="editor"
+								model-value="editor"
 								size="small"
-								@change="onRoleAction(user, $event)"
+								@update:modelValue="onRoleAction(user, $event)"
 							>
 								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
 								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
@@ -70,14 +70,14 @@
 					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
-							<i18n
-								:path="
+							<i18n-t
+								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 								"
 								tag="span"
 							>
 								<template #action />
-							</i18n>
+							</i18n-t>
 						</n8n-text>
 					</template>
 				</enterprise-edition>
@@ -111,7 +111,6 @@
 					v-show="workflowPermissions.updateSharing"
 					:loading="loading"
 					:disabled="!isDirty"
-					size="medium"
 					data-test-id="workflow-sharing-modal-save-button"
 					@click="onSave"
 				>
@@ -125,7 +124,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 import Modal from './Modal.vue';
 import {
@@ -138,7 +137,8 @@ import {
 import type { IUser, IWorkflowDb } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -151,7 +151,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
 export default defineComponent({
-	name: 'workflow-share-modal',
+	name: 'WorkflowShareModal',
 	components: {
 		Modal,
 	},
@@ -210,21 +210,19 @@ export default defineComponent({
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.sharedWith || []).find(
 					(sharee) => sharee.id === user.id,
 				);
+				const isOwner = this.workflow?.ownedBy?.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser;
+				return !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): Array<Partial<IUser>> {
 			return (
 				[
 					{
-						...(this.workflow && this.workflow.ownedBy
-							? this.workflow.ownedBy
-							: this.usersStore.currentUser),
+						...(this.workflow?.ownedBy ? this.workflow.ownedBy : this.usersStore.currentUser),
 						isOwner: true,
 					},
 				] as Array<Partial<IUser>>
@@ -254,6 +252,16 @@ export default defineComponent({
 				)
 			);
 		},
+	},
+	watch: {
+		workflow(workflow) {
+			if (workflow.sharedWith) {
+				this.sharedWith = workflow.sharedWith;
+			}
+		},
+	},
+	mounted() {
+		void this.initialize();
 	},
 	methods: {
 		async onSave() {
@@ -358,8 +366,8 @@ export default defineComponent({
 								(workflowSharee) => workflowSharee.id === sharee.id,
 							);
 						}) &&
-						!this.workflow.sharedWith!.find(
-							(workflowSharee) => workflowSharee.id === credential.ownedBy!.id,
+						!this.workflow.sharedWith.find(
+							(workflowSharee) => workflowSharee.id === credential.ownedBy.id,
 						);
 				}
 
@@ -457,7 +465,7 @@ export default defineComponent({
 			});
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
@@ -472,14 +480,6 @@ export default defineComponent({
 			}
 
 			this.loading = false;
-		},
-	},
-	mounted() {
-		void this.initialize();
-	},
-	watch: {
-		workflow(workflow) {
-			this.sharedWith = workflow.sharedWith;
 		},
 	},
 });
