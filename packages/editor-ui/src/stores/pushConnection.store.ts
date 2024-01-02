@@ -33,18 +33,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const lostConnection = ref(false);
 	const outgoingQueue = ref<unknown[]>([]);
 	const isConnectionOpen = ref(false);
-	const onMessageReceivedHandlers = ref<[{ id?: string; handler?: OnPushMessageHandler }] | null>(
-		null,
-	);
 
-	const addEventListener = (subscriberId: string, handler: OnPushMessageHandler) => {
-		if (onMessageReceivedHandlers.value === null) {
-			onMessageReceivedHandlers.value = [{ id: subscriberId, handler }];
-		} else {
-			const existingHandler = onMessageReceivedHandlers.value.find(({ id }) => id === subscriberId);
-			if (existingHandler) return;
-			onMessageReceivedHandlers.value.push({ id: subscriberId, handler });
-		}
+	const onMessageReceivedHandlers = ref<OnPushMessageHandler>();
+
+	const addEventListener = (handler: OnPushMessageHandler) => {
+		onMessageReceivedHandlers.value = handler;
 	};
 
 	function onConnectionError() {
@@ -147,11 +140,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		} catch (error) {
 			return;
 		}
-		//  TODO: Why is this received multiple times?
-		if (Array.isArray(onMessageReceivedHandlers.value)) {
-			onMessageReceivedHandlers.value.forEach(({ handler }) => {
-				if (typeof handler === 'function') handler(receivedData);
-			});
+
+		if (typeof onMessageReceivedHandlers.value === 'function') {
+			onMessageReceivedHandlers.value(receivedData);
 		}
 	}
 

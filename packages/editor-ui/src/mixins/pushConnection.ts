@@ -41,7 +41,6 @@ import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const pushConnection = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
@@ -57,7 +56,7 @@ export const pushConnection = defineComponent({
 		};
 	},
 	created() {
-		this.pushStore.addEventListener('workflowExecutions', (message) => {
+		this.pushStore.addEventListener((message) => {
 			void this.pushMessageReceived(message);
 		});
 	},
