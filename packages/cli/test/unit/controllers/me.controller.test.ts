@@ -53,6 +53,12 @@ describe('MeController', () => {
 
 			await controller.updateCurrentUser(req, res);
 
+			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.beforeUpdate', [
+				user.id,
+				user.email,
+				reqBody,
+			]);
+
 			expect(userService.update).toHaveBeenCalled();
 
 			const cookieOptions = captor<CookieOptions>();
@@ -92,6 +98,28 @@ describe('MeController', () => {
 			expect(updatedUser.lastName).toBe(reqBody.lastName);
 			expect(updatedUser.id).not.toBe('0');
 			expect(updatedUser.globalRoleId).not.toBe('42');
+		});
+
+		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
+			const user = mock<User>({
+				id: '123',
+				password: 'password',
+				authIdentities: [],
+				globalRoleId: '1',
+			});
+			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			userService.findOneOrFail.mockResolvedValue(user);
+
+			externalHooks.run.mockImplementationOnce(async (hookName) => {
+				if (hookName === 'user.profile.beforeUpdate') {
+					throw new BadRequestError('Invalid email address');
+				}
+			});
+
+			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
+				new BadRequestError('Invalid email address'),
+			);
 		});
 	});
 

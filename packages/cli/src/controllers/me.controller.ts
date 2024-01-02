@@ -73,6 +73,8 @@ export class MeController {
 			}
 		}
 
+		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+
 		await this.userService.update(userId, payload);
 		const user = await this.userService.findOneOrFail({ where: { id: userId } });
 
