@@ -45,7 +45,7 @@ export async function getWorkflows(
 ): Promise<{ totalWorkflows: number; workflows: ITemplatesWorkflow[] }> {
 	return get(
 		apiEndpoint,
-		'/templates/workflows',
+		'/templates/search',
 		{
 			skip: query.skip,
 			rows: query.limit,

@@ -298,7 +298,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 
 			const payload = await getWorkflows(
 				apiEndpoint,
-				{ ...query, skip: 0, limit: TEMPLATES_PAGE_SIZE },
+				{ ...query, skip: 1, limit: TEMPLATES_PAGE_SIZE },
 				{ 'n8n-version': versionCli },
 			);
 
@@ -318,7 +318,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			try {
 				const payload = await getWorkflows(apiEndpoint, {
 					...query,
-					skip: cachedResults.length,
+					skip: cachedResults.length / TEMPLATES_PAGE_SIZE + 1,
 					limit: TEMPLATES_PAGE_SIZE,
 				});
 
