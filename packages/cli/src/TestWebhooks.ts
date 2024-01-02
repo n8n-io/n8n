@@ -1,6 +1,5 @@
 import type express from 'express';
 import { Service } from 'typedi';
-
 import {
 	type IWebhookData,
 	type IWorkflowExecuteAdditionalData,
@@ -8,35 +7,32 @@ import {
 	type WorkflowActivateMode,
 	type WorkflowExecuteMode,
 	WebhookPathTakenError,
-	ApplicationError,
 	Workflow,
 } from 'n8n-workflow';
-
 import type {
 	IResponseCallbackData,
 	IWebhookManager,
 	IWorkflowDb,
-	WebhookRegistration,
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from '@/Interfaces';
 import { Push } from '@/push';
 import { NodeTypes } from '@/NodeTypes';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { TIME } from './constants';
-import { WorkflowMissingIdError } from './errors/workflow-missing-id.error';
-import { WebhookNotFoundError } from './errors/response-errors/webhook-not-found.error';
+import { TIME } from '@/constants';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
-import { CacheService } from './services/cache.service';
+import { TestWebhookRegistrationsService } from '@/services/TestWebhookRegistrations.service';
 
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
-		private readonly cacheService: CacheService,
+		private readonly registrations: TestWebhookRegistrationsService,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -81,11 +77,11 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const key = this.toWebhookKey(webhook);
+		const key = this.registrations.toKey(webhook);
 
-		const isRegistered = await this.isRegistered(key);
+		const exists = await this.registrations.exists(key);
 
-		if (!isRegistered) {
+		if (!exists) {
 			throw new WebhookNotFoundError({
 				path,
 				httpMethod,
@@ -93,7 +89,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, sessionId, workflowEntity } = await this.getRegistration(key);
+		const { destinationNode, sessionId, workflowEntity } = await this.registrations.get(key);
 		const timeout = this.timeouts[key];
 
 		const workflow = this.toWorkflow(workflowEntity);
@@ -143,16 +139,16 @@ export class TestWebhooks implements IWebhookManager {
 			// Delete webhook also if an error is thrown
 			if (timeout) clearTimeout(timeout);
 
-			await this.deregisterAll();
+			await this.registrations.deregisterAll();
 
 			await this.deactivateWebhooks(workflow);
 		});
 	}
 
 	async getWebhookMethods(path: string) {
-		const allWebhookKeys = await this.getAllKeys();
+		const allKeys = await this.registrations.getAllKeys();
 
-		const webhookMethods = allWebhookKeys
+		const webhookMethods = allKeys
 			.filter((key) => key.includes(path))
 			.map((key) => key.split('|')[0] as IHttpRequestMethods);
 
@@ -162,15 +158,13 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const allWebhookKeys = await this.getAllKeys();
+		const allKeys = await this.registrations.getAllKeys();
 
-		const webhookKey = allWebhookKeys.find(
-			(key) => key.includes(path) && key.startsWith(httpMethod),
-		);
+		const webhookKey = allKeys.find((key) => key.includes(path) && key.startsWith(httpMethod));
 
 		if (!webhookKey) return;
 
-		const { workflowEntity } = await this.getRegistration(webhookKey);
+		const { workflowEntity } = await this.registrations.get(webhookKey);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -216,10 +210,10 @@ export class TestWebhooks implements IWebhookManager {
 		const activatedKeys: string[] = [];
 
 		for (const webhook of webhooks) {
-			const key = this.toWebhookKey(webhook);
-			const isRegistered = await this.isRegistered(key);
+			const key = this.registrations.toKey(webhook);
+			const exists = await this.registrations.exists(key);
 
-			if (isRegistered && !webhook.webhookId) {
+			if (exists && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
@@ -233,7 +227,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.timeouts[key] = timeout;
 
-			await this.register({
+			await this.registrations.register({
 				sessionId,
 				workflowEntity,
 				destinationNode,
@@ -243,7 +237,9 @@ export class TestWebhooks implements IWebhookManager {
 			try {
 				await this.activateWebhook(workflow, webhook, executionMode, activationMode);
 			} catch (error) {
-				for (const k of activatedKeys) await this.deregister(k);
+				for (const k of activatedKeys) {
+					await this.registrations.deregister(k);
+				}
 
 				await this.deactivateWebhooks(workflow);
 
@@ -257,10 +253,10 @@ export class TestWebhooks implements IWebhookManager {
 	async cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
 
-		const allWebhookKeys = await this.getAllKeys();
+		const allWebhookKeys = await this.registrations.getAllKeys();
 
 		for (const key of allWebhookKeys) {
-			const { sessionId, workflowEntity } = await this.getRegistration(key);
+			const { sessionId, workflowEntity } = await this.registrations.get(key);
 			const timeout = this.timeouts[key];
 
 			const workflow = this.toWorkflow(workflowEntity);
@@ -277,7 +273,7 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			await this.deregister(key);
+			await this.registrations.deregister(key);
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
@@ -299,7 +295,7 @@ export class TestWebhooks implements IWebhookManager {
 		webhook.path = removeTrailingSlash(webhook.path);
 		webhook.isTest = true;
 
-		await this.setWebhook(webhook);
+		await this.registrations.updateWebhookProperties(webhook);
 
 		try {
 			await workflow.createWebhookIfNotExists(
@@ -309,27 +305,25 @@ export class TestWebhooks implements IWebhookManager {
 				activationMode,
 			);
 		} catch (error) {
-			const key = this.toWebhookKey(webhook);
-
-			await this.deregister(key);
+			await this.registrations.deregister(webhook);
 
 			throw error;
 		}
 	}
 
 	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
-		const key = this.toWebhookKey({ httpMethod, path, webhookId });
+		const key = this.registrations.toKey({ httpMethod, path, webhookId });
 
-		const isRegistered = await this.isRegistered(key);
+		const exists = await this.registrations.exists(key);
 
-		if (!isRegistered) return;
+		if (!exists) return;
 
 		let webhook: IWebhookData | undefined;
 		let maxMatches = 0;
 		const pathElementsSet = new Set(path.split('/'));
 		// check if static elements match in path
 		// if more results have been returned choose the one with the most static-route matches
-		const { webhook: dynamicWebhook } = await this.getRegistration(key);
+		const { webhook: dynamicWebhook } = await this.registrations.get(key);
 
 		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
 		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
@@ -346,27 +340,11 @@ export class TestWebhooks implements IWebhookManager {
 		return webhook;
 	}
 
-	private toWebhookKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {
-		const { webhookId, httpMethod, path: webhookPath } = webhook;
-
-		if (!webhookId) return `test-webhook:${httpMethod}|${webhookPath}`;
-
-		let path = webhookPath;
-
-		if (path.startsWith(webhookId)) {
-			const cutFromIndex = path.indexOf('/') + 1;
-
-			path = path.slice(cutFromIndex);
-		}
-
-		return `test-webhook:${httpMethod}|${webhookId}|${path.split('/').length}`;
-	}
-
 	/**
 	 * Deactivate all registered webhooks of a workflow.
 	 */
 	async deactivateWebhooks(workflow: Workflow) {
-		const registrations = await this.getAllValues();
+		const registrations = await this.registrations.getAllValues();
 
 		type WebhooksByWorkflow = { [workflowId: string]: IWebhookData[] };
 
@@ -386,70 +364,10 @@ export class TestWebhooks implements IWebhookManager {
 		for (const webhook of webhooks) {
 			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
 
-			const key = this.toWebhookKey(webhook);
-
-			await this.deregister(key);
+			await this.registrations.deregister(webhook);
 		}
 
 		return true;
-	}
-
-	async register(registration: WebhookRegistration) {
-		const key = this.toWebhookKey(registration.webhook);
-
-		await this.cacheService.set(key, registration);
-	}
-
-	async isRegistered(key: string) {
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
-
-		return registration !== undefined;
-	}
-
-	async getRegistration(key: string) {
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
-
-		if (!registration) {
-			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });
-		}
-
-		return registration;
-	}
-
-	async getAllKeys() {
-		const keys = await this.cacheService.keys();
-
-		return keys.filter((key) => key.startsWith('test-webhook:'));
-	}
-
-	async getAllValues() {
-		const keys = await this.getAllKeys();
-
-		return this.cacheService.getMany<WebhookRegistration>(keys);
-	}
-
-	async setWebhook(webhook: IWebhookData) {
-		const key = this.toWebhookKey(webhook);
-
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
-
-		if (!registration) {
-			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });
-		}
-
-		registration.webhook = webhook;
-
-		await this.cacheService.set(key, registration);
-	}
-
-	async deregister(key: string) {
-		await this.cacheService.delete(key);
-	}
-
-	async deregisterAll() {
-		const testWebhookKeys = await this.getAllKeys();
-
-		await this.cacheService.deleteMany(testWebhookKeys);
 	}
 
 	private toWorkflow(workflowEntity: IWorkflowDb) {
