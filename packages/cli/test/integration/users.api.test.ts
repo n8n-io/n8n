@@ -393,6 +393,20 @@ describe('PATCH /users/:id/role', () => {
 		});
 	});
 
+	describe('Invalid payload should return 400 when newRoleName', () => {
+		test.each([
+			['is missing', {}],
+			['is `owner`', { newRoleName: 'owner' }],
+			['is an array', { newRoleName: ['owner'] }],
+		])('%s', async (_, payload) => {
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				'newRoleName must be one of the following values: member, admin',
+			);
+		});
+	});
+
 	describe('member', () => {
 		test('should fail to demote owner to member', async () => {
 			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
@@ -459,24 +473,6 @@ describe('PATCH /users/:id/role', () => {
 	});
 
 	describe('admin', () => {
-		test('should receive 400 on invalid payload', async () => {
-			const response = await adminAgent.patch(`/users/${member.id}/role`).send({});
-
-			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'newRoleName must be one of the following values: member, admin',
-			);
-
-			const _response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				newRoleName: 'owner',
-			});
-
-			expect(_response.statusCode).toBe(400);
-			expect(_response.body.message).toBe(
-				'newRoleName must be one of the following values: member, admin',
-			);
-		});
-
 		test('should receive 404 on unknown target user', async () => {
 			const response = await adminAgent
 				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
