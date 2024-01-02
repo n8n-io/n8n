@@ -20,6 +20,7 @@ import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized()
 @RestController('/me')
@@ -30,6 +31,7 @@ export class MeController {
 		private readonly internalHooks: InternalHooks,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -76,7 +78,10 @@ export class MeController {
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
 		await this.userService.update(userId, payload);
-		const user = await this.userService.findOneOrFail({ where: { id: userId } });
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['globalRole'],
+		});
 
 		this.logger.info('User updated successfully', { userId });
 
@@ -132,7 +137,7 @@ export class MeController {
 
 		req.user.password = await this.passwordUtility.hash(validPassword);
 
-		const user = await this.userService.save(req.user);
+		const user = await this.userRepository.save(req.user);
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
@@ -164,7 +169,7 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userService.save({
+		await this.userRepository.save({
 			id: req.user.id,
 			// @ts-ignore
 			personalizationAnswers,
@@ -227,9 +232,10 @@ export class MeController {
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
+			relations: ['globalRole'],
 		});
 
 		return user.settings;

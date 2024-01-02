@@ -1,5 +1,4 @@
-import type { FindManyOptions } from 'typeorm';
-import { In, Not } from 'typeorm';
+import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -23,6 +22,7 @@ import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { plainToInstance } from 'class-transformer';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
@@ -44,6 +44,7 @@ export class UsersController {
 		private readonly internalHooks: InternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
@@ -56,44 +57,6 @@ export class UsersController {
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
 		},
 	} as const;
-
-	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<User> = {};
-
-		if (!listQueryOptions) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
-			return findManyOptions;
-		}
-
-		const { filter, select, take, skip } = listQueryOptions;
-
-		if (select) findManyOptions.select = select;
-		if (take) findManyOptions.take = take;
-		if (skip) findManyOptions.skip = skip;
-
-		if (take && !select) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
-		}
-
-		if (take && select && !select?.id) {
-			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-		}
-
-		if (filter) {
-			const { isOwner, ...otherFilters } = filter;
-
-			findManyOptions.where = otherFilters;
-
-			if (isOwner !== undefined) {
-				const ownerRole = await this.roleService.findGlobalOwnerRole();
-
-				findManyOptions.relations = ['globalRole'];
-				findManyOptions.where.globalRole = { id: isOwner ? ownerRole.id : Not(ownerRole.id) };
-			}
-		}
-
-		return findManyOptions;
-	}
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
@@ -130,9 +93,14 @@ export class UsersController {
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		const findManyOptions = await this.toFindManyOptions(listQueryOptions);
+		const globalOwner = await this.roleService.findGlobalOwnerRole();
 
-		const users = await this.userService.findMany(findManyOptions);
+		const findManyOptions = await this.userRepository.toFindManyOptions(
+			listQueryOptions,
+			globalOwner.id,
+		);
+
+		const users = await this.userRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
 			users.map(async (u) =>
@@ -148,8 +116,9 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@RequireGlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
+			relations: ['globalRole'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
@@ -168,9 +137,10 @@ export class UsersController {
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
+			relations: ['globalRole'],
 		});
 
 		return user.settings;
@@ -200,10 +170,9 @@ export class UsersController {
 			);
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([transferId, idToDelete]) },
-			relations: ['globalRole'],
-		});
+		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
+
+		const users = await this.userRepository.findManybyIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(
@@ -345,8 +314,9 @@ export class UsersController {
 		const payload = plainToInstance(UserRoleChangePayload, req.body);
 		await validateEntity(payload);
 
-		const targetUser = await this.userService.findOne({
+		const targetUser = await this.userRepository.findOne({
 			where: { id: req.params.id },
+			relations: ['globalRole'],
 		});
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
