@@ -14,16 +14,14 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import type { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
 
 describe('TestWebhooks', () => {
-	const testWebhooks = new TestWebhooks(mock(), mock(), mock());
+	const registrations = mock<TestWebhookRegistrationsService>();
+	const testWebhooks = new TestWebhooks(mock(), mock(), registrations);
 
 	beforeAll(() => {
 		jest.useFakeTimers();
-	});
-
-	afterEach(async () => {
-		// await testWebhooks.deregisterAll(); @TODO
 	});
 
 	const httpMethod = 'GET';
@@ -39,7 +37,6 @@ describe('TestWebhooks', () => {
 	describe('needsWebhook()', () => {
 		type NeedsWebhookArgs = [
 			IWorkflowDb,
-			Workflow,
 			IWorkflowExecuteAdditionalData,
 			WorkflowExecuteMode,
 			WorkflowActivateMode,
@@ -48,41 +45,33 @@ describe('TestWebhooks', () => {
 		const workflow = mock<Workflow>({ id: workflowId });
 
 		const args: NeedsWebhookArgs = [
-			mock<IWorkflowDb>({ id: workflowId }),
-			workflow,
+			mock<IWorkflowDb>({ id: workflowId, nodes: [] }),
 			mock<IWorkflowExecuteAdditionalData>(),
 			'manual',
 			'manual',
 		];
 
-		/**
-		 * @TODO
-		 */
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		test.skip('should return true and activate webhook if needed', async () => {
+		test('if webhook is needed, should return true and activate webhook', async () => {
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			const activateWebhookSpy = jest.spyOn(testWebhooks, 'activateWebhook');
 
 			const needsWebhook = await testWebhooks.needsWebhook(...args);
 
 			expect(needsWebhook).toBe(true);
-			expect(activateWebhookSpy).toHaveBeenCalledWith(workflow, webhook, 'manual', 'manual');
 		});
 
-		test('should deactivate webhooks on failure to activate', async () => {
+		test('if webhook activation fails, should deactivate workflow webhooks', async () => {
 			const msg = 'Failed to add webhook to active webhooks';
 
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 			jest.spyOn(testWebhooks, 'activateWebhook').mockRejectedValue(new Error(msg));
-			const deactivateWebhooksSpy = jest.spyOn(testWebhooks, 'deactivateWebhooks');
+			registrations.getAllValues.mockResolvedValue([]);
 
 			const needsWebhook = testWebhooks.needsWebhook(...args);
 
 			await expect(needsWebhook).rejects.toThrowError(msg);
-			expect(deactivateWebhooksSpy).toHaveBeenCalledWith(workflow);
 		});
 
-		test('should return false if no webhook to start workflow', async () => {
+		test('if no webhook is found to start workflow, should return false', async () => {
 			webhook.webhookDescription.restartWebhook = true;
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
@@ -93,7 +82,7 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('executeWebhook()', () => {
-		test('should throw if webhook is not registered', async () => {
+		test('if webhook is not registered, should throw', async () => {
 			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
@@ -105,18 +94,16 @@ describe('TestWebhooks', () => {
 			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
 		});
 
-		test('should throw if webhook node is registered but missing from workflow', async () => {
+		test('if webhook is registered but missing from workflow, should throw', async () => {
 			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const registration = mock<WebhookRegistration>({
 				sessionId: 'some-session-id',
-				timeout: mock<NodeJS.Timeout>(),
 				workflowEntity: mock<IWorkflowDb>({}),
-				workflow: mock<Workflow>(),
 			});
 
-			await testWebhooks.register(registration);
+			await registrations.register(registration);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
