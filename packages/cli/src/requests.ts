@@ -16,7 +16,7 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type {
 	PublicUser,
@@ -47,6 +47,7 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 }
+
 export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
@@ -55,6 +56,11 @@ export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
+}
+
+export class UserRoleChangePayload {
+	@IsIn(['member', 'admin'])
+	roleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<
@@ -332,7 +338,7 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, { roleName: RoleNames }, {}>;
+	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
 
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },

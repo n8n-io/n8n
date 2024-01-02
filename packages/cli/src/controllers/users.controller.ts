@@ -4,7 +4,12 @@ import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { RequireGlobalScope, Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
+import {
+	ListQuery,
+	UserRequest,
+	UserRoleChangePayload,
+	UserSettingsUpdatePayload,
+} from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
@@ -21,6 +26,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
+import { validateEntity } from '@/GenericHelpers';
 
 @Authorized()
 @RestController('/users')
@@ -39,7 +45,6 @@ export class UsersController {
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
-			INVALID_PAYLOAD: 'Invalid role in request body',
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
@@ -328,18 +333,13 @@ export class UsersController {
 	@Patch('/:id/role')
 	@RequireGlobalScope('user:changeRole')
 	async changeGlobalRole(req: UserRequest.ChangeRole) {
-		const {
-			INVALID_PAYLOAD,
-			NO_ADMIN_ON_OWNER,
-			NO_USER,
-			NO_OWNER_ON_OWNER,
-			NO_ADMIN_IF_UNLICENSED,
-		} = UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, NO_ADMIN_IF_UNLICENSED } =
+			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const { roleName: newRole } = req.body;
-		if (!newRole || !['member', 'admin'].includes(newRole)) {
-			throw new BadRequestError(INVALID_PAYLOAD);
-		}
+		const payload = plainToInstance(UserRoleChangePayload, req.body);
+		await validateEntity(payload);
+
+		const { roleName: newRole } = payload;
 
 		if (!this.license.isAdvancedPermissionsLicensed()) {
 			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
