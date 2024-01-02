@@ -243,7 +243,7 @@ export class RoutingNode {
 					message: routingError?.message,
 					description: routingError?.description,
 					httpCode:
-						routingError.isAxiosError && routingError.response
+						routingError?.isAxiosError && routingError?.response
 							? String(routingError.response?.status)
 							: 'none',
 				});

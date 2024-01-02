@@ -161,7 +161,7 @@ export class NodeApiError extends NodeError {
 		if (errorResponse.reason) {
 			const reason: IDataObject = errorResponse.reason as unknown as IDataObject;
 
-			if (reason.isAxiosError && reason.response) {
+			if (reason?.isAxiosError && reason?.response) {
 				errorResponse = reason.response as JsonObject;
 			}
 		}
