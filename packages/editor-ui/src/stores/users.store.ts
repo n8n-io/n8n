@@ -380,9 +380,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			await confirmEmail(useRootStore().getRestApiContext);
 		},
 
-		async updateGlobalRole({ id, roleName }: UpdateGlobalRolePayload) {
+		async updateGlobalRole({ id, newRoleName }: UpdateGlobalRolePayload) {
 			const rootStore = useRootStore();
-			await updateGlobalRole(rootStore.getRestApiContext, { id, roleName });
+			await updateGlobalRole(rootStore.getRestApiContext, { id, newRoleName });
 			await this.fetchUsers();
 		},
 	},

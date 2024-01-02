@@ -281,8 +281,8 @@ export default defineComponent({
 		goToUpgradeAdvancedPermissions() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
-		async onRoleChange(user: IUser, roleName: UpdateGlobalRolePayload) {
-			await this.usersStore.updateGlobalRole({ id: user.id, roleName });
+		async onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
+			await this.usersStore.updateGlobalRole({ id: user.id, newRoleName });
 		},
 	},
 });

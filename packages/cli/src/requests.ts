@@ -60,7 +60,7 @@ export class UserSettingsUpdatePayload {
 
 export class UserRoleChangePayload {
 	@IsIn(['member', 'admin'])
-	roleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
+	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<

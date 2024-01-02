@@ -386,7 +386,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('unauthenticated user', () => {
 		test('should receive 401', async () => {
 			const response = await authlessAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(401);
@@ -396,7 +396,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('member', () => {
 		test('should fail to demote owner to member', async () => {
 			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -405,7 +405,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to admin', async () => {
 			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -414,7 +414,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote admin to member', async () => {
 			const response = await memberAgent.patch(`/users/${admin.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -423,7 +423,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote other member to owner', async () => {
 			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				roleName: 'owner',
+				newRoleName: 'owner',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -432,7 +432,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote other member to admin', async () => {
 			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -441,7 +441,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote self to admin', async () => {
 			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -450,7 +450,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to promote self to owner', async () => {
 			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'owner',
+				newRoleName: 'owner',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -464,16 +464,16 @@ describe('PATCH /users/:id/role', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe(
-				'roleName must be one of the following values: member, admin',
+				'newRoleName must be one of the following values: member, admin',
 			);
 
 			const _response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'owner',
+				newRoleName: 'owner',
 			});
 
 			expect(_response.statusCode).toBe(400);
 			expect(_response.body.message).toBe(
-				'roleName must be one of the following values: member, admin',
+				'newRoleName must be one of the following values: member, admin',
 			);
 		});
 
@@ -481,7 +481,7 @@ describe('PATCH /users/:id/role', () => {
 			const response = await adminAgent
 				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
 				.send({
-					roleName: 'member',
+					newRoleName: 'member',
 				});
 
 			expect(response.statusCode).toBe(404);
@@ -490,7 +490,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to admin', async () => {
 			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -499,7 +499,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote owner to member', async () => {
 			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -510,7 +510,7 @@ describe('PATCH /users/:id/role', () => {
 			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -519,7 +519,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote admin to member', async () => {
 			const response = await adminAgent.patch(`/users/${otherAdmin.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -538,7 +538,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote self to member', async () => {
 			const response = await adminAgent.patch(`/users/${admin.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -557,7 +557,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to promote member to admin if licensed', async () => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -578,7 +578,7 @@ describe('PATCH /users/:id/role', () => {
 	describe('owner', () => {
 		test('should fail to demote self to admin', async () => {
 			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -587,7 +587,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should fail to demote self to member', async () => {
 			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -598,7 +598,7 @@ describe('PATCH /users/:id/role', () => {
 			testServer.license.disable('feat:advancedPermissions');
 
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(403);
@@ -607,7 +607,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to promote member to admin if licensed', async () => {
 			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
-				roleName: 'admin',
+				newRoleName: 'admin',
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -626,7 +626,7 @@ describe('PATCH /users/:id/role', () => {
 
 		test('should be able to demote admin to member', async () => {
 			const response = await ownerAgent.patch(`/users/${admin.id}/role`).send({
-				roleName: 'member',
+				newRoleName: 'member',
 			});
 
 			expect(response.statusCode).toBe(200);

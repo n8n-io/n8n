@@ -360,15 +360,14 @@ export class UsersController {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		const { roleName: newRole } = payload;
-		const roleToSet = await this.roleService.findCached('global', newRole);
+		const roleToSet = await this.roleService.findCached('global', payload.newRoleName);
 
 		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
 
 		void this.internalHooks.onUserRoleChange({
 			user: req.user,
 			target_user_id: targetUser.id,
-			target_user_new_role: ['global', newRole].join(' '),
+			target_user_new_role: ['global', payload.newRoleName].join(' '),
 			public_api: false,
 		});
 

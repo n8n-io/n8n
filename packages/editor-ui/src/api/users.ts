@@ -147,12 +147,12 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	roleName: Exclude<IRole, 'default' | 'owner'>;
+	newRoleName: Exclude<IRole, 'default' | 'owner'>;
 }
 
 export async function updateGlobalRole(
 	context: IRestApiContext,
-	{ id, roleName }: UpdateGlobalRolePayload,
+	{ id, newRoleName }: UpdateGlobalRolePayload,
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { roleName });
+	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRoleName });
 }
