@@ -10,7 +10,8 @@
 					:model-value="allSelected"
 					@update:modelValue="(value) => resetCategories(value)"
 				>
-					{{ $locale.baseText('templates.allCategories') }} <n8n-tag :text="String(totalTemplateCount)" />
+					{{ $locale.baseText('templates.allCategories') }}
+					<n8n-tag :text="String(totalTemplateCount)" />
 				</el-checkbox>
 			</li>
 			<li
