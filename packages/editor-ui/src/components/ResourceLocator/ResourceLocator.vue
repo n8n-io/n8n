@@ -1,23 +1,23 @@
 <template>
 	<div
-		class="resource-locator"
 		ref="container"
+		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
-		<resource-locator-dropdown
+		<ResourceLocatorDropdown
 			ref="dropdown"
-			:modelValue="modelValue ? modelValue.value : ''"
+			:model-value="modelValue ? modelValue.value : ''"
 			:show="resourceDropdownVisible"
+			v-on-click-outside="hideResourceDropdown"
 			:filterable="isSearchable"
-			:filterRequired="requiresSearchFilter"
+			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
-			:hasMore="currentQueryHasMore"
-			:errorView="currentQueryError"
+			:has-more="currentQueryHasMore"
+			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
-			v-on-click-outside="hideResourceDropdown"
 			@update:modelValue="onListItemSelected"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDebounced"
@@ -27,7 +27,7 @@
 					<n8n-text color="text-dark" align="center" tag="div">
 						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
-					<n8n-text size="small" color="text-base" v-if="hasCredential || credentialsNotSet">
+					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
 						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a v-if="credentialsNotSet" @click="createNewCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
@@ -46,13 +46,13 @@
 			>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
-						:modelValue="selectedMode"
+						:model-value="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
-						@update:modelValue="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
+						@update:modelValue="onModeSelected"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -72,11 +72,11 @@
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-					<draggable-target
+					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -90,24 +90,24 @@
 							>
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
-									:modelValue="expressionDisplayValue"
+									ref="input"
+									:model-value="expressionDisplayValue"
 									:path="path"
-									isSingleLine
+									is-single-line
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
-									ref="input"
 								/>
 								<n8n-input
 									v-else
+									ref="input"
 									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
-									:modelValue="valueToDisplay"
+									:model-value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
 									:placeholder="inputPlaceholder"
 									type="text"
-									ref="input"
 									data-test-id="rlc-input"
 									@update:modelValue="onInputChange"
 									@focus="onInputFocus"
@@ -126,8 +126,8 @@
 								</n8n-input>
 							</div>
 						</template>
-					</draggable-target>
-					<parameter-issues
+					</DraggableTarget>
+					<ParameterIssues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
@@ -139,7 +139,7 @@
 					</div>
 				</div>
 			</div>
-		</resource-locator-dropdown>
+		</ResourceLocatorDropdown>
 	</div>
 </template>
 
@@ -183,14 +183,14 @@ interface IResourceLocatorQuery {
 }
 
 export default defineComponent({
-	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers],
+	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
+	mixins: [debounceHelper, workflowHelpers],
 	props: {
 		parameter: {
 			type: Object as PropType<INodeProperties>,

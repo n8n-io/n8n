@@ -31,7 +31,7 @@ async function onConfirmEmailClick() {
 </script>
 
 <template>
-	<base-banner name="EMAIL_CONFIRMATION" theme="warning">
+	<BaseBanner name="EMAIL_CONFIRMATION" theme="warning">
 		<template #mainContent>
 			<span>
 				{{ locale.baseText('banners.confirmEmail.message.1') }}
@@ -42,13 +42,13 @@ async function onConfirmEmailClick() {
 		<template #trailingContent>
 			<n8n-button
 				type="success"
-				@click="onConfirmEmailClick"
 				icon="envelope"
 				size="small"
 				data-test-id="confirm-email-button"
+				@click="onConfirmEmailClick"
 			>
 				{{ locale.baseText('banners.confirmEmail.button') }}
 			</n8n-button>
 		</template>
-	</base-banner>
+	</BaseBanner>
 </template>

@@ -3,17 +3,17 @@
 		<AuthView
 			v-if="!showMfaView"
 			:form="FORM_CONFIG"
-			:formLoading="loading"
+			:form-loading="loading"
 			:with-sso="true"
 			data-test-id="signin-form"
 			@submit="onEmailPasswordSubmitted"
 		/>
 		<MfaView
 			v-if="showMfaView"
+			:report-error="reportError"
 			@submit="onMFASubmitted"
 			@onBackClick="onBackClick"
 			@onFormChanged="onFormChanged"
-			:reportError="reportError"
 		/>
 	</div>
 </template>
@@ -34,11 +34,11 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
 	name: 'SigninView',
-	mixins: [genericHelpers],
 	components: {
 		AuthView,
 		MfaView,
 	},
+	mixins: [genericHelpers],
 	setup() {
 		return {
 			...useToast(),

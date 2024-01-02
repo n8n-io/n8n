@@ -2,29 +2,29 @@
 	<aside :class="$style.floatingNodes">
 		<ul
 			v-for="connectionGroup in connectionGroups"
-			:class="[$style.nodesList, $style[connectionGroup]]"
 			:key="connectionGroup"
+			:class="[$style.nodesList, $style[connectionGroup]]"
 		>
 			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
 				<n8n-tooltip
-					:placement="tooltipPositionMapper[connectionGroup]"
 					v-if="node && nodeType"
-					:teleported="false"
 					:key="node.name"
+					:placement="tooltipPositionMapper[connectionGroup]"
+					:teleported="false"
 					:offset="60"
 				>
 					<template #content>{{ node.name }}</template>
 
 					<li
 						:class="$style.connectedNode"
-						@click="$emit('switchSelectedNode', node.name)"
 						data-test-id="floating-node"
 						:data-node-name="node.name"
 						:data-node-placement="connectionGroup"
+						@click="$emit('switchSelectedNode', node.name)"
 					>
-						<node-icon
-							:nodeType="nodeType"
-							:nodeName="node.name"
+						<NodeIcon
+							:node-type="nodeType"
+							:node-name="node.name"
 							:tooltip-position="tooltipPositionMapper[connectionGroup]"
 							:size="35"
 							circle

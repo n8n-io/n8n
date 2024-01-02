@@ -1,10 +1,10 @@
 import { Container, Service } from 'typedi';
 import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
+import type { Class } from 'n8n-core';
 import { Logger } from '@/Logger';
 
-export interface ServiceClass {
-	new (): Record<string, () => Promise<void> | void>;
-}
+type HandlerFn = () => Promise<void> | void;
+export type ServiceClass = Class<Record<string, HandlerFn>>;
 
 export interface ShutdownHandler {
 	serviceClass: ServiceClass;

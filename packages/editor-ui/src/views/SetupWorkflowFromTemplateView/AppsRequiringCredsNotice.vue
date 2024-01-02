@@ -22,11 +22,11 @@ const appNodeCounts = computed(() => {
 </script>
 
 <template>
-	<n8n-notice :class="$style.notice" theme="info">
+	<N8nNotice :class="$style.notice" theme="info">
 		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
 			<span v-html="appNodeCounts" />
 		</i18n-t>
-	</n8n-notice>
+	</N8nNotice>
 </template>
 
 <style lang="scss" module>

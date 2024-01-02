@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -22,7 +22,7 @@
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
@@ -74,12 +74,12 @@ import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
 	},
+	mixins: [workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -104,6 +104,31 @@ export default defineComponent({
 			showPreview: true,
 			notFoundError: false,
 		};
+	},
+	watch: {
+		template(template: ITemplatesWorkflowFull) {
+			if (template) {
+				setPageTitle(`n8n - Template template: ${template.name}`);
+			} else {
+				setPageTitle('n8n - Templates');
+			}
+		},
+	},
+	async mounted() {
+		this.scrollToTop();
+
+		if (this.template && this.template.full) {
+			this.loading = false;
+			return;
+		}
+
+		try {
+			await this.templatesStore.fetchTemplateById(this.templateId);
+		} catch (e) {
+			this.notFoundError = true;
+		}
+
+		this.loading = false;
 	},
 	methods: {
 		async openTemplateSetup(id: string, e: PointerEvent) {
@@ -139,31 +164,6 @@ export default defineComponent({
 				});
 			}
 		},
-	},
-	watch: {
-		template(template: ITemplatesWorkflowFull) {
-			if (template) {
-				setPageTitle(`n8n - Template template: ${template.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
-
-		if (this.template && this.template.full) {
-			this.loading = false;
-			return;
-		}
-
-		try {
-			await this.templatesStore.fetchTemplateById(this.templateId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-
-		this.loading = false;
 	},
 });
 </script>

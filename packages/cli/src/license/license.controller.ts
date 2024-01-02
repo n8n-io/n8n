@@ -1,9 +1,7 @@
-import { Service } from 'typedi';
 import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/decorators';
 import { LicenseRequest } from '@/requests';
 import { LicenseService } from './license.service';
 
-@Service()
 @Authorized()
 @RestController('/license')
 export class LicenseController {

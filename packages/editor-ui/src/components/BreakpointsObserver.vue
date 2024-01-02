@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<slot v-bind:bp="bp" v-bind:value="value" />
+		<slot :bp="bp" :value="value" />
 	</span>
 </template>
 
@@ -30,24 +30,6 @@ export default defineComponent({
 		return {
 			width: window.innerWidth,
 		};
-	},
-	created() {
-		window.addEventListener('resize', this.onResize);
-	},
-	beforeUnmount() {
-		window.removeEventListener('resize', this.onResize);
-	},
-	methods: {
-		onResize() {
-			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
-		},
-		async onResizeEnd() {
-			this.width = window.innerWidth;
-			await this.$nextTick();
-
-			const bannerHeight = await getBannerRowHeight();
-			useUIStore().updateBannersHeight(bannerHeight);
-		},
 	},
 	computed: {
 		bp(): string {
@@ -92,6 +74,24 @@ export default defineComponent({
 			}
 
 			return this.valueDefault;
+		},
+	},
+	created() {
+		window.addEventListener('resize', this.onResize);
+	},
+	beforeUnmount() {
+		window.removeEventListener('resize', this.onResize);
+	},
+	methods: {
+		onResize() {
+			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
+		},
+		async onResizeEnd() {
+			this.width = window.innerWidth;
+			await this.$nextTick();
+
+			const bannerHeight = await getBannerRowHeight();
+			useUIStore().updateBannersHeight(bannerHeight);
 		},
 	},
 });

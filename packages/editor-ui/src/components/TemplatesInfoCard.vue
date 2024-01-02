@@ -7,7 +7,7 @@
 					{{ $locale.baseText('templates.workflows') }}
 				</n8n-text>
 			</span>
-			<NodeList :nodes="collection.nodes" :showMore="false" />
+			<NodeList :nodes="collection.nodes" :show-more="false" />
 		</template>
 	</Card>
 </template>
@@ -20,6 +20,10 @@ import NodeList from '@/components/NodeList.vue';
 
 export default defineComponent({
 	name: 'TemplatesInfoCard',
+	components: {
+		Card,
+		NodeList,
+	},
 	mixins: [genericHelpers],
 	props: {
 		loading: {
@@ -36,10 +40,6 @@ export default defineComponent({
 			type: String,
 			required: true,
 		},
-	},
-	components: {
-		Card,
-		NodeList,
 	},
 });
 </script>

@@ -6,7 +6,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { RequireGlobalScope, Authorized, Delete, Get, RestController, Patch } from '@/decorators';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -20,14 +19,16 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/License';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 
 @Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly externalHooks: IExternalHooksClass,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,

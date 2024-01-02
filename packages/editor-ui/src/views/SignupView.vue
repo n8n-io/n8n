@@ -1,7 +1,7 @@
 <template>
 	<AuthView
 		:form="FORM_CONFIG"
-		:formLoading="loading"
+		:form-loading="loading"
 		:subtitle="inviteMessage"
 		@submit="onSubmit"
 	/>
