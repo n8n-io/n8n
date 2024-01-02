@@ -361,7 +361,7 @@ describe('PATCH /users/:id/role', () => {
 	let memberAgent: SuperAgentTest;
 	let authlessAgent: SuperAgentTest;
 
-	const { INVALID_PAYLOAD, NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, NO_ADMIN_IF_UNLICENSED } =
+	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 	const UNAUTHORIZED = 'Unauthorized';
@@ -463,14 +463,18 @@ describe('PATCH /users/:id/role', () => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send({});
 
 			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(INVALID_PAYLOAD);
+			expect(response.body.message).toBe(
+				'roleName must be one of the following values: member, admin',
+			);
 
 			const _response = await adminAgent.patch(`/users/${member.id}/role`).send({
 				roleName: 'owner',
 			});
 
 			expect(_response.statusCode).toBe(400);
-			expect(_response.body.message).toBe(INVALID_PAYLOAD);
+			expect(_response.body.message).toBe(
+				'roleName must be one of the following values: member, admin',
+			);
 		});
 
 		test('should receive 404 on unknown target user', async () => {
@@ -510,7 +514,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_ADMIN_IF_UNLICENSED);
+			expect(response.body.message).toBe('Plan lacks license for this feature');
 		});
 
 		test('should be able to demote admin to member', async () => {
@@ -598,7 +602,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_ADMIN_IF_UNLICENSED);
+			expect(response.body.message).toBe('Plan lacks license for this feature');
 		});
 
 		test('should be able to promote member to admin if licensed', async () => {
