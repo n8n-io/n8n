@@ -34,7 +34,7 @@ export class TestWebhookRegistrationsService {
 	async exists(key: string) {
 		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
 
-		return registration !== undefined; // @TODO: cacheService.has()?
+		return registration !== undefined;
 	}
 
 	async get(key: string) {
