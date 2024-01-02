@@ -110,8 +110,8 @@ export class TestWebhooks implements IWebhookManager {
 					workflowStartNode,
 					executionMode,
 					sessionId,
-					undefined,
-					undefined,
+					undefined, // IRunExecutionData
+					undefined, // executionId
 					request,
 					response,
 					(error: Error | null, data: IResponseCallbackData) => {
@@ -220,8 +220,10 @@ export class TestWebhooks implements IWebhookManager {
 			activatedKeys.push(key);
 
 			/**
-			 * Additional data is not needed for the test webhook to be executed.
-			 * Also this data contains circular refs that cannot be cached.
+			 * Remove additional data from webhook because:
+			 *
+			 * - It is not needed for the test webhook to be executed.
+			 * - It contains circular refs that cannot be be cached.
 			 */
 			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
 
