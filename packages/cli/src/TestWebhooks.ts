@@ -288,7 +288,15 @@ export class TestWebhooks implements IWebhookManager {
 		webhook.path = removeTrailingSlash(webhook.path);
 		webhook.isTest = true;
 
-		await this.registrations.updateWebhookProperties(webhook);
+		/**
+		 * Remove additional data from webhook because:
+		 *
+		 * - It is not needed for the test webhook to be executed.
+		 * - It contains circular refs that cannot be be cached.
+		 */
+		const { workflowExecuteAdditionalData: _, ...rest } = webhook;
+
+		await this.registrations.updateWebhookProperties(rest as IWebhookData);
 
 		try {
 			await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
