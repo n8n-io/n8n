@@ -1,3 +1,4 @@
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
@@ -16,7 +17,6 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 	updateGlobalRole,
-	UpdateGlobalRolePayload,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -41,7 +41,7 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope, ScopeLevel } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
