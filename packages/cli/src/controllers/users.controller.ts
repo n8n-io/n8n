@@ -3,7 +3,15 @@ import { In, Not } from 'typeorm';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { RequireGlobalScope, Authorized, Delete, Get, RestController, Patch } from '@/decorators';
+import {
+	RequireGlobalScope,
+	Authorized,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+} from '@/decorators';
 import {
 	ListQuery,
 	UserRequest,
@@ -23,7 +31,6 @@ import { Logger } from '@/Logger';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
@@ -40,7 +47,6 @@ export class UsersController {
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
-		private readonly license: License,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -48,7 +54,6 @@ export class UsersController {
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
-			NO_ADMIN_IF_UNLICENSED: 'Admin role is not available without a license',
 		},
 	} as const;
 
@@ -332,18 +337,13 @@ export class UsersController {
 
 	@Patch('/:id/role')
 	@RequireGlobalScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
 	async changeGlobalRole(req: UserRequest.ChangeRole) {
-		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, NO_ADMIN_IF_UNLICENSED } =
+		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 		const payload = plainToInstance(UserRoleChangePayload, req.body);
 		await validateEntity(payload);
-
-		const { roleName: newRole } = payload;
-
-		if (!this.license.isAdvancedPermissionsLicensed()) {
-			throw new UnauthorizedError(NO_ADMIN_IF_UNLICENSED);
-		}
 
 		const targetUser = await this.userService.findOne({
 			where: { id: req.params.id },
@@ -360,6 +360,7 @@ export class UsersController {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
+		const { roleName: newRole } = payload;
 		const roleToSet = await this.roleService.findCached('global', newRole);
 
 		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
