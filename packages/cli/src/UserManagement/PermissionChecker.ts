@@ -45,9 +45,7 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const roleId = isSharingEnabled()
-			? undefined
-			: (await Container.get(RoleService).findCredentialOwnerRole()).id;
+		const roleId = await Container.get(RoleService).findCredentialOwnerRoleId();
 
 		const credentialSharings = await Container.get(SharedCredentialsRepository).findSharings(
 			workflowUserIds,

@@ -63,7 +63,7 @@ export async function createWorkflow(
 }
 
 export async function setWorkflowAsActive(workflow: WorkflowEntity) {
-	return Container.get(WorkflowRepository).update(workflow.id, {
+	await Container.get(WorkflowRepository).update(workflow.id, {
 		active: true,
 		updatedAt: new Date(),
 	});
