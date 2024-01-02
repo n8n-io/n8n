@@ -10,7 +10,7 @@
 					:model-value="allSelected"
 					@update:modelValue="(value) => resetCategories(value)"
 				>
-					{{ $locale.baseText('templates.allCategories') }} <n8n-tag :text="String(totalCount)" />
+					{{ $locale.baseText('templates.allCategories') }} <n8n-tag :text="String(totalTemplateCount)" />
 				</el-checkbox>
 			</li>
 			<li
@@ -45,6 +45,8 @@ import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type { TemplateCategoryFilter } from '@/Interface';
 import type { PropType } from 'vue';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { mapStores } from 'pinia';
 
 export default defineComponent({
 	name: 'TemplateFilters',
@@ -69,10 +71,6 @@ export default defineComponent({
 			type: Array,
 			default: [],
 		},
-		totalCount: {
-			type: Number,
-			default: 0,
-		},
 	},
 	data() {
 		return {
@@ -81,8 +79,12 @@ export default defineComponent({
 		};
 	},
 	computed: {
+		...mapStores(useTemplatesStore),
 		allSelected(): boolean {
 			return this.selected.length === 0;
+		},
+		totalTemplateCount(): number {
+			return this.templatesStore.totalTemplateCount;
 		},
 	},
 	watch: {
@@ -92,8 +94,8 @@ export default defineComponent({
 					this.sortedCategories = categories;
 				} else {
 					const selected = this.selected || [];
-					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
-					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
+					const selectedCategories = categories.filter(({ name }) => selected.includes(name));
+					const notSelectedCategories = categories.filter(({ name }) => !selected.includes(name));
 					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
 				}
 			},
@@ -105,7 +107,7 @@ export default defineComponent({
 			this.collapsed = false;
 		},
 		handleCheckboxChanged(value: boolean, selectedCategory: TemplateCategoryFilter) {
-			this.$emit(value ? 'select' : 'clear', selectedCategory.id);
+			this.$emit(value ? 'select' : 'clear', selectedCategory.name);
 		},
 		isSelected(categoryId: string) {
 			return this.selected.includes(categoryId);

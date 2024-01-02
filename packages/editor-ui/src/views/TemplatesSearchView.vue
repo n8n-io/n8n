@@ -24,10 +24,8 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
-						:sort-on-populate="areCategoriesPrepopulated"
 						:loading="loadingWorkflows"
 						:selected="categories"
-						:total-count="totalWorkflows"
 						@clear="onCategoryUnselected"
 						@clearAll="onCategoriesCleared"
 						@select="onCategorySelected"
@@ -61,8 +59,8 @@
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
-						:total-workflows="totalWorkflows"
 						:workflows="workflows"
+						:total-count="totalWorkflows"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
 					/>
@@ -127,7 +125,6 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			areCategoriesPrepopulated: false,
 			categories: [] as number[],
 			loading: true,
 			loadingCollections: true,
@@ -209,7 +206,6 @@ export default defineComponent({
 			this.categories = this.$route.query.categories
 				.split(',')
 				.map((categoryId) => parseInt(categoryId, 10));
-			this.areCategoriesPrepopulated = true;
 		}
 	},
 	methods: {

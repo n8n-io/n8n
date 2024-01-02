@@ -47,6 +47,7 @@ export async function getWorkflows(
 	totalWorkflows: number;
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
+	out_of: number;
 }> {
 	return get(
 		apiEndpoint,

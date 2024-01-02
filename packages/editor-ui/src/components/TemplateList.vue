@@ -2,7 +2,7 @@
 	<div v-if="loading || workflows.length" :class="$style.list">
 		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
-				{{ $locale.baseText('templates.workflows') }}
+				{{ $locale.baseText('templates.workflows') }} ({{ totalCount }})
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
@@ -64,6 +64,10 @@ export default defineComponent({
 		simpleView: {
 			type: Boolean,
 			default: false,
+		},
+		totalCount: {
+			type: Number,
+			default: 0,
 		},
 	},
 	mounted() {
