@@ -21,6 +21,12 @@ module.exports = {
 				'n8n-local-rules/dangerously-use-html-string-missing': 'error',
 			},
 		},
+		{
+			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts'],
+			rules: {
+				'import/no-extraneous-dependencies': 'off',
+			},
+		},
 	],
 
 	rules: {
@@ -53,6 +59,7 @@ module.exports = {
 		],
 		'vue/prop-name-casing': ['error', 'camelCase'],
 		'vue/attribute-hyphenation': ['error', 'always'],
+		'import/no-extraneous-dependencies': 'warn',
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',
