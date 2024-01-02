@@ -197,6 +197,27 @@ export class GmailV2 implements INodeType {
 
 				return returnData;
 			},
+
+			async getGmailAliases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						'/gmail/v1/users/me/settings/sendAs',
+					);
+
+					const aliases = responseData.sendAs.map((alias: IDataObject) => {
+						const displayName = alias.isDefault
+							? `${alias.sendAsEmail} (Default)`
+							: alias.sendAsEmail;
+						return { name: displayName, value: alias.sendAsEmail };
+					});
+
+					return aliases;
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), 'Failed to fetch Gmail aliases', error);
+				}
+			},
 		},
 	};
 
@@ -561,7 +582,10 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
+						const fromAlias = this.getNodeParameter('fromAlias', i) as string;
+
 						const email: IEmail = {
+							from: fromAlias,
 							to,
 							cc,
 							bcc,

@@ -53,6 +53,23 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'r-3254521568507167962',
 	},
 	{
+		displayName: 'From Alias Name or ID',
+		name: 'fromAlias',
+		type: 'options',
+		default: '',
+		description:
+			'Select the alias to send the email from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['draft'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getGmailAliases',
+		},
+	},
+	{
 		displayName: 'Subject',
 		name: 'subject',
 		type: 'string',
