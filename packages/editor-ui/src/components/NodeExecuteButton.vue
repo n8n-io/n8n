@@ -13,7 +13,7 @@
 					:type="type"
 					:size="size"
 					:icon="!isListeningForEvents && 'flask'"
-					:transparentBackground="transparent"
+					:transparent-background="transparent"
 					@click="onClick"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 				/>
