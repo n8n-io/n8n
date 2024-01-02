@@ -39,20 +39,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly cacheService: CacheService,
 	) {}
 
-	private registrations: { [webhookKey: string]: WebhookRegistration } = {};
-
-	private get webhooksByWorkflow() {
-		const result: { [workflowId: string]: IWebhookData[] } = {};
-
-		for (const registration of Object.values(this.registrations)) {
-			const { workflowId } = registration.webhook;
-
-			result[workflowId] ||= [];
-			result[workflowId].push(registration.webhook);
-		}
-
-		return result;
-	}
+	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
 
 	/**
 	 * Return a promise that resolves when the test webhook is called.
@@ -96,14 +83,18 @@ export class TestWebhooks implements IWebhookManager {
 
 		const key = this.toWebhookKey(webhook);
 
-		if (await this.isNotRegistered(key))
+		const isRegistered = await this.isRegistered(key);
+
+		if (!isRegistered) {
 			throw new WebhookNotFoundError({
 				path,
 				httpMethod,
 				webhookMethods: await this.getWebhookMethods(path),
 			});
+		}
 
-		const { destinationNode, sessionId, workflowEntity, timeout } = await this.getRegistration(key);
+		const { destinationNode, sessionId, workflowEntity } = await this.getRegistration(key);
+		const timeout = this.timeouts[key];
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -179,7 +170,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!webhookKey) return;
 
-		const { workflowEntity } = this.registrations[webhookKey];
+		const { workflowEntity } = await this.getRegistration(webhookKey);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -226,8 +217,9 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			const key = this.toWebhookKey(webhook);
+			const isRegistered = await this.isRegistered(key);
 
-			if ((await this.isRegistered(key)) && !webhook.webhookId) {
+			if (isRegistered && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
@@ -239,9 +231,10 @@ export class TestWebhooks implements IWebhookManager {
 			 */
 			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
 
+			this.timeouts[key] = timeout;
+
 			await this.register({
 				sessionId,
-				timeout,
 				workflowEntity,
 				destinationNode,
 				webhook: rest as IWebhookData,
@@ -267,7 +260,8 @@ export class TestWebhooks implements IWebhookManager {
 		const allWebhookKeys = await this.getAllKeys();
 
 		for (const key of allWebhookKeys) {
-			const { sessionId, workflowEntity, timeout } = await this.getRegistration(key);
+			const { sessionId, workflowEntity } = await this.getRegistration(key);
+			const timeout = this.timeouts[key];
 
 			const workflow = this.toWorkflow(workflowEntity);
 
@@ -326,7 +320,9 @@ export class TestWebhooks implements IWebhookManager {
 	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
 		const key = this.toWebhookKey({ httpMethod, path, webhookId });
 
-		if (await this.isNotRegistered(key)) return;
+		const isRegistered = await this.isRegistered(key);
+
+		if (!isRegistered) return;
 
 		let webhook: IWebhookData | undefined;
 		let maxMatches = 0;
@@ -370,7 +366,20 @@ export class TestWebhooks implements IWebhookManager {
 	 * Deactivate all registered webhooks of a workflow.
 	 */
 	async deactivateWebhooks(workflow: Workflow) {
-		const webhooks = this.webhooksByWorkflow[workflow.id];
+		const registrations = await this.getAllValues();
+
+		type WebhooksByWorkflow = { [workflowId: string]: IWebhookData[] };
+
+		const webhooksByWorkflow = registrations.reduce<WebhooksByWorkflow>((acc, cur) => {
+			const { workflowId } = cur.webhook;
+
+			acc[workflowId] ||= [];
+			acc[workflowId].push(cur.webhook);
+
+			return acc;
+		}, {});
+
+		const webhooks = webhooksByWorkflow[workflow.id];
 
 		if (!webhooks) return false; // nothing to deactivate
 
@@ -397,12 +406,6 @@ export class TestWebhooks implements IWebhookManager {
 		return registration !== undefined;
 	}
 
-	async isNotRegistered(key: string) {
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
-
-		return registration === undefined;
-	}
-
 	async getRegistration(key: string) {
 		const registration = await this.cacheService.get<WebhookRegistration>(key);
 
@@ -422,7 +425,7 @@ export class TestWebhooks implements IWebhookManager {
 	async getAllValues() {
 		const keys = await this.getAllKeys();
 
-		return this.cacheService.getMany<WebhookRegistration[]>(keys);
+		return this.cacheService.getMany<WebhookRegistration>(keys);
 	}
 
 	async setWebhook(webhook: IWebhookData) {
@@ -449,7 +452,7 @@ export class TestWebhooks implements IWebhookManager {
 		await this.cacheService.deleteMany(testWebhookKeys);
 	}
 
-	toWorkflow(workflowEntity: IWorkflowDb) {
+	private toWorkflow(workflowEntity: IWorkflowDb) {
 		return new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,

@@ -746,7 +746,6 @@ export type N8nInstanceType = 'main' | 'webhook' | 'worker';
 
 export type WebhookRegistration = {
 	sessionId?: string;
-	timeout: NodeJS.Timeout;
 	workflowEntity: IWorkflowDb;
 	destinationNode?: string;
 	webhook: IWebhookData;
