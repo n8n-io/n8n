@@ -346,11 +346,11 @@ export class TestWebhooks implements IWebhookManager {
 	 * Deactivate all registered webhooks of a workflow.
 	 */
 	async deactivateWebhooks(workflow: Workflow) {
-		const registrations = await this.registrations.getAllValues();
+		const allRegistrations = await this.registrations.getAllRegistrations();
 
 		type WebhooksByWorkflow = { [workflowId: string]: IWebhookData[] };
 
-		const webhooksByWorkflow = registrations.reduce<WebhooksByWorkflow>((acc, cur) => {
+		const webhooksByWorkflow = allRegistrations.reduce<WebhooksByWorkflow>((acc, cur) => {
 			const { workflowId } = cur.webhook;
 
 			acc[workflowId] ||= [];

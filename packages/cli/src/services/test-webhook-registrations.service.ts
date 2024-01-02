@@ -1,7 +1,14 @@
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import { ApplicationError, type IWebhookData } from 'n8n-workflow';
-import type { WebhookRegistration } from '../Interfaces';
+import type { IWorkflowDb } from '@/Interfaces';
+
+export type TestWebhookRegistration = {
+	sessionId?: string;
+	workflowEntity: IWorkflowDb;
+	destinationNode?: string;
+	webhook: IWebhookData;
+};
 
 const CACHE_KEY = 'test-webhook';
 
@@ -9,7 +16,7 @@ const CACHE_KEY = 'test-webhook';
 export class TestWebhookRegistrationsService {
 	constructor(private readonly cacheService: CacheService) {}
 
-	async register(registration: WebhookRegistration) {
+	async register(registration: TestWebhookRegistration) {
 		const key = this.toKey(registration.webhook);
 
 		await this.cacheService.set(key, registration);
@@ -25,13 +32,13 @@ export class TestWebhookRegistrationsService {
 	}
 
 	async exists(key: string) {
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
+		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
 
 		return registration !== undefined; // @TODO: cacheService.has()?
 	}
 
 	async get(key: string) {
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
+		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
 
 		if (!registration) {
 			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });
@@ -46,16 +53,16 @@ export class TestWebhookRegistrationsService {
 		return keys.filter((key) => key.startsWith(CACHE_KEY));
 	}
 
-	async getAllValues() {
+	async getAllRegistrations() {
 		const keys = await this.getAllKeys();
 
-		return this.cacheService.getMany<WebhookRegistration>(keys);
+		return this.cacheService.getMany<TestWebhookRegistration>(keys);
 	}
 
 	async updateWebhookProperties(newProperties: IWebhookData) {
 		const key = this.toKey(newProperties);
 
-		const registration = await this.cacheService.get<WebhookRegistration>(key);
+		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
 
 		if (!registration) {
 			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });

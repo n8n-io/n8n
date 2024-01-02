@@ -6,7 +6,7 @@ import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
-import type { IWorkflowDb, WebhookRegistration, WebhookRequest } from '@/Interfaces';
+import type { IWorkflowDb, WebhookRequest } from '@/Interfaces';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -14,7 +14,10 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
+import type {
+	TestWebhookRegistrationsService,
+	TestWebhookRegistration,
+} from '@/services/test-webhook-registrations.service';
 
 describe('TestWebhooks', () => {
 	const registrations = mock<TestWebhookRegistrationsService>();
@@ -64,7 +67,7 @@ describe('TestWebhooks', () => {
 
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 			jest.spyOn(testWebhooks, 'activateWebhook').mockRejectedValue(new Error(msg));
-			registrations.getAllValues.mockResolvedValue([]);
+			registrations.getAllRegistrations.mockResolvedValue([]);
 
 			const needsWebhook = testWebhooks.needsWebhook(...args);
 
@@ -98,7 +101,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
-			const registration = mock<WebhookRegistration>({
+			const registration = mock<TestWebhookRegistration>({
 				sessionId: 'some-session-id',
 				workflowEntity: mock<IWorkflowDb>({}),
 			});
