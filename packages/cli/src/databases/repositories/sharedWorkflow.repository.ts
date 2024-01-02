@@ -1,9 +1,11 @@
 import { Service } from 'typedi';
-import { DataSource, type FindOptionsWhere, Repository, In, Not } from 'typeorm';
+import { DataSource, Repository, In, Not } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import type { Role } from '../entities/Role';
+import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -105,5 +107,22 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 			...(options.relations && { relations: options.relations }),
 		});
+	}
+
+	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[], roleId: string) {
+		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
+			if (user.isPending) {
+				return acc;
+			}
+			const entity: Partial<SharedWorkflow> = {
+				workflowId: workflow.id,
+				userId: user.id,
+				roleId,
+			};
+			acc.push(this.create(entity));
+			return acc;
+		}, []);
+
+		return transaction.save(newSharedWorkflows);
 	}
 }
