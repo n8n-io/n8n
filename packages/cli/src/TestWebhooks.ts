@@ -237,8 +237,8 @@ export class TestWebhooks implements IWebhookManager {
 			try {
 				await this.activateWebhook(workflow, webhook, executionMode, activationMode);
 			} catch (error) {
-				for (const k of activatedKeys) {
-					await this.registrations.deregister(k);
+				for (const activatedKey of activatedKeys) {
+					await this.registrations.deregister(activatedKey);
 				}
 
 				await this.deactivateWebhooks(workflow);
