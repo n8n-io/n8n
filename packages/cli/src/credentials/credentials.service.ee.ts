@@ -2,11 +2,11 @@ import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { UserService } from '@/services/user.service';
 import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -66,7 +66,7 @@ export class EECredentialsService extends CredentialsService {
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
-		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
+		const users = await Container.get(UserRepository).getByIds(transaction, shareWithIds);
 		const role = await Container.get(RoleService).findCredentialUserRole();
 
 		const newSharedCredentials = users

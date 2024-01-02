@@ -138,7 +138,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userService.findOneOrFail({ where: {} });
+			user = await this.userRepository.findOneOrFail({ where: {}, relations: ['globalRole'] });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',

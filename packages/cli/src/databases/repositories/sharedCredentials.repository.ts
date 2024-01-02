@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import type { FindOptionsWhere } from 'typeorm';
 import { DataSource, In, Not, Repository } from 'typeorm';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
@@ -49,5 +50,14 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 
 		return sharings.map((s) => s.credentialsId);
+	}
+
+	async findSharings(userIds: string[], roleId?: string) {
+		const where: FindOptionsWhere<SharedCredentials> = { userId: In(userIds) };
+
+		// If credential sharing is not enabled, get only credentials owned by this user
+		if (roleId) where.roleId = roleId;
+
+		return this.find({ where });
 	}
 }
