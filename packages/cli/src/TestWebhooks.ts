@@ -4,8 +4,6 @@ import {
 	type IWebhookData,
 	type IWorkflowExecuteAdditionalData,
 	type IHttpRequestMethods,
-	type WorkflowActivateMode,
-	type WorkflowExecuteMode,
 	WebhookPathTakenError,
 	Workflow,
 } from 'n8n-workflow';
@@ -185,8 +183,6 @@ export class TestWebhooks implements IWebhookManager {
 	async needsWebhook(
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
-		executionMode: WorkflowExecuteMode,
-		activationMode: WorkflowActivateMode,
 		sessionId?: string,
 		destinationNode?: string,
 	) {
@@ -237,7 +233,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 
 			try {
-				await this.activateWebhook(workflow, webhook, executionMode, activationMode);
+				await this.activateWebhook(workflow, webhook);
 			} catch (error) {
 				for (const activatedKey of activatedKeys) {
 					await this.registrations.deregister(activatedKey);
@@ -288,24 +284,14 @@ export class TestWebhooks implements IWebhookManager {
 		return foundWebhook;
 	}
 
-	async activateWebhook(
-		workflow: Workflow,
-		webhook: IWebhookData,
-		executionMode: WorkflowExecuteMode,
-		activationMode: WorkflowActivateMode,
-	) {
+	async activateWebhook(workflow: Workflow, webhook: IWebhookData) {
 		webhook.path = removeTrailingSlash(webhook.path);
 		webhook.isTest = true;
 
 		await this.registrations.updateWebhookProperties(webhook);
 
 		try {
-			await workflow.createWebhookIfNotExists(
-				webhook,
-				NodeExecuteFunctions,
-				executionMode,
-				activationMode,
-			);
+			await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
 		} catch (error) {
 			await this.registrations.deregister(webhook);
 

@@ -327,9 +327,6 @@ export class WorkflowService {
 		user: User,
 		sessionId?: string,
 	) {
-		const EXECUTION_MODE = 'manual';
-		const ACTIVATION_MODE = 'manual';
-
 		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
@@ -345,8 +342,6 @@ export class WorkflowService {
 			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
 				additionalData,
-				EXECUTION_MODE,
-				ACTIVATION_MODE,
 				sessionId,
 				destinationNode,
 			);
@@ -360,7 +355,7 @@ export class WorkflowService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode,
-			executionMode: EXECUTION_MODE,
+			executionMode: 'manual',
 			runData,
 			pinData,
 			sessionId,
