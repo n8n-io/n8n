@@ -11,7 +11,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
+import { indentWithTab, insertNewlineAndIndent, history, redo, undo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -54,7 +54,7 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 		disableExpressionColoring: {
 			type: Boolean,
@@ -67,7 +67,8 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			editor: {} as EditorView,
+			editor: null as EditorView | null,
+			editorState: null as EditorState | null,
 		};
 	},
 	computed: {
@@ -92,6 +93,7 @@ export default defineComponent({
 				keymap.of([
 					indentWithTab,
 					{ key: 'Enter', run: insertNewlineAndIndent },
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
@@ -109,8 +111,6 @@ export default defineComponent({
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
-
-					this.editorState = this.editor.state;
 
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);

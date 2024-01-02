@@ -23,12 +23,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
-	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
@@ -68,14 +67,17 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
-			this.copyToClipboard(this.value);
+			void this.clipboard.copy(this.value);
 
 			this.showMessage({
 				title: this.toastTitle,

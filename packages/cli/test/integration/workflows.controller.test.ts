@@ -19,6 +19,9 @@ import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createTag } from './shared/db/tags';
 import { Push } from '@/push';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -605,5 +608,36 @@ describe('PATCH /workflows/:id', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
+	});
+});
+
+describe('POST /workflows/run', () => {
+	let sharingSpy: jest.SpyInstance;
+	let tamperingSpy: jest.SpyInstance;
+	let workflow: WorkflowEntity;
+
+	beforeAll(() => {
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+		const workflowRepository = Container.get(WorkflowRepository);
+
+		sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
+		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
+		workflow = workflowRepository.create({ id: uuid() });
+	});
+
+	test('should prevent tampering if sharing is enabled', async () => {
+		sharingSpy.mockReturnValue(true);
+
+		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+
+		expect(tamperingSpy).toHaveBeenCalledTimes(1);
+	});
+
+	test('should skip tampering prevention if sharing is disabled', async () => {
+		sharingSpy.mockReturnValue(false);
+
+		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+
+		expect(tamperingSpy).not.toHaveBeenCalled();
 	});
 });

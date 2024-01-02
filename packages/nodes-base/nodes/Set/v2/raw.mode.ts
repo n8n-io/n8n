@@ -15,10 +15,8 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'JSON Output',
 		name: 'jsonOutput',
-		type: 'string',
+		type: 'json',
 		typeOptions: {
-			editor: 'json',
-			editorLanguage: 'json',
 			rows: 5,
 		},
 		default: '{\n  "my_field_1": "value",\n  "my_field_2": 1\n}',

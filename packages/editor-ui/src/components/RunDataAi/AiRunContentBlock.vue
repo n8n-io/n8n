@@ -51,7 +51,7 @@
 							type="secondary"
 							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 							icon="copy"
-							@click="copyToClipboard(raw)"
+							@click="onCopyToClipboard(raw)"
 						/>
 						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
 					</div>
@@ -68,7 +68,7 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
-import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
+import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
@@ -78,13 +78,15 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const clipboard = useClipboard();
+const { showMessage } = useToast();
 const contentParsers = useAiContentParsers();
+
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
 const isShowRaw = ref(false);
 const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
-
 function getInitialExpandedState() {
 	const collapsedTypes = {
 		input: [NodeConnectionType.AiDocument, NodeConnectionType.AiTextSplitter],
@@ -155,12 +157,9 @@ function onBlockHeaderClick() {
 	isExpanded.value = !isExpanded.value;
 }
 
-function copyToClipboard(content: IDataObject | IDataObject[]) {
-	const copyToClipboardFn = useCopyToClipboard();
-	const { showMessage } = useToast();
-
+function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	try {
-		copyToClipboardFn(JSON.stringify(content, undefined, 2));
+		void clipboard.copy(JSON.stringify(content, undefined, 2));
 		showMessage({
 			title: i18n.baseText('generic.copiedToClipboard'),
 			type: 'success',
