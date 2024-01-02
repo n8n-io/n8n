@@ -1,14 +1,12 @@
 import Container, { Service } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
@@ -25,7 +23,6 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
-import type { Scope } from '@n8n/permissions';
 import { Logger } from '@/Logger';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -33,10 +30,6 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-export type WorkflowsGetSharedOptions =
-	| { allowGlobalScope: true; globalScope: Scope }
-	| { allowGlobalScope: false };
 
 @Service()
 export class WorkflowService {
@@ -56,24 +49,6 @@ export class WorkflowService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 	) {}
-
-	async getSharing(
-		user: User,
-		workflowId: string,
-		options: WorkflowsGetSharedOptions,
-		relations: string[] = ['workflow'],
-	): Promise<SharedWorkflow | null> {
-		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
-
-		// Omit user from where if the requesting user has relevant
-		// global workflow permissions. This allows the user to
-		// access workflows they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
-
-		return this.sharedWorkflowRepository.findOne({ where, relations });
-	}
 
 	/**
 	 * Find the pinned trigger to execute the workflow from, if any.

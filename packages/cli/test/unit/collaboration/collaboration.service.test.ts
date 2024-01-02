@@ -8,30 +8,31 @@ import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
+import type { UserRepository } from '@/databases/repositories/user.repository';
+import { mock } from 'jest-mock-extended';
 
 describe('CollaborationService', () => {
 	let collaborationService: CollaborationService;
 	let mockLogger: Logger;
 	let mockUserService: jest.Mocked<UserService>;
+	let mockUserRepository: jest.Mocked<UserRepository>;
 	let state: CollaborationState;
 	let push: Push;
 
 	beforeEach(() => {
-		mockLogger = {
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
-		mockUserService = {
-			getByIds: jest.fn(),
-			getManager: jest.fn(),
-		} as unknown as jest.Mocked<UserService>;
-
-		push = {
-			on: jest.fn(),
-			sendToUsers: jest.fn(),
-		} as unknown as Push;
+		mockLogger = mock<Logger>();
+		mockUserService = mock<UserService>();
+		mockUserRepository = mock<UserRepository>();
+		push = mock<Push>();
 		state = new CollaborationState();
-		collaborationService = new CollaborationService(mockLogger, push, state, mockUserService);
+
+		collaborationService = new CollaborationService(
+			mockLogger,
+			push,
+			state,
+			mockUserService,
+			mockUserRepository,
+		);
 	});
 
 	describe('workflow opened message', () => {
@@ -61,7 +62,7 @@ describe('CollaborationService', () => {
 
 		describe('user is not yet active', () => {
 			it('updates state correctly', async () => {
-				mockUserService.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
+				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
 				expect(state.getActiveWorkflowUsers(workflowId)).toEqual([
@@ -73,7 +74,7 @@ describe('CollaborationService', () => {
 			});
 
 			it('sends active workflow users changed message', async () => {
-				mockUserService.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
+				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
 				expectActiveUsersChangedMessage([userId]);
@@ -86,7 +87,7 @@ describe('CollaborationService', () => {
 			});
 
 			it('updates state correctly', async () => {
-				mockUserService.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
+				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
 				expect(state.getActiveWorkflowUsers(workflowId)).toEqual([
@@ -98,7 +99,7 @@ describe('CollaborationService', () => {
 			});
 
 			it('sends active workflow users changed message', async () => {
-				mockUserService.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
+				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
 				expectActiveUsersChangedMessage([userId]);
