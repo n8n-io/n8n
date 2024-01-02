@@ -1,10 +1,14 @@
 import type { SuperAgentTest } from 'supertest';
-import * as Db from '@/Db';
+import Container from 'typedi';
 import type { User } from '@db/entities/User';
+import { TagRepository } from '@db/repositories/tag.repository';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
+import { getAllRoles } from '../shared/db/roles';
+import { createUser } from '../shared/db/users';
+import { createTag } from '../shared/db/tags';
 
 let owner: User;
 let member: User;
@@ -14,23 +18,21 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const [globalOwnerRole, globalMemberRole] = await testDb.getAllRoles();
+	const [globalOwnerRole, globalMemberRole] = await getAllRoles();
 
-	owner = await testDb.createUser({
+	owner = await createUser({
 		globalRole: globalOwnerRole,
 		apiKey: randomApiKey(),
 	});
 
-	member = await testDb.createUser({
+	member = await createUser({
 		globalRole: globalMemberRole,
 		apiKey: randomApiKey(),
 	});
-
-	utils.initEncryptionKey();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Tag', 'Workflow', 'Credentials']);
+	await testDb.truncate(['Tag']);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -50,9 +52,9 @@ describe('GET /tags', () => {
 	
 	test('should return all tags', async () => {
 		await Promise.all([
-			testDb.createTag({}),
-			testDb.createTag({}),
-			testDb.createTag({}),
+			createTag({}),
+			createTag({}),
+			createTag({}),
 		]);
 	
 		const response = await authMemberAgent.get('/tags');
@@ -78,9 +80,9 @@ describe('GET /tags', () => {
 	
 	test('should return all tags with pagination', async () => {
 		await Promise.all([
-			testDb.createTag({}),
-			testDb.createTag({}),
-			testDb.createTag({}),
+			createTag({}),
+			createTag({}),
+			createTag({}),
 		]);
 	
 		const response = await authMemberAgent.get('/tags?limit=1');
@@ -130,7 +132,7 @@ describe('GET /tags/:id', () => {
 	
 	test('should retrieve tag', async () => {
 		// create tag
-		const tag = await testDb.createTag({});
+		const tag = await createTag({});
 	
 		const response = await authMemberAgent.get(`/tags/${tag.id}`);
 	
@@ -159,7 +161,7 @@ describe('DELETE /tags/:id', () => {
 	
 	test('owner should delete the tag', async () => {
 		// create tag
-		const tag = await testDb.createTag({});
+		const tag = await createTag({});
 	
 		const response = await authOwnerAgent.delete(`/tags/${tag.id}`);
 	
@@ -174,7 +176,7 @@ describe('DELETE /tags/:id', () => {
 		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
 	
 		// make sure the tag actually deleted from the db
-		const deletedTag = await Db.collections.Tag.findOneBy({
+		const deletedTag = await Container.get(TagRepository).findOneBy({
 			id: tag.id,
 		});
 	
@@ -183,7 +185,7 @@ describe('DELETE /tags/:id', () => {
 	
 	test('non-owner should not delete tag', async () => {
 		// create tag
-		const tag = await testDb.createTag({});
+		const tag = await createTag({});
 	
 		const response = await authMemberAgent.delete(`/tags/${tag.id}`);
 	
@@ -195,7 +197,7 @@ describe('DELETE /tags/:id', () => {
 		expect( message ).toEqual("You are not allowed to perform this action. Only owners can remove tags");
 	
 		// make sure the tag was not deleted from the db
-		const notDeletedTag = await Db.collections.Tag.findOneBy({
+		const notDeletedTag = await Container.get(TagRepository).findOneBy({
 			id: tag.id,
 		});
 	
@@ -232,7 +234,7 @@ describe('POST /tags', () => {
 		expect(updatedAt).toEqual(createdAt);
 	
 		// check if created tag in DB
-		const tag = await Db.collections.Tag.findOne({
+		const tag = await Container.get(TagRepository).findOne({
 			where: {
 				id: id,
 			},
@@ -249,7 +251,7 @@ describe('POST /tags', () => {
 		};
 	
 		// create tag
-		await testDb.createTag(tag);
+		await createTag(tag);
 	
 		const response = await authMemberAgent.post('/tags').send(tag);
 	
@@ -282,7 +284,7 @@ describe('PUT /tags/:id', () => {
 	});
 	
 	test('should update tag', async () => {
-		const tag = await testDb.createTag({});
+		const tag = await createTag({});
 
 		const payload = {
 			name: 'New name',
@@ -300,8 +302,8 @@ describe('PUT /tags/:id', () => {
 		expect(createdAt).toBe(tag.createdAt.toISOString());
 		expect(updatedAt).not.toBe(tag.updatedAt.toISOString());
 	
-		// check updated workflow in DB
-		const dbTag = await Db.collections.Tag.findOne({
+		// check updated tag in DB
+		const dbTag = await Container.get(TagRepository).findOne({
 			where: {
 				id: id,
 			},
@@ -314,8 +316,8 @@ describe('PUT /tags/:id', () => {
 	});
 	
 	test('should fail if there is already a tag with a the new name', async () => {	
-		const toUpdateTag = await testDb.createTag({});
-		const otherTag = await testDb.createTag({ name: "Some name" });
+		const toUpdateTag = await createTag({});
+		const otherTag = await createTag({ name: "Some name" });
 	
 		const payload = {
 			name: otherTag.name,
@@ -331,7 +333,7 @@ describe('PUT /tags/:id', () => {
 		expect(message).toBe("Tag already exists");
 	
 		// check tags haven't be updated in DB
-		const toUpdateTagFromDb = await Db.collections.Tag.findOne({
+		const toUpdateTagFromDb = await Container.get(TagRepository).findOne({
 			where: {
 				id: toUpdateTag.id,
 			},
@@ -341,7 +343,7 @@ describe('PUT /tags/:id', () => {
 		expect(toUpdateTagFromDb?.createdAt.toISOString()).toEqual(toUpdateTag.createdAt.toISOString());
 		expect(toUpdateTagFromDb?.updatedAt.toISOString()).toEqual(toUpdateTag.updatedAt.toISOString());
 	
-		const otherTagFromDb = await Db.collections.Tag.findOne({
+		const otherTagFromDb = await Container.get(TagRepository).findOne({
 			where: {
 				id: otherTag.id,
 			},

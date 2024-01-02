@@ -13,6 +13,8 @@ import { TagService } from '@/services/tag.service';
 import Container from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
+import { TagRepository } from '@db/repositories/tag.repository';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -135,7 +137,7 @@ export function parseTagNames(tags: string): string[] {
 }
 
 export async function getWorkflowTags(workflowId: string) {
-	return Db.collections.Tag.find({
+	return Container.get(TagRepository).find({
 		select: ['id', 'name', 'createdAt', 'updatedAt'],
 		where: {
 			workflowMappings: {
@@ -150,7 +152,7 @@ export async function updateTags(
 	newTags: string[],
 ): Promise<any> {
 	await Db.transaction(async (transactionManager) => {
-		const oldTags = await Db.collections.WorkflowTagMapping.findBy({ workflowId: workflowId });
+		const oldTags = await Container.get(WorkflowTagMappingRepository).findBy({ workflowId: workflowId });
 		if (oldTags.length > 0) {
 			await transactionManager.delete(WorkflowTagMapping, oldTags);
 		}

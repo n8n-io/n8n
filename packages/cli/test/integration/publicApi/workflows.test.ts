@@ -1,5 +1,4 @@
 import type { SuperAgentTest } from 'supertest';
-import * as Db from '@/Db';
 import config from '@/config';
 import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
@@ -265,8 +264,8 @@ describe('GET /workflows', () => {
 		const workflowName = "Workflow 1";
 	
 		const [workflow] = await Promise.all([
-			testDb.createWorkflow({ name: workflowName }, member),
-			testDb.createWorkflow({}, member),
+			createWorkflow({ name: workflowName }, member),
+			createWorkflow({}, member),
 		]);
 	
 		const response = await authMemberAgent.get(`/workflows?name=${workflowName}`);
@@ -1185,9 +1184,9 @@ describe('GET /workflows/:id/tags', () => {
 	test('should return all tags of owned workflow', async () => {
 		config.set('workflowTagsDisabled', false);
 
-		const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
+		const tags = await Promise.all([await createTag({}), await createTag({})]);
 	
-		const workflow = await testDb.createWorkflow({ tags }, member);
+		const workflow = await createWorkflow({ tags }, member);
 	
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 	
@@ -1212,7 +1211,7 @@ describe('GET /workflows/:id/tags', () => {
 	test('should return empty array if workflow does not have tags', async () => {
 		config.set('workflowTagsDisabled', false);
 
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 	
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 	
@@ -1246,8 +1245,8 @@ describe('PUT /workflows/:id/tags', () => {
 	test('should add the tags, workflow have not got tags previously', async () => {
 		config.set('workflowTagsDisabled', false);
 
-		const workflow = await testDb.createWorkflow({}, member);
-		const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
+		const workflow = await createWorkflow({}, member);
+		const tags = await Promise.all([await createTag({}), await createTag({})]);
 	
 		const payload = [
 			{
@@ -1278,7 +1277,7 @@ describe('PUT /workflows/:id/tags', () => {
 		}
 	
 		// Check the association in DB
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -1309,13 +1308,13 @@ describe('PUT /workflows/:id/tags', () => {
 	test('should add the tags, workflow have some tags previously', async () => {
 		config.set('workflowTagsDisabled', false);
 
-		const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({}), await testDb.createTag({})]);
+		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
-		const workflow = await testDb.createWorkflow({ tags: oldTags }, member);
+		const workflow = await createWorkflow({ tags: oldTags }, member);
 	
 		// Check the association in DB
-		const oldSharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -1370,7 +1369,7 @@ describe('PUT /workflows/:id/tags', () => {
 		}
 	
 		// Check the association in DB
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -1401,12 +1400,12 @@ describe('PUT /workflows/:id/tags', () => {
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
 		config.set('workflowTagsDisabled', false);
 
-		const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
+		const tags = await Promise.all([await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
-		const workflow = await testDb.createWorkflow({ tags: oldTags }, member);
+		const workflow = await createWorkflow({ tags: oldTags }, member);
 	
 		// Check the association in DB
-		const oldSharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
@@ -1447,7 +1446,7 @@ describe('PUT /workflows/:id/tags', () => {
 		expect(response.body.message).toBe("Some tags not found");
 	
 		// Check the association in DB
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				userId: member.id,
 				workflowId: workflow.id,
