@@ -418,7 +418,12 @@ export class InvoiceNinja implements INodeType {
 							body.invoice_date = additionalFields.invoiceDate as string;
 						}
 						if (additionalFields.invoiceNumber) {
-							body.invoice_number = additionalFields.invoiceNumber as string;
+							if (apiVersion === 'v4') {
+								body.invoice_number = additionalFields.invoiceNumber as string;
+							} else if (apiVersion === 'v5') {
+								// eslint-disable-next-line id-denylist
+								body.number = additionalFields.invoiceNumber as string;
+							}
 						}
 						if (additionalFields.invoiceStatus) {
 							body.invoice_status_id = additionalFields.invoiceStatus as number;
