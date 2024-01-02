@@ -372,6 +372,9 @@ export class TestWebhooks implements IWebhookManager {
 		return true;
 	}
 
+	/**
+	 * Convert a `WorkflowEntity` from `typeorm` to a `Workflow` from `n8n-workflow`.
+	 */
 	private toWorkflow(workflowEntity: IWorkflowDb) {
 		return new Workflow({
 			id: workflowEntity.id,
