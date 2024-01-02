@@ -25,7 +25,7 @@ import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
-import { TestWebhookRegistrationsService } from '@/services/TestWebhookRegistrations.service';
+import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
 
 @Service()
 export class TestWebhooks implements IWebhookManager {
