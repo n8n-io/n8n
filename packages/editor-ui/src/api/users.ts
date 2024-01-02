@@ -7,7 +7,6 @@ import type {
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { ScopeLevel } from '@n8n/permissions';
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
@@ -146,9 +145,14 @@ export async function submitPersonalizationSurvey(
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
 }
 
+export interface UpdateGlobalRolePayload {
+	id: string;
+	roleName: Exclude<IRole, 'default' | 'owner'>;
+}
+
 export async function updateGlobalRole(
 	context: IRestApiContext,
-	{ id, roleName }: { id: string; roleName: Exclude<IRole, 'owner'> },
+	{ id, roleName }: UpdateGlobalRolePayload,
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { roleName });
 }
