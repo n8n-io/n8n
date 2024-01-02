@@ -229,5 +229,9 @@ export default defineComponent({
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
 	}
+
+	&__track {
+		width: 50px;
+	}
 }
 </style>
