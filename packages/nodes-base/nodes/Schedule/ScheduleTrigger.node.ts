@@ -8,7 +8,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
 import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 

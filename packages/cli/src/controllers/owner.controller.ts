@@ -13,6 +13,7 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
@@ -24,6 +25,7 @@ export class OwnerController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -85,7 +87,7 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userService.save(owner);
+		owner = await this.userRepository.save(owner);
 
 		this.logger.info('Owner was set up successfully', { userId });
 
