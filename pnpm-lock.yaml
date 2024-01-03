@@ -472,8 +472,8 @@ importers:
         specifier: 5.2.4
         version: 5.2.4
       isbot:
-        specifier: 3.6.13
-        version: 3.6.13
+        specifier: 4.1.2
+        version: 4.1.2
       json-diff:
         specifier: 1.0.6
         version: 1.0.6
@@ -1254,8 +1254,8 @@ importers:
         specifier: 4.3.0
         version: 4.3.0
       isbot:
-        specifier: 3.6.13
-        version: 3.6.13
+        specifier: 4.1.2
+        version: 4.1.2
       iso-639-1:
         specifier: 2.1.15
         version: 2.1.15
@@ -17480,9 +17480,9 @@ packages:
   /isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
-  /isbot@3.6.13:
-    resolution: {integrity: sha512-uoP4uK5Dc2CrabmK+Gue1jTL+scHiCc1c9rblRpJwG8CPxjLIv8jmGyyGRGkbPOweayhkskdZsEQXG6p+QCQrg==}
-    engines: {node: '>=12'}
+  /isbot@4.1.2:
+    resolution: {integrity: sha512-0zMFnUxzYc7+v7c+8E9HthL7of0afZPlqJ8yN3FwjpjPCDVBdm87oYkRHrsMR521GXHXcW/sBvG1fBDnxlKcFw==}
+    engines: {node: '>=18'}
     dev: false
 
   /isexe@2.0.0:
