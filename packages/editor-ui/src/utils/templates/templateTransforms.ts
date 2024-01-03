@@ -26,14 +26,6 @@ export const keyFromCredentialTypeAndName = (
 ): TemplateCredentialKey => `${credentialTypeName}-${credentialName}` as TemplateCredentialKey;
 
 /**
- * Checks if a template workflow node has credentials defined
- */
-export const hasNodeCredentials = (
-	node: IWorkflowTemplateNode,
-): node is IWorkflowTemplateNodeWithCredentials =>
-	!!node.credentials && Object.keys(node.credentials).length > 0;
-
-/**
  * Normalizes the credentials of a template node. Templates created with
  * different versions of n8n may have different credential formats.
  */
