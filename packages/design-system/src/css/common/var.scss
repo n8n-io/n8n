@@ -75,15 +75,11 @@ $focus-outline-width: 2px;
 /* Box shadow
 -------------------------- */
 /// boxShadow|1|Shadow|1
-$box-shadow-base:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.04);
+$box-shadow-base: var(--box-shadow-base);
 // boxShadow|1|Shadow|1
-$box-shadow-dark:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.12);
+$box-shadow-dark: var(--box-shadow-dark);
 /// boxShadow|1|Shadow|1
-$box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+$box-shadow-light: var(--box-shadow-light);
 
 /* Fill
 -------------------------- */
@@ -403,8 +399,16 @@ $input-placeholder-color: var(--input-placeholder-color, var(--color-text-light)
 $input-focus-border: var(--input-focus-border-color, var(--color-secondary));
 $input-border-color: var(--input-border-color, var(--border-color-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
-$input-border-width: var(--border-width-base);
+$input-border-width: var(--input-border-width, var(--border-width-base));
 $input-border: $input-border-color $input-border-style $input-border-width;
+$input-border-right-color: var(
+	--input-border-right-color,
+	var(--input-border-color, var(--border-color-base))
+);
+$input-border-bottom-color: var(
+	--input-border-bottom-color,
+	var(--input-border-color, var(--border-color-base))
+);
 
 $input-font-size: var(--input-font-size, var(--font-size-s));
 /// color||Color|0
@@ -414,6 +418,23 @@ $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 /// borderRadius||Border|2
+$input-border-radius: var(--input-border-radius, var(--border-radius-base));
+$input-border-top-left-radius: var(
+	--input-border-top-left-radius,
+	var(--input-border-radius, var(--border-radius-base))
+);
+$input-border-top-right-radius: var(
+	--input-border-top-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-left-radius: var(
+	--input-border-bottom-left-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-right-radius: var(
+	--input-border-bottom-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
 $input-border-radius: var(--input-border-radius, var(--border-radius-base));
 $input-border-color-hover: $border-color-hover;
 /// color||Color|0
@@ -726,13 +747,13 @@ $popover-title-font-color: var(--color-text-dark);
 /* Tooltip
 -------------------------- */
 /// color|1|Color|0
-$tooltip-fill: var(--color-text-dark);
+$tooltip-fill: var(--color-background-dark);
 /// color|1|Color|0
 $tooltip-color: $color-white;
 /// fontSize||Font|1
 $tooltip-font-size: 12px;
 /// color||Color|0
-$tooltip-border-color: var(--color-text-dark);
+$tooltip-border-color: var(--color-background-dark);
 $tooltip-arrow-size: 6px;
 /// padding||Spacing|3
 $tooltip-padding: 10px;
@@ -766,8 +787,8 @@ $tree-expand-icon-color: var(--color-text-lighter);
 /* Dropdown
 -------------------------- */
 $dropdown-menu-box-shadow: $box-shadow-light;
-$dropdown-menuItem-hover-fill: var(--color-background-xlight);
-$dropdown-menuItem-hover-color: $link-color;
+$dropdown-menuItem-hover-fill: var(--color-action-dropdown-item-active-background);
+$dropdown-menuItem-hover-color: var(--color-text-dark);
 
 /* Badge
 -------------------------- */
@@ -870,7 +891,7 @@ $datepicker-cell-hover-color: var(--color-foreground-xlight);
 /* Loading
 --------------------------*/
 /// height||Other|4
-$loading-spinner-size: 42px;
+$loading-spinner-size: 24px;
 /// height||Other|4
 $loading-fullscreen-spinner-size: 50px;
 

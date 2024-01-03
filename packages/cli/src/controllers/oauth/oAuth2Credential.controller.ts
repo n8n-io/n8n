@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
@@ -9,7 +8,7 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import type { OAuth2GrantType } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { ApplicationError, jsonParse, jsonStringify } from 'n8n-workflow';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 import { AbstractOAuthController } from './abstractOAuth.controller';
@@ -31,7 +30,6 @@ interface CsrfStateParam {
 	token: string;
 }
 
-@Service()
 @Authorized()
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -255,7 +253,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			errorMessage,
 		});
 		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
-			throw new Error(errorMessage);
+			throw new ApplicationError(errorMessage);
 		}
 		return decoded;
 	}

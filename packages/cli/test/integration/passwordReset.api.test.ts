@@ -26,6 +26,7 @@ import {
 import * as testDb from './shared/testDb';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { PasswordUtility } from '@/services/password.utility';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -207,7 +208,10 @@ describe('POST /change-password', () => {
 			id: owner.id,
 		});
 
-		const comparisonResult = await compare(passwordToStore, storedPassword);
+		const comparisonResult = await Container.get(PasswordUtility).compare(
+			passwordToStore,
+			storedPassword,
+		);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
 

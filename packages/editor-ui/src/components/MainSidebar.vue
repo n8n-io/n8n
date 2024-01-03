@@ -24,12 +24,17 @@
 
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
-					:cloud-plan-data="currentPlanAndUsageData"
 					v-if="fullyExpanded && userIsTrialing"
+					:cloud-plan-data="currentPlanAndUsageData"
 			/></template>
 			<template #menuSuffix>
 				<div>
-					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+					<div
+						v-if="hasVersionUpdates"
+						data-test-id="version-updates-panel-button"
+						:class="$style.updates"
+						@click="openUpdatesPanel"
+					>
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
@@ -45,7 +50,7 @@
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
-			<template #footer v-if="showUserArea">
+			<template v-if="showUserArea" #footer>
 				<div :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
@@ -57,8 +62,8 @@
 						>
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:firstName="usersStore.currentUser.firstName"
-									:lastName="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser.firstName"
+									:last-name="usersStore.currentUser.lastName"
 									size="small"
 								/>
 							</div>
@@ -100,7 +105,7 @@ import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } f
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -109,19 +114,19 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useWorkflowsStore,
-	useRootStore,
-	useVersionsStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-} from '@/stores/';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
+import { hasPermission } from '@/rbac/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -131,11 +136,14 @@ export default defineComponent({
 		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -177,7 +185,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
+			return hasPermission(['authenticated']);
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -262,13 +270,12 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},
 				{
-					id: 'workersview',
-					icon: 'truck-monster',
-					label: this.$locale.baseText('mainSidebar.workersView'),
-					position: 'top',
-					available:
-						this.settingsStore.isQueueModeEnabled && this.settingsStore.isWorkerViewAvailable,
-					activateOnRouteNames: [VIEWS.WORKER_VIEW],
+					id: 'cloud-admin',
+					type: 'link',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'home',
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 				},
 				{
 					id: 'settings',
@@ -348,10 +355,10 @@ export default defineComponent({
 			};
 		},
 	},
-	mounted() {
+	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', {
+			void this.externalHooks.run('mainSidebar.mounted', {
 				userRef: this.$refs.user as Element,
 			});
 		}
@@ -440,12 +447,6 @@ export default defineComponent({
 					}
 					break;
 				}
-				case 'workersview': {
-					if (this.$router.currentRoute.name !== VIEWS.WORKER_VIEW) {
-						this.goToRoute({ name: VIEWS.WORKER_VIEW });
-					}
-					break;
-				}
 				case 'settings': {
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
@@ -459,6 +460,10 @@ export default defineComponent({
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);
+					break;
+				}
+				case 'cloud-admin': {
+					this.cloudPlanStore.redirectToDashboard();
 					break;
 				}
 				case 'quickstart':

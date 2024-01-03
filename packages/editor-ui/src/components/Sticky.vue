@@ -1,8 +1,8 @@
 <template>
 	<div
-		class="sticky-wrapper"
 		:id="nodeId"
 		:ref="data.name"
+		class="sticky-wrapper"
 		:style="stickyPosition"
 		:data-name="data.name"
 		data-test-id="sticky"
@@ -12,27 +12,29 @@
 				'sticky-default': true,
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
+				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
 		>
-			<div class="select-sticky-background" v-show="isSelected" />
+			<div v-show="isSelected" class="select-sticky-background" />
 			<div
-				class="sticky-box"
-				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
+				class="sticky-box"
+				@click.left="mouseLeftClick"
+				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
-					:modelValue="node.parameters.content"
+					:id="node.id"
+					:model-value="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:backgroundColor="node.parameters.color"
-					:id="node.id"
-					:readOnly="isReadOnly"
-					:defaultText="defaultText"
-					:editMode="isActive && !isReadOnly"
-					:gridSize="gridSize"
+					:background-color="node.parameters.color"
+					:read-only="isReadOnly"
+					:default-text="defaultText"
+					:edit-mode="isActive && !isReadOnly"
+					:grid-size="gridSize"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
@@ -64,6 +66,7 @@
 				>
 					<template #reference>
 						<div
+							ref="colorPopoverTrigger"
 							class="option"
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
@@ -73,11 +76,10 @@
 					</template>
 					<div class="content">
 						<div
-							class="color"
-							data-test-id="color"
 							v-for="(_, index) in Array.from({ length: 7 })"
 							:key="index"
-							v-on:click="changeColor(index + 1)"
+							class="color"
+							data-test-id="color"
 							:class="`sticky-color-${index + 1}`"
 							:style="{
 								'border-width': '1px',
@@ -90,6 +92,7 @@
 										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
 										: 'none',
 							}"
+							@click="changeColor(index + 1)"
 						></div>
 					</div>
 				</n8n-popover>
@@ -99,14 +102,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isNumber, isString } from '@/utils';
+import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -120,11 +121,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useContextMenu } from '@/composables/useContextMenu';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
-
+	mixins: [nodeBase, workflowHelpers],
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -132,6 +133,21 @@ export default defineComponent({
 		gridSize: {
 			type: Number,
 		},
+	},
+	setup() {
+		const colorPopoverTrigger = ref<HTMLDivElement>();
+		const forceActions = ref(false);
+		const setForceActions = (value: boolean) => {
+			forceActions.value = value;
+		};
+		const contextMenu = useContextMenu((action) => {
+			if (action === 'change_color') {
+				setForceActions(true);
+				colorPopoverTrigger.value?.click();
+			}
+		});
+
+		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -203,17 +219,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			forceActions: false,
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
 		onShowPopover() {
-			this.forceActions = true;
+			this.setForceActions(true);
 		},
 		onHidePopover() {
-			this.forceActions = false;
+			this.setForceActions(false);
 		},
 		async deleteNode() {
 			// Wait a tick else vue causes problems because the data is gone
@@ -241,8 +256,8 @@ export default defineComponent({
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						? 'templates'
-						: 'other';
+						  ? 'templates'
+						  : 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}
@@ -310,6 +325,11 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
+		onContextMenu(e: MouseEvent): void {
+			if (this.node) {
+				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			}
+		},
 	},
 });
 </script>
@@ -330,6 +350,10 @@ export default defineComponent({
 				display: flex;
 				cursor: pointer;
 			}
+		}
+
+		&.is-read-only {
+			pointer-events: none;
 		}
 
 		.sticky-options {

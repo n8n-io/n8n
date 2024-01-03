@@ -13,7 +13,6 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import type {
 	IDiagnosticInfo,
-	IInternalHooksClass,
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
@@ -49,7 +48,7 @@ function userToPayload(user: User): {
 }
 
 @Service()
-export class InternalHooks implements IInternalHooksClass {
+export class InternalHooks {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
@@ -498,6 +497,7 @@ export class InternalHooks implements IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 		email_sent: boolean;
+		invitee_role: string;
 	}): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
@@ -507,13 +507,26 @@ export class InternalHooks implements IInternalHooksClass {
 					targetUserId: userInviteData.target_user_id,
 				},
 			}),
+
 			this.telemetry.track('User invited new user', {
 				user_id: userInviteData.user.id,
 				target_user_id: userInviteData.target_user_id,
 				public_api: userInviteData.public_api,
 				email_sent: userInviteData.email_sent,
+				invitee_role: userInviteData.invitee_role,
 			}),
 		]);
+	}
+
+	async onUserRoleChange(userRoleChangeData: {
+		user: User;
+		target_user_id: string;
+		public_api: boolean;
+		target_user_new_role: string;
+	}) {
+		const { user, ...rest } = userRoleChangeData;
+
+		void this.telemetry.track('User changed role', { user_id: user.id, ...rest });
 	}
 
 	async onUserReinvite(userReinviteData: {

@@ -2,7 +2,7 @@
 	<AuthView
 		v-if="config"
 		:form="config"
-		:formLoading="loading"
+		:form-loading="loading"
 		@submit="onSubmit"
 		@update="onInput"
 	/>
@@ -10,7 +10,7 @@
 
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';

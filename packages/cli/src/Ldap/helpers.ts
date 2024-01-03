@@ -20,7 +20,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
@@ -29,13 +29,14 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { BadRequestError, InternalServerError } from '../ResponseHelper';
 import { RoleService } from '@/services/role.service';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -156,7 +157,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 	const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 	if (!valid) {
-		throw new Error(message);
+		throw new ApplicationError(message);
 	}
 
 	if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {

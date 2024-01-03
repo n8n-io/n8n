@@ -9,9 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
-
 import { oldVersionNotice } from '../../../utils/descriptions';
+import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
@@ -56,14 +55,14 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Allowed Mentions',
 					name: 'allowedMentions',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Attachments',
 					name: 'attachments',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -76,14 +75,14 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Components',
 					name: 'components',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Embeds',
 					name: 'embeds',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -96,7 +95,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'JSON Payload',
 					name: 'payloadJson',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{

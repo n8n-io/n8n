@@ -17,6 +17,7 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
+	Workflow,
 } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -56,6 +57,12 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 
 export const nodeBase = defineComponent({
 	mixins: [deviceSupportHelpers],
+	data() {
+		return {
+			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
+			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
+		};
+	},
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {
@@ -66,12 +73,6 @@ export const nodeBase = defineComponent({
 				// Shouldn't affect anything
 			}
 		}
-	},
-	data() {
-		return {
-			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
-			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
-		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),
@@ -104,6 +105,10 @@ export const nodeBase = defineComponent({
 		showCustomTooltip: {
 			type: Boolean,
 		},
+		workflow: {
+			type: Object as () => Workflow,
+			required: true,
+		},
 	},
 	methods: {
 		__addEndpointTestingData(endpoint: Endpoint, type: string, inputIndex: number) {
@@ -123,9 +128,8 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const inputs: Array<ConnectionTypes | INodeInputConfiguration> =
-				NodeHelpers.getNodeInputs(workflow, this.data!, nodeTypeData) || [];
+				NodeHelpers.getNodeInputs(this.workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
 
 			const sortedInputs = [...inputs];
@@ -338,8 +342,7 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			this.outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
+			this.outputs = NodeHelpers.getNodeOutputs(this.workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems

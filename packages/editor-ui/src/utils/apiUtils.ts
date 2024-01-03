@@ -43,12 +43,28 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const legacyParamSerializer = (params: Record<string, any>) =>
+	Object.keys(params)
+		.filter((key) => params[key] !== undefined)
+		.map((key) => {
+			if (Array.isArray(params[key])) {
+				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+			}
+			if (typeof params[key] === 'object') {
+				params[key] = JSON.stringify(params[key]);
+			}
+			return `${key}=${encodeURIComponent(params[key])}`;
+		})
+		.join('&');
+
+export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
 	headers?: IDataObject;
 	data?: IDataObject;
+	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
@@ -62,12 +78,13 @@ async function request(config: {
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {
-		options.withCredentials = true;
+		options.withCredentials = options.withCredentials ?? true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
-	} else {
+	} else if (data) {
 		options.params = data;
+		options.paramsSerializer = legacyParamSerializer;
 	}
 
 	try {
@@ -98,7 +115,7 @@ async function request(config: {
 	}
 }
 
-export async function makeRestApiRequest(
+export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
@@ -113,7 +130,7 @@ export async function makeRestApiRequest(
 	});
 
 	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
-	return response.data;
+	return response.data as T;
 }
 
 export async function get(

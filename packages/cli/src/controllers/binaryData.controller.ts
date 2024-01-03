@@ -1,11 +1,9 @@
-import { Service } from 'typedi';
 import express from 'express';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
 import { Get, RestController } from '@/decorators';
 import { BinaryDataRequest } from '@/requests';
 
 @RestController('/binary-data')
-@Service()
 export class BinaryDataController {
 	constructor(private readonly binaryDataService: BinaryDataService) {}
 
@@ -41,8 +39,9 @@ export class BinaryDataController {
 
 			if (mimeType) res.setHeader('Content-Type', mimeType);
 
-			if (action === 'download') {
-				res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+			if (action === 'download' && fileName) {
+				const encodedFilename = encodeURIComponent(fileName);
+				res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
 			}
 
 			return await this.binaryDataService.getAsStream(binaryDataId);

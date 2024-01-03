@@ -5,13 +5,10 @@ import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 
 import './n8n-theme.scss';
-import './styles/autocomplete-theme.scss';
 
 import '@fontsource/open-sans/latin-400.css';
 import '@fontsource/open-sans/latin-600.css';
 import '@fontsource/open-sans/latin-700.css';
-
-import './hooks/init';
 
 import App from '@/App.vue';
 import router from './router';

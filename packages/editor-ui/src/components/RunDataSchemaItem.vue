@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
-import { checkExhaustive, highlightText, sanitizeHtml, shorten } from '@/utils';
+import { checkExhaustive } from '@/utils/typeGuards';
+import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 type Props = {
 	schema: Schema;
@@ -28,12 +30,8 @@ const isFlat = computed(
 		props.schema.value.every((v) => !Array.isArray(v.value)),
 );
 const key = computed((): string | undefined => {
-	const highlightedKey = sanitizeHtml(highlightText(props.schema.key, props.search));
-	return isSchemaParentTypeArray.value ? `[${highlightedKey}]` : highlightedKey;
+	return isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key;
 });
-const parentKey = computed((): string | undefined =>
-	sanitizeHtml(highlightText(props.parent.key, props.search)),
-);
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
@@ -97,8 +95,17 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<span v-if="isSchemaParentTypeArray" v-html="parentKey" />
-				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }" v-html="key" />
+				<TextWithHighlights
+					v-if="isSchemaParentTypeArray"
+					:content="props.parent?.key"
+					:search="props.search"
+				/>
+				<TextWithHighlights
+					v-if="key"
+					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+					:content="key"
+					:search="props.search"
+				/>
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
@@ -113,11 +120,11 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:schema="s"
 				:level="level + 1"
 				:parent="schema"
-				:paneType="paneType"
-				:subKey="`${paneType}_${s.type}-${level}-${i}`"
-				:mappingEnabled="mappingEnabled"
-				:draggingPath="draggingPath"
-				:distanceFromActive="distanceFromActive"
+				:pane-type="paneType"
+				:sub-key="`${paneType}_${s.type}-${level}-${i}`"
+				:mapping-enabled="mappingEnabled"
+				:dragging-path="draggingPath"
+				:distance-from-active="distanceFromActive"
 				:node="node"
 				:style="{ transitionDelay: transitionDelay(i) }"
 				:search="search"
@@ -127,7 +134,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .item {
 	display: block;

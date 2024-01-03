@@ -52,7 +52,7 @@ export class SecurityAuditService {
 			const className = category.charAt(0).toUpperCase() + category.slice(1) + 'RiskReporter';
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const RiskReporterModule = await import(`@/security-audit/risk-reporters/${className}`);
+			const RiskReporterModule = await import(`./risk-reporters/${className}`);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const RiskReporterClass = RiskReporterModule[className] as { new (): RiskReporter };

@@ -3,7 +3,7 @@ import type {
 	ExternalSecretsProvider,
 	ExternalSecretsProviderWithProperties,
 } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export const getExternalSecrets = async (
 	context: IRestApiContext,

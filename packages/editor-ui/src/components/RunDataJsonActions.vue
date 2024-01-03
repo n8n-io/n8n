@@ -41,15 +41,17 @@ import { mapStores } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
+import { clearJsonKey, convertPath } from '@/utils/typesUtils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
+import { useClipboard } from '@/composables/useClipboard';
 
 type JsonPathData = {
 	path: string;
@@ -57,9 +59,8 @@ type JsonPathData = {
 };
 
 export default defineComponent({
-	name: 'run-data-json-actions',
-	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
-
+	name: 'RunDataJsonActions',
+	mixins: [genericHelpers, pinData],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -93,9 +94,13 @@ export default defineComponent({
 	},
 	setup() {
 		const i18n = useI18n();
+		const nodeHelpers = useNodeHelpers();
+		const clipboard = useClipboard();
 
 		return {
 			i18n,
+			nodeHelpers,
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -115,11 +120,14 @@ export default defineComponent({
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
 			if (this.noSelection) {
-				if (this.hasPinData) {
+				const inExecutionsFrame =
+					window !== window.parent && window.parent.location.pathname.includes('/executions');
+
+				if (this.hasPinData && !inExecutionsFrame) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
 					selectedValue = executionDataToJson(
-						this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
+						this.nodeHelpers.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
 					);
 				}
 			}
@@ -216,7 +224,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.copyToClipboard(value);
+			void this.clipboard.copy(value);
 		},
 	},
 });

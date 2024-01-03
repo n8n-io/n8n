@@ -1,26 +1,28 @@
 <template>
-	<button
+	<component
+		:is="element"
 		:class="classes"
 		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
+		:href="href"
 		aria-live="polite"
 		v-bind="$attrs"
 	>
-		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner v-if="loading" :size="size" />
-			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
+		<span v-if="loading || icon" :class="$style.icon">
+			<N8nSpinner v-if="loading" :size="size" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
 		</span>
-	</button>
+	</component>
 </template>
 
 <script setup lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import { useCssModule, computed, useAttrs } from 'vue';
+import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 
 const $style = useCssModule();
 const $attrs = useAttrs();
@@ -72,6 +74,21 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	element: {
+		type: String,
+		default: 'button',
+		validator: (value: string) => ['button', 'a'].includes(value),
+	},
+	href: {
+		type: String,
+		required: false,
+	},
+});
+
+watchEffect(() => {
+	if (props.element === 'a' && !props.href) {
+		console.error('n8n-button:href is required for link buttons');
+	}
 });
 
 const ariaBusy = computed(() => (props.loading ? 'true' : undefined));

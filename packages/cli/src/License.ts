@@ -16,6 +16,8 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 type FeatureReturnType = Partial<
 	{
@@ -23,31 +25,33 @@ type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
-export class FeatureNotLicensedError extends Error {
-	constructor(feature: (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES]) {
-		super(
-			`Your license does not allow for ${feature}. To enable ${feature}, please upgrade to a license that supports this feature.`,
-		);
-	}
-}
-
 @Service()
 export class License {
 	private manager: LicenseManager | undefined;
 
 	private redisPublisher: RedisServicePubSubPublisher;
 
+	private isShuttingDown = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly multiMainSetup: MultiMainSetup,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
+			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
+		if (this.isShuttingDown) {
+			this.logger.warn('License manager already shutting down');
+			return;
+		}
+
+		await this.multiMainSetup.init();
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -114,22 +118,28 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (config.getEnv('leaderSelection.enabled')) {
-				const { MultiMainInstancePublisher } = await import(
-					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
+			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
+				| boolean
+				| undefined;
+
+			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+
+			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+				this.logger.debug(
+					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
-
-				const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-				await multiMainInstancePublisher.init();
-
-				if (multiMainInstancePublisher.isFollower) {
-					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
-					return;
-				}
+				return;
 			}
 
+			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+				this.logger.debug(
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+				);
+			}
+		}
+
+		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
@@ -189,7 +199,12 @@ export class License {
 		await this.manager.renew();
 	}
 
+	@OnShutdown()
 	async shutdown() {
+		// Shut down License manager to unclaim any floating entitlements
+		// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+		this.isShuttingDown = true;
+
 		if (!this.manager) {
 			return;
 		}
@@ -219,6 +234,10 @@ export class License {
 
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+	}
+
+	isAdvancedPermissionsLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
 	}
 
 	isDebugInEditorLicensed() {

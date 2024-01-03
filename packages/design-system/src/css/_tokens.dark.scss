@@ -25,7 +25,18 @@
 	--color-background-light: var(--prim-gray-820);
 	--color-background-xlight: var(--prim-gray-740);
 
+	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
+	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
+	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+
 	// Secondary tokens
+
+	// LangChain
+	--color-lm-chat-messages-background: var(--prim-gray-820);
+	--color-lm-chat-bot-background: var(--prim-gray-540);
+	--color-lm-chat-bot-border: var(--prim-gray-490);
+	--color-lm-chat-user-background: var(--prim-color-alt-a-shade-100);
+	--color-lm-chat-user-border: var(--prim-color-alt-a);
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-820);
@@ -160,6 +171,9 @@
 	--color-switch-background: var(--prim-gray-820);
 	--color-switch-toggle: var(--prim-gray-40);
 
+	// Action Dropdown
+	--color-action-dropdown-item-active-background: var(--color-background-xlight);
+
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);
@@ -167,6 +181,11 @@
 	--border-color-light: var(--color-foreground-light);
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	--node-type-supplemental-label-color-l: 100%;
+	--node-type-supplemental-label-color: hsl(
+		var(--node-type-supplemental-label-color-h),
+		var(--node-type-supplemental-label-color-s),
+		var(--node-type-supplemental-label-color-l)
+	);
 	--color-configurable-node-name: var(--color-text-lighter);
 	--color-secondary-link: var(--prim-color-secondary-tint-200);
 	--color-secondary-link-hover: var(--prim-color-secondary-tint-100);

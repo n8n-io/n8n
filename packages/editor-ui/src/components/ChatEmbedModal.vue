@@ -5,12 +5,11 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '../constants';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps({
 	modalBus: {
@@ -22,7 +21,6 @@ const props = defineProps({
 const i18n = useI18n();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 
 const tabs = ref([
 	{
@@ -59,9 +57,10 @@ function indentLines(code: string, indent: string = '	') {
 		.join('\n');
 }
 
+const importCode = 'import';
 const commonCode = computed(() => ({
-	import: `import '@n8n/chat/style.css';
-import { createChat } from '@n8n/chat';`,
+	import: `${importCode} '@n8n/chat/style.css';
+${importCode} { createChat } from '@n8n/chat';`,
 	createChat: `createChat({
 	webhookUrl: '${webhookUrl.value}'
 });`,
@@ -71,7 +70,7 @@ import { createChat } from '@n8n/chat';`,
 const cdnCode = computed(
 	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
 <script type="module">
-import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
+${importCode} { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 ${commonCode.value.createChat}
 </${'script'}>`,
@@ -79,7 +78,7 @@ ${commonCode.value.createChat}
 
 const vueCode = computed(
 	() => `<script lang="ts" setup>
-import { onMounted } from 'vue';
+${importCode} { onMounted } from 'vue';
 ${commonCode.value.import}
 
 onMounted(() => {
@@ -89,7 +88,7 @@ ${indentLines(commonCode.value.createChat)}
 );
 
 const reactCode = computed(
-	() => `import { useEffect } from 'react';
+	() => `${importCode} { useEffect } from 'react';
 ${commonCode.value.import}
 
 export const App = () => {
@@ -118,19 +117,19 @@ function closeDialog() {
 	<Modal
 		max-width="960px"
 		:title="i18n.baseText('chatEmbed.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="CHAT_EMBED_MODAL_KEY"
 		:center="true"
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-tabs :options="tabs" v-model="currentTab" />
+				<n8n-tabs v-model="currentTab" :options="tabs" />
 
 				<div v-if="currentTab !== 'cdn'">
 					<n8n-text>
 						{{ i18n.baseText('chatEmbed.install') }}
 					</n8n-text>
-					<CodeNodeEditor :modelValue="commonCode.install" isReadOnly />
+					<CodeNodeEditor :model-value="commonCode.install" is-read-only />
 				</div>
 
 				<n8n-text>
@@ -140,10 +139,10 @@ function closeDialog() {
 						</template>
 					</i18n-t>
 				</n8n-text>
-				<HtmlEditor v-if="currentTab === 'cdn'" :modelValue="cdnCode" isReadOnly />
-				<HtmlEditor v-if="currentTab === 'vue'" :modelValue="vueCode" isReadOnly />
-				<CodeNodeEditor v-if="currentTab === 'react'" :modelValue="reactCode" isReadOnly />
-				<CodeNodeEditor v-if="currentTab === 'other'" :modelValue="otherCode" isReadOnly />
+				<HtmlEditor v-if="currentTab === 'cdn'" :model-value="cdnCode" is-read-only />
+				<HtmlEditor v-if="currentTab === 'vue'" :model-value="vueCode" is-read-only />
+				<CodeNodeEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
+				<CodeNodeEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
 
 				<n8n-info-tip>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
@@ -156,7 +155,7 @@ function closeDialog() {
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button @click="closeDialog" float="right" :label="i18n.baseText('chatEmbed.close')" />
+				<n8n-button float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
 			</div>
 		</template>
 	</Modal>

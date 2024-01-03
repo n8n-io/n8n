@@ -5,7 +5,8 @@ import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb } from '@/Interfaces';
+import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
+import type { LicenseMocker } from './license';
 
 type EndpointGroup =
 	| 'me'
@@ -29,12 +30,16 @@ type EndpointGroup =
 	| 'metrics'
 	| 'executions'
 	| 'workflowHistory'
-	| 'binaryData';
+	| 'binaryData'
+	| 'role'
+	| 'invitations'
+	| 'debug';
 
 export interface SetupProps {
 	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
+	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 }
 
 export interface TestServer {
@@ -43,6 +48,7 @@ export interface TestServer {
 	authAgentFor: (user: User) => SuperAgentTest;
 	publicApiAgentFor: (user: User) => SuperAgentTest;
 	authlessAgent: SuperAgentTest;
+	license: LicenseMocker;
 }
 
 export type CredentialPayload = {

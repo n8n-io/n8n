@@ -372,7 +372,7 @@ export class HttpRequestV3 implements INodeType {
 						},
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-							name: 'n8n Binary Data',
+							name: 'n8n Binary File',
 							value: 'binaryData',
 						},
 						{
@@ -502,7 +502,7 @@ export class HttpRequestV3 implements INodeType {
 									options: [
 										{
 											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-											name: 'n8n Binary Data',
+											name: 'n8n Binary File',
 											value: 'formBinaryData',
 										},
 										{
@@ -536,7 +536,6 @@ export class HttpRequestV3 implements INodeType {
 									displayName: 'Input Data Field Name',
 									name: 'inputDataFieldName',
 									type: 'string',
-									noDataExpression: true,
 									displayOptions: {
 										show: {
 											parameterType: ['formBinaryData'],
@@ -636,7 +635,6 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Input Data Field Name',
 					name: 'inputDataFieldName',
 					type: 'string',
-					noDataExpression: true,
 					displayOptions: {
 						show: {
 							sendBody: [true],
@@ -1769,6 +1767,7 @@ export class HttpRequestV3 implements INodeType {
 
 			// eslint-disable-next-line prefer-const
 			for (let [index, response] of Object.entries(responses)) {
+				delete response.request;
 				if (this.getMode() === 'manual' && index === '0') {
 					// For manual executions save the first response in the context
 					// so that we can use it in the frontend and so make it easier for

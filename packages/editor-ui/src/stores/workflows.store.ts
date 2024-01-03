@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IActivationError,
 	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -33,6 +32,7 @@ import type {
 	IWorkflowsMap,
 	WorkflowsState,
 	NodeMetadataMap,
+	WorkflowMetadata,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -73,15 +73,10 @@ import {
 } from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
-import {
-	isJsonKeyObject,
-	getPairedItemsMapping,
-	stringSizeInBytes,
-	isObject,
-	isEmpty,
-	makeRestApiRequest,
-	unflattenExecutionData,
-} from '@/utils';
+import { isObject } from '@/utils/objectUtils';
+import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
+import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
+import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -200,6 +195,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					return this.workflow.connections[nodeName];
 				}
 				return {};
+			};
+		},
+		isNodeInOutgoingNodeConnections() {
+			return (firstNode: string, secondNode: string): boolean => {
+				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
+				if (!firstNodeConnections?.main?.[0]) return false;
+				const connections = firstNodeConnections.main[0];
+				if (connections.some((node) => node.node === secondNode)) return true;
+				return connections.some((node) =>
+					this.isNodeInOutgoingNodeConnections(node.node, secondNode),
+				);
 			};
 		},
 		allNodes(): INodeUi[] {
@@ -365,9 +371,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 		},
 
-		async getActivationError(id: string): Promise<IActivationError | undefined> {
+		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/active-workflows/error/${id}`,
+			);
 		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
@@ -552,6 +562,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = true;
 			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(true);
+			}
 		},
 
 		setWorkflowInactive(workflowId: string): void {
@@ -561,6 +574,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			if (this.workflowsById[workflowId]) {
 				this.workflowsById[workflowId].active = false;
+			}
+			if (workflowId === this.workflow.id) {
+				this.setActive(false);
 			}
 		},
 
@@ -640,6 +656,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			};
 		},
 
+		setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+			this.workflow.meta = metadata;
+		},
+
+		addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+			this.workflow.meta = {
+				...this.workflow.meta,
+				...data,
+			};
+		},
+
 		setWorkflow(workflow: IWorkflowDb): void {
 			this.workflow = workflow;
 			this.workflow = {
@@ -666,7 +693,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			const storedPinData = payload.data.map((item) =>
-				isJsonKeyObject(item) ? item : { json: item },
+				isJsonKeyObject(item) ? { json: item.json } : { json: item },
 			);
 
 			this.workflow = {
@@ -745,16 +772,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			// Check if the same connection exists already
-			const checkProperties = ['index', 'node', 'type'];
-			let propertyName: string;
+			const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+			let propertyName: keyof IConnection;
 			let connectionExists = false;
 			connectionLoop: for (const existingConnection of this.workflow.connections[sourceData.node][
 				sourceData.type
 			][sourceData.index]) {
 				for (propertyName of checkProperties) {
-					if (
-						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
-					) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
 						continue connectionLoop;
 					}
 				}
@@ -884,8 +909,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					},
 				};
 			}
-
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
 		resetAllNodesIssues(): boolean {
@@ -1120,7 +1143,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			this.workflowExecutionData.data!.resultData.runData[pushData.nodeName].push(pushData.data);
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 		clearNodeExecutionData(nodeName: string): void {
 			if (!this.workflowExecutionData?.data) {

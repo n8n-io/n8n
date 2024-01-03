@@ -1,28 +1,34 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
+		<NDVFloatingNodes
+			v-if="activeNode"
+			:root-node="activeNode"
+			type="input"
+			@switchSelectedNode="onSwitchSelectedNode"
+		/>
+		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.outputPanel" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
-				:isResizingEnabled="currentNodePaneType !== 'unknown'"
+				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
-				:minWidth="MIN_PANEL_WIDTH"
-				:gridSize="20"
+				:min-width="MIN_PANEL_WIDTH"
+				:grid-size="20"
+				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
-				:supportedDirections="supportedResizeDirections"
 			>
 				<div :class="$style.dragButtonContainer">
 					<PanelDragButton
-						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-						:canMoveLeft="canMoveLeft"
-						:canMoveRight="canMoveRight"
 						v-if="!hideInputAndOutput && isDraggable"
+						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+						:can-move-left="canMoveLeft"
+						:can-move-right="canMoveRight"
 						@dragstart="onDragStart"
 						@drag="onDrag"
 						@dragend="onDragEnd"
@@ -50,6 +56,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -67,10 +74,11 @@ const initialMainPanelWidth: { [key: string]: number } = {
 
 export default defineComponent({
 	name: 'NDVDraggablePanels',
-	mixins: [debounceHelper],
 	components: {
 		PanelDragButton,
+		NDVFloatingNodes,
 	},
+	mixins: [debounceHelper],
 	props: {
 		isDraggable: {
 			type: Boolean,
@@ -135,6 +143,9 @@ export default defineComponent({
 			relativeRight: number;
 		} {
 			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType);
+		},
+		activeNode() {
+			return this.ndvStore.activeNode;
 		},
 		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
@@ -249,6 +260,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
 		getInitialLeftPosition(width: number) {
 			if (this.currentNodePaneType === 'dragless')
 				return this.pxToRelativeWidth(SIDE_MARGIN + 1 + this.fixedPanelWidth);

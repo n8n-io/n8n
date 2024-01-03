@@ -1,9 +1,8 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import dateformat from 'dateformat';
 import { VIEWS } from '@/constants';
-import { useToast } from '@/composables';
-import { useSourceControlStore } from '@/stores';
+import { useToast } from '@/composables/useToast';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const genericHelpers = defineComponent({
 	setup() {
@@ -13,7 +12,7 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			loadingService: null as any | null,
+			loadingService: null as null | { close: () => void; text: string },
 		};
 	},
 	computed: {
@@ -48,14 +47,6 @@ export const genericHelpers = defineComponent({
 
 			return `${minutesPassed}:${secondsLeft}${this.$locale.baseText('genericHelpers.minShort')}`;
 		},
-		convertToDisplayDate(fullDate: Date | string | number): { date: string; time: string } {
-			const mask = `d mmm${
-				new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
-			}#HH:MM:ss`;
-			const formattedDate = dateformat(fullDate, mask);
-			const [date, time] = formattedDate.split('#');
-			return { date, time };
-		},
 
 		/**
 		 * @note Loading helpers extracted as composable in useLoadingService
@@ -66,16 +57,16 @@ export const genericHelpers = defineComponent({
 				return;
 			}
 
-			// @ts-ignore
 			this.loadingService = this.$loading({
 				lock: true,
 				text: text || this.$locale.baseText('genericHelpers.loading'),
-				spinner: 'el-icon-loading',
 				background: 'var(--color-dialog-overlay-background)',
 			});
 		},
 		setLoadingText(text: string) {
-			this.loadingService.text = text;
+			if (this.loadingService !== null) {
+				this.loadingService.text = text;
+			}
 		},
 		stopLoading() {
 			if (this.loadingService !== null) {

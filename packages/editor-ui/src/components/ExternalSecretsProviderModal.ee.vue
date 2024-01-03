@@ -4,9 +4,12 @@ import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants'
 import { computed, onMounted, ref } from 'vue';
 import type { PropType, Ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import { useExternalSecretsProvider, useI18n, useMessage, useToast } from '@/composables';
+import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
 import type {
@@ -166,7 +169,7 @@ async function onBeforeClose() {
 		id="external-secrets-provider-modal"
 		width="812px"
 		:title="provider.displayName"
-		:eventBus="data.eventBus"
+		:event-bus="data.eventBus"
 		:name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY"
 		:before-close="onBeforeClose"
 	>
@@ -206,7 +209,7 @@ async function onBeforeClose() {
 		<template #content>
 			<div :class="$style.container">
 				<hr class="mb-l" />
-				<div class="mb-l" v-if="connectionState !== 'initializing'">
+				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<n8n-callout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
 						theme="success"
@@ -265,13 +268,13 @@ async function onBeforeClose() {
 					@submit.prevent
 				>
 					<n8n-notice v-if="property.type === 'notice'" :content="property.displayName" />
-					<parameter-input-expanded
+					<ParameterInputExpanded
 						v-else
 						class="mb-l"
 						:parameter="property"
 						:value="providerData[property.name]"
 						:label="labelSize"
-						eventSource="external-secrets-provider"
+						event-source="external-secrets-provider"
 						@update="onValueChange"
 					/>
 				</form>

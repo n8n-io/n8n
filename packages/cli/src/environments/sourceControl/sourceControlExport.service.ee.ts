@@ -6,7 +6,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
@@ -21,9 +21,8 @@ import {
 	stringContainsExpression,
 } from './sourceControlHelper.ee';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { VariablesService } from '../variables/variables.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
@@ -105,21 +104,9 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-				relations: ['role', 'user'],
-				where: {
-					role: {
-						name: 'owner',
-						scope: 'workflow',
-					},
-					workflowId: In(workflowIds),
-				},
-			});
-			const workflows = await Container.get(WorkflowRepository).find({
-				where: {
-					id: In(workflowIds),
-				},
-			});
+			const sharedWorkflows =
+				await Container.get(SharedWorkflowRepository).findByWorkflowIds(workflowIds);
+			const workflows = await Container.get(WorkflowRepository).findByIds(workflowIds);
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, string> = {};
@@ -138,7 +125,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -168,7 +155,9 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', {
+				cause: error,
+			});
 		}
 	}
 
@@ -208,7 +197,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -239,12 +228,9 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await Container.get(SharedCredentialsRepository).find({
-				relations: ['credentials', 'role', 'user'],
-				where: {
-					credentialsId: In(credentialIds),
-				},
-			});
+			const credentialsToBeExported = await Container.get(
+				SharedCredentialsRepository,
+			).findByCredentialIds(credentialIds);
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -280,7 +266,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

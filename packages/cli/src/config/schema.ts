@@ -91,6 +91,12 @@ export const schema = {
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
+			poolSize: {
+				doc: 'PostgresDB Pool Size',
+				format: Number,
+				default: 2,
+				env: 'DB_POSTGRESDB_POOL_SIZE',
+			},
 
 			ssl: {
 				enabled: {
@@ -433,7 +439,7 @@ export const schema = {
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
 			gracefulShutdownTimeout: {
-				doc: 'How long should n8n wait for running executions before exiting worker process',
+				doc: '[DEPRECATED] (Use N8N_GRACEFUL_SHUTDOWN_TIMEOUT instead) How long should n8n wait for running executions before exiting worker process (seconds)',
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
@@ -490,6 +496,13 @@ export const schema = {
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,
 			default: 'dev',
 			env: 'N8N_RELEASE_TYPE',
+		},
+
+		gracefulShutdownTimeout: {
+			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
+			format: Number,
+			default: 30,
+			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
 		},
 	},
 
@@ -661,6 +674,24 @@ export const schema = {
 			default: 'rest',
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
+		},
+		form: {
+			format: String,
+			default: 'form',
+			env: 'N8N_ENDPOINT_FORM',
+			doc: 'Path for form endpoint',
+		},
+		formTest: {
+			format: String,
+			default: 'form-test',
+			env: 'N8N_ENDPOINT_FORM_TEST',
+			doc: 'Path for test form endpoint',
+		},
+		formWaiting: {
+			format: String,
+			default: 'form-waiting',
+			env: 'N8N_ENDPOINT_FORM_WAIT',
+			doc: 'Path for waiting form endpoint',
 		},
 		webhook: {
 			format: String,
@@ -1001,6 +1032,21 @@ export const schema = {
 		},
 	},
 
+	externalSecrets: {
+		updateInterval: {
+			format: Number,
+			default: 300,
+			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
+			doc: 'How often (in seconds) to check for secret updates.',
+		},
+		preferGet: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
+			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,
@@ -1324,24 +1370,29 @@ export const schema = {
 		},
 	},
 
-	leaderSelection: {
+	multiMainSetup: {
+		instanceType: {
+			doc: 'Type of instance in multi-main setup',
+			format: ['unset', 'leader', 'follower'] as const,
+			default: 'unset', // only until first leader key check
+		},
 		enabled: {
-			doc: 'Whether to enable leader selection for multiple main instances (license required)',
+			doc: 'Whether to enable multi-main setup for queue mode (license required)',
 			format: Boolean,
 			default: false,
-			env: 'N8N_LEADER_SELECTION_ENABLED',
+			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
 		},
 		ttl: {
-			doc: 'Time to live in Redis for leader selection key, in seconds',
+			doc: 'Time to live (in seconds) for leader key in multi-main setup',
 			format: Number,
 			default: 10,
-			env: 'N8N_LEADER_SELECTION_KEY_TTL',
+			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
 		},
 		interval: {
-			doc: 'Interval in Redis for leader selection check, in seconds',
+			doc: 'Interval (in seconds) for leader check in multi-main setup',
 			format: Number,
 			default: 3,
-			env: 'N8N_LEADER_SELECTION_CHECK_INTERVAL',
+			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
 		},
 	},
 

@@ -1,5 +1,5 @@
 <template>
-	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
+	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
 		<div v-if="!renderHTML" :class="classes"><span v-html="simplyText"></span></div>
 		<div
 			v-else
@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export default defineComponent({
 	name: 'InputHint',
@@ -30,9 +30,6 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-	},
-	methods: {
-		sanitizeHtml,
 	},
 	computed: {
 		classes() {
@@ -58,6 +55,9 @@ export default defineComponent({
 		if (this.$refs.hint) {
 			(this.$refs.hint as Element).querySelectorAll('a').forEach((a) => (a.target = '_blank'));
 		}
+	},
+	methods: {
+		sanitizeHtml,
 	},
 });
 </script>

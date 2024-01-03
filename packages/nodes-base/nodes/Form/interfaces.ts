@@ -26,6 +26,8 @@ export type FormTriggerData = {
 	formTitle: string;
 	formDescription?: string;
 	formSubmittedText?: string;
+	redirectUrl?: string;
 	n8nWebsiteLink: string;
 	formFields: FormTriggerInput[];
+	useResponseData?: boolean;
 };

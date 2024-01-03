@@ -7,7 +7,7 @@
 </template>
 
 <script lang="ts" setup>
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 
 const { baseUrl } = useRootStore();

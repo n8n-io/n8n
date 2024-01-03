@@ -1,11 +1,10 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
-import type { FindOptionsWhere } from 'typeorm';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';
@@ -100,18 +99,13 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
-		if (flags.id) {
-			findQuery.id = flags.id;
-		}
-
 		const workflows = await Container.get(WorkflowRepository).find({
-			where: findQuery,
+			where: flags.id ? { id: flags.id } : {},
 			relations: ['tags'],
 		});
 
 		if (workflows.length === 0) {
-			throw new Error('No workflows found with specified filters.');
+			throw new ApplicationError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {

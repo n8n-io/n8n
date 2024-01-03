@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - packages/cli/src/databases/migrations/**
+      - packages/cli/src/databases/**
 
 concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  group: db-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build Backend
-        run: pnpm  --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n build
+        run: pnpm build:backend
 
       - name: Cache build artifacts
         uses: actions/cache/save@v3.3.1
@@ -65,7 +65,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: DB_TABLE_PREFIX=test_ pnpm test:mysql --runInBand
+        run: pnpm test:mysql
 
   postgres:
     name: Postgres
@@ -98,7 +98,7 @@ jobs:
 
       - name: Test Postgres
         working-directory: packages/cli
-        run: DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ pnpm test:postgres --runInBand
+        run: pnpm test:postgres
 
   notify-on-failure:
     name: Notify Slack on failure

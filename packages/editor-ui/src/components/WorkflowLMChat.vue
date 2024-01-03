@@ -2,7 +2,7 @@
 	<Modal
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
 		width="80%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('chat.window.title', {
 				interpolate: {
@@ -10,16 +10,17 @@
 				},
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="false"
 		@keydown.stop
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
-				<div class="messages ignore-key-press" ref="messagesContainer">
+				<div class="messages ignore-key-press">
 					<div
 						v-for="message in messages"
 						:key="`${message.executionId}__${message.sender}`"
+						ref="messageContainer"
 						:class="['message', message.sender]"
 					>
 						<div :class="['content', message.sender]">
@@ -27,10 +28,10 @@
 
 							<div class="message-options no-select-on-click">
 								<n8n-info-tip
+									v-if="message.sender === 'bot'"
 									type="tooltip"
 									theme="info-light"
-									tooltipPlacement="right"
-									v-if="message.sender === 'bot'"
+									tooltip-placement="right"
 								>
 									<div v-if="message.executionId">
 										<n8n-text :bold="true" size="small">
@@ -43,20 +44,20 @@
 								</n8n-info-tip>
 
 								<div
-									@click="repostMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 									data-test-id="repost-message-button"
-									v-if="message.sender === 'user'"
+									@click="repostMessage(message)"
 								>
 									<font-awesome-icon icon="redo" />
 								</div>
 								<div
-									@click="reuseMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 									data-test-id="reuse-message-button"
-									v-if="message.sender === 'user'"
+									@click="reuseMessage(message)"
 								>
 									<font-awesome-icon icon="copy" />
 								</div>
@@ -64,17 +65,12 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs-wrapper">
+				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div class="logs">
-						<run-data-ai v-if="node" :node="node" hide-title slim :key="messages.length" />
-						<div v-else class="no-node-connected">
-							<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-								$locale.baseText('chat.window.noExecution')
-							}}</n8n-text>
-						</div>
+						<RunDataAi :key="messages.length" :node="node" hide-title slim />
 					</div>
 				</div>
 			</div>
@@ -82,23 +78,32 @@
 		<template #footer>
 			<div class="workflow-lm-chat-footer">
 				<n8n-input
+					ref="inputField"
 					v-model="currentMessage"
 					class="message-input"
 					type="textarea"
-					ref="inputField"
+					:minlength="1"
+					m
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
+					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
-				<n8n-button
-					@click.stop="sendChatMessage(currentMessage)"
-					class="send-button"
-					:loading="isLoading"
-					:label="$locale.baseText('chat.window.chat.sendButtonText')"
-					size="large"
-					icon="comment"
-					type="primary"
-					data-test-id="workflow-chat-button"
-				/>
+				<n8n-tooltip :disabled="currentMessage.length > 0">
+					<n8n-button
+						class="send-button"
+						:disabled="currentMessage === ''"
+						:loading="isLoading"
+						:label="$locale.baseText('chat.window.chat.sendButtonText')"
+						size="large"
+						icon="comment"
+						type="primary"
+						data-test-id="workflow-chat-send-button"
+						@click.stop="sendChatMessage(currentMessage)"
+					/>
+					<template #content>
+						{{ $locale.baseText('chat.window.chat.provideMessage') }}
+					</template>
+				</n8n-tooltip>
 
 				<n8n-info-tip class="mt-s">
 					{{ $locale.baseText('chatEmbed.infoTip.description') }}
@@ -115,7 +120,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
@@ -131,11 +136,13 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useUIStore, useWorkflowsStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
@@ -158,16 +165,19 @@ interface LangChainMessage {
 // - display errors better
 export default defineComponent({
 	name: 'WorkflowLMChat',
-	mixins: [workflowRun],
 	components: {
 		Modal,
 		RunDataAi,
 	},
-	setup(props) {
+	mixins: [workflowRun],
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -217,25 +227,22 @@ export default defineComponent({
 			}
 		},
 		async sendChatMessage(message: string) {
+			if (this.currentMessage.trim() === '') {
+				this.showError(
+					new Error(this.$locale.baseText('chat.window.chat.provideMessage')),
+					this.$locale.baseText('chat.window.chat.emptyChatMessage'),
+				);
+				return;
+			}
 			this.messages.push({
 				text: message,
 				sender: 'user',
 			} as ChatMessage);
 
 			this.currentMessage = '';
-
+			await this.$nextTick();
+			this.scrollToLatestMessage();
 			await this.startWorkflowWithMessage(message);
-
-			// Scroll to bottom
-			const containerRef = this.$refs.messagesContainer as HTMLElement | undefined;
-			if (containerRef) {
-				// Wait till message got added else it will not scroll correctly
-				await this.$nextTick();
-				containerRef.scrollTo({
-					top: containerRef.scrollHeight,
-					behavior: 'smooth',
-				});
-			}
 		},
 
 		setConnectedNode() {
@@ -289,8 +296,10 @@ export default defineComponent({
 
 			if (!chatNode) {
 				this.showError(
-					new Error('Chat viable node(Agent or Chain) could not be found!'),
-					'Chat node not found',
+					new Error(
+						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+					),
+					'Missing AI node',
 				);
 				return;
 			}
@@ -394,6 +403,8 @@ export default defineComponent({
 				return;
 			}
 
+			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
 				executionTime: 0,
@@ -403,7 +414,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									input: message,
+									[inputKey]: message,
 								},
 							},
 						],
@@ -472,13 +483,23 @@ export default defineComponent({
 
 					void this.$nextTick(() => {
 						that.setNode();
+						this.scrollToLatestMessage();
 					});
 				}
 			}, 500);
 		},
+		scrollToLatestMessage() {
+			const containerRef = this.$refs.messageContainer as HTMLElement[] | undefined;
+			if (containerRef) {
+				containerRef[containerRef.length - 1]?.scrollIntoView({
+					behavior: 'smooth',
+					block: 'start',
+				});
+			}
+		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
 		},
@@ -503,9 +524,11 @@ export default defineComponent({
 	display: flex;
 	height: 100%;
 	min-height: 400px;
+	z-index: 9999;
 
 	.logs-wrapper {
-		border: 1px solid #e0e0e0;
+		--node-icon-color: var(--color-text-base);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		overflow-y: auto;
@@ -517,8 +540,8 @@ export default defineComponent({
 		}
 	}
 	.messages {
-		background-color: var(--color-background-base);
-		border: 1px solid #e0e0e0;
+		background-color: var(--color-lm-chat-messages-background);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: 4px;
 		height: 100%;
 		width: 100%;
@@ -532,16 +555,17 @@ export default defineComponent({
 			width: 100%;
 
 			.content {
-				border-radius: 10px;
+				border-radius: var(--border-radius-large);
 				line-height: 1.5;
-				margin: 0.5em 1em;
+				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
 				padding: 1em;
 				white-space: pre-wrap;
 				overflow-x: auto;
 
 				&.bot {
-					background-color: #e0d0d0;
+					background-color: var(--color-lm-chat-bot-background);
+					border: 1px solid var(--color-lm-chat-bot-border);
 					float: left;
 
 					.message-options {
@@ -550,7 +574,8 @@ export default defineComponent({
 				}
 
 				&.user {
-					background-color: #d0e0d0;
+					background-color: var(--color-lm-chat-user-background);
+					border: 1px solid var(--color-lm-chat-user-border);
 					float: right;
 					text-align: right;
 

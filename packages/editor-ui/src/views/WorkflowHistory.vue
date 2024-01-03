@@ -3,7 +3,8 @@ import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
@@ -16,6 +17,8 @@ import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistory
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { telemetry } from '@/plugins/telemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -72,6 +75,13 @@ const isFirstItemShown = computed(
 );
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
+const sendTelemetry = (event: string) => {
+	telemetry.track(event, {
+		instance_id: useRootStore().instanceId,
+		workflow_id: route.params.workflowId,
+	});
+};
+
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
@@ -82,6 +92,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 };
 
 onBeforeMount(async () => {
+	sendTelemetry('User opened workflow history');
 	try {
 		const [workflow] = await Promise.all([
 			workflowsStore.fetchWorkflow(route.params.workflowId),
@@ -232,15 +243,19 @@ const onAction = async ({
 		switch (action) {
 			case WORKFLOW_HISTORY_ACTIONS.OPEN:
 				openInNewTab(id);
+				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
 				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
+				sendTelemetry('User downloaded version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
 				await cloneWorkflowVersion(id, data);
+				sendTelemetry('User cloned version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				await restoreWorkflowVersion(id, data);
+				sendTelemetry('User restored version');
 				break;
 		}
 	} catch (error) {
@@ -258,6 +273,7 @@ const onAction = async ({
 const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
+		sendTelemetry('User opened version in new tab');
 	} else {
 		await router.push({
 			name: VIEWS.WORKFLOW_HISTORY,
@@ -282,6 +298,7 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
+		sendTelemetry('User selected version');
 	} catch (error) {
 		toast.showError(
 			new Error(`${error.message} "${route.params.versionId}"&nbsp;`),
@@ -311,16 +328,16 @@ watchEffect(async () => {
 			</router-link>
 		</div>
 		<div :class="$style.listComponentWrapper">
-			<workflow-history-list
+			<WorkflowHistoryList
 				v-if="canRender"
 				:items="workflowHistory"
-				:lastReceivedItemsLength="lastReceivedItemsLength"
-				:activeItem="activeWorkflowVersion"
+				:last-received-items-length="lastReceivedItemsLength"
+				:active-item="activeWorkflowVersion"
 				:actions="actions"
-				:requestNumberOfItems="requestNumberOfItems"
-				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-				:evaluatedPruneTime="evaluatedPruneTime"
-				:isListLoading="isListLoading"
+				:request-number-of-items="requestNumberOfItems"
+				:should-upgrade="workflowHistoryStore.shouldUpgrade"
+				:evaluated-prune-time="evaluatedPruneTime"
+				:is-list-loading="isListLoading"
 				@action="onAction"
 				@preview="onPreview"
 				@load-more="loadMore"
@@ -328,13 +345,13 @@ watchEffect(async () => {
 			/>
 		</div>
 		<div :class="$style.contentComponentWrapper">
-			<workflow-history-content
+			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflowVersion="activeWorkflowVersion"
+				:workflow-version="activeWorkflowVersion"
 				:actions="actions"
-				:isListLoading="isListLoading"
-				:isFirstItemShown="isFirstItemShown"
+				:is-list-loading="isListLoading"
+				:is-first-item-shown="isFirstItemShown"
 				@action="onAction"
 			/>
 		</div>

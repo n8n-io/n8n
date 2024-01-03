@@ -7,13 +7,16 @@ import type {
 	IDataObject,
 	INode,
 	INodeCredentialTestRequest,
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeNameVersion,
 	IPinData,
 	IRunData,
 	IUser,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type {
 	PublicUser,
@@ -22,7 +25,7 @@ import type {
 	SecretsProvider,
 	SecretsProviderState,
 } from '@/Interfaces';
-import type { Role } from '@db/entities/Role';
+import type { Role, RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
@@ -44,6 +47,7 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 }
+
 export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
@@ -52,6 +56,11 @@ export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
+}
+
+export class UserRoleChangePayload {
+	@IsIn(['member', 'admin'])
+	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<
@@ -114,7 +123,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActive = AuthenticatedRequest;
 
-	type GetAllActivationErrors = Get;
+	type GetActivationError = Get;
 
 	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 
@@ -155,25 +164,31 @@ export namespace ListQuery {
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
-		type OwnedByField = { ownedBy: Pick<IUser, 'id'> | null };
+		type OwnedByField = { ownedBy: SlimUser | null };
 
 		export type Plain = BaseFields;
 
 		export type WithSharing = BaseFields & SharedField;
 
 		export type WithOwnership = BaseFields & OwnedByField;
+
+		type SharedWithField = { sharedWith: SlimUser[] };
+
+		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
+	}
+
+	export namespace Credentials {
+		type OwnedByField = { ownedBy: SlimUser | null };
+
+		type SharedWithField = { sharedWith: SlimUser[] };
+
+		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
+
+		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
 	}
 }
 
-export namespace Credentials {
-	type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-
-	type OwnedByField = { ownedBy: SlimUser | null };
-
-	type SharedWithField = { sharedWith: SlimUser[] };
-
-	export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
-}
+type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
@@ -293,7 +308,16 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
+	export type Invite = AuthenticatedRequest<
+		{},
+		{},
+		Array<{ email: string; role?: 'member' | 'admin' }>
+	>;
+
+	export type InviteResponse = {
+		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		error?: string;
+	};
 
 	export type ResolveSignUp = AuthlessRequest<
 		{},
@@ -313,6 +337,8 @@ export declare namespace UserRequest {
 		{},
 		{ transferId?: string; includeRole: boolean }
 	>;
+
+	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
 
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -398,57 +424,43 @@ export declare namespace OAuthRequest {
 }
 
 // ----------------------------------
-//      /node-parameter-options
+//      /dynamic-node-parameters
 // ----------------------------------
+export declare namespace DynamicNodeParametersRequest {
+	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
+		{
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
+			credentials?: INodeCredentials;
+		},
+		{},
+		{},
+		{
+			path: string;
+			nodeTypeAndVersion: string;
+			currentNodeParameters: string;
+			methodName?: string;
+			credentials?: string;
+		} & QueryParams
+	>;
 
-export type NodeParameterOptionsRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET /dynamic-node-parameters/options */
+	type Options = BaseRequest<{
+		loadOptions?: string;
+	}>;
+
+	/** GET /dynamic-node-parameters/resource-locator-results */
+	type ResourceLocatorResults = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
-
-// ----------------------------------
-//        /node-list-search
-// ----------------------------------
-
-export type NodeListSearchRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
-		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
 		filter?: string;
 		paginationToken?: string;
-	}
->;
+	}>;
 
-// ----------------------------------
-//        /get-mapping-fields
-// ----------------------------------
-
-export type ResourceMapperRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET dynamic-node-parameters/resource-mapper-fields */
+	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
+	}>;
+}
 
 // ----------------------------------
 //             /tags
