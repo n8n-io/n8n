@@ -1,3 +1,12 @@
+## [1.22.4](https://github.com/n8n-io/n8n/compare/n8n@1.22.3...n8n@1.22.4) (2024-01-03)
+
+
+### Bug Fixes
+
+* **Schedule Trigger Node:** Use the correct `moment` import ([#8185](https://github.com/n8n-io/n8n/issues/8185)) ([f8307dc](https://github.com/n8n-io/n8n/commit/f8307dc789aa4b5896c1399a08410f742a04b35a)), closes [#8184](https://github.com/n8n-io/n8n/issues/8184)
+
+
+
 ## [1.22.3](https://github.com/n8n-io/n8n/compare/n8n@1.22.2...n8n@1.22.3) (2023-12-27)
 
 
