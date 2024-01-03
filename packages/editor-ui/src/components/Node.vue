@@ -187,7 +187,6 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { isTouchDevice } from '@jsplumb/browser-ui';
 
 export default defineComponent({
 	name: 'Node',
