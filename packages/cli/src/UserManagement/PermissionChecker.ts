@@ -1,9 +1,6 @@
 import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
 import config from '@/config';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { isSharingEnabled } from './UserManagementHelper';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
@@ -48,17 +45,12 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
+		const roleId = await Container.get(RoleService).findCredentialOwnerRoleId();
 
-		if (!isSharingEnabled()) {
-			const role = await Container.get(RoleService).findCredentialOwnerRole();
-			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.roleId = role.id;
-		}
-
-		const credentialSharings = await Container.get(SharedCredentialsRepository).find({
-			where: credentialsWhere,
-		});
+		const credentialSharings = await Container.get(SharedCredentialsRepository).findSharings(
+			workflowUserIds,
+			roleId,
+		);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
