@@ -214,13 +214,13 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 
-		const obj: Record<string, unknown> | undefined = await this.cache.store.get(key);
+		const record: MaybeHashRecord = await this.cache.store.get(key);
 
-		if (!obj) return;
+		if (!record) return;
 
-		delete obj[field];
+		delete record[field];
 
-		await this.cache.store.set(key, obj);
+		await this.cache.store.set(key, record);
 	}
 
 	async deleteMany(keys: string[]) {
