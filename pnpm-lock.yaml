@@ -192,6 +192,9 @@ importers:
       '@pinecone-database/pinecone':
         specifier: 1.1.2
         version: 1.1.2
+      '@qdrant/js-client-rest':
+        specifier: 1.7.0
+        version: 1.7.0(typescript@5.3.2)
       '@supabase/supabase-js':
         specifier: 2.38.5
         version: 2.38.5
@@ -215,7 +218,7 @@ importers:
         version: 1.2.0
       langchain:
         specifier: 0.0.198
-        version: 0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
+        version: 0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -6544,6 +6547,23 @@ packages:
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
     dev: false
 
+  /@qdrant/js-client-rest@1.7.0(typescript@5.3.2):
+    resolution: {integrity: sha512-16O0EQfrrybcPVipodxykr6dMUlBzKW7a63cSDUFVgc5a1AWESwERykwjuvW5KqvKdkPcxZ2NssrvgUO1W3MgA==}
+    engines: {node: '>=18.0.0', pnpm: '>=8'}
+    peerDependencies:
+      typescript: ^5.3.0
+    dependencies:
+      '@qdrant/openapi-typescript-fetch': 1.2.1
+      '@sevinf/maybe': 0.5.0
+      typescript: 5.3.2
+      undici: 5.26.4
+    dev: false
+
+  /@qdrant/openapi-typescript-fetch@1.2.1:
+    resolution: {integrity: sha512-oiBJRN1ME7orFZocgE25jrM3knIF/OKJfMsZPBbtMMKfgNVYfps0MokGvSJkBmecj6bf8QoLXWIGlIoaTM4Zmw==}
+    engines: {node: '>=12.0.0', pnpm: '>=8'}
+    dev: false
+
   /@radix-ui/number@1.0.1:
     resolution: {integrity: sha512-T5gIdVO2mmPW3NNhjNgEP3cqMXjXL9UbO0BzWcXfvdBs+BohbQxvd/K5hSVKmn9/lbTdsQVKbUcP5WLCwvUbBg==}
     dependencies:
@@ -7390,6 +7410,10 @@ packages:
       - encoding
       - supports-color
     dev: true
+
+  /@sevinf/maybe@0.5.0:
+    resolution: {integrity: sha512-ARhyoYDnY1LES3vYI0fiG6e9esWfTNcXcO6+MPJJXcnyMV3bim4lnFt45VXouV7y82F4x3YH8nOQ6VztuvUiWg==}
+    dev: false
 
   /@sideway/address@4.1.4:
     resolution: {integrity: sha512-7vwq+rOHVWjyXxVlR76Agnvhy8I9rpzjosTESvmhNeXOXdZZB15Fl+TI9x1SiHZH5Jv2wTGduSxFDIaq0m3DUw==}
@@ -18585,7 +18609,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
+  /langchain@0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
     resolution: {integrity: sha512-YC0O1g8r61InCWyF5NmiQjdghdq6LKcgMrDZtqLbgDxAe4RoSldonm+5oNXS3yjCISG0j3s5Cty+yB7klqvUpg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18898,6 +18922,7 @@ packages:
       '@huggingface/inference': 2.6.4
       '@langchain/core': 0.0.2
       '@pinecone-database/pinecone': 1.1.2
+      '@qdrant/js-client-rest': 1.7.0(typescript@5.3.2)
       '@supabase/supabase-js': 2.38.5
       '@xata.io/client': 0.25.3(typescript@5.3.2)
       binary-extensions: 2.2.0
