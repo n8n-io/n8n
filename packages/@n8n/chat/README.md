@@ -6,7 +6,7 @@ Create a n8n workflow which you want to execute via chat. The workflow has to be
 
 Open the **Webhook** node and add your domain to the **Domain Allowlist** field. This makes sure that only requests from your domain are accepted.
 
-[See example workflow](https://github.com/n8n-io/n8n/blob/ai-beta/packages/%40n8n/chat/resources/workflow.json)
+[See example workflow](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/chat/resources/workflow.json)
 
 > Make sure the workflow is **Active.**
 
