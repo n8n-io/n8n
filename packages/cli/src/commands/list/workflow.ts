@@ -1,6 +1,4 @@
 import { flags } from '@oclif/command';
-import type { FindOptionsWhere } from 'typeorm';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
@@ -32,12 +30,13 @@ export class ListWorkflowCommand extends BaseCommand {
 			this.error('The --active flag has to be passed using true or false');
 		}
 
-		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
-		if (flags.active !== undefined) {
-			findQuery.active = flags.active === 'true';
-		}
+		const workflowRepository = Container.get(WorkflowRepository);
 
-		const workflows = await Container.get(WorkflowRepository).findBy(findQuery);
+		const workflows =
+			flags.active !== undefined
+				? await workflowRepository.findByActiveState(flags.active === 'true')
+				: await workflowRepository.find();
+
 		if (flags.onlyId) {
 			workflows.forEach((workflow) => this.logger.info(workflow.id));
 		} else {

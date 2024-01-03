@@ -1,14 +1,9 @@
-import type { FindManyOptions, UpdateResult } from 'typeorm';
-import { In } from 'typeorm';
-import intersection from 'lodash/intersection';
-
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
-import { TagService } from '@/services/tag.service';
 import Container from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -39,41 +34,10 @@ export async function getSharedWorkflow(
 	});
 }
 
-export async function getSharedWorkflows(
-	user: User,
-	options: {
-		relations?: string[];
-		workflowIds?: string[];
-	},
-): Promise<SharedWorkflow[]> {
-	return Container.get(SharedWorkflowRepository).find({
-		where: {
-			...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
-			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
-		},
-		...(options.relations && { relations: options.relations }),
-	});
-}
-
 export async function getWorkflowById(id: string): Promise<WorkflowEntity | null> {
 	return Container.get(WorkflowRepository).findOne({
 		where: { id },
 	});
-}
-
-/**
- * Returns the workflow IDs that have certain tags.
- * Intersection! e.g. workflow needs to have all provided tags.
- */
-export async function getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
-	const dbTags = await Container.get(TagService).findMany({
-		where: { name: In(tags) },
-		relations: ['workflows'],
-	});
-
-	const workflowIdsPerTag = dbTags.map((tag) => tag.workflows.map((workflow) => workflow.id));
-
-	return intersection(...workflowIdsPerTag);
 }
 
 export async function createWorkflow(
@@ -98,14 +62,14 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflow: WorkflowEntity): Promise<UpdateResult> {
-	return Container.get(WorkflowRepository).update(workflow.id, {
+export async function setWorkflowAsActive(workflow: WorkflowEntity) {
+	await Container.get(WorkflowRepository).update(workflow.id, {
 		active: true,
 		updatedAt: new Date(),
 	});
 }
 
-export async function setWorkflowAsInactive(workflow: WorkflowEntity): Promise<UpdateResult> {
+export async function setWorkflowAsInactive(workflow: WorkflowEntity) {
 	return Container.get(WorkflowRepository).update(workflow.id, {
 		active: false,
 		updatedAt: new Date(),
@@ -116,16 +80,7 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return Container.get(WorkflowRepository).remove(workflow);
 }
 
-export async function getWorkflowsAndCount(
-	options: FindManyOptions<WorkflowEntity>,
-): Promise<[WorkflowEntity[], number]> {
-	return Container.get(WorkflowRepository).findAndCount(options);
-}
-
-export async function updateWorkflow(
-	workflowId: string,
-	updateData: WorkflowEntity,
-): Promise<UpdateResult> {
+export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
 	return Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
