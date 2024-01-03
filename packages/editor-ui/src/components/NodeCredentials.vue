@@ -117,7 +117,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
@@ -147,7 +146,6 @@ export default defineComponent({
 	components: {
 		TitledList,
 	},
-	mixins: [genericHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -280,6 +278,9 @@ export default defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 		),
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readonly === true;
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},

@@ -13,7 +13,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
@@ -517,7 +517,13 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isPublicApiEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -755,6 +761,15 @@ export const routes = [
 	},
 ] as Array<RouteRecordRaw & RouteConfig>;
 
+function withReadonlyMeta(route: RouteRecordRaw & RouteConfig) {
+	if (!route.meta) route.meta = {};
+
+	// route.meta.readonly = route.name ? !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS) : false;
+	route.meta.readonly = !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS);
+
+	return route;
+}
+
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
 	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
@@ -764,7 +779,7 @@ const router = createRouter({
 			to.meta.setScrollPosition(0);
 		}
 	},
-	routes,
+	routes: routes.map(withReadonlyMeta),
 });
 
 router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {

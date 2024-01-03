@@ -60,7 +60,6 @@ export default defineComponent({
 		TimeAgo,
 		NodeList,
 	},
-	mixins: [genericHelpers],
 	props: {
 		lastItem: {
 			type: Boolean,

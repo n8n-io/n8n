@@ -57,7 +57,7 @@ const props = defineProps({
 		default: false,
 	},
 	icon: {
-		type: [String, Array],
+		type: [String, Array, Boolean],
 	},
 	block: {
 		type: Boolean,

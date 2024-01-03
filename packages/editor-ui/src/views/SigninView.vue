@@ -30,7 +30,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useUIStore } from '@/stores/ui.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'SigninView',
@@ -38,10 +38,12 @@ export default defineComponent({
 		AuthView,
 		MfaView,
 	},
-	mixins: [genericHelpers],
 	setup() {
+		const genericHelpers = useGenericHelpers();
+
 		return {
 			...useToast(),
+			genericHelpers,
 		};
 	},
 	data() {
@@ -115,6 +117,17 @@ export default defineComponent({
 		},
 		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
 			await this.login(form);
+		},
+		isRedirectSafe() {
+			const redirect = this.getRedirectQueryParameter();
+			return redirect.startsWith('/');
+		},
+		getRedirectQueryParameter() {
+			let redirect = '';
+			if (typeof this.$route.query?.redirect === 'string') {
+				redirect = decodeURIComponent(this.$route.query?.redirect);
+			}
+			return redirect;
 		},
 		async login(form: { email: string; password: string; token?: string; recoveryCode?: string }) {
 			try {

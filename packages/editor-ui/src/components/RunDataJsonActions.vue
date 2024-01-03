@@ -42,7 +42,6 @@ import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { pinData } from '@/mixins/pinData';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -52,6 +51,8 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type JsonPathData = {
 	path: string;
@@ -60,7 +61,7 @@ type JsonPathData = {
 
 export default defineComponent({
 	name: 'RunDataJsonActions',
-	mixins: [genericHelpers, pinData],
+	mixins: [pinData],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -105,7 +106,10 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readonly === true;
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

@@ -544,7 +544,6 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		// TODO: Is this problematic?
 		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
 			data = taskData.inputOverride!;

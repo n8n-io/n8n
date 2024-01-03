@@ -2,13 +2,13 @@
 	<Modal
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
-		max-height="80%"
+		maxHeight="80%"
 		:title="
 			$locale.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
 			})
 		"
-		:event-bus="modalBus"
+		:eventBus="modalBus"
 		:scrollable="true"
 	>
 		<template #content>
@@ -109,12 +109,12 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
-								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								data-test-id="workflow-caller-policy-workflow-ids"
+								v-model="workflowSettings.callerIds"
 								@update:modelValue="onCallerIdsInput"
+								data-test-id="workflow-caller-policy-workflow-ids"
 							/>
 						</el-col>
 					</el-row>
@@ -279,10 +279,10 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:model-value="workflowSettings.executionTimeout > -1"
+								:modelValue="workflowSettings.executionTimeout > -1"
+								@update:modelValue="toggleTimeout"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
-								@update:modelValue="toggleTimeout"
 							></el-switch>
 						</div>
 					</el-col>
@@ -304,9 +304,9 @@
 						<el-col :span="4">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:model-value="timeoutHMS.hours"
-								:min="0"
+								:modelValue="timeoutHMS.hours"
 								@update:modelValue="(value) => setTimeout('hours', value)"
+								:min="0"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -314,7 +314,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:model-value="timeoutHMS.minutes"
+								:modelValue="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('minutes', value)"
@@ -325,7 +325,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:model-value="timeoutHMS.seconds"
+								:modelValue="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('seconds', value)"
@@ -355,7 +355,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
@@ -383,13 +382,13 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
 	components: {
 		Modal,
 	},
-	mixins: [genericHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -459,9 +458,13 @@ export default defineComponent({
 			useRootStore,
 			useUsersStore,
 			useSettingsStore,
+			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},

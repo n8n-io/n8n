@@ -87,8 +87,6 @@ import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -98,6 +96,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
+import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
@@ -106,12 +105,15 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	mixins: [genericHelpers, debounceHelper],
+	mixins: [debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	setup() {
 		const externalHooks = useExternalHooks();
+		const genericHelpers = useGenericHelpers();
+
 		return {
 			externalHooks,
+			genericHelpers,
 		};
 	},
 	data() {
@@ -124,6 +126,9 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readonly === true;
+		},
 	},
 	watch: {
 		dialogVisible(newValue) {
