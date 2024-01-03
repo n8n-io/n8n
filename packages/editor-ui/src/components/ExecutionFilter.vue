@@ -194,10 +194,10 @@ onBeforeMount(() => {
 				<TagsDropdown
 					id="execution-filter-tags"
 					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-					:modelValue="filter.tags"
-					:createEnabled="false"
-					@update:modelValue="onTagsChange"
+					:model-value="filter.tags"
+					:create-enabled="false"
 					data-test-id="executions-filter-tags-select"
+					@update:modelValue="onTagsChange"
 				/>
 			</div>
 			<div :class="$style.group">
@@ -225,9 +225,9 @@ onBeforeMount(() => {
 				<div :class="$style.dates">
 					<el-date-picker
 						id="execution-filter-start-date"
+						v-model="vModel.startDate"
 						type="datetime"
 						:teleported="false"
-						v-model="vModel.startDate"
 						:format="DATE_TIME_MASK"
 						:placeholder="locale.baseText('executionsFilter.startDate')"
 						data-test-id="executions-filter-start-date-picker"
@@ -235,9 +235,9 @@ onBeforeMount(() => {
 					<span :class="$style.divider">to</span>
 					<el-date-picker
 						id="execution-filter-end-date"
+						v-model="vModel.endDate"
 						type="datetime"
 						:teleported="false"
-						v-model="vModel.endDate"
 						:format="DATE_TIME_MASK"
 						:placeholder="locale.baseText('executionsFilter.endDate')"
 						data-test-id="executions-filter-end-date-picker"
@@ -273,8 +273,8 @@ onBeforeMount(() => {
 								<template #link>
 									<a
 										href="#"
-										@click.prevent="goToUpgrade"
 										data-test-id="executions-filter-view-plans-link"
+										@click.prevent="goToUpgrade"
 										>{{ locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 									>
 								</template>
@@ -286,9 +286,9 @@ onBeforeMount(() => {
 							type="text"
 							:disabled="!isAdvancedExecutionFilterEnabled"
 							:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-							:modelValue="filter.metadata[0]?.key"
-							@update:modelValue="onFilterMetaChange(0, 'key', $event)"
+							:model-value="filter.metadata[0]?.key"
 							data-test-id="execution-filter-saved-data-key-input"
+							@update:modelValue="onFilterMetaChange(0, 'key', $event)"
 						/>
 					</n8n-tooltip>
 					<label for="execution-filter-saved-data-value">{{
@@ -310,9 +310,9 @@ onBeforeMount(() => {
 							type="text"
 							:disabled="!isAdvancedExecutionFilterEnabled"
 							:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-							:modelValue="filter.metadata[0]?.value"
-							@update:modelValue="onFilterMetaChange(0, 'value', $event)"
+							:model-value="filter.metadata[0]?.value"
 							data-test-id="execution-filter-saved-data-value-input"
+							@update:modelValue="onFilterMetaChange(0, 'value', $event)"
 						/>
 					</n8n-tooltip>
 				</div>
@@ -320,10 +320,10 @@ onBeforeMount(() => {
 			<n8n-button
 				v-if="!!countSelectedFilterProps"
 				:class="$style.resetBtn"
-				@click="onFilterReset"
 				size="large"
 				text
 				data-test-id="executions-filter-reset-button"
+				@click="onFilterReset"
 			>
 				{{ locale.baseText('executionsFilter.reset') }}
 			</n8n-button>

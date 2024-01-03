@@ -13,7 +13,6 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import type {
 	IDiagnosticInfo,
-	IInternalHooksClass,
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
@@ -49,7 +48,7 @@ function userToPayload(user: User): {
 }
 
 @Service()
-export class InternalHooks implements IInternalHooksClass {
+export class InternalHooks {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,

@@ -7,13 +7,13 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
 				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			ref="iframeRef"
 			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
@@ -38,12 +38,14 @@ const props = withDefaults(
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
 		canOpenNDV?: boolean;
+		hideNodeIssues?: boolean;
 	}>(),
 	{
 		loading: false,
 		mode: 'workflow',
 		loaderType: 'image',
 		canOpenNDV: true,
+		hideNodeIssues: false,
 	},
 );
 
@@ -85,6 +87,7 @@ const loadWorkflow = () => {
 				command: 'openWorkflow',
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
+				hideNodeIssues: props.hideNodeIssues,
 			}),
 			'*',
 		);

@@ -3,11 +3,11 @@
 		:name="PERSONALIZATION_MODAL_KEY"
 		:title="$locale.baseText('personalizationModal.customizeN8n')"
 		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:centerTitle="true"
-		:showClose="false"
-		:eventBus="modalBus"
-		:closeOnClickModal="false"
-		:closeOnPressEscape="false"
+		:center-title="true"
+		:show-close="false"
+		:event-bus="modalBus"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
 		width="460px"
 		data-test-id="personalization-form"
 		@enter="onSave"
@@ -15,22 +15,37 @@
 		<template #content>
 			<div :class="$style.container">
 				<n8n-form-inputs
+					v-model="formValues"
 					:inputs="survey"
-					:columnView="true"
-					:eventBus="formBus"
+					:column-view="true"
+					:event-bus="formBus"
 					:teleported="teleported"
-					tagSize="small"
+					tag-size="small"
 					@submit="onSubmit"
 				/>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
 			</div>
 		</template>
 		<template #footer>
 			<div>
 				<n8n-button
-					@click="onSave"
 					:loading="isSaving"
 					:label="$locale.baseText('personalizationModal.getStarted')"
 					float="right"
+					@click="onSave"
 				/>
 			</div>
 		</template>
@@ -140,27 +155,18 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useUsageStore } from '@/stores/usage.store';
+import { useMessage } from '@/composables/useMessage';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
-	mixins: [workflowHelpers],
 	components: { Modal },
+	mixins: [workflowHelpers],
 	props: {
 		teleported: {
 			type: Boolean,
 			default: true,
 		},
-	},
-	data() {
-		return {
-			isSaving: false,
-			PERSONALIZATION_MODAL_KEY,
-			otherWorkAreaFieldVisible: false,
-			otherCompanyIndustryFieldVisible: false,
-			showAllIndustryQuestions: true,
-			modalBus: createEventBus(),
-			formBus: createEventBus(),
-		};
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
@@ -168,10 +174,60 @@ export default defineComponent({
 		return {
 			externalHooks,
 			...useToast(),
+			...useMessage(),
+		};
+	},
+	data() {
+		return {
+			formValues: {} as Record<string, string>,
+			isSaving: false,
+			PERSONALIZATION_MODAL_KEY,
+			otherWorkAreaFieldVisible: false,
+			otherCompanyIndustryFieldVisible: false,
+			showAllIndustryQuestions: true,
+			registerForEnterpriseTrial: false,
+			modalBus: createEventBus(),
+			formBus: createEventBus(),
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useUsageStore,
+			usePostHog,
+		),
+		currentUser() {
+			return this.usersStore.currentUser;
+		},
+		canRegisterForEnterpriseTrial() {
+			if (this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
+			const isSizeEligible = [COMPANY_SIZE_500_999, COMPANY_SIZE_1000_OR_MORE].includes(
+				this.formValues[COMPANY_SIZE_KEY],
+			);
+
+			const emailParts = (this.currentUser?.email || '@').split('@');
+			const emailDomain = emailParts[emailParts.length - 1];
+			const emailDomainParts = emailDomain.split('.');
+			const isEmailEligible = ![
+				'gmail',
+				'yahoo',
+				'hotmail',
+				'aol',
+				'live',
+				'outlook',
+				'icloud',
+				'mail',
+				'email',
+			].find((provider) => emailDomainParts.includes(provider));
+
+			return isSizeEligible && isEmailEligible;
+		},
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -664,8 +720,35 @@ export default defineComponent({
 				this.showError(e, 'Error while submitting results');
 			}
 
+			let licenseRequestSucceeded = false;
+			try {
+				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
+					await this.usageStore.requestEnterpriseLicenseTrial();
+					licenseRequestSucceeded = true;
+				}
+			} catch (e) {
+				this.showError(
+					e,
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.error'),
+				);
+			}
+
 			this.isSaving = false;
 			this.closeDialog();
+
+			if (licenseRequestSucceeded) {
+				await this.alert(
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
+					{
+						title: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.title',
+						),
+						confirmButtonText: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.button',
+						),
+					},
+				);
+			}
 		},
 		async fetchOnboardingPrompt() {
 			if (

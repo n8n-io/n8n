@@ -1046,6 +1046,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			response = response.value;
+			delete response.request;
 
 			const options = this.getNodeParameter('options', itemIndex, {});
 

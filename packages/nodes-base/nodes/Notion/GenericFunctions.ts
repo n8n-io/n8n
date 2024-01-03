@@ -892,7 +892,7 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 	return elements;
 }
 
-export function extractPageId(page: string) {
+export function extractPageId(page = '') {
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
 	} else if (page.includes('-') && page.includes('https')) {

@@ -2,33 +2,33 @@
 	<div>
 		<NDVFloatingNodes
 			v-if="activeNode"
-			@switchSelectedNode="onSwitchSelectedNode"
 			:root-node="activeNode"
 			type="input"
+			@switchSelectedNode="onSwitchSelectedNode"
 		/>
-		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.outputPanel" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
-				:isResizingEnabled="currentNodePaneType !== 'unknown'"
+				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
-				:minWidth="MIN_PANEL_WIDTH"
-				:gridSize="20"
+				:min-width="MIN_PANEL_WIDTH"
+				:grid-size="20"
+				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
-				:supportedDirections="supportedResizeDirections"
 			>
 				<div :class="$style.dragButtonContainer">
 					<PanelDragButton
-						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-						:canMoveLeft="canMoveLeft"
-						:canMoveRight="canMoveRight"
 						v-if="!hideInputAndOutput && isDraggable"
+						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+						:can-move-left="canMoveLeft"
+						:can-move-right="canMoveRight"
 						@dragstart="onDragStart"
 						@drag="onDrag"
 						@dragend="onDragEnd"
@@ -74,11 +74,11 @@ const initialMainPanelWidth: { [key: string]: number } = {
 
 export default defineComponent({
 	name: 'NDVDraggablePanels',
-	mixins: [debounceHelper],
 	components: {
 		PanelDragButton,
 		NDVFloatingNodes,
 	},
+	mixins: [debounceHelper],
 	props: {
 		isDraggable: {
 			type: Boolean,

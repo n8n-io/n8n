@@ -1,12 +1,12 @@
 <template>
 	<div :class="['n8n-tags', $style.tags]">
-		<n8n-tag
+		<N8nTag
 			v-for="tag in visibleTags"
 			:key="tag.id"
 			:text="tag.name"
 			@click="$emit('click:tag', tag.id, $event)"
 		/>
-		<n8n-link
+		<N8nLink
 			v-if="truncate && !showAll && hiddenTagsLength > 0"
 			theme="text"
 			underline
@@ -14,7 +14,7 @@
 			@click.stop.prevent="onExpand"
 		>
 			{{ t('tags.showMore', `${hiddenTagsLength}`) }}
-		</n8n-link>
+		</N8nLink>
 	</div>
 </template>
 
@@ -31,17 +31,12 @@ export interface ITag {
 }
 
 export default defineComponent({
-	name: 'n8n-tags',
-	mixins: [Locale],
+	name: 'N8nTags',
 	components: {
 		N8nTag,
 		N8nLink,
 	},
-	data() {
-		return {
-			showAll: false,
-		};
-	},
+	mixins: [Locale],
 	props: {
 		tags: {
 			type: Array as PropType<ITag[]>,
@@ -55,6 +50,11 @@ export default defineComponent({
 			type: Number,
 			default: 3,
 		},
+	},
+	data() {
+		return {
+			showAll: false,
+		};
 	},
 	computed: {
 		visibleTags(): ITag[] {

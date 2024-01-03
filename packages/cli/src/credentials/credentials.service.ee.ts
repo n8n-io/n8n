@@ -1,13 +1,12 @@
-import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
-import { In, Not } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { UserService } from '@/services/user.service';
 import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -40,7 +39,7 @@ export class EECredentialsService extends CredentialsService {
 		// Omit user from where if the requesting user has relevant
 		// global credential permissions. This allows the user to
 		// access credentials they don't own.
-		if (!options.allowGlobalScope || !(await user.hasGlobalScope(options.globalScope))) {
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
 			where.userId = user.id;
 		}
 
@@ -62,24 +61,12 @@ export class EECredentialsService extends CredentialsService {
 		return credential?.shared ?? [];
 	}
 
-	static async pruneSharings(
-		transaction: EntityManager,
-		credentialId: string,
-		userIds: string[],
-	): Promise<DeleteResult> {
-		const conditions: FindOptionsWhere<SharedCredentials> = {
-			credentialsId: credentialId,
-			userId: Not(In(userIds)),
-		};
-		return transaction.delete(SharedCredentials, conditions);
-	}
-
 	static async share(
 		transaction: EntityManager,
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
-		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
+		const users = await Container.get(UserRepository).getByIds(transaction, shareWithIds);
 		const role = await Container.get(RoleService).findCredentialUserRole();
 
 		const newSharedCredentials = users

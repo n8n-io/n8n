@@ -1,10 +1,7 @@
-import Container, { Service } from 'typedi';
-import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { Container, Service } from 'typedi';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
-import { generateUserInviteUrl, getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { type JwtPayload, JwtService } from './jwt.service';
@@ -14,6 +11,7 @@ import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -26,38 +24,11 @@ export class UserService {
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly roleService: RoleService,
+		private readonly urlService: UrlService,
 	) {}
-
-	async findOne(options: FindOneOptions<User>) {
-		return this.userRepository.findOne({ relations: ['globalRole'], ...options });
-	}
-
-	async findOneOrFail(options: FindOneOptions<User>) {
-		return this.userRepository.findOneOrFail({ relations: ['globalRole'], ...options });
-	}
-
-	async findMany(options: FindManyOptions<User>) {
-		return this.userRepository.find(options);
-	}
-
-	async findOneBy(options: FindOptionsWhere<User>) {
-		return this.userRepository.findOneBy(options);
-	}
-
-	create(data: Partial<User>) {
-		return this.userRepository.create(data);
-	}
-
-	async save(user: Partial<User>) {
-		return this.userRepository.save(user);
-	}
 
 	async update(userId: string, data: Partial<User>) {
 		return this.userRepository.update(userId, data);
-	}
-
-	async getByIds(transaction: EntityManager, ids: string[]) {
-		return transaction.find(User, { where: { id: In(ids) } });
 	}
 
 	getManager() {
@@ -78,7 +49,7 @@ export class UserService {
 	}
 
 	generatePasswordResetUrl(user: User) {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
@@ -161,7 +132,7 @@ export class UserService {
 	}
 
 	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(getInstanceBaseUrl());
+		const url = new URL(this.urlService.getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
 		url.searchParams.set('inviteeId', invitee.id);
@@ -193,11 +164,11 @@ export class UserService {
 		toInviteUsers: { [key: string]: string },
 		role: 'member' | 'admin',
 	) {
-		const domain = getInstanceBaseUrl();
+		const domain = this.urlService.getInstanceBaseUrl();
 
 		return Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = generateUserInviteUrl(owner.id, id);
+				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -256,12 +227,9 @@ export class UserService {
 	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
 		const memberRole = await this.roleService.findGlobalMemberRole();
 		const adminRole = await this.roleService.findGlobalAdminRole();
+		const emails = attributes.map(({ email }) => email);
 
-		const existingUsers = await this.findMany({
-			where: { email: In(attributes.map(({ email }) => email)) },
-			relations: ['globalRole'],
-			select: ['email', 'password', 'id'],
-		});
+		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 

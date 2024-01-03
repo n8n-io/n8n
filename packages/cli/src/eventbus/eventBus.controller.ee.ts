@@ -16,7 +16,6 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { RestController, Get, Post, Delete, Authorized, RequireGlobalScope } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
-import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -123,7 +122,7 @@ export class EventBusControllerEE {
 
 	@Delete('/destination', { middlewares: [logStreamingLicensedMiddleware] })
 	@RequireGlobalScope('eventBusDestination:delete')
-	async deleteDestination(req: AuthenticatedRequest): Promise<DeleteResult | undefined> {
+	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
 			return eventBus.removeDestination(req.query.id);
 		} else {
