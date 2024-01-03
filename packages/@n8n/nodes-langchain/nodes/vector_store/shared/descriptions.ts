@@ -62,7 +62,7 @@ export const qdrantCollectionRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Name',
+			displayName: 'ID',
 			name: 'id',
 			type: 'string',
 		},

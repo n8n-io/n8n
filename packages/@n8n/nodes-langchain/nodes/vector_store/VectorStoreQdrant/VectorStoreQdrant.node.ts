@@ -1,7 +1,7 @@
 import { type INodeProperties } from 'n8n-workflow';
 import type { QdrantLibArgs } from 'langchain/vectorstores/qdrant';
 import { QdrantVectorStore } from 'langchain/vectorstores/qdrant';
-import { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
+import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
@@ -17,13 +17,13 @@ const insertFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collection config',
+				displayName: 'Collection Config',
 				name: 'collectionConfig',
-				required: false,
 				type: 'json',
-				default: null,
-				description: 'JSON options for creating a collection. <a href="https://qdrant.tech/documentation/concepts/collections">Learn more</a>.',
-			}
+				default: '',
+				description:
+					'JSON options for creating a collection. <a href="https://qdrant.tech/documentation/concepts/collections">Learn more</a>.',
+			},
 		],
 	},
 ];
@@ -44,8 +44,6 @@ export const VectorStoreQdrant = createVectorStoreNode({
 		],
 	},
 	methods: { listSearch: { qdrantCollectionsSearch } },
-	retrieveFields: [],
-	loadFields: [],
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
@@ -71,7 +69,7 @@ export const VectorStoreQdrant = createVectorStoreNode({
 		// If collection config is not provided, the collection will be created with default settings
 		// i.e. with the size of the passed embeddings and "Cosine" distance metric
 		const { collectionConfig } = context.getNodeParameter('options', itemIndex, {}) as {
-			collectionConfig?: QdrantSchemas["CreateCollection"];
+			collectionConfig?: QdrantSchemas['CreateCollection'];
 		};
 		const credentials = await context.getCredentials('qdrantApi');
 
@@ -79,7 +77,7 @@ export const VectorStoreQdrant = createVectorStoreNode({
 			url: credentials.qdrantUrl as string,
 			apiKey: credentials.apiKey as string,
 			collectionName,
-			collectionConfig
+			collectionConfig,
 		};
 
 		await QdrantVectorStore.fromDocuments(documents, embeddings, config);
