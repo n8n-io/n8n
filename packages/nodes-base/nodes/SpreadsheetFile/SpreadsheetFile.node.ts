@@ -7,6 +7,7 @@ import { SpreadsheetFileV2 } from './v2/SpreadsheetFileV2.node';
 export class SpreadsheetFile extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
+			hidden: true,
 			displayName: 'Spreadsheet File',
 			name: 'spreadsheetFile',
 			icon: 'fa:table',
