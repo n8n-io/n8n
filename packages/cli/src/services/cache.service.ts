@@ -6,7 +6,6 @@ import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
-import { toError } from '@/utils';
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -25,6 +24,10 @@ export class CacheService extends EventEmitter {
 
 	isRedisCache(): boolean {
 		return (this.cache as RedisCache)?.store?.isCacheable !== undefined;
+	}
+
+	isMemoryCache(): boolean {
+		return !this.isRedisCache();
 	}
 
 	/**
@@ -197,20 +200,8 @@ export class CacheService extends EventEmitter {
 				throw new ApplicationError('Value is not cacheable');
 			}
 		}
-		try {
-			await this.cache?.store.set(key, value, ttl);
-		} catch (e) {
-			const error = toError(e);
 
-			/**
-			 * Ignore error thrown by `lodash.cloneDeep` inside `node-cache-manager`
-			 * when setting _any_ object as value in the cache. Subsequent retrieval
-			 * of the cached object appears to work fine though.
-			 */
-			if (error.message === 'Maximum call stack size exceeded') return;
-
-			throw error;
-		}
+		await this.cache?.store.set(key, value, ttl);
 	}
 
 	/**
@@ -298,7 +289,9 @@ export class CacheService extends EventEmitter {
 	}
 
 	/**
-	 * Return all keys in the cache.
+	 * Return all keys in the cache. Not recommended for production use.
+	 *
+	 * https://redis.io/commands/keys/
 	 */
 	async keys(): Promise<string[]> {
 		return this.cache?.store.keys() ?? [];
