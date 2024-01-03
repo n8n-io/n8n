@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { ChatMessage } from '@/types';
 import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import type { ChatMessage } from '@/types';
 
 const props = defineProps({
 	message: {
@@ -37,7 +37,7 @@ const markdownOptions = {
 <template>
 	<div class="chat-message" :class="classes">
 		<slot>
-			<vue-markdown
+			<VueMarkdown
 				class="chat-message-markdown"
 				:source="message.text"
 				:options="markdownOptions"

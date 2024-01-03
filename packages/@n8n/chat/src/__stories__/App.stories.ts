@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryObj } from '@storybook/vue3';
+import { onMounted } from 'vue';
 import type { ChatOptions } from '@/types';
 import { createChat } from '@/index';
-import { onMounted } from 'vue';
 
 const webhookUrl = 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183';
 

@@ -1,7 +1,7 @@
 import type { Plugin } from 'vue';
 import { computed, nextTick, ref } from 'vue';
-import type { ChatMessage, ChatOptions } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import type { ChatMessage, ChatOptions } from '@/types';
 import { chatEventBus } from '@/event-buses';
 import * as api from '@/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@/constants';
