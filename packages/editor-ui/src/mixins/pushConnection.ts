@@ -40,9 +40,8 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
-let pushHandlerRegistered = false;
-
 export const pushConnection = defineComponent({
+	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
@@ -50,19 +49,22 @@ export const pushConnection = defineComponent({
 			nodeHelpers: useNodeHelpers(),
 		};
 	},
-	mixins: [workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
+			removeEventListener: null as (() => void) | null,
 		};
 	},
 	created() {
-		if (pushHandlerRegistered) return;
-		this.pushStore.addEventListener((message) => {
+		this.removeEventListener = this.pushStore.addEventListener((message) => {
 			void this.pushMessageReceived(message);
-			pushHandlerRegistered = true;
 		});
+	},
+	unmounted() {
+		if (typeof this.removeEventListener === 'function') {
+			this.removeEventListener();
+		}
 	},
 	computed: {
 		...mapStores(

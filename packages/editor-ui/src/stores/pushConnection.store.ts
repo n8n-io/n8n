@@ -38,6 +38,12 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
 		onMessageReceivedHandlers.value.push(handler);
+		return () => {
+			const index = onMessageReceivedHandlers.value.indexOf(handler);
+			if (index !== -1) {
+				onMessageReceivedHandlers.value.splice(index, 1);
+			}
+		};
 	};
 
 	function onConnectionError() {
