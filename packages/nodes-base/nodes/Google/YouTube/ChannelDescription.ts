@@ -545,10 +545,11 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
+		hint: 'The name of the input binary field containing the file to be uploaded',
 		displayOptions: {
 			show: {
 				operation: ['uploadBanner'],
