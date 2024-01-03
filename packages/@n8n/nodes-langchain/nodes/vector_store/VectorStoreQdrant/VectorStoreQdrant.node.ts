@@ -22,7 +22,7 @@ const insertFields: INodeProperties[] = [
 				required: false,
 				type: 'json',
 				default: null,
-				description: 'JSON options for creating a collecton. https://qdrant.tech/documentation/concepts/collections/.',
+				description: 'JSON options for creating a collection. <a href="https://qdrant.tech/documentation/concepts/collections">Learn more</a>.',
 			}
 		],
 	},
