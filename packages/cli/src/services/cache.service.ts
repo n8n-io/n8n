@@ -11,7 +11,7 @@ type TaggedRedisCache = RedisCache & { kind: 'redis' };
 type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
 
 type MaybeRecord = Record<string, unknown> | undefined;
-type CacheEvents = `metrics.cache.${'hit' | 'miss' | 'update'}`;
+type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -236,7 +236,7 @@ export class CacheService extends EventEmitter {
 		return this.cache.store.keys();
 	}
 
-	emit(event: CacheEvents, ...args: unknown[]) {
+	emit(event: CacheEvent, ...args: unknown[]) {
 		return super.emit(event, ...args);
 	}
 }
