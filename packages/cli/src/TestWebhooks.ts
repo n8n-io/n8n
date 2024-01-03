@@ -310,16 +310,16 @@ export class TestWebhooks implements IWebhookManager {
 	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
 		const key = this.registrations.toKey({ httpMethod, path, webhookId });
 
-		const exists = await this.registrations.exists(key);
-
-		if (!exists) return;
-
 		let webhook: IWebhookData | undefined;
 		let maxMatches = 0;
 		const pathElementsSet = new Set(path.split('/'));
 		// check if static elements match in path
 		// if more results have been returned choose the one with the most static-route matches
-		const { webhook: dynamicWebhook } = await this.registrations.get(key);
+		const registration = await this.registrations.get(key);
+
+		if (!registration) return;
+
+		const { webhook: dynamicWebhook } = registration;
 
 		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
 		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
