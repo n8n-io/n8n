@@ -1,6 +1,5 @@
 import Container from 'typedi';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { In } from 'typeorm';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
@@ -17,7 +16,7 @@ export class Reset extends BaseCommand {
 		});
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
 		await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
-		await Container.get(UserRepository).delete({ id: In(ldapIdentities.map((i) => i.userId)) });
+		await Container.get(UserRepository).deleteMany(ldapIdentities.map((i) => i.userId));
 		await Container.get(SettingsRepository).delete({ key: LDAP_FEATURE_NAME });
 		await Container.get(SettingsRepository).insert({
 			key: LDAP_FEATURE_NAME,

@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
@@ -31,7 +30,6 @@ interface CsrfStateParam {
 	token: string;
 }
 
-@Service()
 @Authorized()
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {

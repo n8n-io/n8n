@@ -21,6 +21,9 @@ describe('useKeyboardNavigation', () => {
 
 			return { attachKeydownEvent, detachKeydownEvent, setActiveItemId, activeItemId };
 		},
+		mounted() {
+			this.attachKeydownEvent();
+		},
 		template: `
 			<span>
 				<div
@@ -33,9 +36,6 @@ describe('useKeyboardNavigation', () => {
 				/>
 			</span>
 		`,
-		mounted() {
-			this.attachKeydownEvent();
-		},
 	});
 
 	const renderComponent = createComponentRenderer(TestComponent, {

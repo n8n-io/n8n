@@ -13,30 +13,30 @@
 			</div>
 			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
 				<n8n-form-inputs
-					data-test-id="mfa-login-form"
 					v-if="formInputs"
+					data-test-id="mfa-login-form"
 					:inputs="formInputs"
-					:eventBus="formBus"
+					:event-bus="formBus"
 					@input="onInput"
 					@submit="onSubmit"
 				/>
 				<div :class="$style.infoBox">
 					<n8n-text
+						v-if="!showRecoveryCodeForm && !reportError"
 						size="small"
 						color="text-base"
 						:bold="false"
-						v-if="!showRecoveryCodeForm && !reportError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
 						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>
-					<n8n-text color="danger" v-if="reportError" size="small"
+					<n8n-text v-if="reportError" color="danger" size="small"
 						>{{ formError }}
 						<a
 							v-if="!showRecoveryCodeForm"
-							@click="onRecoveryCodeClick"
 							:class="$style.recoveryCodeLink"
+							@click="onRecoveryCodeClick"
 						>
 							{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
 						>
@@ -89,15 +89,12 @@ export const FORM = {
 
 export default defineComponent({
 	name: 'MfaView',
-	mixins: [genericHelpers],
 	components: {
 		Logo,
 	},
+	mixins: [genericHelpers],
 	props: {
 		reportError: Boolean,
-	},
-	async mounted() {
-		this.formInputs = [this.mfaTokenFieldWithDefaults()];
 	},
 	setup() {
 		return {
@@ -113,6 +110,9 @@ export default defineComponent({
 			verifyingMfaToken: false,
 			formError: '',
 		};
+	},
+	async mounted() {
+		this.formInputs = [this.mfaTokenFieldWithDefaults()];
 	},
 	computed: {
 		...mapStores(useUsersStore),

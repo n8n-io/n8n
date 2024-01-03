@@ -43,19 +43,19 @@ function onVisibleChange(open: boolean) {
 				top: `${position[1]}px`,
 			}"
 		>
-			<n8n-action-dropdown
+			<N8nActionDropdown
 				ref="dropdown"
 				:items="actions"
 				placement="bottom-start"
 				data-test-id="context-menu"
-				:hideArrow="target.source !== 'node-button'"
+				:hide-arrow="target.source !== 'node-button'"
 				@select="onActionSelect"
 				@visibleChange="onVisibleChange"
 			>
 				<template #activator>
 					<div :class="$style.activator"></div>
 				</template>
-			</n8n-action-dropdown>
+			</N8nActionDropdown>
 		</div>
 	</Teleport>
 </template>

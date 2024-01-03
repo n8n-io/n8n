@@ -1,14 +1,14 @@
 <template>
 	<div
+		:id="nodeId"
+		:ref="data.name"
 		:class="nodeWrapperClass"
 		:style="nodeWrapperStyles"
-		:id="nodeId"
 		data-test-id="canvas-node"
-		:ref="data.name"
 		:data-name="data.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
-		<div class="select-background" v-show="isSelected"></div>
+		<div v-show="isSelected" class="select-background"></div>
 		<div
 			:class="{
 				'node-default': true,
@@ -19,30 +19,30 @@
 			}"
 		>
 			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
 				:class="nodeClass"
 				:style="nodeStyle"
 				@click.left="onClick"
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
 			>
-				<i class="trigger-icon" v-if="isTriggerNode">
+				<i v-if="isTriggerNode" class="trigger-icon">
 					<n8n-tooltip placement="bottom">
 						<template #content>
 							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
 						</template>
-						<font-awesome-icon icon="bolt" size="lg" />
+						<FontAwesomeIcon icon="bolt" size="lg" />
 					</n8n-tooltip>
 				</i>
 				<div
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
-					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
+					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
-								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+								<TitledList :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
-							<font-awesome-icon icon="exclamation-triangle" />
+							<FontAwesomeIcon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
@@ -50,24 +50,24 @@
 							<template #content>
 								<div v-text="waiting"></div>
 							</template>
-							<font-awesome-icon icon="clock" />
+							<FontAwesomeIcon icon="clock" />
 						</n8n-tooltip>
 					</div>
 					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
-						<font-awesome-icon icon="thumbtack" />
+						<FontAwesomeIcon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
 					<span v-else-if="nodeExecutionStatus === 'unknown'">
 						<!-- Do nothing, unknown means the node never executed -->
 					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
-						<font-awesome-icon icon="check" />
+						<FontAwesomeIcon icon="check" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
 				</div>
 
 				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
-					<font-awesome-icon icon="sync-alt" spin />
+					<FontAwesomeIcon icon="sync-alt" spin />
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
@@ -97,15 +97,15 @@
 
 				<NodeIcon
 					class="node-icon"
-					:nodeType="nodeType"
+					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
-					:colorDefault="iconColorDefault"
-					:disabled="this.data.disabled"
+					:color-default="iconColorDefault"
+					:disabled="data.disabled"
 				/>
 			</div>
 
-			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
+			<div v-if="!isReadOnly" v-show="!hideActions" class="node-options no-select-on-click">
 				<n8n-icon-button
 					data-test-id="execute-node-button"
 					type="tertiary"
@@ -124,11 +124,11 @@
 				/>
 			</div>
 			<div
+				v-if="showDisabledLinethrough"
 				:class="{
 					'disabled-linethrough': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
-				v-if="showDisabledLinethrough"
 			></div>
 		</div>
 		<div class="node-description">
@@ -190,19 +190,12 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'Node',
-	setup() {
-		const contextMenu = useContextMenu();
-		const externalHooks = useExternalHooks();
-		const nodeHelpers = useNodeHelpers();
-
-		return { contextMenu, externalHooks, nodeHelpers };
-	},
-	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
 		NodeIcon,
 	},
+	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -212,6 +205,17 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		hideNodeIssues: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	setup() {
+		const contextMenu = useContextMenu();
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+
+		return { contextMenu, externalHooks, nodeHelpers };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -373,9 +377,10 @@ export default defineComponent({
 					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
-				const outputs =
-					NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType) ||
-					([] as Array<ConnectionTypes | INodeOutputConfiguration>);
+				let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
+				if (this.workflow.nodes[this.node.name]) {
+					outputs = NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType);
+				}
 
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
@@ -487,7 +492,7 @@ export default defineComponent({
 			if (this.data.disabled) {
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
-				if (this.hasIssues) {
+				if (this.hasIssues && !this.hideNodeIssues) {
 					// Do not set red border if there is an issue with the configuration node
 					if (
 						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==

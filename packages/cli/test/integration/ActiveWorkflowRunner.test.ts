@@ -2,7 +2,6 @@ import { Container } from 'typedi';
 
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
-import { ActiveWorkflows } from 'n8n-core';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -24,12 +23,14 @@ import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import { ExecutionsService } from '@/executions/executions.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
 mockInstance(ActiveExecutions);
-mockInstance(ActiveWorkflows);
 mockInstance(Push);
 mockInstance(SecretsHelper);
+mockInstance(ExecutionsService);
 mockInstance(WorkflowService);
 
 const webhookService = mockInstance(WebhookService);
@@ -43,6 +44,7 @@ setSchedulerAsLoadedNode();
 
 const externalHooks = mockInstance(ExternalHooks);
 
+let activeWorkflowsService: ActiveWorkflowsService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
 let owner: User;
 
@@ -57,6 +59,7 @@ const NON_LEADERSHIP_CHANGE_MODES: WorkflowActivateMode[] = [
 beforeAll(async () => {
 	await testDb.init();
 
+	activeWorkflowsService = Container.get(ActiveWorkflowsService);
 	activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	owner = await createOwner();
 });
@@ -88,8 +91,8 @@ describe('init()', () => {
 	test('should start with no active workflows', async () => {
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(0);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(0);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(0);
@@ -100,8 +103,8 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(1);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(1);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(1);
@@ -113,8 +116,8 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(2);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(2);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(2);

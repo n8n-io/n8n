@@ -416,11 +416,9 @@ export const embedsFixedCollection: INodeProperties = {
 				{
 					displayName: 'Value',
 					name: 'json',
-					type: 'string',
+					type: 'json',
 					default: '={}',
 					typeOptions: {
-						editor: 'json',
-						editorLanguage: 'json',
 						rows: 2,
 					},
 					displayOptions: {

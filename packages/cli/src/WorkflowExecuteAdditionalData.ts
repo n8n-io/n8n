@@ -48,11 +48,9 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { WorkflowService } from './workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { EventsService } from '@/services/events.service';
@@ -67,6 +65,9 @@ import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryData
 import { toSaveSettings } from './executionLifecycleHooks/toSaveSettings';
 import { Logger } from './Logger';
 import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionProgress';
+import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
+import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { UrlService } from './services/url.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -132,7 +133,7 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
+		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
 			workflowData.id
 		}/executions/${executionId}`;
 	}
@@ -418,7 +419,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await Container.get(WorkflowService).saveStaticDataById(
+							await Container.get(WorkflowStaticDataService).saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -564,7 +565,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await Container.get(WorkflowService).saveStaticDataById(
+							await Container.get(WorkflowStaticDataService).saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -714,7 +715,10 @@ export async function getWorkflowData(
 	if (workflowInfo.id !== undefined) {
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		workflowData = await Container.get(WorkflowService).get({ id: workflowInfo.id }, { relations });
+		workflowData = await Container.get(WorkflowRepository).get(
+			{ id: workflowInfo.id },
+			{ relations },
+		);
 
 		if (workflowData === undefined || workflowData === null) {
 			throw new ApplicationError('Workflow does not exist.', {
@@ -961,7 +965,7 @@ export async function getBase(
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
 	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
 

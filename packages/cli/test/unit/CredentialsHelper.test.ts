@@ -271,6 +271,7 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
+				//@ts-expect-error `loadedCredentials` is a getter and we are replacing it here with a property
 				mockNodesAndCredentials.loadedCredentials = {
 					[testData.input.credentialType.name]: {
 						type: testData.input.credentialType,

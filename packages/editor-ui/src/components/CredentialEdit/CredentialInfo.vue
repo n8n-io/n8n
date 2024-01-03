@@ -16,7 +16,7 @@
 								fallback: node.displayName,
 							})
 						"
-						:modelValue="!!nodeAccess[node.name]"
+						:model-value="!!nodeAccess[node.name]"
 						@update:modelValue="(val) => onNodeAccessChange(node.name, val)"
 					/>
 					<n8n-text v-else>
@@ -75,10 +75,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'CredentialInfo',
-	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {
 		TimeAgo,
 	},
+	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	methods: {
 		onNodeAccessChange(name: string, value: string) {
 			this.$emit('accessChange', {

@@ -26,7 +26,7 @@ const goToUpgrade = () => {
 			data-test-id="audit-logs-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.auditLogs.actionBox.description')"
-			:buttonText="locale.baseText('settings.auditLogs.actionBox.buttonText')"
+			:button-text="locale.baseText('settings.auditLogs.actionBox.buttonText')"
 			@click:button="goToUpgrade"
 		>
 			<template #heading>

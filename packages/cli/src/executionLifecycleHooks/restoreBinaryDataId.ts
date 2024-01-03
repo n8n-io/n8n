@@ -3,6 +3,7 @@ import { BinaryDataService } from 'n8n-core';
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { BinaryData } from 'n8n-core';
 import config from '@/config';
+import { Logger } from '@/Logger';
 
 /**
  * Whenever the execution ID is not available to the binary data service at the
@@ -32,28 +33,43 @@ export async function restoreBinaryDataId(
 		return;
 	}
 
-	const { runData } = run.data.resultData;
+	try {
+		const { runData } = run.data.resultData;
 
-	const promises = Object.keys(runData).map(async (nodeName) => {
-		const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data?.id;
+		const promises = Object.keys(runData).map(async (nodeName) => {
+			const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data?.id;
 
-		if (!binaryDataId) return;
+			if (!binaryDataId) return;
 
-		const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
+			const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
 
-		const isMissingExecutionId = fileId.includes('/temp/');
+			const isMissingExecutionId = fileId.includes('/temp/');
 
-		if (!isMissingExecutionId) return;
+			if (!isMissingExecutionId) return;
 
-		const correctFileId = fileId.replace('temp', executionId);
+			const correctFileId = fileId.replace('temp', executionId);
 
-		await Container.get(BinaryDataService).rename(fileId, correctFileId);
+			await Container.get(BinaryDataService).rename(fileId, correctFileId);
 
-		const correctBinaryDataId = `${mode}:${correctFileId}`;
+			const correctBinaryDataId = `${mode}:${correctFileId}`;
 
-		// @ts-expect-error Validated at the top
-		run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;
-	});
+			// @ts-expect-error Validated at the top
+			run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;
+		});
 
-	await Promise.all(promises);
+		await Promise.all(promises);
+	} catch (e) {
+		const error = e instanceof Error ? e : new Error(`${e}`);
+		const logger = Container.get(Logger);
+
+		if (error.message.includes('ENOENT')) {
+			logger.warn('Failed to restore binary data ID - No such file or dir', {
+				executionId,
+				error,
+			});
+			return;
+		}
+
+		logger.error('Failed to restore binary data ID - Unknown error', { executionId, error });
+	}
 }

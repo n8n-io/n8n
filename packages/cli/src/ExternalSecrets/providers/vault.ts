@@ -251,19 +251,15 @@ export class VaultProvider extends SecretsProvider {
 		this.#http = axios.create({ baseURL: baseURL.toString() });
 		if (this.settings.namespace) {
 			this.#http.interceptors.request.use((config) => {
-				return {
-					...config,
-					// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
-					headers: { ...config.headers, 'X-Vault-Namespace': this.settings.namespace },
-				};
+				config.headers['X-Vault-Namespace'] = this.settings.namespace;
+				return config;
 			});
 		}
 		this.#http.interceptors.request.use((config) => {
-			if (!this.#currentToken) {
-				return config;
+			if (this.#currentToken) {
+				config.headers['X-Vault-Token'] = this.#currentToken;
 			}
-			// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
-			return { ...config, headers: { ...config.headers, 'X-Vault-Token': this.#currentToken } };
+			return config;
 		});
 	}
 
