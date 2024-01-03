@@ -71,6 +71,11 @@ export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex
 
 			return new NodeOperationError(this.getNode(), errorData.errors, errorOptions);
 		}
+
+		if (errorOptions.message === 'Cannot send an empty message') {
+			errorOptions.description =
+				'Something has to be send to the chanel whether it is a message, an embed or a file';
+		}
 	}
 	return new NodeOperationError(this.getNode(), errorData || error, errorOptions);
 }
