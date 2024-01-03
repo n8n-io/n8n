@@ -29,15 +29,7 @@
 				<div
 					id="node-view"
 					ref="nodeView"
-					:class="[
-						'node-view',
-						{ 'node-view__execution-preview': isExecutionPreview },
-						{ 'node-view__production-execution-preview': isProductionExecutionPreview },
-						{
-							'node-view__executed-in-editor':
-								!isExecutionPreview && !isProductionExecutionPreview && workflowExecution,
-						},
-					]"
+					:class="nodeViewClasses"
 					:style="workflowStyle"
 					data-test-id="node-view"
 				>
@@ -710,6 +702,27 @@ export default defineComponent({
 		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();
+		},
+		nodeViewClasses(): string[] {
+			const classes = ['node-view'];
+			const { isExecutionPreview, isProductionExecutionPreview, workflowExecution } = this;
+			const executedInEditor =
+				!isExecutionPreview && !isProductionExecutionPreview && workflowExecution;
+			const executed = isExecutionPreview || isProductionExecutionPreview || executedInEditor;
+
+			if (executed) {
+				classes.push('node-view__executed');
+			}
+			if (isExecutionPreview) {
+				classes.push('node-view__execution-preview');
+			}
+			if (isProductionExecutionPreview) {
+				classes.push('node-view__production-execution-preview');
+			}
+			if (executedInEditor) {
+				classes.push('node-view__executed-in-editor');
+			}
+			return classes;
 		},
 	},
 	data() {
@@ -5180,7 +5193,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-:deep(.node-view__executed-in-editor) {
+:deep(.node-view__executed) {
 	.jtk-connector.success:not(.jtk-hover) {
 		path:not(.jtk-connector-outline) {
 			stroke: var(--color-success-light);
