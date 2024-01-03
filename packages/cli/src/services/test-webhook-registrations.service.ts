@@ -36,16 +36,16 @@ export class TestWebhookRegistrationsService {
 	}
 
 	async getAllKeys() {
-		const keys = await this.cacheService.keys();
+		const allKeys = await this.cacheService.allKeys();
 
 		if (this.cacheService.isMemoryCache()) {
-			return keys.filter((key) => key.startsWith(this.cacheKey));
+			return allKeys.filter((key) => key.startsWith(this.cacheKey));
 		}
 
 		const prefix = 'n8n:cache'; // prepended by Redis cache
 		const extendedCacheKey = `${prefix}:${this.cacheKey}`;
 
-		return keys
+		return allKeys
 			.filter((key) => key.startsWith(extendedCacheKey))
 			.map((key) => key.slice(`${prefix}:`.length));
 	}

@@ -17,7 +17,7 @@ export class VariablesService {
 
 	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
-			async refreshFunction() {
+			async refreshFn() {
 				// TODO: log refresh cache metric
 				return Container.get(VariablesService).findAll();
 			},

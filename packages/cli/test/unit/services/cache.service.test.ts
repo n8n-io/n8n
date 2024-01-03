@@ -190,7 +190,7 @@ describe('cacheService', () => {
 		await expect(cacheService.get('testString')).resolves.toBeUndefined();
 		await expect(
 			cacheService.get('testString', {
-				refreshFunction: async () => 'refreshed',
+				refreshFn: async () => 'refreshed',
 				fallbackValue: 'this should not be returned',
 			}),
 		).resolves.toBe('refreshed');
@@ -208,7 +208,7 @@ describe('cacheService', () => {
 		).resolves.toBe('fallback');
 		await expect(
 			cacheService.get('testString', {
-				refreshFunction: async () => 'refreshed',
+				refreshFn: async () => 'refreshed',
 				fallbackValue: 'this should not be returned',
 			}),
 		).resolves.toBe('refreshed');
@@ -367,7 +367,7 @@ describe('cacheService', () => {
 			myField: 'myvalue',
 			myField2: 'myvalue2',
 		});
-		await expect(cacheService.getHashField(key, 'myField')).resolves.toBe('myvalue');
+		await expect(cacheService.getHashValue(key, 'myField')).resolves.toBe('myvalue');
 		await cacheService.deleteFromHash(key, 'myField');
 		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField2: 'myvalue2',
@@ -390,7 +390,7 @@ describe('cacheService', () => {
 			myField: 'myvalue',
 			myField2: 'myvalue2',
 		});
-		await expect(cacheService.getHashField(key, 'myField')).resolves.toBe('myvalue');
+		await expect(cacheService.getHashValue(key, 'myField')).resolves.toBe('myvalue');
 		await cacheService.deleteFromHash(key, 'myField');
 		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField2: 'myvalue2',
