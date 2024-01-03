@@ -203,8 +203,6 @@ export class TestWebhooks implements IWebhookManager {
 
 		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), 2 * TIME.MINUTE);
 
-		const activatedKeys: string[] = [];
-
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
 			const exists = await this.registrations.exists(key);
@@ -213,33 +211,32 @@ export class TestWebhooks implements IWebhookManager {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
-			activatedKeys.push(key);
+			webhook.path = removeTrailingSlash(webhook.path);
+			webhook.isTest = true;
 
 			/**
 			 * Remove additional data from webhook because:
 			 *
 			 * - It is not needed for the test webhook to be executed.
-			 * - It contains circular refs that cannot be be cached.
+			 * - It contains circular refs that cannot be cached.
 			 */
 			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
 
-			this.timeouts[key] = timeout;
-
-			await this.registrations.register({
-				sessionId,
-				workflowEntity,
-				destinationNode,
-				webhook: rest as IWebhookData,
-			});
-
 			try {
-				await this.activateWebhook(workflow, webhook);
-			} catch (error) {
-				for (const activatedKey of activatedKeys) {
-					await this.registrations.deregister(activatedKey);
-				}
+				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
 
+				await this.registrations.register({
+					sessionId,
+					workflowEntity,
+					destinationNode,
+					webhook: rest as IWebhookData,
+				});
+
+				this.timeouts[key] = timeout;
+			} catch (error) {
 				await this.deactivateWebhooks(workflow);
+
+				delete this.timeouts[key];
 
 				throw error;
 			}
@@ -284,29 +281,6 @@ export class TestWebhooks implements IWebhookManager {
 		return foundWebhook;
 	}
 
-	async activateWebhook(workflow: Workflow, webhook: IWebhookData) {
-		webhook.path = removeTrailingSlash(webhook.path);
-		webhook.isTest = true;
-
-		/**
-		 * Remove additional data from webhook because:
-		 *
-		 * - It is not needed for the test webhook to be executed.
-		 * - It contains circular refs that cannot be be cached.
-		 */
-		const { workflowExecuteAdditionalData: _, ...rest } = webhook;
-
-		await this.registrations.updateWebhookProperties(rest as IWebhookData);
-
-		try {
-			await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
-		} catch (error) {
-			await this.registrations.deregister(webhook);
-
-			throw error;
-		}
-	}
-
 	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
 		const key = this.registrations.toKey({ httpMethod, path, webhookId });
 
@@ -337,7 +311,7 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Deactivate all registered webhooks of a workflow.
+	 * Deactivate all registered test webhooks of a workflow.
 	 */
 	async deactivateWebhooks(workflow: Workflow) {
 		const allRegistrations = await this.registrations.getAllRegistrations();
@@ -355,15 +329,13 @@ export class TestWebhooks implements IWebhookManager {
 
 		const webhooks = webhooksByWorkflow[workflow.id];
 
-		if (!webhooks) return false; // nothing to deactivate
+		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
 			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
 
 			await this.registrations.deregister(webhook);
 		}
-
-		return true;
 	}
 
 	/**
