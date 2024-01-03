@@ -2,19 +2,19 @@
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
 					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
 						v-else
-						class="mr-xl"
 						v-model="autoRefresh"
-						@update:modelValue="handleAutoRefreshToggle"
+						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
+						@update:modelValue="handleAutoRefreshToggle"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter
+					<ExecutionFilter
 						v-show="!isMounting"
 						:workflows="workflows"
 						@filterChanged="onFilterChanged"
@@ -31,9 +31,9 @@
 						interpolate: { executionNum: finishedExecutionsCount },
 					})
 				"
-				:modelValue="allExistingSelected"
-				@update:modelValue="handleCheckAllExistingChange"
+				:model-value="allExistingSelected"
 				data-test-id="select-all-executions-checkbox"
+				@update:modelValue="handleCheckAllExistingChange"
 			/>
 
 			<div v-if="isMounting">
@@ -46,11 +46,11 @@
 					<tr>
 						<th>
 							<el-checkbox
-								:modelValue="allVisibleSelected"
-								@update:modelValue="handleCheckAllVisibleChange"
+								:model-value="allVisibleSelected"
 								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
+								@update:modelValue="handleCheckAllVisibleChange"
 							/>
 						</th>
 						<th>{{ i18n.baseText('executionsList.name') }}</th>
@@ -72,10 +72,10 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:modelValue="selectedItems[execution.id] || allExistingSelected"
-								@update:modelValue="handleCheckboxChanged(execution.id)"
+								:model-value="selectedItems[execution.id] || allExistingSelected"
 								label=""
 								data-test-id="select-execution-checkbox"
+								@update:modelValue="handleCheckboxChanged(execution.id)"
 							/>
 						</td>
 						<td>
@@ -114,7 +114,7 @@
 												)
 											}}
 										</span>
-										<execution-time v-else :start-time="execution.startedAt" />
+										<ExecutionTime v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n-t>
 								<n8n-tooltip v-else placement="top">
@@ -168,8 +168,8 @@
 									size="small"
 									outline
 									:label="i18n.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
 									:loading="stoppingExecutions.includes(execution.id)"
+									@click.stop="stopExecution(execution.id)"
 								/>
 							</div>
 						</td>
@@ -231,18 +231,18 @@
 				{{ i18n.baseText('executionsList.empty') }}
 			</div>
 			<div
-				:class="$style.loadMore"
 				v-else-if="
 					finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated
 				"
+				:class="$style.loadMore"
 			>
 				<n8n-button
 					icon="sync"
 					:title="i18n.baseText('executionsList.loadMore')"
 					:label="i18n.baseText('executionsList.loadMore')"
-					@click="loadMore()"
 					:loading="isDataLoading"
 					data-test-id="load-more-button"
+					@click="loadMore()"
 				/>
 			</div>
 			<div
@@ -269,14 +269,14 @@
 			<n8n-button
 				:label="i18n.baseText('generic.delete')"
 				type="tertiary"
-				@click="handleDeleteSelected"
 				data-test-id="delete-selected-button"
+				@click="handleDeleteSelected"
 			/>
 			<n8n-button
 				:label="i18n.baseText('executionsList.clearSelection')"
 				type="tertiary"
-				@click="handleClearSelection"
 				data-test-id="clear-selection-button"
+				@click="handleClearSelection"
 			/>
 		</div>
 	</div>
@@ -310,14 +310,15 @@ import { isEmpty } from '@/utils/typesUtils';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
 	},
+	mixins: [genericHelpers, executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,
@@ -328,11 +329,13 @@ export default defineComponent({
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
 		const externalHooks = useExternalHooks();
+		const route = useRoute();
 
 		return {
 			i18n,
 			telemetry,
 			externalHooks,
+			route,
 			...useToast(),
 			...useMessage(),
 		};
@@ -346,7 +349,7 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: this.autoRefreshEnabled,
+			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
@@ -368,6 +371,7 @@ export default defineComponent({
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
 		void this.externalHooks.run('executionsList.openDialog');
@@ -376,6 +380,7 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
+		this.autoRefresh = false;
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
@@ -938,7 +943,7 @@ export default defineComponent({
 			}
 		},
 		async startAutoRefreshInterval() {
-			if (this.autoRefresh) {
+			if (this.autoRefresh && this.route.name === VIEWS.EXECUTIONS) {
 				await this.loadAutoRefresh();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();
@@ -946,10 +951,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {

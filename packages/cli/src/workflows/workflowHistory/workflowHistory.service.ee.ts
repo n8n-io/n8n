@@ -21,7 +21,7 @@ export class WorkflowHistoryService {
 	private async getSharedWorkflow(user: User, workflowId: string): Promise<SharedWorkflow | null> {
 		return this.sharedWorkflowRepository.findOne({
 			where: {
-				...(!(await user.hasGlobalScope('workflow:read')) && { userId: user.id }),
+				...(!user.hasGlobalScope('workflow:read') && { userId: user.id }),
 				workflowId,
 			},
 		});
@@ -66,7 +66,10 @@ export class WorkflowHistoryService {
 	}
 
 	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
-		if (isWorkflowHistoryEnabled()) {
+		// On some update scenarios, `nodes` and `connections` are missing, such as when
+		// changing workflow settings or renaming. In these cases, we don't want to save
+		// a new version
+		if (isWorkflowHistoryEnabled() && workflow.nodes && workflow.connections) {
 			try {
 				await this.workflowHistoryRepository.insert({
 					authors: user.firstName + ' ' + user.lastName,

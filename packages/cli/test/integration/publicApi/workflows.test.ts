@@ -7,7 +7,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -16,6 +16,9 @@ import { getAllRoles } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
+import { mockInstance } from '../../shared/mocking';
+import { Push } from '@/push';
+import { ExecutionsService } from '@/executions/executions.service';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -26,6 +29,9 @@ let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
+
+mockInstance(Push);
+mockInstance(ExecutionsService);
 
 beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
@@ -43,7 +49,10 @@ beforeAll(async () => {
 	});
 
 	await utils.initNodeTypes();
-	workflowRunner = await utils.initActiveWorkflowRunner();
+
+	workflowRunner = Container.get(ActiveWorkflowRunner);
+
+	await workflowRunner.init();
 });
 
 beforeEach(async () => {

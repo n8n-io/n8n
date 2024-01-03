@@ -1,9 +1,9 @@
 <template>
-	<div :class="$style.container" v-show="loading || collections.length">
+	<div v-show="loading || collections.length" :class="$style.container">
 		<agile
 			ref="slider"
 			:dots="false"
-			:navButtons="false"
+			:nav-buttons="false"
 			:infinite="false"
 			:slides-to-show="4"
 			@after-change="updateCarouselScroll"
@@ -12,14 +12,25 @@
 			<TemplatesInfoCard
 				v-for="collection in loading ? [] : collections"
 				:key="collection.id"
+				data-test-id="templates-info-card"
 				:collection="collection"
+				:show-item-count="showItemCount"
+				:width="cardsWidth"
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
 		</agile>
-		<button v-show="carouselScrollPosition > 0" :class="$style.leftButton" @click="scrollLeft">
+		<button
+			v-show="showNavigation && carouselScrollPosition > 0"
+			:class="{ [$style.leftButton]: true }"
+			@click="scrollLeft"
+		>
 			<font-awesome-icon icon="chevron-left" />
 		</button>
-		<button v-show="!scrollEnd" :class="$style.rightButton" @click="scrollRight">
+		<button
+			v-show="showNavigation && !scrollEnd"
+			:class="{ [$style.rightButton]: true }"
+			@click="scrollRight"
+		>
 			<font-awesome-icon icon="chevron-right" />
 		</button>
 	</div>
@@ -39,6 +50,11 @@ type SliderRef = InstanceType<typeof VueAgile>;
 
 export default defineComponent({
 	name: 'TemplatesInfoCarousel',
+	components: {
+		Card,
+		TemplatesInfoCard,
+		agile: VueAgile,
+	},
 	mixins: [genericHelpers],
 	props: {
 		collections: {
@@ -47,6 +63,27 @@ export default defineComponent({
 		loading: {
 			type: Boolean,
 		},
+		showItemCount: {
+			type: Boolean,
+			default: true,
+		},
+		showNavigation: {
+			type: Boolean,
+			default: true,
+		},
+		cardsWidth: {
+			type: String,
+			default: '240px',
+		},
+	},
+	data() {
+		return {
+			carouselScrollPosition: 0,
+			cardWidth: parseInt(this.cardsWidth, 10),
+			sliderWidth: 0,
+			scrollEnd: false,
+			listElement: null as null | Element,
+		};
 	},
 	watch: {
 		collections() {
@@ -60,18 +97,25 @@ export default defineComponent({
 			}, 0);
 		},
 	},
-	components: {
-		Card,
-		TemplatesInfoCard,
-		agile: VueAgile,
+	async mounted() {
+		await this.$nextTick();
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (!sliderRef) {
+			return;
+		}
+
+		this.listElement = sliderRef.$el.querySelector('.agile__list');
+		if (this.listElement) {
+			this.listElement.addEventListener('scroll', this.updateCarouselScroll);
+		}
 	},
-	data() {
-		return {
-			carouselScrollPosition: 0,
-			cardWidth: 240,
-			scrollEnd: false,
-			listElement: null as null | Element,
-		};
+	beforeUnmount() {
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (sliderRef) {
+			sliderRef.destroy();
+		}
+
+		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 	methods: {
 		updateCarouselScroll() {
@@ -97,26 +141,6 @@ export default defineComponent({
 				this.listElement.scrollBy({ left: this.cardWidth * 2, top: 0, behavior: 'smooth' });
 			}
 		},
-	},
-	async mounted() {
-		await this.$nextTick();
-		const sliderRef = this.$refs.slider as SliderRef | undefined;
-		if (!sliderRef) {
-			return;
-		}
-
-		this.listElement = sliderRef.$el.querySelector('.agile__list');
-		if (this.listElement) {
-			this.listElement.addEventListener('scroll', this.updateCarouselScroll);
-		}
-	},
-	beforeUnmount() {
-		const sliderRef = this.$refs.slider as SliderRef | undefined;
-		if (sliderRef) {
-			sliderRef.destroy();
-		}
-
-		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 });
 </script>
@@ -175,6 +199,7 @@ export default defineComponent({
 .rightButton {
 	composes: button;
 	right: -30px;
+
 	&:after {
 		right: 27px;
 		background: linear-gradient(

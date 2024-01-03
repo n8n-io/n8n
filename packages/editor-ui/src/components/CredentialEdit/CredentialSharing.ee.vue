@@ -12,7 +12,7 @@
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
 					)
 				"
-				:buttonText="
+				:button-text="
 					$locale.baseText(
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
 					)
@@ -26,7 +26,7 @@
 				:description="
 					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
 				"
-				:buttonText="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
+				:button-text="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
 				@click:button="goToUsersSettings"
 			/>
 		</div>
@@ -41,7 +41,15 @@
 					})
 				}}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
+			<n8n-info-tip
+				v-if="
+					credentialPermissions.read &&
+					credentialPermissions.share &&
+					!credentialPermissions.isOwner
+				"
+				class="mb-s"
+				:bold="false"
+			>
 				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
 					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
 						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}
@@ -53,7 +61,7 @@
 				class="mb-s"
 				size="large"
 				:users="usersList"
-				:currentUserId="usersStore.currentUser.id"
+				:current-user-id="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 				data-test-id="credential-sharing-modal-users-select"
 				@update:modelValue="onAddSharee"
@@ -65,7 +73,7 @@
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="sharedWithList"
-				:currentUserId="usersStore.currentUser.id"
+				:current-user-id="usersStore.currentUser.id"
 				:readonly="!credentialPermissions.share"
 				@delete="onRemoveSharee"
 			/>
@@ -143,6 +151,9 @@ export default defineComponent({
 			});
 		},
 	},
+	mounted() {
+		void this.loadUsers();
+	},
 	methods: {
 		async onAddSharee(userId: string) {
 			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
@@ -187,9 +198,6 @@ export default defineComponent({
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
-	},
-	mounted() {
-		void this.loadUsers();
 	},
 });
 </script>

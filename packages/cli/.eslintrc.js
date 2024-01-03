@@ -19,6 +19,8 @@ module.exports = {
 	],
 
 	rules: {
+		'n8n-local-rules/no-dynamic-import-template': 'error',
+
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
 		'import/order': 'off',

@@ -2,6 +2,7 @@ import { NodeCreator } from '../pages/features/node-creator';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
 import { getVisibleSelect } from '../utils';
+import { IF_NODE_NAME } from '../constants';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
@@ -109,7 +110,7 @@ describe('Node Creator', () => {
 	it('should not show actions for single action nodes', () => {
 		const singleActionNodes = [
 			'DHL',
-			'iCalendar',
+			'Edit Fields',
 			'LingvaNex',
 			'Mailcheck',
 			'MSG91',
@@ -360,7 +361,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
@@ -368,11 +369,11 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('IF');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
@@ -483,8 +484,9 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('spreadsheet');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Spreadsheet File');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Google Sheets');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Convert to File');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Extract From File');
+		nodeCreatorFeature.getters.nodeItemName().eq(2).should('have.text', 'Google Sheets');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sheets');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Google Sheets');

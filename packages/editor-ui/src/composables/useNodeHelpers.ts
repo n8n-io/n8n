@@ -420,7 +420,7 @@ export function useNodeHelpers() {
 					.getCredentialsByType(credentialTypeDescription.name)
 					.filter((credential: ICredentialsResponse) => {
 						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.read;
+						return permissions.use;
 					});
 
 				if (userCredentials === null) {
@@ -539,13 +539,13 @@ export function useNodeHelpers() {
 		}
 		const runData = executionData.resultData.runData;
 
-		const taskData = get(runData, `[${node.name}][${runIndex}]`);
+		const taskData = get(runData, [node.name, runIndex]);
 		if (!taskData) {
 			return [];
 		}
 
 		// TODO: Is this problematic?
-		let data: ITaskDataConnections | undefined = taskData.data!;
+		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
 			data = taskData.inputOverride!;
 		}

@@ -117,19 +117,19 @@ function closeDialog() {
 	<Modal
 		max-width="960px"
 		:title="i18n.baseText('chatEmbed.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="CHAT_EMBED_MODAL_KEY"
 		:center="true"
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-tabs :options="tabs" v-model="currentTab" />
+				<n8n-tabs v-model="currentTab" :options="tabs" />
 
 				<div v-if="currentTab !== 'cdn'">
 					<n8n-text>
 						{{ i18n.baseText('chatEmbed.install') }}
 					</n8n-text>
-					<CodeNodeEditor :modelValue="commonCode.install" isReadOnly />
+					<CodeNodeEditor :model-value="commonCode.install" is-read-only />
 				</div>
 
 				<n8n-text>
@@ -139,10 +139,10 @@ function closeDialog() {
 						</template>
 					</i18n-t>
 				</n8n-text>
-				<HtmlEditor v-if="currentTab === 'cdn'" :modelValue="cdnCode" isReadOnly />
-				<HtmlEditor v-if="currentTab === 'vue'" :modelValue="vueCode" isReadOnly />
-				<CodeNodeEditor v-if="currentTab === 'react'" :modelValue="reactCode" isReadOnly />
-				<CodeNodeEditor v-if="currentTab === 'other'" :modelValue="otherCode" isReadOnly />
+				<HtmlEditor v-if="currentTab === 'cdn'" :model-value="cdnCode" is-read-only />
+				<HtmlEditor v-if="currentTab === 'vue'" :model-value="vueCode" is-read-only />
+				<CodeNodeEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
+				<CodeNodeEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
 
 				<n8n-info-tip>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
@@ -155,7 +155,7 @@ function closeDialog() {
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button @click="closeDialog" float="right" :label="i18n.baseText('chatEmbed.close')" />
+				<n8n-button float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
 			</div>
 		</template>
 	</Modal>

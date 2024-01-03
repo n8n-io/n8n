@@ -37,6 +37,7 @@ import type {
 	NodeParameterValueType,
 	PostReceiveAction,
 	JsonObject,
+	CloseFunction,
 } from './Interfaces';
 
 import * as NodeHelpers from './NodeHelpers';
@@ -94,6 +95,7 @@ export class RoutingNode {
 		if (nodeType.description.credentials?.length) {
 			credentialType = nodeType.description.credentials[0].name;
 		}
+		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
 			this.runExecutionData,
@@ -104,6 +106,7 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
+			closeFunctions,
 			abortSignal,
 		);
 

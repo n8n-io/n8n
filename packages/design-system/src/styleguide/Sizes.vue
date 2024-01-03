@@ -22,13 +22,7 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'sizes',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			sizes: {} as Record<string, { rem: string; px: number }>,
-		};
-	},
+	name: 'Sizes',
 	props: {
 		variables: {
 			type: Array as PropType<string[]>,
@@ -38,6 +32,12 @@ export default defineComponent({
 			type: String,
 			default: '',
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			sizes: {} as Record<string, { rem: string; px: number }>,
+		};
 	},
 	created() {
 		const setSizes = () => {

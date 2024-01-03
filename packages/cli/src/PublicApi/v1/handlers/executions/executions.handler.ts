@@ -1,4 +1,6 @@
 import type express from 'express';
+import { Container } from 'typedi';
+import { replaceCircularReferences } from 'n8n-workflow';
 
 import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -6,7 +8,6 @@ import { authorize, validCursor } from '../../shared/middlewares/global.middlewa
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 
@@ -38,7 +39,7 @@ export = {
 
 			execution.id = id;
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecution: [
@@ -67,7 +68,7 @@ export = {
 				public_api: true,
 			});
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecutions: [
@@ -118,7 +119,7 @@ export = {
 			});
 
 			return res.json({
-				data: executions,
+				data: replaceCircularReferences(executions),
 				nextCursor: encodeNextCursor({
 					lastId: newLastId,
 					limit,

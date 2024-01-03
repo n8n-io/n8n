@@ -5,7 +5,7 @@ import type { PropType, ComponentPublicInstance } from 'vue';
 import { computed, defineComponent, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-recycle-scroller',
+	name: 'N8nRecycleScroller',
 	props: {
 		itemSize: {
 			type: Number,
@@ -223,18 +223,21 @@ export default defineComponent({
 </script>
 
 <template>
-	<div class="recycle-scroller-wrapper" ref="wrapperRef">
-		<div class="recycle-scroller" :style="scrollerStyles" ref="scrollerRef">
-			<div class="recycle-scroller-items-wrapper" :style="itemsStyles" ref="itemsRef">
+	<div ref="wrapperRef" class="recycle-scroller-wrapper">
+		<div ref="scrollerRef" class="recycle-scroller" :style="scrollerStyles">
+			<div ref="itemsRef" class="recycle-scroller-items-wrapper" :style="itemsStyles">
 				<div
 					v-for="item in itemsVisible"
 					:key="item[itemKey]"
-					class="recycle-scroller-item"
 					:ref="(element) => (itemRefs[item[itemKey]] = element)"
+					class="recycle-scroller-item"
 				>
-					<slot :item="item" :updateItemSize="onUpdateItemSize" />
+					<slot :item="item" :update-item-size="onUpdateItemSize" />
 				</div>
 			</div>
+		</div>
+		<div class="post-list-container">
+			<slot name="postListContent" />
 		</div>
 	</div>
 </template>
@@ -262,5 +265,8 @@ export default defineComponent({
 	display: flex;
 	position: relative;
 	width: 100%;
+}
+.post-list-container {
+	margin-top: var(--spacing-3xl);
 }
 </style>

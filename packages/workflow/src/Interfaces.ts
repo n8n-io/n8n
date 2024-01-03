@@ -377,6 +377,8 @@ export interface IConnections {
 
 export type GenericValue = string | object | number | boolean | undefined | null;
 
+export type CloseFunction = () => Promise<void>;
+
 export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
@@ -410,7 +412,7 @@ export interface IGetExecuteTriggerFunctions {
 
 export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | null | undefined;
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
 	(
@@ -423,6 +425,7 @@ export interface IGetExecuteFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
+		closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 	): IExecuteFunctions;
 }
@@ -450,7 +453,6 @@ export interface IGetExecuteHookFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 		webhookData?: IWebhookData,
 	): IHookFunctions;
 }
@@ -1071,11 +1073,12 @@ export type NodePropertyTypes =
 	| 'resourceLocator'
 	| 'curlImport'
 	| 'resourceMapper'
+	| 'filter'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
+export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -1102,7 +1105,6 @@ export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
-	editorLanguage?: CodeNodeEditorLanguage; // Supported by: string in combination with editor: codeNodeEditor
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -1118,6 +1120,7 @@ export interface INodePropertyTypeOptions {
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
+	filter?: FilterTypeOptions;
 	[key: string]: any;
 }
 
@@ -1136,6 +1139,18 @@ export interface ResourceMapperTypeOptions {
 		hint?: string;
 	};
 }
+
+type NonEmptyArray<T> = [T, ...T[]];
+
+export type FilterTypeCombinator = 'and' | 'or';
+
+export type FilterTypeOptions = Partial<{
+	caseSensitive: boolean | string; // default = true
+	leftValue: string; // when set, user can't edit left side of condition
+	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions: number; // default = 10
+	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1276,13 +1291,13 @@ export type IParameterLabel = {
 };
 
 export interface IPollResponse {
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 }
 
 export interface ITriggerResponse {
-	closeFunction?: () => Promise<void>;
+	closeFunction?: CloseFunction;
 	// To manually trigger the run
-	manualTriggerFunction?: () => Promise<void>;
+	manualTriggerFunction?: CloseFunction;
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
@@ -1311,6 +1326,7 @@ export namespace MultiPartFormData {
 export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
+	closeFunction?: CloseFunction;
 }
 
 export interface INodeType {
@@ -1646,6 +1662,7 @@ export interface IWebhookData {
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
+	isTest?: boolean;
 }
 
 export interface IWebhookDescription {
@@ -1660,6 +1677,8 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	isForm?: boolean;
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
@@ -1906,6 +1925,7 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -2195,7 +2215,8 @@ export type FieldType =
 	| 'time'
 	| 'array'
 	| 'object'
-	| 'options';
+	| 'options'
+	| 'url';
 
 export type ValidationResult = {
 	valid: boolean;
@@ -2209,6 +2230,42 @@ export type ResourceMapperValue = {
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
 };
+
+export type FilterOperatorType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'array'
+	| 'object'
+	| 'dateTime'
+	| 'any';
+
+export interface FilterOperatorValue {
+	type: FilterOperatorType;
+	operation: string;
+	rightType?: FilterOperatorType;
+	singleValue?: boolean; // default = false
+}
+
+export type FilterConditionValue = {
+	id: string;
+	leftValue: unknown;
+	operator: FilterOperatorValue;
+	rightValue: unknown;
+};
+
+export type FilterOptionsValue = {
+	caseSensitive: boolean;
+	leftValue: string;
+	typeValidation: 'strict' | 'loose';
+};
+
+export type FilterValue = {
+	options: FilterOptionsValue;
+	conditions: FilterConditionValue[];
+	combinator: FilterTypeCombinator;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
@@ -2255,6 +2312,9 @@ export interface IPublicApiSettings {
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;

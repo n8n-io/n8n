@@ -2,10 +2,10 @@
 	<Modal
 		width="460px"
 		:title="modalTitle"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
-		:beforeClose="onCloseModal"
+		:before-close="onCloseModal"
 	>
 		<template #content>
 			<div v-if="!isSharingEnabled" :class="$style.container">
@@ -36,7 +36,7 @@
 						class="mb-s"
 						size="large"
 						:users="usersList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="workflow-sharing-modal-users-select"
 						@update:modelValue="onAddSharee"
@@ -48,14 +48,14 @@
 					<n8n-users-list
 						:actions="[]"
 						:users="sharedWithList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
 					>
 						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
-								modelValue="editor"
+								model-value="editor"
 								size="small"
 								@update:modelValue="onRoleAction(user, $event)"
 							>
@@ -151,7 +151,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
 export default defineComponent({
-	name: 'workflow-share-modal',
+	name: 'WorkflowShareModal',
 	components: {
 		Modal,
 	},
@@ -252,6 +252,16 @@ export default defineComponent({
 				)
 			);
 		},
+	},
+	watch: {
+		workflow(workflow) {
+			if (workflow.sharedWith) {
+				this.sharedWith = workflow.sharedWith;
+			}
+		},
+	},
+	mounted() {
+		void this.initialize();
 	},
 	methods: {
 		async onSave() {
@@ -470,16 +480,6 @@ export default defineComponent({
 			}
 
 			this.loading = false;
-		},
-	},
-	mounted() {
-		void this.initialize();
-	},
-	watch: {
-		workflow(workflow) {
-			if (workflow.sharedWith) {
-				this.sharedWith = workflow.sharedWith;
-			}
 		},
 	},
 });

@@ -14,6 +14,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
 export const EECredentialsController = express.Router();
 
@@ -50,7 +51,7 @@ EECredentialsController.get(
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && !(await req.user.hasGlobalScope('credential:read'))) {
+		if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
 			throw new UnauthorizedError('Forbidden.');
 		}
 
@@ -130,7 +131,7 @@ EECredentialsController.put(
 		if (!ownsCredential || !credential) {
 			credential = undefined;
 			// Allow owners/admins to share
-			if (await req.user.hasGlobalScope('credential:share')) {
+			if (req.user.hasGlobalScope('credential:share')) {
 				const sharedRes = await EECredentials.getSharing(req.user, credentialId, {
 					allowGlobalScope: true,
 					globalScope: 'credential:share',
@@ -155,10 +156,11 @@ EECredentialsController.put(
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			// remove all sharings that are not supposed to exist anymore
-			const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
-				...ownerIds,
-				...shareWithIds,
-			]);
+			const { affected } = await Container.get(CredentialsRepository).pruneSharings(
+				trx,
+				credentialId,
+				[...ownerIds, ...shareWithIds],
+			);
 			if (affected) amountRemoved = affected;
 
 			const sharings = await EECredentials.getSharings(trx, credentialId);

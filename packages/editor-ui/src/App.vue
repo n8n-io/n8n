@@ -10,7 +10,7 @@
 			}"
 		>
 			<div id="banners" :class="$style.banners">
-				<banner-stack v-if="!isDemoMode" />
+				<BannerStack v-if="!isDemoMode" />
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
@@ -23,7 +23,7 @@
 					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
-					<component v-else :is="Component" />
+					<component :is="Component" v-else />
 				</router-view>
 			</div>
 			<Modals />
@@ -35,7 +35,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -69,15 +68,13 @@ export default defineComponent({
 		Telemetry,
 		Modals,
 	},
-	mixins: [newVersions, userHelpers],
-	setup(props) {
+	mixins: [userHelpers],
+	setup() {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -105,22 +102,6 @@ export default defineComponent({
 			loading: true,
 		};
 	},
-	methods: {
-		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER);
-			}
-		},
-	},
-	async mounted() {
-		this.logHiringBanner();
-
-		void this.checkForNewVersions();
-		void initializeAuthenticatedFeatures();
-
-		void useExternalHooks().run('app.mount');
-		this.loading = false;
-	},
 	watch: {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		async 'usersStore.currentUser'(currentValue, previousValue) {
@@ -130,6 +111,21 @@ export default defineComponent({
 		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);
+		},
+	},
+	async mounted() {
+		this.logHiringBanner();
+
+		void initializeAuthenticatedFeatures();
+
+		void useExternalHooks().run('app.mount');
+		this.loading = false;
+	},
+	methods: {
+		logHiringBanner() {
+			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
+				console.log(HIRING_BANNER);
+			}
 		},
 	},
 });
