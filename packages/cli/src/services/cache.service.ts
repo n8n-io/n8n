@@ -97,7 +97,7 @@ export class CacheService extends EventEmitter {
 		return fallbackValue;
 	}
 
-	async getHashValue<T = unknown>(key: string, field: string) {
+	async getHashValueByField<T = unknown>(key: string, field: string) {
 		let value: unknown;
 
 		if (this.cache.kind === 'redis') {
@@ -119,7 +119,7 @@ export class CacheService extends EventEmitter {
 		return value as T;
 	}
 
-	async getHash<T = unknown>(key: string, { fallbackValue }: { fallbackValue?: T } = {}) {
+	async getHashValue<T = unknown>(key: string, { fallbackValue }: { fallbackValue?: T } = {}) {
 		const value: MaybeRecord =
 			this.cache.kind === 'redis'
 				? await this.cache.store.hgetall(key)
