@@ -99,6 +99,7 @@ import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
 import { ROLE } from '@/utils/userUtils';
 import { useClipboard } from '@/composables/useClipboard';
+import type { UpdateGlobalRolePayload } from '@/api/users';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
@@ -280,8 +281,8 @@ export default defineComponent({
 		goToUpgradeAdvancedPermissions() {
 			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 		},
-		async onRoleChange(user: IUser, name: IRole) {
-			await this.usersStore.updateRole({ id: user.id, role: { scope: 'global', name } });
+		async onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
+			await this.usersStore.updateGlobalRole({ id: user.id, newRoleName });
 		},
 	},
 });
