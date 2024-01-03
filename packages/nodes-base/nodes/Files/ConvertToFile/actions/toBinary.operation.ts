@@ -15,6 +15,7 @@ export const properties: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'e.g data',
+		requiresDataPath: 'single',
 		description:
 			"The name of the input field that contains the base64 string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
 	},
