@@ -10,7 +10,7 @@ import EventEmitter from 'events';
 type TaggedRedisCache = RedisCache & { kind: 'redis' };
 type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
 
-type MaybeRecord = Record<string, unknown> | undefined;
+type MaybeHashRecord = Record<string, unknown> | undefined;
 type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;
 
 @Service()
@@ -103,7 +103,7 @@ export class CacheService extends EventEmitter {
 		if (this.cache.kind === 'redis') {
 			value = await this.cache.store.hget(key, field);
 		} else {
-			const record: MaybeRecord = await this.cache.store.get(key);
+			const record: MaybeHashRecord = await this.cache.store.get(key);
 
 			if (record) value = record[field];
 		}
@@ -120,7 +120,7 @@ export class CacheService extends EventEmitter {
 	}
 
 	async getHashValue<T = unknown>(key: string, { fallbackValue }: { fallbackValue?: T } = {}) {
-		const value: MaybeRecord =
+		const value: MaybeHashRecord =
 			this.cache.kind === 'redis'
 				? await this.cache.store.hgetall(key)
 				: await this.cache.store.get(key);
