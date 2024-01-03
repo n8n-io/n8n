@@ -120,7 +120,7 @@
     "@huggingface/inference": "2.6.4",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
-    "@qdrant/js-client-rest": "^1.7.0",
+    "@qdrant/js-client-rest": "1.7.0",
     "@supabase/supabase-js": "2.38.5",
     "@xata.io/client": "0.25.3",
     "cohere-ai": "6.2.2",

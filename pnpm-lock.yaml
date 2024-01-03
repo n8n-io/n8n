@@ -193,7 +193,7 @@ importers:
         specifier: 1.1.2
         version: 1.1.2
       '@qdrant/js-client-rest':
-        specifier: ^1.7.0
+        specifier: 1.7.0
         version: 1.7.0(typescript@5.3.2)
       '@supabase/supabase-js':
         specifier: 2.38.5
