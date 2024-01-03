@@ -66,7 +66,7 @@ describe('TestWebhooks', () => {
 			const msg = 'Failed to add webhook to active webhooks';
 
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			jest.spyOn(testWebhooks, 'activateWebhook').mockRejectedValue(new Error(msg));
+			jest.spyOn(registrations, 'register').mockRejectedValueOnce(new Error(msg));
 			registrations.getAllRegistrations.mockResolvedValue([]);
 
 			const needsWebhook = testWebhooks.needsWebhook(...args);
