@@ -52,7 +52,7 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('getAllKeys()', () => {
 		test('should retrieve all test webhook registration keys', async () => {
-			cacheService.allKeys.mockResolvedValueOnce([fullCacheKey]);
+			cacheService.getAllKeys.mockResolvedValueOnce([fullCacheKey]);
 
 			const result = await registrations.getAllKeys();
 
@@ -62,7 +62,7 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('getAllRegistrations()', () => {
 		test('should retrieve all test webhook registrations', async () => {
-			cacheService.allKeys.mockResolvedValueOnce([fullCacheKey]);
+			cacheService.getAllKeys.mockResolvedValueOnce([fullCacheKey]);
 			cacheService.getMany.mockResolvedValueOnce([registration]);
 
 			const result = await registrations.getAllRegistrations();
@@ -89,7 +89,7 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('deregisterAll()', () => {
 		test('should deregister all test webhook registrations', async () => {
-			cacheService.allKeys.mockResolvedValueOnce([fullCacheKey]);
+			cacheService.getAllKeys.mockResolvedValueOnce([fullCacheKey]);
 
 			await registrations.deregisterAll();
 

@@ -67,6 +67,14 @@ export class CacheService extends EventEmitter {
 		this.cache = { ...memoryCache, kind: 'memory' };
 	}
 
+	async reset() {
+		await this.cache.store.reset();
+	}
+
+	emit(event: CacheEvent, ...args: unknown[]) {
+		return super.emit(event, ...args);
+	}
+
 	async get<T = unknown>(
 		key: string,
 		{
@@ -114,6 +122,10 @@ export class CacheService extends EventEmitter {
 		return [];
 	}
 
+	async getAllKeys() {
+		return this.cache.store.keys();
+	}
+
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!key || !value) return;
 
@@ -152,18 +164,6 @@ export class CacheService extends EventEmitter {
 		if (keys.length === 0) return;
 
 		return this.cache.store.mdel(...keys);
-	}
-
-	async reset() {
-		await this.cache.store.reset();
-	}
-
-	async allKeys() {
-		return this.cache.store.keys();
-	}
-
-	emit(event: CacheEvent, ...args: unknown[]) {
-		return super.emit(event, ...args);
 	}
 
 	// ----------------------------------
