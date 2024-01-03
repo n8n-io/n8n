@@ -268,8 +268,6 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			await this.registrations.deregister(key);
-
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
 				void this.deactivateWebhooks(workflow);
