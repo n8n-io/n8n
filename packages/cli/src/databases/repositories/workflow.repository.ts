@@ -198,4 +198,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
 			.execute() as Promise<Array<{ id: string; name: string }>>;
 	}
+
+	async updateActiveState(workflowId: string, newState: boolean) {
+		return this.update({ id: workflowId }, { active: newState });
+	}
+
+	async deactivateAll() {
+		return this.update({ active: true }, { active: false });
+	}
+
+	async findByActiveState(activeState: boolean) {
+		return this.findBy({ active: activeState });
+	}
 }

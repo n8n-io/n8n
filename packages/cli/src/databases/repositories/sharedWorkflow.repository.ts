@@ -1,9 +1,11 @@
 import { Service } from 'typedi';
-import { DataSource, type FindOptionsWhere, Repository, In, Not } from 'typeorm';
+import { DataSource, Repository, In, Not } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import type { Role } from '../entities/Role';
+import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -71,5 +73,56 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 	async makeOwnerOfAllWorkflows(user: User, role: Role) {
 		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
+	}
+
+	async getSharing(
+		user: User,
+		workflowId: string,
+		options: { allowGlobalScope: true; globalScope: Scope } | { allowGlobalScope: false },
+		relations: string[] = ['workflow'],
+	): Promise<SharedWorkflow | null> {
+		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
+
+		// Omit user from where if the requesting user has relevant
+		// global workflow permissions. This allows the user to
+		// access workflows they don't own.
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
+			where.userId = user.id;
+		}
+
+		return this.findOne({ where, relations });
+	}
+
+	async getSharedWorkflows(
+		user: User,
+		options: {
+			relations?: string[];
+			workflowIds?: string[];
+		},
+	): Promise<SharedWorkflow[]> {
+		return this.find({
+			where: {
+				...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
+				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
+			},
+			...(options.relations && { relations: options.relations }),
+		});
+	}
+
+	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[], roleId: string) {
+		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
+			if (user.isPending) {
+				return acc;
+			}
+			const entity: Partial<SharedWorkflow> = {
+				workflowId: workflow.id,
+				userId: user.id,
+				roleId,
+			};
+			acc.push(this.create(entity));
+			return acc;
+		}, []);
+
+		return transaction.save(newSharedWorkflows);
 	}
 }
