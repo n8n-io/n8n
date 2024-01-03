@@ -17480,8 +17480,8 @@ packages:
   /isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
-  /isbot@4.1.2:
-    resolution: {integrity: sha512-0zMFnUxzYc7+v7c+8E9HthL7of0afZPlqJ8yN3FwjpjPCDVBdm87oYkRHrsMR521GXHXcW/sBvG1fBDnxlKcFw==}
+  /isbot@4.2.0:
+    resolution: {integrity: sha512-yVfLv4iS22wXWMWv2KtapKUZ3etRJ0nkaC5u6o5y6dID+rQuKX/NpF2iVcGGORkrYlhA3CS5aEZGKwtdelMkHw==}
     engines: {node: '>=18'}
     dev: false
 
