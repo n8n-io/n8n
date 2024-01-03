@@ -77,9 +77,9 @@ export class TestWebhooks implements IWebhookManager {
 
 		const key = this.registrations.toKey(webhook);
 
-		const exists = await this.registrations.exists(key);
+		const registration = await this.registrations.get(key);
 
-		if (!exists) {
+		if (!registration) {
 			throw new WebhookNotFoundError({
 				path,
 				httpMethod,
@@ -87,7 +87,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, sessionId, workflowEntity } = await this.registrations.get(key);
+		const { destinationNode, sessionId, workflowEntity } = registration;
 		const timeout = this.timeouts[key];
 
 		const workflow = this.toWorkflow(workflowEntity);
@@ -162,7 +162,11 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!webhookKey) return;
 
-		const { workflowEntity } = await this.registrations.get(webhookKey);
+		const registration = await this.registrations.get(webhookKey);
+
+		if (!registration) return;
+
+		const { workflowEntity } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -205,9 +209,9 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
-			const exists = await this.registrations.exists(key);
+			const registration = await this.registrations.get(key);
 
-			if (exists && !webhook.webhookId) {
+			if (registration && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
@@ -251,7 +255,12 @@ export class TestWebhooks implements IWebhookManager {
 		const allWebhookKeys = await this.registrations.getAllKeys();
 
 		for (const key of allWebhookKeys) {
-			const { sessionId, workflowEntity } = await this.registrations.get(key);
+			const registration = await this.registrations.get(key);
+
+			if (!registration) continue;
+
+			const { sessionId, workflowEntity } = registration;
+
 			const timeout = this.timeouts[key];
 
 			const workflow = this.toWorkflow(workflowEntity);

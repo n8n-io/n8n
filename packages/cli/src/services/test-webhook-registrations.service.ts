@@ -31,20 +31,8 @@ export class TestWebhookRegistrationsService {
 		}
 	}
 
-	async exists(key: string) {
-		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
-
-		return registration !== undefined;
-	}
-
 	async get(key: string) {
-		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
-
-		if (!registration) {
-			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });
-		}
-
-		return registration;
+		return this.cacheService.get<TestWebhookRegistration>(key);
 	}
 
 	async getAllKeys() {

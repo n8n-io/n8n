@@ -32,22 +32,6 @@ describe('TestWebhookRegistrationsService', () => {
 		});
 	});
 
-	describe('exists()', () => {
-		test('should check if a test webhook registration exists', async () => {
-			cacheService.get.mockResolvedValueOnce(registration);
-
-			const firstResult = await registrations.exists(key);
-
-			expect(firstResult).toBeTruthy();
-
-			cacheService.get.mockResolvedValueOnce(undefined);
-
-			const secondResult = await registrations.exists(key);
-
-			expect(secondResult).toBeFalsy();
-		});
-	});
-
 	describe('get()', () => {
 		test('should retrieve a test webhook registration', async () => {
 			cacheService.get.mockResolvedValueOnce(registration);
@@ -57,12 +41,12 @@ describe('TestWebhookRegistrationsService', () => {
 			await expect(promise).resolves.toBe(registration);
 		});
 
-		test('should throw if no such test webhook registration was found', async () => {
+		test('should return undefined if no such test webhook registration was found', async () => {
 			cacheService.get.mockResolvedValueOnce(undefined);
 
 			const promise = registrations.get(key);
 
-			await expect(promise).rejects.toThrow('Failed to find test webhook registration');
+			await expect(promise).resolves.toBeUndefined();
 		});
 	});
 
