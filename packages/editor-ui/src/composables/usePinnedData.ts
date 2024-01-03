@@ -114,13 +114,18 @@ export function usePinnedData(
 		}
 	}
 
-	function isValidSize(data: string | object, activeNodeName: string): boolean {
+	function isValidSize(data: string | object): boolean {
+		const targetNode = unref(node);
+		if (!targetNode) {
+			return false;
+		}
+
 		if (typeof data === 'object') data = JSON.stringify(data);
 
 		const { pinData: currentPinData, ...workflow } = workflowsStore.getCurrentWorkflow();
 		const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
 
-		const newPinData = { ...currentPinData, [activeNodeName]: data };
+		const newPinData = { ...currentPinData, [targetNode.name]: data };
 		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);
 
 		if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
@@ -201,7 +206,7 @@ export function usePinnedData(
 			data = jsonParse(data);
 		}
 
-		if (!isValidSize(data, targetNode.name)) {
+		if (!isValidSize(data)) {
 			onSetDataError({ errorType: 'data-too-large', source });
 			throw new Error('Data too large');
 		}
@@ -238,7 +243,10 @@ export function usePinnedData(
 		hasData,
 		isValidNodeType,
 		setData,
+		onSetDataSuccess,
+		onSetDataError,
 		unsetData,
+		onUnsetData,
 		isValidJSON,
 		isValidSize,
 	};
