@@ -327,7 +327,7 @@ export const messageFields: INodeProperties[] = [
 										value: 'url',
 									},
 									{
-										name: 'Binary Data',
+										name: 'Binary File',
 										value: 'binaryData',
 									},
 								],

@@ -112,7 +112,7 @@ export class Html implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'dataPropertyName',
 				type: 'string',
 				requiresDataPath: 'single',
@@ -124,8 +124,7 @@ export class Html implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description:
-					'Name of the binary property in which the HTML to extract the data from can be found',
+				hint: 'The name of the input binary field containing the file to be extracted',
 			},
 			{
 				displayName: 'JSON Property',

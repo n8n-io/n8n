@@ -355,7 +355,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:download
 		// ----------------------------------
 		{
-			displayName: 'Binary Property',
+			displayName: 'Put Output File in Field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			required: true,
@@ -366,7 +366,7 @@ const versionDescription: INodeTypeDescription = {
 					resource: ['file'],
 				},
 			},
-			description: 'Name of the binary property to which to write the data of the read file',
+			hint: 'The name of the output binary field to put the file in',
 		},
 		{
 			displayName: 'Options',
@@ -833,7 +833,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'Binary Data',
+			displayName: 'Binary File',
 			name: 'binaryData',
 			type: 'boolean',
 			default: false,
@@ -861,7 +861,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The text content of the file to upload',
 		},
 		{
-			displayName: 'Binary Property',
+			displayName: 'Input Binary Field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -874,8 +874,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 			placeholder: '',
-			description:
-				'Name of the binary property which contains the data for the file to be uploaded',
+			hint: 'The name of the input binary field containing the file to be uploaded',
 		},
 
 		// ----------------------------------
