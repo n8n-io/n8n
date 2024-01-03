@@ -40,6 +40,8 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
+let pushHandlerRegistered = false;
+
 export const pushConnection = defineComponent({
 	setup() {
 		return {
@@ -56,8 +58,10 @@ export const pushConnection = defineComponent({
 		};
 	},
 	created() {
+		if (pushHandlerRegistered) return;
 		this.pushStore.addEventListener((message) => {
 			void this.pushMessageReceived(message);
+			pushHandlerRegistered = true;
 		});
 	},
 	computed: {

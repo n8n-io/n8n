@@ -34,10 +34,10 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const outgoingQueue = ref<unknown[]>([]);
 	const isConnectionOpen = ref(false);
 
-	const onMessageReceivedHandlers = ref<OnPushMessageHandler>();
+	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
-		onMessageReceivedHandlers.value = handler;
+		onMessageReceivedHandlers.value.push(handler);
 	};
 
 	function onConnectionError() {
@@ -141,9 +141,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			return;
 		}
 
-		if (typeof onMessageReceivedHandlers.value === 'function') {
-			onMessageReceivedHandlers.value(receivedData);
-		}
+		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
 	return {
