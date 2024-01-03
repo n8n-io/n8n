@@ -371,7 +371,6 @@ import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/n
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
-import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 
 interface AddNodeOptions {

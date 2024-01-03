@@ -7,7 +7,6 @@ import { MAX_PINNED_DATA_SIZE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
-// vi.mock('@/composables/useTelemetry', () => ({ useTelemetry: vi.fn(() => ({ track: vi.fn() })) }));
 vi.mock('@/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
 vi.mock('@/composables/useI18n', () => ({
 	useI18n: vi.fn(() => ({ baseText: vi.fn((key) => key) })),

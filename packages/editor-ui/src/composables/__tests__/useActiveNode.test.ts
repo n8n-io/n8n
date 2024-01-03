@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useActiveNode } from '@/composables/useActiveNode';
-import { storeToRefs } from 'pinia';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeType } from '@/composables/useNodeType';
 import { createTestNode } from '@/__tests__/mocks';
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/constants';

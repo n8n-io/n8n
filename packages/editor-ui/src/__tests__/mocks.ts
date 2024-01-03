@@ -37,7 +37,6 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	};
 
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		console.log(nodeTypes);
 		return nodeTypes[getResolvedKey(nodeType)].type;
 	}
 
