@@ -53,12 +53,18 @@ export const pushConnection = defineComponent({
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
+			removeEventListener: null as (() => void) | null,
 		};
 	},
 	created() {
-		this.pushStore.addEventListener((message) => {
+		this.removeEventListener = this.pushStore.addEventListener((message) => {
 			void this.pushMessageReceived(message);
 		});
+	},
+	unmounted() {
+		if (typeof this.removeEventListener === 'function') {
+			this.removeEventListener();
+		}
 	},
 	computed: {
 		...mapStores(
