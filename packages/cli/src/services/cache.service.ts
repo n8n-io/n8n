@@ -3,9 +3,10 @@ import config from '@/config';
 import { caching } from 'cache-manager';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from './cache/cacheManagerRedis';
-import { ApplicationError, jsonStringify } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
+import { NonCacheableInRedisError } from '@/errors/non-cacheable-in-redis.error';
 
 type TaggedRedisCache = RedisCache & { kind: 'redis' };
 type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
@@ -156,7 +157,7 @@ export class CacheService extends EventEmitter {
 		if (!key || !value) return;
 
 		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
-			throw new ApplicationError('Value cannot be cached in Redis', { extra: { key } });
+			throw new NonCacheableInRedisError(key);
 		}
 
 		await this.cache.store.set(key, value, ttl);
@@ -191,7 +192,7 @@ export class CacheService extends EventEmitter {
 		if (this.cache.kind === 'redis') {
 			for (const [key, value] of truthyKeysValues) {
 				if (!this.cache.store.isCacheable(value)) {
-					throw new ApplicationError('Value cannot be cached in Redis', { extra: { key } });
+					throw new NonCacheableInRedisError(key);
 				}
 			}
 		}
