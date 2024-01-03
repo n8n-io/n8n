@@ -314,11 +314,11 @@ import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
 	},
+	mixins: [executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,

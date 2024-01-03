@@ -111,13 +111,13 @@ interface ISearchEvent {
 
 export default defineComponent({
 	name: 'TemplatesSearchView',
-	mixins: [debounceHelper],
 	components: {
 		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [debounceHelper],
 	setup() {
 		return {
 			...useToast(),

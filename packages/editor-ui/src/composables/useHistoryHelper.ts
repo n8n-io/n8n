@@ -5,7 +5,7 @@ import { BulkCommand, Command } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 
-import { ref, onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue';
+import { onMounted, onUnmounted, nextTick } from 'vue';
 import { useDebounceHelper } from './useDebounce';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/utils/canvasUtils';

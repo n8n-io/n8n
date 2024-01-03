@@ -171,6 +171,13 @@ const WorkflowsView = defineComponent({
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
 	},
+	setup() {
+		const genericHelpers = useGenericHelpers();
+
+		return {
+			genericHelpers,
+		};
+	},
 	data() {
 		return {
 			filters: {
@@ -181,13 +188,6 @@ const WorkflowsView = defineComponent({
 				tags: [] as string[],
 			},
 			sourceControlStoreUnsubscribe: () => {},
-		};
-	},
-	setup() {
-		const genericHelpers = useGenericHelpers();
-
-		return {
-			genericHelpers,
 		};
 	},
 	computed: {

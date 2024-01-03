@@ -36,9 +36,9 @@ import WorkerCard from './Workers/WorkerCard.ee.vue';
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
+	mixins: [pushConnection, executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,

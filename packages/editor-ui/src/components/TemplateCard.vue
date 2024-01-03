@@ -48,7 +48,6 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';

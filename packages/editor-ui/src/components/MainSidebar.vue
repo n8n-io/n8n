@@ -457,7 +457,7 @@ export default defineComponent({
 					break;
 				}
 				case 'cloud-admin': {
-					this.cloudPlanStore.redirectToDashboard();
+					void this.cloudPlanStore.redirectToDashboard();
 					break;
 				}
 				case 'quickstart':

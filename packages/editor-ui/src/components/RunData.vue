@@ -632,7 +632,6 @@ export type EnterEditModeArgs = {
 
 export default defineComponent({
 	name: 'RunData',
-	mixins: [pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
@@ -643,6 +642,7 @@ export default defineComponent({
 		RunDataHtml,
 		RunDataSearch,
 	},
+	mixins: [pinData],
 	props: {
 		nodeUi: {
 			type: Object as PropType<INodeUi>,
