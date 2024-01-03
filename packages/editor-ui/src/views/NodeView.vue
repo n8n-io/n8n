@@ -601,7 +601,7 @@ export default defineComponent({
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
-				return this.$locale.baseText('nodeView.runButtonText.testWorkflow');
+				return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 			}
 
 			if (this.executionWaitingForWebhook) {
