@@ -28,7 +28,15 @@
 				/>
 				<div
 					id="node-view"
-					class="node-view"
+					:class="[
+						'node-view',
+						{ 'node-view__execution-preview': isExecutionPreview },
+						{ 'node-view__production-execution-preview': isProductionExecutionPreview },
+						{
+							'node-view__executed-in-editor':
+								!isExecutionPreview && !isProductionExecutionPreview && workflowExecution,
+						},
+					]"
 					:style="workflowStyle"
 					ref="nodeView"
 					data-test-id="node-view"
@@ -5130,6 +5138,25 @@ export default defineComponent({
 	40%,
 	60% {
 		transform: translate3d(4px, 0, 0);
+	}
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.node-view__executed-in-editor) {
+	.jtk-connector.success:not(.jtk-hover) {
+		path:not(.jtk-connector-outline) {
+			stroke: var(--color-success-light);
+		}
+		path[jtk-overlay-id='reverse-arrow'],
+		path[jtk-overlay-id='endpoint-arrow'],
+		path[jtk-overlay-id='midpoint-arrow'] {
+			fill: var(--color-success-light);
+		}
+	}
+
+	.connection-run-items-label {
+		color: var(--color-success);
 	}
 }
 </style>
