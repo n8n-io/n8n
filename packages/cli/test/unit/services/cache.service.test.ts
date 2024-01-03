@@ -363,13 +363,13 @@ describe('cacheService', () => {
 		expect(((await cacheService.getCache()) as RedisCache).store.client).toBeDefined();
 
 		await cacheService.setHash(key, { myField: 'myvalue', myField2: 'myvalue2' });
-		await expect(cacheService.getHashValue(key)).resolves.toStrictEqual({
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField: 'myvalue',
 			myField2: 'myvalue2',
 		});
-		await expect(cacheService.getHashValueByField(key, 'myField')).resolves.toBe('myvalue');
+		await expect(cacheService.getHashValue(key, 'myField')).resolves.toBe('myvalue');
 		await cacheService.deleteFromHash(key, 'myField');
-		await expect(cacheService.getHashValue(key)).resolves.toStrictEqual({
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField2: 'myvalue2',
 		});
 		await cacheService.delete(key);
@@ -386,13 +386,13 @@ describe('cacheService', () => {
 		expect(((await cacheService.getCache()) as MemoryCache).store.size).toBeDefined();
 
 		await cacheService.setHash(key, { myField: 'myvalue', myField2: 'myvalue2' });
-		await expect(cacheService.getHashValue(key)).resolves.toStrictEqual({
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField: 'myvalue',
 			myField2: 'myvalue2',
 		});
-		await expect(cacheService.getHashValueByField(key, 'myField')).resolves.toBe('myvalue');
+		await expect(cacheService.getHashValue(key, 'myField')).resolves.toBe('myvalue');
 		await cacheService.deleteFromHash(key, 'myField');
-		await expect(cacheService.getHashValue(key)).resolves.toStrictEqual({
+		await expect(cacheService.getHash(key)).resolves.toStrictEqual({
 			myField2: 'myvalue2',
 		});
 		await cacheService.delete(key);
