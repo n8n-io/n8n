@@ -137,7 +137,7 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Binary Data',
+				name: 'Binary File',
 				value: 'binaryData',
 			},
 			{

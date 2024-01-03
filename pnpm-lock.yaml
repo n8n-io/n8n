@@ -1370,6 +1370,9 @@ importers:
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
+      ts-ics:
+        specifier: ^1.2.2
+        version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.22.4)
       typedi:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -13720,6 +13723,14 @@ packages:
       whatwg-url: 14.0.0
     dev: true
 
+  /date-fns-tz@2.0.0(date-fns@2.30.0):
+    resolution: {integrity: sha512-OAtcLdB9vxSXTWHdT8b398ARImVwQMyjfYGkKD2zaGpHseG2UPHbHjXELReErZFxWdSLph3c2zOaaTyHfOhERQ==}
+    peerDependencies:
+      date-fns: '>=2.0.0'
+    dependencies:
+      date-fns: 2.30.0
+    dev: false
+
   /date-fns@2.30.0:
     resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
     engines: {node: '>=0.11'}
@@ -24631,6 +24642,19 @@ packages:
     dependencies:
       typescript: 5.3.2
     dev: true
+
+  /ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.22.4):
+    resolution: {integrity: sha512-L7T5JQi99qQ2Uv7AoCHUZ8Mx1bJYo7qBZtBckuHueR90I3WVdW5NC/tOqTVgu18c3zj08du+xlgWlTIcE+Foxw==}
+    peerDependencies:
+      date-fns: ^2
+      lodash: ^4
+      zod: ^3
+    dependencies:
+      date-fns: 2.30.0
+      date-fns-tz: 2.0.0(date-fns@2.30.0)
+      lodash: 4.17.21
+      zod: 3.22.4
+    dev: false
 
   /ts-jest@29.1.1(@babel/core@7.22.9)(jest@29.6.2)(typescript@5.3.2):
     resolution: {integrity: sha512-D6xjnnbP17cC85nliwGiL+tpoKN0StpgE0TeOjXQTU6MVCfsB4v7aW05CgQ/1OywGb0x/oy9hHFnN+sczTiRaA==}
