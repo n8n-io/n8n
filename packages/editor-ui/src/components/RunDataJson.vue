@@ -1,20 +1,20 @@
 <template>
 	<div :class="$style.jsonDisplay">
 		<Suspense>
-			<run-data-json-actions
+			<RunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
-				:sessioId="sessionId"
-				:displayMode="displayMode"
-				:distanceFromActive="distanceFromActive"
-				:selectedJsonPath="selectedJsonPath"
-				:jsonData="jsonData"
-				:paneType="paneType"
+				:sessio-id="sessionId"
+				:display-mode="displayMode"
+				:distance-from-active="distanceFromActive"
+				:selected-json-path="selectedJsonPath"
+				:json-data="jsonData"
+				:pane-type="paneType"
 			/>
 		</Suspense>
-		<draggable
+		<Draggable
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -22,18 +22,20 @@
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
-			<vue-json-pretty
+			<VueJsonPretty
 				:data="jsonData"
 				:deep="10"
-				:showLength="true"
-				:selectedValue="selectedJsonPath"
-				rootPath=""
-				selectableType="single"
+				:show-length="true"
+				:selected-value="selectedJsonPath"
+				root-path=""
+				selectable-type="single"
 				class="json-data"
 				@update:selectedValue="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
-					<span
+					<TextWithHighlights
+						:content="getContent(node.key)"
+						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
 						:data-name="node.key"
@@ -43,13 +45,18 @@
 							[$style.mappable]: mappingEnabled,
 							[$style.dragged]: draggingPath === node.path,
 						}"
-						v-html="highlightSearchTerm(node.key)"
 					/>
 				</template>
 				<template #renderNodeValue="{ node }">
-					<span v-if="isNaN(node.index)" v-html="highlightSearchTerm(node.content)" />
-					<span
+					<TextWithHighlights
+						v-if="isNaN(node.index)"
+						:content="getContent(node.content)"
+						:search="search"
+					/>
+					<TextWithHighlights
 						v-else
+						:content="getContent(node.content)"
+						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
 						:data-name="getListItemName(node.path)"
@@ -60,11 +67,10 @@
 							[$style.dragged]: draggingPath === node.path,
 						}"
 						class="ph-no-capture"
-						v-html="highlightSearchTerm(node.content)"
 					/>
 				</template>
-			</vue-json-pretty>
-		</draggable>
+			</VueJsonPretty>
+		</Draggable>
 	</div>
 </template>
 
@@ -76,7 +82,6 @@ import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { isString } from '@/utils/typeGuards';
-import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
 import { shorten } from '@/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
@@ -86,18 +91,20 @@ import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/constants';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 const RunDataJsonActions = defineAsyncComponent(
 	async () => import('@/components/RunDataJsonActions.vue'),
 );
 
 export default defineComponent({
-	name: 'run-data-json',
+	name: 'RunDataJson',
 	components: {
 		VueJsonPretty,
 		Draggable,
 		RunDataJsonActions,
 		MappingPill,
+		TextWithHighlights,
 	},
 	props: {
 		editMode: {
@@ -201,9 +208,6 @@ export default defineComponent({
 		},
 		getListItemName(path: string): string {
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
-		},
-		highlightSearchTerm(value: string): string {
-			return sanitizeHtml(highlightText(this.getContent(value), this.search));
 		},
 	},
 });

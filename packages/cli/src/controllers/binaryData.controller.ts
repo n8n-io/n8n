@@ -1,11 +1,9 @@
-import { Service } from 'typedi';
 import express from 'express';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
 import { Get, RestController } from '@/decorators';
 import { BinaryDataRequest } from '@/requests';
 
 @RestController('/binary-data')
-@Service()
 export class BinaryDataController {
 	constructor(private readonly binaryDataService: BinaryDataService) {}
 

@@ -15,19 +15,19 @@ const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" name="V1" :class="$style.v1container">
+	<BaseBanner custom-icon="info-circle" theme="warning" name="V1" :class="$style.v1container">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a
 				v-if="hasOwnerPermission"
 				:class="$style.link"
-				@click="dismissPermanently"
 				data-test-id="banner-confirm-v1"
+				@click="dismissPermanently"
 			>
 				<span v-html="locale.baseText('generic.dontShowAgain')"></span>
 			</a>
 		</template>
-	</base-banner>
+	</BaseBanner>
 </template>
 
 <style lang="scss" module>

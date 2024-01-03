@@ -32,6 +32,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	CloseFunction,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -1074,7 +1075,7 @@ export class WorkflowExecute {
 
 									const errorItems: INodeExecutionData[] = [];
 									const successItems: INodeExecutionData[] = [];
-
+									const closeFunctions: CloseFunction[] = [];
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
 									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
@@ -1087,6 +1088,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										executionData,
 										this.mode,
+										closeFunctions,
 										this.abortController.signal,
 									);
 									const dataProxy = executeFunctions.getWorkflowDataProxy(0);

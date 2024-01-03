@@ -1,16 +1,16 @@
 <template>
 	<div :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
-			<n8n-text size="small" :compact="true">
+			<N8nText size="small" :compact="true">
 				<slot>
 					<span
-						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
+						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
 						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
 					/>
 				</slot>
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>
@@ -23,8 +23,11 @@ import Locale from '../../mixins/locale';
 import { uid } from '../../utils';
 
 export default defineComponent({
-	name: 'n8n-notice',
+	name: 'N8nNotice',
 	directives: {},
+	components: {
+		N8nText,
+	},
 	mixins: [Locale],
 	props: {
 		id: {
@@ -43,9 +46,6 @@ export default defineComponent({
 			type: String,
 			default: '',
 		},
-	},
-	components: {
-		N8nText,
 	},
 	data() {
 		return {

@@ -2,7 +2,7 @@
 	<Modal
 		max-width="540px"
 		:title="$locale.baseText('about.aboutN8n')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="ABOUT_MODAL_KEY"
 		:center="true"
 	>
@@ -47,7 +47,12 @@
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button @click="closeDialog" float="right" :label="$locale.baseText('about.close')" />
+				<n8n-button
+					float="right"
+					:label="$locale.baseText('about.close')"
+					data-test-id="close-about-modal-button"
+					@click="closeDialog"
+				/>
 			</div>
 		</template>
 	</Modal>

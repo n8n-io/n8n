@@ -134,49 +134,48 @@ function getIssues(index: number): string[] {
 		<n8n-input-label
 			v-if="!singleCondition"
 			:label="parameter.displayName"
-			underline
-			showOptions
-			:showExpressionSelector="false"
-			size="small"
+			:underline="true"
+			:show-options="true"
+			:show-expression-selector="false"
 			color="text-dark"
 		>
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
-					<combinator-select
+					<CombinatorSelect
 						v-if="index !== 0"
-						:readOnly="index !== 1"
+						:read-only="index !== 1"
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
 						@combinatorChange="onCombinatorChange"
 					/>
 
-					<condition
+					<Condition
 						:condition="condition"
 						:index="index"
 						:options="state.paramValue.options"
-						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
-						:canRemove="state.paramValue.conditions.length > 1"
+						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						:class="$style.condition"
 						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
-					></condition>
+					></Condition>
 				</div>
 			</div>
 			<div v-if="!singleCondition" :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
-					@click="addCondition"
 					:class="$style.addCondition"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 					:disabled="maxConditionsReached"
 					data-test-id="filter-add-condition"
+					@click="addCondition"
 				/>
 			</div>
 		</div>

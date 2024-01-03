@@ -418,11 +418,11 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 
 /**
  * Get the IDs of the workflows that have been shared with the user.
- * Returns all IDs if user has the 'workflow:read' scope (see `whereClause`)
+ * Returns all IDs if user has the 'workflow:read' scope.
  */
 export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (!(await user.hasGlobalScope('workflow:read'))) {
+	if (!user.hasGlobalScope('workflow:read')) {
 		where.userId = user.id;
 	}
 	if (roles?.length) {

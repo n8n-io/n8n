@@ -18,6 +18,7 @@ import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -76,6 +77,7 @@ const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evalua
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
+		instance_id: useRootStore().instanceId,
 		workflow_id: route.params.workflowId,
 	});
 };
@@ -326,16 +328,16 @@ watchEffect(async () => {
 			</router-link>
 		</div>
 		<div :class="$style.listComponentWrapper">
-			<workflow-history-list
+			<WorkflowHistoryList
 				v-if="canRender"
 				:items="workflowHistory"
-				:lastReceivedItemsLength="lastReceivedItemsLength"
-				:activeItem="activeWorkflowVersion"
+				:last-received-items-length="lastReceivedItemsLength"
+				:active-item="activeWorkflowVersion"
 				:actions="actions"
-				:requestNumberOfItems="requestNumberOfItems"
-				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-				:evaluatedPruneTime="evaluatedPruneTime"
-				:isListLoading="isListLoading"
+				:request-number-of-items="requestNumberOfItems"
+				:should-upgrade="workflowHistoryStore.shouldUpgrade"
+				:evaluated-prune-time="evaluatedPruneTime"
+				:is-list-loading="isListLoading"
 				@action="onAction"
 				@preview="onPreview"
 				@load-more="loadMore"
@@ -343,13 +345,13 @@ watchEffect(async () => {
 			/>
 		</div>
 		<div :class="$style.contentComponentWrapper">
-			<workflow-history-content
+			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflowVersion="activeWorkflowVersion"
+				:workflow-version="activeWorkflowVersion"
 				:actions="actions"
-				:isListLoading="isListLoading"
-				:isFirstItemShown="isFirstItemShown"
+				:is-list-loading="isListLoading"
+				:is-first-item-shown="isFirstItemShown"
 				@action="onAction"
 			/>
 		</div>

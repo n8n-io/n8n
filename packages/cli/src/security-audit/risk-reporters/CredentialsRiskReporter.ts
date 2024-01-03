@@ -1,5 +1,3 @@
-import { In, MoreThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
 import { Service } from 'typedi';
 import type { IWorkflowBase } from 'n8n-workflow';
 import config from '@/config';
@@ -119,23 +117,9 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		date.setDate(date.getDate() - days);
 
-		const executionIds = await this.executionRepository
-			.find({
-				select: ['id'],
-				where: {
-					startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date) as Date),
-				},
-			})
-			.then((executions) => executions.map(({ id }) => id));
+		const executionIds = await this.executionRepository.getIdsSince(date);
 
-		return this.executionDataRepository
-			.find({
-				select: ['workflowData'],
-				where: {
-					executionId: In(executionIds),
-				},
-			})
-			.then((executionData) => executionData.map(({ workflowData }) => workflowData));
+		return this.executionDataRepository.findByExecutionIds(executionIds);
 	}
 
 	/**

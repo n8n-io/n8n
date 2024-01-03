@@ -2204,6 +2204,7 @@ export class Github implements INodeType {
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
 							binary: {},
+							pairedItem: items[i].pairedItem,
 						};
 
 						if (items[i].binary !== undefined) {
@@ -2218,9 +2219,8 @@ export class Github implements INodeType {
 							path as string,
 						);
 
-						items[i] = newItem;
-
-						return [items];
+						returnData.push(newItem);
+						continue;
 					}
 				}
 
