@@ -210,4 +210,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findByActiveState(activeState: boolean) {
 		return this.findBy({ active: activeState });
 	}
+
+	async findWithFields(candidateIds: string[], { fields }: { fields: string[] }) {
+		return this.find({
+			where: {
+				id: In(candidateIds),
+			},
+			select: fields as FindOptionsSelect<SharedWorkflow>,
+		});
+	}
 }
