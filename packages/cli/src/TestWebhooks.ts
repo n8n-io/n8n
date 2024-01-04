@@ -252,9 +252,9 @@ export class TestWebhooks implements IWebhookManager {
 	async cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
 
-		const allWebhookKeys = await this.registrations.getAllKeys();
+		const allKeys = await this.registrations.getAllKeys();
 
-		for (const key of allWebhookKeys) {
+		for (const key of allKeys) {
 			const registration = await this.registrations.get(key);
 
 			if (!registration) continue;

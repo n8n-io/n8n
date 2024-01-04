@@ -15,8 +15,6 @@ import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	CacheEvent,
-	RetrieveOneOptions,
-	RetrieveManyOptions,
 	MaybeHash,
 } from '@/services/cache/cache.types';
 
@@ -121,6 +119,10 @@ export class CacheService extends EventEmitter {
 		await this.cache.store.mset(truthyKeysValues, ttl);
 	}
 
+	/**
+	 * Set or append to a [Redis hash](https://redis.io/docs/data-types/hashes/)
+	 * stored under a key in the cache. If in-memory, use a regular JS object.
+	 */
 	async setHash(key: string, hash: Record<string, unknown>) {
 		if (this.isDisabled) return;
 
@@ -148,7 +150,13 @@ export class CacheService extends EventEmitter {
 	//            retrieving
 	// ----------------------------------
 
-	async get<T = unknown>(key: string, { fallbackValue, refreshFn }: RetrieveOneOptions<T> = {}) {
+	async get<T = unknown>(
+		key: string,
+		{
+			fallbackValue,
+			refreshFn,
+		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
+	) {
 		if (this.isDisabled) {
 			if (!refreshFn) throw new UnusableDisabledCacheError();
 
@@ -183,7 +191,13 @@ export class CacheService extends EventEmitter {
 
 	async getMany<T = unknown[]>(
 		keys: string[],
-		{ fallbackValue, refreshFn }: RetrieveManyOptions<T> = {},
+		{
+			fallbackValue,
+			refreshFn,
+		}: {
+			fallbackValue?: T[];
+			refreshFn?: (keys: string[]) => Promise<T[]>;
+		} = {},
 	) {
 		if (this.isDisabled) {
 			if (!refreshFn) throw new UnusableDisabledCacheError();
@@ -224,16 +238,12 @@ export class CacheService extends EventEmitter {
 		return fallbackValue;
 	}
 
-	// @TODO: Remove this
-	async getAllKeys() {
-		if (!this.cache) await this.init();
-
-		return this.cache.store.keys();
-	}
-
 	async getHash<T = unknown>(
 		key: string,
-		{ fallbackValue, refreshFn }: RetrieveOneOptions<T> = {},
+		{
+			fallbackValue,
+			refreshFn,
+		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<MaybeHash<T>> } = {},
 	) {
 		if (this.isDisabled) {
 			if (!refreshFn) throw new UnusableDisabledCacheError();
@@ -243,13 +253,13 @@ export class CacheService extends EventEmitter {
 
 		if (!this.cache) await this.init();
 
-		const hash: MaybeHash =
+		const hash: MaybeHash<T> =
 			this.cache.kind === 'redis' ? await this.cache.store.hgetall(key) : await this.get(key);
 
 		if (hash !== undefined) {
 			this.emit('metrics.cache.hit');
 
-			return hash as T;
+			return hash as MaybeHash<T>;
 		}
 
 		this.emit('metrics.cache.miss');
@@ -263,13 +273,20 @@ export class CacheService extends EventEmitter {
 			return refreshValue;
 		}
 
-		return fallbackValue;
+		return fallbackValue as MaybeHash<T>;
 	}
 
+	/**
+	 * Retrieve a value under a field in a [Redis hash](https://redis.io/docs/data-types/hashes/).
+	 * If in-memory, use a regular JS object. To retrieve the hash itself, use `get`.
+	 */
 	async getHashValue<T = unknown>(
 		key: string,
 		field: string,
-		{ fallbackValue, refreshFn }: RetrieveOneOptions<T> = {},
+		{
+			fallbackValue,
+			refreshFn,
+		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
 	) {
 		if (this.isDisabled) {
 			if (!refreshFn) throw new UnusableDisabledCacheError();
@@ -284,7 +301,7 @@ export class CacheService extends EventEmitter {
 		if (this.cache.kind === 'redis') {
 			hashValue = await this.cache.store.hget(key, field);
 		} else {
-			const hashObject: MaybeHash = await this.cache.store.get(key);
+			const hashObject: MaybeHash<T> = await this.cache.store.get(key);
 
 			hashValue = hashObject?.[field];
 		}
@@ -333,7 +350,11 @@ export class CacheService extends EventEmitter {
 		return this.cache.store.mdel(...keys);
 	}
 
-	async deleteFromHash(key: string, field: string) {
+	/**
+	 * Delete a value under a field in a [Redis hash](https://redis.io/docs/data-types/hashes/).
+	 * If in-memory, use a regular JS object. To delete the hash itself, use `delete`.
+	 */
+	async deleteFromHash<T = unknown>(key: string, field: string) {
 		if (this.isDisabled) return;
 
 		if (!this.cache) await this.init();
@@ -345,7 +366,7 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 
-		const hashObject: MaybeHash = await this.get(key);
+		const hashObject: MaybeHash<T> = await this.get(key);
 
 		if (!hashObject) return;
 
