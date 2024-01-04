@@ -17477,8 +17477,8 @@ packages:
   /isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
-  /isbot@4.2.0:
-    resolution: {integrity: sha512-yVfLv4iS22wXWMWv2KtapKUZ3etRJ0nkaC5u6o5y6dID+rQuKX/NpF2iVcGGORkrYlhA3CS5aEZGKwtdelMkHw==}
+  /isbot@4.3.0:
+    resolution: {integrity: sha512-cohu4X66cXP120xwF+UubL+BQzOQLN1O0DOPOmkci6elgZ7o6XIn8B3FARk59RL0aX3cGTq8Ta7MVOWpay3rbw==}
     engines: {node: '>=18'}
     dev: false
 
