@@ -18,7 +18,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	}) as string;
 
 	try {
-		const columns = await getTableSchema(db, schema, table);
+		const columns = await getTableSchema(db, schema, table, options.nodeVersion);
 
 		return columns.map((column) => ({
 			name: column.column_name,

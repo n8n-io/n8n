@@ -380,9 +380,17 @@ export async function getTableSchema(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
+	version: number,
 ): Promise<ColumnInfo[]> {
+	const select = ['column_name', 'data_type', 'is_nullable', 'udt_name', 'column_default'];
+
+	if (version >= 2.4) {
+		select.push('is_generated', 'identity_generation');
+	}
+
+	const selectString = select.join(', ');
 	const columns = await db.any(
-		'SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		`SELECT ${selectString} FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2`,
 		[schema, table],
 	);
 
@@ -466,14 +474,18 @@ export function checkItemAgainstSchema(
 	return item;
 }
 
-export const configureTableSchemaUpdater = (initialSchema: string, initialTable: string) => {
+export const configureTableSchemaUpdater = (
+	initialSchema: string,
+	initialTable: string,
+	version: number,
+) => {
 	let currentSchema = initialSchema;
 	let currentTable = initialTable;
 	return async (db: PgpDatabase, tableSchema: ColumnInfo[], schema: string, table: string) => {
 		if (currentSchema !== schema || currentTable !== table) {
 			currentSchema = schema;
 			currentTable = table;
-			tableSchema = await getTableSchema(db, schema, table);
+			tableSchema = await getTableSchema(db, schema, table, version);
 		}
 		return tableSchema;
 	};

@@ -47,6 +47,8 @@ export async function getMappingColumns(
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	const { db, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
@@ -62,7 +64,7 @@ export async function getMappingColumns(
 	}) as string;
 
 	try {
-		const columns = await getTableSchema(db, schema, table);
+		const columns = await getTableSchema(db, schema, table, nodeVersion);
 		const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(
@@ -72,11 +74,13 @@ export async function getMappingColumns(
 				const type = mapPostgresType(col.data_type);
 				const options =
 					type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
-				const isAutoIncrement = col.column_default?.startsWith('nextval');
+				const hasDefault = Boolean(col.column_default);
+				const isGenerated = col.is_generated === 'ALWAYS' || col.identity_generation === 'ALWAYS';
+				const nullable = col.is_nullable === 'YES';
 				return {
 					id: col.column_name,
 					displayName: col.column_name,
-					required: col.is_nullable !== 'YES' && !isAutoIncrement,
+					required: !nullable && !hasDefault && !isGenerated,
 					defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
 					display: true,
 					type,
