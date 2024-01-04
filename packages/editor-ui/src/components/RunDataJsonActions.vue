@@ -37,11 +37,10 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { pinData } from '@/mixins/pinData';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
@@ -52,6 +51,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 type JsonPathData = {
 	path: string;
@@ -60,7 +60,7 @@ type JsonPathData = {
 
 export default defineComponent({
 	name: 'RunDataJsonActions',
-	mixins: [genericHelpers, pinData],
+	mixins: [genericHelpers],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -93,14 +93,18 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const ndvStore = useNDVStore();
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
 		const clipboard = useClipboard();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
 
 		return {
 			i18n,
 			nodeHelpers,
 			clipboard,
+			pinnedData,
 			...useToast(),
 		};
 	},
@@ -123,8 +127,8 @@ export default defineComponent({
 				const inExecutionsFrame =
 					window !== window.parent && window.parent.location.pathname.includes('/executions');
 
-				if (this.hasPinData && !inExecutionsFrame) {
-					selectedValue = clearJsonKey(this.pinData as object);
+				if (this.pinnedData.hasData.value && !inExecutionsFrame) {
+					selectedValue = clearJsonKey(this.pinnedData.data.value as object);
 				} else {
 					selectedValue = executionDataToJson(
 						this.nodeHelpers.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),

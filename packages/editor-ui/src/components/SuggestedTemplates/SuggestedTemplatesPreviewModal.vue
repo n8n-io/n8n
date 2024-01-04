@@ -44,8 +44,6 @@ function showConfirmationMessage(event: PointerEvent) {
 				withPostHog: true,
 			},
 		);
-		localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
-		uiStore.deleteSuggestedTemplates();
 	}
 }
 
@@ -55,9 +53,12 @@ function openCanvas() {
 			title: i18n.baseText('suggestedTemplates.notification.comingSoon.title'),
 			message: i18n.baseText('suggestedTemplates.notification.comingSoon.message'),
 			type: 'info',
+			duration: 10000,
 			onClick: showConfirmationMessage,
 		},
 	]);
+	localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
+	uiStore.deleteSuggestedTemplates();
 	uiStore.closeModal(SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY);
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });

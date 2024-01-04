@@ -1,0 +1,242 @@
+{
+  "name": "My workflow 64",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c6504d1-9412-4da5-bd51-e5f9d6a84721",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  \"output\": \"third\",\n  \"text\": \"third output text\"\n}, {\n  \"output\": \"fourth\",\n  \"text\": \"fourth output text\"\n}, {\n  \"output\": \"first\",\n  \"text\": \"first output text\"\n}, {\n  \"output\": \"second\",\n  \"text\": \"second output text\"\n}]"
+      },
+      "id": "73d838de-89f2-476e-9dc8-a4dc59e4bdfb",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        620
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d19a786e-e9fc-4480-af8a-c1abc9d9ef9a",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        200,
+        460
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "82d5a7b9-6a29-4df8-823a-bd926f2000a9",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        200,
+        620
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "40276b8e-eaad-49bd-9271-cd82c6688f24",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        200,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "first",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "First Output"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "199d4f8c-1c92-48cd-99ad-e1da186ed54f",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "second",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Second Output"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "e894662a-7496-4df4-a084-7200c3192485",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "third",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Third Output"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 2
+        }
+      },
+      "id": "0c34bae5-89c8-4adb-bb38-092d5a0e349e",
+      "name": "Switch1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -120,
+        620
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "output": "first",
+          "text": "first output text"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "output": "second",
+          "text": "second output text"
+        }
+      }
+    ],
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "output": "third",
+          "text": "third output text"
+        }
+      },
+      {
+        "json": {
+          "output": "fourth",
+          "text": "fourth output text"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c9c4d7fd-b704-4664-8fde-d1c2414e68f0",
+  "id": "1vDZkJN9SpYXu0Ic",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

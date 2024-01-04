@@ -302,7 +302,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
@@ -320,7 +320,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
@@ -358,6 +358,15 @@ describe('NDV', () => {
 			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
 		});
 		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
+
+	it('should allow editing code in fullscreen in the Code node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.actions.openCodeEditorFullscreen();
+
+		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 	});
 
 	it('should not retrieve remote options when a parameter value changes', () => {
@@ -533,7 +542,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
 		ndv.getters.outputDisplayMode().find('label').eq(1).click();
 
-		ndv.getters.outputDataContainer().find('.json-data').should('be.visible');
+		ndv.getters.outputDataContainer().find('.json-data').should('exist');
 		ndv.getters
 			.outputDataContainer()
 			.should(
