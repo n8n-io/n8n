@@ -158,7 +158,7 @@ export class CacheService extends EventEmitter {
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
 	) {
 		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError();
+			if (!refreshFn) throw new UnusableDisabledCacheError(key);
 
 			return refreshFn(key);
 		}
@@ -200,7 +200,7 @@ export class CacheService extends EventEmitter {
 		} = {},
 	) {
 		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError();
+			if (!refreshFn) throw new UnusableDisabledCacheError(keys);
 
 			return refreshFn(keys);
 		}
@@ -246,7 +246,7 @@ export class CacheService extends EventEmitter {
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<MaybeHash<T>> } = {},
 	) {
 		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError();
+			if (!refreshFn) throw new UnusableDisabledCacheError(key);
 
 			return refreshFn(key);
 		}
@@ -289,7 +289,7 @@ export class CacheService extends EventEmitter {
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
 	) {
 		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError();
+			if (!refreshFn) throw new UnusableDisabledCacheError(key);
 
 			return refreshFn(key);
 		}
