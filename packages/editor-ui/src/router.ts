@@ -517,13 +517,7 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
-					middleware: ['authenticated', 'custom'],
-					middlewareOptions: {
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return settingsStore.isPublicApiEnabled;
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -762,9 +756,10 @@ export const routes = [
 ] as Array<RouteRecordRaw & RouteConfig>;
 
 function withReadonlyMeta(route: RouteRecordRaw & RouteConfig) {
-	if (!route.meta) route.meta = {};
+	if (!route.meta) {
+		route.meta = {};
+	}
 
-	// route.meta.readonly = route.name ? !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS) : false;
 	route.meta.readonly = !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS);
 
 	return route;
