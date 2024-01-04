@@ -5194,29 +5194,25 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-@mixin applyColorToConnection($partialSelector, $cssColorVar, $labelCssColorVar) {
+@mixin applyColorToConnection($partialSelector, $cssColorVarName, $labelCssColorVarName) {
 	.jtk-connector#{$partialSelector}:not(.jtk-hover) {
 		path:not(.jtk-connector-outline) {
-			stroke: $cssColorVar;
+			stroke: var(#{$cssColorVarName});
 		}
 		path[jtk-overlay-id='reverse-arrow'],
 		path[jtk-overlay-id='endpoint-arrow'],
 		path[jtk-overlay-id='midpoint-arrow'] {
-			fill: $cssColorVar;
+			fill: var(#{$cssColorVarName});
 		}
 	}
 
 	.connection-run-items-label#{$partialSelector} {
-		color: $labelCssColorVar;
+		color: var(#{$labelCssColorVarName});
 	}
 }
 
 :deep(.node-view__executed) {
-	@include applyColorToConnection('.success', var(--color-success-light), var(--color-success));
-	@include applyColorToConnection(
-		'.success.pinned',
-		var(--color-secondary),
-		var(--color-secondary)
-	);
+	@include applyColorToConnection('.success', '--color-success-light', '--color-success');
+	@include applyColorToConnection('.success.pinned', '--color-secondary', '--color-secondary');
 }
 </style>
