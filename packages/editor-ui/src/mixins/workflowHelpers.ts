@@ -402,7 +402,7 @@ export function executeData(
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			const parentPinData = workflowsStore.getPinData![parentNodeName];
+			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
 
 			// populate `executeData` from `pinData`
 
@@ -650,7 +650,7 @@ export const workflowHelpers = defineComponent({
 			const data: IWorkflowData = {
 				name: this.workflowsStore.workflowName,
 				nodes,
-				pinData: this.workflowsStore.getPinData,
+				pinData: this.workflowsStore.pinnedWorkflowData,
 				connections: workflowConnections,
 				active: this.workflowsStore.isWorkflowActive,
 				settings: this.workflowsStore.workflow.settings,
