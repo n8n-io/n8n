@@ -3,7 +3,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
 import type { IExecutionsSummary } from 'n8n-workflow';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
 export interface IExecutionUIData {
 	name: string;
@@ -62,7 +62,7 @@ export const executionHelpers = defineComponent({
 				const stoppedAt = execution.stoppedAt
 					? new Date(execution.stoppedAt).getTime()
 					: Date.now();
-				status.runningTime = useGenericHelpers().displayTimer(
+				status.runningTime = this.$locale.displayTimer(
 					stoppedAt - new Date(execution.startedAt).getTime(),
 					true,
 				);
@@ -71,7 +71,7 @@ export const executionHelpers = defineComponent({
 			return status;
 		},
 		formatDate(fullDate: Date | string | number) {
-			const { date, time } = useGenericHelpers().convertToDisplayDate(fullDate);
+			const { date, time } = convertToDisplayDate(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 	},

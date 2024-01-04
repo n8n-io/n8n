@@ -96,7 +96,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
@@ -109,11 +108,9 @@ export default defineComponent({
 	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	setup() {
 		const externalHooks = useExternalHooks();
-		const genericHelpers = useGenericHelpers();
 
 		return {
 			externalHooks,
-			genericHelpers,
 		};
 	},
 	data() {
