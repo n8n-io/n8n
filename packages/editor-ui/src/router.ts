@@ -755,12 +755,12 @@ export const routes = [
 	},
 ] as Array<RouteRecordRaw & RouteConfig>;
 
-function withReadonlyMeta(route: RouteRecordRaw & RouteConfig) {
+function withCanvasReadOnlyMeta(route: RouteRecordRaw & RouteConfig) {
 	if (!route.meta) {
 		route.meta = {};
 	}
 
-	route.meta.readonly = !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS);
+	route.meta.readOnlyCanvas = !EDITABLE_VIEWS.includes((route?.name ?? '') as VIEWS);
 
 	return route;
 }
@@ -774,7 +774,7 @@ const router = createRouter({
 			to.meta.setScrollPosition(0);
 		}
 	},
-	routes: routes.map(withReadonlyMeta),
+	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
 router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {

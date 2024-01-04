@@ -710,7 +710,7 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		isReadOnlyRoute() {
-			return this.$route?.meta?.readonly === true;
+			return this.$route?.meta?.readOnlyCanvas === true;
 		},
 	},
 	data() {
