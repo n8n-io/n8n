@@ -169,7 +169,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn) {
+		if (refreshFn && !fallbackValue) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
@@ -207,7 +207,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn) {
+		if (refreshFn && !fallbackValue) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue: T[] = await refreshFn(keys);
@@ -248,7 +248,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn) {
+		if (refreshFn && !fallbackValue) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
@@ -294,7 +294,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn) {
+		if (refreshFn && !fallbackValue) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);

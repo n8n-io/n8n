@@ -127,7 +127,6 @@ for (const backend of ['memory', 'redis'] as const) {
 			test('should refresh value', async () => {
 				const promise = cacheService.get('testString', {
 					refreshFn: async () => 'refreshValue',
-					fallbackValue: 'fallback',
 				});
 
 				await expect(promise).resolves.toBe('refreshValue');
