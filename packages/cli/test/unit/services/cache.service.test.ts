@@ -133,7 +133,7 @@ for (const backend of ['memory', 'redis'] as const) {
 				await expect(promise).resolves.toBe('refreshValue');
 			});
 
-			test('should handle non-ASCII keys', async () => {
+			test('should handle non-ASCII key', async () => {
 				const nonAsciiKey = 'ԱԲԳ';
 				await cacheService.set(nonAsciiKey, 'value');
 
@@ -192,7 +192,7 @@ for (const backend of ['memory', 'redis'] as const) {
 		});
 
 		describe('delete', () => {
-			test('should handle non-ASCII keys', async () => {
+			test('should handle non-ASCII key', async () => {
 				const nonAsciiKey = 'ԱԲԳ';
 				await cacheService.set(nonAsciiKey, 'value');
 				await expect(cacheService.get(nonAsciiKey)).resolves.toBe('value');
