@@ -86,8 +86,8 @@
 							:model-value="modelValue"
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
-							:disableExpressionColoring="!isHtmlNode(node)"
-							:disableExpressionCompletions="!isHtmlNode(node)"
+							:disable-expression-coloring="!isHtmlNode(node)"
+							:disable-expression-completions="!isHtmlNode(node)"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
