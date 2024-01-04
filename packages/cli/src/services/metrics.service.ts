@@ -97,7 +97,7 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheHitsTotal.inc(0);
-		this.cacheService.on(this.cacheService.metricsCounterEvents.cacheHit, (amount: number = 1) => {
+		this.cacheService.on('metrics.cache.hit', (amount: number = 1) => {
 			this.counters.cacheHitsTotal?.inc(amount);
 		});
 
@@ -107,7 +107,7 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheMissesTotal.inc(0);
-		this.cacheService.on(this.cacheService.metricsCounterEvents.cacheMiss, (amount: number = 1) => {
+		this.cacheService.on('metrics.cache.miss', (amount: number = 1) => {
 			this.counters.cacheMissesTotal?.inc(amount);
 		});
 
@@ -117,12 +117,9 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheUpdatesTotal.inc(0);
-		this.cacheService.on(
-			this.cacheService.metricsCounterEvents.cacheUpdate,
-			(amount: number = 1) => {
-				this.counters.cacheUpdatesTotal?.inc(amount);
-			},
-		);
+		this.cacheService.on('metrics.cache.update', (amount: number = 1) => {
+			this.counters.cacheUpdatesTotal?.inc(amount);
+		});
 	}
 
 	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {

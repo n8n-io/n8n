@@ -38,7 +38,7 @@ export class TestWebhookRegistrationsService {
 	async getAllKeys() {
 		const allKeys = await this.cacheService.getAllKeys();
 
-		if (this.cacheService.isMemoryCache()) {
+		if (this.cacheService.isMemory()) {
 			return allKeys.filter((key) => key.startsWith(this.cacheKey));
 		}
 

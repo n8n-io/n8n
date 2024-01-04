@@ -18,18 +18,6 @@ type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;
 export class CacheService extends EventEmitter {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
-	get isEnabled() {
-		return config.getEnv('cache.enabled');
-	}
-
-	isRedisCache() {
-		return this.cache.kind === 'redis';
-	}
-
-	isMemoryCache() {
-		return this.cache.kind === 'memory';
-	}
-
 	async init() {
 		if (!this.isEnabled) return;
 
@@ -75,6 +63,46 @@ export class CacheService extends EventEmitter {
 		return super.emit(event, ...args);
 	}
 
+	get isEnabled() {
+		return config.getEnv('cache.enabled');
+	}
+
+	async enable() {
+		config.set('cache.enabled', true);
+
+		await this.init();
+	}
+
+	async disable() {
+		config.set('cache.enabled', false);
+
+		await this.reset();
+	}
+
+	isRedis() {
+		return this.cache.kind === 'redis';
+	}
+
+	isMemory() {
+		return this.cache.kind === 'memory';
+	}
+
+	// ----------------------------------
+	//       setting and getting
+	// ----------------------------------
+
+	async set(key: string, value: unknown, ttl?: number) {
+		if (!this.cache) await this.init();
+
+		if (!key || !value) return;
+
+		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
+			throw new NonCacheableInRedisError(key);
+		}
+
+		await this.cache.store.set(key, value, ttl);
+	}
+
 	async get<T = unknown>(
 		key: string,
 		{
@@ -82,6 +110,8 @@ export class CacheService extends EventEmitter {
 			refreshFn,
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
 	) {
+		if (!this.cache) await this.init();
+
 		if (key?.length === 0) return;
 
 		const value = await this.cache.store.get<T>(key);
@@ -107,6 +137,8 @@ export class CacheService extends EventEmitter {
 	}
 
 	async getMany<T = unknown[]>(keys: string[]) {
+		if (!this.cache) await this.init();
+
 		if (keys.length === 0) return [];
 
 		const values = await this.cache.store.mget(...keys);
@@ -123,20 +155,14 @@ export class CacheService extends EventEmitter {
 	}
 
 	async getAllKeys() {
+		if (!this.cache) await this.init();
+
 		return this.cache.store.keys();
 	}
 
-	async set(key: string, value: unknown, ttl?: number) {
-		if (!key || !value) return;
-
-		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
-			throw new NonCacheableInRedisError(key);
-		}
-
-		await this.cache.store.set(key, value, ttl);
-	}
-
 	async setMany(keysValues: Array<[key: string, value: unknown]>, ttl?: number) {
+		if (!this.cache) await this.init();
+
 		if (keysValues.length === 0) return;
 
 		const truthyKeysValues = keysValues.filter(
@@ -155,12 +181,16 @@ export class CacheService extends EventEmitter {
 	}
 
 	async delete(key: string) {
+		if (!this.cache) await this.init();
+
 		if (!key?.length) return;
 
 		await this.cache.store.del(key);
 	}
 
 	async deleteMany(keys: string[]) {
+		if (!this.cache) await this.init();
+
 		if (keys.length === 0) return;
 
 		return this.cache.store.mdel(...keys);
@@ -171,6 +201,8 @@ export class CacheService extends EventEmitter {
 	// ----------------------------------
 
 	async setHash(key: string, hash: Record<string, unknown>) {
+		if (!this.cache) await this.init();
+
 		if (!key?.length) return;
 
 		for (const field in hash) {
@@ -182,25 +214,37 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 
-		const hashObject: Record<string, unknown> = (await this.cache.store.get(key)) ?? {};
+		const hashObject: Record<string, unknown> = (await this.get(key)) ?? {};
 
 		Object.assign(hashObject, hash);
 
-		await this.cache.store.set(key, hashObject);
+		await this.set(key, hashObject);
 	}
 
 	async getHash<T = unknown>(key: string, { fallbackValue }: { fallbackValue?: T } = {}) {
-		const hash: MaybeHash =
-			this.cache.kind === 'redis'
-				? await this.cache.store.hgetall(key)
-				: await this.cache.store.get(key);
+		if (!this.cache) await this.init();
 
-		this.emit(hash !== undefined ? 'metrics.cache.hit' : 'metrics.cache.miss');
+		const hash: MaybeHash =
+			this.cache.kind === 'redis' ? await this.cache.store.hgetall(key) : await this.get(key);
+
+		if (hash !== undefined) {
+			this.emit('metrics.cache.hit');
+
+			return hash as T;
+		}
+
+		this.emit('metrics.cache.miss');
 
 		return fallbackValue;
 	}
 
-	async getHashValue<T = unknown>(key: string, field: string) {
+	async getHashValue<T = unknown>(
+		key: string,
+		field: string,
+		{ fallbackValue }: { fallbackValue?: T } = {},
+	) {
+		if (!this.cache) await this.init();
+
 		let hashValue: unknown;
 
 		if (this.cache.kind === 'redis') {
@@ -211,12 +255,20 @@ export class CacheService extends EventEmitter {
 			hashValue = hashObject?.[field];
 		}
 
-		this.emit(hashValue !== undefined ? 'metrics.cache.hit' : 'metrics.cache.miss');
+		if (hashValue !== undefined) {
+			this.emit('metrics.cache.hit');
 
-		return hashValue as T;
+			return hashValue as T;
+		}
+
+		this.emit('metrics.cache.miss');
+
+		return fallbackValue;
 	}
 
 	async deleteFromHash(key: string, field: string) {
+		if (!this.cache) await this.init();
+
 		if (!key || !field) return;
 
 		if (this.cache.kind === 'redis') {
@@ -224,7 +276,7 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 
-		const hashObject: MaybeHash = await this.cache.store.get(key);
+		const hashObject: MaybeHash = await this.get(key);
 
 		if (!hashObject) return;
 
