@@ -160,7 +160,6 @@ import {
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { pinData } from '@/mixins/pinData';
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -188,6 +187,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 export default defineComponent({
 	name: 'Node',
@@ -196,7 +196,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, workflowHelpers, debounceHelper],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -211,17 +211,20 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup() {
+	setup(props) {
+		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const node = workflowsStore.getNodeByName(props.name);
+		const pinnedData = usePinnedData(node);
 
-		return { contextMenu, externalHooks, nodeHelpers };
+		return { contextMenu, externalHooks, nodeHelpers, pinnedData };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
-			return this.hasPinData && !this.isProductionExecutionPreview;
+			return this.pinnedData.hasData.value && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
@@ -248,7 +251,7 @@ export default defineComponent({
 				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
 			)
 				return true;
-			if (this.hasPinData) return false;
+			if (this.pinnedData.hasData.value) return false;
 			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
@@ -532,7 +535,7 @@ export default defineComponent({
 				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
-				!this.hasPinData &&
+				!this.pinnedData.hasData.value &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&

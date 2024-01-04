@@ -157,7 +157,24 @@ describe('Filter.vue', () => {
 		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 	});
 
-	it('renders correctly with typeOptions.leftValue', async () => {
+	it('renders correctly with typeOptions.multipleValues = false (single mode)', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				parameter: {
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						multipleValues: false,
+					},
+				},
+			},
+		});
+		expect((await findAllByTestId('filter-condition')).length).toEqual(1);
+		expect(getByTestId('filter-conditions')).toHaveClass('single');
+		expect(queryByTestId('filter-add-condition')).not.toBeInTheDocument();
+	});
+
+	it('renders correctly with typeOptions.filter.leftValue', async () => {
 		const { findAllByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
@@ -173,7 +190,7 @@ describe('Filter.vue', () => {
 		expect(conditions[0].querySelector('[data-test-id="filter-condition-left"]')).toBeNull();
 	});
 
-	it('renders correctly with typeOptions.allowedCombinators', async () => {
+	it('renders correctly with typeOptions.filter.allowedCombinators', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
@@ -202,7 +219,7 @@ describe('Filter.vue', () => {
 		expect(getByTestId('filter-combinator-select')).toHaveTextContent('OR');
 	});
 
-	it('renders correctly with typeOptions.maxConditions', async () => {
+	it('renders correctly with typeOptions.filter.maxConditions', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,

@@ -193,7 +193,7 @@
 
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 
 import type {
 	Endpoint,
@@ -256,7 +256,6 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
-import { type PinDataSource, pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -373,6 +372,7 @@ import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/n
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -395,7 +395,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 	},
-	mixins: [genericHelpers, moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper, pinData],
+	mixins: [genericHelpers, moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -457,12 +457,15 @@ export default defineComponent({
 		}
 	},
 	setup(props, ctx) {
+		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
 		const clipboard = useClipboard();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
 
 		return {
 			locale,
@@ -471,6 +474,7 @@ export default defineComponent({
 			nodeHelpers,
 			externalHooks,
 			clipboard,
+			pinnedData,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -802,7 +806,7 @@ export default defineComponent({
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();
-				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 			}, 0);
 		});
 
@@ -1678,7 +1682,7 @@ export default defineComponent({
 			this.nodeHelpers.disableNodes(nodes, true);
 		},
 
-		togglePinNodes(nodes: INode[], source: PinDataSource) {
+		togglePinNodes(nodes: INode[], source: 'keyboard-shortcut' | 'context-menu') {
 			if (!this.editAllowedCheck()) {
 				return;
 			}
@@ -1690,13 +1694,14 @@ export default defineComponent({
 			);
 
 			for (const node of nodes) {
+				const pinnedDataForNode = usePinnedData(node);
 				if (nextStatePinned) {
 					const dataToPin = this.dataSchema.getInputDataWithPinned(node);
 					if (dataToPin.length !== 0) {
-						this.setPinData(node, dataToPin, source);
+						pinnedDataForNode.setData(dataToPin, source);
 					}
 				} else {
-					this.unsetPinData(node, source);
+					pinnedDataForNode.unsetData(source);
 				}
 			}
 
@@ -3772,7 +3777,7 @@ export default defineComponent({
 			data: ITaskData[] | null;
 			waiting: boolean;
 		}) {
-			const pinData = this.workflowsStore.getPinData;
+			const pinData = this.workflowsStore.pinnedWorkflowData;
 
 			if (pinData?.[name]) return;
 
@@ -4397,7 +4402,8 @@ export default defineComponent({
 
 					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
-						this.setPinData(node, data.pinData[nodeName], 'add-nodes');
+						const pinnedDataForNode = usePinnedData(node);
+						pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;
