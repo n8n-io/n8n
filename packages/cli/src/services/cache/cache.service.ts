@@ -11,7 +11,6 @@ import {
 	UnusableDisabledCacheError,
 	MalformedRefreshValueError,
 } from '@/errors/cache-errors';
-
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
@@ -19,7 +18,7 @@ import type {
 	RetrieveOneOptions,
 	RetrieveManyOptions,
 	MaybeHash,
-} from './cache.types';
+} from '@/services/cache/cache.types';
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -70,24 +69,8 @@ export class CacheService extends EventEmitter {
 		return super.emit(event, ...args);
 	}
 
-	get isEnabled() {
-		return config.getEnv('cache.enabled');
-	}
-
 	get isDisabled() {
 		return !config.getEnv('cache.enabled');
-	}
-
-	async enable() {
-		config.set('cache.enabled', true);
-
-		await this.init();
-	}
-
-	async disable() {
-		config.set('cache.enabled', false);
-
-		await this.reset();
 	}
 
 	isRedis() {
