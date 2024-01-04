@@ -11,7 +11,8 @@
 			}
 		]
 	},
+	"aliases": ["File", "Binary"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Files", "Data Transformation"]
 	}
 }

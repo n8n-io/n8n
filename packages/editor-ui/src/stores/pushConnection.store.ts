@@ -33,10 +33,17 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const lostConnection = ref(false);
 	const outgoingQueue = ref<unknown[]>([]);
 	const isConnectionOpen = ref(false);
+
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
 		onMessageReceivedHandlers.value.push(handler);
+		return () => {
+			const index = onMessageReceivedHandlers.value.indexOf(handler);
+			if (index !== -1) {
+				onMessageReceivedHandlers.value.splice(index, 1);
+			}
+		};
 	};
 
 	function onConnectionError() {
@@ -139,7 +146,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		} catch (error) {
 			return;
 		}
-		//  TODO: Why is this received multiple times?
+
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 

@@ -1,3 +1,47 @@
+# [1.23.0](https://github.com/n8n-io/n8n/compare/n8n@1.22.0...n8n@1.23.0) (2024-01-03)
+
+
+### Bug Fixes
+
+* **Asana Node:** Omit body from GET, HEAD, and DELETE requests ([#8057](https://github.com/n8n-io/n8n/issues/8057)) ([15ffd4f](https://github.com/n8n-io/n8n/commit/15ffd4fb9f967302e2444a873a804d2ccb64e748))
+* **core:** Better input validation for the changeRole endpoint ([#8189](https://github.com/n8n-io/n8n/issues/8189)) ([cfe9525](https://github.com/n8n-io/n8n/commit/cfe9525dd4e2dbf2496bd86ad854bb744b5dc8fe))
+* **core:** Fix issue that pinnedData is not used with Test-Webhooks ([#8123](https://github.com/n8n-io/n8n/issues/8123)) ([fa8bd8b](https://github.com/n8n-io/n8n/commit/fa8bd8b9eb202989229028cb6975cd2b50e5eef9))
+* **core:** Handle empty executions table in pruning in migrations ([#8121](https://github.com/n8n-io/n8n/issues/8121)) ([ffaa30d](https://github.com/n8n-io/n8n/commit/ffaa30ddc4ee312f44726c17a7ec91b5551092ad))
+* **core:** Remove circular dependency in WorkflowService and ActiveWorkflowRunner ([#8128](https://github.com/n8n-io/n8n/issues/8128)) ([21788d9](https://github.com/n8n-io/n8n/commit/21788d9153fb730965dabbce64c50c3b929ee728)), closes [#8122](https://github.com/n8n-io/n8n/issues/8122)
+* **core:** Use pinned data only for manual mode ([#8164](https://github.com/n8n-io/n8n/issues/8164)) ([ea7e76f](https://github.com/n8n-io/n8n/commit/ea7e76fa3b3dc1f37b0415e14ea5ff90b8017b9a))
+* **Discord Node:** Remove unnecessary requirement on parameters ([#8060](https://github.com/n8n-io/n8n/issues/8060)) ([ef3a577](https://github.com/n8n-io/n8n/commit/ef3a57719eb42777502cafdd38009e6cb5b484ce))
+* **editor:** Avoid sanitizing output to search node data ([#8126](https://github.com/n8n-io/n8n/issues/8126)) ([c83d9f4](https://github.com/n8n-io/n8n/commit/c83d9f45bab986eb930e9da69eec970d3a72263d))
+* **editor:** Enable explicit undo keyboard shortcut across all code editors ([#8178](https://github.com/n8n-io/n8n/issues/8178)) ([cf7f668](https://github.com/n8n-io/n8n/commit/cf7f6688bac5dd31dc3a45df4ecce579939141e2)), closes [#5297](https://github.com/n8n-io/n8n/issues/5297)
+* **editor:** Fix operation change failing in certain conditions ([#8114](https://github.com/n8n-io/n8n/issues/8114)) ([711fa2b](https://github.com/n8n-io/n8n/commit/711fa2b9251154b50d8e5e7cd9a857ccb2c0bec6)), closes [/github.com/n8n-io/n8n/blob/7806a65229878a473f5526bad0b94614e8bfa8aa/packages/workflow/src/NodeHelpers.ts#L786](https://github.com//github.com/n8n-io/n8n/blob/7806a65229878a473f5526bad0b94614e8bfa8aa/packages/workflow/src/NodeHelpers.ts/issues/L786)
+* **editor:** Fix templates view layout ([#8196](https://github.com/n8n-io/n8n/issues/8196)) ([d01e42a](https://github.com/n8n-io/n8n/commit/d01e42a2aabedfd4c0f79799bbfc9b1a235d4233))
+* **editor:** Fix UI urls when hosted behind a path prefix ([#8198](https://github.com/n8n-io/n8n/issues/8198)) ([5c078f1](https://github.com/n8n-io/n8n/commit/5c078f1b3d78c7038bfdbb083fd029ef61bf2dfc)), closes [#8061](https://github.com/n8n-io/n8n/issues/8061)
+* **editor:** Prevent browser zoom when scrolling inside sticky edit mode ([#8116](https://github.com/n8n-io/n8n/issues/8116)) ([e928210](https://github.com/n8n-io/n8n/commit/e928210ccdc00ad8a38e3f96ba5145c35e7b007b))
+* **editor:** Prevent canvas undo/redo when NDV is open ([#8118](https://github.com/n8n-io/n8n/issues/8118)) ([39e45d8](https://github.com/n8n-io/n8n/commit/39e45d8b929d474f1e7587329b003fe15b61636d))
+* **editor:** Prevent storing pairedItem data inside of pinData ([#8173](https://github.com/n8n-io/n8n/issues/8173)) ([405e267](https://github.com/n8n-io/n8n/commit/405e26757e2591b42a4bfeedd1fea997fbbb08c9))
+* **GitHub Node:** Fix issue that File->Get did not run once per item ([#8190](https://github.com/n8n-io/n8n/issues/8190)) ([11cda41](https://github.com/n8n-io/n8n/commit/11cda41214100a1a3e65309434ab8be3ccef1898))
+* **Invoice Ninja Node:** Fix issue with custom invoice numbers not working with v5 ([#8200](https://github.com/n8n-io/n8n/issues/8200)) ([3b6ae2d](https://github.com/n8n-io/n8n/commit/3b6ae2d0a510a57b27fc1a44cb3e710e2a783800))
+* **Microsoft Excel 365 Node:** Ensure arg is string during worksheet table search ([#8154](https://github.com/n8n-io/n8n/issues/8154)) ([8e873ca](https://github.com/n8n-io/n8n/commit/8e873ca2f3c73ddd7bbef2218d8da82032f66cec))
+* **Notion Node:** Ensure arg is string during page ID extraction ([#8153](https://github.com/n8n-io/n8n/issues/8153)) ([e94b8a6](https://github.com/n8n-io/n8n/commit/e94b8a6c30aaa2e59117d5a0cc03e1590d7ea8ca))
+* **Redis Trigger Node:** Activating a workflow with a Redis trigger fails ([#8129](https://github.com/n8n-io/n8n/issues/8129)) ([a169b74](https://github.com/n8n-io/n8n/commit/a169b7406279de43dbd3fd7d13166d987c60d01a))
+* **Schedule Trigger Node:** Use the correct `moment` import ([#8185](https://github.com/n8n-io/n8n/issues/8185)) ([17a4e2e](https://github.com/n8n-io/n8n/commit/17a4e2ea80c664e248c136b7e66eef710ccba7f2)), closes [#8184](https://github.com/n8n-io/n8n/issues/8184)
+* Show public API upgrade CTA when feature is not enabled ([#8109](https://github.com/n8n-io/n8n/issues/8109)) ([e9c7fd7](https://github.com/n8n-io/n8n/commit/e9c7fd73975ced504d5a16a0dbbc313f15ccd8ab))
+
+
+### Features
+
+* **core:** Add closeFunction support to Sub-Nodes ([#7708](https://github.com/n8n-io/n8n/issues/7708)) ([bec0fae](https://github.com/n8n-io/n8n/commit/bec0faed9e51fe6ea20ab3b07b4dfa849b28516b))
+* **core:** Add user.profile.beforeUpdate hook ([#8144](https://github.com/n8n-io/n8n/issues/8144)) ([e126ed7](https://github.com/n8n-io/n8n/commit/e126ed74f3d9ed3dae72252cb8c9e8a6f7620808))
+* **core:** Improvements/overhaul for nodes working with binary data ([#7651](https://github.com/n8n-io/n8n/issues/7651)) ([5e16dd4](https://github.com/n8n-io/n8n/commit/5e16dd4ab4457acf21d3d7a3566d07944ff7f857))
+* **core:** Remove discontinued crypto-js  ([#8104](https://github.com/n8n-io/n8n/issues/8104)) ([01e9a79](https://github.com/n8n-io/n8n/commit/01e9a79238bbd2c14ae77a12e54fc1c6f41e1246))
+* **core:** Unify application components shutdown ([#8097](https://github.com/n8n-io/n8n/issues/8097)) ([3a881be](https://github.com/n8n-io/n8n/commit/3a881be6c25b3e16d8c53227dc851cb420f5f1bf))
+* **editor:** Add node execution status indicator to output panel ([#8124](https://github.com/n8n-io/n8n/issues/8124)) ([ab74bad](https://github.com/n8n-io/n8n/commit/ab74bade05cb30e7fa65a491789a3df3ab7bf8b8))
+* **editor:** Add template Id to workflow metadata ([#8088](https://github.com/n8n-io/n8n/issues/8088)) ([517b050](https://github.com/n8n-io/n8n/commit/517b050d0ae1a64987ac00d5795c5e59ed176f3f))
+* **Home Assistant Node:** Use the new Home Assistant logo ([#8150](https://github.com/n8n-io/n8n/issues/8150)) ([518a99e](https://github.com/n8n-io/n8n/commit/518a99e5287dc648edafd34a4dd27c9205eb8629))
+* **Qdrant Vector Store Node:** Qdrant vector store support ([#8080](https://github.com/n8n-io/n8n/issues/8080)) ([66460f6](https://github.com/n8n-io/n8n/commit/66460f66b0b02ae6f342e52500b29fe8b724e1dc))
+* **Wordpress Node:** Add option to ignore error when using self signed certificates ([#8199](https://github.com/n8n-io/n8n/issues/8199)) ([65c8e12](https://github.com/n8n-io/n8n/commit/65c8e12b96ac8c1c53d3879d91982ca834f3cda1))
+
+
+
 # [1.22.0](https://github.com/n8n-io/n8n/compare/n8n@1.21.0...n8n@1.22.0) (2023-12-21)
 
 
