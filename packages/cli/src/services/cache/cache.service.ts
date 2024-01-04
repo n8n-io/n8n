@@ -108,7 +108,7 @@ export class CacheService extends EventEmitter {
 
 	/**
 	 * Set or append to a [Redis hash](https://redis.io/docs/data-types/hashes/)
-	 * stored under a key in the cache. If in-memory, use a regular JS object.
+	 * stored under a key in the cache. If in-memory, the hash is a regular JS object.
 	 */
 	async setHash(key: string, hash: Record<string, unknown>) {
 		if (!this.cache) await this.init();
@@ -211,6 +211,10 @@ export class CacheService extends EventEmitter {
 		return fallbackValue;
 	}
 
+	/**
+	 * Retrieve a [Redis hash](https://redis.io/docs/data-types/hashes/) under a key.
+	 * If in-memory, the hash is a regular JS object.
+	 */
 	async getHash<T = unknown>(
 		key: string,
 		{
@@ -244,12 +248,12 @@ export class CacheService extends EventEmitter {
 	}
 
 	/**
-	 * Retrieve a value under a field in a [Redis hash](https://redis.io/docs/data-types/hashes/).
-	 * If in-memory, use a regular JS object. To retrieve the hash itself, use `get`.
+	 * Retrieve a value in a [Redis hash](https://redis.io/docs/data-types/hashes/) under a hash key.
+	 * If in-memory, the hash is a regular JS object. To retrieve the hash itself, use `getHash`.
 	 */
 	async getHashValue<T = unknown>(
-		key: string,
-		field: string,
+		cacheKey: string,
+		hashKey: string,
 		{
 			fallbackValue,
 			refreshFn,
@@ -260,11 +264,11 @@ export class CacheService extends EventEmitter {
 		let hashValue: unknown;
 
 		if (this.cache.kind === 'redis') {
-			hashValue = await this.cache.store.hget(key, field);
+			hashValue = await this.cache.store.hget(cacheKey, hashKey);
 		} else {
-			const hashObject: MaybeHash<T> = await this.cache.store.get(key);
+			const hashObject: MaybeHash<T> = await this.cache.store.get(cacheKey);
 
-			hashValue = hashObject?.[field];
+			hashValue = hashObject?.[hashKey];
 		}
 
 		if (hashValue !== undefined) {
@@ -278,8 +282,8 @@ export class CacheService extends EventEmitter {
 		if (refreshFn) {
 			this.emit('metrics.cache.update');
 
-			const refreshValue = await refreshFn(key);
-			await this.set(key, refreshValue);
+			const refreshValue = await refreshFn(cacheKey);
+			await this.set(cacheKey, refreshValue);
 
 			return refreshValue;
 		}
@@ -309,24 +313,24 @@ export class CacheService extends EventEmitter {
 
 	/**
 	 * Delete a value under a field in a [Redis hash](https://redis.io/docs/data-types/hashes/).
-	 * If in-memory, use a regular JS object. To delete the hash itself, use `delete`.
+	 * If in-memory, the hash is a regular JS object. To delete the hash itself, use `delete`.
 	 */
-	async deleteFromHash<T = unknown>(key: string, field: string) {
+	async deleteFromHash<T = unknown>(cacheKey: string, hashKey: string) {
 		if (!this.cache) await this.init();
 
-		if (!key || !field) return;
+		if (!cacheKey || !hashKey) return;
 
 		if (this.cache.kind === 'redis') {
-			await this.cache.store.hdel(key, field);
+			await this.cache.store.hdel(cacheKey, hashKey);
 			return;
 		}
 
-		const hashObject: MaybeHash<T> = await this.get(key);
+		const hashObject: MaybeHash<T> = await this.get(cacheKey);
 
 		if (!hashObject) return;
 
-		delete hashObject[field];
+		delete hashObject[hashKey];
 
-		await this.cache.store.set(key, hashObject);
+		await this.cache.store.set(cacheKey, hashObject);
 	}
 }

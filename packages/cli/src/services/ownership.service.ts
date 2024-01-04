@@ -20,7 +20,10 @@ export class OwnershipService {
 	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedValue = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
+		const cachedValue = await this.cacheService.getHashValue<User>(
+			'workflow-ownership',
+			workflowId,
+		);
 
 		if (cachedValue) return this.userRepository.create(cachedValue);
 
@@ -33,7 +36,7 @@ export class OwnershipService {
 			relations: ['user', 'user.globalRole'],
 		});
 
-		void this.cacheService.set(`cache:workflow-owner:${workflowId}`, sharedWorkflow.user);
+		void this.cacheService.setHash('workflow-ownership', { [workflowId]: sharedWorkflow.user });
 
 		return sharedWorkflow.user;
 	}
