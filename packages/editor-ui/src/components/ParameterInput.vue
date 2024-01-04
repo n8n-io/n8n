@@ -199,6 +199,7 @@
 
 				<JsEditor
 					v-else-if="editorType === 'jsEditor'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
@@ -218,6 +219,7 @@
 
 				<JsonEditor
 					v-else-if="parameter.type === 'json'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
@@ -1151,7 +1153,7 @@ export default defineComponent({
 				return;
 			}
 
-			if (this.editorType) {
+			if (this.editorType || this.parameter.type === 'json') {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;

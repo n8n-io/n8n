@@ -6,24 +6,25 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
-import { foldGutter, indentOnInput } from '@codemirror/language';
+import { autocompletion } from '@codemirror/autocomplete';
+import { history, redo, toggleComment, undo } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
+import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+import { defineComponent } from 'vue';
 
+import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 export default defineComponent({
@@ -74,13 +75,14 @@ export default defineComponent({
 			if (!isReadOnly) {
 				extensions.push(
 					history(),
-					keymap.of([
-						{ key: 'Mod-z', run: undo },
-						{ key: 'Mod-Shift-z', run: redo },
-						{ key: 'Mod-/', run: toggleComment },
-						{ key: 'Tab', run: acceptCompletion },
-						indentWithTab,
-					]),
+					Prec.highest(
+						keymap.of([
+							...tabKeyMap,
+							{ key: 'Mod-z', run: undo },
+							{ key: 'Mod-Shift-z', run: redo },
+							{ key: 'Mod-/', run: toggleComment },
+						]),
+					),
 					lintGutter(),
 					autocompletion(),
 					indentOnInput(),

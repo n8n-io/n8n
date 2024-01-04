@@ -23,7 +23,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { autocompletion, ifNotIn } from '@codemirror/autocomplete';
 import { history, redo, toggleComment, undo } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import type { Extension, Line } from '@codemirror/state';
+import { type Extension, type Line, Prec } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
@@ -154,12 +154,14 @@ export default defineComponent({
 			if (!this.isReadOnly) {
 				extensions.push(
 					history(),
-					keymap.of([
-						...tabKeyMap,
-						{ key: 'Mod-z', run: undo },
-						{ key: 'Mod-Shift-z', run: redo },
-						{ key: 'Mod-/', run: toggleComment },
-					]),
+					Prec.highest(
+						keymap.of([
+							...tabKeyMap,
+							{ key: 'Mod-z', run: undo },
+							{ key: 'Mod-Shift-z', run: redo },
+							{ key: 'Mod-/', run: toggleComment },
+						]),
+					),
 					autocompletion(),
 					indentOnInput(),
 					highlightActiveLine(),

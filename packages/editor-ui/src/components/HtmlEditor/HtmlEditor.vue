@@ -16,7 +16,7 @@ import {
 	indentOnInput,
 } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
 	EditorView,
@@ -98,12 +98,14 @@ export default defineComponent({
 				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
 				autoCloseTags,
 				expressionInputHandler(),
-				keymap.of([
-					...tabKeyMap,
-					{ key: 'Enter', run: insertNewlineAndIndent },
-					{ key: 'Mod-z', run: undo },
-					{ key: 'Mod-Shift-z', run: redo },
-				]),
+				Prec.highest(
+					keymap.of([
+						...tabKeyMap,
+						{ key: 'Enter', run: insertNewlineAndIndent },
+						{ key: 'Mod-z', run: undo },
+						{ key: 'Mod-Shift-z', run: redo },
+					]),
+				),
 				indentOnInput(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
