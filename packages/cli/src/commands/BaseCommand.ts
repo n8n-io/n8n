@@ -14,7 +14,7 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
+import type { N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
@@ -27,7 +27,7 @@ import { ShutdownService } from '@/shutdown/Shutdown.service';
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected externalHooks?: IExternalHooksClass;
+	protected externalHooks?: ExternalHooks;
 
 	protected nodeTypes: NodeTypes;
 

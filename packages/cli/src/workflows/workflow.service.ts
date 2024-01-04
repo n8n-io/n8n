@@ -1,14 +1,12 @@
 import Container, { Service } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
@@ -20,13 +18,11 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
-import type { Scope } from '@n8n/permissions';
 import { Logger } from '@/Logger';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -34,10 +30,6 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-export type WorkflowsGetSharedOptions =
-	| { allowGlobalScope: true; globalScope: Scope }
-	| { allowGlobalScope: false };
 
 @Service()
 export class WorkflowService {
@@ -57,24 +49,6 @@ export class WorkflowService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 	) {}
-
-	async getSharing(
-		user: User,
-		workflowId: string,
-		options: WorkflowsGetSharedOptions,
-		relations: string[] = ['workflow'],
-	): Promise<SharedWorkflow | null> {
-		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
-
-		// Omit user from where if the requesting user has relevant
-		// global workflow permissions. This allows the user to
-		// access workflows they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
-
-		return this.sharedWorkflowRepository.findOne({ where, relations });
-	}
 
 	/**
 	 * Find the pinned trigger to execute the workflow from, if any.
@@ -137,16 +111,12 @@ export class WorkflowService {
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
-		const shared = await this.sharedWorkflowRepository.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user,
-				globalScope: 'workflow:update',
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles,
-			}),
-		});
+		const shared = await this.sharedWorkflowRepository.findSharing(
+			workflowId,
+			user,
+			'workflow:update',
+			{ roles },
+		);
 
 		if (!shared) {
 			this.logger.verbose('User attempted to update a workflow without permissions', {
@@ -307,11 +277,13 @@ export class WorkflowService {
 
 		await this.multiMainSetup.init();
 
-		if (this.multiMainSetup.isEnabled) {
+		const newState = updatedWorkflow.active;
+
+		if (this.multiMainSetup.isEnabled && oldState !== newState) {
 			await this.multiMainSetup.broadcastWorkflowActiveStateChanged({
 				workflowId,
 				oldState,
-				newState: updatedWorkflow.active,
+				newState,
 				versionId: shared.workflow.versionId,
 			});
 		}
@@ -330,9 +302,6 @@ export class WorkflowService {
 		user: User,
 		sessionId?: string,
 	) {
-		const EXECUTION_MODE = 'manual';
-		const ACTIVATION_MODE = 'manual';
-
 		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
@@ -343,26 +312,16 @@ export class WorkflowService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const workflow = new Workflow({
-				id: workflowData.id?.toString(),
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: false,
-				nodeTypes: this.nodeTypes,
-				staticData: undefined,
-				settings: workflowData.settings,
-			});
-
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
+<<<<<<< HEAD
 				workflow,
 				runData,
+=======
+>>>>>>> origin/master
 				additionalData,
-				EXECUTION_MODE,
-				ACTIVATION_MODE,
 				sessionId,
 				destinationNode,
 			);
@@ -376,7 +335,7 @@ export class WorkflowService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode,
-			executionMode: EXECUTION_MODE,
+			executionMode: 'manual',
 			runData,
 			pinData,
 			sessionId,
@@ -402,16 +361,12 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user,
-				globalScope: 'workflow:delete',
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
+		const sharedWorkflow = await this.sharedWorkflowRepository.findSharing(
+			workflowId,
+			user,
+			'workflow:delete',
+			{ roles: ['owner'] },
+		);
 
 		if (!sharedWorkflow) {
 			return;

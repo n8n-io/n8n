@@ -44,8 +44,6 @@ function showConfirmationMessage(event: PointerEvent) {
 				withPostHog: true,
 			},
 		);
-		localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
-		uiStore.deleteSuggestedTemplates();
 	}
 }
 
@@ -55,9 +53,12 @@ function openCanvas() {
 			title: i18n.baseText('suggestedTemplates.notification.comingSoon.title'),
 			message: i18n.baseText('suggestedTemplates.notification.comingSoon.message'),
 			type: 'info',
+			duration: 10000,
 			onClick: showConfirmationMessage,
 		},
 	]);
+	localStorage.setItem(SUGGESTED_TEMPLATES_FLAG, 'false');
+	uiStore.deleteSuggestedTemplates();
 	uiStore.closeModal(SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY);
 	uiStore.nodeViewInitialized = false;
 	void router.push({ name: VIEWS.NEW_WORKFLOW });
@@ -77,11 +78,11 @@ function openCanvas() {
 			</n8n-heading>
 		</template>
 		<template #content>
-			<workflow-preview
+			<WorkflowPreview
 				:loading="false"
 				:workflow="$props.data.workflow.preview as IWorkflowDb"
-				:canOpenNDV="false"
-				:hideNodeIssues="true"
+				:can-open-n-d-v="false"
+				:hide-node-issues="true"
 				@close="uiStore.closeModal(SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY)"
 			/>
 		</template>
@@ -91,10 +92,10 @@ function openCanvas() {
 			</div>
 			<div :class="$style.footerButtons">
 				<n8n-button
-					@click="openCanvas"
 					float="right"
 					data-test-id="use-template-button"
 					:label="$locale.baseText('suggestedTemplates.modal.button.label')"
+					@click="openCanvas"
 				/>
 			</div>
 		</template>

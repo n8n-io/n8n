@@ -60,8 +60,8 @@ const closeModal = () => {
 			<div :class="$style.footer">
 				<n8n-button
 					v-for="(button, index) in props.data.buttons"
-					size="medium"
 					:key="index"
+					size="medium"
 					:type="button.type"
 					@click="
 						() => {

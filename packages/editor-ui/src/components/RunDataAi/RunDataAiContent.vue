@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<header :class="$style.header">
-			<node-icon
+			<NodeIcon
 				v-if="runMeta?.node"
 				:class="$style.nodeIcon"
 				:node-type="runMeta.node"
@@ -35,7 +35,7 @@
 								},
 							})
 						}}
-						<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right">
+						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
 							<div>
 								<n8n-text :bold="true" size="small">
 									{{ $locale.baseText('runData.aiContentBlock.tokens.prompt') }}
@@ -65,8 +65,8 @@
 			</div>
 		</header>
 
-		<main :class="$style.content" v-for="(run, index) in props.inputData.data" :key="index">
-			<AiRunContentBlock :runData="run" />
+		<main v-for="(run, index) in props.inputData.data" :key="index" :class="$style.content">
+			<AiRunContentBlock :run-data="run" />
 		</main>
 	</div>
 </template>

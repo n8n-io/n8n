@@ -13,7 +13,7 @@
 					:type="type"
 					:size="size"
 					:icon="isFormTriggerNode && 'flask'"
-					:transparentBackground="transparent"
+					:transparent-background="transparent"
 					@click="onClick"
 				/>
 			</div>
@@ -44,8 +44,8 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { nodeViewEventBus } from '@/event-bus';
 
 export default defineComponent({
-	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
+	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,

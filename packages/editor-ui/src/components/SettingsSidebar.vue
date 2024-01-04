@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="$emit('return')" data-test-id="settings-back">
+				<div :class="$style.returnButton" data-test-id="settings-back" @click="$emit('return')">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
@@ -11,7 +11,7 @@
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
-					<n8n-link @click="onVersionClick" size="small">
+					<n8n-link size="small" @click="onVersionClick">
 						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
 					</n8n-link>
 				</div>

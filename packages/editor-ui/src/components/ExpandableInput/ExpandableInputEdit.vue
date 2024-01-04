@@ -1,16 +1,16 @@
 <template>
-	<ExpandableInputBase :modelValue="modelValue" :placeholder="placeholder">
+	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
 		<input
+			ref="input"
+			v-on-click-outside="onClickOutside"
 			class="el-input__inner"
 			:value="modelValue"
 			:placeholder="placeholder"
 			:maxlength="maxlength"
+			size="4"
 			@input="onInput"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
-			ref="input"
-			size="4"
-			v-on-click-outside="onClickOutside"
 		/>
 	</ExpandableInputBase>
 </template>

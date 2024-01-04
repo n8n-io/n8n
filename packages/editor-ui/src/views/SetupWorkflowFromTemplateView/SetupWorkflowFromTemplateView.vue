@@ -93,11 +93,11 @@ onMounted(async () => {
 </script>
 
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
-			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
+			<N8nHeading v-if="isReady" tag="h1" size="2xlarge"
 				>{{ i18n.baseText('templateSetup.title', { interpolate: { name: title } }) }}
-			</n8n-heading>
+			</N8nHeading>
 			<n8n-loading v-else variant="h1" />
 		</template>
 
@@ -111,9 +111,9 @@ onMounted(async () => {
 				<div>
 					<ol v-if="isReady" :class="$style.appCredentialsContainer">
 						<SetupTemplateFormStep
-							:class="$style.appCredential"
-							:key="credentials.key"
 							v-for="(credentials, index) in setupTemplateStore.credentialUsages"
+							:key="credentials.key"
+							:class="$style.appCredential"
 							:order="index + 1"
 							:credentials="credentials"
 						/>
@@ -125,9 +125,9 @@ onMounted(async () => {
 				</div>
 
 				<div :class="$style.actions">
-					<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
+					<N8nLink :href="skipSetupUrl" :new-window="false" @click="onSkipSetup($event)">{{
 						i18n.baseText('templateSetup.skip')
-					}}</n8n-link>
+					}}</N8nLink>
 
 					<n8n-tooltip
 						v-if="isReady"
@@ -140,8 +140,8 @@ onMounted(async () => {
 							:disabled="
 								setupTemplateStore.isSaving || setupTemplateStore.numFilledCredentials === 0
 							"
-							@click="setupTemplateStore.createWorkflow({ router })"
 							data-test-id="continue-button"
+							@click="setupTemplateStore.createWorkflow({ router })"
 						/>
 					</n8n-tooltip>
 					<div v-else>

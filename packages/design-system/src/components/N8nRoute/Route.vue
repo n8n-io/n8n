@@ -11,7 +11,7 @@
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-route',
+	name: 'N8nRoute',
 	props: {
 		to: {
 			type: String || Object,

@@ -1,8 +1,9 @@
 import pick from 'lodash/pick';
 import { Authorized, Get, Post, Put, RestController, RequireGlobalScope } from '@/decorators';
 import { getLdapConfig, getLdapSynchronizations, updateLdapConfig } from '@/Ldap/helpers';
-import { LdapService } from '@/Ldap/LdapService.ee';
-import { LdapSync } from '@/Ldap/LdapSync.ee';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import type { LdapService } from '@/Ldap/LdapService.ee';
+import type { LdapSync } from '@/Ldap/LdapSync.ee';
 import { LdapConfiguration } from '@/Ldap/types';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
@@ -11,11 +12,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 @Authorized()
 @RestController('/ldap')
 export class LdapController {
-	constructor(
-		private ldapService: LdapService,
-		private ldapSync: LdapSync,
-		private internalHooks: InternalHooks,
-	) {}
+	private ldapService: LdapService;
+
+	private ldapSync: LdapSync;
+
+	constructor(private readonly internalHooks: InternalHooks) {
+		const { service, sync } = LdapManager.getInstance();
+		this.ldapService = service;
+		this.ldapSync = sync;
+	}
 
 	@Get('/config')
 	@RequireGlobalScope('ldap:manage')

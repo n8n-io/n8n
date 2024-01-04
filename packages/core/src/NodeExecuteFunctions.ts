@@ -987,16 +987,27 @@ export function assertBinaryData(
 ): IBinaryData {
 	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
 	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(node, 'No binary data exists on item!', {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description: 'Make sure that the previous node outputs a binary file',
+			},
+		);
 	}
 
 	const binaryPropertyData = binaryKeyData[propertyName];
 	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description:
+					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+			},
+		);
 	}
 
 	return binaryPropertyData;

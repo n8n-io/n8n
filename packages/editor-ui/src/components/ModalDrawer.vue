@@ -1,11 +1,11 @@
 <template>
-	<el-drawer
+	<ElDrawer
 		:direction="direction"
-		:modelValue="uiStore.isModalOpen(this.name)"
+		:model-value="uiStore.isModalOpen(name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
-		:wrapperClosable="wrapperClosable"
+		:wrapper-closable="wrapperClosable"
 	>
 		<template #header>
 			<slot name="header" />
@@ -13,7 +13,7 @@
 		<span @keydown.stop>
 			<slot name="content" />
 		</span>
-	</el-drawer>
+	</ElDrawer>
 </template>
 
 <script lang="ts">
