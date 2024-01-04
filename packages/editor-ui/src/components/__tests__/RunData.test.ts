@@ -84,7 +84,7 @@ describe('RunData', () => {
 	const render = (outputData: unknown[], displayMode: IRunDataDisplayMode) =>
 		createComponentRenderer(RunData, {
 			props: {
-				nodeUi: {
+				node: {
 					name: 'Test Node',
 				},
 			},
@@ -103,7 +103,7 @@ describe('RunData', () => {
 			},
 		})({
 			props: {
-				nodeUi: {
+				node: {
 					id: '1',
 					name: 'Test Node',
 					position: [0, 0],

@@ -5,6 +5,7 @@ import type { useRootStore } from '@/stores/n8nRoot.store';
 import type { PosthogStore } from '@/stores/posthog.store';
 import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
+import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
@@ -13,14 +14,18 @@ import type { RouteLocationRaw, Router } from 'vue-router';
 /**
  * Creates a new workflow from a template
  */
-export async function createWorkflowFromTemplate(
-	template: IWorkflowTemplate,
-	credentialOverrides: Record<TemplateCredentialKey, INodeCredentialsDetails>,
-	rootStore: ReturnType<typeof useRootStore>,
-	workflowsStore: ReturnType<typeof useWorkflowsStore>,
-) {
+export async function createWorkflowFromTemplate(opts: {
+	template: IWorkflowTemplate;
+	credentialOverrides: Record<TemplateCredentialKey, INodeCredentialsDetails>;
+	rootStore: ReturnType<typeof useRootStore>;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	nodeTypeProvider: NodeTypeProvider;
+}) {
+	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
+
 	const workflowData = await getNewWorkflow(rootStore.getRestApiContext, template.name);
 	const nodesWithCreds = replaceAllTemplateNodeCredentials(
+		nodeTypeProvider,
 		template.workflow.nodes,
 		credentialOverrides,
 	);
