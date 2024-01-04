@@ -89,7 +89,6 @@ import type { IVariableItemSelected } from '@/Interface';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -97,6 +96,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 import { useGenericHelpers } from '@/composables/useGenericHelpers';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
@@ -105,13 +105,14 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	mixins: [debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	setup() {
 		const externalHooks = useExternalHooks();
 		const genericHelpers = useGenericHelpers();
+		const { debounce } = useDebounce();
 
 		return {
+			debounce,
 			externalHooks,
 			genericHelpers,
 		};
@@ -171,7 +172,7 @@ export default defineComponent({
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.debounce('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 

@@ -411,7 +411,6 @@ import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
 
 import type { PropType } from 'vue';
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -425,6 +424,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -443,7 +443,7 @@ export default defineComponent({
 		ResourceLocator,
 		TextEdit,
 	},
-	mixins: [workflowHelpers, debounceHelper],
+	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -515,11 +515,13 @@ export default defineComponent({
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
+		const { debounce } = useDebounce();
 
 		return {
 			externalHooks,
 			i18n,
 			nodeHelpers,
+			debounce,
 		};
 	},
 	data() {
@@ -1146,7 +1148,7 @@ export default defineComponent({
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			void this.debounce('valueChanged', { debounceTime: 100 }, value);
 		},
 		onUpdateTextInput(value: string) {
 			this.valueChanged(value);
