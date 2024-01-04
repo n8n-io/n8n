@@ -217,6 +217,10 @@ export default defineComponent({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
