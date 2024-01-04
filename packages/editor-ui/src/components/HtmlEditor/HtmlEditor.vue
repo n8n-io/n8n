@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import { autocompletion } from '@codemirror/autocomplete';
-import { history, insertNewlineAndIndent, redo, undo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 import {
 	LanguageSupport,
 	bracketMatching,
