@@ -92,7 +92,7 @@ export const codeNodeEditorTheme = ({
 			maxHeight: maxHeight ?? '100%',
 			...(isReadOnly
 				? {}
-				: { minHeight: rows && rows !== -1 ? `${Number(rows) * 1.3}em` : 'auto' }),
+				: { minHeight: rows && rows !== -1 ? `${Number(rows + 1) * 1.3}em` : 'auto' }),
 		},
 		'.cm-gutter,.cm-content': {
 			minHeight: rows && rows !== -1 ? 'auto' : minHeight ?? 'calc(35vh - var(--spacing-2xl))',
