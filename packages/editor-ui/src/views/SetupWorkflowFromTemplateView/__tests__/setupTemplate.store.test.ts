@@ -16,6 +16,7 @@ import * as testData from './setupTemplate.store.testData';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { newWorkflowTemplateNode } from '@/utils/testData/templateTestData';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
 	return new Map(Object.entries(obj)) as Map<TKey, T>;
@@ -36,33 +37,6 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			},
 			typeVersion: 1,
 		},
-		Telegram: {
-			name: 'Telegram',
-			type: 'n8n-nodes-base.telegram',
-			position: [720, -20],
-			parameters: {
-				text: '=Hey there, my design is now on a new product!\nVisit my {{$json["vendor"]}} shop to get this cool{{$json["title"]}} (and check out more {{$json["product_type"]}})',
-				chatId: '123456',
-				additionalFields: {},
-			},
-			credentials: {
-				telegramApi: 'telegram',
-			},
-			typeVersion: 1,
-		},
-		shopify: {
-			name: 'shopify',
-			type: 'n8n-nodes-base.shopifyTrigger',
-			position: [540, -110],
-			webhookId: '2a7e0e50-8f09-4a2b-bf54-a849a6ac4fe0',
-			parameters: {
-				topic: 'products/create',
-			},
-			credentials: {
-				shopifyApi: 'shopify',
-			},
-			typeVersion: 1,
-		},
 	} satisfies Record<string, IWorkflowTemplateNodeWithCredentials>;
 
 	describe('groupNodeCredentialsByTypeAndName', () => {
@@ -71,7 +45,14 @@ describe('SetupWorkflowFromTemplateView store', () => {
 		});
 
 		it('returns credentials grouped by type and name', () => {
-			expect(groupNodeCredentialsByKey(Object.values(nodesByName))).toEqual(
+			expect(
+				groupNodeCredentialsByKey([
+					{
+						node: nodesByName.Twitter,
+						requiredCredentials: testData.nodeTypeTwitterV1.credentials,
+					},
+				]),
+			).toEqual(
 				objToMap({
 					'twitterOAuth1Api-twitter': {
 						key: 'twitterOAuth1Api-twitter',
@@ -79,20 +60,6 @@ describe('SetupWorkflowFromTemplateView store', () => {
 						credentialType: 'twitterOAuth1Api',
 						nodeTypeName: 'n8n-nodes-base.twitter',
 						usedBy: [nodesByName.Twitter],
-					},
-					'telegramApi-telegram': {
-						key: 'telegramApi-telegram',
-						credentialName: 'telegram',
-						credentialType: 'telegramApi',
-						nodeTypeName: 'n8n-nodes-base.telegram',
-						usedBy: [nodesByName.Telegram],
-					},
-					'shopifyApi-shopify': {
-						key: 'shopifyApi-shopify',
-						credentialName: 'shopify',
-						credentialType: 'shopifyApi',
-						nodeTypeName: 'n8n-nodes-base.shopifyTrigger',
-						usedBy: [nodesByName.shopify],
 					},
 				}),
 			);
@@ -114,7 +81,18 @@ describe('SetupWorkflowFromTemplateView store', () => {
 				}) as IWorkflowTemplateNodeWithCredentials,
 			];
 
-			expect(groupNodeCredentialsByKey([node1, node2])).toEqual(
+			expect(
+				groupNodeCredentialsByKey([
+					{
+						node: node1,
+						requiredCredentials: testData.nodeTypeTwitterV1.credentials,
+					},
+					{
+						node: node2,
+						requiredCredentials: testData.nodeTypeTelegramV1.credentials,
+					},
+				]),
+			).toEqual(
 				objToMap({
 					'twitterOAuth1Api-credential': {
 						key: 'twitterOAuth1Api-credential',
@@ -206,32 +184,35 @@ describe('SetupWorkflowFromTemplateView store', () => {
 					stubActions: false,
 				}),
 			);
-		});
 
-		it('returns an empty object if there are no credential overrides', () => {
-			// Setup
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
 			const templatesStore = useTemplatesStore();
 			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
-
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.setNodeTypes([
+				testData.nodeTypeTelegramV1,
+				testData.nodeTypeTwitterV1,
+				testData.nodeTypeShopifyTriggerV1,
+			]);
 			const setupTemplateStore = useSetupTemplateStore();
 			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+		});
+
+		it('should return an empty object if there are no credential overrides', () => {
+			// Setup
+			const setupTemplateStore = useSetupTemplateStore();
 
 			expect(setupTemplateStore.credentialUsages.length).toBe(3);
 			expect(setupTemplateStore.credentialOverrides).toEqual({});
 		});
 
-		it('returns overrides for one node', () => {
+		it('should return overrides for one node', () => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
 			credentialsStore.setCredentials([testData.credentialsTelegram1]);
-			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
 
 			const setupTemplateStore = useSetupTemplateStore();
-			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
 			setupTemplateStore.setSelectedCredentialId(
 				keyFromCredentialTypeAndName('twitterOAuth1Api', 'twitter'),
 				testData.credentialsTelegram1.id,
@@ -254,17 +235,25 @@ describe('SetupWorkflowFromTemplateView store', () => {
 					stubActions: false,
 				}),
 			);
-		});
 
-		it("selects no credentials when there isn't any available", () => {
-			// Setup
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
 			const templatesStore = useTemplatesStore();
 			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
-
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.setNodeTypes([
+				testData.nodeTypeTelegramV1,
+				testData.nodeTypeTwitterV1,
+				testData.nodeTypeShopifyTriggerV1,
+				testData.nodeTypeHttpRequestV1,
+			]);
 			const setupTemplateStore = useSetupTemplateStore();
 			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+		});
+
+		it("should select no credentials when there isn't any available", () => {
+			// Setup
+			const setupTemplateStore = useSetupTemplateStore();
 
 			// Execute
 			setupTemplateStore.setInitialCredentialSelection();
@@ -272,16 +261,12 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			expect(setupTemplateStore.selectedCredentialIdByKey).toEqual({});
 		});
 
-		it("selects credential when there's only one", () => {
+		it("should select credential when there's only one", () => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
 			credentialsStore.setCredentials([testData.credentialsTelegram1]);
-			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
 
 			const setupTemplateStore = useSetupTemplateStore();
-			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
 
 			// Execute
 			setupTemplateStore.setInitialCredentialSelection();
@@ -291,19 +276,15 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			});
 		});
 
-		it('selects no credentials when there are more than 1 available', () => {
+		it('should select no credentials when there are more than 1 available', () => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
 			credentialsStore.setCredentials([
 				testData.credentialsTelegram1,
 				testData.credentialsTelegram2,
 			]);
-			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
 
 			const setupTemplateStore = useSetupTemplateStore();
-			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
 
 			// Execute
 			setupTemplateStore.setInitialCredentialSelection();
@@ -312,14 +293,14 @@ describe('SetupWorkflowFromTemplateView store', () => {
 		});
 
 		test.each([
-			['httpBasicAuth'],
-			['httpCustomAuth'],
-			['httpDigestAuth'],
-			['httpHeaderAuth'],
-			['oAuth1Api'],
-			['oAuth2Api'],
-			['httpQueryAuth'],
-		])('does not auto-select credentials for %s', (credentialType) => {
+			['httpBasicAuth', 'basicAuth'],
+			['httpCustomAuth', 'basicAuth'],
+			['httpDigestAuth', 'digestAuth'],
+			['httpHeaderAuth', 'headerAuth'],
+			['oAuth1Api', 'oAuth1'],
+			['oAuth2Api', 'oAuth2'],
+			['httpQueryAuth', 'queryAuth'],
+		])('should not auto-select credentials for %s', (credentialType, auth) => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([testData.newCredentialType(credentialType)]);
@@ -338,7 +319,9 @@ describe('SetupWorkflowFromTemplateView store', () => {
 				credentials: {
 					[credentialType]: 'Test',
 				},
-				parameters: {},
+				parameters: {
+					authentication: auth,
+				},
 				position: [250, 300],
 			});
 			templatesStore.addWorkflows([workflow]);
@@ -351,6 +334,86 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			expect(setupTemplateStore.credentialUsages.length).toBe(1);
 			expect(setupTemplateStore.selectedCredentialIdByKey).toEqual({});
+		});
+	});
+
+	describe("With template that has nodes requiring credentials but workflow doesn't have them", () => {
+		beforeEach(() => {
+			setActivePinia(
+				createTestingPinia({
+					stubActions: false,
+				}),
+			);
+
+			// Setup
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			const templatesStore = useTemplatesStore();
+			templatesStore.addWorkflows([testData.fullSaveEmailAttachmentsToNextCloudTemplate]);
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.setNodeTypes([
+				testData.nodeTypeReadImapV1,
+				testData.nodeTypeReadImapV2,
+				testData.nodeTypeNextCloudV1,
+			]);
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplateId(
+				testData.fullSaveEmailAttachmentsToNextCloudTemplate.id.toString(),
+			);
+		});
+
+		const templateImapNode = testData.fullSaveEmailAttachmentsToNextCloudTemplate.workflow.nodes[0];
+		const templateNextcloudNode =
+			testData.fullSaveEmailAttachmentsToNextCloudTemplate.workflow.nodes[1];
+
+		it('should return correct credential usages', () => {
+			const setupTemplateStore = useSetupTemplateStore();
+			expect(setupTemplateStore.credentialUsages).toEqual([
+				{
+					credentialName: '',
+					credentialType: 'imap',
+					key: 'imap-',
+					nodeTypeName: 'n8n-nodes-base.emailReadImap',
+					usedBy: [templateImapNode],
+				},
+				{
+					credentialName: '',
+					credentialType: 'nextCloudApi',
+					key: 'nextCloudApi-',
+					nodeTypeName: 'n8n-nodes-base.nextCloud',
+					usedBy: [templateNextcloudNode],
+				},
+			]);
+		});
+
+		it('should return correct app credentials', () => {
+			const setupTemplateStore = useSetupTemplateStore();
+			expect(setupTemplateStore.appCredentials).toEqual([
+				{
+					appName: 'Email (IMAP)',
+					credentials: [
+						{
+							credentialName: '',
+							credentialType: 'imap',
+							key: 'imap-',
+							nodeTypeName: 'n8n-nodes-base.emailReadImap',
+							usedBy: [templateImapNode],
+						},
+					],
+				},
+				{
+					appName: 'Nextcloud',
+					credentials: [
+						{
+							credentialName: '',
+							credentialType: 'nextCloudApi',
+							key: 'nextCloudApi-',
+							nodeTypeName: 'n8n-nodes-base.nextCloud',
+							usedBy: [templateNextcloudNode],
+						},
+					],
+				},
+			]);
 		});
 	});
 });

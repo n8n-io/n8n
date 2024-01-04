@@ -293,7 +293,7 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
-	node: INode | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 ) {
 	if (!parameter.displayOptions) {
@@ -391,7 +391,7 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -567,7 +567,7 @@ export function getNodeParameters(
 	nodeValues: INodeParameters | null,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	onlySimpleTypes = false,
 	dataIsResolved = false,
 	nodeValuesRoot?: INodeParameters,

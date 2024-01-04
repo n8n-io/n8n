@@ -8,7 +8,11 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	INodeUi,
@@ -17,17 +21,15 @@ import type {
 } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import type {
-	TemplateCredentialKey,
-	IWorkflowTemplateNodeWithCredentials,
-} from '@/utils/templates/templateTransforms';
+import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 import {
-	hasNodeCredentials,
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
+import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -62,33 +64,56 @@ export type AppCredentialCount = {
 	count: number;
 };
 
+export type TemplateNodeWithRequiredCredential = {
+	node: IWorkflowTemplateNode;
+	requiredCredentials: INodeCredentialDescription[];
+};
+
 //#region Getter functions
 
+/**
+ * Returns the nodes in the template that require credentials
+ * and the required credentials for each node.
+ */
 export const getNodesRequiringCredentials = (
+	nodeTypeProvider: NodeTypeProvider,
 	template: ITemplatesWorkflowFull,
-): IWorkflowTemplateNodeWithCredentials[] => {
+): TemplateNodeWithRequiredCredential[] => {
 	if (!template) {
 		return [];
 	}
 
-	return template.workflow.nodes.filter(hasNodeCredentials);
+	const nodesWithCredentials: TemplateNodeWithRequiredCredential[] = template.workflow.nodes
+		.map((node) => ({
+			node,
+			requiredCredentials: getNodeTypeDisplayableCredentials(nodeTypeProvider, node),
+		}))
+		.filter(({ requiredCredentials }) => requiredCredentials.length > 0);
+
+	return nodesWithCredentials;
 };
 
-export const groupNodeCredentialsByKey = (nodes: IWorkflowTemplateNodeWithCredentials[]) => {
+export const groupNodeCredentialsByKey = (
+	nodeWithRequiredCredentials: TemplateNodeWithRequiredCredential[],
+) => {
 	const credentialsByTypeName = new Map<TemplateCredentialKey, CredentialUsages>();
 
-	for (const node of nodes) {
-		const normalizedCreds = normalizeTemplateNodeCredentials(node.credentials);
-		for (const credentialType in normalizedCreds) {
-			const credentialName = normalizedCreds[credentialType];
-			const key = keyFromCredentialTypeAndName(credentialType, credentialName);
+	for (const { node, requiredCredentials } of nodeWithRequiredCredentials) {
+		const normalizedNodeCreds = node.credentials
+			? normalizeTemplateNodeCredentials(node.credentials)
+			: {};
+
+		for (const credentialDescription of requiredCredentials) {
+			const credentialType = credentialDescription.name;
+			const nodeCredentialName = normalizedNodeCreds[credentialDescription.name] ?? '';
+			const key = keyFromCredentialTypeAndName(credentialType, nodeCredentialName);
 
 			let credentialUsages = credentialsByTypeName.get(key);
 			if (!credentialUsages) {
 				credentialUsages = {
 					key,
 					nodeTypeName: node.type,
-					credentialName,
+					credentialName: nodeCredentialName,
 					credentialType,
 					usedBy: [],
 				};
@@ -184,10 +209,12 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	});
 
 	const nodesRequiringCredentialsSorted = computed(() => {
-		const credentials = template.value ? getNodesRequiringCredentials(template.value) : [];
+		const nodesWithCredentials = template.value
+			? getNodesRequiringCredentials(nodeTypesStore, template.value)
+			: [];
 
 		// Order by the X coordinate of the node
-		return sortBy(credentials, ({ position }) => position[0]);
+		return sortBy(nodesWithCredentials, ({ node }) => node.position[0]);
 	});
 
 	const appNameByNodeType = (nodeTypeName: string, version?: number) => {
@@ -339,12 +366,13 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		try {
 			isSaving.value = true;
 
-			const createdWorkflow = await createWorkflowFromTemplate(
-				template.value,
-				credentialOverrides.value,
+			const createdWorkflow = await createWorkflowFromTemplate({
+				template: template.value,
+				credentialOverrides: credentialOverrides.value,
 				rootStore,
 				workflowsStore,
-			);
+				nodeTypeProvider: nodeTypesStore,
+			});
 
 			telemetry.track('User closed cred setup', {
 				completed: true,
