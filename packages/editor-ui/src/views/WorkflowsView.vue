@@ -152,7 +152,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -170,13 +169,6 @@ const WorkflowsView = defineComponent({
 		TagsDropdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
-	},
-	setup() {
-		const genericHelpers = useGenericHelpers();
-
-		return {
-			genericHelpers,
-		};
 	},
 	data() {
 		return {
