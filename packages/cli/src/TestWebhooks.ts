@@ -252,9 +252,9 @@ export class TestWebhooks implements IWebhookManager {
 	async cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
 
-		const allKeys = await this.registrations.getAllKeys();
+		const allWebhookKeys = await this.registrations.getAllKeys();
 
-		for (const key of allKeys) {
+		for (const key of allWebhookKeys) {
 			const registration = await this.registrations.get(key);
 
 			if (!registration) continue;
@@ -323,7 +323,7 @@ export class TestWebhooks implements IWebhookManager {
 	async deactivateWebhooks(workflow: Workflow) {
 		const allRegistrations = await this.registrations.getAllRegistrations();
 
-		if (!allRegistrations?.length) return;
+		if (!allRegistrations.length) return; // nothing to deactivate
 
 		type WebhooksByWorkflow = { [workflowId: string]: IWebhookData[] };
 
