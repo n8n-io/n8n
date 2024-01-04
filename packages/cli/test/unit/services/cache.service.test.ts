@@ -1,4 +1,4 @@
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import config from '@/config';
 import { sleep } from 'n8n-workflow';
 

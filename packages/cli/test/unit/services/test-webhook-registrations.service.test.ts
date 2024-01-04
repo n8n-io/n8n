@@ -1,4 +1,4 @@
-import type { CacheService } from '@/services/cache.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
 import { mock } from 'jest-mock-extended';

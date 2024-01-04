@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { User } from '@db/entities/User';
 import { RoleService } from './role.service';

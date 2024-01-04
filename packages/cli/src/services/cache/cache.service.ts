@@ -1,23 +1,25 @@
+import EventEmitter from 'node:events';
+
 import { Service } from 'typedi';
-import config from '@/config';
 import { caching } from 'cache-manager';
-import type { MemoryCache } from 'cache-manager';
-import type { RedisCache } from './cache/cacheManagerRedis';
 import { jsonStringify } from 'n8n-workflow';
-import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
-import EventEmitter from 'events';
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
-import { UnusableDisabledCacheError } from '@/errors/cache-errors/unusable-disabled-cache.error';
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 
-type TaggedRedisCache = RedisCache & { kind: 'redis' };
-type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
+import config from '@/config';
+import { getDefaultRedisClient, getRedisPrefix } from '@/services/redis/RedisServiceHelper';
+import {
+	UncacheableValueError,
+	UnusableDisabledCacheError,
+	MalformedRefreshValueError,
+} from '@/errors/cache-errors';
 
-type MaybeHash = Record<string, unknown> | undefined;
-type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;
-
-type RetrieveOneOptions<T> = { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> };
-type RetrieveManyOptions<T> = { fallbackValue?: T[]; refreshFn?: (keys: string[]) => Promise<T[]> };
+import type {
+	TaggedRedisCache,
+	TaggedMemoryCache,
+	CacheEvent,
+	RetrieveOneOptions,
+	RetrieveManyOptions,
+	MaybeHash,
+} from './cache.types';
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -38,7 +40,7 @@ export class CacheService extends EventEmitter {
 				'client(cache)',
 			);
 
-			const { redisStoreUsingClient } = await import('@/services/cache/cacheManagerRedis');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
 			const redisStore = redisStoreUsingClient(redisClient, { ttl });
 
 			const redisCache = await caching(redisStore);

@@ -7,7 +7,7 @@ import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 import EventEmitter from 'events';
 
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
 import {
 	METRICS_EVENT_NAME,

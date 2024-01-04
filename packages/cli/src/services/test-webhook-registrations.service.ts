@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { ApplicationError, type IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
 
