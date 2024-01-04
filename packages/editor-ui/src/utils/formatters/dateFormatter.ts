@@ -11,7 +11,10 @@ export const convertToDisplayDateComponents = (
 	return { date, time };
 };
 
-export function convertToDisplayDate(fullDate: Date | string | number): { date: string; time: string } {
+export function convertToDisplayDate(fullDate: Date | string | number): {
+	date: string;
+	time: string;
+} {
 	const mask = `d mmm${
 		new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
 	}#HH:MM:ss`;

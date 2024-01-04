@@ -50,7 +50,7 @@
 							<ExpressionEditorModalInput
 								ref="inputFieldExpression"
 								:model-value="modelValue"
-								:is-read-only="isReadOnlyRoute"
+								:is-read-only="isReadOnly"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
 								data-test-id="expression-modal-input"
@@ -105,7 +105,36 @@ export default defineComponent({
 		VariableSelector,
 	},
 	mixins: [debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
+	props: {
+		dialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object,
+			default: () => ({}),
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		eventSource: {
+			type: String,
+			default: '',
+		},
+		redactValues: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -123,9 +152,6 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
-		isReadOnlyRoute() {
-			return this.$route?.meta?.readOnlyCanvas === true;
-		},
 	},
 	watch: {
 		dialogVisible(newValue) {

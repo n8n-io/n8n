@@ -95,6 +95,7 @@ export class I18nClass {
 
 		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
 	}
+
 	/**
 	 * Render a string of header text (a node's name and description),
 	 * used variously in the nodes panel, under the node icon, etc.
