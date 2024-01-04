@@ -376,16 +376,37 @@ export function prepareItem(values: IDataObject[]) {
 	return item;
 }
 
+export async function columnFeatureSupport(
+	db: PgpDatabase,
+): Promise<{ identity_generation: boolean; is_generated: boolean }> {
+	const result = await db.any(
+		`SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns WHERE table_name = 'columns' AND table_schema = 'information_schema' AND column_name = 'is_generated'
+		) as is_generated,
+		EXISTS (
+			SELECT 1 FROM information_schema.columns WHERE table_name = 'columns' AND table_schema = 'information_schema' AND column_name = 'identity_generation'
+		) as identity_generation;`,
+	);
+
+	return result[0];
+}
+
 export async function getTableSchema(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
-	version: number,
 ): Promise<ColumnInfo[]> {
 	const select = ['column_name', 'data_type', 'is_nullable', 'udt_name', 'column_default'];
 
-	if (version >= 2.4) {
-		select.push('is_generated', 'identity_generation');
+	// Check if columns exist before querying (identity_generation was added in v10, is_generated in v12)
+	const supported = await columnFeatureSupport(db);
+
+	if (supported.identity_generation) {
+		select.push('identity_generation');
+	}
+
+	if (supported.is_generated) {
+		select.push('is_generated');
 	}
 
 	const selectString = select.join(', ');
@@ -474,18 +495,14 @@ export function checkItemAgainstSchema(
 	return item;
 }
 
-export const configureTableSchemaUpdater = (
-	initialSchema: string,
-	initialTable: string,
-	version: number,
-) => {
+export const configureTableSchemaUpdater = (initialSchema: string, initialTable: string) => {
 	let currentSchema = initialSchema;
 	let currentTable = initialTable;
 	return async (db: PgpDatabase, tableSchema: ColumnInfo[], schema: string, table: string) => {
 		if (currentSchema !== schema || currentTable !== table) {
 			currentSchema = schema;
 			currentTable = table;
-			tableSchema = await getTableSchema(db, schema, table, version);
+			tableSchema = await getTableSchema(db, schema, table);
 		}
 		return tableSchema;
 	};

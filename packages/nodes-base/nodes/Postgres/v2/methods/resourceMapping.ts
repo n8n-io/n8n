@@ -47,8 +47,6 @@ export async function getMappingColumns(
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
 
-	const nodeVersion = this.getNode().typeVersion;
-
 	const { db, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
@@ -64,7 +62,7 @@ export async function getMappingColumns(
 	}) as string;
 
 	try {
-		const columns = await getTableSchema(db, schema, table, nodeVersion);
+		const columns = await getTableSchema(db, schema, table);
 		const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(

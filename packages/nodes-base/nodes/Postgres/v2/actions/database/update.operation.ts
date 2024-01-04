@@ -208,9 +208,9 @@ export async function execute(
 		extractValue: true,
 	}) as string;
 
-	const updateTableSchema = configureTableSchemaUpdater(schema, table, nodeVersion);
+	const updateTableSchema = configureTableSchemaUpdater(schema, table);
 
-	let tableSchema = await getTableSchema(db, schema, table, nodeVersion);
+	let tableSchema = await getTableSchema(db, schema, table);
 
 	const queries: QueryWithValues[] = [];
 
