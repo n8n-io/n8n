@@ -564,7 +564,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, toRef } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
@@ -705,7 +705,8 @@ export default defineComponent({
 		const ndvStore = useNDVStore();
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
-		const pinnedData = usePinnedData(props.node, {
+		const node = toRef(props, 'node');
+		const pinnedData = usePinnedData(node, {
 			runIndex: props.runIndex,
 			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
 		});
