@@ -27,10 +27,8 @@ export class CacheService extends EventEmitter {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const redisClient = await getDefaultRedisClient(
-				{ keyPrefix: `${getRedisPrefix()}:${config.getEnv('cache.redis.prefix')}:` },
-				'client(cache)',
-			);
+			const keyPrefix = `${getRedisPrefix()}:${config.getEnv('cache.redis.prefix')}:`;
+			const redisClient = await getDefaultRedisClient({ keyPrefix }, 'client(cache)');
 
 			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
 			const redisStore = redisStoreUsingClient(redisClient, { ttl });
