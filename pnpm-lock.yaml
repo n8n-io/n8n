@@ -471,9 +471,6 @@ importers:
       ioredis:
         specifier: 5.2.4
         version: 5.2.4
-      isbot:
-        specifier: 4.1.2
-        version: 4.1.2
       json-diff:
         specifier: 1.0.6
         version: 1.0.6
