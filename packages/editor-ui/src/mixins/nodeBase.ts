@@ -86,6 +86,7 @@ export const nodeBase = defineComponent({
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		instance: {
 			type: Object as PropType<BrowserJsPlumbInstance>,

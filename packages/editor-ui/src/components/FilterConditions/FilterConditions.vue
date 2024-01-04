@@ -61,6 +61,8 @@ const maxConditions = computed(
 	() => props.parameter.typeOptions?.filter?.maxConditions ?? DEFAULT_MAX_CONDITIONS,
 );
 
+const singleCondition = computed(() => props.parameter.typeOptions?.multipleValues === false);
+
 const maxConditionsReached = computed(
 	() => maxConditions.value <= state.paramValue.conditions.length,
 );
@@ -125,8 +127,12 @@ function getIssues(index: number): string[] {
 </script>
 
 <template>
-	<div :class="$style.filter" :data-test-id="`filter-${parameter.name}`">
+	<div
+		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
+		:data-test-id="`filter-${parameter.name}`"
+	>
 		<n8n-input-label
+			v-if="!singleCondition"
 			:label="parameter.displayName"
 			:underline="true"
 			:show-options="true"
@@ -154,12 +160,13 @@ function getIssues(index: number): string[] {
 						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
+						:class="$style.condition"
 						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
 					></Condition>
 				</div>
 			</div>
-			<div :class="$style.addConditionWrapper">
+			<div v-if="!singleCondition" :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
@@ -193,6 +200,20 @@ function getIssues(index: number): string[] {
 	margin-top: var(--spacing-2xs);
 	margin-bottom: calc(var(--spacing-2xs) * -1);
 	margin-left: var(--spacing-l);
+}
+
+.condition {
+	padding-left: var(--spacing-l);
+}
+
+.single {
+	.condition {
+		padding-left: 0;
+	}
+
+	.content {
+		margin-top: calc(var(--spacing-xs) * -1);
+	}
 }
 
 .addConditionWrapper {

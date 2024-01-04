@@ -1,4 +1,3 @@
-import { CredentialsModal, MessageBox } from '../pages/modals';
 import {
 	clickUseWorkflowButtonByTitle,
 	visitTemplateCollectionPage,
@@ -9,8 +8,6 @@ import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
 
 const templateWorkflowPage = new TemplateWorkflowPage();
-const credentialsModal = new CredentialsModal();
-const messageBox = new MessageBox();
 const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
@@ -95,24 +92,48 @@ describe('Template credentials setup', () => {
 		// Continue button should be disabled if no credentials are created
 		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('Shopify').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
 
 		// Continue button should be enabled if at least one has been created
 		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('X (Formerly Twitter)').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
-		messageBox.actions.cancel();
+		templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('Telegram').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
+		cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
+		templateCredentialsSetupPage.getters.continueButton().click();
+		cy.wait('@createWorkflow');
+
+		workflowPage.getters.canvasNodes().should('have.length', 3);
+	});
+
+	it('should work with a template that has no credentials (ADO-1603)', () => {
+		const templateWithoutCreds = templateCredentialsSetupPage.testData.templateWithoutCredentials;
+		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${templateWithoutCreds.id}`, {
+			fixture: templateWithoutCreds.fixture,
+		});
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(templateWithoutCreds.id);
+
+		const expectedAppNames = ['1. Email (IMAP)', '2. Nextcloud'];
+		const expectedAppDescriptions = [
+			'The credential you select will be used in the IMAP Email node of the workflow template.',
+			'The credential you select will be used in the Nextcloud node of the workflow template.',
+		];
+
+		templateCredentialsSetupPage.getters.appCredentialSteps().each(($el, index) => {
+			templateCredentialsSetupPage.getters
+				.stepHeading($el)
+				.should('have.text', expectedAppNames[index]);
+			templateCredentialsSetupPage.getters
+				.stepDescription($el)
+				.should('have.text', expectedAppDescriptions[index]);
+		});
+
+		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
+
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Email (IMAP)');
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Nextcloud');
 
 		cy.intercept('POST', '/rest/workflows').as('createWorkflow');
 		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
