@@ -113,7 +113,7 @@ export function useNodeHelpers() {
 		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowsStore.getPinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowsStore.pinnedWorkflowData ?? {});
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
