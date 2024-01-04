@@ -199,7 +199,10 @@ export class CacheService extends EventEmitter {
 				throw new MalformedRefreshValueError();
 			}
 
-			const newValue: Array<[string, unknown]> = keys.map((key, i) => [key, refreshValue[i]]);
+			const newValue: Array<[key: string, value: unknown]> = keys.map((key, i) => [
+				key,
+				refreshValue[i],
+			]);
 
 			await this.setMany(newValue);
 
