@@ -61,10 +61,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return this.find({ where });
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
+	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
 		return transaction.delete(SharedCredentials, {
 			user,
-			workflowId: In(sharedWorkflowIds),
+			credentialsId: In(sharedCredentialsIds),
 		});
 	}
 }

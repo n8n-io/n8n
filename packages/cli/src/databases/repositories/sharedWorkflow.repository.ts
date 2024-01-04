@@ -135,10 +135,10 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
+	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
 		return transaction.delete(SharedWorkflow, {
 			user,
-			credentialsId: In(sharedCredentialsIds),
+			workflowId: In(sharedWorkflowIds),
 		});
 	}
 }
