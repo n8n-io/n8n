@@ -54,6 +54,19 @@ export const tabKeyMap: KeyBinding[] = [
 	{ key: 'Shift-Tab', run: indentLess },
 ];
 
+export const enterKeyMap: KeyBinding[] = [
+	{
+		key: 'Enter',
+		run: (editor) => {
+			if (selectedCompletion(editor.state)) {
+				return acceptCompletion(editor);
+			}
+
+			return insertNewlineAndIndent(editor);
+		},
+	},
+];
+
 export const writableEditorExtensions: readonly Extension[] = [
 	history(),
 	lintGutter(),
@@ -67,8 +80,7 @@ export const writableEditorExtensions: readonly Extension[] = [
 	Prec.highest(
 		keymap.of([
 			...tabKeyMap,
-			{ key: 'Enter', run: insertNewlineAndIndent },
-			{ key: 'Enter', run: acceptCompletion },
+			...enterKeyMap,
 			{ key: 'Mod-/', run: toggleComment },
 			{ key: 'Mod-z', run: undo },
 			{ key: 'Mod-Shift-z', run: redo },

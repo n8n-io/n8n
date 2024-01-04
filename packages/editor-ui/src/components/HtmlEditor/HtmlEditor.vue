@@ -39,7 +39,7 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
+import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
@@ -101,7 +101,7 @@ export default defineComponent({
 				Prec.highest(
 					keymap.of([
 						...tabKeyMap,
-						{ key: 'Enter', run: insertNewlineAndIndent },
+						...enterKeyMap,
 						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 					]),

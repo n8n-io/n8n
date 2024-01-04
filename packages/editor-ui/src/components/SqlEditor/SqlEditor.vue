@@ -47,7 +47,7 @@ import {
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
 import { defineComponent } from 'vue';
-import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
+import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 const SQL_DIALECTS = {
@@ -157,6 +157,7 @@ export default defineComponent({
 					Prec.highest(
 						keymap.of([
 							...tabKeyMap,
+							...enterKeyMap,
 							{ key: 'Mod-z', run: undo },
 							{ key: 'Mod-Shift-z', run: redo },
 							{ key: 'Mod-/', run: toggleComment },
