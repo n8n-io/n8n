@@ -11,13 +11,14 @@ describe('TestWebhookRegistrationsService', () => {
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
 	});
 
-	const key = 'GET|hello';
+	const webhookKey = 'GET|hello';
+	const cacheKey = 'test-webhooks';
 
 	describe('register()', () => {
 		test('should register a test webhook registration', async () => {
 			await registrations.register(registration);
 
-			expect(cacheService.setHash).toHaveBeenCalledWith('test-webhooks', { [key]: registration });
+			expect(cacheService.setHash).toHaveBeenCalledWith(cacheKey, { [webhookKey]: registration });
 		});
 	});
 
@@ -25,9 +26,9 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should deregister a test webhook registration', async () => {
 			await registrations.register(registration);
 
-			await registrations.deregister(key);
+			await registrations.deregister(webhookKey);
 
-			expect(cacheService.deleteFromHash).toHaveBeenCalledWith('test-webhooks', key);
+			expect(cacheService.deleteFromHash).toHaveBeenCalledWith(cacheKey, webhookKey);
 		});
 	});
 
@@ -35,7 +36,7 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should retrieve a test webhook registration', async () => {
 			cacheService.getHashValue.mockResolvedValueOnce(registration);
 
-			const promise = registrations.get(key);
+			const promise = registrations.get(webhookKey);
 
 			await expect(promise).resolves.toBe(registration);
 		});
@@ -43,7 +44,7 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should return undefined if no such test webhook registration was found', async () => {
 			cacheService.getHashValue.mockResolvedValueOnce(undefined);
 
-			const promise = registrations.get(key);
+			const promise = registrations.get(webhookKey);
 
 			await expect(promise).resolves.toBeUndefined();
 		});
@@ -51,17 +52,17 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('getAllKeys()', () => {
 		test('should retrieve all test webhook registration keys', async () => {
-			cacheService.getHash.mockResolvedValueOnce({ [key]: registration });
+			cacheService.getHash.mockResolvedValueOnce({ [webhookKey]: registration });
 
 			const result = await registrations.getAllKeys();
 
-			expect(result).toEqual([key]);
+			expect(result).toEqual([webhookKey]);
 		});
 	});
 
 	describe('getAllRegistrations()', () => {
 		test('should retrieve all test webhook registrations', async () => {
-			cacheService.getHash.mockResolvedValueOnce({ [key]: registration });
+			cacheService.getHash.mockResolvedValueOnce({ [webhookKey]: registration });
 
 			const result = await registrations.getAllRegistrations();
 
@@ -73,7 +74,7 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should deregister all test webhook registrations', async () => {
 			await registrations.deregisterAll();
 
-			expect(cacheService.delete).toHaveBeenCalledWith('test-webhooks');
+			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
 		});
 	});
 
@@ -81,7 +82,7 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should convert a test webhook registration to a key', () => {
 			const result = registrations.toKey(registration.webhook);
 
-			expect(result).toBe(key);
+			expect(result).toBe(webhookKey);
 		});
 	});
 });
