@@ -1,7 +1,9 @@
 import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
+import { NodeCreator } from './features/node-creator';
 
+const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
@@ -26,6 +28,12 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
+		nodeIssuesByName: (nodeName: string) =>
+			this.getters
+				.canvasNodes()
+				.filter(`:contains(${nodeName})`)
+				.should('have.length.greaterThan', 0)
+				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
@@ -38,8 +46,10 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification .el-notification--success').parent(),
-		errorToast: () => cy.get('.el-notification .el-notification--error'),
+		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
+		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -62,6 +72,7 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
 		workflowSettingsErrorWorkflowSelect: () => cy.getByTestId('workflow-settings-error-workflow'),
@@ -116,6 +127,9 @@ export class WorkflowPage extends BasePage {
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
+		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
+		colors: () => cy.getByTestId('color'),
+		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
 	actions = {
 		visit: (preventNodeViewUnload = true) => {
@@ -126,12 +140,27 @@ export class WorkflowPage extends BasePage {
 				win.preventNodeViewBeforeUnload = preventNodeViewUnload;
 			});
 		},
-		addInitialNodeToCanvas: (nodeDisplayName: string, { keepNdvOpen } = { keepNdvOpen: false }) => {
+		addInitialNodeToCanvas: (
+			nodeDisplayName: string,
+			opts?: { keepNdvOpen?: boolean; action?: string },
+		) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			if (keepNdvOpen) return;
-			cy.get('body').type('{esc}');
+			if (opts?.action) {
+				// Expand actions category if it's collapsed
+				nodeCreator.getters
+					.getCategoryItem('Actions')
+					.parent()
+					.then(($el) => {
+						if ($el.attr('data-category-collapsed') === 'true') {
+							nodeCreator.getters.getCategoryItem('Actions').click();
+						}
+					});
+				nodeCreator.getters.getCreatorItem(opts.action).click();
+			} else if (!opts?.keepNdvOpen) {
+				cy.get('body').type('{esc}');
+			}
 		},
 		addNodeToCanvas: (
 			nodeDisplayName: string,
@@ -159,8 +188,70 @@ export class WorkflowPage extends BasePage {
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
+		openContextMenu: (
+			nodeTypeName?: string,
+			method: 'right-click' | 'overflow-button' = 'right-click',
+		) => {
+			const target = nodeTypeName
+				? this.getters.canvasNodeByName(nodeTypeName)
+				: this.getters.nodeViewBackground();
+
+			if (method === 'right-click') {
+				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
+			} else {
+				target.realHover();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+			}
+		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
+		},
+		duplicateNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('duplicate');
+		},
+		deleteNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('delete');
+		},
+		executeNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('execute');
+		},
+		addStickyFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('add_sticky');
+		},
+		renameNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('rename');
+		},
+		copyNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('copy');
+		},
+		contextMenuAction: (action: string) => {
+			this.getters.contextMenuAction(action).click();
+		},
+		disableNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_activation');
+		},
+		pinNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_pin');
+		},
+		openNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName, 'overflow-button');
+			this.actions.contextMenuAction('open');
+		},
+		selectAllFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('select_all');
+		},
+		deselectAll: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('deselect_all');
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -186,6 +277,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
 			this.getters.saveButton().should('contain', 'Saved');
+			cy.url().should('not.have.string', '/new');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
@@ -221,13 +313,25 @@ export class WorkflowPage extends BasePage {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
 			});
-			cy.realPress('Tab')
+			cy.realPress('Tab');
 			// For a brief moment the Element UI tag component shows the tags as(+X) string
 			// so we need to wait for it to disappear
 			this.getters.workflowTagsContainer().should('not.contain', `+${tags.length}`);
 		},
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
+		},
+		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
+			// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
+			this.getters.nodeViewBackground().trigger('wheel', {
+				force: true,
+				bubbles: true,
+				ctrlKey: true,
+				pageX: cy.window().innerWidth / 2,
+				pageY: cy.window().innerHeight / 2,
+				deltaMode: 1,
+				deltaY: mode === 'zoomOut' ? steps : -steps,
+			});
 		},
 		hitUndo: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
@@ -242,13 +346,22 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+			cy.get('body').type('d');
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		},
-		hitPaste: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
+		hitPinNodeShortcut: () => {
+			cy.get('body').type('p');
+		},
+		hitExecuteWorkflowShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		},
+		hitDuplicateNodeShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		},
+		hitAddStickyShortcut: () => {
+			cy.get('body').type('{shift}', { delay: 500, release: false }).type('S');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
@@ -287,8 +400,35 @@ export class WorkflowPage extends BasePage {
 		deleteSticky: () => {
 			this.getters.stickies().eq(0).realHover().find('[data-test-id="delete-sticky"]').click();
 		},
+		toggleColorPalette: () => {
+			this.getters
+				.stickies()
+				.eq(0)
+				.realHover()
+				.find('[data-test-id="change-sticky-color"]')
+				.click({ force: true });
+		},
+		pickColor: (index: number) => {
+			this.getters.colors().eq(1).click();
+		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
+		},
+		shouldHaveWorkflowName: (name: string) => {
+			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);
+		},
+		testLassoSelection: (from: [number, number], to: [number, number]) => {
+			cy.getByTestId('node-view-wrapper').trigger('mousedown', from[0], from[1], { force: true });
+			cy.getByTestId('node-view-wrapper').trigger('mousemove', to[0], to[1], { force: true });
+			cy.get('#select-box').should('be.visible');
+			cy.getByTestId('node-view-wrapper').trigger('mouseup', to[0], to[1], { force: true });
+			cy.get('#select-box').should('not.be.visible');
+		},
+		getNodePosition: (node: Cypress.Chainable<JQuery<HTMLElement>>) => {
+			return node.then(($el) => ({
+				left: +$el[0].style.left.replace('px', ''),
+				top: +$el[0].style.top.replace('px', ''),
+			}));
 		},
 	};
 }

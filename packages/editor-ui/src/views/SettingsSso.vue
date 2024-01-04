@@ -3,7 +3,11 @@ import { computed, ref, onMounted } from 'vue';
 import { useSSOStore } from '@/stores/sso.store';
 import { useUIStore } from '@/stores/ui.store';
 import CopyInput from '@/components/CopyInput.vue';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -11,6 +15,8 @@ const IdentityProviderSettingsType = {
 };
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
@@ -98,6 +104,12 @@ const onSave = async () => {
 				await onTest();
 			}
 		}
+
+		telemetry.track('User updated single sign on settings', {
+			instance_id: rootStore.instanceId,
+			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
+			is_active: ssoStore.isSamlLoginEnabled,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
@@ -119,7 +131,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('sso', 'upgrade-sso');
+	void uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
 onMounted(async () => {
@@ -184,7 +196,7 @@ onMounted(async () => {
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 				<div class="mt-2xs mb-s">
-					<n8n-radio-buttons :options="ipsOptions" v-model="ipsType" />
+					<n8n-radio-buttons v-model="ipsType" :options="ipsOptions" />
 				</div>
 				<div v-show="ipsType === IdentityProviderSettingsType.URL">
 					<n8n-input
@@ -202,15 +214,15 @@ onMounted(async () => {
 				</div>
 			</div>
 			<div :class="$style.buttons">
-				<n8n-button :disabled="!isSaveEnabled" @click="onSave" size="large" data-test-id="sso-save">
+				<n8n-button :disabled="!isSaveEnabled" size="large" data-test-id="sso-save" @click="onSave">
 					{{ i18n.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 				<n8n-button
 					:disabled="!isTestEnabled"
 					size="large"
 					type="tertiary"
-					@click="onTest"
 					data-test-id="sso-test"
+					@click="onTest"
 				>
 					{{ i18n.baseText('settings.sso.settings.test') }}
 				</n8n-button>
@@ -224,7 +236,7 @@ onMounted(async () => {
 			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
-			:buttonText="i18n.baseText('settings.sso.actionBox.buttonText')"
+			:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
 			@click:button="goToUpgrade"
 		>
 			<template #heading>

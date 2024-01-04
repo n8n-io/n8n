@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
@@ -11,7 +10,7 @@ import { NodeApiError } from 'n8n-workflow';
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function apiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},

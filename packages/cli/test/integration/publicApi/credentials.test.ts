@@ -1,14 +1,17 @@
 import type { SuperAgentTest } from 'supertest';
-import { UserSettings } from 'n8n-core';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
+import { affixRoleToSaveCredential } from '../shared/db/credentials';
+import { getAllRoles } from '../shared/db/roles';
+import { addApiKey, createUser, createUserShell } from '../shared/db/users';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import Container from 'typedi';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -22,22 +25,19 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	// TODO: mock encryption key
-	await utils.initEncryptionKey();
-
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
-		await testDb.getAllRoles();
+		await getAllRoles();
 
 	globalMemberRole = fetchedGlobalMemberRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	owner = await testDb.addApiKey(await testDb.createUserShell(globalOwnerRole));
-	member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	owner = await addApiKey(await createUserShell(globalOwnerRole));
+	member = await createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initCredentialsTypes();
 });
@@ -66,13 +66,13 @@ describe('POST /credentials', () => {
 		expect(name).toBe(payload.name);
 		expect(type).toBe(payload.type);
 
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
 		expect(credential.data).not.toBe(payload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['user', 'credentials', 'role'],
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
@@ -86,17 +86,6 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 });
 
@@ -113,13 +102,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -131,13 +120,13 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -154,19 +143,19 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
 
 	test('should delete owned cred for member but leave others untouched', async () => {
-		const anotherMember = await testDb.createUser({
+		const anotherMember = await createUser({
 			globalRole: globalMemberRole,
 			apiKey: randomApiKey(),
 		});
@@ -186,13 +175,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(name).toBe(savedCredential.name);
 		expect(type).toBe(savedCredential.type);
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOne({
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			where: {
 				credentialsId: savedCredential.id,
 			},
@@ -202,13 +191,13 @@ describe('DELETE /credentials/:id', () => {
 
 		await Promise.all(
 			[notToBeChangedCredential, notToBeChangedCredential2].map(async (credential) => {
-				const untouchedCredential = await Db.collections.Credentials.findOneBy({
+				const untouchedCredential = await Container.get(CredentialsRepository).findOneBy({
 					id: credential.id,
 				});
 
 				expect(untouchedCredential).toEqual(credential); // not deleted
 
-				const untouchedSharedCredential = await Db.collections.SharedCredentials.findOne({
+				const untouchedSharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 					where: {
 						credentialsId: credential.id,
 					},
@@ -226,13 +215,13 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 
-		const shellCredential = await Db.collections.Credentials.findOneBy({
+		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(shellCredential).toBeDefined(); // not deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeDefined(); // not deleted
 	});
@@ -252,19 +241,17 @@ describe('GET /credentials/schema/:credentialType', () => {
 	});
 
 	test('should retrieve credential type', async () => {
-		const response = await authOwnerAgent.get('/credentials/schema/githubApi');
+		const response = await authOwnerAgent.get('/credentials/schema/ftp');
 
 		const { additionalProperties, type, properties, required } = response.body;
 
 		expect(additionalProperties).toBe(false);
 		expect(type).toBe('object');
-		expect(properties.server).toBeDefined();
-		expect(properties.server.type).toBe('string');
-		expect(properties.user.type).toBeDefined();
-		expect(properties.user.type).toBe('string');
-		expect(properties.accessToken.type).toBeDefined();
-		expect(properties.accessToken.type).toBe('string');
-		expect(required).toEqual(expect.arrayContaining(['server', 'user', 'accessToken']));
+		expect(properties.host.type).toBe('string');
+		expect(properties.port.type).toBe('number');
+		expect(properties.username.type).toBe('string');
+		expect(properties.password.type).toBe('string');
+		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
 		expect(response.statusCode).toBe(200);
 	});
 });
@@ -301,9 +288,9 @@ const INVALID_PAYLOADS = [
 	},
 	{
 		name: randomName(),
-		type: 'githubApi',
+		type: 'ftp',
 		data: {
-			server: randomName(),
+			username: randomName(),
 		},
 	},
 	{},

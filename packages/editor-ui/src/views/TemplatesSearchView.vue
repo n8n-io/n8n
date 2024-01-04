@@ -10,18 +10,21 @@
 				<div :class="$style.button">
 					<n8n-button
 						size="large"
-						:label="$locale.baseText('templates.newButton')"
-						@click="openNewWorkflow"
+						type="secondary"
+						element="a"
+						:href="creatorHubUrl"
+						:label="$locale.baseText('templates.shareWorkflow')"
+						target="_blank"
 					/>
 				</div>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<div :class="$style.filters" v-if="!isFixedListExperiment">
+				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
-						:sortOnPopulate="areCategoriesPrepopulated"
+						:sort-on-populate="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
 						@clear="onCategoryUnselected"
@@ -30,41 +33,35 @@
 					/>
 				</div>
 				<div :class="$style.search">
-					<template v-if="!isFixedListExperiment">
-						<n8n-input
-							:modelValue="search"
-							:placeholder="$locale.baseText('templates.searchPlaceholder')"
-							@update:modelValue="onSearchInput"
-							@blur="trackSearch"
-							clearable
-						>
-							<template #prefix>
-								<font-awesome-icon icon="search" />
-							</template>
-						</n8n-input>
-						<div
-							:class="$style.carouselContainer"
-							v-show="collections.length || loadingCollections"
-						>
-							<div :class="$style.header">
-								<n8n-heading :bold="true" size="medium" color="text-light">
-									{{ $locale.baseText('templates.collections') }}
-									<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
-								</n8n-heading>
-							</div>
-							<CollectionsCarousel
-								:collections="collections"
-								:loading="loadingCollections"
-								@openCollection="onOpenCollection"
-							/>
+					<n8n-input
+						:model-value="search"
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						clearable
+						@update:modelValue="onSearchInput"
+						@blur="trackSearch"
+					>
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
+					</n8n-input>
+					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
+						<div :class="$style.header">
+							<n8n-heading :bold="true" size="medium" color="text-light">
+								{{ $locale.baseText('templates.collections') }}
+								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+							</n8n-heading>
 						</div>
-					</template>
+						<TemplatesInfoCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							@openCollection="onOpenCollection"
+						/>
+					</div>
 					<TemplateList
-						:infinite-scroll-enabled="!isFixedListExperiment"
+						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
-						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
-						:simple-view="isFixedListExperiment"
+						:workflows="workflows"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
 					/>
@@ -82,7 +79,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
+import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
@@ -95,14 +92,14 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils';
-import { TEMPLATES_EXPERIMENT, VIEWS } from '@/constants';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
@@ -115,13 +112,13 @@ interface ISearchEvent {
 
 export default defineComponent({
 	name: 'TemplatesSearchView',
-	mixins: [genericHelpers, debounceHelper],
 	components: {
-		CollectionsCarousel,
+		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [genericHelpers, debounceHelper],
 	setup() {
 		return {
 			...useToast(),
@@ -138,21 +135,11 @@ export default defineComponent({
 			search: '',
 			searchEventToTrack: null as null | ISearchEvent,
 			errorLoadingWorkflows: false,
+			creatorHubUrl: CREATOR_HUB_URL as string,
 		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
-		isFixedListExperiment() {
-			return this.posthogStore.isVariantEnabled(
-				TEMPLATES_EXPERIMENT.name,
-				TEMPLATES_EXPERIMENT.variant,
-			);
-		},
-		fixedTemplatesList() {
-			return TEMPLATES_EXPERIMENT.variantIds
-				.map((id) => this.templatesStore.workflows[id])
-				.filter(Boolean);
-		},
 		totalWorkflows(): number {
 			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
 		},
@@ -193,6 +180,38 @@ export default defineComponent({
 				this.collections.length === 0
 			);
 		},
+	},
+	watch: {
+		workflows(newWorkflows) {
+			if (newWorkflows.length === 0) {
+				this.scrollTo(0);
+			}
+		},
+	},
+	async mounted() {
+		setPageTitle('n8n - Templates');
+		void this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
+
+		setTimeout(() => {
+			// Check if there is scroll position saved in route and scroll to it
+			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
+				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
+			}
+		}, 100);
+	},
+	async created() {
+		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
+			this.search = this.$route.query.search;
+		}
+
+		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+			this.categories = this.$route.query.categories
+				.split(',')
+				.map((categoryId) => parseInt(categoryId, 10));
+			this.areCategoriesPrepopulated = true;
+		}
 	},
 	methods: {
 		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
@@ -240,10 +259,6 @@ export default defineComponent({
 				);
 				this.searchEventToTrack = null;
 			}
-		},
-		openNewWorkflow() {
-			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
@@ -368,20 +383,12 @@ export default defineComponent({
 			}, 0);
 		},
 	},
-	watch: {
-		workflows(newWorkflows) {
-			if (newWorkflows.length === 0) {
-				this.scrollTo(0);
-			}
-		},
-	},
 	beforeRouteLeave(to, from, next) {
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
 			if (
-				this.$route.meta &&
-				this.$route.meta.setScrollPosition &&
+				this.$route.meta?.setScrollPosition &&
 				typeof this.$route.meta.setScrollPosition === 'function'
 			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);
@@ -390,40 +397,6 @@ export default defineComponent({
 
 		this.trackSearch();
 		next();
-	},
-	async mounted() {
-		setPageTitle('n8n - Templates');
-		void this.loadCategories();
-		void this.loadWorkflowsAndCollections(true);
-		void this.usersStore.showPersonalizationSurvey();
-
-		setTimeout(() => {
-			// Check if there is scroll position saved in route and scroll to it
-			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
-				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
-			}
-		}, 100);
-	},
-	async created() {
-		if (this.isFixedListExperiment) {
-			// Templates are lazy-loaded so we need to make sure the fixed ids are loaded
-			TEMPLATES_EXPERIMENT.variantIds.forEach(async (templateId) =>
-				this.templatesStore.fetchTemplateById(templateId),
-			);
-			// Categorization and filtering based on search is not supported if fixed list is enabled
-			return;
-		}
-
-		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
-			this.search = this.$route.query.search;
-		}
-
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories
-				.split(',')
-				.map((categoryId) => parseInt(categoryId, 10));
-			this.areCategoriesPrepopulated = true;
-		}
 	},
 });
 </script>

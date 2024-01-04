@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
@@ -12,7 +11,7 @@ import type {
 import { snakeCase } from 'change-case';
 
 export async function shopifyApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -63,6 +62,20 @@ export async function shopifyApiRequest(
 	}
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
+	}
+
+	// Only limit and fields are allowed for page_info links
+	// https://shopify.dev/docs/api/usage/pagination-rest#limitations-and-considerations
+	if (uri && uri.includes('page_info')) {
+		options.qs = {};
+
+		if (query.limit) {
+			options.qs.limit = query.limit;
+		}
+
+		if (query.fields) {
+			options.qs.fields = query.fields;
+		}
 	}
 
 	return this.helpers.requestWithAuthentication.call(this, credentialType, options, {

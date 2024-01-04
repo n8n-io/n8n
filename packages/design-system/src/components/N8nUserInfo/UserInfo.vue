@@ -1,37 +1,25 @@
 <template>
 	<div :class="classes">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar :firstName="firstName" :lastName="lastName" />
+			<N8nAvatar :first-name="firstName" :last-name="lastName" />
 		</div>
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
-			<n8n-text :bold="true">{{ email }}</n8n-text>
-			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
+			<N8nText :bold="true">{{ email }}</N8nText>
+			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true" color="text-dark">
+				<N8nText :bold="true" color="text-dark">
 					{{ firstName }} {{ lastName }}
 					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
-				</n8n-text>
+				</N8nText>
 				<span v-if="disabled" :class="$style.pendingBadge">
-					<n8n-badge :bold="true">Disabled</n8n-badge>
+					<N8nBadge :bold="true">Disabled</N8nBadge>
 				</span>
 			</div>
 			<div>
-				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
-			</div>
-			<div v-if="!isOwner">
-				<n8n-text v-if="signInType" size="small" color="text-light">
-					Sign-in type:
-					{{
-						isSamlLoginEnabled
-							? settings?.allowSSOManualLogin
-								? $locale.baseText('settings.sso') + ' + ' + signInType
-								: $locale.baseText('settings.sso')
-							: signInType
-					}}
-				</n8n-text>
+				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
 			</div>
 		</div>
 	</div>
@@ -45,13 +33,13 @@ import Locale from '../../mixins/locale';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-users-info',
-	mixins: [Locale],
+	name: 'N8nUsersInfo',
 	components: {
 		N8nAvatar,
 		N8nText,
 		N8nBadge,
 	},
+	mixins: [Locale],
 	props: {
 		firstName: {
 			type: String,
@@ -73,10 +61,6 @@ export default defineComponent({
 		},
 		disabled: {
 			type: Boolean,
-		},
-		signInType: {
-			type: String,
-			required: false,
 		},
 		settings: {
 			type: Object,

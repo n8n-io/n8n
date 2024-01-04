@@ -1,5 +1,9 @@
+export function getPopper() {
+	return cy.get('.el-popper');
+}
+
 export function getVisiblePopper() {
-	return cy.get('.el-popper').filter(':visible');
+	return getPopper().filter(':visible');
 }
 
 export function getVisibleSelect() {

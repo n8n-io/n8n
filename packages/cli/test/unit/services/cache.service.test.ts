@@ -3,8 +3,6 @@ import { CacheService } from '@/services/cache.service';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 
 const cacheService = Container.get(CacheService);
 
@@ -36,7 +34,6 @@ const testObject: TestObject = {
 
 describe('cacheService', () => {
 	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
 			if (typeof Redis === 'object') {
@@ -47,7 +44,6 @@ describe('cacheService', () => {
 				};
 			}
 			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return function (...args: any) {
 				return new Redis(args);
 			};
@@ -80,10 +76,7 @@ describe('cacheService', () => {
 	});
 
 	test('should honour ttl values', async () => {
-		// set default TTL to 10ms
-		config.set('cache.memory.ttl', 10);
-
-		await cacheService.set('testString', 'test');
+		await cacheService.set('testString', 'test', 10);
 		await cacheService.set('testNumber1', 123, 1000);
 
 		const store = (await cacheService.getCache())?.store;
@@ -92,15 +85,6 @@ describe('cacheService', () => {
 
 		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
 		await expect(store!.ttl('testNumber1')).resolves.toBeLessThanOrEqual(1000);
-
-		// commented out because it fails on CI sporadically
-		// await expect(cacheService.get('testString')).resolves.toBe('test');
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
-
-		// await new Promise((resolve) => setTimeout(resolve, 20));
-
-		// await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
 	});
 
 	test('should set and remove values', async () => {

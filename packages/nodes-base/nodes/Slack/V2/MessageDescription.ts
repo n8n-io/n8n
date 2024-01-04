@@ -558,7 +558,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Include Link To Workflow',
+				displayName: 'Include Link to Workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,

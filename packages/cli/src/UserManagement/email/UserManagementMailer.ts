@@ -2,10 +2,11 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import config from '@/config';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
+import { ApplicationError } from 'n8n-workflow';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset';
@@ -34,20 +35,23 @@ async function getTemplate(
 
 @Service()
 export class UserManagementMailer {
+	readonly isEmailSetUp: boolean;
+
 	private mailer: NodeMailer | undefined;
 
 	constructor() {
-		// Other implementations can be used in the future.
-		if (
+		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
-			config.getEnv('userManagement.emails.smtp.host') !== ''
-		) {
-			this.mailer = new NodeMailer();
+			config.getEnv('userManagement.emails.smtp.host') !== '';
+
+		// Other implementations can be used in the future.
+		if (this.isEmailSetUp) {
+			this.mailer = Container.get(NodeMailer);
 		}
 	}
 
 	async verifyConnection(): Promise<void> {
-		if (!this.mailer) throw new Error('No mailer configured.');
+		if (!this.mailer) throw new ApplicationError('No mailer configured.');
 
 		return this.mailer.verifyConnection();
 	}

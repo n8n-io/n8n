@@ -1,24 +1,19 @@
 import type express from 'express';
+import { Container } from 'typedi';
+import { replaceCircularReferences } from 'n8n-workflow';
 
-import { BinaryDataManager } from 'n8n-core';
-
-import {
-	getExecutions,
-	getExecutionInWorkflows,
-	deleteExecution,
-	getExecutionsCount,
-} from './executions.service';
+import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export = {
 	deleteExecution: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -37,17 +32,18 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([execution.id!]);
-
-			await deleteExecution(execution);
+			await Container.get(ExecutionRepository).hardDelete({
+				workflowId: execution.workflowId as string,
+				executionId: execution.id,
+			});
 
 			execution.id = id;
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecution: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -72,11 +68,11 @@ export = {
 				public_api: true,
 			});
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecutions: [
-		authorize(['owner', 'member']),
+		authorize(['owner', 'admin', 'member']),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -111,7 +107,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? '0' : (executions.slice(-1)[0].id as string);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 
@@ -123,7 +119,7 @@ export = {
 			});
 
 			return res.json({
-				data: executions,
+				data: replaceCircularReferences(executions),
 				nextCursor: encodeNextCursor({
 					lastId: newLastId,
 					limit,

@@ -17,14 +17,16 @@ interface IUserNodesPanelSessionData {
 
 /**
  * Simplified version of:
- * https://github.com/rudderlabs/rudder-sdk-js/blob/production-staging/packages/npm/index.d.ts
+ * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
  */
-export interface RudderStack {
+interface RudderStack extends Array<unknown> {
 	[key: string]: unknown;
 
 	methods: string[];
 
 	factory: (method: string) => (...args: unknown[]) => RudderStack;
+
+	loadJS(): void;
 
 	/**
 	 * Native methods

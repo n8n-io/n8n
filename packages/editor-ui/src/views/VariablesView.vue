@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
-import {
-	useEnvironmentsStore,
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useSourceControlStore,
-} from '@/stores';
-import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type {
 	DatatableColumn,
 	EnvironmentVariable,
@@ -183,7 +184,7 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 
 async function deleteVariable(data: EnvironmentVariable) {
 	try {
-		await message.confirm(
+		const confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
@@ -191,11 +192,11 @@ async function deleteVariable(data: EnvironmentVariable) {
 				cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
 			},
 		);
-	} catch (e) {
-		return;
-	}
 
-	try {
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+
 		await environmentsStore.deleteVariable(data);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {
@@ -204,7 +205,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	uiStore.goToUpgrade('variables', 'upgrade-variables');
+	void uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {
@@ -228,17 +229,17 @@ onBeforeUnmount(() => {
 
 <template>
 	<ResourcesListLayout
-		class="variables-view"
 		ref="layoutRef"
+		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="allVariables"
 		:initialize="initialize"
 		:shareable="false"
-		:displayName="displayName"
-		:sortFns="sortFns"
-		:sortOptions="['nameAsc', 'nameDesc']"
-		:showFiltersDropdown="false"
+		:display-name="displayName"
+		:sort-fns="sortFns"
+		:sort-options="['nameAsc', 'nameDesc']"
+		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
 		@sort="resetNewVariablesList"
@@ -251,8 +252,8 @@ onBeforeUnmount(() => {
 						size="large"
 						block
 						:disabled="!canCreateVariables"
-						@click="addTemporaryVariable"
 						data-test-id="resources-list-add"
+						@click="addTemporaryVariable"
 					>
 						{{ $locale.baseText(`variables.add`) }}
 					</n8n-button>
@@ -274,8 +275,8 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
 		</template>
@@ -288,8 +289,8 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
 			<n8n-action-box

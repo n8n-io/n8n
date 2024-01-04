@@ -1,3 +1,4 @@
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -15,6 +16,12 @@ export class ZscalerZiaApi implements ICredentialType {
 	documentationUrl = 'zscalerzia';
 
 	icon = 'file:icons/Zscaler.svg';
+
+	httpRequestNode = {
+		name: 'Zscaler ZIA',
+		docsUrl: 'https://help.zscaler.com/zia/getting-started-zia-api',
+		apiBaseUrl: '',
+	};
 
 	properties: INodeProperties[] = [
 		{
@@ -114,7 +121,9 @@ export class ZscalerZiaApi implements ICredentialType {
 			?.find((entry) => entry.includes('JSESSIONID'));
 
 		if (!cookie) {
-			throw new Error('No cookie returned. Please check your credentials.');
+			throw new ApplicationError('No cookie returned. Please check your credentials.', {
+				level: 'warning',
+			});
 		}
 
 		return { cookie };

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveRequiredParameters } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -15,7 +15,8 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
@@ -173,9 +174,7 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					(field.canBeUsedToMatch || field.defaultMatch) &&
-					field.display !== false &&
-					field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) && field.display && field.removed !== true,
 			).length > 0
 		);
 	}
@@ -229,7 +228,10 @@ async function loadFieldsToMap(): Promise<void> {
 			name: props.node?.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveParameter(props.node.parameters) as INodeParameters,
+		currentNodeParameters: resolveRequiredParameters(
+			props.parameter,
+			props.node.parameters,
+		) as INodeParameters,
 		path: props.path,
 		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
 		credentials: props.node.credentials,
@@ -348,15 +350,37 @@ function removeField(name: string): void {
 	}
 	const fieldName = parseResourceMapperFieldName(name);
 	if (fieldName) {
-		if (state.paramValue.value) {
-			delete state.paramValue.value[fieldName];
-			const field = state.paramValue.schema.find((f) => f.id === fieldName);
-			if (field) {
-				field.removed = true;
-				state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-			}
+		const field = state.paramValue.schema.find((f) => f.id === fieldName);
+		if (field) {
+			deleteField(field);
 			emitValueChanged();
 		}
+	}
+}
+
+function removeAllFields(): void {
+	state.paramValue.schema.forEach((field) => {
+		if (
+			!fieldCannotBeDeleted(
+				field,
+				showMatchingColumnsSelector.value,
+				resourceMapperMode.value,
+				matchingColumns.value,
+			)
+		) {
+			deleteField(field);
+		}
+	});
+	emitValueChanged();
+}
+
+// Delete a single field from the mapping (set removed flag to true and delete from value)
+// Used when removing one or all fields
+function deleteField(field: ResourceMapperField): void {
+	if (state.paramValue.value) {
+		delete state.paramValue.value[field.id];
+		field.removed = true;
+		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 	}
 }
 
@@ -395,23 +419,6 @@ function addAllFields(): void {
 	emitValueChanged();
 }
 
-function removeAllFields(): void {
-	state.paramValue.schema.forEach((field) => {
-		if (
-			!fieldCannotBeDeleted(
-				field,
-				showMatchingColumnsSelector.value,
-				resourceMapperMode.value,
-				matchingColumns.value,
-			)
-		) {
-			field.removed = true;
-			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-		}
-	});
-	emitValueChanged();
-}
-
 function emitValueChanged(): void {
 	pruneParamValues();
 	emit('valueChanged', {
@@ -441,31 +448,34 @@ defineExpose({
 
 <template>
 	<div class="mt-4xs" data-test-id="resource-mapper-container">
-		<mapping-mode-select
+		<MappingModeSelect
 			v-if="showMappingModeSelect"
-			:inputSize="inputSize"
-			:labelSize="labelSize"
-			:initialValue="state.paramValue.mappingMode || 'defineBelow'"
-			:typeOptions="props.parameter.typeOptions"
-			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
+			:input-size="inputSize"
+			:label-size="labelSize"
+			:initial-value="state.paramValue.mappingMode || 'defineBelow'"
+			:type-options="props.parameter.typeOptions"
+			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:loading="state.loading"
-			:loadingError="state.loadingError"
-			:fieldsToMap="state.paramValue.schema"
+			:loading-error="state.loadingError"
+			:fields-to-map="state.paramValue.schema"
 			:teleported="teleported"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
-		<matching-columns-select
+		<MatchingColumnsSelect
 			v-if="showMatchingColumnsSelector"
+			:parameter="props.parameter"
 			:label-size="labelSize"
-			:fieldsToMap="state.paramValue.schema"
-			:typeOptions="props.parameter.typeOptions"
-			:inputSize="inputSize"
+			:fields-to-map="state.paramValue.schema"
+			:type-options="props.parameter.typeOptions"
+			:input-size="inputSize"
 			:loading="state.loading"
-			:initialValue="matchingColumns"
-			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
+			:initial-value="matchingColumns"
+			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
+			:refresh-in-progress="state.refreshInProgress"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
+			@refreshFieldList="initFetching(true)"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
@@ -477,19 +487,19 @@ defineExpose({
 				})
 			}}
 		</n8n-text>
-		<mapping-fields
+		<MappingFields
 			v-if="showMappingFields"
 			:parameter="props.parameter"
 			:path="props.path"
-			:nodeValues="state.parameterValues"
-			:fieldsToMap="state.paramValue.schema"
-			:paramValue="state.paramValue"
-			:labelSize="labelSize"
-			:showMatchingColumnsSelector="showMatchingColumnsSelector"
-			:showMappingModeSelect="showMappingModeSelect"
+			:node-values="state.parameterValues"
+			:fields-to-map="state.paramValue.schema"
+			:param-value="state.paramValue"
+			:label-size="labelSize"
+			:show-matching-columns-selector="showMatchingColumnsSelector"
+			:show-mapping-mode-select="showMappingModeSelect"
 			:loading="state.loading"
 			:teleported="teleported"
-			:refreshInProgress="state.refreshInProgress"
+			:refresh-in-progress="state.refreshInProgress"
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"
 			@addField="addField"

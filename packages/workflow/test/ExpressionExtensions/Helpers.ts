@@ -1,8 +1,6 @@
-import type { IDataObject } from '../../src';
-import { Expression, Workflow } from '../../src';
+import type { IDataObject } from '@/Interfaces';
+import { Workflow } from '@/Workflow';
 import * as Helpers from '../Helpers';
-
-export const TEST_TIMEZONE = 'America/New_York';
 
 export const nodeTypes = Helpers.NodeTypes();
 export const workflow = new Workflow({
@@ -19,11 +17,8 @@ export const workflow = new Workflow({
 	connections: {},
 	active: false,
 	nodeTypes,
-	settings: {
-		timezone: TEST_TIMEZONE,
-	},
 });
-export const expression = new Expression(workflow);
+export const expression = workflow.expression;
 
 export const evaluate = (value: string, values?: IDataObject[]) =>
 	expression.getParameterValue(
@@ -34,7 +29,6 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
 		'node',
 		values?.map((v) => ({ json: v })) ?? [],
 		'manual',
-		TEST_TIMEZONE,
 		{},
 	);
 

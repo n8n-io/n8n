@@ -51,8 +51,13 @@ export async function sheetsSearch(
 	this: ILoadOptionsFunctions,
 	_filter?: string,
 ): Promise<INodeListSearchResult> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
+
+	if (!documentId) return { results: [] };
+
+	const { mode, value } = documentId;
+
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const query = {
 		fields: 'sheets.properties',

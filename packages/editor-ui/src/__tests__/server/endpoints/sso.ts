@@ -18,9 +18,7 @@ export function routesForSSO(server: Server) {
 	});
 
 	server.post('/rest/sso/saml/config', (schema: AppSchema, request: Request) => {
-		const requestBody = jsonParse(request.requestBody) as Partial<
-			SamlPreferences & SamlPreferencesExtractedData
-		>;
+		const requestBody = jsonParse(request.requestBody);
 
 		samlConfig = {
 			...samlConfig,

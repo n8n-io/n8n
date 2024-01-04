@@ -17,6 +17,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
+import { generatePairedItemData } from '../../../utils/utilities';
 import {
 	clean,
 	getAssociations,
@@ -44,8 +46,6 @@ import { ticketFields, ticketOperations } from './TicketDescription';
 import type { IForm } from './FormInterface';
 
 import type { IAssociation, IDeal } from './DealInterface';
-
-import { snakeCase } from 'change-case';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1152,7 +1152,6 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -1168,8 +1167,15 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
+
+				const itemData = generatePairedItemData(items.length);
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
@@ -2352,6 +2358,13 @@ export class HubspotV2 implements INodeType {
 									value: updateFields.dealName as string,
 								});
 							}
+							if (updateFields.dealOwner) {
+								const dealOwner = updateFields.dealOwner as IDataObject;
+								body.properties.push({
+									name: 'hubspot_owner_id',
+									value: dealOwner.value,
+								});
+							}
 							if (updateFields.closeDate) {
 								body.properties.push({
 									name: 'closedate',
@@ -3027,13 +3040,16 @@ export class HubspotV2 implements INodeType {
 						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: (error as JsonObject).message } });
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: { item: i },
+						});
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

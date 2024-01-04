@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 
@@ -16,8 +17,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { URL } from 'url';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)

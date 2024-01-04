@@ -10,10 +10,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { reportFields, reportOperations } from './ReportDescription';
 import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
-import moment from 'moment-timezone';
 import type { IData } from './Interfaces';
 
 import { oldVersionNotice } from '@utils/descriptions';
@@ -302,6 +302,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

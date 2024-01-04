@@ -2,21 +2,21 @@
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
 			<template #default="{ modalName }">
-				<ContactPromptModal :modalName="modalName" />
+				<ContactPromptModal :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
-				<CredentialEdit :modalName="modalName" :mode="mode" :activeId="activeId" />
+				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="ABOUT_MODAL_KEY">
 			<AboutModal />
 		</ModalRoot>
 
-		<ModalRoot :name="ASK_AI_MODAL_KEY">
-			<AskAiModal />
+		<ModalRoot :name="CHAT_EMBED_MODAL_KEY">
+			<ChatEmbedModal />
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
@@ -25,7 +25,7 @@
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<DuplicateWorkflowDialog :data="data" :isActive="active" :modalName="modalName" />
+				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -37,14 +37,18 @@
 			<TagsManager />
 		</ModalRoot>
 
-		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
+		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
+		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :isActive="active" />
+				<ValueSurvey :is-active="active" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
+			<WorkflowLMChat />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
@@ -61,7 +65,7 @@
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
 			<template #default="{ modalName, activeId }">
-				<DeleteUserModal :modalName="modalName" :activeId="activeId" />
+				<DeleteUserModal :modal-name="modalName" :active-id="activeId" />
 			</template>
 		</ModalRoot>
 
@@ -69,9 +73,13 @@
 			<ActivationModal />
 		</ModalRoot>
 
+		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
+			<MfaSetupModal />
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<WorkflowShareModal :data="data" :isActive="active" :modalName="modalName" />
+				<WorkflowShareModal :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -90,8 +98,8 @@
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
-					:modalName="modalName"
-					:activePackageName="activeId"
+					:modal-name="modalName"
+					:active-package-name="activeId"
 					:mode="mode"
 				/>
 			</template>
@@ -100,23 +108,58 @@
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<EventDestinationSettingsModal
-					:modalName="modalName"
+					:modal-name="modalName"
 					:destination="data.destination"
-					:isNew="data.isNew"
-					:eventBus="data.eventBus"
+					:is-new="data.isNew"
+					:event-bus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<SourceControlPushModal :modalName="modalName" :data="data" />
+				<SourceControlPushModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<SourceControlPullModal :modalName="modalName" :data="data" />
+				<SourceControlPullModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DebugPaywallModal
+					data-test-id="debug-paywall-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_RESTORE">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryVersionRestoreModal
+					data-test-id="workflow-history-version-restore-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SuggestedTemplatesPreviewModal
+					data-test-id="suggested-templates-preview-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
 			</template>
 		</ModalRoot>
 	</div>
@@ -126,6 +169,7 @@
 import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -141,17 +185,22 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	ASK_AI_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
-import AskAiModal from './AskAiModal.vue';
+import ChatEmbedModal from './ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -166,21 +215,27 @@ import PersonalizationModal from './PersonalizationModal.vue';
 import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import ValueSurvey from './ValueSurvey.vue';
+import WorkflowLMChat from './WorkflowLMChat.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
+import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
+import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
+import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
+import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
-		AskAiModal,
 		ActivationModal,
+		ChatEmbedModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
 		ContactPromptModal,
@@ -196,21 +251,27 @@ export default defineComponent({
 		TagsManager,
 		UpdatesPanel,
 		ValueSurvey,
+		WorkflowLMChat,
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
 		SourceControlPushModal,
 		SourceControlPullModal,
+		ExternalSecretsProviderModal,
+		DebugPaywallModal,
+		MfaSetupModal,
+		WorkflowHistoryVersionRestoreModal,
+		SuggestedTemplatesPreviewModal,
 	},
 	data: () => ({
+		CHAT_EMBED_MODAL_KEY,
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
-		ASK_AI_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
@@ -219,6 +280,7 @@ export default defineComponent({
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
+		WORKFLOW_LM_CHAT_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
@@ -227,6 +289,11 @@ export default defineComponent({
 		LOG_STREAM_MODAL_KEY,
 		SOURCE_CONTROL_PUSH_MODAL_KEY,
 		SOURCE_CONTROL_PULL_MODAL_KEY,
+		EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+		DEBUG_PAYWALL_MODAL_KEY,
+		MFA_SETUP_MODAL_KEY,
+		WORKFLOW_HISTORY_VERSION_RESTORE,
+		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	}),
 });
 </script>

@@ -1,14 +1,15 @@
 import { authorize } from '@/PublicApi/v1/shared/middlewares/global.middleware';
-import { audit } from '@/audit';
 import type { Response } from 'express';
 import type { AuditRequest } from '@/PublicApi/types';
+import Container from 'typedi';
 
 export = {
 	generateAudit: [
-		authorize(['owner']),
+		authorize(['owner', 'admin']),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
-				const result = await audit(
+				const { SecurityAuditService } = await import('@/security-audit/SecurityAudit.service');
+				const result = await Container.get(SecurityAuditService).run(
 					req.body?.additionalOptions?.categories,
 					req.body?.additionalOptions?.daysAbandonedWorkflow,
 				);

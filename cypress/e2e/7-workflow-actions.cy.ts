@@ -3,10 +3,14 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { getVisibleDropdown, getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils';
+import { WorkflowExecutionsTab } from '../pages';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const IMPORT_WORKFLOW_URL =
@@ -16,6 +20,7 @@ const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 const WorkflowPage = new WorkflowPageClass();
 const WorkflowPages = new WorkflowsPageClass();
+const executionsTab = new WorkflowExecutionsTab();
 
 describe('Workflow Actions', () => {
 	beforeEach(() => {
@@ -97,6 +102,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
+		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');
@@ -249,5 +255,42 @@ describe('Workflow Actions', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();
 		});
+	});
+
+	it('should keep endpoint click working when switching between execution and editor tab', () => {
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+		cy.get('body').type('{esc}');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		cy.wait(500);
+		executionsTab.actions.switchToEditorTab();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+	});
+});
+
+describe('Menu entry Push To Git', () => {
+	it('should not show up in the menu for members', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('not.exist');
+	});
+
+	it('should show up for owners', () => {
+		cy.signin(INSTANCE_OWNER);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('exist');
 	});
 });

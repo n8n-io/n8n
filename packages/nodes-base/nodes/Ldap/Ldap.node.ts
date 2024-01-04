@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { Attribute, Change } from 'ldapts';
 import { ldapFields } from './LdapDescription';
@@ -103,14 +103,16 @@ export class Ldap implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const client = await createLdapClient(credentials);
 				try {
-					const client = await createLdapClient(credentials);
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					return {
 						status: 'Error',
 						message: error.message,
 					};
+				} finally {
+					await client.unbind();
 				}
 				return {
 					status: 'OK',
@@ -126,11 +128,21 @@ export class Ldap implements INodeType {
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
+					await client.unbind();
 					console.log(error);
+					return [];
 				}
 
+				let results;
 				const baseDN = this.getNodeParameter('baseDN', 0) as string;
-				const results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
+				try {
+					results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
+				} catch (error) {
+					console.log(error);
+					return [];
+				} finally {
+					await client.unbind();
+				}
 
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
@@ -145,11 +157,23 @@ export class Ldap implements INodeType {
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
+					await client.unbind();
 					console.log(error);
+					return [];
 				}
 
 				const baseDN = this.getNodeParameter('baseDN', 0) as string;
-				const results = await client.search(baseDN, { sizeLimit: 10, paged: false }); // should this size limit be set in credentials?
+
+				let results;
+				try {
+					results = await client.search(baseDN, { sizeLimit: 10, paged: false }); // should this size limit be set in credentials?
+				} catch (error) {
+					console.log(error);
+					return [];
+				} finally {
+					await client.unbind();
+				}
+
 				const objects = [];
 				for (const entry of results.searchEntries) {
 					if (typeof entry.objectClass === 'string') {
@@ -177,11 +201,21 @@ export class Ldap implements INodeType {
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
+					await client.unbind();
 					console.log(error);
+					return [];
 				}
 
+				let results;
 				const baseDN = this.getNodeParameter('dn', 0) as string;
-				const results = await client.search(baseDN, { sizeLimit: 1, paged: false });
+				try {
+					results = await client.search(baseDN, { sizeLimit: 1, paged: false });
+				} catch (error) {
+					console.log(error);
+					return [];
+				} finally {
+					await client.unbind();
+				}
 
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
@@ -199,7 +233,7 @@ export class Ldap implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		if (nodeDebug) {
-			Logger.info(
+			this.logger.info(
 				`[${this.getNode().type} | ${this.getNode().name}] - Starting with ${
 					items.length
 				} input items`,
@@ -218,6 +252,7 @@ export class Ldap implements INodeType {
 			await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 		} catch (error) {
 			delete error.cert;
+			await client.unbind();
 			if (this.continueOnFail()) {
 				return [
 					items.map((x) => {
@@ -357,7 +392,7 @@ export class Ldap implements INodeType {
 					options.filter = searchFor;
 
 					if (nodeDebug) {
-						Logger.info(
+						this.logger.info(
 							`[${this.getNode().type} | ${this.getNode().name}] - Search Options ${JSON.stringify(
 								options,
 								null,
@@ -386,6 +421,7 @@ export class Ldap implements INodeType {
 				if (this.continueOnFail()) {
 					returnItems.push({ json: items[itemIndex].json, error, pairedItem: itemIndex });
 				} else {
+					await client.unbind();
 					if (error.context) {
 						error.context.itemIndex = itemIndex;
 						throw error;
@@ -397,8 +433,11 @@ export class Ldap implements INodeType {
 			}
 		}
 		if (nodeDebug) {
-			Logger.info(`[${this.getNode().type} | ${this.getNode().name}] - Finished`);
+			this.logger.info(`[${this.getNode().type} | ${this.getNode().name}] - Finished`);
 		}
-		return this.prepareOutputData(returnItems);
+
+		await client.unbind();
+
+		return [returnItems];
 	}
 }

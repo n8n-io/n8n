@@ -12,7 +12,8 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:transparentBackground="transparent"
+					:icon="isFormTriggerNode && 'flask'"
+					:transparent-background="transparent"
 					@click="onClick"
 				/>
 			</div>
@@ -23,20 +24,26 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
+import {
+	WEBHOOK_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
+	FORM_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
-	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
+	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,
@@ -62,12 +69,15 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup(props) {
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	computed: {
@@ -83,26 +93,31 @@ export default defineComponent({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
 			);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isTriggerNode(): boolean {
+			if (!this.node) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isManualTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
+		isFormTriggerNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
+		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+			return !!this.nodeType?.group.includes('schedule');
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
@@ -129,9 +144,7 @@ export default defineComponent({
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		disabledHint(): string {
@@ -171,11 +184,20 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
+			if (this.isFormTriggerNode) {
+				return this.$locale.baseText('ndv.execute.testStep');
+			}
+
+			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
+			if (
+				this.isTriggerNode &&
+				!this.isScheduleTrigger &&
+				!this.isManualTriggerNode &&
+				!this.isFormTriggerNode
+			) {
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
@@ -210,9 +232,8 @@ export default defineComponent({
 					);
 					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
-					if (shouldUnpinAndExecute) {
-						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.workflowsStore.unpinData({ node: this.node });
+					if (shouldUnpinAndExecute && this.node) {
+						this.unsetPinData(this.node, 'unpin-and-execute-modal');
 					}
 				}
 
@@ -221,11 +242,15 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
+						session_id: this.ndvStore.sessionId,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

@@ -591,7 +591,7 @@ export async function execute(
 				item: index,
 			})),
 		};
-		return this.prepareOutputData([executionData]);
+		return [[executionData]];
 	} else {
 		if (!fieldsToSplitBy.length) {
 			const { pairedItems, ...json } = aggregationResult;
@@ -601,7 +601,7 @@ export async function execute(
 					item: index,
 				})),
 			};
-			return this.prepareOutputData([executionData]);
+			return [[executionData]];
 		}
 		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 		const executionData = returnData.map((item) => {
@@ -613,6 +613,6 @@ export async function execute(
 				})),
 			};
 		});
-		return this.prepareOutputData(executionData);
+		return [executionData];
 	}
 }

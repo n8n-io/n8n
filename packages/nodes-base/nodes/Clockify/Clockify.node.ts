@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
 import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
@@ -29,8 +30,6 @@ import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
 import { userFields, userOperations } from './UserDescription';
 
 import { workspaceFields, workspaceOperations } from './WorkspaceDescription';
-
-import moment from 'moment-timezone';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
@@ -848,6 +847,6 @@ export class Clockify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

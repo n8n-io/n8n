@@ -1,6 +1,6 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER, N8N_AUTH_COOKIE } from '../constants';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -16,8 +16,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
-
 	workflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.actions.zoomToFit();
 });
 
 Cypress.Commands.add(
@@ -33,7 +33,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
 	if (waitForIntercepts) {
-		cy.wait(['@loadSettings']);
+		cy.wait(['@loadSettings', '@loadNodeTypes']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
@@ -41,14 +41,13 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	Cypress.session.clearAllSavedSessions();
-	cy.session(
-		[email, password],
-		() => cy.request('POST', `${BACKEND_BASE_URL}/rest/login`, { email, password }),
-		{
-			validate() {
-				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
-			},
-		},
+	cy.session([email, password], () =>
+		cy.request({
+			method: 'POST',
+			url: `${BACKEND_BASE_URL}/rest/login`,
+			body: { email, password },
+			failOnStatusCode: false,
+		}),
 	);
 });
 
@@ -67,8 +66,15 @@ const setFeature = (feature: string, enabled: boolean) =>
 		enabled,
 	});
 
+const setQueueMode = (enabled: boolean) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/queue-mode`, {
+		enabled,
+	});
+
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
-Cypress.Commands.add('disableFeature', (feature): string => setFeature(feature, false));
+Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, false));
+Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
+Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
@@ -111,13 +117,13 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		const newPosition = {
 			x: options?.abs ? xDiff : originalLocation.right + xDiff,
 			y: options?.abs ? yDiff : originalLocation.top + yDiff,
-		}
-		if(options?.realMouse) {
+		};
+		if (options?.realMouse) {
 			element.realMouseDown();
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
-			element.trigger('mousedown', {force: true});
+			element.trigger('mousedown', { force: true });
 			element.trigger('mousemove', {
 				which: 1,
 				pageX: newPosition.x,
@@ -129,7 +135,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				// For some reason, mouseup isn't working when moving nodes
 				cy.get('body').click(newPosition.x, newPosition.y);
 			} else {
-				element.trigger('mouseup', {force: true});
+				element.trigger('mouseup', { force: true });
 			}
 		}
 	});
@@ -161,4 +167,18 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).realMouseUp();
 			}
 		});
+});
+
+Cypress.Commands.add('push', (type, data) => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/push`, {
+		type,
+		data,
+	});
+});
+
+Cypress.Commands.add('shouldNotHaveConsoleErrors', () => {
+	cy.window().then((win) => {
+		const spy = cy.spy(win.console, 'error');
+		cy.wrap(spy).should('not.have.been.called');
+	});
 });

@@ -1,6 +1,6 @@
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
+import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
 import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
@@ -46,6 +46,13 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	staticData?: IDataObject;
 
+	@Column({
+		type: jsonColumnType,
+		nullable: true,
+		transformer: objectRetriever,
+	})
+	meta?: WorkflowFEMeta;
+
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
@@ -82,6 +89,10 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@Column({ default: 0 })
 	triggerCount: number;
+
+	display() {
+		return `"${this.name}" (ID: ${this.id})`;
+	}
 }
 
 /**

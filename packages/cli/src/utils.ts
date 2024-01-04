@@ -60,34 +60,6 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	return [pass, fail];
 };
 
-export const webhookNotFoundErrorMessage = (
-	path: string,
-	httpMethod?: string,
-	webhookMethods?: string[],
-) => {
-	let webhookPath = path;
-
-	if (httpMethod) {
-		webhookPath = `${httpMethod} ${webhookPath}`;
-	}
-
-	if (webhookMethods?.length && httpMethod) {
-		let methods = '';
-
-		if (webhookMethods.length === 1) {
-			methods = webhookMethods[0];
-		} else {
-			const lastMethod = webhookMethods.pop();
-
-			methods = `${webhookMethods.join(', ')} or ${lastMethod as string}`;
-		}
-
-		return `This webhook is not registered for ${httpMethod} requests. Did you mean to make a ${methods} request?`;
-	} else {
-		return `The requested webhook "${webhookPath}" is not registered.`;
-	}
-};
-
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
@@ -97,3 +69,11 @@ export function isStringArray(value: unknown): value is string[] {
 }
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
+
+export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
+export function removeTrailingSlash(path: string) {
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}

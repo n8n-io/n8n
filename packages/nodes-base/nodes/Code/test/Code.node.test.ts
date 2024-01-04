@@ -1,17 +1,17 @@
 import { anyNumber, mock } from 'jest-mock-extended';
-import { NodeVM } from 'vm2';
+import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';
-import { testWorkflows, getWorkflowFilenames, initBinaryDataManager } from '@test/nodes/Helpers';
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
+import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
 
 describe('Test Code Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
 
 	beforeAll(async () => {
-		await initBinaryDataManager();
+		await initBinaryDataService();
 	});
 
 	testWorkflows(workflows);
@@ -79,7 +79,7 @@ describe('Code Node unit test', () => {
 
 					try {
 						await node.execute.call(thisArg);
-						throw new Error("Validation error wasn't thrown");
+						throw new ApplicationError("Validation error wasn't thrown", { level: 'warning' });
 					} catch (error) {
 						expect(error).toBeInstanceOf(ValidationError);
 						expect(error.message).toEqual("A 'json' property isn't an object [item 0]");
@@ -131,7 +131,7 @@ describe('Code Node unit test', () => {
 
 					try {
 						await node.execute.call(thisArg);
-						throw new Error("Validation error wasn't thrown");
+						throw new ApplicationError("Validation error wasn't thrown", { level: 'warning' });
 					} catch (error) {
 						expect(error).toBeInstanceOf(ValidationError);
 						expect(error.message).toEqual("A 'json' property isn't an object [item 0]");

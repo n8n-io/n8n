@@ -42,6 +42,18 @@ export class Xml implements INodeType {
 				default: 'xmlToJson',
 				description: 'From and to what format the data should be converted',
 			},
+			{
+				displayName:
+					"If your XML is inside a binary file, use the 'Extract From File' node to convert it to text first",
+				name: 'xmlNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['xmlToJson'],
+					},
+				},
+			},
 
 			// ----------------------------------
 			//         option:jsonToxml
@@ -282,6 +294,6 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

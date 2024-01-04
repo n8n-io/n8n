@@ -187,4 +187,31 @@ export const blockFields: INodeProperties[] = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
+	{
+		displayName: 'Also Fetch Nested Blocks',
+		name: 'fetchNestedBlocks',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['block'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['block'],
+				operation: ['getAll'],
+			},
+			hide: {
+				'@version': [1, 2],
+			},
+		},
+		default: true,
+	},
 ];

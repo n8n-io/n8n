@@ -3,7 +3,7 @@ import { merge } from 'lodash-es';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
-import { STORES } from '@/constants';
+import { STORES, VIEWS } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
@@ -11,6 +11,12 @@ import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests_
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
+
+vi.mock('vue-router', () => ({
+	useRoute: vi.fn().mockReturnValue({
+		name: VIEWS.WORKFLOW_EXECUTIONS,
+	}),
+}));
 
 let pinia: ReturnType<typeof createTestingPinia>;
 

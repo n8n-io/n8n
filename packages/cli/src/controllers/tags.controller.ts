@@ -1,25 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
-import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
-import { type ITagWithCountDb } from '@/Interfaces';
-import type { TagEntity } from '@db/entities/TagEntity';
-import { TagRepository } from '@db/repositories';
-import { validateEntity } from '@/GenericHelpers';
-import { BadRequestError } from '@/ResponseHelper';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Middleware,
+	Patch,
+	Post,
+	RestController,
+	RequireGlobalScope,
+} from '@/decorators';
+import { TagService } from '@/services/tag.service';
 import { TagsRequest } from '@/requests';
-import { Service } from 'typedi';
-import { ExternalHooks } from '@/ExternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized()
 @RestController('/tags')
-@Service()
 export class TagsController {
 	private config = config;
 
-	constructor(
-		private tagsRepository: TagRepository,
-		private externalHooks: ExternalHooks,
-	) {}
+	constructor(private readonly tagService: TagService) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
@@ -29,61 +29,35 @@ export class TagsController {
 		next();
 	}
 
-	// Retrieves all tags, with or without usage count
 	@Get('/')
-	async getAll(req: TagsRequest.GetAll): Promise<TagEntity[] | ITagWithCountDb[]> {
-		const { withUsageCount } = req.query;
-		if (withUsageCount === 'true') {
-			return this.tagsRepository
-				.find({
-					select: ['id', 'name', 'createdAt', 'updatedAt'],
-					relations: ['workflowMappings'],
-				})
-				.then((tags) =>
-					tags.map(({ workflowMappings, ...rest }) => ({
-						...rest,
-						usageCount: workflowMappings.length,
-					})),
-				);
-		}
-
-		return this.tagsRepository.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
+	@RequireGlobalScope('tag:list')
+	async getAll(req: TagsRequest.GetAll) {
+		return this.tagService.getAll({ withUsageCount: req.query.withUsageCount === 'true' });
 	}
 
-	// Creates a tag
 	@Post('/')
-	async createTag(req: TagsRequest.Create): Promise<TagEntity> {
-		const newTag = this.tagsRepository.create({ name: req.body.name.trim() });
+	@RequireGlobalScope('tag:create')
+	async createTag(req: TagsRequest.Create) {
+		const tag = this.tagService.toEntity({ name: req.body.name });
 
-		await this.externalHooks.run('tag.beforeCreate', [newTag]);
-		await validateEntity(newTag);
-
-		const tag = await this.tagsRepository.save(newTag);
-		await this.externalHooks.run('tag.afterCreate', [tag]);
-		return tag;
+		return this.tagService.save(tag, 'create');
 	}
 
-	// Updates a tag
 	@Patch('/:id(\\w+)')
-	async updateTag(req: TagsRequest.Update): Promise<TagEntity> {
-		const newTag = this.tagsRepository.create({ id: req.params.id, name: req.body.name.trim() });
+	@RequireGlobalScope('tag:update')
+	async updateTag(req: TagsRequest.Update) {
+		const newTag = this.tagService.toEntity({ id: req.params.id, name: req.body.name.trim() });
 
-		await this.externalHooks.run('tag.beforeUpdate', [newTag]);
-		await validateEntity(newTag);
-
-		const tag = await this.tagsRepository.save(newTag);
-		await this.externalHooks.run('tag.afterUpdate', [tag]);
-		return tag;
+		return this.tagService.save(newTag, 'update');
 	}
 
-	@Authorized(['global', 'owner'])
 	@Delete('/:id(\\w+)')
+	@RequireGlobalScope('tag:delete')
 	async deleteTag(req: TagsRequest.Delete) {
 		const { id } = req.params;
-		await this.externalHooks.run('tag.beforeDelete', [id]);
 
-		await this.tagsRepository.delete({ id });
-		await this.externalHooks.run('tag.afterDelete', [id]);
+		await this.tagService.delete(id);
+
 		return true;
 	}
 }

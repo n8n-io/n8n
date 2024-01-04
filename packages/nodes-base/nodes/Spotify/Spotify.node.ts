@@ -330,7 +330,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'US',
-				description: 'Top tracks in which country? Enter the postal abbriviation',
+				description: 'Top tracks in which country? Enter the postal abbreviation',
 			},
 
 			{
@@ -367,8 +367,8 @@ export class Spotify implements INodeType {
 					{
 						name: 'Add an Item',
 						value: 'add',
-						description: 'Add tracks from a playlist by track and playlist URI or ID',
-						action: 'Add an Item a playlist',
+						description: 'Add tracks to a playlist by track and playlist URI or ID',
+						action: 'Add an Item to a playlist',
 					},
 					{
 						name: 'Create a Playlist',
@@ -1324,6 +1324,6 @@ export class Spotify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

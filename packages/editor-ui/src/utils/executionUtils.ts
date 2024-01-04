@@ -45,3 +45,22 @@ export const executionFilterToQueryFilter = (
 	}
 	return queryFilter;
 };
+
+export const openPopUpWindow = (
+	url: string,
+	options?: { width?: number; height?: number; alwaysInNewTab?: boolean },
+) => {
+	const windowWidth = window.innerWidth;
+	const smallScreen = windowWidth <= 800;
+	if (options?.alwaysInNewTab || smallScreen) {
+		window.open(url, '_blank');
+	} else {
+		const height = options?.width || 700;
+		const width = options?.height || window.innerHeight - 50;
+		const left = (window.innerWidth - height) / 2;
+		const top = 50;
+		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+
+		window.open(url, '_blank', features);
+	}
+};

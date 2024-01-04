@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -12,7 +12,7 @@
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{
 					$locale.baseText('templates.collectionsNotFound')
 				}}</n8n-text>
@@ -21,7 +21,7 @@
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
+					<div v-if="loading || (collection && collection.description)" :class="$style.markdown">
 						<n8n-markdown
 							:content="collection && collection.description"
 							:images="collection && collection.image"
@@ -65,25 +65,37 @@ import type {
 	ITemplatesWorkflowFull,
 } from '@/Interface';
 
-import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [workflowHelpers],
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
+	},
 	computed: {
-		...mapStores(useTemplatesStore),
-		collection(): null | ITemplatesCollectionFull {
+		...mapStores(useTemplatesStore, usePostHog),
+		collection(): ITemplatesCollectionFull | null {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
 		collectionId(): string {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 		collectionWorkflows(): Array<ITemplatesWorkflow | ITemplatesWorkflowFull | null> | null {
 			if (!this.collection) {
@@ -100,6 +112,30 @@ export default defineComponent({
 			notFoundError: false,
 		};
 	},
+	watch: {
+		collection(collection: ITemplatesCollection) {
+			if (collection) {
+				setPageTitle(`n8n - Template collection: ${collection.name}`);
+			} else {
+				setPageTitle('n8n - Templates');
+			}
+		},
+	},
+	async mounted() {
+		this.scrollToTop();
+
+		if (this.collection && this.collection.full) {
+			this.loading = false;
+			return;
+		}
+
+		try {
+			await this.templatesStore.fetchCollectionById(this.collectionId);
+		} catch (e) {
+			this.notFoundError = true;
+		}
+		this.loading = false;
+	},
 	methods: {
 		scrollToTop() {
 			setTimeout(() => {
@@ -115,16 +151,25 @@ export default defineComponent({
 		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
-			const telemetryPayload = {
-				template_id: id,
-				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
-				source: 'collection',
-			};
-			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
+		async onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
+			if (this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
+				const telemetryPayload = {
+					template_id: id,
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
+					source: 'collection',
+				};
+				await this.externalHooks.run('templatesCollectionView.onUseWorkflow', telemetryPayload);
+				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+					withPostHog: true,
+				});
+			}
 
-			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
+			await openTemplateCredentialSetup({
+				posthogStore: this.posthogStore,
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: event.metaKey || event.ctrlKey,
+			});
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
 			if (e.metaKey || e.ctrlKey) {
@@ -135,30 +180,6 @@ export default defineComponent({
 				void this.$router.push({ name: page, params: { id } });
 			}
 		},
-	},
-	watch: {
-		collection(collection: ITemplatesCollection) {
-			if (collection) {
-				setPageTitle(`n8n - Template collection: ${collection.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
-
-		if (this.collection && (this.collection as ITemplatesCollectionFull).full) {
-			this.loading = false;
-			return;
-		}
-
-		try {
-			await this.templatesStore.fetchCollectionById(this.collectionId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-		this.loading = false;
 	},
 });
 </script>

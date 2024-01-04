@@ -1,13 +1,10 @@
+import { isObjectLiteral } from '@/utils';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 type OldPinnedData = { [nodeName: string]: IDataObject[] };
 type NewPinnedData = { [nodeName: string]: INodeExecutionData[] };
 type Workflow = { id: number; pinData: string | OldPinnedData };
-
-function isObjectLiteral(item: unknown): item is { [key: string]: string } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
-}
 
 function isJsonKeyObject(item: unknown): item is {
 	json: unknown;

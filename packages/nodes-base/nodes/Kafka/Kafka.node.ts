@@ -14,7 +14,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -228,7 +229,10 @@ export class Kafka implements INodeType {
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
-							throw Error('Username and password are required for authentication');
+							// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+							throw new ApplicationError('Username and password are required for authentication', {
+								level: 'warning',
+							});
 						}
 						config.sasl = {
 							username: credentials.username as string,
@@ -257,6 +261,7 @@ export class Kafka implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 
 		const length = items.length;
 
@@ -396,10 +401,15 @@ export class Kafka implements INodeType {
 
 			await producer.disconnect();
 
-			return [this.helpers.returnJsonArray(responseData)];
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData },
+			);
+
+			return [executionData];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray({ error: error.message })];
+				return [[{ json: { error: error.message }, pairedItem: itemData }]];
 			} else {
 				throw error;
 			}

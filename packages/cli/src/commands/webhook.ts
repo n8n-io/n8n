@@ -1,11 +1,14 @@
 import { flags } from '@oclif/command';
-import { LoggerProxy, sleep } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import type { IConfig } from '@oclif/config';
+import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -16,7 +19,16 @@ export class Webhook extends BaseCommand {
 		help: flags.help({ char: 'h' }),
 	};
 
-	protected server = new WebhookServer();
+	protected server = Container.get(WebhookServer);
+
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('webhook');
+		if (this.queueModeId) {
+			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
+		}
+		this.setInstanceQueueModeId();
+	}
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -24,16 +36,10 @@ export class Webhook extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		LoggerProxy.info('\nStopping n8n...');
+		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, 30000);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -42,7 +48,7 @@ export class Webhook extends BaseCommand {
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
-					LoggerProxy.info(
+					this.logger.info(
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
@@ -75,11 +81,23 @@ export class Webhook extends BaseCommand {
 		}
 
 		await this.initCrashJournal();
+		this.logger.debug('Crash journal initialized');
+
+		this.logger.info('Initializing n8n webhook process');
+		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+
 		await super.init();
 
 		await this.initLicense();
-		await this.initBinaryManager();
+		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
+		await this.initExternalSecrets();
+		this.logger.debug('External seecrets init complete');
 	}
 
 	async run() {
@@ -94,5 +112,10 @@ export class Webhook extends BaseCommand {
 
 	async catch(error: Error) {
 		await this.exitWithCrash('Exiting due to an error.', error);
+	}
+
+	async initOrchestration() {
+		await Container.get(OrchestrationWebhookService).init();
+		await Container.get(OrchestrationHandlerWebhookService).init();
 	}
 }

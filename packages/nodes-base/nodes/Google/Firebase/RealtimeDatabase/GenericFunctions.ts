@@ -2,7 +2,6 @@ import type { OptionsWithUrl } from 'request';
 
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
@@ -10,7 +9,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
 	method: string,
 	resource: string,
@@ -54,7 +53,7 @@ export async function googleApiRequest(
 }
 
 export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
 	method: string,
 	resource: string,

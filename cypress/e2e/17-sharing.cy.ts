@@ -1,4 +1,4 @@
-import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import {
 	CredentialsModal,
 	CredentialsPage,
@@ -7,6 +7,7 @@ import {
 	WorkflowSharingModal,
 	WorkflowsPage,
 } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 /**
  * User U1 - Instance owner
@@ -39,7 +40,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 		credentialsModal.actions.setName('Credential C1');
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
@@ -59,6 +60,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.createWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Workflow W2');
+		workflowPage.actions.saveWorkflowOnButtonClick();
 		cy.url().then((url) => {
 			workflowW2Url = url;
 		});
@@ -96,6 +98,26 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 	});
 
+	it('should open W1, add node using C2 as U2', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+
+		cy.visit(workflowsPage.url);
+		workflowsPage.getters.workflowCards().should('have.length', 2);
+		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
+		ndv.actions.close();
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		workflowPage.actions.openNode('Notion');
+		ndv.getters
+			.credentialInput()
+			.find('input')
+			.should('have.value', 'Credential C1')
+			.should('be.enabled');
+		ndv.actions.close();
+	});
+
 	it('should not have access to W2, as U3', () => {
 		cy.signin(INSTANCE_MEMBERS[1]);
 
@@ -127,5 +149,42 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C2').click();
 		credentialsModal.getters.testSuccessTag().should('be.visible');
+	});
+
+	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.createCredentialButton().click();
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+		credentialsModal.getters.newCredentialTypeButton().click({ force: true });
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+		credentialsModal.actions.setName('Credential C3');
+		credentialsModal.actions.save();
+		credentialsModal.actions.close();
+
+		cy.signout();
+		cy.signin(INSTANCE_ADMIN);
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.credentialCard('Credential C3').click();
+		credentialsModal.getters.testSuccessTag().should('be.visible');
+		cy.get('input').should('not.have.length');
+		credentialsModal.actions.changeTab('Sharing');
+		cy.contains(
+			'You can view this credential because you have permission to read and share',
+		).should('be.visible');
+
+		credentialsModal.getters.usersSelect().click();
+		cy.getByTestId('user-email')
+			.filter(':visible')
+			.should('have.length', 3)
+			.contains(INSTANCE_ADMIN.email)
+			.should('have.length', 1);
+		getVisibleSelect().contains(INSTANCE_OWNER.email.toLowerCase()).click();
+
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].email);
+		credentialsModal.actions.addUser(INSTANCE_ADMIN.email);
+		credentialsModal.actions.saveSharing();
+		credentialsModal.actions.close();
 	});
 });

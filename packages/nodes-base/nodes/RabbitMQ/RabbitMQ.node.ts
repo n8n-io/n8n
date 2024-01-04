@@ -416,7 +416,7 @@ export class RabbitMQ implements INodeType {
 			const operation = this.getNodeParameter('operation', 0);
 			if (operation === 'deleteMessage') {
 				this.sendResponse(items[0].json);
-				return await this.prepareOutputData(items);
+				return [items];
 			}
 			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
@@ -556,7 +556,7 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return await this.prepareOutputData(returnItems);
+			return [returnItems];
 		} catch (error) {
 			if (channel) {
 				await channel.close();

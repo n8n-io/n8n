@@ -55,7 +55,7 @@ paths:
   /users/{id}:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /source-control/pull:
-    $ref: "./handlers/sourceControl/spec/paths/sourceControl.yml"
+    $ref: './handlers/sourceControl/spec/paths/sourceControl.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

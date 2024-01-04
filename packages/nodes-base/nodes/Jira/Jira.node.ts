@@ -17,6 +17,7 @@ import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import {
 	filterSortSearchListItems,
+	getUsers,
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	simplifyIssueOutput,
@@ -182,6 +183,9 @@ export class Jira implements INodeType {
 					`/api/2/project/${projectId}`,
 					'GET',
 				);
+
+				if (!issueTypes) return { results: [] };
+
 				for (const issueType of issueTypes) {
 					const issueTypeName = issueType.name;
 					const issueTypeId = issueType.id;
@@ -206,30 +210,9 @@ export class Jira implements INodeType {
 			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				const query: IDataObject = {};
-				let endpoint = '/api/2/users/search';
+				const users = await getUsers.call(this);
 
-				if (jiraVersion === 'server') {
-					endpoint = '/api/2/user/search';
-					query.username = "'";
-				}
-
-				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
-				const returnData: INodeListSearchItems[] = users.reduce(
-					(activeUsers: INodeListSearchItems[], user: IDataObject) => {
-						if (user.active) {
-							activeUsers.push({
-								name: user.displayName as string,
-								value: (user.accountId ?? user.name) as string,
-							});
-						}
-						return activeUsers;
-					},
-					[],
-				);
-
-				return { results: filterSortSearchListItems(returnData, filter) };
+				return { results: filterSortSearchListItems(users, filter) };
 			},
 
 			// Get all the priorities to display them to user so that they can
@@ -373,30 +356,7 @@ export class Jira implements INodeType {
 			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				const query: IDataObject = {};
-				let endpoint = '/api/2/users/search';
-
-				if (jiraVersion === 'server') {
-					endpoint = '/api/2/user/search';
-					query.username = "'";
-				}
-
-				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
-
-				return users
-					.reduce((activeUsers: INodePropertyOptions[], user: IDataObject) => {
-						if (user.active) {
-							activeUsers.push({
-								name: user.displayName as string,
-								value: (user.accountId || user.name) as string,
-							});
-						}
-						return activeUsers;
-					}, [])
-					.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
-						return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
-					});
+				return getUsers.call(this);
 			},
 
 			// Get all the groups to display them to user so that they can
@@ -985,7 +945,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						this.helpers.returnJsonArray({ success: true }), //endpoint returns no content
 						{ itemData: { item: i } },
 					);
 
@@ -1058,7 +1018,7 @@ export class Jira implements INodeType {
 
 					let uploadData: Buffer | Readable;
 					if (binaryData.id) {
-						uploadData = this.helpers.getBinaryStream(binaryData.id);
+						uploadData = await this.helpers.getBinaryStream(binaryData.id);
 					} else {
 						uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 					}
@@ -1499,6 +1459,6 @@ export class Jira implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

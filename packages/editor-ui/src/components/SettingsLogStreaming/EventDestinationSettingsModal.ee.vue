@@ -1,15 +1,15 @@
 <template>
 	<Modal
 		:name="modalName"
-		:eventBus="modalBus"
-		:beforeClose="onModalClose"
+		:event-bus="modalBus"
+		:before-close="onModalClose"
 		:scrollable="true"
 		:center="true"
 		:loading="loading"
-		:minWidth="isTypeAbstract ? '460px' : '70%'"
-		:maxWidth="isTypeAbstract ? '460px' : '70%'"
-		:minHeight="isTypeAbstract ? '160px' : '650px'"
-		:maxHeight="isTypeAbstract ? '300px' : '650px'"
+		:min-width="isTypeAbstract ? '460px' : '70%'"
+		:max-width="isTypeAbstract ? '460px' : '70%'"
+		:min-height="isTypeAbstract ? '160px' : '650px'"
+		:max-height="isTypeAbstract ? '300px' : '650px'"
 		data-test-id="destination-modal"
 	>
 		<template #header>
@@ -22,7 +22,7 @@
 				<div :class="$style.header">
 					<div :class="$style.destinationInfo">
 						<InlineNameEdit
-							:modelValue="headerLabel"
+							:model-value="headerLabel"
 							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
 							type="Credential"
@@ -42,10 +42,10 @@
 							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
-							@click="sendTestEvent"
 							data-test-id="destination-test-button"
+							@click="sendTestEvent"
 						/>
-						<template v-if="isInstanceOwner">
+						<template v-if="canManageLogStreaming">
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="$locale.baseText('settings.log-streaming.delete')"
@@ -53,15 +53,15 @@
 								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
-								@click="removeThis"
 								data-test-id="destination-delete-button"
+								@click="removeThis"
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
 								:disabled="isTypeAbstract || unchanged"
-								:savingLabel="$locale.baseText('settings.log-streaming.saving')"
-								@click="saveDestination"
+								:saving-label="$locale.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
+								@click="saveDestination"
 							/>
 						</template>
 					</div>
@@ -75,18 +75,18 @@
 					<n8n-input-label
 						:class="$style.typeSelector"
 						:label="$locale.baseText('settings.log-streaming.selecttype')"
-						:tooltipText="$locale.baseText('settings.log-streaming.selecttypehint')"
+						:tooltip-text="$locale.baseText('settings.log-streaming.selecttypehint')"
 						:bold="false"
 						size="medium"
 						:underline="false"
 					>
 						<n8n-select
-							:modelValue="typeSelectValue"
+							ref="typeSelectRef"
+							:model-value="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
-							@update:modelValue="onTypeSelectInput"
 							data-test-id="select-destination-type"
 							name="name"
-							ref="typeSelectRef"
+							@update:modelValue="onTypeSelectInput"
 						>
 							<n8n-option
 								v-for="option in typeSelectOptions || []"
@@ -98,9 +98,9 @@
 						<div class="mt-m text-right">
 							<n8n-button
 								size="large"
-								@click="onContinueAddClicked"
 								data-test-id="select-destination-button"
 								:disabled="!typeSelectValue"
+								@click="onContinueAddClicked"
 							>
 								{{ $locale.baseText(`settings.log-streaming.continue`) }}
 							</n8n-button>
@@ -111,33 +111,33 @@
 					<div :class="$style.sidebar">
 						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
 					</div>
-					<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
+					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 						<template v-if="isTypeWebhook">
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="webhookDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
 						</template>
 						<template v-else-if="isTypeSyslog">
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="syslogDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
 						</template>
 						<template v-else-if="isTypeSentry">
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="sentryDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="!isInstanceOwner"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
 								path=""
 								@valueChanged="valueChanged"
 							/>
@@ -152,11 +152,11 @@
 								size="medium"
 								:underline="false"
 							/>
-							<event-selection
-								:destinationId="destination.id"
+							<EventSelection
+								:destination-id="destination.id"
+								:readonly="!canManageLogStreaming"
 								@input="onInput"
 								@change="valueChanged"
-								:readonly="!isInstanceOwner"
 							/>
 						</div>
 					</div>
@@ -192,9 +192,9 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { hasPermission } from '@/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import {
 	webhookModalDescription,
@@ -207,9 +207,18 @@ import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default defineComponent({
-	name: 'event-destination-settings-modal',
+	name: 'EventDestinationSettingsModal',
+	components: {
+		Modal,
+		ParameterInputList,
+		InlineNameEdit,
+		SaveButton,
+		EventSelection,
+	},
 	props: {
 		modalName: String,
 		destination: {
@@ -220,13 +229,6 @@ export default defineComponent({
 		eventBus: {
 			type: Object as PropType<EventBus>,
 		},
-	},
-	components: {
-		Modal,
-		ParameterInputList,
-		InlineNameEdit,
-		SaveButton,
-		EventSelection,
 	},
 	setup() {
 		return {
@@ -244,9 +246,7 @@ export default defineComponent({
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(
-				defaultMessageEventBusDestinationOptions,
-			) as MessageEventBusDestinationOptions,
+			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -254,12 +254,11 @@ export default defineComponent({
 			headerLabel: this.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
-			isInstanceOwner: false,
 			LOG_STREAM_MODAL_KEY,
 		};
 	},
 	computed: {
-		...mapStores(useUIStore, useUsersStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
 		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
 			const options: Array<{ value: string; label: BaseTextKey }> = [];
 			for (const t of Object.values(MessageEventBusDestinationTypeNames)) {
@@ -308,9 +307,11 @@ export default defineComponent({
 			}
 			return items;
 		},
+		canManageLogStreaming(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
+		},
 	},
 	mounted() {
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		this.setupNode(
 			Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination),
 		);
@@ -466,12 +467,40 @@ export default defineComponent({
 				return;
 			}
 			const saveResult = await this.logStreamingStore.saveDestination(this.nodeParameters);
-			if (saveResult === true) {
+			if (saveResult) {
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;
 				this.eventBus.emit('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
+
+				const destinationType = (this.nodeParameters.__type ?? 'unknown')
+					.replace('$$MessageEventBusDestination', '')
+					.toLowerCase();
+
+				const isComplete = () => {
+					if (this.isTypeWebhook) {
+						return this.destination.host !== '';
+					} else if (this.isTypeSentry) {
+						return this.destination.dsn !== '';
+					} else if (this.isTypeSyslog) {
+						return (
+							this.destination.host !== '' &&
+							this.destination.port !== undefined &&
+							this.destination.protocol !== '' &&
+							this.destination.facility !== undefined &&
+							this.destination.app_name !== ''
+						);
+					}
+					return false;
+				};
+
+				useTelemetry().track('User updated log streaming destination', {
+					instance_id: useRootStore().instanceId,
+					destination_type: destinationType,
+					is_complete: isComplete(),
+					is_active: this.destination.enabled,
+				});
 			}
 		},
 	},

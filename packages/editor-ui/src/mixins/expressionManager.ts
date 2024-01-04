@@ -2,6 +2,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
+import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
@@ -18,6 +19,10 @@ export const expressionManager = defineComponent({
 	props: {
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
+		},
+		additionalData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	data() {
@@ -194,7 +199,7 @@ export const expressionManager = defineComponent({
 				const ndvStore = useNDVStore();
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
-					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
+					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
 				} else {
 					let opts;
 					if (ndvStore.isInputParentOfActiveNode) {
@@ -203,6 +208,7 @@ export const expressionManager = defineComponent({
 							inputNodeName: this.ndvStore.ndvInputNodeName,
 							inputRunIndex: this.ndvStore.ndvInputRunIndex,
 							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+							additionalKeys: this.additionalData,
 						};
 					}
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);

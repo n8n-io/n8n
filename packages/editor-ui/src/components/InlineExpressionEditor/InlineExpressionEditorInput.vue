@@ -4,10 +4,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { history, redo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv.store';
@@ -18,6 +19,7 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
+import type { IDataObject } from 'n8n-workflow';
 
 const editableConf = new Compartment();
 
@@ -27,6 +29,7 @@ export default defineComponent({
 	props: {
 		modelValue: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -38,6 +41,11 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+			required: true,
+		},
+		additionalData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	watch: {
@@ -83,6 +91,7 @@ export default defineComponent({
 	},
 	mounted() {
 		const extensions = [
+			n8nLang(),
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
 				keymap.of([
@@ -96,11 +105,11 @@ export default defineComponent({
 							return false;
 						},
 					},
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			autocompletion(),
-			n8nLang(),
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,

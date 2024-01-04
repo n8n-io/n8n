@@ -4,57 +4,45 @@ import type {
 	IConnections,
 	IRunExecutionData,
 	IExecuteData,
-	INodeType,
 	INodeTypeData,
-	INodeTypes,
-	IVersionedNodeType,
 } from 'n8n-workflow';
-import { Workflow, WorkflowDataProxy, NodeHelpers } from 'n8n-workflow';
+import { WorkflowDataProxy } from 'n8n-workflow';
+import { createTestWorkflowObject } from '@/__tests__/mocks';
 
-class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData = {
-		'test.set': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Sets a value',
-					defaults: {
-						name: 'Set',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
+const nodeTypes: INodeTypeData = {
+	'test.set': {
+		sourcePath: '',
+		type: {
+			description: {
+				displayName: 'Set',
+				name: 'set',
+				group: ['input'],
+				version: 1,
+				description: 'Sets a value',
+				defaults: {
+					name: 'Set',
+					color: '#0000FF',
 				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Value1',
+						name: 'value1',
+						type: 'string',
+						default: 'default-value1',
+					},
+					{
+						displayName: 'Value2',
+						name: 'value2',
+						type: 'string',
+						default: 'default-value2',
+					},
+				],
 			},
 		},
-	};
-
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return this.nodeTypes[nodeType].type;
-	}
-
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
-	}
-}
+	},
+};
 
 const nodes: INode[] = [
 	{
@@ -273,13 +261,13 @@ const runExecutionData: IRunExecutionData = {
 	},
 };
 
-const workflow = new Workflow({
+const workflow = createTestWorkflowObject({
 	id: '123',
 	name: 'test workflow',
 	nodes,
 	connections,
 	active: false,
-	nodeTypes: new NodeTypesClass(),
+	nodeTypes,
 });
 
 const lastNodeName = 'End';
@@ -291,7 +279,7 @@ const executeData: IExecuteData = {
 	data: runExecutionData.resultData.runData[lastNodeName][0].data!,
 	node: nodes.find((node) => node.name === lastNodeName) as INode,
 	source: {
-		main: runExecutionData.resultData.runData[lastNodeName][0].source!,
+		main: runExecutionData.resultData.runData[lastNodeName][0].source,
 	},
 };
 
@@ -304,7 +292,6 @@ const dataProxy = new WorkflowDataProxy(
 	lastNodeConnectionInputData || [],
 	{},
 	'manual',
-	'America/New_York',
 	{},
 	executeData,
 );

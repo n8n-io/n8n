@@ -167,6 +167,30 @@ export class LinkedIn implements INodeType {
 								},
 								commentary: text,
 							};
+
+							if (additionalFields.thumbnailBinaryPropertyName) {
+								const registerRequest = {
+									initializeUploadRequest: {
+										owner: authorUrn,
+									},
+								};
+
+								const registerObject = await linkedInApiRequest.call(
+									this,
+									'POST',
+									'/images?action=initializeUpload',
+									registerRequest,
+								);
+
+								const binaryPropertyName = additionalFields.thumbnailBinaryPropertyName as string;
+								this.helpers.assertBinaryData(i, binaryPropertyName);
+
+								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								const { uploadUrl, image } = registerObject.value;
+								await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+								Object.assign(articleBody.content.article, { thumbnail: image });
+							}
+
 							Object.assign(body, articleBody);
 							if (description === '') {
 								delete body.description;
@@ -200,6 +224,6 @@ export class LinkedIn implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

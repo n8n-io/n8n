@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
@@ -9,9 +9,8 @@ import {
 	isSourceControlLicensed,
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
-import { UserSettings } from 'n8n-core';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
-import * as Db from '@/Db';
+import { InstanceSettings } from 'n8n-core';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -19,21 +18,27 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
 import path from 'path';
+import type { KeyPairType } from './types/keyPairType';
+import config from '@/config';
+import { Logger } from '@/Logger';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 
 @Service()
 export class SourceControlPreferencesService {
 	private _sourceControlPreferences: SourceControlPreferences = new SourceControlPreferences();
 
-	private sshKeyName: string;
+	readonly sshKeyName: string;
 
-	private sshFolder: string;
+	readonly sshFolder: string;
 
-	private gitFolder: string;
+	readonly gitFolder: string;
 
-	constructor() {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+	constructor(
+		instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
+	) {
+		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.sshKeyName = path.join(this.sshFolder, SOURCE_CONTROL_SSH_KEY_NAME);
 	}
 
@@ -65,7 +70,7 @@ export class SourceControlPreferencesService {
 		try {
 			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
 		} catch (error) {
-			LoggerProxy.error(`Failed to read public key: ${(error as Error).message}`);
+			this.logger.error(`Failed to read public key: ${(error as Error).message}`);
 		}
 		return '';
 	}
@@ -78,7 +83,7 @@ export class SourceControlPreferencesService {
 		try {
 			await fsRm(this.sshFolder, { recursive: true });
 		} catch (error) {
-			LoggerProxy.error(`Failed to delete ssh folder: ${(error as Error).message}`);
+			this.logger.error(`Failed to delete ssh folder: ${(error as Error).message}`);
 		}
 	}
 
@@ -86,9 +91,15 @@ export class SourceControlPreferencesService {
 	 * Will generate an ed25519 key pair and save it to the database and the file system
 	 * Note: this will overwrite any existing key pair
 	 */
-	async generateAndSaveKeyPair(): Promise<SourceControlPreferences> {
+	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		const keyPair = await generateSshKeyPair('ed25519');
+		if (!keyPairType) {
+			keyPairType =
+				this.getPreferences().keyGeneratorType ??
+				(config.get('sourceControl.defaultKeyPairType') as KeyPairType) ??
+				'ed25519';
+		}
+		const keyPair = await generateSshKeyPair(keyPairType);
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
@@ -97,8 +108,12 @@ export class SourceControlPreferencesService {
 				});
 				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
 			} catch (error) {
-				throw Error(`Failed to save key pair: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save key pair', { cause: error });
 			}
+		}
+		// update preferences only after generating key pair to prevent endless loop
+		if (keyPairType !== this.getPreferences().keyGeneratorType) {
+			await this.setPreferences({ keyGeneratorType: keyPairType });
 		}
 		return this.getPreferences();
 	}
@@ -135,7 +150,9 @@ export class SourceControlPreferencesService {
 			validationError: { target: false },
 		});
 		if (validationResult.length > 0) {
-			throw new Error(`Invalid source control preferences: ${JSON.stringify(validationResult)}`);
+			throw new ApplicationError('Invalid source control preferences', {
+				extra: { preferences: validationResult },
+			});
 		}
 		return validationResult;
 	}
@@ -146,20 +163,23 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		if (!this.hasKeyPairFiles()) {
-			LoggerProxy.debug('No key pair files found, generating new pair');
-			await this.generateAndSaveKeyPair();
+			const keyPairType =
+				preferences.keyGeneratorType ??
+				(config.get('sourceControl.defaultKeyPairType') as KeyPairType);
+			this.logger.debug(`No key pair files found, generating new pair using type: ${keyPairType}`);
+			await this.generateAndSaveKeyPair(keyPairType);
 		}
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Db.collections.Settings.save({
+				await Container.get(SettingsRepository).save({
 					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
 					value: settingsValue,
 					loadOnStartup: true,
 				});
 			} catch (error) {
-				throw new Error(`Failed to save source control preferences: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;
@@ -168,7 +188,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Db.collections.Settings.findOne({
+		const loadedPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {
@@ -180,7 +200,7 @@ export class SourceControlPreferencesService {
 					return preferences;
 				}
 			} catch (error) {
-				LoggerProxy.warn(
+				this.logger.warn(
 					`Could not parse Source Control settings from database: ${(error as Error).message}`,
 				);
 			}

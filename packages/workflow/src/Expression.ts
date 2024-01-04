@@ -1,7 +1,8 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import * as tmpl from '@n8n_io/riot-tmpl';
 
 import type {
+	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -14,13 +15,17 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './errors/expression.error';
+import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
+import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
+import { getGlobalState } from './GlobalState';
+import { ApplicationError } from './errors/application.error';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -30,24 +35,20 @@ const IS_FRONTEND_IN_DEV_MODE =
 
 const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
 
-export const isSyntaxError = (error: unknown): error is SyntaxError =>
+const isSyntaxError = (error: unknown): error is SyntaxError =>
 	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
 
-export const isExpressionError = (error: unknown): error is ExpressionError =>
+const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-export const isTypeError = (error: unknown): error is TypeError =>
+const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
-// Set it to use double curly brackets instead of single ones
-tmpl.brackets.set('{{ }}');
-
 // Make sure that error get forwarded
-tmpl.tmpl.errorHandler = (error: Error) => {
+setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
-};
+});
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
 
 const fnConstructors = {
@@ -60,14 +61,10 @@ const fnConstructors = {
 };
 
 export class Expression {
-	workflow: Workflow;
+	constructor(private readonly workflow: Workflow) {}
 
-	constructor(workflow: Workflow) {
-		this.workflow = workflow;
-	}
-
-	static resolveWithoutWorkflow(expression: string) {
-		return tmpl.tmpl(expression, {});
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return tmpl.tmpl(expression, data);
 	}
 
 	/**
@@ -79,14 +76,14 @@ export class Expression {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new Error('invalid DateTime');
+			throw new ApplicationError('invalid DateTime');
 		}
 
 		let result = '';
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings?.timezone ?? 'default',
+				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
 			}).toISO();
 		} else {
 			result = JSON.stringify(value);
@@ -106,6 +103,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -115,11 +113,11 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
@@ -143,11 +141,11 @@ export class Expression {
 			connectionInputData,
 			siblingParameters,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			-1,
 			selfData,
+			contextNodeName,
 		);
 		const data = dataProxy.getDataProxy();
 
@@ -313,12 +311,12 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new Error('invalid syntax');
+			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
 
 			if (returnValue.name === 'DateTime')
-				throw new Error('this is a DateTime, please access its methods');
+				throw new ApplicationError('this is a DateTime, please access its methods');
 
-			throw new Error('this is a function, please add ()');
+			throw new ApplicationError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -338,18 +336,18 @@ export class Expression {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
 			);
-			return tmpl.tmpl(expression, data);
+			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new Error('invalid syntax');
+			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new Error(match.groups.msg);
+				throw new ApplicationError(match.groups.msg);
 			}
 		} finally {
 			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
@@ -370,7 +368,6 @@ export class Expression {
 		node: INode,
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		defaultValue?: boolean | number | string | unknown[],
@@ -398,7 +395,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 		) as boolean | number | string | undefined;
@@ -414,7 +410,6 @@ export class Expression {
 		node: INode,
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		defaultValue: NodeParameterValueType | undefined = undefined,
@@ -444,7 +439,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			false,
@@ -460,7 +454,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			false,
@@ -477,6 +470,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	getParameterValue(
 		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
@@ -485,11 +479,11 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (value: NodeParameterValueType) => {
@@ -510,11 +504,11 @@ export class Expression {
 					activeNodeName,
 					connectionInputData,
 					mode,
-					timezone,
 					additionalKeys,
 					executeData,
 					returnObjectAsString,
 					selfData,
+					contextNodeName,
 				);
 			}
 
@@ -527,11 +521,11 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
-				timezone,
 				additionalKeys,
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		};
 
@@ -546,11 +540,11 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
-				timezone,
 				additionalKeys,
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		}
 

@@ -27,19 +27,22 @@ const BASE_STYLING = {
 	},
 };
 
-const cssStyleDeclaration = getComputedStyle(document.documentElement);
-
 interface ThemeSettings {
 	isReadOnly?: boolean;
 	customMaxHeight?: string;
+	customMinHeight?: number;
 }
 
-export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettings) => [
+export const codeNodeEditorTheme = ({
+	isReadOnly,
+	customMaxHeight,
+	customMinHeight,
+}: ThemeSettings) => [
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
-			border: cssStyleDeclaration.getPropertyValue('--border-base'),
-			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
+			border: 'var(--border-base)',
+			borderRadius: 'var(--border-radius-base)',
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
 			height: '100%',
@@ -56,6 +59,7 @@ export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettin
 		},
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
+			borderColor: 'var(--border-color-base)',
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
@@ -73,6 +77,7 @@ export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettin
 				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 			borderRadius: 'var(--border-radius-base)',
+			borderRightColor: 'var(--border-color-base)',
 		},
 		'.cm-tooltip': {
 			maxWidth: BASE_STYLING.tooltip.maxWidth,
@@ -80,16 +85,25 @@ export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettin
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
+
 			maxHeight: customMaxHeight ?? '100%',
-			...(isReadOnly ? {} : { minHeight: '10em' }),
+			...(isReadOnly
+				? {}
+				: { minHeight: customMinHeight ? `${Number(customMinHeight) * 1.3}em` : '10em' }),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
-			color: cssStyleDeclaration.getPropertyValue('--color-primary'),
+			color: 'var(--color-primary)',
 			lineHeight: BASE_STYLING.diagnosticButton.lineHeight,
 			textDecoration: BASE_STYLING.diagnosticButton.textDecoration,
 			marginLeft: BASE_STYLING.diagnosticButton.marginLeft,
 			cursor: BASE_STYLING.diagnosticButton.cursor,
+		},
+		'.cm-diagnostic-error': {
+			backgroundColor: 'var(--color-background-base)',
+		},
+		'.cm-diagnosticText': {
+			color: 'var(--color-text-base)',
 		},
 	}),
 	syntaxHighlighting(

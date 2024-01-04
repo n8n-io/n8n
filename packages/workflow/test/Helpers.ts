@@ -1,6 +1,5 @@
 import get from 'lodash/get';
 import type {
-	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
@@ -38,57 +37,33 @@ import type { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import { WorkflowHooks } from '@/WorkflowHooks';
 import * as NodeHelpers from '@/NodeHelpers';
+import { deepCopy } from '@/utils';
+import { getGlobalState } from '@/GlobalState';
+import { ApplicationError } from '@/errors/application.error';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess(nodeType: string): boolean {
+	hasNodeAccess() {
 		return true;
 	}
 
-	setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void {
+	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
 
-	setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void {
-		let fullData;
-		try {
-			fullData = this.getData(encryptionKey);
-		} catch (e) {
-			fullData = {};
-		}
-
-		fullData[key] = data;
-
-		return this.setData(fullData, encryptionKey);
-	}
-
-	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
+	getData(): ICredentialDataDecryptedObject {
 		if (this.data === undefined) {
-			throw new Error('No data is set so nothing can be returned.');
+			throw new ApplicationError('No data is set so nothing can be returned');
 		}
 		return JSON.parse(this.data);
 	}
 
-	getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation {
-		const fullData = this.getData(encryptionKey, nodeType);
-
-		if (fullData === null) {
-			throw new Error('No data was set.');
-		}
-
-		if (!fullData.hasOwnProperty(key)) {
-			throw new Error(`No data for key "${key}" exists.`);
-		}
-
-		return fullData[key];
-	}
-
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error('No credentials were set to save.');
+			throw new ApplicationError('No credentials were set to save');
 		}
 
 		return {
@@ -125,6 +100,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -154,20 +130,21 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
-	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData: IExecuteData,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
+		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
+			tags: { nodeType: node.type },
+		});
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
 
 	if (value === undefined) {
-		throw new Error(`Could not get parameter "${parameterName}"!`);
+		throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
 	}
 
 	let returnData;
@@ -180,7 +157,6 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -238,12 +214,15 @@ export function getExecuteFunctions(
 				}
 
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (inputData[inputName][inputIndex] === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Value of input did not get set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
@@ -267,7 +246,6 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -282,7 +260,7 @@ export function getExecuteFunctions(
 				return additionalData.restApiUrl;
 			},
 			getTimezone: (): string => {
-				return additionalData.timezone;
+				return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
 			},
 			getExecuteData: (): IExecuteData => {
 				return executeData;
@@ -304,7 +282,6 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					{},
 					executeData,
 				);
@@ -416,21 +393,23 @@ export function getExecuteSingleFunctions(
 				}
 
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				const allItems = inputData[inputName][inputIndex];
 
 				if (allItems === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Value of input did not get set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (allItems[itemIndex] === null) {
-					// return [];
-					throw new Error(
-						`Value "${inputIndex}" of input "${inputName}" with itemIndex "${itemIndex}" did not get set!`,
-					);
+					throw new ApplicationError('Value of input with item index did not get set', {
+						extra: { inputIndex, inputName, itemIndex },
+					});
 				}
 
 				return allItems[itemIndex];
@@ -448,7 +427,7 @@ export function getExecuteSingleFunctions(
 				return additionalData.restApiUrl;
 			},
 			getTimezone: (): string => {
-				return additionalData.timezone;
+				return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
 			},
 			getExecuteData: (): IExecuteData => {
 				return executeData;
@@ -471,7 +450,6 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -493,7 +471,6 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					{},
 					executeData,
 				);
@@ -701,13 +678,11 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 	};
 
 	return {
-		credentialsHelper: new CredentialsHelper(''),
+		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks({}, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
-		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',

@@ -1,4 +1,5 @@
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 
 import type { IBuildOptions } from '../src';
@@ -17,7 +18,9 @@ export class Build extends Command {
 		help: flags.help({ char: 'h' }),
 		destination: flags.string({
 			char: 'd',
-			description: `The path to copy the compiles files to [default: ${UserSettings.getUserN8nFolderCustomExtensionPath()}]`,
+			description: `The path to copy the compiled files to [default: ${
+				Container.get(InstanceSettings).customExtensionDir
+			}]`,
 		}),
 		watch: flags.boolean({
 			description:

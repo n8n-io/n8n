@@ -44,11 +44,19 @@ export class StickyNote implements INodeType {
 				required: true,
 				default: 240,
 			},
+			{
+				displayName: 'Color',
+				name: 'color',
+				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+				type: 'number',
+				required: true,
+				default: 1,
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

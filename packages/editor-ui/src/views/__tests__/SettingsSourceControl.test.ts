@@ -3,7 +3,8 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore, useSourceControlStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import SettingsSourceControl from '@/views/SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -68,8 +69,9 @@ describe('SettingsSourceControl', () => {
 		await nextTick();
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
+		const generateKeyPairSpy = vi.spyOn(sourceControlStore, 'generateKeyPair');
 
-		const { html, container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
+		const { container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
 			pinia,
 			global: {
 				stubs: ['teleport'],
@@ -127,5 +129,70 @@ describe('SettingsSourceControl', () => {
 		await waitFor(() =>
 			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument(),
 		);
+
+		const sshKeyTypeSelect = getByTestId('source-control-ssh-key-type-select');
+		const refreshSshKeyButton = getByTestId('source-control-refresh-ssh-key-button');
+		await waitFor(() => {
+			expect(sshKeyTypeSelect).toBeVisible();
+			expect(refreshSshKeyButton).toBeVisible();
+		});
+
+		await userEvent.click(within(sshKeyTypeSelect).getByRole('textbox'));
+		await waitFor(() => expect(getByText('RSA')).toBeVisible());
+		await userEvent.click(getByText('RSA'));
+		await userEvent.click(refreshSshKeyButton);
+
+		const refreshSshKeyDialog = getByRole('dialog');
+		await waitFor(() => expect(refreshSshKeyDialog).toBeVisible());
+		await userEvent.click(within(refreshSshKeyDialog).getAllByRole('button')[1]);
+		await waitFor(() => expect(refreshSshKeyDialog).not.toBeVisible());
+
+		expect(generateKeyPairSpy).toHaveBeenCalledWith('rsa');
 	}, 10000);
+
+	describe('should test repo URLs', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
+		test.each([
+			['git@github.com:user/repository.git', true],
+			['git@github.enterprise.com:org-name/repo-name.git', true],
+			['git@192.168.1.101:2222:user/repo.git', true],
+			['git@github.com:user/repo.git/path/to/subdir', true],
+			// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
+			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
+			['git@github.com:org/suborg/repo.git', true],
+			['git@github.com:user-name/repo-name.git', true],
+			['git@github.com:user_name/repo_name.git', true],
+			['git@github.com:user/repository', true],
+			['git@github.enterprise.com:org-name/repo-name', true],
+			['git@192.168.1.101:2222:user/repo', true],
+			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
+			['ssh://git@mydomain.example:2224/gitolite-admin', true],
+			['http://github.com/user/repository', false],
+			['https://github.com/user/repository', false],
+		])('%s', async (url: string, isValid: boolean) => {
+			await nextTick();
+			const { container, queryByText } = renderComponent({
+				pinia,
+			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+			await userEvent.click(repoUrlInput);
+			await userEvent.type(repoUrlInput, url);
+			await userEvent.tab();
+
+			const inputError = expect(queryByText('The Git repository URL is not valid'));
+
+			if (isValid) {
+				inputError.not.toBeInTheDocument();
+			} else {
+				inputError.toBeInTheDocument();
+			}
+		});
+	});
 });

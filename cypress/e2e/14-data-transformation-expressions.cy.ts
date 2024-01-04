@@ -12,7 +12,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'Monday' }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 
 		const input = '{{$json.myStr.toLowerCase() + " is " + "today".toUpperCase()';
 		const output = 'monday is TODAY';
@@ -27,7 +27,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 
 		const input = '{{$json.myStr.extractEmail() + " " + $json.myStr.isEmpty()';
 		const output = 'hello@n8n.io false';
@@ -42,7 +42,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myNum: 9.123 }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 
 		const input = '{{$json.myNum.toPrecision(3)';
 		const output = '9.12';
@@ -57,7 +57,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 
 		const input = '{{$json.myStr.extractEmail() + " " + $json.myStr.isEmpty()';
 		const output = 'hello@n8n.io false';
@@ -72,7 +72,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 		const input = '{{$json.myArr.includes(1) + " " + $json.myArr[2]';
 		const output = 'true 3';
 
@@ -86,7 +86,7 @@ describe('Data transformation expressions', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 		ndv.actions.close();
-		addSet();
+		addEditFields();
 
 		const input = '{{$json.myArr.first() + " " + $json.myArr.last()';
 		const output = '1 3';
@@ -102,10 +102,10 @@ describe('Data transformation expressions', () => {
 //             utils
 // ----------------------------------
 
-const addSet = () => {
-	wf.actions.addNodeToCanvas('Set', true, true);
-	ndv.getters.parameterInput('keepOnlySet').find('.el-switch').click(); // shorten output
-	cy.get('input[placeholder="Add Value"]').click();
-	cy.get('span').contains('String').click();
-	ndv.getters.nthParam(3).contains('Expression').invoke('show').click(); // Values to Set > String > Value
+const addEditFields = () => {
+	wf.actions.addNodeToCanvas('Edit Fields', true, true);
+	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
+	ndv.getters.parameterInput('include').click(); // shorten output
+	cy.get('div').contains('No Input Fields').click();
+	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
 };

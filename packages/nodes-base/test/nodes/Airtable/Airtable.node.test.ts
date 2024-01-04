@@ -1,7 +1,7 @@
+import nock from 'nock';
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
 import type { WorkflowTestData } from '../types';
-import nock from 'nock';
 
 const records = [
 	{

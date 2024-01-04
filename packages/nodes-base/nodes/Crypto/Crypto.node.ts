@@ -1,5 +1,7 @@
-import set from 'lodash/set';
-
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
+import stream from 'stream';
+import { promisify } from 'util';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -8,11 +10,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
-
-import type { BinaryToTextEncoding } from 'crypto';
-import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import stream from 'stream';
-import { promisify } from 'util';
+import set from 'lodash/set';
 
 import { v4 as uuid } from 'uuid';
 
@@ -123,7 +121,7 @@ export class Crypto implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -309,7 +307,6 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: ['sign'],
-						binaryData: [false],
 					},
 				},
 				type: 'string',
@@ -486,7 +483,7 @@ export class Crypto implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						if (binaryData.id) {
-							const binaryStream = this.helpers.getBinaryStream(binaryData.id);
+							const binaryStream = await this.helpers.getBinaryStream(binaryData.id);
 							hashOrHmac.setEncoding(encoding);
 							await pipeline(binaryStream, hashOrHmac);
 							newValue = hashOrHmac.read();
@@ -552,6 +549,6 @@ export class Crypto implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

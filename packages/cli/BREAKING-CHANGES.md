@@ -2,6 +2,74 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.22.0
+
+### What changed?
+
+Hash algorithm `ripemd160` is dropped from `.hash()` expressions.
+`sha3` hash algorithm now returns a valid sha3-512 has, unlike the previous implementation that returned a `Keccak` hash instead.
+
+### When is action necessary?
+
+If you are using `.hash` helpers in expressions with hash algorithm `ripemd160`, you need to switch to one of the other supported algorithms.
+
+## 1.15.0
+
+### What changed?
+
+Until now, in main mode, n8n used to deregister webhooks at shutdown and reregister them at startup. Queue mode and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` skipped webhook deregistration.
+
+As from now, in both main and queue modes, n8n no longer deregisters webhooks at startup and shutdown, and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` is removed. n8n assumes that third-party services will retry unhandled webhook requests.
+
+### When is action necessary?
+
+If using the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN`, note that it no longer has effect and can be removed from your settings.
+
+## 1.9.0
+
+### What changed?
+
+In nodes, `this.helpers.getBinaryStream()` is now async.
+
+### When is action necessary?
+
+If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
+
+Example:
+
+```typescript
+const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
+const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
+```
+
+### What changed?
+
+The env vars `N8N_BINARY_DATA_TTL` and `EXECUTIONS_DATA_PRUNE_TIMEOUT` no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.
+
+### When is action necessary?
+
+If using these flags, remove them from your settings and be mindful of the new behavior.
+
+## 1.6.0
+
+### What changed?
+
+The env var `N8N_PERSISTED_BINARY_DATA_TTL` no longer has any effect and can be removed. This legacy flag was originally introduced to support ephemeral executions (see [details](https://github.com/n8n-io/n8n/pull/7046)), which are no longer supported.
+
+### When is action necessary?
+
+If using this flag, remove it from your settings.
+
+## 1.5.0
+
+### What changed?
+
+In the Code node, `console.log` does not output to stdout by default.
+
+### When is action necessary?
+
+If you were relying on `console.log` for non-manual executions of a Code node, you need to set the env variable `CODE_ENABLE_STDOUT` to `true` to send Code node logs to process's stdout.
+
 ## 1.2.0
 
 ### What changed?

@@ -172,6 +172,7 @@ export const completerExtension = defineComponent({
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
 				if (value === '$vars') return this.variablesCompletions(context, variable);
+
 				if (value === '$workflow') return this.workflowCompletions(context, variable);
 				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
 

@@ -1,6 +1,7 @@
-import * as Db from '@/Db';
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { BaseCommand } from '../BaseCommand';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import Container from 'typedi';
 
 export class ClearLicenseCommand extends BaseCommand {
 	static description = 'Clear license';
@@ -9,7 +10,7 @@ export class ClearLicenseCommand extends BaseCommand {
 
 	async run() {
 		this.logger.info('Clearing license from database.');
-		await Db.collections.Settings.delete({
+		await Container.get(SettingsRepository).delete({
 			key: SETTINGS_LICENSE_CERT_KEY,
 		});
 		this.logger.info('Done. Restart n8n to take effect.');

@@ -5,16 +5,21 @@
 			"cache": false
 		},
 		"build": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
 		},
 		"typecheck": {},
 		"format": {},
 		"lint": {},
 		"lintfix": {},
 		"test": {},
-		"watch": {},
+		"watch": {
+			"cache": false,
+			"persistent": true
+		},
 		"dev": {
-			"cache": false
+			"cache": false,
+			"persistent": true
 		}
 	}
 }

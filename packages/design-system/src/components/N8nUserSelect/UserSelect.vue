@@ -1,22 +1,23 @@
 <template>
-	<n8n-select
+	<N8nSelect
+		data-test-id="user-select-trigger"
 		v-bind="$attrs"
-		:modelValue="modelValue"
+		:model-value="modelValue"
 		:filterable="true"
-		:filterMethod="setFilter"
+		:filter-method="setFilter"
 		:placeholder="placeholder"
 		:default-first-option="true"
 		teleported
 		:popper-class="$style.limitPopperWidth"
-		:noDataText="t('nds.userSelect.noMatchingUsers')"
+		:no-data-text="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
-		<template #prefix v-if="$slots.prefix">
+		<template v-if="$slots.prefix" #prefix>
 			<slot name="prefix" />
 		</template>
-		<n8n-option
+		<N8nOption
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
@@ -24,9 +25,9 @@
 			:label="getLabel(user)"
 			:disabled="user.disabled"
 		>
-			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
-		</n8n-option>
-	</n8n-select>
+			<N8nUserInfo v-bind="user" :is-current-user="currentUserId === user.id" />
+		</N8nOption>
+	</N8nSelect>
 </template>
 
 <script lang="ts">
@@ -40,13 +41,13 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-user-select',
-	mixins: [Locale],
+	name: 'N8nUserSelect',
 	components: {
 		N8nUserInfo,
 		N8nSelect,
 		N8nOption,
 	},
+	mixins: [Locale],
 	props: {
 		users: {
 			type: Array as PropType<IUser[]>,

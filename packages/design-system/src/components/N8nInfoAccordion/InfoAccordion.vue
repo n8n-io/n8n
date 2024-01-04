@@ -1,17 +1,17 @@
 <template>
 	<div :class="['accordion', $style.container]">
 		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
-			<n8n-icon
+			<N8nIcon
 				v-if="headerIcon"
 				:icon="headerIcon.icon"
 				:color="headerIcon.color"
 				size="small"
 				class="mr-2xs"
 			/>
-			<n8n-text :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
+			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
 				title
-			}}</n8n-text>
-			<n8n-icon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
+			}}</N8nText>
+			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
 		</div>
 		<div
 			v-if="expanded"
@@ -23,16 +23,16 @@
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">
 						<template #content>
-							<div v-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+							<div @click="onTooltipClick(item.id, $event)" v-html="item.tooltip"></div>
 						</template>
-						<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
+						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</n8n-tooltip>
-					<n8n-text size="small" color="text-base">{{ item.label }}</n8n-text>
+					<N8nText size="small" color="text-base">{{ item.label }}</N8nText>
 				</div>
 			</div>
-			<n8n-text color="text-base" size="small" align="left">
+			<N8nText color="text-base" size="small" align="left">
 				<span v-html="description"></span>
-			</n8n-text>
+			</N8nText>
 			<slot name="customContent"></slot>
 		</div>
 	</div>
@@ -55,7 +55,7 @@ export interface IAccordionItem {
 }
 
 export default defineComponent({
-	name: 'n8n-info-accordion',
+	name: 'N8nInfoAccordion',
 	components: {
 		N8nText,
 		N8nIcon,
@@ -84,16 +84,16 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	data() {
+		return {
+			expanded: false,
+		};
+	},
 	mounted() {
 		this.eventBus.on('expand', () => {
 			this.expanded = true;
 		});
 		this.expanded = this.initiallyExpanded;
-	},
-	data() {
-		return {
-			expanded: false,
-		};
 	},
 	methods: {
 		toggle() {

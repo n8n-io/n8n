@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import type { SortData, FileRecord } from '../GenericFunctions';
 import {
 	downloadFiles,
@@ -24,14 +25,14 @@ import {
 	mapSorting,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	notionApiRequestGetBlockChildrens,
+	simplifyBlocksOutput,
 	simplifyObjects,
 	validateJSON,
 } from '../GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import { versionDescription } from './VersionDescription';
 import { getDatabases } from '../SearchFunctions';
+import { versionDescription } from './VersionDescription';
 
 export class NotionV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -273,6 +274,7 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
 					);
 					const returnAll = this.getNodeParameter('returnAll', i);
+					const fetchNestedBlocks = this.getNodeParameter('fetchNestedBlocks', i) as boolean;
 
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -282,8 +284,13 @@ export class NotionV2 implements INodeType {
 							`/blocks/${blockId}/children`,
 							{},
 						);
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
+						}
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i);
+						const limit = this.getNodeParameter('limit', i);
+						qs.page_size = limit;
 						responseData = await notionApiRequest.call(
 							this,
 							'GET',
@@ -291,7 +298,13 @@ export class NotionV2 implements INodeType {
 							{},
 							qs,
 						);
-						responseData = responseData.results;
+						const results = responseData.results;
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, results, [], limit);
+						} else {
+							responseData = results;
+						}
 					}
 
 					responseData = responseData.map((_data: IDataObject) => ({
@@ -299,6 +312,16 @@ export class NotionV2 implements INodeType {
 						parent_id: blockId,
 						..._data,
 					}));
+
+					const nodeVersion = this.getNode().typeVersion;
+
+					if (nodeVersion > 2) {
+						const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
+
+						if (simplifyOutput) {
+							responseData = simplifyBlocksOutput(responseData, blockId);
+						}
+					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject),
@@ -768,6 +791,6 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

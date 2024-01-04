@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import { LoggerProxy } from 'n8n-workflow';
 import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 
 type LastId = string;
@@ -26,7 +25,7 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 		if (!this.redisClient) {
 			await this.init();
 		}
-		LoggerProxy.debug(`Redis client now listening to stream ${stream} starting with id ${lastId}`);
+		this.logger.debug(`Redis client now listening to stream ${stream} starting with id ${lastId}`);
 		this.setLastId(stream, lastId);
 		const interval = this.streams.get(stream)?.pollingInterval ?? 1000;
 		const waiter = setInterval(async () => {
@@ -54,7 +53,7 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 	}
 
 	stopListeningToStream(stream: StreamName): void {
-		LoggerProxy.debug(`Redis client stopped listening to stream ${stream}`);
+		this.logger.debug(`Redis client stopped listening to stream ${stream}`);
 		const existing = this.streams.get(stream);
 		if (existing?.waiter) {
 			clearInterval(existing.waiter);

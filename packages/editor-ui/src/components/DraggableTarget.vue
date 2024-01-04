@@ -1,6 +1,6 @@
 <template>
 	<div ref="target">
-		<slot :droppable="droppable" :activeDrop="activeDrop"></slot>
+		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
 	</div>
 </template>
 
@@ -9,6 +9,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
+import { v4 as uuid } from 'uuid';
 
 export default defineComponent({
 	props: {
@@ -29,6 +30,7 @@ export default defineComponent({
 	data() {
 		return {
 			hovering: false,
+			id: uuid(),
 		};
 	},
 	mounted() {
@@ -83,7 +85,12 @@ export default defineComponent({
 	},
 	watch: {
 		activeDrop(active) {
-			this.ndvStore.setDraggableCanDrop(active);
+			if (active) {
+				this.ndvStore.setDraggableTargetId(this.id);
+			} else if (this.ndvStore.draggable.activeTargetId === this.id) {
+				// Only clear active target if it is this one
+				this.ndvStore.setDraggableTargetId(null);
+			}
 		},
 	},
 });

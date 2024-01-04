@@ -1,8 +1,7 @@
 import { EventEmitter } from 'events';
+import type { IExecuteFunctions, INodeExecutionData, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ValidationError } from './ValidationError';
 import { isObject } from './utils';
-
-import type { IExecuteFunctions, INodeExecutionData, IWorkflowDataProxyData } from 'n8n-workflow';
 
 interface SandboxTextKeys {
 	object: {
@@ -17,7 +16,7 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 	helpers: IExecuteFunctions['helpers'];
 }
 
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
 
 export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
 	return {
@@ -41,7 +40,9 @@ export abstract class Sandbox extends EventEmitter {
 		super();
 	}
 
-	abstract runCodeAllItems(): Promise<INodeExecutionData[]>;
+	abstract runCode(): Promise<unknown>;
+
+	abstract runCodeAllItems(): Promise<INodeExecutionData[] | INodeExecutionData[][]>;
 
 	abstract runCodeEachItem(): Promise<INodeExecutionData | undefined>;
 

@@ -285,13 +285,15 @@ export class ActiveCampaign implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { tags } = await activeCampaignApiRequest.call(
+				const tags = await activeCampaignApiRequestAllItems.call(
 					this,
 					'GET',
 					'/api/3/tags',
 					{},
 					{ limit: 100 },
+					'tags',
 				);
+
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.tag,
@@ -1199,6 +1201,6 @@ export class ActiveCampaign implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

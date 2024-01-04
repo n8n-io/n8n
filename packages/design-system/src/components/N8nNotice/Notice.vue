@@ -1,16 +1,16 @@
 <template>
 	<div :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
-			<n8n-text size="small" :compact="true">
+			<N8nText size="small" :compact="true">
 				<slot>
 					<span
-						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
+						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
 						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
 					/>
 				</slot>
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>
@@ -23,8 +23,11 @@ import Locale from '../../mixins/locale';
 import { uid } from '../../utils';
 
 export default defineComponent({
-	name: 'n8n-notice',
+	name: 'N8nNotice',
 	directives: {},
+	components: {
+		N8nText,
+	},
 	mixins: [Locale],
 	props: {
 		id: {
@@ -43,9 +46,6 @@ export default defineComponent({
 			type: String,
 			default: '',
 		},
-	},
-	components: {
-		N8nText,
 	},
 	data() {
 		return {
@@ -66,7 +66,16 @@ export default defineComponent({
 		},
 		sanitizeHtml(text: string): string {
 			return sanitizeHtml(text, {
-				allowedAttributes: { a: ['data-key', 'href', 'target'] },
+				allowedAttributes: {
+					a: [
+						'data-key',
+						'href',
+						'target',
+						'data-action',
+						'data-action-parameter-connectiontype',
+						'data-action-parameter-creatorview',
+					],
+				},
 			});
 		},
 		onClick(event: MouseEvent) {
@@ -74,7 +83,7 @@ export default defineComponent({
 
 			if (event.target.localName !== 'a') return;
 
-			if (event.target.dataset && event.target.dataset.key) {
+			if (event.target.dataset?.key) {
 				event.stopPropagation();
 				event.preventDefault();
 
@@ -95,7 +104,7 @@ export default defineComponent({
 .notice {
 	font-size: var(--font-size-2xs);
 	display: flex;
-	color: var(--custom-font-black);
+	color: var(--color-notice-font);
 	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
@@ -111,8 +120,8 @@ export default defineComponent({
 }
 
 .warning {
-	--border-color: var(--color-warning-tint-1);
-	--background-color: var(--color-warning-tint-2);
+	--border-color: var(--color-notice-warning-border);
+	--background-color: var(--color-notice-warning-background);
 }
 
 .danger {

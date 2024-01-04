@@ -83,8 +83,8 @@ export class Grist implements INodeType {
 					planType === 'free'
 						? `https://docs.getgrist.com/api${endpoint}`
 						: planType === 'paid'
-						? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-						: `${selfHostedUrl}/api${endpoint}`;
+						  ? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+						  : `${selfHostedUrl}/api${endpoint}`;
 
 				const options: OptionsWithUri = {
 					headers: {
@@ -263,6 +263,6 @@ export class Grist implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

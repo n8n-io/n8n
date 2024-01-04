@@ -1,11 +1,11 @@
 <template>
 	<Modal
 		:name="modalName"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:center="true"
-		:closeOnPressEscape="false"
-		:beforeClose="closeDialog"
-		customClass="contact-prompt-modal"
+		:close-on-press-escape="false"
+		:before-close="closeDialog"
+		custom-class="contact-prompt-modal"
 		width="460px"
 	>
 		<template #header>
@@ -26,7 +26,7 @@
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+				<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
 			</div>
 		</template>
 	</Modal>
@@ -42,12 +42,12 @@ import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'ContactPromptModal',
-	mixins: [workflowHelpers],
 	components: { Modal },
+	mixins: [workflowHelpers],
 	props: ['modalName'],
 	setup() {
 		return {
