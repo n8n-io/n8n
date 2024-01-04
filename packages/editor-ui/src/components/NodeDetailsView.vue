@@ -305,12 +305,10 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
-			const pinData = this.workflowsStore.pinnedWorkflowData;
-
 			// Return the first parent node that contains data
 			for (const parentNodeName of this.parentNodes) {
 				// Check first for pinned data
-				if (pinData[parentNodeName]) {
+				if (this.workflowsStore.pinnedWorkflowData[parentNodeName]) {
 					return parentNodeName;
 				}
 

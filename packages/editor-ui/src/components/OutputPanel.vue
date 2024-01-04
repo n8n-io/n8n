@@ -1,6 +1,6 @@
 <template>
 	<RunData
-		:node-ui="node"
+		:node="node"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
@@ -50,7 +50,7 @@
 				$locale.baseText('ndv.output.waitingToRun')
 			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				<template v-if="isSubNodeType">
+				<template v-if="isSubNodeType.value">
 					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
 				</template>
 				<template v-else>

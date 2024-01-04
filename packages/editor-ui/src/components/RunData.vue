@@ -566,7 +566,7 @@
 <script lang="ts">
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { mapStores, storeToRefs } from 'pinia';
+import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
@@ -646,8 +646,9 @@ export default defineComponent({
 	},
 	mixins: [genericHelpers],
 	props: {
-		nodeUi: {
+		node: {
 			type: Object as PropType<INodeUi>,
+			default: null,
 		},
 		runIndex: {
 			type: Number,
@@ -704,9 +705,7 @@ export default defineComponent({
 		const ndvStore = useNDVStore();
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
-		const { activeNode } = storeToRefs(ndvStore);
-
-		const pinnedData = usePinnedData(activeNode, {
+		const pinnedData = usePinnedData(props.node, {
 			runIndex: props.runIndex,
 			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
 		});
@@ -771,9 +770,6 @@ export default defineComponent({
 		},
 		displayMode(): IRunDataDisplayMode {
 			return this.ndvStore.getPanelDisplayMode(this.paneType);
-		},
-		node(): INodeUi | null {
-			return (this.nodeUi as INodeUi | null) || null;
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
