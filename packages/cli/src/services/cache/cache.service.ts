@@ -13,6 +13,7 @@ import type {
 	TaggedMemoryCache,
 	CacheEvent,
 	MaybeHash,
+	Hash,
 } from '@/services/cache/cache.types';
 
 @Service()
@@ -108,13 +109,13 @@ export class CacheService extends EventEmitter {
 	 * Set or append to a [Redis hash](https://redis.io/docs/data-types/hashes/)
 	 * stored under a key in the cache. If in-memory, the hash is a regular JS object.
 	 */
-	async setHash(key: string, hash: Record<string, unknown>) {
+	async setHash(key: string, hash: Hash) {
 		if (!this.cache) await this.init();
 
 		if (!key?.length) return;
 
-		for (const field in hash) {
-			if (hash[field] === undefined || hash[field] === null) return;
+		for (const hashKey in hash) {
+			if (hash[hashKey] === undefined || hash[hashKey] === null) return;
 		}
 
 		if (this.cache.kind === 'redis') {
@@ -122,7 +123,7 @@ export class CacheService extends EventEmitter {
 			return;
 		}
 
-		const hashObject: Record<string, unknown> = (await this.get(key)) ?? {};
+		const hashObject: Hash = (await this.get(key)) ?? {};
 
 		Object.assign(hashObject, hash);
 
@@ -231,7 +232,7 @@ export class CacheService extends EventEmitter {
 		if (hash !== undefined) {
 			this.emit('metrics.cache.hit');
 
-			return hash as MaybeHash<T>;
+			return hash;
 		}
 
 		this.emit('metrics.cache.miss');
@@ -262,14 +263,14 @@ export class CacheService extends EventEmitter {
 	) {
 		if (!this.cache) await this.init();
 
-		let hashValue: unknown;
+		let hashValue: MaybeHash<T>;
 
 		if (this.cache.kind === 'redis') {
 			hashValue = await this.cache.store.hget(cacheKey, hashKey);
 		} else {
-			const hashObject: MaybeHash<T> = await this.cache.store.get(cacheKey);
+			const hashObject = await this.cache.store.get<Hash<T>>(cacheKey);
 
-			hashValue = hashObject?.[hashKey];
+			hashValue = hashObject?.[hashKey] as MaybeHash<T>;
 		}
 
 		if (hashValue !== undefined) {
@@ -313,7 +314,7 @@ export class CacheService extends EventEmitter {
 	}
 
 	/**
-	 * Delete a value under a field in a [Redis hash](https://redis.io/docs/data-types/hashes/).
+	 * Delete a value under a key in a [Redis hash](https://redis.io/docs/data-types/hashes/).
 	 * If in-memory, the hash is a regular JS object. To delete the hash itself, use `delete`.
 	 */
 	async deleteFromHash<T = unknown>(cacheKey: string, hashKey: string) {
