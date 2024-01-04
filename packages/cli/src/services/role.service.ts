@@ -27,24 +27,21 @@ export class RoleService {
 	async findCached(scope: RoleScopes, name: RoleNames) {
 		const cacheKey = `role:${scope}:${name}`;
 
-		const cachedRole = await this.cacheService.get(cacheKey);
+		const role = await this.cacheService.get(cacheKey, {
+			refreshFn: async () => this.roleRepository.findRole(scope, name),
+		});
 
-		if (cachedRole) return this.roleRepository.create(cachedRole);
+		if (role) return role;
 
-		let dbRole = await this.roleRepository.findRole(scope, name);
+		if (!this.isValid(scope, name)) throw new InvalidRoleError(scope, name);
 
-		if (dbRole === null) {
-			if (!this.isValid(scope, name)) {
-				throw new InvalidRoleError(`${scope}:${name} is not a valid role`);
-			}
+		const roleToSave = this.roleRepository.create({ scope, name });
 
-			const toSave = this.roleRepository.create({ scope, name });
-			dbRole = await this.roleRepository.save(toSave);
-		}
+		const savedRole = this.roleRepository.save(roleToSave);
 
-		void this.cacheService.set(cacheKey, dbRole);
+		void this.cacheService.set(cacheKey, savedRole);
 
-		return dbRole;
+		return savedRole;
 	}
 
 	private roles: Array<{ name: RoleNames; scope: RoleScopes }> = [

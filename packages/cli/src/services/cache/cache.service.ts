@@ -6,11 +6,7 @@ import { jsonStringify } from 'n8n-workflow';
 
 import config from '@/config';
 import { getDefaultRedisClient, getRedisPrefix } from '@/services/redis/RedisServiceHelper';
-import {
-	UncacheableValueError,
-	UnusableDisabledCacheError,
-	MalformedRefreshValueError,
-} from '@/errors/cache-errors';
+import { UncacheableValueError, MalformedRefreshValueError } from '@/errors/cache-errors';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
@@ -154,14 +150,10 @@ export class CacheService extends EventEmitter {
 		key: string,
 		{
 			fallbackValue,
-			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
+			refreshFn = async () => undefined,
+		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
 	) {
-		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError(key);
-
-			return refreshFn(key);
-		}
+		if (this.isDisabled) return refreshFn(key);
 
 		if (!this.cache) await this.init();
 
@@ -193,17 +185,13 @@ export class CacheService extends EventEmitter {
 		keys: string[],
 		{
 			fallbackValue,
-			refreshFn,
+			refreshFn = async () => [],
 		}: {
 			fallbackValue?: T[];
 			refreshFn?: (keys: string[]) => Promise<T[]>;
 		} = {},
 	) {
-		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError(keys);
-
-			return refreshFn(keys);
-		}
+		if (this.isDisabled) return refreshFn(keys);
 
 		if (!this.cache) await this.init();
 
@@ -242,14 +230,10 @@ export class CacheService extends EventEmitter {
 		key: string,
 		{
 			fallbackValue,
-			refreshFn,
+			refreshFn = async () => undefined,
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<MaybeHash<T>> } = {},
 	) {
-		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError(key);
-
-			return refreshFn(key);
-		}
+		if (this.isDisabled) return refreshFn(key);
 
 		if (!this.cache) await this.init();
 
@@ -285,14 +269,10 @@ export class CacheService extends EventEmitter {
 		field: string,
 		{
 			fallbackValue,
-			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
+			refreshFn = async () => undefined,
+		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
 	) {
-		if (this.isDisabled) {
-			if (!refreshFn) throw new UnusableDisabledCacheError(key);
-
-			return refreshFn(key);
-		}
+		if (this.isDisabled) return refreshFn(key);
 
 		if (!this.cache) await this.init();
 
