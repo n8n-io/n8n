@@ -373,7 +373,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'If not set the binary data filename will be used',
 	},
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: true,
@@ -401,7 +401,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file to upload',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -414,7 +414,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -698,7 +698,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -709,7 +709,7 @@ export const fileFields: INodeProperties[] = [
 				resource: ['file'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                file:delete                                 */

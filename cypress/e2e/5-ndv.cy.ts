@@ -542,6 +542,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
 		ndv.getters.outputDisplayMode().find('label').eq(1).click();
 
+		ndv.getters.outputDataContainer().find('.json-data').should('be.visible');
 		ndv.getters
 			.outputDataContainer()
 			.should(

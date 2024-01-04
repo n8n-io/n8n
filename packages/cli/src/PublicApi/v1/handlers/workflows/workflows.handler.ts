@@ -18,16 +18,16 @@ import {
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
-	getSharedWorkflows,
 	createWorkflow,
-	getWorkflowIdsViaTags,
 	parseTagNames,
-	getWorkflowsAndCount,
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export = {
 	createWorkflow: [
@@ -106,17 +106,24 @@ export = {
 
 			if (['owner', 'admin'].includes(req.user.globalRole.name)) {
 				if (tags) {
-					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
+					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
+						parseTagNames(tags),
+					);
 					where.id = In(workflowIds);
 				}
 			} else {
 				const options: { workflowIds?: string[] } = {};
 
 				if (tags) {
-					options.workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
+					options.workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
+						parseTagNames(tags),
+					);
 				}
 
-				const sharedWorkflows = await getSharedWorkflows(req.user, options);
+				const sharedWorkflows = await Container.get(SharedWorkflowRepository).getSharedWorkflows(
+					req.user,
+					options,
+				);
 
 				if (!sharedWorkflows.length) {
 					return res.status(200).json({
@@ -129,7 +136,7 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
-			const [workflows, count] = await getWorkflowsAndCount({
+			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
 				where,

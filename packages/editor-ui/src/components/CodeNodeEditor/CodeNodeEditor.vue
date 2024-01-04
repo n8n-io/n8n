@@ -1,15 +1,15 @@
 <template>
 	<div
-		:class="['code-node-editor', $style.codeEditorContainer, language]"
+		ref="codeNodeEditorContainer"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
-		ref="codeNodeEditorContainer"
 	>
 		<el-tabs
-			type="card"
+			v-if="aiEnabled"
 			ref="tabs"
 			v-model="activeTab"
-			v-if="aiEnabled"
+			type="card"
 			:before-leave="onBeforeTabLeave"
 		>
 			<el-tab-pane
@@ -30,9 +30,9 @@
 			>
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
 				<AskAI
-					@replaceCode="onReplaceCode"
-					:has-changes="hasChanges"
 					:key="activeTab"
+					:has-changes="hasChanges"
+					@replaceCode="onReplaceCode"
 					@started-loading="isLoadingAIResponse = true"
 					@finished-loading="isLoadingAIResponse = false"
 				/>
@@ -59,7 +59,6 @@ import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
@@ -80,11 +79,11 @@ import { useMessage } from '@/composables/useMessage';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export default defineComponent({
-	name: 'code-node-editor',
-	mixins: [linterExtension, completerExtension, workflowHelpers],
+	name: 'CodeNodeEditor',
 	components: {
 		AskAI,
 	},
+	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
 		aiButtonEnabled: {
 			type: Boolean,
@@ -97,6 +96,7 @@ export default defineComponent({
 		mode: {
 			type: String as PropType<CodeExecutionMode>,
 			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
+			required: true,
 		},
 		language: {
 			type: String as PropType<CodeNodeEditorLanguage>,
@@ -109,10 +109,11 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 		modelValue: {
 			type: String,
+			required: true,
 		},
 	},
 	setup() {
@@ -185,14 +186,78 @@ export default defineComponent({
 		// eslint-disable-next-line vue/return-in-computed-property
 		languageExtensions(): [LanguageSupport, ...Extension[]] {
 			switch (this.language) {
-				case 'json':
-					return [json()];
 				case 'javaScript':
 					return [javascript(), this.autocompletionExtension('javaScript')];
 				case 'python':
 					return [python(), this.autocompletionExtension('python')];
 			}
 		},
+	},
+	beforeUnmount() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
+	},
+	mounted() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
+
+		const { isReadOnly, language } = this;
+		const extensions: Extension[] = [
+			...readOnlyEditorExtensions,
+			EditorState.readOnly.of(isReadOnly),
+			EditorView.editable.of(!isReadOnly),
+			codeNodeEditorTheme({
+				isReadOnly,
+				maxHeight: this.fillParent ? '100%' : '40vh',
+				minHeight: '20vh',
+				rows: this.rows,
+			}),
+		];
+
+		if (!isReadOnly) {
+			const linter = this.createLinter(language);
+			if (linter) {
+				extensions.push(this.linterCompartment.of(linter));
+			}
+
+			extensions.push(
+				...writableEditorExtensions,
+				EditorView.domEventHandlers({
+					focus: () => {
+						this.isEditorFocused = true;
+					},
+					blur: () => {
+						this.isEditorFocused = false;
+					},
+				}),
+
+				EditorView.updateListener.of((viewUpdate) => {
+					if (!viewUpdate.docChanged) return;
+
+					this.trackCompletion(viewUpdate);
+
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
+					this.hasChanges = true;
+				}),
+			);
+		}
+
+		const [languageSupport, ...otherExtensions] = this.languageExtensions;
+		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
+
+		const state = EditorState.create({
+			doc: this.modelValue ?? this.placeholder,
+			extensions,
+		});
+
+		this.editor = new EditorView({
+			parent: this.$refs.codeNodeEditor as HTMLDivElement,
+			state,
+		});
+
+		// empty on first load, default param value
+		if (!this.modelValue) {
+			this.refreshPlaceholder();
+			this.$emit('update:modelValue', this.placeholder);
+		}
 	},
 	methods: {
 		getCurrentEditorContent() {
@@ -321,72 +386,6 @@ export default defineComponent({
 			} catch {}
 		},
 	},
-	beforeUnmount() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
-	},
-	mounted() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		const { isReadOnly, language } = this;
-		const extensions: Extension[] = [
-			...readOnlyEditorExtensions,
-			EditorState.readOnly.of(isReadOnly),
-			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({
-				isReadOnly,
-				maxHeight: this.fillParent ? '100%' : '40vh',
-				minHeight: '20vh',
-				rows: this.rows,
-			}),
-		];
-
-		if (!isReadOnly) {
-			const linter = this.createLinter(language);
-			if (linter) {
-				extensions.push(this.linterCompartment.of(linter));
-			}
-
-			extensions.push(
-				...writableEditorExtensions,
-				EditorView.domEventHandlers({
-					focus: () => {
-						this.isEditorFocused = true;
-					},
-					blur: () => {
-						this.isEditorFocused = false;
-					},
-				}),
-
-				EditorView.updateListener.of((viewUpdate) => {
-					if (!viewUpdate.docChanged) return;
-
-					this.trackCompletion(viewUpdate);
-
-					this.$emit('update:modelValue', this.editor?.state.doc.toString());
-					this.hasChanges = true;
-				}),
-			);
-		}
-
-		const [languageSupport, ...otherExtensions] = this.languageExtensions;
-		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
-
-		const state = EditorState.create({
-			doc: this.modelValue ?? this.placeholder,
-			extensions,
-		});
-
-		this.editor = new EditorView({
-			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state,
-		});
-
-		// empty on first load, default param value
-		if (!this.modelValue) {
-			this.refreshPlaceholder();
-			this.$emit('update:modelValue', this.placeholder);
-		}
-	},
 });
 </script>
 
@@ -399,7 +398,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss" module>
-.codeEditorContainer {
+.code-node-editor-container {
 	position: relative;
 }
 

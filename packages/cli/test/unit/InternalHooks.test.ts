@@ -41,6 +41,7 @@ describe('InternalHooks', () => {
 			licensePlanName,
 			licenseTenantId,
 			binary_data_s3: false,
+			multi_main_setup_enabled: false,
 		};
 
 		const parameters = {

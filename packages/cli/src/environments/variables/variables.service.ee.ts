@@ -5,7 +5,6 @@ import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './environmentHelpers';
 import { CacheService } from '@/services/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
-import type { DeepPartial } from 'typeorm';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 
@@ -23,9 +22,7 @@ export class VariablesService {
 				return Container.get(VariablesService).findAll();
 			},
 		});
-		return (variables as Array<DeepPartial<Variables>>).map((v) =>
-			this.variablesRepository.create(v),
-		);
+		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
 	}
 
 	async getCount(): Promise<number> {
@@ -38,7 +35,7 @@ export class VariablesService {
 		if (!foundVariable) {
 			return null;
 		}
-		return this.variablesRepository.create(foundVariable as DeepPartial<Variables>);
+		return this.variablesRepository.create(foundVariable as Partial<Variables>);
 	}
 
 	async delete(id: string): Promise<void> {

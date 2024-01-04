@@ -8,23 +8,23 @@
 			[$style.bold]: bold,
 		}"
 	>
-		<n8n-tooltip
+		<N8nTooltip
 			v-if="type === 'tooltip'"
 			:placement="tooltipPlacement"
-			:popperClass="$style.tooltipPopper"
+			:popper-class="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
 		>
 			<span :class="$style.iconText" :style="{ color: iconData.color }">
-				<n8n-icon :icon="iconData.icon" />
+				<N8nIcon :icon="iconData.icon" />
 			</span>
 			<template #content>
 				<span>
 					<slot />
 				</span>
 			</template>
-		</n8n-tooltip>
-		<span :class="$style.iconText" v-else>
-			<n8n-icon :icon="iconData.icon" />
+		</N8nTooltip>
+		<span v-else :class="$style.iconText">
+			<N8nIcon :icon="iconData.icon" />
 			<span>
 				<slot />
 			</span>
@@ -39,7 +39,7 @@ import N8nTooltip from '../N8nTooltip';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-info-tip',
+	name: 'N8nInfoTip',
 	components: {
 		N8nIcon,
 		N8nTooltip,

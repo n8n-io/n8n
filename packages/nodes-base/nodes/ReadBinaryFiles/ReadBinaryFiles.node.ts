@@ -10,6 +10,7 @@ import { generatePairedItemData } from '../../utils/utilities';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Read Binary Files',
 		name: 'readBinaryFiles',
 		icon: 'fa:file-import',

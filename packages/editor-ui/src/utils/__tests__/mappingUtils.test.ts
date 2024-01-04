@@ -68,10 +68,6 @@ const JSON_PARAM: INodeProperties = {
 	displayName: 'JSON Payload',
 	name: 'payloadJson',
 	type: 'json',
-	typeOptions: {
-		alwaysOpenEditWindow: true,
-		editor: 'code',
-	},
 	default: '',
 };
 

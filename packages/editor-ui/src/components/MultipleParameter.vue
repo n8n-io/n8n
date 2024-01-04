@@ -1,8 +1,8 @@
 <template>
-	<div @keydown.stop class="duplicate-parameter">
+	<div class="duplicate-parameter" @keydown.stop>
 		<n8n-input-label
 			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
+			:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
 			size="small"
 			color="text-dark"
@@ -14,7 +14,7 @@
 			class="duplicate-parameter-item"
 			:class="parameter.type"
 		>
-			<div class="delete-item clickable" v-if="!isReadOnly">
+			<div v-if="!isReadOnly" class="delete-item clickable">
 				<font-awesome-icon
 					icon="trash"
 					:title="$locale.baseText('multipleParameter.deleteItem')"
@@ -38,27 +38,27 @@
 				</div>
 			</div>
 			<div v-if="parameter.type === 'collection'">
-				<collection-parameter
+				<CollectionParameter
 					:parameter="parameter"
 					:values="value"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="getPath(index)"
-					:hideDelete="hideDelete"
-					:isReadOnly="isReadOnly"
+					:hide-delete="hideDelete"
+					:is-read-only="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
 			<div v-else>
-				<parameter-input-full
+				<ParameterInputFull
 					class="duplicate-parameter-input-item"
 					:parameter="parameter"
 					:value="value"
-					:displayOptions="true"
-					:hideLabel="true"
+					:display-options="true"
+					:hide-label="true"
 					:path="getPath(index)"
+					input-size="small"
+					:is-read-only="isReadOnly"
 					@update="valueChanged"
-					inputSize="small"
-					:isReadOnly="isReadOnly"
 				/>
 			</div>
 		</div>
@@ -76,8 +76,8 @@
 				v-if="!isReadOnly"
 				type="tertiary"
 				block
-				@click="addItem()"
 				:label="addButtonText"
+				@click="addItem()"
 			/>
 		</div>
 	</div>
@@ -127,17 +127,6 @@ export default defineComponent({
 			mutableValues: [] as INodeParameters[],
 		};
 	},
-	watch: {
-		values: {
-			handler(newValues: INodeParameters[]) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
-	},
 	computed: {
 		addButtonText(): string {
 			if (
@@ -155,6 +144,17 @@ export default defineComponent({
 		sortable(): boolean {
 			return !!this.parameter.typeOptions?.sortable;
 		},
+	},
+	watch: {
+		values: {
+			handler(newValues: INodeParameters[]) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
 	},
 	methods: {
 		addItem() {

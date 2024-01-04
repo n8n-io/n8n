@@ -18,6 +18,7 @@ import {
 	toggleComment,
 	redo,
 	deleteCharBackward,
+	undo,
 } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 import { type Extension, Prec } from '@codemirror/state';
@@ -69,6 +70,7 @@ export const writableEditorExtensions: readonly Extension[] = [
 			{ key: 'Enter', run: insertNewlineAndIndent },
 			{ key: 'Enter', run: acceptCompletion },
 			{ key: 'Mod-/', run: toggleComment },
+			{ key: 'Mod-z', run: undo },
 			{ key: 'Mod-Shift-z', run: redo },
 			{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
 		]),

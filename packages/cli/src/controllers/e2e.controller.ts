@@ -1,5 +1,4 @@
 import { Request } from 'express';
-import { Container, Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
@@ -64,7 +63,6 @@ type PushRequest = Request<
 	}
 >;
 
-@Service()
 @NoAuthRequired()
 @RestController('/e2e')
 export class E2EController {
@@ -89,12 +87,13 @@ export class E2EController {
 
 	constructor(
 		license: License,
-		private roleRepo: RoleRepository,
-		private settingsRepo: SettingsRepository,
-		private userRepo: UserRepository,
-		private workflowRunner: ActiveWorkflowRunner,
-		private mfaService: MfaService,
-		private cacheService: CacheService,
+		private readonly roleRepo: RoleRepository,
+		private readonly settingsRepo: SettingsRepository,
+		private readonly userRepo: UserRepository,
+		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly mfaService: MfaService,
+		private readonly cacheService: CacheService,
+		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
@@ -112,14 +111,8 @@ export class E2EController {
 	}
 
 	@Post('/push')
-	async push(req: PushRequest) {
-		const pushInstance = Container.get(Push);
-
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		const sessionId = Object.keys(pushInstance.getBackend().connections as object)[0];
-
-		pushInstance.send(req.body.type, req.body.data, sessionId);
+	async pushSend(req: PushRequest) {
+		this.push.broadcast(req.body.type, req.body.data);
 	}
 
 	@Patch('/feature')

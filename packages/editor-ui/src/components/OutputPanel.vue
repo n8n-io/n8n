@@ -1,46 +1,46 @@
 <template>
 	<RunData
-		:nodeUi="node"
-		:runIndex="runIndex"
-		:linkedRuns="linkedRuns"
-		:canLinkRuns="canLinkRuns"
-		:tooMuchDataTitle="$locale.baseText('ndv.output.tooMuchData.title')"
-		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
-		:isExecuting="isNodeRunning"
-		:executingMessage="$locale.baseText('ndv.output.executing')"
-		:sessionId="sessionId"
-		:blockUI="blockUI"
-		:isProductionExecutionPreview="isProductionExecutionPreview"
-		:isPaneActive="isPaneActive"
+		:node-ui="node"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="canLinkRuns"
+		:too-much-data-title="$locale.baseText('ndv.output.tooMuchData.title')"
+		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
+		:is-executing="isNodeRunning"
+		:executing-message="$locale.baseText('ndv.output.executing')"
+		:session-id="sessionId"
+		:block-u-i="blockUI"
+		ref="runData"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		pane-type="output"
+		:data-output-type="outputMode"
 		@activatePane="activatePane"
-		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		@search="$emit('search', $event)"
-		ref="runData"
-		:data-output-type="outputMode"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
 					<n8n-radio-buttons
-						:options="outputTypes"
 						v-model="outputMode"
+						:options="outputTypes"
 						@update:modelValue="onUpdateOutputMode"
 					/>
 				</template>
-				<span :class="$style.title" v-else>
+				<span v-else :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
 					v-if="hasNodeRun && !hasPinData && runsCount === 1"
 					v-show="!outputPanelEditMode.enabled"
-					:taskData="runTaskData"
-					:hasStaleData="staleData"
-					:hasPinData="hasPinData"
+					:task-data="runTaskData"
+					:has-stale-data="staleData"
+					:has-pin-data="hasPinData"
 				/>
 			</div>
 		</template>
@@ -55,7 +55,7 @@
 				</template>
 				<template v-else>
 					{{ $locale.baseText('ndv.output.runNodeHint') }}
-					<span @click="insertTestData" v-if="canPinData">
+					<span v-if="canPinData" @click="insertTestData">
 						<br />
 						{{ $locale.baseText('generic.or') }}
 						<n8n-text tag="a" size="medium" color="primary">
@@ -79,8 +79,8 @@
 			</n8n-text>
 		</template>
 
-		<template #content v-if="outputMode === 'logs'">
-			<run-data-ai :node="node" :run-index="runIndex" />
+		<template v-if="outputMode === 'logs'" #content>
+			<RunDataAi :node="node" :run-index="runIndex" />
 		</template>
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
@@ -93,8 +93,8 @@
 			</div>
 		</template>
 
-		<template #run-info v-if="!hasPinData && runsCount > 1">
-			<RunInfo :taskData="runTaskData" />
+		<template v-if="!hasPinData && runsCount > 1" #run-info>
+			<RunInfo :task-data="runTaskData" />
 		</template>
 	</RunData>
 </template>
@@ -123,17 +123,8 @@ const OUTPUT_TYPE = {
 
 export default defineComponent({
 	name: 'OutputPanel',
-	mixins: [pinData],
 	components: { RunData, RunInfo, RunDataAi },
-	data() {
-		return {
-			outputMode: 'regular',
-			outputTypes: [
-				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
-				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
-			],
-		};
-	},
+	mixins: [pinData],
 	props: {
 		runIndex: {
 			type: Number,
@@ -163,6 +154,15 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	data() {
+		return {
+			outputMode: 'regular',
+			outputTypes: [
+				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
+			],
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),

@@ -1,54 +1,54 @@
 <template>
-	<div :class="$style.sqlEditor" v-on-click-outside="onBlur">
+	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
 		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
 			v-if="!fillParent"
 			:segments="segments"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
+import { expressionManager } from '@/mixins/expressionManager';
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { history, redo, toggleComment } from '@codemirror/commands';
-import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
+import { history, redo, toggleComment, undo } from '@codemirror/commands';
+import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import type { Extension, Line } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
-import type { Line, Extension } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import type { ViewUpdate } from '@codemirror/view';
+import type { SQLDialect as SQLDialectType } from '@n8n/codemirror-lang-sql';
 import {
-	MSSQL,
-	MySQL,
-	PostgreSQL,
-	StandardSQL,
-	MariaSQL,
-	SQLite,
 	Cassandra,
+	MSSQL,
+	MariaSQL,
+	MySQL,
 	PLSQL,
+	PostgreSQL,
+	SQLite,
+	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import type { SQLDialect as SQLDialectType } from '@n8n/codemirror-lang-sql';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { expressionManager } from '@/mixins/expressionManager';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { defineComponent } from 'vue';
 import { tabKeyMap } from '../CodeNodeEditor/baseExtensions';
+import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -63,13 +63,14 @@ const SQL_DIALECTS = {
 
 type SQLEditorData = {
 	editor: EditorView | null;
+	editorState: EditorState | null;
 	isFocused: boolean;
 	skipSegments: string[];
 	expressionsDocsUrl: string;
 };
 
 export default defineComponent({
-	name: 'sql-editor',
+	name: 'SqlEditor',
 	components: {
 		InlineExpressionEditorOutput,
 	},
@@ -96,31 +97,17 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: -1,
+			default: 4,
 		},
 	},
 	data(): SQLEditorData {
 		return {
 			editor: null,
+			editorState: null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
 			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
-	},
-	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
-
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
-		},
 	},
 	computed: {
 		doc(): string {
@@ -155,7 +142,6 @@ export default defineComponent({
 				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
-				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.domEventHandlers({
 					focus: () => {
 						this.isFocused = true;
@@ -170,6 +156,7 @@ export default defineComponent({
 					history(),
 					keymap.of([
 						...tabKeyMap,
+						{ key: 'Mod-z', run: undo },
 						{ key: 'Mod-Shift-z', run: redo },
 						{ key: 'Mod-/', run: toggleComment },
 					]),
@@ -183,8 +170,6 @@ export default defineComponent({
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
 
-						this.editorState = this.editor.state;
-
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
@@ -193,6 +178,21 @@ export default defineComponent({
 				);
 			}
 			return extensions;
+		},
+	},
+	watch: {
+		'ndvStore.ndvInputData'() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.modelValue,
+				},
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
+			});
 		},
 	},
 	mounted() {

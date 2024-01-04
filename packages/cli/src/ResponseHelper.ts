@@ -51,6 +51,28 @@ export function sendSuccessResponse(
 	}
 }
 
+/**
+ * Checks if the given error is a ResponseError. It can be either an
+ * instance of ResponseError or an error which has the same properties.
+ * The latter case is for external hooks.
+ */
+function isResponseError(error: Error): error is ResponseError {
+	if (error instanceof ResponseError) {
+		return true;
+	}
+
+	if (error instanceof Error) {
+		return (
+			'httpStatusCode' in error &&
+			typeof error.httpStatusCode === 'number' &&
+			'errorCode' in error &&
+			typeof error.errorCode === 'number'
+		);
+	}
+
+	return false;
+}
+
 interface ErrorResponse {
 	code: number;
 	message: string;
@@ -66,7 +88,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		message: error.message ?? 'Unknown error',
 	};
 
-	if (error instanceof ResponseError) {
+	if (isResponseError(error)) {
 		if (inDevelopment) {
 			console.error(picocolors.red(error.httpStatusCode), error.message);
 		}
