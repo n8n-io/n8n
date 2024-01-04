@@ -1,6 +1,6 @@
 import {
 	AGENT_NODE_NAME,
-	MANUAL_CHAT_TRIGGER_NODE_NAME,
+	CHAT_TRIGGER_NODE_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
@@ -77,7 +77,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should be able to open and execute Basic LLM Chain node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(BASIC_LLM_CHAIN_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(
@@ -118,7 +118,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should be able to open and execute Agent node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
@@ -156,7 +156,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should add and use Manual Chat Trigger node together with Agent node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
@@ -179,7 +179,7 @@ describe('Langchain Integration', () => {
 				sendManualChatMessage(inputMessage);
 			},
 			runData: [
-				createMockNodeExecutionData(MANUAL_CHAT_TRIGGER_NODE_NAME, {
+				createMockNodeExecutionData(CHAT_TRIGGER_NODE_NAME, {
 					jsonData: {
 						main: { input: inputMessage },
 					},
