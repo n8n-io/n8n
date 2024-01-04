@@ -6,7 +6,9 @@ import type { RedisCache } from './cache/cacheManagerRedis';
 import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 import EventEmitter from 'events';
-import { NonCacheableInRedisError } from '@/errors/non-cacheable-in-redis.error';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { UnusableDisabledCacheError } from '@/errors/cache-errors/unusable-disabled-cache.error';
+import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 
 type TaggedRedisCache = RedisCache & { kind: 'redis' };
 type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
@@ -14,12 +16,15 @@ type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
 type MaybeHash = Record<string, unknown> | undefined;
 type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;
 
+type RetrieveOneOptions<T> = { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> };
+type RetrieveManyOptions<T> = { fallbackValue?: T[]; refreshFn?: (keys: string[]) => Promise<T[]> };
+
 @Service()
 export class CacheService extends EventEmitter {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
-		if (!this.isEnabled) return;
+		if (this.isDisabled) return;
 
 		const backend = config.getEnv('cache.backend');
 		const mode = config.getEnv('executions.mode');
@@ -67,6 +72,10 @@ export class CacheService extends EventEmitter {
 		return config.getEnv('cache.enabled');
 	}
 
+	get isDisabled() {
+		return !config.getEnv('cache.enabled');
+	}
+
 	async enable() {
 		config.set('cache.enabled', true);
 
@@ -88,28 +97,79 @@ export class CacheService extends EventEmitter {
 	}
 
 	// ----------------------------------
-	//       setting and getting
+	//             storing
 	// ----------------------------------
 
 	async set(key: string, value: unknown, ttl?: number) {
+		if (this.isDisabled) return;
+
 		if (!this.cache) await this.init();
 
 		if (!key || !value) return;
 
 		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
-			throw new NonCacheableInRedisError(key);
+			throw new UncacheableValueError(key);
 		}
 
 		await this.cache.store.set(key, value, ttl);
 	}
 
-	async get<T = unknown>(
-		key: string,
-		{
-			fallbackValue,
-			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T> } = {},
-	) {
+	async setMany(keysValues: Array<[key: string, value: unknown]>, ttl?: number) {
+		if (this.isDisabled) return;
+
+		if (!this.cache) await this.init();
+
+		if (keysValues.length === 0) return;
+
+		const truthyKeysValues = keysValues.filter(
+			([key, value]) => key?.length > 0 && value !== undefined && value !== null,
+		);
+
+		if (this.cache.kind === 'redis') {
+			for (const [key, value] of truthyKeysValues) {
+				if (!this.cache.store.isCacheable(value)) {
+					throw new UncacheableValueError(key);
+				}
+			}
+		}
+
+		await this.cache.store.mset(truthyKeysValues, ttl);
+	}
+
+	async setHash(key: string, hash: Record<string, unknown>) {
+		if (this.isDisabled) return;
+
+		if (!this.cache) await this.init();
+
+		if (!key?.length) return;
+
+		for (const field in hash) {
+			if (hash[field] === undefined || hash[field] === null) return;
+		}
+
+		if (this.cache.kind === 'redis') {
+			await this.cache.store.hset(key, hash);
+			return;
+		}
+
+		const hashObject: Record<string, unknown> = (await this.get(key)) ?? {};
+
+		Object.assign(hashObject, hash);
+
+		await this.set(key, hashObject);
+	}
+
+	// ----------------------------------
+	//            retrieving
+	// ----------------------------------
+
+	async get<T = unknown>(key: string, { fallbackValue, refreshFn }: RetrieveOneOptions<T> = {}) {
+		if (this.isDisabled) {
+			if (!refreshFn) throw new UnusableDisabledCacheError();
+
+			return refreshFn(key);
+		}
+
 		if (!this.cache) await this.init();
 
 		if (key?.length === 0) return;
@@ -136,7 +196,16 @@ export class CacheService extends EventEmitter {
 		return fallbackValue;
 	}
 
-	async getMany<T = unknown[]>(keys: string[]) {
+	async getMany<T = unknown[]>(
+		keys: string[],
+		{ fallbackValue, refreshFn }: RetrieveManyOptions<T> = {},
+	) {
+		if (this.isDisabled) {
+			if (!refreshFn) throw new UnusableDisabledCacheError();
+
+			return refreshFn(keys);
+		}
+
 		if (!this.cache) await this.init();
 
 		if (keys.length === 0) return [];
@@ -151,77 +220,42 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		return [];
+		if (refreshFn) {
+			this.emit('metrics.cache.update');
+
+			const refreshValue: T[] = await refreshFn(keys);
+
+			if (keys.length !== refreshValue.length) {
+				throw new MalformedRefreshValueError();
+			}
+
+			const newValue: Array<[string, unknown]> = keys.map((key, i) => [key, refreshValue[i]]);
+
+			await this.setMany(newValue);
+
+			return refreshValue;
+		}
+
+		return fallbackValue;
 	}
 
+	// @TODO: Remove this
 	async getAllKeys() {
 		if (!this.cache) await this.init();
 
 		return this.cache.store.keys();
 	}
 
-	async setMany(keysValues: Array<[key: string, value: unknown]>, ttl?: number) {
-		if (!this.cache) await this.init();
+	async getHash<T = unknown>(
+		key: string,
+		{ fallbackValue, refreshFn }: RetrieveOneOptions<T> = {},
+	) {
+		if (this.isDisabled) {
+			if (!refreshFn) throw new UnusableDisabledCacheError();
 
-		if (keysValues.length === 0) return;
-
-		const truthyKeysValues = keysValues.filter(
-			([key, value]) => key?.length > 0 && value !== undefined && value !== null,
-		);
-
-		if (this.cache.kind === 'redis') {
-			for (const [key, value] of truthyKeysValues) {
-				if (!this.cache.store.isCacheable(value)) {
-					throw new NonCacheableInRedisError(key);
-				}
-			}
+			return refreshFn(key);
 		}
 
-		await this.cache.store.mset(truthyKeysValues, ttl);
-	}
-
-	async delete(key: string) {
-		if (!this.cache) await this.init();
-
-		if (!key?.length) return;
-
-		await this.cache.store.del(key);
-	}
-
-	async deleteMany(keys: string[]) {
-		if (!this.cache) await this.init();
-
-		if (keys.length === 0) return;
-
-		return this.cache.store.mdel(...keys);
-	}
-
-	// ----------------------------------
-	//             hashes
-	// ----------------------------------
-
-	async setHash(key: string, hash: Record<string, unknown>) {
-		if (!this.cache) await this.init();
-
-		if (!key?.length) return;
-
-		for (const field in hash) {
-			if (hash[field] === undefined || hash[field] === null) return;
-		}
-
-		if (this.cache.kind === 'redis') {
-			await this.cache.store.hset(key, hash);
-			return;
-		}
-
-		const hashObject: Record<string, unknown> = (await this.get(key)) ?? {};
-
-		Object.assign(hashObject, hash);
-
-		await this.set(key, hashObject);
-	}
-
-	async getHash<T = unknown>(key: string, { fallbackValue }: { fallbackValue?: T } = {}) {
 		if (!this.cache) await this.init();
 
 		const hash: MaybeHash =
@@ -235,14 +269,29 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
+		if (refreshFn) {
+			this.emit('metrics.cache.update');
+
+			const refreshValue = await refreshFn(key);
+			await this.set(key, refreshValue);
+
+			return refreshValue;
+		}
+
 		return fallbackValue;
 	}
 
 	async getHashValue<T = unknown>(
 		key: string,
 		field: string,
-		{ fallbackValue }: { fallbackValue?: T } = {},
+		{ fallbackValue, refreshFn }: RetrieveOneOptions<T> = {},
 	) {
+		if (this.isDisabled) {
+			if (!refreshFn) throw new UnusableDisabledCacheError();
+
+			return refreshFn(key);
+		}
+
 		if (!this.cache) await this.init();
 
 		let hashValue: unknown;
@@ -263,10 +312,45 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
+		if (refreshFn) {
+			this.emit('metrics.cache.update');
+
+			const refreshValue = await refreshFn(key);
+			await this.set(key, refreshValue);
+
+			return refreshValue;
+		}
+
 		return fallbackValue;
 	}
 
+	// ----------------------------------
+	//            deleting
+	// ----------------------------------
+
+	async delete(key: string) {
+		if (this.isDisabled) return;
+
+		if (!this.cache) await this.init();
+
+		if (!key?.length) return;
+
+		await this.cache.store.del(key);
+	}
+
+	async deleteMany(keys: string[]) {
+		if (this.isDisabled) return;
+
+		if (!this.cache) await this.init();
+
+		if (keys.length === 0) return;
+
+		return this.cache.store.mdel(...keys);
+	}
+
 	async deleteFromHash(key: string, field: string) {
+		if (this.isDisabled) return;
+
 		if (!this.cache) await this.init();
 
 		if (!key || !field) return;
