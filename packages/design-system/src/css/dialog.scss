@@ -18,7 +18,8 @@
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	align-items: inherit;
+	align-items: center;
+	justify-content: center;
 	overflow-x: hidden;
 	overflow-y: auto;
 }
@@ -60,7 +61,6 @@
 
 	@include mixins.e(header) {
 		padding: var.$dialog-padding-primary;
-		padding-bottom: 0px;
 	}
 
 	@include mixins.e(headerbtn) {
@@ -95,6 +95,7 @@
 
 	@include mixins.e(body) {
 		padding: var.$dialog-padding-primary;
+		padding-top: 0;
 		color: var(--color-text-base);
 	}
 
