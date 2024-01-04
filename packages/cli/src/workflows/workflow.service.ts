@@ -316,11 +316,6 @@ export class WorkflowService {
 
 			const needsWebhook = await this.testWebhooks.needsWebhook(
 				workflowData,
-<<<<<<< HEAD
-				workflow,
-				runData,
-=======
->>>>>>> origin/master
 				additionalData,
 				sessionId,
 				destinationNode,

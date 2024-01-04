@@ -24740,7 +24740,10 @@ packages:
     resolution: {integrity: sha512-OPhtyEjyyN9x3nhPsu76f52yUGXiZcgvsrFVtvTkyGRQJ0XK+GPc6ov1z+lRpbeabka+MYEQxOYRnt5nF30aMw==}
     dev: false
 
-<<<<<<< HEAD
+  /style-mod@4.1.0:
+    resolution: {integrity: sha512-Ca5ib8HrFn+f+0n4N4ScTIA9iTOQ7MaGS1ylHcoVqW9J7w2w8PzN6g9gKmTYgGEBH8e120+RCmhpje6jC5uGWA==}
+    dev: false
+
   /stylehacks@6.0.1(postcss@8.4.32):
     resolution: {integrity: sha512-jTqG2aIoX2fYg0YsGvqE4ooE/e75WmaEjnNiP6Ag7irLtHxML8NJRxRxS0HyDpde8DRGuEXTFVHVfR5Tmbxqzg==}
     engines: {node: ^14 || ^16 || >=18.0}
@@ -24751,11 +24754,6 @@ packages:
       postcss: 8.4.32
       postcss-selector-parser: 6.0.13
     dev: true
-=======
-  /style-mod@4.1.0:
-    resolution: {integrity: sha512-Ca5ib8HrFn+f+0n4N4ScTIA9iTOQ7MaGS1ylHcoVqW9J7w2w8PzN6g9gKmTYgGEBH8e120+RCmhpje6jC5uGWA==}
-    dev: false
->>>>>>> origin/master
 
   /superagent@7.1.6:
     resolution: {integrity: sha512-gZkVCQR1gy/oUXr+kxJMLDjla434KmSOKbx5iGD30Ql+AkJQ/YlPKECJy2nhqOsHLjGHzoDTXNSjhnvWhzKk7g==}

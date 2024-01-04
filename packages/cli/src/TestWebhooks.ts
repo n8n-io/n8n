@@ -4,13 +4,6 @@ import {
 	type IWebhookData,
 	type IWorkflowExecuteAdditionalData,
 	type IHttpRequestMethods,
-<<<<<<< HEAD
-	type Workflow,
-	type WorkflowActivateMode,
-	type WorkflowExecuteMode,
-	type IRunData,
-=======
->>>>>>> origin/master
 	WebhookPathTakenError,
 	Workflow,
 } from 'n8n-workflow';
@@ -193,11 +186,6 @@ export class TestWebhooks implements IWebhookManager {
 	 */
 	async needsWebhook(
 		workflowEntity: IWorkflowDb,
-<<<<<<< HEAD
-		workflow: Workflow,
-		runData: IRunData,
-=======
->>>>>>> origin/master
 		additionalData: IWorkflowExecuteAdditionalData,
 		sessionId?: string,
 		destinationNode?: string,
@@ -223,17 +211,9 @@ export class TestWebhooks implements IWebhookManager {
 			const key = this.registrations.toKey(webhook);
 			const registration = await this.registrations.get(key);
 
-<<<<<<< HEAD
-			if (runData && webhook.node in runData) {
-				return false;
-			}
-
-			activatedKeys.push(key);
-=======
 			if (registration && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
->>>>>>> origin/master
 
 			webhook.path = removeTrailingSlash(webhook.path);
 			webhook.isTest = true;
