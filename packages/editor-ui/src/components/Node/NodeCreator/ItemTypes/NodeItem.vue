@@ -12,7 +12,7 @@
 		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<div v-if="isSubNode" :class="$style.subNodeBackground"></div>
+			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
 			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
@@ -57,7 +57,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useActions } from '../composables/useActions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { useNodeType } from '@/composables/useNodeType';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -74,6 +74,9 @@ const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
 const { getAddedNodesAndConnections } = useActions();
+const { isSubNodeType } = useNodeType({
+	nodeType: props.nodeType,
+});
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
@@ -122,16 +125,6 @@ const displayName = computed<string>(() => {
 		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
-});
-
-const isSubNode = computed<boolean>(() => {
-	if (!props.nodeType.outputs || typeof props.nodeType.outputs === 'string') {
-		return false;
-	}
-	const outputTypes = NodeHelpers.getConnectionTypes(props.nodeType.outputs);
-	return outputTypes
-		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
-		: false;
 });
 
 const isTrigger = computed<boolean>(() => {
