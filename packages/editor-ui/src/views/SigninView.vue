@@ -30,7 +30,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'SigninView',
@@ -39,11 +38,8 @@ export default defineComponent({
 		MfaView,
 	},
 	setup() {
-		const genericHelpers = useGenericHelpers();
-
 		return {
 			...useToast(),
-			genericHelpers,
 		};
 	},
 	data() {

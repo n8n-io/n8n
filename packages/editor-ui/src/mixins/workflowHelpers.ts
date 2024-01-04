@@ -479,11 +479,10 @@ export function executeData(
 export const workflowHelpers = defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
-		const genericHelpers = useGenericHelpers();
+
 		return {
 			...useToast(),
 			...useMessage(),
-			genericHelpers,
 			nodeHelpers,
 		};
 	},
