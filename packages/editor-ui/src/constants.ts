@@ -458,7 +458,7 @@ export const enum VIEWS {
 	WORKER_VIEW = 'WorkerView',
 }
 
-export const EDITABLE_VIEWS = [
+export const EDITABLE_CANVAS_VIEWS = [
 	VIEWS.WORKFLOW,
 	VIEWS.NEW_WORKFLOW,
 	VIEWS.LOG_STREAMING_SETTINGS,

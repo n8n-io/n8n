@@ -1,5 +1,6 @@
 <template>
 	<RunData
+		ref="runData"
 		:node="node"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
