@@ -168,7 +168,7 @@ describe('Data mapping', () => {
 		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
-	it.only('maps expressions from previous nodes', () => {
+	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
