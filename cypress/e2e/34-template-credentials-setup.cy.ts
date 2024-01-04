@@ -86,7 +86,7 @@ describe('Template credentials setup', () => {
 		workflowPage.getters.canvasNodes().should('have.length', 3);
 	});
 
-	it.only('can create credentials and workflow from the template', () => {
+	it('can create credentials and workflow from the template', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		// Continue button should be disabled if no credentials are created
