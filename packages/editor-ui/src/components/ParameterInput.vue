@@ -42,8 +42,8 @@
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
-				:model-value="expressionDisplayValue"
 				ref="inputField"
+				:model-value="expressionDisplayValue"
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
 				:is-single-line="isSingleLine"

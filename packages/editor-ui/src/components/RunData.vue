@@ -607,7 +607,6 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { dataPinningEventBus } from '@/event-bus';
@@ -1405,7 +1404,7 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
+			const fileName = this.node.name.replace(/[^\w\d]/g, '_');
 			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], {
 				type: 'application/json',
 			});
@@ -1416,7 +1415,7 @@ export default defineComponent({
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
-				node: this.node!.name,
+				node: this.node.name,
 				runIndex: this.runIndex,
 				outputIndex: this.currentOutputIndex,
 				index,

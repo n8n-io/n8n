@@ -371,6 +371,7 @@ import { useViewStacks } from '@/components/Node/NodeCreator/composables/useView
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -569,6 +570,7 @@ export default defineComponent({
 			useExternalSecretsStore,
 			useCollaborationStore,
 			usePushConnectionStore,
+			useSourceControlStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -703,6 +705,12 @@ export default defineComponent({
 		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readonly === true;
 		},
 	},
 	data() {
