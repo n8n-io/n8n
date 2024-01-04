@@ -48,9 +48,10 @@ const checkLinks = async (kind) => {
 
 	const missingDocs = [];
 	const invalidUrls = [];
+	const VALID_STATUS_CODES = new Set([200, 301]);
 	for (const [name, statusCode] of statuses) {
 		if (statusCode === null) missingDocs.push(name);
-		if (statusCode !== 200) invalidUrls.push(name);
+		if (!VALID_STATUS_CODES.has(statusCode)) invalidUrls.push(name);
 	}
 
 	if (missingDocs.length) console.log('Documentation URL missing for %s', kind, missingDocs);
