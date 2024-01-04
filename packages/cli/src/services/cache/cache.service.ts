@@ -6,7 +6,8 @@ import { jsonStringify } from 'n8n-workflow';
 
 import config from '@/config';
 import { getDefaultRedisClient, getRedisPrefix } from '@/services/redis/RedisServiceHelper';
-import { UncacheableValueError, MalformedRefreshValueError } from '@/errors/cache-errors';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
@@ -19,8 +20,6 @@ export class CacheService extends EventEmitter {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
-		if (this.isDisabled) return;
-
 		const backend = config.getEnv('cache.backend');
 		const mode = config.getEnv('executions.mode');
 		const ttl = config.getEnv('cache.redis.ttl');
@@ -63,10 +62,6 @@ export class CacheService extends EventEmitter {
 		return super.emit(event, ...args);
 	}
 
-	get isDisabled() {
-		return !config.getEnv('cache.enabled');
-	}
-
 	isRedis() {
 		return this.cache.kind === 'redis';
 	}
@@ -80,8 +75,6 @@ export class CacheService extends EventEmitter {
 	// ----------------------------------
 
 	async set(key: string, value: unknown, ttl?: number) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (!key || !value) return;
@@ -94,8 +87,6 @@ export class CacheService extends EventEmitter {
 	}
 
 	async setMany(keysValues: Array<[key: string, value: unknown]>, ttl?: number) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (keysValues.length === 0) return;
@@ -120,8 +111,6 @@ export class CacheService extends EventEmitter {
 	 * stored under a key in the cache. If in-memory, use a regular JS object.
 	 */
 	async setHash(key: string, hash: Record<string, unknown>) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (!key?.length) return;
@@ -150,11 +139,9 @@ export class CacheService extends EventEmitter {
 		key: string,
 		{
 			fallbackValue,
-			refreshFn = async () => undefined,
+			refreshFn,
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
 	) {
-		if (this.isDisabled) return refreshFn(key);
-
 		if (!this.cache) await this.init();
 
 		if (key?.length === 0) return;
@@ -169,7 +156,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn && !fallbackValue) {
+		if (refreshFn) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
@@ -185,14 +172,12 @@ export class CacheService extends EventEmitter {
 		keys: string[],
 		{
 			fallbackValue,
-			refreshFn = async () => [],
+			refreshFn,
 		}: {
 			fallbackValue?: T[];
 			refreshFn?: (keys: string[]) => Promise<T[]>;
 		} = {},
 	) {
-		if (this.isDisabled) return refreshFn(keys);
-
 		if (!this.cache) await this.init();
 
 		if (keys.length === 0) return [];
@@ -207,7 +192,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn && !fallbackValue) {
+		if (refreshFn) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue: T[] = await refreshFn(keys);
@@ -230,11 +215,9 @@ export class CacheService extends EventEmitter {
 		key: string,
 		{
 			fallbackValue,
-			refreshFn = async () => undefined,
+			refreshFn,
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<MaybeHash<T>> } = {},
 	) {
-		if (this.isDisabled) return refreshFn(key);
-
 		if (!this.cache) await this.init();
 
 		const hash: MaybeHash<T> =
@@ -248,7 +231,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn && !fallbackValue) {
+		if (refreshFn) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
@@ -269,11 +252,9 @@ export class CacheService extends EventEmitter {
 		field: string,
 		{
 			fallbackValue,
-			refreshFn = async () => undefined,
+			refreshFn,
 		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
 	) {
-		if (this.isDisabled) return refreshFn(key);
-
 		if (!this.cache) await this.init();
 
 		let hashValue: unknown;
@@ -294,7 +275,7 @@ export class CacheService extends EventEmitter {
 
 		this.emit('metrics.cache.miss');
 
-		if (refreshFn && !fallbackValue) {
+		if (refreshFn) {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
@@ -311,8 +292,6 @@ export class CacheService extends EventEmitter {
 	// ----------------------------------
 
 	async delete(key: string) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (!key?.length) return;
@@ -321,8 +300,6 @@ export class CacheService extends EventEmitter {
 	}
 
 	async deleteMany(keys: string[]) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (keys.length === 0) return;
@@ -335,8 +312,6 @@ export class CacheService extends EventEmitter {
 	 * If in-memory, use a regular JS object. To delete the hash itself, use `delete`.
 	 */
 	async deleteFromHash<T = unknown>(key: string, field: string) {
-		if (this.isDisabled) return;
-
 		if (!this.cache) await this.init();
 
 		if (!key || !field) return;
