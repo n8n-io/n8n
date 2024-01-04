@@ -1,6 +1,6 @@
 <template>
 	<RunData
-		:node-ui="currentNode"
+		:node="currentNode"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"

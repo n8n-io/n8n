@@ -1,6 +1,6 @@
 <template>
 	<RunData
-		:node-ui="node"
+		:node="node"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
@@ -36,11 +36,11 @@
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
-					v-if="hasNodeRun && !hasPinData && runsCount === 1"
+					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
 					v-show="!outputPanelEditMode.enabled"
 					:task-data="runTaskData"
 					:has-stale-data="staleData"
-					:has-pin-data="hasPinData"
+					:has-pin-data="pinnedData.hasData.value"
 				/>
 			</div>
 		</template>
@@ -50,7 +50,7 @@
 				$locale.baseText('ndv.output.waitingToRun')
 			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				<template v-if="isSubNode">
+				<template v-if="isSubNodeType.value">
 					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
 				</template>
 				<template v-else>
@@ -93,7 +93,7 @@
 			</div>
 		</template>
 
-		<template v-if="!hasPinData && runsCount > 1" #run-info>
+		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
 			<RunInfo :task-data="runTaskData" />
 		</template>
 	</RunData>
@@ -105,14 +105,15 @@ import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from '@/mixins/pinData';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import RunDataAi from './RunDataAi/RunDataAi.vue';
 import { ndvEventBus } from '@/event-bus';
+import { useNodeType } from '@/composables/useNodeType';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 type RunDataRef = InstanceType<typeof RunData>;
 
@@ -124,7 +125,6 @@ const OUTPUT_TYPE = {
 export default defineComponent({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo, RunDataAi },
-	mixins: [pinData],
 	props: {
 		runIndex: {
 			type: Number,
@@ -154,6 +154,22 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup(props) {
+		const ndvStore = useNDVStore();
+		const { activeNode } = storeToRefs(ndvStore);
+		const { isSubNodeType } = useNodeType({
+			node: activeNode,
+		});
+		const pinnedData = usePinnedData(activeNode, {
+			runIndex: props.runIndex,
+			displayMode: ndvStore.getPanelDisplayMode('output'),
+		});
+
+		return {
+			pinnedData,
+			isSubNodeType,
+		};
 	},
 	data() {
 		return {
@@ -271,7 +287,7 @@ export default defineComponent({
 			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
-			return this.isPinDataNodeType && !this.isReadOnly;
+			return this.pinnedData.isValidNodeType.value && !this.isReadOnly;
 		},
 	},
 	methods: {
