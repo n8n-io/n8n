@@ -4678,6 +4678,7 @@ export default defineComponent({
 					NodeViewUtils.addConnectionOutputSuccess(connection, {
 						total: pinData[nodeName].length,
 						iterations: 0,
+						isPinned: true,
 					});
 				});
 			});
@@ -5193,20 +5194,29 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-:deep(.node-view__executed) {
-	.jtk-connector.success:not(.jtk-hover) {
+@mixin applyColorToConnection($partialSelector, $cssColorVar, $labelCssColorVar) {
+	.jtk-connector#{$partialSelector}:not(.jtk-hover) {
 		path:not(.jtk-connector-outline) {
-			stroke: var(--color-success-light);
+			stroke: $cssColorVar;
 		}
 		path[jtk-overlay-id='reverse-arrow'],
 		path[jtk-overlay-id='endpoint-arrow'],
 		path[jtk-overlay-id='midpoint-arrow'] {
-			fill: var(--color-success-light);
+			fill: $cssColorVar;
 		}
 	}
 
-	.connection-run-items-label {
-		color: var(--color-success);
+	.connection-run-items-label#{$partialSelector} {
+		color: $labelCssColorVar;
 	}
+}
+
+:deep(.node-view__executed) {
+	@include applyColorToConnection('.success', var(--color-success-light), var(--color-success));
+	@include applyColorToConnection(
+		'.success.pinned',
+		var(--color-secondary),
+		var(--color-secondary)
+	);
 }
 </style>
