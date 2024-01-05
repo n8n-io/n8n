@@ -1,8 +1,16 @@
-import type { IWorkflowTemplateNode, IWorkflowTemplateNodeCredentials } from '@/Interface';
+import type {
+	ITemplatesWorkflowFull,
+	IWorkflowTemplateNode,
+	IWorkflowTemplateNodeCredentials,
+} from '@/Interface';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';
-import type { INodeCredentials, INodeCredentialsDetails } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeCredentials,
+	INodeCredentialsDetails,
+} from 'n8n-workflow';
 
 export type IWorkflowTemplateNodeWithCredentials = IWorkflowTemplateNode &
 	Required<Pick<IWorkflowTemplateNode, 'credentials'>>;
@@ -16,6 +24,11 @@ const credentialKeySymbol = Symbol('credentialKey');
  * Use `keyFromCredentialTypeAndName` to create a key.
  */
 export type TemplateCredentialKey = string & { [credentialKeySymbol]: never };
+
+export type TemplateNodeWithRequiredCredential = {
+	node: IWorkflowTemplateNode;
+	requiredCredentials: INodeCredentialDescription[];
+};
 
 /**
  * Forms a key from credential type name and credential name
@@ -119,4 +132,26 @@ export const replaceAllTemplateNodeCredentials = (
 			credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
 		};
 	});
+};
+
+/**
+ * Returns the nodes in the template that require credentials
+ * and the required credentials for each node.
+ */
+export const getNodesRequiringCredentials = (
+	nodeTypeProvider: NodeTypeProvider,
+	template: ITemplatesWorkflowFull,
+): TemplateNodeWithRequiredCredential[] => {
+	if (!template) {
+		return [];
+	}
+
+	const nodesWithCredentials: TemplateNodeWithRequiredCredential[] = template.workflow.nodes
+		.map((node) => ({
+			node,
+			requiredCredentials: getNodeTypeDisplayableCredentials(nodeTypeProvider, node),
+		}))
+		.filter(({ requiredCredentials }) => requiredCredentials.length > 0);
+
+	return nodesWithCredentials;
 };
