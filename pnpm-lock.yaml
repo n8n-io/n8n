@@ -153,9 +153,6 @@ importers:
       '@iconify-json/mdi':
         specifier: ^1.1.54
         version: 1.1.63
-      n8n-design-system:
-        specifier: workspace:*
-        version: link:../../design-system
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
