@@ -44,7 +44,6 @@
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
-    "n8n-design-system": "workspace:*",
     "shelljs": "^0.8.5",
     "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",

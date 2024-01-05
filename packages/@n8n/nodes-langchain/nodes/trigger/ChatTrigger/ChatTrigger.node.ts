@@ -37,7 +37,6 @@ export class ChatTrigger implements INodeType {
 				'Core Nodes': ['Other Trigger Nodes'],
 			},
 		},
-		// TODO: This will be reworked, so we also have to update then here
 		supportsCORS: true,
 		maxNodes: 1,
 		inputs: `={{ (() => {
@@ -227,7 +226,6 @@ export class ChatTrigger implements INodeType {
 						name: 'loadPreviousSession',
 						type: 'options',
 						options: [
-							// TODO: Think about how options should be called
 							{
 								name: 'Off',
 								value: 'notSupported',
@@ -404,8 +402,9 @@ export class ChatTrigger implements INodeType {
 				const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 					| BaseChatMemory
 					| undefined;
-				const messages = await memory?.chatHistory.getMessages();
-
+				const messages = ((await memory?.chatHistory.getMessages()) ?? []).map(
+					(message) => message?.toJSON(),
+				);
 				return {
 					webhookResponse: { data: messages },
 				};

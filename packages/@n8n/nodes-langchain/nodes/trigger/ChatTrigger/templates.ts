@@ -16,6 +16,10 @@ export function createPage({
 	mode: 'test' | 'production';
 	authentication: 'none' | 'basicAuth' | 'n8nUserAuth';
 }) {
+	const sanitizedAuthentication = ['none', 'basicAuth', 'n8nUserAuth'].includes(authentication)
+		? authentication
+		: 'none';
+
 	return `<doctype html>
 	<html lang="en">
 		<head>
@@ -30,7 +34,7 @@ export function createPage({
 				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat@latest/chat.bundle.es.js';
 
 				(async function () {
-					const authentication = '${authentication}';
+					const authentication = '${sanitizedAuthentication}';
 					let metadata;
 					if (authentication === 'n8nUserAuth') {
 						try {
