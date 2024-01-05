@@ -67,6 +67,12 @@ describe('getDomainPath should return pathname, excluding query string', () => {
 	});
 });
 
+describe('generateNodesGraph', () => {
+	test('should return node graph', () => {
+
+	});
+});
+
 function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	const firstId = idMaker();
 	const secondId = idMaker();

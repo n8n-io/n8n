@@ -1,3 +1,4 @@
+import { NodeHelpers } from '.';
 import type {
 	IConnection,
 	INode,
@@ -195,20 +196,22 @@ export function generateNodesGraph(
 				webhookNodeNames.push(node.name);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
-
-				nodeType?.description?.properties?.forEach((property) => {
-					if (
-						property.name === 'operation' ||
-						property.name === 'resource' ||
-						property.name === 'mode'
-					) {
-						nodeItem[property.name] = property.default ? property.default.toString() : undefined;
-					}
-				});
-
-				nodeItem.operation = node.parameters.operation?.toString() ?? nodeItem.operation;
-				nodeItem.resource = node.parameters.resource?.toString() ?? nodeItem.resource;
-				nodeItem.mode = node.parameters.mode?.toString() ?? nodeItem.mode;
+				const nodeParameters = NodeHelpers.getNodeParameters(
+					nodeType.description.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+				);
+				
+				if (nodeParameters) {
+					const keys: ('operation' | 'resource' | 'mode')[] = ['operation', 'resource', 'mode'];
+					keys.forEach((key) => {
+						if (nodeParameters.hasOwnProperty(key)) {
+							nodeItem[key] = nodeParameters[key]?.toString();
+						}
+					});
+				}
 			}
 			nodesGraph.nodes[`${index}`] = nodeItem;
 			nodeNameAndIndex[node.name] = index.toString();
@@ -229,6 +232,6 @@ export function generateNodesGraph(
 	} catch (e) {
 		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
-
+	
 	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }
