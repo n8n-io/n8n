@@ -37,6 +37,16 @@ export async function yourlsApiRequest(
 			);
 		}
 
+		if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Yourls responded with a 'Fatal error', check description for more details",
+				{
+					description: `Server response:\n${response}`,
+				},
+			);
+		}
+
 		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
