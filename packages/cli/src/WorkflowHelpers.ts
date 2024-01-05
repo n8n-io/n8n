@@ -426,7 +426,7 @@ export async function getSharedWorkflowIds(user: User, roleNames?: RoleNames[]):
 		where.userId = user.id;
 	}
 	if (roleNames?.length) {
-		const roleIds = await Container.get(RoleRepository).getIdsByNames(roleNames);
+		const roleIds = await Container.get(RoleRepository).getIdsInScopeWorkflowByNames(roleNames);
 
 		where.roleId = In(roleIds);
 	}

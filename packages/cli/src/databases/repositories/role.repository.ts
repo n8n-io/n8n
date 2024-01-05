@@ -33,7 +33,7 @@ export class RoleRepository extends Repository<Role> {
 		}, {});
 	}
 
-	async getIdsByNames(roleNames: RoleNames[]) {
+	async getIdsInScopeWorkflowByNames(roleNames: RoleNames[]) {
 		return this.find({
 			select: ['id'],
 			where: { name: In(roleNames), scope: 'workflow' },
