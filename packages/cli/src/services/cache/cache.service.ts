@@ -134,6 +134,10 @@ export class CacheService extends EventEmitter {
 	//            retrieving
 	// ----------------------------------
 
+	/**
+	 * Retrieve a primitive value under a key. To retrieve a hash, use `getHash`, and
+	 * to retrieve a primitive value in a hash, use `getHashValue`.
+	 */
 	async get<T = unknown>(
 		key: string,
 		{
@@ -215,7 +219,8 @@ export class CacheService extends EventEmitter {
 
 	/**
 	 * Retrieve a [Redis hash](https://redis.io/docs/data-types/hashes/) under a key.
-	 * If in-memory, the hash is a regular JS object.
+	 * If in-memory, the hash is a regular JS object. To retrieve a primitive value
+	 * in the hash, use `getHashValue`.
 	 */
 	async getHash<T = unknown>(
 		key: string,
@@ -250,8 +255,9 @@ export class CacheService extends EventEmitter {
 	}
 
 	/**
-	 * Retrieve a value in a [Redis hash](https://redis.io/docs/data-types/hashes/) under a hash key.
-	 * If in-memory, the hash is a regular JS object. To retrieve the hash itself, use `getHash`.
+	 * Retrieve a primitive value in a [Redis hash](https://redis.io/docs/data-types/hashes/)
+	 * under a hash key. If in-memory, the hash is a regular JS object. To retrieve the hash
+	 * itself, use `getHash`.
 	 */
 	async getHashValue<T = unknown>(
 		cacheKey: string,
