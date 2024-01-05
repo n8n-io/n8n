@@ -1,18 +1,18 @@
 import { vi, describe, it, expect } from 'vitest';
-import { useDebounceHelper } from '../useDebounce';
+import { useDebounce } from '../useDebounce';
 import { render, screen } from '@testing-library/vue';
 
-describe('useDebounceHelper', () => {
+describe('useDebounce()', () => {
 	const debounceTime = 500;
 
 	const TestComponent = {
 		template: `
       <div>
-				<button @click="callDebounced(mockFn, { debounceTime,  })">
+				<button @click="debounce(mockFn, { debounceTime,  })">
 					Click me
 				</button>
 
-				<button @click="callDebounced(mockFn, { debounceTime, trailing: true })">
+				<button @click="debounce(mockFn, { debounceTime, trailing: true })">
 					Click me trailing
 				</button>
 			</div>
@@ -24,9 +24,9 @@ describe('useDebounceHelper', () => {
 		},
 		setup() {
 			vitest.useFakeTimers();
-			const { callDebounced } = useDebounceHelper();
+			const { debounce } = useDebounce();
 			return {
-				callDebounced,
+				debounce,
 				debounceTime,
 			};
 		},

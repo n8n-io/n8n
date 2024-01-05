@@ -1,13 +1,13 @@
 import { ref } from 'vue';
-import { debounce } from 'lodash-es';
+import { debounce as _debounce } from 'lodash-es';
 
 type DebouncedFunction = (...args: unknown[]) => Promise<void> | void;
 
-export function useDebounceHelper() {
+export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
 	const debouncedFunctions = ref(new WeakMap<DebouncedFunction, DebouncedFunction>());
 
-	const callDebounced = async (
+	const debounce = async (
 		func: DebouncedFunction,
 		options: { debounceTime: number; trailing?: boolean },
 		...inputParameters: unknown[]
@@ -19,7 +19,7 @@ export function useDebounceHelper() {
 
 		// If a debounced version is not found, create one and store it in the WeakMap.
 		if (debouncedFunc === undefined) {
-			debouncedFunc = debounce(
+			debouncedFunc = _debounce(
 				async (...args: unknown[]) => {
 					await func(...args);
 				},
@@ -33,6 +33,6 @@ export function useDebounceHelper() {
 	};
 
 	return {
-		callDebounced,
+		debounce,
 	};
 }
