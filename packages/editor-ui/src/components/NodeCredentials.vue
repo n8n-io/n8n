@@ -15,7 +15,7 @@
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
-				<div v-if="readonly || isReadOnlyRoute">
+				<div v-if="readonly">
 					<n8n-input
 						:model-value="getSelectedName(credentialTypeDescription.name)"
 						disabled

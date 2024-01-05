@@ -50,7 +50,7 @@
 							<ExpressionEditorModalInput
 								ref="inputFieldExpression"
 								:model-value="modelValue"
-								:is-read-only="isReadOnlyRoute"
+								:is-read-only="isReadOnly"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
 								data-test-id="expression-modal-input"
@@ -95,7 +95,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
@@ -105,16 +104,44 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
+	mixins: [debounceHelper],
+	props: {
+		dialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object,
+			default: () => ({}),
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		eventSource: {
+			type: String,
+			default: '',
+		},
+		redactValues: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
 		const externalHooks = useExternalHooks();
-		const genericHelpers = useGenericHelpers();
 		const { debounce } = useDebounce();
 
 		return {
 			debounce,
 			externalHooks,
-			genericHelpers,
 		};
 	},
 	data() {
@@ -127,9 +154,6 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
-		isReadOnlyRoute() {
-			return this.$route?.meta?.readonly === true;
-		},
 	},
 	watch: {
 		dialogVisible(newValue) {

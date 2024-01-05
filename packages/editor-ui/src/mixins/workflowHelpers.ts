@@ -48,7 +48,6 @@ import type {
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
@@ -479,11 +478,10 @@ export function executeData(
 export const workflowHelpers = defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
-		const genericHelpers = useGenericHelpers();
+
 		return {
 			...useToast(),
 			...useMessage(),
-			genericHelpers,
 			nodeHelpers,
 		};
 	},

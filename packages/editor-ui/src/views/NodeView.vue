@@ -394,7 +394,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 	},
-	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun],
+	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -712,7 +712,7 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		isReadOnlyRoute() {
-			return this.$route?.meta?.readonly === true;
+			return this.$route?.meta?.readOnlyCanvas === true;
 		},
 	},
 	data() {

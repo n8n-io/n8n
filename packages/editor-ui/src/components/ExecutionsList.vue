@@ -107,7 +107,7 @@
 											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
 										>
 											{{
-												genericHelpers.displayTimer(
+												i18n.displayTimer(
 													new Date(execution.stoppedAt).getTime() -
 														new Date(execution.startedAt).getTime(),
 													true,
@@ -310,7 +310,6 @@ import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRoute } from 'vue-router';
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 
 export default defineComponent({
 	name: 'ExecutionsList',
@@ -329,14 +328,13 @@ export default defineComponent({
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
 		const externalHooks = useExternalHooks();
-		const genericHelpers = useGenericHelpers();
 		const route = useRoute();
+
 		return {
 			i18n,
 			telemetry,
 			externalHooks,
 			route,
-			genericHelpers,
 			...useToast(),
 			...useMessage(),
 		};

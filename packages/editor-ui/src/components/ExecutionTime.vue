@@ -5,11 +5,11 @@
 </template>
 
 <script lang="ts">
-import { useGenericHelpers } from '@/composables/useGenericHelpers';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'ExecutionTime',
+	mixins: [genericHelpers],
 	props: ['startTime'],
 	data() {
 		return {
@@ -23,7 +23,7 @@ export default defineComponent({
 				return '...';
 			}
 			const msPassed = this.nowTime - new Date(this.startTime).getTime();
-			return useGenericHelpers().displayTimer(msPassed);
+			return this.$locale.displayTimer(msPassed);
 		},
 	},
 	mounted() {

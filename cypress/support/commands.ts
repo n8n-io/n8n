@@ -160,6 +160,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).trigger('mousedown');
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
 			cy.get(droppableSelector).realMouseUp();

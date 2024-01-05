@@ -111,7 +111,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
 		isReadOnlyRoute() {
-			return this.$route?.meta?.readonly === true;
+			return this.$route?.meta?.readOnlyCanvas === true;
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
