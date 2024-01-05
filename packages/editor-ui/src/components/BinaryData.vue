@@ -129,7 +129,17 @@ export default defineComponent({
 			this.$emit('displayBinaryData', index, key);
 		},
 		getMappablePath(property: string) {
-			return `{{ $data["${this.mappingData.path}"].data.${property} }}`;
+			// TODO: This should be improved and cleaned up
+			const path = this.mappingData.path
+				?.split('.')
+				.map((item) => {
+					if (item.includes('[') && item.includes(']')) {
+						return `.${item}`;
+					}
+					return `["${item}"]`;
+				})
+				.join('');
+			return `{{ $data${path}.data.${property} }}`;
 		},
 	},
 	computed: {
