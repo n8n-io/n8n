@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { CacheService } from './services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { jsonParse } from 'n8n-workflow';
 
 type ActivationErrors = {
