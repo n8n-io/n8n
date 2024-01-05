@@ -278,9 +278,6 @@ export default defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 		),
-		isReadOnlyRoute() {
-			return this.$route?.meta?.readonly === true;
-		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},

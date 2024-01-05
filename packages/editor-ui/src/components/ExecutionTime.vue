@@ -9,7 +9,6 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'ExecutionTime',
-	mixins: [genericHelpers],
 	props: ['startTime'],
 	data() {
 		return {
