@@ -62,7 +62,7 @@ export async function getMappingColumns(
 	}) as string;
 
 	try {
-		const columns = await getTableSchema(db, schema, table);
+		const columns = await getTableSchema(db, schema, table, { getColumnsForResourceMapper: true });
 		const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(

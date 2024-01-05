@@ -395,18 +395,21 @@ export async function getTableSchema(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
+	options?: { getColumnsForResourceMapper?: boolean },
 ): Promise<ColumnInfo[]> {
 	const select = ['column_name', 'data_type', 'is_nullable', 'udt_name', 'column_default'];
 
-	// Check if columns exist before querying (identity_generation was added in v10, is_generated in v12)
-	const supported = await columnFeatureSupport(db);
+	if (options?.getColumnsForResourceMapper) {
+		// Check if columns exist before querying (identity_generation was added in v10, is_generated in v12)
+		const supported = await columnFeatureSupport(db);
 
-	if (supported.identity_generation) {
-		select.push('identity_generation');
-	}
+		if (supported.identity_generation) {
+			select.push('identity_generation');
+		}
 
-	if (supported.is_generated) {
-		select.push('is_generated');
+		if (supported.is_generated) {
+			select.push('is_generated');
+		}
 	}
 
 	const selectString = select.join(', ');
