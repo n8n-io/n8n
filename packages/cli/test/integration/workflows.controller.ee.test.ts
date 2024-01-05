@@ -5,7 +5,6 @@ import type { INode } from 'n8n-workflow';
 
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
@@ -21,6 +20,7 @@ import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
 import type { Role } from '@/databases/entities/Role';
 import { Push } from '@/push';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -988,7 +988,8 @@ describe('getSharedWorkflowIds', () => {
 		owner.globalRole = await getGlobalOwnerRole();
 		const workflow1 = await createWorkflow({}, member);
 		const workflow2 = await createWorkflow({}, anotherMember);
-		const sharedWorkflowIds = await getSharedWorkflowIds(owner);
+		const sharedWorkflowIds =
+			await Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(owner);
 		expect(sharedWorkflowIds).toHaveLength(2);
 		expect(sharedWorkflowIds).toContain(workflow1.id);
 		expect(sharedWorkflowIds).toContain(workflow2.id);
@@ -1001,7 +1002,8 @@ describe('getSharedWorkflowIds', () => {
 		const workflow3 = await createWorkflow({}, anotherMember);
 		await shareWorkflowWithUsers(workflow1, [member]);
 		await shareWorkflowWithUsers(workflow3, [member]);
-		const sharedWorkflowIds = await getSharedWorkflowIds(member);
+		const sharedWorkflowIds =
+			await Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(member);
 		expect(sharedWorkflowIds).toHaveLength(2);
 		expect(sharedWorkflowIds).toContain(workflow1.id);
 		expect(sharedWorkflowIds).toContain(workflow3.id);

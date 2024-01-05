@@ -43,17 +43,17 @@ describe('ActiveWorkflowsService', () => {
 
 			expect(ids).toEqual(['2', '3', '4']);
 			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
-			expect(sharedWorkflowRepository.getSharedWorkflowIds).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepository.findByWorkflowIds).not.toHaveBeenCalled();
 		});
 
 		it('should filter out workflow ids that the user does not have access to', async () => {
 			user.hasGlobalScope.mockReturnValue(false);
-			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
+			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([{ workflowId: '3' }]);
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['3']);
 			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
-			expect(sharedWorkflowRepository.getSharedWorkflowIds).toHaveBeenCalledWith(activeIds);
+			expect(sharedWorkflowRepository.findByWorkflowIds).toHaveBeenCalledWith(activeIds);
 		});
 	});
 

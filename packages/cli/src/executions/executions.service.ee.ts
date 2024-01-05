@@ -1,5 +1,4 @@
 import type { User } from '@db/entities/User';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { ExecutionsService } from './executions.service';
 import type { ExecutionRequest } from '@/requests';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
@@ -7,6 +6,7 @@ import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
 import Container from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 export class EEExecutionsService extends ExecutionsService {
 	/**
@@ -14,7 +14,7 @@ export class EEExecutionsService extends ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows
-		return getSharedWorkflowIds(user);
+		return Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(user);
 	}
 
 	static async getExecution(

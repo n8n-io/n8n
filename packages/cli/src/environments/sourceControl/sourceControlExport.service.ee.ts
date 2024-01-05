@@ -104,8 +104,10 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows =
-				await Container.get(SharedWorkflowRepository).findByWorkflowIds(workflowIds);
+			const sharedWorkflows = await Container.get(SharedWorkflowRepository).findByWorkflowIds(
+				workflowIds,
+				{ role: { scope: 'workflow', name: 'owner' }, relations: ['role', 'user'] },
+			);
 			const workflows = await Container.get(WorkflowRepository).findByIds(workflowIds);
 
 			// determine owner of each workflow to be exported

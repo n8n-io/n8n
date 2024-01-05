@@ -1,5 +1,3 @@
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
 import { Container } from 'typedi';
 
 import type {
@@ -35,11 +33,8 @@ import type { User } from '@db/entities/User';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { UserService } from './services/user.service';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { RoleNames } from '@db/entities/Role';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { RoleService } from './services/role.service';
@@ -417,26 +412,6 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 }
 
 /**
- * Get the IDs of the workflows that have been shared with the user.
- * Returns all IDs if user has the 'workflow:read' scope.
- */
-export async function getSharedWorkflowIds(user: User, roleNames?: RoleNames[]): Promise<string[]> {
-	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (!user.hasGlobalScope('workflow:read')) {
-		where.userId = user.id;
-	}
-	if (roleNames?.length) {
-		const roleIds = await Container.get(RoleRepository).getIdsInScopeWorkflowByNames(roleNames);
-
-		where.roleId = In(roleIds);
-	}
-	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
-}
-/**
  * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
  * If user does, set flag in its settings.
  */
@@ -459,8 +434,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 		belowThreshold = false;
 	} else {
 		// just fetch workflows' nodes to keep memory footprint low
-		const workflows = await Container.get(WorkflowRepository).find({
-			where: { id: In(ownedWorkflowsIds) },
+		const workflows = await Container.get(WorkflowRepository).findByIds(ownedWorkflowsIds, {
 			select: ['nodes'],
 		});
 

@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
 import { DataSource, Repository, In, Not } from 'typeorm';
-import type { EntityManager, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
+import type { EntityManager, FindManyOptions, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
-import type { Role } from '../entities/Role';
+import type { Role, RoleNames, RoleScopes } from '../entities/Role';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
@@ -21,29 +21,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where.userId = user.id;
 		}
 		return this.exist({ where });
-	}
-
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
-	}
-
-	async findByWorkflowIds(workflowIds: string[]) {
-		return this.find({
-			relations: ['role', 'user'],
-			where: {
-				role: {
-					name: 'owner',
-					scope: 'workflow',
-				},
-				workflowId: In(workflowIds),
-			},
-		});
 	}
 
 	async findSharing(
@@ -140,5 +117,41 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			user,
 			workflowId: In(sharedWorkflowIds),
 		});
+	}
+
+	async findByWorkflowIds(
+		workflowIds: string[],
+		{
+			relations,
+			select,
+			role,
+		}: {
+			relations?: string[];
+			select?: string[];
+			role?: { scope: RoleScopes; name: RoleNames };
+		} = {},
+	) {
+		const options: FindManyOptions<SharedWorkflow> = {};
+
+		if (relations) options.relations = relations;
+		if (select) options.select = select as FindOptionsSelect<SharedWorkflow>;
+
+		const where: FindOptionsWhere<SharedWorkflow> = { workflowId: In(workflowIds) };
+
+		if (role) where.role = role;
+
+		return this.find(options);
+	}
+
+	async findWorkflowIdsByUser(user: User, { roles }: { roles?: Role[] } = {}) {
+		const where: FindOptionsWhere<SharedWorkflow> = {};
+
+		if (!user.hasGlobalScope('workflow:read')) where.userId = user.id;
+
+		if (roles) where.role = In(roles.map((r) => r.id));
+
+		const sharings = await this.find({ select: ['workflowId'], where });
+
+		return sharings.map((s) => s.workflowId);
 	}
 }

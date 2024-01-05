@@ -31,8 +31,9 @@ export class ActiveWorkflowsService {
 			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const sharedWorkflowIds =
-			await this.sharedWorkflowRepository.getSharedWorkflowIds(activeWorkflowIds);
+		const sharings = await this.sharedWorkflowRepository.findByWorkflowIds(activeWorkflowIds);
+
+		const sharedWorkflowIds = sharings.map((s) => s.workflowId);
 		return sharedWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 	}
 

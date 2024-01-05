@@ -28,7 +28,6 @@ import history from 'connect-history-api-fallback';
 
 import config from '@/config';
 import { Queue } from '@/Queue';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
@@ -102,6 +101,7 @@ import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { SharedWorkflowRepository } from './databases/repositories/sharedWorkflow.repository';
 
 const exec = promisify(callbackExec);
 
@@ -444,7 +444,9 @@ export class Server extends AbstractServer {
 							},
 						};
 
-						const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+						const sharedWorkflowIds = await Container.get(
+							SharedWorkflowRepository,
+						).findWorkflowIdsByUser(req.user);
 
 						if (!sharedWorkflowIds.length) return [];
 
@@ -492,7 +494,9 @@ export class Server extends AbstractServer {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+					const sharedWorkflowIds = await Container.get(
+						SharedWorkflowRepository,
+					).findWorkflowIdsByUser(req.user);
 
 					for (const data of executingWorkflows) {
 						if (
@@ -525,7 +529,9 @@ export class Server extends AbstractServer {
 			ResponseHelper.send(async (req: ExecutionRequest.Stop): Promise<IExecutionsStopData> => {
 				const { id: executionId } = req.params;
 
-				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+				const sharedWorkflowIds = await Container.get(
+					SharedWorkflowRepository,
+				).findWorkflowIdsByUser(req.user);
 
 				if (!sharedWorkflowIds.length) {
 					throw new NotFoundError('Execution not found');

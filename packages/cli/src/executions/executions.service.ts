@@ -25,7 +25,6 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container, Service } from 'typedi';
@@ -35,6 +34,8 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { RoleRepository } from '@/databases/repositories/role.repository';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -93,14 +94,16 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
-		return getSharedWorkflowIds(user, ['owner']);
+		const roles = await Container.get(RoleRepository).findByName('owner');
+
+		return Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(user, { roles });
 	}
 
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
+			// (note: getWorkflowIdsForUser() returns _all_ workflow ids for global owners)
 			return {
 				count: 0,
 				estimated: false,
@@ -346,7 +349,7 @@ export class ExecutionsService {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
+			// (note: getWorkflowIdsForUser() returns _all_ workflow ids for global owners)
 			return;
 		}
 		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
