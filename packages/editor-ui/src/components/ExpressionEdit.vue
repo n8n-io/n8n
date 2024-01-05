@@ -50,7 +50,7 @@
 							<ExpressionEditorModalInput
 								ref="inputFieldExpression"
 								:model-value="modelValue"
-								:is-read-only="isReadOnlyRoute"
+								:is-read-only="isReadOnly"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
 								data-test-id="expression-modal-input"
@@ -87,8 +87,6 @@ import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -106,10 +104,40 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	mixins: [genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
+	mixins: [debounceHelper],
+	props: {
+		dialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object,
+			default: () => ({}),
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		eventSource: {
+			type: String,
+			default: '',
+		},
+		redactValues: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
 		const externalHooks = useExternalHooks();
+
 		return {
 			externalHooks,
 		};
