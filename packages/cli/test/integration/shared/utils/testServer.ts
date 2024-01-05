@@ -170,10 +170,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { handleLdapInit } = await import('@/Ldap/helpers');
+						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
 						const { LdapController } = await import('@/controllers/ldap.controller');
 						testServer.license.enable('feat:ldap');
-						await handleLdapInit();
+						await LdapManager.handleLdapInit();
 						registerController(app, LdapController);
 						break;
 

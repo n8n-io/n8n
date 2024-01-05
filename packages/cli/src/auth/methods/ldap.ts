@@ -1,7 +1,7 @@
 import { InternalHooks } from '@/InternalHooks';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
 import {
 	createLdapUserOnLocalDb,
-	findAndAuthenticateLdapUser,
 	getLdapConfig,
 	getLdapUserRole,
 	getUserByEmail,
@@ -26,7 +26,7 @@ export const handleLdapLogin = async (
 
 	const { loginIdAttribute, userFilter } = ldapConfig;
 
-	const ldapUser = await findAndAuthenticateLdapUser(
+	const ldapUser = await LdapManager.getInstance().service.findAndAuthenticateLdapUser(
 		loginId,
 		password,
 		loginIdAttribute,

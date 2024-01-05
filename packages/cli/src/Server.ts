@@ -70,7 +70,7 @@ import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
+import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -102,6 +102,8 @@ import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { LdapManager } from './Ldap/LdapManager.ee';
+import { Handlers } from '@sentry/node';
 
 const exec = promisify(callbackExec);
 
@@ -350,7 +352,7 @@ export class Server extends AbstractServer {
 			await Container.get(Queue).init();
 		}
 
-		await handleLdapInit();
+		await LdapManager.handleLdapInit();
 
 		await handleMfaDisable();
 

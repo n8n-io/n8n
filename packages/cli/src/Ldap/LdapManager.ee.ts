@@ -2,6 +2,9 @@ import { ApplicationError } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
 import { LdapSync } from './LdapSync.ee';
 import type { LdapConfig } from './types';
+import { getLdapConfig, isLdapEnabled, setGlobalLdapConfigVariables } from './helpers';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 
 export class LdapManager {
 	private static ldap: {
@@ -36,4 +39,24 @@ export class LdapManager {
 		this.ldap.service.config = config;
 		this.ldap.sync.config = config;
 	}
+
+	static handleLdapInit = async (): Promise<void> => {
+		if (!isLdapEnabled()) return;
+
+		const ldapConfig = await getLdapConfig();
+
+		try {
+			await setGlobalLdapConfigVariables(ldapConfig);
+		} catch (error) {
+			Container.get(Logger).warn(
+				`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				error,
+			);
+		}
+
+		// init LDAP manager with the current
+		// configuration
+		LdapManager.init(ldapConfig);
+	};
 }

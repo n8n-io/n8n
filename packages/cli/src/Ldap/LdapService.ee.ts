@@ -1,10 +1,19 @@
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import type { LdapConfig } from './types';
-import { formatUrl, getMappingAttributes } from './helpers';
+import {
+	createFilter,
+	escapeFilter,
+	formatUrl,
+	getMappingAttributes,
+	resolveEntryBinaryAttributes,
+} from './helpers';
 import { BINARY_AD_ATTRIBUTES } from './constants';
 import type { ConnectionOptions } from 'tls';
 import { ApplicationError } from 'n8n-workflow';
+import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
+import { Logger } from '@/Logger';
 
 export class LdapService {
 	private client: Client | undefined;
@@ -95,6 +104,67 @@ export class LdapService {
 			await this.client.unbind();
 		}
 	}
+
+	/**
+	 * Find and authenticate user in the LDAP server.
+	 */
+	findAndAuthenticateLdapUser = async (
+		loginId: string,
+		password: string,
+		loginIdAttribute: string,
+		userFilter: string,
+	): Promise<LdapUser | undefined> => {
+		// Search for the user with the administrator binding using the
+		// the Login ID attribute and whatever was inputted in the UI's
+		// email input.
+		let searchResult: LdapUser[] = [];
+
+		try {
+			searchResult = await this.searchWithAdminBinding(
+				createFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
+			);
+		} catch (e) {
+			if (e instanceof Error) {
+				void Container.get(InternalHooks).onLdapLoginSyncFailed({
+					error: e.message,
+				});
+				Container.get(Logger).error('LDAP - Error during search', { message: e.message });
+			}
+			return undefined;
+		}
+
+		if (!searchResult.length) {
+			return undefined;
+		}
+
+		// In the unlikely scenario that more than one user is found (
+		// can happen depending on how the LDAP database is structured
+		// and the LDAP configuration), return the last one found as it
+		// should be the less important in the hierarchy.
+		let user = searchResult.pop();
+
+		if (user === undefined) {
+			user = { dn: '' };
+		}
+
+		try {
+			// Now with the user distinguished name (unique identifier
+			// for the user) and the password, attempt to validate the
+			// user by binding
+			await this.validUser(user.dn, password);
+		} catch (e) {
+			if (e instanceof Error) {
+				Container.get(Logger).error('LDAP - Error validating user against LDAP server', {
+					message: e.message,
+				});
+			}
+			return undefined;
+		}
+
+		resolveEntryBinaryAttributes(user);
+
+		return user;
+	};
 
 	/**
 	 * Attempt binding with the administrator credentials, to test the connection
