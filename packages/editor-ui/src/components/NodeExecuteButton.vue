@@ -12,9 +12,10 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="isFormTriggerNode && 'flask'"
+					:icon="!isListeningForEvents && 'flask'"
 					:transparent-background="transparent"
 					@click="onClick"
+					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 				/>
 			</div>
 		</n8n-tooltip>
@@ -33,20 +34,21 @@ import {
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { workflowRun } from '@/mixins/workflowRun';
-import { pinData } from '@/mixins/pinData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 export default defineComponent({
-	mixins: [workflowRun, pinData],
+	mixins: [workflowRun],
 	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,
+			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -70,10 +72,14 @@ export default defineComponent({
 		},
 	},
 	setup(props, ctx) {
+		const workflowsStore = useWorkflowsStore();
+		const node = workflowsStore.getNodeByName(props.nodeName);
+		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
 
 		return {
 			externalHooks,
+			pinnedData,
 			...useToast(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -192,16 +198,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (
-				this.isTriggerNode &&
-				!this.isScheduleTrigger &&
-				!this.isManualTriggerNode &&
-				!this.isFormTriggerNode
-			) {
-				return this.$locale.baseText('ndv.execute.listenForEvent');
-			}
-
-			return this.$locale.baseText('ndv.execute.executeNode');
+			return this.$locale.baseText('ndv.execute.testNode');
 		},
 	},
 	methods: {
@@ -221,7 +218,7 @@ export default defineComponent({
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
-				if (this.hasPinData) {
+				if (this.pinnedData.hasData.value) {
 					const confirmResult = await this.confirm(
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
@@ -233,11 +230,11 @@ export default defineComponent({
 					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
 					if (shouldUnpinAndExecute && this.node) {
-						this.unsetPinData(this.node, 'unpin-and-execute-modal');
+						this.pinnedData.unsetData('unpin-and-execute-modal');
 					}
 				}
 
-				if (!this.hasPinData || shouldUnpinAndExecute) {
+				if (!this.pinnedData.hasData.value || shouldUnpinAndExecute) {
 					const telemetryPayload = {
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,

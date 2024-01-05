@@ -243,7 +243,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			return false;
 		},
-		getPinData(): IPinData | undefined {
+		pinnedWorkflowData(): IPinData | undefined {
 			return this.workflow.pinData;
 		},
 		shouldReplaceInputDataWithPinData(): boolean {
@@ -347,7 +347,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				nodeTypes,
 				settings: this.workflowSettings,
 				// @ts-ignore
-				pinData: this.getPinData,
+				pinData: this.pinnedWorkflowData,
 			});
 
 			return cachedWorkflow;

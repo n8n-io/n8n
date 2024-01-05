@@ -84,7 +84,6 @@ import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type {
 	ITemplatesCollection,
 	ITemplatesWorkflow,
@@ -118,7 +117,7 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
-	mixins: [genericHelpers, debounceHelper],
+	mixins: [debounceHelper],
 	setup() {
 		return {
 			...useToast(),

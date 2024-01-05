@@ -57,6 +57,7 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
+export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -161,6 +162,8 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
+export const EXTRACT_FROM_FILE_NODE_TYPE = 'n8n-nodes-base.extractFromFile';
+export const CONVERT_TO_FILE_NODE_TYPE = 'n8n-nodes-base.convertToFile';
 export const DATETIME_NODE_TYPE = 'n8n-nodes-base.dateTime';
 export const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
 export const SPLIT_OUT_NODE_TYPE = 'n8n-nodes-base.splitOut';
@@ -172,6 +175,8 @@ export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
 export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
 export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
+export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
+export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -453,6 +458,8 @@ export const enum VIEWS {
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
 }
+
+export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',

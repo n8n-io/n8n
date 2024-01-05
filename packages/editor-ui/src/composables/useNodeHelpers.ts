@@ -118,7 +118,7 @@ export function useNodeHelpers() {
 		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowsStore.getPinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowsStore.pinnedWorkflowData ?? {});
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -549,7 +549,6 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		// TODO: Is this problematic?
 		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
 			data = taskData.inputOverride!;

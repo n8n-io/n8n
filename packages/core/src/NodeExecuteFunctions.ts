@@ -115,6 +115,7 @@ import {
 	ExecutionBaseError,
 	jsonParse,
 	ApplicationError,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -1006,19 +1007,29 @@ export function assertBinaryData(
 		const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
 
 		if (binaryKeyData === undefined) {
-			throw new NodeOperationError(node, 'No binary data exists on item!', {
-				itemIndex,
-			});
+			throw new NodeOperationError(
+				node,
+				`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: 'Make sure that the previous node outputs a binary file',
+				},
+			);
 		}
 
 		binaryPropertyData = binaryKeyData[propertyName];
 	}
-	// get()
 
 	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description:
+					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+			},
+		);
 	}
 
 	return binaryPropertyData;
@@ -2769,6 +2780,9 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (paginationOptions.requestInterval) {
+						await sleep(paginationOptions.requestInterval);
+					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
 						// via "requestOptions.simple = false" to not by default fail if it is for example

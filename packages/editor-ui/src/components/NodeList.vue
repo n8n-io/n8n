@@ -15,7 +15,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { ITemplatesNode } from '@/Interface';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 
@@ -24,7 +23,6 @@ export default defineComponent({
 	components: {
 		NodeIcon,
 	},
-	mixins: [genericHelpers],
 	props: {
 		nodes: {
 			type: Array,
