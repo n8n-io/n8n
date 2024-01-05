@@ -5,6 +5,7 @@ import type { LdapConfig } from './types';
 import { getLdapConfig, isLdapEnabled, setGlobalLdapConfigVariables } from './helpers';
 import Container from 'typedi';
 import { Logger } from '@/Logger';
+import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 export class LdapManager {
 	private static ldap: {
