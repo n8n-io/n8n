@@ -15,7 +15,7 @@
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
 			@closeDialog="closeExpressionEditDialog"
-			@update:modelValue="expressionUpdated"
+			@update:model-value="expressionUpdated"
 		></ExpressionEdit>
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 			<ResourceLocator
@@ -34,7 +34,7 @@
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -50,7 +50,7 @@
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
-				@update:modelValue="expressionUpdated"
+				@update:model-value="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -62,23 +62,60 @@
 				"
 			>
 				<el-dialog
-					v-if="codeEditDialogVisible"
-					:model-value="true"
+					:model-value="codeEditDialogVisible"
 					append-to-body
-					:close-on-click-modal="false"
 					width="80%"
 					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
+					data-test-id="code-editor-fullscreen"
 				>
-					<div class="ignore-key-press">
+					<div :key="codeEditDialogVisible" class="ignore-key-press code-edit-dialog">
 						<CodeNodeEditor
+							v-if="editorType === 'codeNodeEditor'"
 							:model-value="modelValue"
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
-							@update:modelValue="expressionUpdated"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+						<HtmlEditor
+							v-else-if="editorType === 'htmlEditor'"
+							:model-value="modelValue"
+							:is-read-only="isReadOnly"
+							:rows="getArgument('rows')"
+							:disable-expression-coloring="!isHtmlNode(node)"
+							:disable-expression-completions="!isHtmlNode(node)"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+						<SqlEditor
+							v-else-if="editorType === 'sqlEditor'"
+							:model-value="modelValue"
+							:dialect="getArgument('sqlDialect')"
+							:is-read-only="isReadOnly"
+							:rows="getArgument('rows')"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+						<JsEditor
+							v-else-if="editorType === 'jsEditor'"
+							:model-value="modelValue"
+							:is-read-only="isReadOnly"
+							:rows="getArgument('rows')"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+
+						<JsonEditor
+							v-else-if="parameter.type === 'json'"
+							:model-value="modelValue"
+							:is-read-only="isReadOnly"
+							:rows="getArgument('rows')"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
 				</el-dialog>
@@ -90,11 +127,12 @@
 					:path="path"
 					:is-read-only="isReadOnly"
 					@closeDialog="closeTextEditDialog"
-					@update:modelValue="expressionUpdated"
+					@update:model-value="expressionUpdated"
 				></TextEdit>
 
 				<CodeNodeEditor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
+					:key="codeEditDialogVisible"
 					:mode="node.parameters.mode"
 					:model-value="modelValue"
 					:default-value="parameter.default"
@@ -102,43 +140,102 @@
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					@update:modelValue="valueChangedDebounced"
-				/>
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</CodeNodeEditor>
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
 					:disable-expression-coloring="!isHtmlNode(node)"
 					:disable-expression-completions="!isHtmlNode(node)"
-					@update:modelValue="valueChangedDebounced"
-				/>
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</HtmlEditor>
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:modelValue="valueChangedDebounced"
-				/>
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</SqlEditor>
 
 				<JsEditor
 					v-else-if="editorType === 'jsEditor'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:modelValue="valueChangedDebounced"
-				/>
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</JsEditor>
 
 				<JsonEditor
 					v-else-if="parameter.type === 'json'"
+					:key="codeEditDialogVisible"
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:modelValue="valueChangedDebounced"
-				/>
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</JsonEditor>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<CodeNodeEditor
@@ -161,7 +258,7 @@
 					:disabled="isReadOnly"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
-					@update:modelValue="valueChanged($event) && onUpdateTextInput($event)"
+					@update:model-value="valueChanged($event) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -194,7 +291,7 @@
 					:show-alpha="getArgument('showAlpha')"
 					@focus="setFocus"
 					@blur="onBlur"
-					@update:modelValue="valueChanged"
+					@update:model-value="valueChanged"
 				/>
 				<n8n-input
 					v-model="tempValue"
@@ -202,7 +299,7 @@
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:modelValue="valueChanged"
+					@update:model-value="valueChanged"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -226,7 +323,7 @@
 				"
 				:picker-options="dateTimePickerOptions"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -245,7 +342,7 @@
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@update:modelValue="onUpdateTextInput"
+				@update:model-value="onUpdateTextInput"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -262,7 +359,7 @@
 				:is-read-only="isReadOnly"
 				:display-title="displayTitle"
 				@credentialSelected="credentialSelected"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
@@ -283,7 +380,7 @@
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -321,7 +418,7 @@
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				:placeholder="i18n.baseText('parameterInput.select')"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -358,7 +455,7 @@
 				active-color="#13ce66"
 				:model-value="displayValue"
 				:disabled="isReadOnly"
-				@update:modelValue="valueChanged"
+				@update:model-value="valueChanged"
 			/>
 		</div>
 
@@ -1056,7 +1153,7 @@ export default defineComponent({
 				return;
 			}
 
-			if (this.editorType) {
+			if (this.editorType || this.parameter.type === 'json') {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;
@@ -1417,5 +1514,13 @@ export default defineComponent({
 
 .invalid {
 	border-color: var(--color-danger);
+}
+
+.code-edit-dialog {
+	height: 70vh;
+
+	.code-node-editor {
+		height: 100%;
+	}
 }
 </style>

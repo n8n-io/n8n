@@ -115,6 +115,7 @@ import {
 	ExecutionBaseError,
 	jsonParse,
 	ApplicationError,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -2748,6 +2749,9 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (paginationOptions.requestInterval) {
+						await sleep(paginationOptions.requestInterval);
+					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
 						// via "requestOptions.simple = false" to not by default fail if it is for example

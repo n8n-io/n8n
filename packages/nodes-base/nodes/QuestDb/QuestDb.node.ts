@@ -63,7 +63,6 @@ export class QuestDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
