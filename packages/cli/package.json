@@ -113,7 +113,6 @@
     "bcryptjs": "2.4.3",
     "bull": "4.10.2",
     "cache-manager": "5.2.3",
-    "cache-manager-ioredis-yet": "1.2.2",
     "callsites": "3.1.0",
     "change-case": "4.1.2",
     "class-transformer": "0.5.1",

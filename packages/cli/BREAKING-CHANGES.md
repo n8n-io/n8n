@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.24.0
+
+### What changed?
+
+The flag `N8N_CACHE_ENABLED` was removed. The cache is now always enabled.
+
+### When is action necessary?
+
+If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
+
 ## 1.22.0
 
 ### What changed?

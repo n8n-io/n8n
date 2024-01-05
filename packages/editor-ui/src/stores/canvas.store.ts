@@ -40,6 +40,7 @@ import {
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
+import { useLoadingService } from '@/composables/useLoadingService';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -47,6 +48,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 	const sourceControlStore = useSourceControlStore();
+	const loadingService = useLoadingService();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -295,6 +297,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
+		isLoading: loadingService.isLoading,
+		startLoading: loadingService.startLoading,
+		setLoadingText: loadingService.setLoadingText,
+		stopLoading: loadingService.stopLoading,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
 		canvasPositionFromPagePosition,
