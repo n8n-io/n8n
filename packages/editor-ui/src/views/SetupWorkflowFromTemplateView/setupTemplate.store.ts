@@ -1,4 +1,3 @@
-import sortBy from 'lodash-es/sortBy';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
@@ -7,22 +6,13 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
-import type { ICredentialsResponse, INodeUi, IWorkflowTemplateNode } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import type {
-	TemplateCredentialKey,
-	TemplateNodeWithRequiredCredential,
-} from '@/utils/templates/templateTransforms';
-import {
-	getNodesRequiringCredentials,
-	keyFromCredentialTypeAndName,
-	normalizeTemplateNodeCredentials,
-} from '@/utils/templates/templateTransforms';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -35,130 +25,20 @@ export type RequiredCredentials = {
 	credentialType: string;
 };
 
-export type CredentialUsages = {
-	/**
-	 * Key is a combination of the credential name and the credential type name,
-	 * e.g. "twitter-twitterOAuth1Api"
-	 */
-	key: TemplateCredentialKey;
-	credentialName: string;
-	credentialType: string;
-	nodeTypeName: string;
-	usedBy: IWorkflowTemplateNode[];
-};
-
-export type AppCredentials = {
-	appName: string;
-	credentials: CredentialUsages[];
-};
-
 export type AppCredentialCount = {
 	appName: string;
 	count: number;
 };
-
-//#region Getter functions
-
-export const groupNodeCredentialsByKey = (
-	nodeWithRequiredCredentials: TemplateNodeWithRequiredCredential[],
-) => {
-	const credentialsByTypeName = new Map<TemplateCredentialKey, CredentialUsages>();
-
-	for (const { node, requiredCredentials } of nodeWithRequiredCredentials) {
-		const normalizedNodeCreds = node.credentials
-			? normalizeTemplateNodeCredentials(node.credentials)
-			: {};
-
-		for (const credentialDescription of requiredCredentials) {
-			const credentialType = credentialDescription.name;
-			const nodeCredentialName = normalizedNodeCreds[credentialDescription.name] ?? '';
-			const key = keyFromCredentialTypeAndName(credentialType, nodeCredentialName);
-
-			let credentialUsages = credentialsByTypeName.get(key);
-			if (!credentialUsages) {
-				credentialUsages = {
-					key,
-					nodeTypeName: node.type,
-					credentialName: nodeCredentialName,
-					credentialType,
-					usedBy: [],
-				};
-				credentialsByTypeName.set(key, credentialUsages);
-			}
-
-			credentialUsages.usedBy.push(node);
-		}
-	}
-
-	return credentialsByTypeName;
-};
-
-export const getAppCredentials = (
-	credentialUsages: CredentialUsages[],
-	getAppNameByNodeType: (nodeTypeName: string, version?: number) => string,
-) => {
-	const credentialsByAppName = new Map<string, AppCredentials>();
-
-	for (const credentialUsage of credentialUsages) {
-		const nodeTypeName = credentialUsage.nodeTypeName;
-
-		const appName = getAppNameByNodeType(nodeTypeName) ?? nodeTypeName;
-		const appCredentials = credentialsByAppName.get(appName);
-		if (appCredentials) {
-			appCredentials.credentials.push(credentialUsage);
-		} else {
-			credentialsByAppName.set(appName, {
-				appName,
-				credentials: [credentialUsage],
-			});
-		}
-	}
-
-	return Array.from(credentialsByAppName.values());
-};
-
-export const getAppsRequiringCredentials = (
-	credentialUsagesByName: Map<string, CredentialUsages>,
-	getAppNameByNodeType: (nodeTypeName: string, version?: number) => string,
-) => {
-	const credentialsByAppName = new Map<string, AppCredentialCount>();
-
-	for (const credentialUsage of credentialUsagesByName.values()) {
-		const node = credentialUsage.usedBy[0];
-
-		const appName = getAppNameByNodeType(node.type, node.typeVersion) ?? node.type;
-		const appCredentials = credentialsByAppName.get(appName);
-		if (appCredentials) {
-			appCredentials.count++;
-		} else {
-			credentialsByAppName.set(appName, {
-				appName,
-				count: 1,
-			});
-		}
-	}
-
-	return Array.from(credentialsByAppName.values());
-};
-
-//#endregion Getter functions
 
 /**
  * Store for managing the state of the SetupWorkflowFromTemplateView
  */
 export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	//#region State
+
 	const templateId = ref<string>('');
 	const isLoading = ref(true);
 	const isSaving = ref(false);
-
-	/**
-	 * Credentials user has selected from the UI. Map from credential
-	 * name in the template to the credential ID.
-	 */
-	const selectedCredentialIdByKey = ref<
-		Record<CredentialUsages['key'], ICredentialsResponse['id']>
-	>({});
 
 	//#endregion State
 
@@ -174,55 +54,21 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		return templateId.value ? templatesStore.getFullTemplateById(templateId.value) : null;
 	});
 
-	const nodesRequiringCredentialsSorted = computed(() => {
-		const nodesWithCredentials = template.value
-			? getNodesRequiringCredentials(nodeTypesStore, template.value)
-			: [];
-
-		// Order by the X coordinate of the node
-		return sortBy(nodesWithCredentials, ({ node }) => node.position[0]);
+	const templateNodes = computed(() => {
+		return template.value?.workflow.nodes ?? [];
 	});
 
-	const appNameByNodeType = (nodeTypeName: string, version?: number) => {
-		const nodeType = nodeTypesStore.getNodeType(nodeTypeName, version);
-
-		return nodeType ? getAppNameFromNodeName(nodeType.displayName) : nodeTypeName;
-	};
-
-	const credentialsByKey = computed(() => {
-		return groupNodeCredentialsByKey(nodesRequiringCredentialsSorted.value);
-	});
-
-	const credentialUsages = computed(() => {
-		return Array.from(credentialsByKey.value.values());
-	});
-
-	const appCredentials = computed(() => {
-		return getAppCredentials(credentialUsages.value, appNameByNodeType);
-	});
-
-	const credentialOverrides = computed(() => {
-		const overrides: Record<TemplateCredentialKey, INodeCredentialsDetails> = {};
-
-		for (const [key, credentialId] of Object.entries(selectedCredentialIdByKey.value)) {
-			const credential = credentialsStore.getCredentialById(credentialId);
-			if (!credential) {
-				continue;
-			}
-
-			// Object.entries fails to give the more accurate key type
-			overrides[key as TemplateCredentialKey] = {
-				id: credentialId,
-				name: credential.name,
-			};
-		}
-
-		return overrides;
-	});
-
-	const numFilledCredentials = computed(() => {
-		return Object.keys(selectedCredentialIdByKey.value).length;
-	});
+	const {
+		appCredentials,
+		credentialOverrides,
+		credentialUsages,
+		credentialsByKey,
+		nodesRequiringCredentialsSorted,
+		numFilledCredentials,
+		selectedCredentialIdByKey,
+		setSelectedCredentialId,
+		unsetSelectedCredential,
+	} = useCredentialSetupState(templateNodes);
 
 	//#endregion Getters
 
@@ -368,14 +214,6 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		} finally {
 			isSaving.value = false;
 		}
-	};
-
-	const setSelectedCredentialId = (credentialKey: TemplateCredentialKey, credentialId: string) => {
-		selectedCredentialIdByKey.value[credentialKey] = credentialId;
-	};
-
-	const unsetSelectedCredential = (credentialKey: TemplateCredentialKey) => {
-		delete selectedCredentialIdByKey.value[credentialKey];
 	};
 
 	//#endregion Actions

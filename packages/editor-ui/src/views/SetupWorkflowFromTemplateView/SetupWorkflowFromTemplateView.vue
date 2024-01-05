@@ -104,7 +104,10 @@ onMounted(async () => {
 		<template #content>
 			<div :class="$style.grid">
 				<div :class="$style.notice" data-test-id="info-callout">
-					<AppsRequiringCredsNotice v-if="isReady" />
+					<AppsRequiringCredsNotice
+						v-if="isReady"
+						:app-credentials="setupTemplateStore.appCredentials"
+					/>
 					<n8n-loading v-else variant="p" />
 				</div>
 
@@ -116,6 +119,18 @@ onMounted(async () => {
 							:class="$style.appCredential"
 							:order="index + 1"
 							:credentials="credentials"
+							:selected-credential-id="
+								setupTemplateStore.selectedCredentialIdByKey[credentials.key]
+							"
+							@credential-selected="
+								setupTemplateStore.setSelectedCredentialId(
+									$event.credentialUsageKey,
+									$event.credentialId,
+								)
+							"
+							@credential-deselected="
+								setupTemplateStore.unsetSelectedCredential($event.credentialUsageKey)
+							"
 						/>
 					</ol>
 					<div v-else :class="$style.appCredentialsContainer">
