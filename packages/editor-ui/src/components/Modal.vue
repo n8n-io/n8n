@@ -227,6 +227,7 @@ export default defineComponent({
 
 	.modal-content {
 		overflow: hidden;
+		overflow-y: auto;
 		flex-grow: 1;
 	}
 
