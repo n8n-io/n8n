@@ -4,7 +4,7 @@ import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } fro
 import { usePostHog } from '@/stores/posthog.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
@@ -21,6 +21,10 @@ const showButton = computed(() => {
 const handleClick = () => {
 	uiStore.openModal(SETUP_CREDENTIALS_MODAL_KEY);
 };
+
+onBeforeUnmount(() => {
+	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
+});
 </script>
 
 <template>
