@@ -85,6 +85,8 @@ try {
 	}
 } catch (e) {}
 
+export type UiStore = ReturnType<typeof useUIStore>;
+
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
@@ -421,17 +423,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				return name !== openModalName;
 			});
 		},
-		closeAllModals(): void {
-			Object.keys(this.modals).forEach((name) => {
-				if (this.modals[name].open) {
-					this.modals[name] = {
-						...this.modals[name],
-						open: false,
-					};
-				}
-			});
-			this.modalStack = [];
-		},
 		draggableStartDragging(type: string, data: string): void {
 			this.draggable = {
 				isDragging: true,
@@ -630,3 +621,44 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForModalChanges = (opts: {
+	store: UiStore;
+	onModalOpened?: (name: keyof Modals) => void;
+	onModalClosed?: (name: keyof Modals) => void;
+}): void => {
+	const { store, onModalClosed, onModalOpened } = opts;
+	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
+
+	store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async () => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'openModal': {
+					const modalName = args[0];
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'openModalWithData': {
+					const { name: modalName } = args[0] ?? {};
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'closeModal': {
+					const modalName = args[0];
+					onModalClosed?.(modalName);
+					break;
+				}
+			}
+		});
+	});
+};
