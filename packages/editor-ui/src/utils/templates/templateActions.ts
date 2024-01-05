@@ -37,7 +37,10 @@ export async function createWorkflowFromTemplate(opts: {
 		nodes,
 		connections,
 		active: false,
-		// Ignored: pinData, settings, tags, versionId, meta
+		meta: {
+			templateId: template.id.toString(),
+		},
+		// Ignored: pinData, settings, tags, versionId
 	};
 
 	const createdWorkflow = await workflowsStore.createNewWorkflow(workflowToCreate);
