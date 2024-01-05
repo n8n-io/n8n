@@ -140,6 +140,8 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 		if (role) where.role = role;
 
+		options.where = where;
+
 		return this.find(options);
 	}
 
