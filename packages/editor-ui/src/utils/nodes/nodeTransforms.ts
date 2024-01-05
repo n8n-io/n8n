@@ -31,3 +31,12 @@ export function getNodeTypeDisplayableCredentials(
 
 	return displayableCredentials;
 }
+
+export function doesNodeHaveCredentialsToFill(
+	nodeTypeProvider: NodeTypeProvider,
+	node: Pick<INodeUi, 'parameters' | 'type' | 'typeVersion'>,
+): boolean {
+	const requiredCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
+
+	return requiredCredentials.length > 0;
+}
