@@ -74,7 +74,7 @@
     }
   ],
   "pinData": {
-    "When clicking \"Execute Workflow\"": [
+    "When clicking \"Test Workflow\"": [
       {
         "json": {
           "id": "654cfa05fa51480dcb543b1a",

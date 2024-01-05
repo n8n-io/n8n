@@ -91,7 +91,7 @@
   ],
   "pinData": {},
   "connections": {
-    "When clicking \"Execute Workflow\"": {
+    "When clicking \"Test Workflow\"": {
       "main": [
         [
           {
