@@ -151,6 +151,14 @@ export const useCredentialSetupState = <TNode extends BaseNode>(nodes: Ref<TNode
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 
+	const appNameByNodeType = (nodeTypeName: string, version?: number) => {
+		const nodeType = nodeTypesStore.getNodeType(nodeTypeName, version);
+
+		return nodeType ? getAppNameFromNodeName(nodeType.displayName) : nodeTypeName;
+	};
+
+	//#region Computed
+
 	const nodesRequiringCredentialsSorted = computed(() => {
 		const nodesWithCredentials = nodes.value
 			? getNodesRequiringCredentials(nodeTypesStore, nodes.value)
@@ -159,12 +167,6 @@ export const useCredentialSetupState = <TNode extends BaseNode>(nodes: Ref<TNode
 		// Order by the X coordinate of the node
 		return sortBy(nodesWithCredentials, ({ node }) => node.position[0]);
 	});
-
-	const appNameByNodeType = (nodeTypeName: string, version?: number) => {
-		const nodeType = nodeTypesStore.getNodeType(nodeTypeName, version);
-
-		return nodeType ? getAppNameFromNodeName(nodeType.displayName) : nodeTypeName;
-	};
 
 	const credentialsByKey = computed(() => {
 		return groupNodeCredentialsByKey(nodesRequiringCredentialsSorted.value);
@@ -200,6 +202,8 @@ export const useCredentialSetupState = <TNode extends BaseNode>(nodes: Ref<TNode
 	const numFilledCredentials = computed(() => {
 		return Object.keys(selectedCredentialIdByKey.value).length;
 	});
+
+	//#endregion Computed
 
 	//#region Actions
 

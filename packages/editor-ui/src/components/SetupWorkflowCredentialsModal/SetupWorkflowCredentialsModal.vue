@@ -31,9 +31,9 @@ onMounted(() => {
 <template>
 	<Modal width="900px" max-height="90%" :name="props.modalName">
 		<template #header>
-			<n8n-heading tag="h2" size="xlarge">
+			<N8nHeading tag="h2" size="xlarge">
 				{{ i18n.baseText('setupCredentialsModal.title') }}
-			</n8n-heading>
+			</N8nHeading>
 		</template>
 
 		<template #content>
