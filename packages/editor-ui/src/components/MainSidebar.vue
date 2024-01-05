@@ -500,7 +500,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			void this.callDebounced(this.onResizeEnd as DebouncedFunction, { debounceTime: 100 }, event);
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);
 		},
 		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

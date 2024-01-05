@@ -48,7 +48,7 @@ export function useClipboard(
 		}
 	}
 
-	const debouncedOnPaste = debounce(onPaste as DebouncedFunction, {
+	const debouncedOnPaste = debounce(onPaste, {
 		debounceTime: 1000,
 	});
 

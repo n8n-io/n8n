@@ -1415,11 +1415,7 @@ export default defineComponent({
 					return;
 				}
 
-				void this.callDebounced(
-					this.onSaveKeyboardShortcut as DebouncedFunction,
-					{ debounceTime: 1000 },
-					e,
-				);
+				void this.callDebounced(this.onSaveKeyboardShortcut, { debounceTime: 1000 }, e);
 
 				return;
 			}
@@ -1464,11 +1460,7 @@ export default defineComponent({
 				.filter((node) => !!node) as INode[];
 
 			if (e.key === 'd' && noModifierKeys && !readOnly) {
-				void this.callDebounced(
-					this.toggleActivationNodes as DebouncedFunction,
-					{ debounceTime: 350 },
-					selectedNodes,
-				);
+				void this.callDebounced(this.toggleActivationNodes, { debounceTime: 350 }, selectedNodes);
 			} else if (e.key === 'd' && ctrlModifier && !readOnly) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
@@ -1483,11 +1475,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced(
-					this.deleteNodes as DebouncedFunction,
-					{ debounceTime: 500 },
-					selectedNodes,
-				);
+				void this.callDebounced(this.deleteNodes, { debounceTime: 500 }, selectedNodes);
 			} else if (e.key === 'Tab' && noModifierKeys && !readOnly) {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
@@ -1505,7 +1493,7 @@ export default defineComponent({
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 					void this.callDebounced(
-						this.renameNodePrompt as DebouncedFunction,
+						this.renameNodePrompt,
 						{ debounceTime: 1500 },
 						lastSelectedNode.name,
 					);
@@ -1515,23 +1503,15 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced(this.selectAllNodes as DebouncedFunction, { debounceTime: 1000 });
+				void this.callDebounced(this.selectAllNodes, { debounceTime: 1000 });
 			} else if (e.key === 'c' && ctrlModifier) {
-				void this.callDebounced(
-					this.copyNodes as DebouncedFunction,
-					{ debounceTime: 1000 },
-					selectedNodes,
-				);
+				void this.callDebounced(this.copyNodes, { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'x' && ctrlModifier && !readOnly) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced(
-					this.cutNodes as DebouncedFunction,
-					{ debounceTime: 1000 },
-					selectedNodes,
-				);
+				void this.callDebounced(this.cutNodes, { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'n' && ctrlAltModifier) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1568,7 +1548,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced(this.selectDownstreamNodes as DebouncedFunction, {
+				void this.callDebounced(this.selectDownstreamNodes, {
 					debounceTime: 1000,
 				});
 			} else if (e.key === 'ArrowRight' && noModifierKeys) {
@@ -1587,7 +1567,7 @@ export default defineComponent({
 				}
 
 				void this.callDebounced(
-					this.nodeSelectedByName as DebouncedFunction,
+					this.nodeSelectedByName,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1598,7 +1578,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced(this.selectUpstreamNodes as DebouncedFunction, {
+				void this.callDebounced(this.selectUpstreamNodes, {
 					debounceTime: 1000,
 				});
 			} else if (e.key === 'ArrowLeft' && noModifierKeys) {
@@ -1621,7 +1601,7 @@ export default defineComponent({
 				}
 
 				void this.callDebounced(
-					this.nodeSelectedByName as DebouncedFunction,
+					this.nodeSelectedByName,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1693,7 +1673,7 @@ export default defineComponent({
 
 				if (nextSelectNode !== null) {
 					void this.callDebounced(
-						this.nodeSelectedByName as DebouncedFunction,
+						this.nodeSelectedByName,
 						{ debounceTime: 100 },
 						nextSelectNode,
 						false,
@@ -3050,7 +3030,7 @@ export default defineComponent({
 		},
 		onDragMove() {
 			const totalNodes = this.nodes.length;
-			void this.callDebounced(this.updateConnectionsOverlays as DebouncedFunction, {
+			void this.callDebounced(this.updateConnectionsOverlays, {
 				debounceTime: totalNodes > 20 ? 200 : 0,
 			});
 		},

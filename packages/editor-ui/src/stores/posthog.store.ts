@@ -118,7 +118,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
 	};
-	const trackExperimentsDebounced = debounce(trackExperiments as DebouncedFunction, {
+	const trackExperimentsDebounced = debounce(trackExperiments, {
 		debounceTime: 2000,
 	});
 

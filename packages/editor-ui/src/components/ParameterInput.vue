@@ -1246,7 +1246,7 @@ export default defineComponent({
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			void this.callDebounced(this.valueChanged as DebouncedFunction, { debounceTime: 100 }, value);
+			void this.callDebounced(this.valueChanged, { debounceTime: 100 }, value);
 		},
 		onUpdateTextInput(value: string) {
 			this.valueChanged(value);

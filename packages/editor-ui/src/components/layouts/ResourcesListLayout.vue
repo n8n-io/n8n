@@ -408,7 +408,7 @@ export default defineComponent({
 		},
 		'filtersModel.search'() {
 			void this.callDebounced(
-				this.sendFiltersTelemetry as DebouncedFunction,
+				this.sendFiltersTelemetry,
 				{ debounceTime: 1000, trailing: true },
 				'search',
 			);

@@ -37,7 +37,7 @@ const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
-const debouncedEmit = debounce(emit as DebouncedFunction, {
+const debouncedEmit = debounce(emit, {
 	debounceTime: 500,
 });
 

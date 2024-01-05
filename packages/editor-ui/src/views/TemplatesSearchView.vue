@@ -266,7 +266,7 @@ export default defineComponent({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			void this.callDebounced(this.updateSearch as DebouncedFunction, {
+			void this.callDebounced(this.updateSearch, {
 				debounceTime: 500,
 				trailing: true,
 			});

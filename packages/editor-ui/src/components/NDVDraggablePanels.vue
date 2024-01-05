@@ -348,11 +348,7 @@ export default defineComponent({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				void this.callDebounced(
-					this.onResize as DebouncedFunction,
-					{ debounceTime: 10, trailing: true },
-					data,
-				);
+				void this.callDebounced(this.onResize, { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {

@@ -87,7 +87,7 @@ export default defineComponent({
 	},
 	methods: {
 		onResize() {
-			void this.callDebounced(this.onResizeEnd as DebouncedFunction, { debounceTime: 50 });
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 50 });
 		},
 		async onResizeEnd() {
 			this.width = window.innerWidth;

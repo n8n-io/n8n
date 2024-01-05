@@ -196,7 +196,7 @@ export default defineComponent({
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.callDebounced(this.updateDisplayValue as DebouncedFunction, {
+				void this.callDebounced(this.updateDisplayValue, {
 					debounceTime: 500,
 				});
 			}

@@ -681,11 +681,7 @@ export default defineComponent({
 		},
 
 		onClick(event: MouseEvent) {
-			void this.callDebounced(
-				this.onClickDebounced as DebouncedFunction,
-				{ debounceTime: 50, trailing: true },
-				event,
-			);
+			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {

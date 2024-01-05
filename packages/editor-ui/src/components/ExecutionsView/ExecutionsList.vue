@@ -234,7 +234,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.callDebounced(this.loadMore as DebouncedFunction, { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

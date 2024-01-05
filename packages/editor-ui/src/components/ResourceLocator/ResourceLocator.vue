@@ -642,7 +642,7 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.callDebounced(this.loadResources as DebouncedFunction, {
+			void this.callDebounced(this.loadResources, {
 				debounceTime: 1000,
 				trailing: true,
 			});

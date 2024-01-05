@@ -10,9 +10,12 @@ export type DebouncedFunction<R = void> = (...args: unknown[]) => Promise<R> | R
 
 export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
-	const debounceCache = ref(new WeakMap<DebouncedFunction, DebouncedFunction>());
+	const debounceCache = ref(new WeakMap<DebouncedFunction<unknown>, DebouncedFunction<unknown>>());
 
-	const debounce = <T extends DebouncedFunction>(fn: T, options: DebounceOptions): T => {
+	const debounce = <T extends DebouncedFunction<ReturnType<T>>>(
+		fn: T,
+		options: DebounceOptions,
+	): T => {
 		const { trailing, debounceTime } = options;
 
 		// Check if a debounced version of the function is already stored in the WeakMap.
@@ -34,7 +37,7 @@ export function useDebounce() {
 		return debouncedFn as T;
 	};
 
-	const callDebounced = <T extends DebouncedFunction = DebouncedFunction>(
+	const callDebounced = <T extends DebouncedFunction<ReturnType<T>>>(
 		fn: T,
 		options: DebounceOptions,
 		...inputParameters: Parameters<T>
