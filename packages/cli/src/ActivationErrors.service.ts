@@ -1,10 +1,5 @@
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import { jsonParse } from 'n8n-workflow';
-
-type ActivationErrors = {
-	[workflowId: string]: string; // error message
-};
 
 @Service()
 export class ActivationErrorsService {
@@ -12,38 +7,28 @@ export class ActivationErrorsService {
 
 	constructor(private readonly cacheService: CacheService) {}
 
-	async set(workflowId: string, errorMessage: string) {
-		const errors = await this.getAll();
-
-		errors[workflowId] = errorMessage;
-
-		await this.cacheService.set(this.cacheKey, JSON.stringify(errors));
+	async register(workflowId: string, errorMessage: string) {
+		await this.cacheService.setHash(this.cacheKey, { [workflowId]: errorMessage });
 	}
 
-	async unset(workflowId: string) {
-		const errors = await this.getAll();
-
-		if (Object.keys(errors).length === 0) return;
-
-		delete errors[workflowId];
-
-		await this.cacheService.set(this.cacheKey, JSON.stringify(errors));
+	async deregister(workflowId: string) {
+		await this.cacheService.deleteFromHash(this.cacheKey, workflowId);
 	}
 
 	async get(workflowId: string) {
-		const errors = await this.getAll();
+		const activationError = await this.cacheService.getHashValue<string>(this.cacheKey, workflowId);
 
-		if (Object.keys(errors).length === 0) return null;
+		if (!activationError) return null;
 
-		return errors[workflowId];
+		return activationError;
 	}
 
 	async getAll() {
-		const errors = await this.cacheService.get<string>(this.cacheKey);
+		const activationErrors = await this.cacheService.getHash<string>(this.cacheKey);
 
-		if (!errors) return {};
+		if (!activationErrors) return {};
 
-		return jsonParse<ActivationErrors>(errors);
+		return activationErrors;
 	}
 
 	async clearAll() {
