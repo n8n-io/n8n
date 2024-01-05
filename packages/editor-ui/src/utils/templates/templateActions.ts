@@ -1,4 +1,9 @@
-import type { INodeUi, IWorkflowData, IWorkflowTemplate } from '@/Interface';
+import type {
+	INodeUi,
+	ITemplatesWorkflowFull,
+	IWorkflowData,
+	IWorkflowTemplate,
+} from '@/Interface';
 import { getNewWorkflow } from '@/api/workflows';
 import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
 import type { useRootStore } from '@/stores/n8nRoot.store';
@@ -7,9 +12,19 @@ import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
-import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
+import {
+	getNodesRequiringCredentials,
+	replaceAllTemplateNodeCredentials,
+} from '@/utils/templates/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
+import type { TemplatesStore } from '@/stores/templates.store';
+import type { NodeTypesStore } from '@/stores/nodeTypes.store';
+import type { Telemetry } from '@/plugins/telemetry';
+import type { useExternalHooks } from '@/composables/useExternalHooks';
+import { assert } from '@/utils/assert';
+
+type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
 /**
  * Creates a new workflow from a template
@@ -49,33 +64,114 @@ export async function createWorkflowFromTemplate(opts: {
 }
 
 /**
- * Opens the template credential setup view (or workflow view
- * if the feature flag is disabled)
+ * Opens the template credential setup view
  */
-export async function openTemplateCredentialSetup(opts: {
-	posthogStore: PosthogStore;
+async function openTemplateCredentialSetup(opts: {
 	templateId: string;
 	router: Router;
 	inNewBrowserTab?: boolean;
 }) {
-	const { router, templateId, inNewBrowserTab = false, posthogStore } = opts;
+	const { router, templateId, inNewBrowserTab = false } = opts;
 
-	const routeLocation: RouteLocationRaw = posthogStore.isFeatureEnabled(
-		TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
-	)
-		? {
-				name: VIEWS.TEMPLATE_SETUP,
-				params: { id: templateId },
-		  }
-		: {
-				name: VIEWS.TEMPLATE_IMPORT,
-				params: { id: templateId },
-		  };
+	const routeLocation: RouteLocationRaw = {
+		name: VIEWS.TEMPLATE_SETUP,
+		params: { id: templateId },
+	};
 
 	if (inNewBrowserTab) {
 		const route = router.resolve(routeLocation);
 		window.open(route.href, '_blank');
 	} else {
 		await router.push(routeLocation);
+	}
+}
+
+/**
+ * Opens the given template's workflow on NodeView. Fires necessary
+ * telemetry events.
+ */
+async function openTemplateWorkflowOnNodeView(opts: {
+	externalHooks: ExternalHooks;
+	templateId: string;
+	templatesStore: TemplatesStore;
+	router: Router;
+	inNewBrowserTab?: boolean;
+	telemetry: Telemetry;
+}) {
+	const { externalHooks, templateId, templatesStore, telemetry, inNewBrowserTab, router } = opts;
+	const routeLocation: RouteLocationRaw = {
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: templateId },
+	};
+	const telemetryPayload = {
+		source: 'workflow',
+		template_id: templateId,
+		wf_template_repo_session_id: templatesStore.currentSessionId,
+	};
+
+	telemetry.track('User inserted workflow template', telemetryPayload, {
+		withPostHog: true,
+	});
+	await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
+
+	if (inNewBrowserTab) {
+		const route = router.resolve(routeLocation);
+		window.open(route.href, '_blank');
+	} else {
+		await router.push(routeLocation);
+	}
+}
+
+function hasTemplateCredentials(
+	nodeTypeProvider: NodeTypeProvider,
+	template: ITemplatesWorkflowFull,
+) {
+	const nodesRequiringCreds = getNodesRequiringCredentials(nodeTypeProvider, template);
+
+	return nodesRequiringCreds.length > 0;
+}
+
+async function getFullTemplate(templatesStore: TemplatesStore, templateId: string) {
+	const template = templatesStore.getFullTemplateById(templateId);
+	if (template) {
+		return template;
+	}
+
+	await templatesStore.fetchTemplateById(templateId);
+	return templatesStore.getFullTemplateById(templateId);
+}
+
+/**
+ * Uses the given template by opening the template workflow on NodeView
+ * or the template credential setup view. Fires necessary telemetry events.
+ */
+export async function useTemplateWorkflow(opts: {
+	externalHooks: ExternalHooks;
+	nodeTypesStore: NodeTypesStore;
+	posthogStore: PosthogStore;
+	templateId: string;
+	templatesStore: TemplatesStore;
+	router: Router;
+	inNewBrowserTab?: boolean;
+	telemetry: Telemetry;
+}) {
+	const { nodeTypesStore, posthogStore, templateId, templatesStore } = opts;
+
+	const openCredentialSetup = posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT);
+	if (!openCredentialSetup) {
+		await openTemplateWorkflowOnNodeView(opts);
+		return;
+	}
+
+	const [template] = await Promise.all([
+		getFullTemplate(templatesStore, templateId),
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+	]);
+	assert(template);
+
+	if (hasTemplateCredentials(nodeTypesStore, template)) {
+		await openTemplateCredentialSetup(opts);
+	} else {
+		await openTemplateWorkflowOnNodeView(opts);
 	}
 }
