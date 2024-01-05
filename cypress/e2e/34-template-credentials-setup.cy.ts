@@ -106,6 +106,22 @@ describe('Template credentials setup', () => {
 		cy.wait('@createWorkflow');
 
 		workflowPage.getters.canvasNodes().should('have.length', 3);
+
+		// Focus the canvas so the copy to clipboard works
+		workflowPage.getters.canvasNodes().eq(0).realClick();
+		workflowPage.actions.selectAll();
+		workflowPage.actions.hitCopy();
+
+		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
+		// Check workflow JSON by copying it to clipboard
+		cy.readClipboard().then((workflowJSON) => {
+			const workflow = JSON.parse(workflowJSON);
+
+			expect(workflow.meta).to.haveOwnProperty('templateId', testTemplate.id.toString());
+			workflow.nodes.forEach((node: any) => {
+				expect(Object.keys(node.credentials ?? {})).to.have.lengthOf(1);
+			});
+		});
 	});
 
 	it('should work with a template that has no credentials (ADO-1603)', () => {
