@@ -22,6 +22,7 @@ export class TimescaleDb implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'timescaleDb',
