@@ -126,10 +126,10 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	async findWithFields(candidateIds: string[], { fields }: { fields: string[] }) {
+	async findWithFields(workflowIds: string[], { fields }: { fields: string[] }) {
 		return this.find({
 			where: {
-				workflowId: In(candidateIds),
+				workflowId: In(workflowIds),
 			},
 			select: fields as FindOptionsSelect<SharedWorkflow>,
 		});
