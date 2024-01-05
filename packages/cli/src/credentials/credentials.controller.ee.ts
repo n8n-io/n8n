@@ -10,7 +10,6 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
@@ -38,10 +37,10 @@ EECredentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		let credential = (await EECredentials.get(
-			{ id: credentialId },
-			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as CredentialsEntity;
+		let credential = await Container.get(CredentialsRepository).findOne({
+			where: { id: credentialId },
+			relations: ['shared', 'shared.role', 'shared.user'],
+		});
 
 		if (!credential) {
 			throw new NotFoundError(

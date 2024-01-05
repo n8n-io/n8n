@@ -35,6 +35,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import type { RoleNames } from '@/databases/entities/Role';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { CredentialsService } from '../credentials/credentials.service';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export const workflowsController = express.Router();
 
@@ -428,7 +429,10 @@ workflowsController.put(
 			);
 
 			if (newShareeIds.length) {
-				await Container.get(EnterpriseWorkflowService).share(trx, workflow!, newShareeIds);
+				const users = await Container.get(UserRepository).getByIds(trx, newShareeIds);
+				const role = await Container.get(RoleService).findWorkflowEditorRole();
+
+				await Container.get(SharedWorkflowRepository).share(trx, workflow!, users, role.id);
 			}
 		});
 
