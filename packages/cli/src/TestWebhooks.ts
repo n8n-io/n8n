@@ -24,6 +24,7 @@ import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found
 import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 @Service()
 export class TestWebhooks implements IWebhookManager {
@@ -185,6 +186,7 @@ export class TestWebhooks implements IWebhookManager {
 	 * For every webhook call to listen for, also activate the webhook.
 	 */
 	async needsWebhook(
+		userId: string,
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		sessionId?: string,
@@ -219,15 +221,17 @@ export class TestWebhooks implements IWebhookManager {
 			webhook.isTest = true;
 
 			/**
-			 * Remove additional data from webhook because:
-			 *
-			 * - It is not needed for the test webhook to be executed.
-			 * - It contains circular refs that cannot be cached.
+			 * Additional data cannot be cached because of circular refs.
+			 * Hence store the `userId` and recreate additional data when needed.
 			 */
 			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
 
+			rest.userId = userId;
+
 			try {
 				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
+
+				workflowEntity.staticData = workflow.staticData;
 
 				await this.registrations.register({
 					sessionId,
@@ -341,6 +345,12 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
+			const { userId } = webhook;
+
+			if (userId) {
+				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+			}
+
 			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
 
 			await this.registrations.deregister(webhook);
@@ -358,7 +368,7 @@ export class TestWebhooks implements IWebhookManager {
 			connections: workflowEntity.connections,
 			active: false,
 			nodeTypes: this.nodeTypes,
-			staticData: undefined,
+			staticData: workflowEntity.staticData,
 			settings: workflowEntity.settings,
 		});
 	}

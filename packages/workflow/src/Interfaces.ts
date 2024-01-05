@@ -1664,6 +1664,7 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	userId?: string;
 }
 
 export interface IWebhookDescription {
