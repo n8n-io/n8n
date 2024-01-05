@@ -16,7 +16,7 @@ import { LdapConfiguration } from '@/Ldap/types';
 import { LDAP_FEATURE_NAME, NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ApplicationError } from '../../../workflow/src';
+import { ApplicationError } from 'n8n-workflow';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import Container from 'typedi';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
