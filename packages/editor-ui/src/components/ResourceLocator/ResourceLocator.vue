@@ -6,9 +6,9 @@
 	>
 		<ResourceLocatorDropdown
 			ref="dropdown"
+			v-on-click-outside="hideResourceDropdown"
 			:model-value="modelValue ? modelValue.value : ''"
 			:show="resourceDropdownVisible"
-			v-on-click-outside="hideResourceDropdown"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"

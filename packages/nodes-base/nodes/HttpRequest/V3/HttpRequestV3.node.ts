@@ -1143,6 +1143,23 @@ export class HttpRequestV3 implements INodeType {
 											default: 100,
 											description: 'Maximum amount of request to be make',
 										},
+										{
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											displayName: 'Interval Between Requests (ms)',
+											name: 'requestInterval',
+											type: 'number',
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											default: 0,
+											description: 'Time in milliseconds to wait between requests',
+											hint: 'At 0 no delay will be added',
+											typeOptions: {
+												minValue: 0,
+											},
+										},
 									],
 								},
 							],
@@ -1272,6 +1289,7 @@ export class HttpRequestV3 implements INodeType {
 			completeExpression: string;
 			limitPagesFetched: boolean;
 			maxRequests: number;
+			requestInterval: number;
 		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -1653,6 +1671,7 @@ export class HttpRequestV3 implements INodeType {
 				const paginationData: PaginationOptions = {
 					continue: continueExpression,
 					request: {},
+					requestInterval: pagination.requestInterval,
 				};
 
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {

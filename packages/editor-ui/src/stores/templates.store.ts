@@ -28,6 +28,8 @@ function getSearchKey(query: ITemplatesQuery): string {
 	return JSON.stringify([query.search || '', [...query.categories].sort()]);
 }
 
+export type TemplatesStore = ReturnType<typeof useTemplatesStore>;
+
 export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 	state: (): ITemplateState => ({
 		categories: {},

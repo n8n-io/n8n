@@ -5,18 +5,18 @@ import { BulkCommand, Command } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 
-import { onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue';
+import { onMounted, onUnmounted, nextTick } from 'vue';
 import { useDebounceHelper } from './useDebounce';
 import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import type { Route } from 'vue-router';
+import { useTelemetry } from './useTelemetry';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
 
 export function useHistoryHelper(activeRoute: Route) {
-	const instance = getCurrentInstance();
-	const telemetry = instance?.proxy.$telemetry;
+	const telemetry = useTelemetry();
 
 	const ndvStore = useNDVStore();
 	const historyStore = useHistoryStore();
@@ -85,9 +85,9 @@ export function useHistoryHelper(activeRoute: Route) {
 
 	function trackCommand(command: Undoable, type: 'undo' | 'redo'): void {
 		if (command instanceof Command) {
-			telemetry?.track(`User hit ${type}`, { commands_length: 1, commands: [command.name] });
+			telemetry.track(`User hit ${type}`, { commands_length: 1, commands: [command.name] });
 		} else if (command instanceof BulkCommand) {
-			telemetry?.track(`User hit ${type}`, {
+			telemetry.track(`User hit ${type}`, {
 				commands_length: command.commands.length,
 				commands: command.commands.map((c) => c.name),
 			});
