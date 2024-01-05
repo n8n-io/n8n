@@ -10,7 +10,6 @@ import type { IWorkflowDb, WebhookRequest } from '@/Interfaces';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
-	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -18,6 +17,7 @@ import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
 } from '@/services/test-webhook-registrations.service';
+import type { User } from '@/databases/entities/User';
 
 describe('TestWebhooks', () => {
 	const registrations = mock<TestWebhookRegistrationsService>();
@@ -37,17 +37,19 @@ describe('TestWebhooks', () => {
 		workflowId,
 	});
 
+	const userId = '04ab4baf-85df-478f-917b-d303934a97de';
+
 	describe('needsWebhook()', () => {
 		type NeedsWebhookArgs = [
+			User['id'],
 			IWorkflowDb,
 			IWorkflowExecuteAdditionalData,
 			WorkflowExecuteMode,
 			WorkflowActivateMode,
 		];
 
-		const workflow = mock<Workflow>({ id: workflowId });
-
 		const args: NeedsWebhookArgs = [
+			userId,
 			mock<IWorkflowDb>({ id: workflowId, nodes: [] }),
 			mock<IWorkflowExecuteAdditionalData>(),
 			'manual',
