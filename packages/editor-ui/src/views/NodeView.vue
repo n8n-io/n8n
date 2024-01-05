@@ -126,7 +126,7 @@
 							:loading="workflowRunning"
 							:label="runButtonText"
 							size="large"
-							icon="play-circle"
+							icon="flask"
 							type="primary"
 							:disabled="isExecutionDisabled"
 							data-test-id="execute-workflow-button"
