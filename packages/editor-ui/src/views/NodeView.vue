@@ -97,6 +97,11 @@
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<Suspense>
+				<div :class="$style.setupCredentialsButtonWrapper">
+					<SetupWorkflowCredentialsButton />
+				</div>
+			</Suspense>
+			<Suspense>
 				<NodeCreation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
@@ -381,6 +386,10 @@ interface AddNodeOptions {
 
 const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
 const CanvasControls = defineAsyncComponent(async () => import('@/components/CanvasControls.vue'));
+const SetupWorkflowCredentialsButton = defineAsyncComponent(
+	async () =>
+		import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+);
 
 export default defineComponent({
 	name: 'NodeView',
@@ -393,6 +402,7 @@ export default defineComponent({
 		NodeCreation,
 		CanvasControls,
 		ContextMenu,
+		SetupWorkflowCredentialsButton,
 	},
 	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper],
 	async beforeRouteLeave(to, from, next) {
@@ -5179,5 +5189,11 @@ export default defineComponent({
 	60% {
 		transform: translate3d(4px, 0, 0);
 	}
+}
+
+.setupCredentialsButtonWrapper {
+	position: absolute;
+	left: 35px;
+	top: var(--spacing-s);
 }
 </style>
