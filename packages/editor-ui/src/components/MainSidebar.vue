@@ -122,6 +122,7 @@ import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
@@ -134,11 +135,11 @@ export default defineComponent({
 	mixins: [userHelpers],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
-			debounce,
+			callDebounced,
 			...useMessage(),
 		};
 	},
@@ -499,7 +500,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			void this.debounce('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced(this.onResizeEnd as DebouncedFunction, { debounceTime: 100 }, event);
 		},
 		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

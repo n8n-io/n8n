@@ -173,6 +173,7 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface IResourceLocatorQuery {
@@ -268,9 +269,9 @@ export default defineComponent({
 		};
 	},
 	setup() {
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
-		return { debounce };
+		return { callDebounced };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
@@ -641,7 +642,10 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.debounce('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced(this.loadResources as DebouncedFunction, {
+				debounceTime: 1000,
+				trailing: true,
+			});
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {

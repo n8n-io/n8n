@@ -371,6 +371,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface AddNodeOptions {
@@ -465,7 +466,7 @@ export default defineComponent({
 		const clipboard = useClipboard();
 		const { activeNode } = storeToRefs(ndvStore);
 		const pinnedData = usePinnedData(activeNode);
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
 			locale,
@@ -475,7 +476,7 @@ export default defineComponent({
 			externalHooks,
 			clipboard,
 			pinnedData,
-			debounce,
+			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -1414,7 +1415,11 @@ export default defineComponent({
 					return;
 				}
 
-				void this.debounce('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+				void this.callDebounced(
+					this.onSaveKeyboardShortcut as DebouncedFunction,
+					{ debounceTime: 1000 },
+					e,
+				);
 
 				return;
 			}
@@ -1459,7 +1464,11 @@ export default defineComponent({
 				.filter((node) => !!node) as INode[];
 
 			if (e.key === 'd' && noModifierKeys && !readOnly) {
-				void this.debounce('toggleActivationNodes', { debounceTime: 350 }, selectedNodes);
+				void this.callDebounced(
+					this.toggleActivationNodes as DebouncedFunction,
+					{ debounceTime: 350 },
+					selectedNodes,
+				);
 			} else if (e.key === 'd' && ctrlModifier && !readOnly) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
@@ -1474,7 +1483,11 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.debounce('deleteNodes', { debounceTime: 500 }, selectedNodes);
+				void this.callDebounced(
+					this.deleteNodes as DebouncedFunction,
+					{ debounceTime: 500 },
+					selectedNodes,
+				);
 			} else if (e.key === 'Tab' && noModifierKeys && !readOnly) {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
@@ -1491,22 +1504,34 @@ export default defineComponent({
 			} else if (e.key === 'F2' && noModifierKeys && !readOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
-					void this.debounce('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
+					void this.callDebounced(
+						this.renameNodePrompt as DebouncedFunction,
+						{ debounceTime: 1500 },
+						lastSelectedNode.name,
+					);
 				}
 			} else if (e.key === 'a' && ctrlModifier) {
 				// Select all nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.debounce('selectAllNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectAllNodes as DebouncedFunction, { debounceTime: 1000 });
 			} else if (e.key === 'c' && ctrlModifier) {
-				void this.debounce('copyNodes', { debounceTime: 1000 }, selectedNodes);
+				void this.callDebounced(
+					this.copyNodes as DebouncedFunction,
+					{ debounceTime: 1000 },
+					selectedNodes,
+				);
 			} else if (e.key === 'x' && ctrlModifier && !readOnly) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.debounce('cutNodes', { debounceTime: 1000 }, selectedNodes);
+				void this.callDebounced(
+					this.cutNodes as DebouncedFunction,
+					{ debounceTime: 1000 },
+					selectedNodes,
+				);
 			} else if (e.key === 'n' && ctrlAltModifier) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1543,7 +1568,9 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.debounce('selectDownstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectDownstreamNodes as DebouncedFunction, {
+					debounceTime: 1000,
+				});
 			} else if (e.key === 'ArrowRight' && noModifierKeys) {
 				// Set child node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1559,8 +1586,8 @@ export default defineComponent({
 					return;
 				}
 
-				void this.debounce(
-					'nodeSelectedByName',
+				void this.callDebounced(
+					this.nodeSelectedByName as DebouncedFunction,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1571,7 +1598,9 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.debounce('selectUpstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectUpstreamNodes as DebouncedFunction, {
+					debounceTime: 1000,
+				});
 			} else if (e.key === 'ArrowLeft' && noModifierKeys) {
 				// Set parent node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1591,8 +1620,8 @@ export default defineComponent({
 					return;
 				}
 
-				void this.debounce(
-					'nodeSelectedByName',
+				void this.callDebounced(
+					this.nodeSelectedByName as DebouncedFunction,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1663,8 +1692,8 @@ export default defineComponent({
 				}
 
 				if (nextSelectNode !== null) {
-					void this.debounce(
-						'nodeSelectedByName',
+					void this.callDebounced(
+						this.nodeSelectedByName as DebouncedFunction,
 						{ debounceTime: 100 },
 						nextSelectNode,
 						false,
@@ -3021,7 +3050,7 @@ export default defineComponent({
 		},
 		onDragMove() {
 			const totalNodes = this.nodes.length;
-			void this.debounce('updateConnectionsOverlays', {
+			void this.callDebounced(this.updateConnectionsOverlays as DebouncedFunction, {
 				debounceTime: totalNodes > 20 ? 200 : 0,
 			});
 		},

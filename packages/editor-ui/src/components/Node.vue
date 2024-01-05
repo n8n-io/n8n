@@ -186,6 +186,7 @@ import { type ContextMenuTarget, useContextMenu } from '@/composables/useContext
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
@@ -217,9 +218,9 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const node = workflowsStore.getNodeByName(props.name);
 		const pinnedData = usePinnedData(node);
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
-		return { contextMenu, externalHooks, nodeHelpers, pinnedData, debounce };
+		return { contextMenu, externalHooks, nodeHelpers, pinnedData, callDebounced };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -680,7 +681,11 @@ export default defineComponent({
 		},
 
 		onClick(event: MouseEvent) {
-			void this.debounce('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced(
+				this.onClickDebounced as DebouncedFunction,
+				{ debounceTime: 50, trailing: true },
+				event,
+			);
 		},
 
 		onClickDebounced(event: MouseEvent) {

@@ -8,11 +8,11 @@ describe('useDebounce()', () => {
 	const TestComponent = {
 		template: `
       <div>
-				<button @click="debounce(mockFn, { debounceTime,  })">
+				<button @click="callDebounced(mockFn, { debounceTime,  })">
 					Click me
 				</button>
 
-				<button @click="debounce(mockFn, { debounceTime, trailing: true })">
+				<button @click="callDebounced(mockFn, { debounceTime, trailing: true })">
 					Click me trailing
 				</button>
 			</div>
@@ -24,9 +24,9 @@ describe('useDebounce()', () => {
 		},
 		setup() {
 			vitest.useFakeTimers();
-			const { debounce } = useDebounce();
+			const { callDebounced } = useDebounce();
 			return {
-				debounce,
+				callDebounced,
 				debounceTime,
 			};
 		},

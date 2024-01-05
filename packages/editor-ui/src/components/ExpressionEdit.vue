@@ -93,6 +93,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';
@@ -136,10 +137,10 @@ export default defineComponent({
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
-			debounce,
+			callDebounced,
 			externalHooks,
 		};
 	},
@@ -195,7 +196,9 @@ export default defineComponent({
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.debounce('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced(this.updateDisplayValue as DebouncedFunction, {
+					debounceTime: 500,
+				});
 			}
 		},
 

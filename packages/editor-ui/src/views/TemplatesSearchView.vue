@@ -99,6 +99,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface ISearchEvent {
@@ -118,10 +119,10 @@ export default defineComponent({
 		TemplatesView,
 	},
 	setup() {
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
-			debounce,
+			callDebounced,
 			...useToast(),
 		};
 	},
@@ -265,7 +266,10 @@ export default defineComponent({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			void this.debounce('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced(this.updateSearch as DebouncedFunction, {
+				debounceTime: 500,
+				trailing: true,
+			});
 
 			if (search.length === 0) {
 				this.trackSearch();

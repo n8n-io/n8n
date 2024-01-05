@@ -22,11 +22,11 @@ export function useHistoryHelper(activeRoute: Route) {
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
 
-	const { debounce } = useDebounce();
+	const { callDebounced } = useDebounce();
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const undo = async () =>
-		debounce(
+		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToUndo();
 				if (!command) {
@@ -55,7 +55,7 @@ export function useHistoryHelper(activeRoute: Route) {
 		);
 
 	const redo = async () =>
-		debounce(
+		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToRedo();
 				if (!command) {

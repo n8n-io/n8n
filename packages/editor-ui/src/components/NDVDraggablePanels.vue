@@ -56,6 +56,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;
@@ -93,6 +94,11 @@ export default defineComponent({
 			default: () => ({}),
 		},
 	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
+	},
 	data(): {
 		windowWidth: number;
 		isDragging: boolean;
@@ -105,11 +111,6 @@ export default defineComponent({
 			MIN_PANEL_WIDTH,
 			initialized: false,
 		};
-	},
-	setup() {
-		const { debounce } = useDebounce();
-
-		return { debounce };
 	},
 	mounted() {
 		this.setTotalWidth();
@@ -347,7 +348,11 @@ export default defineComponent({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				void this.debounce('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced(
+					this.onResize as DebouncedFunction,
+					{ debounceTime: 10, trailing: true },
+					data,
+				);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {

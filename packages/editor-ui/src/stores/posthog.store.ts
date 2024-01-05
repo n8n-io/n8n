@@ -8,7 +8,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
-import { debounce } from 'lodash-es';
+import type { DebouncedFunction } from '@/composables/useDebounce';
+import { useDebounce } from '@/composables/useDebounce';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
@@ -21,6 +22,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
+	const { debounce } = useDebounce();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -116,7 +118,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
 	};
-	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
+	const trackExperimentsDebounced = debounce(trackExperiments as DebouncedFunction, {
+		debounceTime: 2000,
+	});
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {

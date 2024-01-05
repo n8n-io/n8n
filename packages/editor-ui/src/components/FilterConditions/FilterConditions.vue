@@ -39,7 +39,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const { debounce } = useDebounce();
+const { callDebounced } = useDebounce();
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
@@ -97,7 +97,7 @@ watch(
 );
 
 watch(state.paramValue, (value) => {
-	void debounce(
+	void callDebounced(
 		() => {
 			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
 		},

@@ -68,6 +68,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 // Number of execution pages that are fetched before temporary execution card is shown
@@ -83,11 +84,11 @@ export default defineComponent({
 	mixins: [executionHelpers, workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
-			debounce,
+			callDebounced,
 			...useToast(),
 			...useMessage(),
 		};
@@ -233,7 +234,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.debounce('loadMore', { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore as DebouncedFunction, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

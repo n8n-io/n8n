@@ -197,6 +197,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
+import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export interface IResource {
@@ -288,11 +289,11 @@ export default defineComponent({
 	},
 	setup() {
 		const i18n = useI18n();
-		const { debounce } = useDebounce();
+		const { callDebounced } = useDebounce();
 
 		return {
 			i18n,
-			debounce,
+			callDebounced,
 		};
 	},
 	data() {
@@ -406,7 +407,11 @@ export default defineComponent({
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filtersModel.search'() {
-			void this.debounce('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
+			void this.callDebounced(
+				this.sendFiltersTelemetry as DebouncedFunction,
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
 		sortBy(newValue) {
 			this.$emit('sort', newValue);
