@@ -66,11 +66,12 @@ import type {
 } from '@/Interface';
 
 import { setPageTitle } from '@/utils/htmlUtils';
-import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
@@ -152,23 +153,15 @@ export default defineComponent({
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		async onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
-			if (this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
-				const telemetryPayload = {
-					template_id: id,
-					wf_template_repo_session_id: this.templatesStore.currentSessionId,
-					source: 'collection',
-				};
-				await this.externalHooks.run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-					withPostHog: true,
-				});
-			}
-
-			await openTemplateCredentialSetup({
+			await useTemplateWorkflow({
 				posthogStore: this.posthogStore,
 				router: this.$router,
 				templateId: id,
 				inNewBrowserTab: event.metaKey || event.ctrlKey,
+				templatesStore: useTemplatesStore(),
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
 			});
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {

@@ -8,28 +8,21 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import type {
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import type {
-	ICredentialsResponse,
-	INodeUi,
-	ITemplatesWorkflowFull,
-	IWorkflowTemplateNode,
-} from '@/Interface';
+import type { INodeCredentialsDetails, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialsResponse, INodeUi, IWorkflowTemplateNode } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
+import type {
+	TemplateCredentialKey,
+	TemplateNodeWithRequiredCredential,
+} from '@/utils/templates/templateTransforms';
 import {
+	getNodesRequiringCredentials,
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
-import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -64,34 +57,7 @@ export type AppCredentialCount = {
 	count: number;
 };
 
-export type TemplateNodeWithRequiredCredential = {
-	node: IWorkflowTemplateNode;
-	requiredCredentials: INodeCredentialDescription[];
-};
-
 //#region Getter functions
-
-/**
- * Returns the nodes in the template that require credentials
- * and the required credentials for each node.
- */
-export const getNodesRequiringCredentials = (
-	nodeTypeProvider: NodeTypeProvider,
-	template: ITemplatesWorkflowFull,
-): TemplateNodeWithRequiredCredential[] => {
-	if (!template) {
-		return [];
-	}
-
-	const nodesWithCredentials: TemplateNodeWithRequiredCredential[] = template.workflow.nodes
-		.map((node) => ({
-			node,
-			requiredCredentials: getNodeTypeDisplayableCredentials(nodeTypeProvider, node),
-		}))
-		.filter(({ requiredCredentials }) => requiredCredentials.length > 0);
-
-	return nodesWithCredentials;
-};
 
 export const groupNodeCredentialsByKey = (
 	nodeWithRequiredCredentials: TemplateNodeWithRequiredCredential[],
@@ -343,6 +309,9 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 
 		telemetry.track('User closed cred setup', {
 			completed: false,
+			creds_filled: 0,
+			creds_needed: credentialUsages.value.length,
+			workflow_id: null,
 		});
 
 		// Replace the URL so back button doesn't come back to this setup view
@@ -376,6 +345,19 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 
 			telemetry.track('User closed cred setup', {
 				completed: true,
+				creds_filled: numFilledCredentials.value,
+				creds_needed: credentialUsages.value.length,
+				workflow_id: createdWorkflow.id,
+			});
+
+			const telemetryPayload = {
+				source: 'workflow',
+				template_id: template.value.id,
+				wf_template_repo_session_id: templatesStore.currentSessionId,
+			};
+
+			telemetry.track('User inserted workflow template', telemetryPayload, {
+				withPostHog: true,
 			});
 
 			// Replace the URL so back button doesn't come back to this setup view
