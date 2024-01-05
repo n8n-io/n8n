@@ -317,7 +317,7 @@ const displayBinaryData = (index: number, key: string) => {
 .binary {
 	display: block;
 	padding-left: var(--spacing-2xs);
-	overflow: hidden;
+	// overflow: hidden;
 }
 
 .label {

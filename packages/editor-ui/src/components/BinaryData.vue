@@ -1,77 +1,95 @@
 <template>
-	<div
-		:title="fileType"
-		data-target="mappable"
-		:data-value="mappingData.path"
-		:data-name="mappingData.name"
-		:class="{
-			[$style.pill]: true,
-			[$style.mappable]: mappingEnabled,
-			[$style.dragged]: draggingPath === mappingData.value,
-		}"
-	>
-		<span :class="$style.label">
-			<n8n-tooltip placement="top">
-				<template #content>
-					<div>
-						<div v-if="binaryData.fileName">
-							<div>
-								<n8n-text size="small" :bold="true"
-									>{{ $locale.baseText('runData.fileName') }}:
-								</n8n-text>
-							</div>
-							<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
-						</div>
-						<div v-if="binaryData.directory">
-							<div>
-								<n8n-text size="small" :bold="true"
-									>{{ $locale.baseText('runData.directory') }}:
-								</n8n-text>
-							</div>
-							<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
-						</div>
-						<div v-if="binaryData.fileExtension">
-							<div>
-								<n8n-text size="small" :bold="true"
-									>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
-								>
-							</div>
-							<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
-						</div>
-						<div v-if="binaryData.mimeType">
-							<div>
-								<n8n-text size="small" :bold="true"
-									>{{ $locale.baseText('runData.mimeType') }}:
-								</n8n-text>
-							</div>
-							<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
-						</div>
-						<div v-if="binaryData.fileSize">
-							<div>
-								<n8n-text size="small" :bold="true"
-									>{{ $locale.baseText('runData.fileSize') }}:
-								</n8n-text>
-							</div>
-							<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
-						</div>
+	<span>
+		<div
+			:title="fileType"
+			data-target="mappable"
+			:data-value="mappingData.path"
+			:data-name="mappingData.name"
+			:class="{
+				[$style.pill]: true,
+				[$style.mappable]: mappingEnabled,
+				[$style.dragged]: draggingPath === mappingData.value,
+			}"
+		>
+			<span :class="$style.label">
+				<div :class="$style.iconWrapper">
+					<font-awesome-icon :icon="fileIcon" size="sm" />
 
-						<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
+					<div :class="$style.metadata">
+						<div
+							v-if="binaryData.fileName"
+							:class="$style.entry"
+							data-target="mappable"
+							:data-value="getMappablePath('fileName')"
+							:data-name="binaryData.fileName"
+						>
+							<n8n-text size="small" :bold="true"
+								>{{ $locale.baseText('runData.fileName') }}: </n8n-text
+							>{{ binaryData.fileName }}
+						</div>
+						<div
+							v-if="binaryData.directory"
+							:class="$style.entry"
+							data-target="mappable"
+							:data-value="getMappablePath('directory')"
+							:data-name="binaryData.directory"
+						>
+							<n8n-text size="small" :bold="true"
+								>{{ $locale.baseText('runData.directory') }}: </n8n-text
+							>{{ binaryData.directory }}
+						</div>
+						<div
+							v-if="binaryData.fileExtension"
+							:class="$style.entry"
+							data-target="mappable"
+							:data-value="getMappablePath('fileExtension')"
+							:data-name="binaryData.fileExtension"
+						>
+							<n8n-text size="small" :bold="true"
+								>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
+							>
+							{{ binaryData.fileExtension }}
+						</div>
+						<div
+							v-if="binaryData.mimeType"
+							:class="$style.entry"
+							data-target="mappable"
+							:data-value="getMappablePath('mimeType')"
+							:data-name="binaryData.mimeType"
+						>
+							<n8n-text size="small" :bold="true"
+								>{{ $locale.baseText('runData.mimeType') }}:
+							</n8n-text>
+							{{ binaryData.mimeType }}
+						</div>
+						<div
+							v-if="binaryData.fileSize"
+							:class="$style.entry"
+							data-target="mappable"
+							:data-value="getMappablePath('fileSize')"
+							:data-name="binaryData.fileSize"
+						>
+							<n8n-text size="small" :bold="true"
+								>{{ $locale.baseText('runData.fileSize') }}: </n8n-text
+							>{{ binaryData.fileSize }}
+						</div>
 					</div>
-				</template>
-				<font-awesome-icon :icon="fileIcon" size="sm" />
-			</n8n-tooltip>
-			<span>
-				{{ fileName }}
-				<font-awesome-icon
-					:class="$style.infoIcon"
-					icon="search"
-					title="Show Binary Data"
-					size="sm"
-					@click="displayBinaryData(itemIndex || 0, mappingData.path!)"
-				/>
+					<!-- <BinaryDataDisplayEmbed :binaryData="data.data" /> -->
+				</div>
+
+				<span>
+					{{ fileName }}
+					<font-awesome-icon
+						:class="$style.infoIcon"
+						icon="search"
+						title="Show Binary Data"
+						size="sm"
+						@click="displayBinaryData(itemIndex || 0, mappingData.path!)"
+					/>
+				</span>
 			</span>
-		</span>
-	</div>
+		</div>
+	</span>
 </template>
 
 <script lang="ts">
@@ -109,6 +127,9 @@ export default defineComponent({
 	methods: {
 		displayBinaryData(index: number, key: string) {
 			this.$emit('displayBinaryData', index, key);
+		},
+		getMappablePath(property: string) {
+			return `{{ $data["${this.mappingData.path}"].data.${property} }}`;
 		},
 	},
 	computed: {
@@ -155,6 +176,7 @@ export default defineComponent({
 	background-color: var(--color-background-light);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
+	position: relative;
 
 	span {
 		display: flex;
@@ -168,6 +190,25 @@ export default defineComponent({
 		}
 	}
 
+	.metadata {
+		background-color: var(--color-background-light);
+		border: 1px solid var(--color-foreground-xdark);
+		border-radius: 4px;
+		display: none;
+		font-size: var(--font-size-2xs);
+		padding: var(--spacing-3xs);
+		width: 200px;
+
+		position: absolute;
+		top: 21px;
+		left: -1px;
+
+		.entry {
+			display: inline-flex;
+			padding: 3px var(--spacing-3xs);
+		}
+	}
+
 	&.mappable {
 		cursor: grab;
 
@@ -176,6 +217,12 @@ export default defineComponent({
 			span span {
 				background-color: var(--color-background-default);
 				border-color: var(--color-foreground-xdark);
+			}
+
+			.entry:hover {
+				background-color: var(--color-background-default);
+				border: 1px solid var(--color-foreground-xdark);
+				border-radius: 4px;
 			}
 		}
 	}
@@ -193,6 +240,13 @@ export default defineComponent({
 					fill: var(--color-primary);
 				}
 			}
+		}
+	}
+
+	.iconWrapper:hover {
+		.metadata {
+			display: block;
+			z-index: 2;
 		}
 	}
 
