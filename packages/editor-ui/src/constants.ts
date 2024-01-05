@@ -458,6 +458,8 @@ export const enum VIEWS {
 	WORKER_VIEW = 'WorkerView',
 }
 
+export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
