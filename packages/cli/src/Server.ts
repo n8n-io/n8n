@@ -103,7 +103,6 @@ import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
-import { Handlers } from '@sentry/node';
 
 const exec = promisify(callbackExec);
 
