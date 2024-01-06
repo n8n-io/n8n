@@ -12,10 +12,7 @@ import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
-import {
-	getNodesRequiringCredentials,
-	replaceAllTemplateNodeCredentials,
-} from '@/utils/templates/templateTransforms';
+import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/stores/templates.store';
@@ -23,6 +20,7 @@ import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';
 import { assert } from '@/utils/assert';
+import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
 
 type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
@@ -126,9 +124,9 @@ function hasTemplateCredentials(
 	nodeTypeProvider: NodeTypeProvider,
 	template: ITemplatesWorkflowFull,
 ) {
-	const nodesRequiringCreds = getNodesRequiringCredentials(nodeTypeProvider, template);
-
-	return nodesRequiringCreds.length > 0;
+	return template.workflow.nodes.some((node) =>
+		doesNodeHaveCredentialsToFill(nodeTypeProvider, node),
+	);
 }
 
 async function getFullTemplate(templatesStore: TemplatesStore, templateId: string) {

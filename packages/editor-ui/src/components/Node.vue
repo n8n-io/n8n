@@ -112,7 +112,7 @@
 					text
 					icon="play"
 					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.executeNode')"
+					:title="$locale.baseText('node.testStep')"
 					@click="executeNode"
 				/>
 				<n8n-icon-button
