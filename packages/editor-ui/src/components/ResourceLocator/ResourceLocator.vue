@@ -148,7 +148,6 @@ import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { debounceHelper } from '@/mixins/debounce';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -174,6 +173,7 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -190,7 +190,7 @@ export default defineComponent({
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
-	mixins: [debounceHelper, workflowHelpers],
+	mixins: [workflowHelpers],
 	props: {
 		parameter: {
 			type: Object as PropType<INodeProperties>,
@@ -266,6 +266,11 @@ export default defineComponent({
 			hasCompletedASearch: false,
 			width: 0,
 		};
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
@@ -636,7 +641,10 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced(this.loadResources, {
+				debounceTime: 1000,
+				trailing: true,
+			});
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
