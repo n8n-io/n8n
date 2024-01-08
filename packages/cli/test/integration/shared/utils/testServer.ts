@@ -126,8 +126,8 @@ export const setupTestServer = ({
 						break;
 
 					case 'workflows':
-						const { workflowsController } = await import('@/workflows/workflows.controller');
-						app.use(`/${REST_PATH_SEGMENT}/workflows`, workflowsController);
+						const { WorkflowsController } = await import('@/workflows/workflows.controller');
+						registerController(app, WorkflowsController);
 						break;
 
 					case 'executions':

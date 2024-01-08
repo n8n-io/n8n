@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import type { CredentialRequest } from '@/requests';
-import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
+import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
@@ -14,6 +14,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import * as utils from '@/utils';
 
 export const EECredentialsController = express.Router();
 
@@ -165,7 +166,7 @@ EECredentialsController.put(
 			const sharings = await EECredentials.getSharings(trx, credentialId);
 
 			// extract the new sharings that need to be added
-			newShareeIds = rightDiff(
+			newShareeIds = utils.rightDiff(
 				[sharings, (sharing) => sharing.userId],
 				[shareWithIds, (shareeId) => shareeId],
 			);
