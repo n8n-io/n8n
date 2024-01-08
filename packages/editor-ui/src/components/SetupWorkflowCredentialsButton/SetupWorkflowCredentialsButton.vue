@@ -65,6 +65,8 @@ onBeforeUnmount(() => {
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		size="large"
+		icon="box-open"
+		type="secondary"
 		@click="handleClick()"
 	/>
 </template>
