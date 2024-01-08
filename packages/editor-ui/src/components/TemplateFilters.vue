@@ -57,7 +57,7 @@ export default defineComponent({
 		},
 		categories: {
 			type: Array as PropType<TemplateCategoryFilter[]>,
-			default: [],
+			default: () => [],
 		},
 		expandLimit: {
 			type: Number,
@@ -68,7 +68,7 @@ export default defineComponent({
 		},
 		selected: {
 			type: Array,
-			default: [],
+			default: () => [],
 		},
 	},
 	data() {

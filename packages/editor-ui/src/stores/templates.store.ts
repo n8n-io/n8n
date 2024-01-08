@@ -288,7 +288,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			this.addWorkflows(payload.workflows);
 			this.setCategories(payload.filters);
 			this.addWorkflowsSearch({ ...payload, query });
-			this.totalTemplateCount = payload.out_of
+			this.totalTemplateCount = payload.out_of;
 			return this.getSearchedWorkflows(query) || [];
 		},
 		setCategories(facets: TemplateSearchFacet[]): void {
