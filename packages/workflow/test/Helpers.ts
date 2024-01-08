@@ -652,7 +652,7 @@ class NodeTypesClass implements INodeTypes {
 		return this.nodeTypes[nodeType].type;
 	}
 
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
 }

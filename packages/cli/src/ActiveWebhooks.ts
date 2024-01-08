@@ -42,12 +42,15 @@ export class ActiveWebhooks implements IWebhookManager {
 		});
 
 		const nodes = workflowData?.nodes;
-		const webhookNode = nodes?.find(
-			({ type, parameters, typeVersion }) =>
+		const webhookNode = nodes?.find(({ type, parameters, typeVersion }) => {
+			const nodeType = this.nodeTypes.getByNameAndVersion(type, typeVersion);
+			return (
 				parameters?.path === path &&
 				(parameters?.httpMethod ?? 'GET') === httpMethod &&
-				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
-		);
+				nodeType &&
+				'webhook' in nodeType
+			);
+		});
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
 

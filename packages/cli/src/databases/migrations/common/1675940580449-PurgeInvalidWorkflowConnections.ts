@@ -22,7 +22,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 				const nodesThatCannotReceiveInput = nodes.reduce<string[]>((acc, node) => {
 					try {
 						const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-						if ((nodeType.description.inputs?.length ?? []) === 0) {
+						if ((nodeType?.description.inputs?.length ?? []) === 0) {
 							acc.push(node.name);
 						}
 					} catch (error) {}

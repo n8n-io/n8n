@@ -34,6 +34,11 @@ export class DynamicNodeParametersService {
 		credentials?: INodeCredentials,
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		if (!nodeType) {
+			throw new ApplicationError('Node type and version unknown', {
+				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+			});
+		}
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
@@ -50,7 +55,7 @@ export class DynamicNodeParametersService {
 		credentials?: INodeCredentials,
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
-		if (!nodeType.description.requestDefaults?.baseURL) {
+		if (!nodeType?.description.requestDefaults?.baseURL) {
 			// This in in here for now for security reasons.
 			// Background: As the full data for the request to make does get send, and the auth data
 			// will then be applied, would it be possible to retrieve that data like that. By at least
@@ -59,7 +64,7 @@ export class DynamicNodeParametersService {
 			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new ApplicationError(
 				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
-				{ tags: { nodeType: nodeType.description.name } },
+				{ tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version } },
 			);
 		}
 
@@ -132,6 +137,12 @@ export class DynamicNodeParametersService {
 		paginationToken?: string,
 	): Promise<INodeListSearchResult> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		if (!nodeType) {
+			throw new ApplicationError('Node type and version unknown', {
+				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+			});
+		}
+
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
@@ -149,6 +160,12 @@ export class DynamicNodeParametersService {
 		credentials?: INodeCredentials,
 	): Promise<ResourceMapperFields> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		if (!nodeType) {
+			throw new ApplicationError('Node type and version unknown', {
+				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+			});
+		}
+
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);

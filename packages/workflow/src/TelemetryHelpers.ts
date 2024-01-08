@@ -135,6 +135,9 @@ export function generateNodesGraph(
 
 		notes.forEach((stickyNote: INode, index: number) => {
 			const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);
+			if (!stickyType) {
+				return;
+			}
 			const { height, width } = getStickyDimensions(stickyNote, stickyType);
 
 			const topLeft = stickyNote.position;

@@ -189,8 +189,8 @@ export function WorkflowExecuteAdditionalData(
 class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
 
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return this.nodeTypes[nodeType].type;
+	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
+		return this.nodeTypes[nodeType]?.type;
 	}
 
 	addNode(nodeTypeName: string, nodeType: INodeType | IVersionedNodeType) {
@@ -206,8 +206,12 @@ class NodeTypes implements INodeTypes {
 		};
 	}
 
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
+		const type = this.nodeTypes[nodeType]?.type;
+		if (!type) {
+			return undefined;
+		}
+		return NodeHelpers.getVersionedNodeType(type, version);
 	}
 }
 

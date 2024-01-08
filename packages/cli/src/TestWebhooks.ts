@@ -170,12 +170,15 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		const webhookNode = Object.values(workflow.nodes).find(
-			({ type, parameters, typeVersion }) =>
+		const webhookNode = Object.values(workflow.nodes).find(({ type, parameters, typeVersion }) => {
+			const nodeType = this.nodeTypes.getByNameAndVersion(type, typeVersion);
+			return (
 				parameters?.path === path &&
 				(parameters?.httpMethod ?? 'GET') === httpMethod &&
-				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
-		);
+				nodeType &&
+				'webhook' in nodeType
+			);
+		});
 
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}

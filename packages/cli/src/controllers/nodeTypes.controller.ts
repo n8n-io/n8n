@@ -19,8 +19,10 @@ export class NodeTypesController {
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-				const { description } = this.nodeTypes.getByNameAndVersion(name, version);
-				acc.push(description);
+				const nodeType = this.nodeTypes.getByNameAndVersion(name, version);
+				if (nodeType) {
+					acc.push(nodeType.description);
+				}
 				return acc;
 			}, []);
 		}

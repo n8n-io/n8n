@@ -929,7 +929,6 @@ export class Workflow {
 	__getStartNode(nodeNames: string[]): INode | undefined {
 		// Check if there are any trigger or poll nodes and then return the first one
 		let node: INode;
-		let nodeType: INodeType;
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
 
@@ -937,7 +936,10 @@ export class Workflow {
 				return node;
 			}
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType) {
+				continue;
+			}
 
 			// TODO: Identify later differently
 			if (nodeType.description.name === '@n8n/n8n-nodes-langchain.manualChatTrigger') {
@@ -1045,6 +1047,9 @@ export class Workflow {
 		if (!node) return;
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (!nodeType) {
+			return;
+		}
 
 		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
 		if (webhookFn === undefined) return;
@@ -1190,7 +1195,7 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new ApplicationError('Unknown node type of webhook node', {
-				extra: { nodeName: node.name },
+				extra: { nodeName: node.name, nodeVersion: node.typeVersion },
 			});
 		} else if (nodeType.webhook === undefined) {
 			throw new ApplicationError('Node does not have any webhooks defined', {
@@ -1240,7 +1245,7 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new ApplicationError('Node type is unknown so cannot run it', {
-				tags: { nodeType: node.type },
+				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
 			});
 		}
 

@@ -895,7 +895,7 @@ export function getNodeWebhooks(
 
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-	if (nodeType.description.webhooks === undefined) {
+	if (nodeType?.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
 		return [];
 	}
@@ -1588,7 +1588,7 @@ export function mergeNodeProperties(
 export function getVersionedNodeType(
 	object: IVersionedNodeType | INodeType,
 	version?: number,
-): INodeType {
+): INodeType | undefined {
 	if ('nodeVersions' in object) {
 		return object.getNodeType(version);
 	}

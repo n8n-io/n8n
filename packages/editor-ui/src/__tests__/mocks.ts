@@ -36,12 +36,16 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 		}, {}),
 	};
 
-	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
+	function getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
+		return nodeTypes[getResolvedKey(nodeType)]?.type;
 	}
 
-	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(getByName(nodeType), version);
+	function getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
+		const type = getByName(nodeType);
+		if (!type) {
+			return undefined;
+		}
+		return NodeHelpers.getVersionedNodeType(type, version);
 	}
 
 	return {

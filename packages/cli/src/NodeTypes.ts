@@ -33,7 +33,11 @@ export class NodeTypes implements INodeTypes {
 			throw new ApplicationError('Unknown node type', { tags: { nodeTypeName } });
 		}
 
-		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
+		const versionedNodeType = NodeHelpers.getVersionedNodeType(nodeType.type, version);
+		if (!versionedNodeType) {
+			throw new ApplicationError('Unknown node type version', { tags: { nodeTypeName, version } });
+		}
+		const { description } = versionedNodeType;
 
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
 	}
@@ -42,7 +46,7 @@ export class NodeTypes implements INodeTypes {
 		return this.getNode(nodeType).type;
 	}
 
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
@@ -50,7 +54,9 @@ export class NodeTypes implements INodeTypes {
 	applySpecialNodeParameters() {
 		for (const nodeTypeData of Object.values(this.loadNodesAndCredentials.loadedNodes)) {
 			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
-			NodeHelpers.applySpecialNodeParameters(nodeType);
+			if (nodeType) {
+				NodeHelpers.applySpecialNodeParameters(nodeType);
+			}
 		}
 	}
 

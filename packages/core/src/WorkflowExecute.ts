@@ -931,7 +931,7 @@ export class WorkflowExecute {
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new ApplicationError(
+						throw new WorkflowOperationError(
 							'Stopped execution because it seems to be in an endless loop',
 						);
 					}
@@ -1063,6 +1063,16 @@ export class WorkflowExecute {
 										executionData.node.type,
 										executionData.node.typeVersion,
 									);
+
+									if (!nodeType) {
+										throw new ApplicationError('Unknown node type and version', {
+											extra: {
+												nodeType: executionData.node.type,
+												nodeVersion: executionData.node.typeVersion,
+											},
+										});
+									}
+
 									const outputs = NodeHelpers.getNodeOutputs(
 										workflow,
 										executionData.node,
@@ -1517,6 +1527,14 @@ export class WorkflowExecute {
 								checkNode.type,
 								checkNode.typeVersion,
 							);
+							if (!nodeType) {
+								throw new ApplicationError('Unknown node type and version', {
+									extra: {
+										nodeType: checkNode.type,
+										nodeVersion: checkNode.typeVersion,
+									},
+								});
+							}
 
 							// Check if the node is only allowed execute if all inputs received data
 							let requiredInputs =

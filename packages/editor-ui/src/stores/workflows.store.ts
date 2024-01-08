@@ -49,6 +49,7 @@ import type {
 	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
+	INodeType,
 	INodeTypeData,
 	INodeTypes,
 	IPinData,
@@ -288,7 +289,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const nodeTypes: INodeTypes = {
 				nodeTypes: {},
 				init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-				// @ts-ignore
 				getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 					const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
 

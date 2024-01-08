@@ -2392,7 +2392,7 @@ export function getWebhookDescription(
 ): IWebhookDescription | undefined {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-	if (nodeType.description.webhooks === undefined) {
+	if (nodeType?.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
 		return undefined;
 	}
@@ -3203,6 +3203,11 @@ export function getExecuteFunctions(
 			): Promise<unknown> {
 				const node = this.getNode();
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType) {
+					throw new ApplicationError('Unknown node type and version', {
+						extra: { nodeType: node.type, nodeVersion: node.typeVersion },
+					});
+				}
 
 				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
 
@@ -3240,6 +3245,12 @@ export function getExecuteFunctions(
 							connectedNode.type,
 							connectedNode.typeVersion,
 						);
+
+						if (!nodeType) {
+							throw new ApplicationError('Unknown node type and version', {
+								extra: { nodeType: node.type, nodeVersion: node.typeVersion },
+							});
+						}
 
 						if (!nodeType.supplyData) {
 							throw new ApplicationError('Node does not have a `supplyData` method defined', {
@@ -3382,6 +3393,12 @@ export function getExecuteFunctions(
 			},
 			getNodeOutputs(): INodeOutputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType) {
+					throw new ApplicationError('Unknown node type and version', {
+						extra: { nodeType: node.type, nodeVersion: node.typeVersion },
+					});
+				}
+
 				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
 					if (typeof output === 'string') {
 						return {
@@ -3747,7 +3764,7 @@ export function getLoadOptionsFunctions(
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
 						throw new ApplicationError('Node type is not known so cannot return parameter value', {
-							tags: { nodeType: node.type },
+							tags: { nodeType: node.type, nodeVersion: node.typeVersion },
 						});
 					}
 					returnData = extractValue(

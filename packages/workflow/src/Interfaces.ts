@@ -1740,8 +1740,8 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
-	getByName(nodeType: string): INodeType | IVersionedNodeType;
-	getByNameAndVersion(nodeType: string, version?: number): INodeType;
+	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
 export type LoadingDetails = {

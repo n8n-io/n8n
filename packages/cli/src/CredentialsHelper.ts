@@ -78,10 +78,10 @@ const mockNodesData: INodeTypeData = {
 };
 
 const mockNodeTypes: INodeTypes = {
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
+	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
 		return mockNodesData[nodeType]?.type;
 	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (!mockNodesData[nodeType]) {
 			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
 				tags: { nodeType },
@@ -611,7 +611,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialTestFunction.nodeType) {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
-			nodeType = this.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
+			const noOpNode = this.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
+			if (!noOpNode) {
+				return {
+					status: 'Error',
+					message: 'Internal error: no node to test credential',
+				};
+			}
+
+			nodeType = noOpNode;
 		}
 
 		const node: INode = {
