@@ -35,7 +35,7 @@ export const INSTANCE_MEMBERS = [
 ];
 
 export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
-export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking "Execute Workflow"';
+export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking "Test Workflow"';
 export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Manual Chat Trigger';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
