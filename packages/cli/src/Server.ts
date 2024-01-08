@@ -30,7 +30,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { WorkflowsController } from './workflows/workflows.controller';
+import { WorkflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
