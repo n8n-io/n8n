@@ -11,7 +11,8 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import { type WorkflowRequest, hasSharing, type ListQuery } from '@/requests';
+import { hasSharing, type ListQuery } from '@/requests';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { TagService } from '@/services/tag.service';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -205,6 +206,7 @@ export class WorkflowService {
 				'active',
 				'nodes',
 				'connections',
+				'meta',
 				'settings',
 				'staticData',
 				'pinData',

@@ -23,6 +23,7 @@ declare global {
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
 			signin(payload: SigninPayload): void;
+			signinAsOwner(): void;
 			signout(): void;
 			interceptREST(method: string, url: string): Chainable<Interception>;
 			enableFeature(feature: string): void;
@@ -48,6 +49,7 @@ declare global {
 					};
 				}
 			>;
+			resetDatabase(): void;
 		}
 	}
 }
