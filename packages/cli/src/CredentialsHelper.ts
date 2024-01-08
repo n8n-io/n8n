@@ -32,6 +32,7 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	ICredentialTestFunctions,
+	IExecuteData,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -339,6 +340,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -358,6 +360,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal,
 			type,
 			mode,
+			executeData,
 			expressionResolveValues,
 			canUseSecrets,
 		);
@@ -371,6 +374,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
@@ -412,7 +416,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.connectionInputData,
 					mode,
 					additionalKeys,
-					undefined,
+					executeData,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -578,6 +582,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialsDecrypted.data,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
+					undefined,
 					undefined,
 					user.hasGlobalScope('externalSecret:use'),
 				);
