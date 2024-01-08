@@ -4995,7 +4995,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-2xl);
+	bottom: var(--spacing-l);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {
@@ -5199,7 +5199,7 @@ export default defineComponent({
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: 35px;
-	top: var(--spacing-s);
+	left: var(--spacing-l);
+	top: var(--spacing-l);
 }
 </style>
