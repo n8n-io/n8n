@@ -13,7 +13,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export type ExecutionFilterProps = {

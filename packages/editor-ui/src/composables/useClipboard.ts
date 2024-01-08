@@ -1,6 +1,5 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;

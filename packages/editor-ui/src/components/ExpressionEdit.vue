@@ -93,7 +93,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';

@@ -56,7 +56,6 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;

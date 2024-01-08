@@ -8,7 +8,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 const EVENTS = {

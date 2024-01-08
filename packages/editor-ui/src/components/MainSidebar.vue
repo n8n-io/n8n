@@ -122,7 +122,6 @@ import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({

@@ -19,7 +19,6 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
 
 import { useUIStore } from '@/stores/ui.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({

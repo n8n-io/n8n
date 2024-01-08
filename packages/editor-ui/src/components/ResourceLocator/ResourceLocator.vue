@@ -173,7 +173,6 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface IResourceLocatorQuery {

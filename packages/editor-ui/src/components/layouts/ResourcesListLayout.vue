@@ -197,7 +197,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
-import type { DebouncedFunction } from '@/composables/useDebounce';
 import { useDebounce } from '@/composables/useDebounce';
 
 export interface IResource {
