@@ -16,6 +16,7 @@ import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
+import type { InternalHooks } from '@/InternalHooks';
 
 jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
 
@@ -38,18 +39,16 @@ describe('EventsService', () => {
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
-	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
+
+	const internalHooks = mock<InternalHooks>();
 
 	const eventsService = new EventsService(
 		mock(),
 		new WorkflowStatisticsRepository(dataSource),
 		ownershipService,
+		userService,
+		internalHooks,
 	);
-
-	const onFirstProductionWorkflowSuccess = jest.fn();
-	const onFirstWorkflowDataLoad = jest.fn();
-	eventsService.on('telemetry.onFirstProductionWorkflowSuccess', onFirstProductionWorkflowSuccess);
-	eventsService.on('telemetry.onFirstWorkflowDataLoad', onFirstWorkflowDataLoad);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -88,9 +87,9 @@ describe('EventsService', () => {
 			mockDBCall();
 
 			await eventsService.workflowExecutionCompleted(workflow, runData);
-			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
+			expect(userService.updateSettings).toHaveBeenCalledTimes(1);
+			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
+			expect(internalHooks.onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
 				workflow_id: workflow.id,
 			});
@@ -115,7 +114,7 @@ describe('EventsService', () => {
 				startedAt: new Date(),
 			};
 			await eventsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 
 		test('should not send metrics for updated entries', async () => {
@@ -138,7 +137,7 @@ describe('EventsService', () => {
 			};
 			mockDBCall(2);
 			await eventsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 	});
 
@@ -155,8 +154,8 @@ describe('EventsService', () => {
 				parameters: {},
 			};
 			await eventsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
+			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
+			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
 				workflow_id: workflowId,
 				node_type: node.type,
@@ -182,8 +181,8 @@ describe('EventsService', () => {
 				},
 			};
 			await eventsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
+			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
+			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
 				workflow_id: workflowId,
 				node_type: node.type,
@@ -206,7 +205,7 @@ describe('EventsService', () => {
 				parameters: {},
 			};
 			await eventsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(0);
+			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(0);
 		});
 	});
 });
