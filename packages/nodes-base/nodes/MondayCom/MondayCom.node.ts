@@ -10,7 +10,11 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
-import { mondayComApiRequest, mondayComApiRequestAllItems } from './GenericFunctions';
+import {
+	mondayComApiPaginatedRequest,
+	mondayComApiRequest,
+	mondayComApiRequestAllItems,
+} from './GenericFunctions';
 
 import { boardFields, boardOperations } from './BoardDescription';
 
@@ -155,18 +159,17 @@ export class MondayCom implements INodeType {
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const boardId = parseInt(this.getCurrentNodeParameter('boardId') as string, 10);
+				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const body: IGraphqlBody = {
-					query: `query ($boardId: [Int]) {
+					query: `query ($boardId: [ID!]) {
 							boards (ids: $boardId){
-								columns() {
+								columns {
 									id
 									title
 								}
 							}
 						}`,
 					variables: {
-						page: 1,
 						boardId,
 					},
 				};
@@ -190,11 +193,11 @@ export class MondayCom implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const boardId = parseInt(this.getCurrentNodeParameter('boardId') as string, 10);
+				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const body = {
-					query: `query ($boardId: Int!) {
+					query: `query ($boardId: ID!) {
 							boards ( ids: [$boardId]){
-								groups () {
+								groups {
 									id
 									title
 								}
@@ -237,7 +240,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query: `mutation ($id: Int!) {
+							query: `mutation ($id: ID!) {
 									archive_board (board_id: $id) {
 										id
 									}
@@ -256,7 +259,7 @@ export class MondayCom implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IGraphqlBody = {
-							query: `mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
+							query: `mutation ($name: String!, $kind: BoardKind!, $templateId: ID) {
 									create_board (board_name: $name, board_kind: $kind, template_id: $templateId) {
 										id
 									}
@@ -278,7 +281,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query: `query ($id: [Int]) {
+							query: `query ($id: [ID!]) {
 									boards (ids: $id){
 										id
 										name
@@ -286,7 +289,7 @@ export class MondayCom implements INodeType {
 										state
 										board_folder_id
 										board_kind
-										owner() {
+										owners {
 											id
 										}
 									}
@@ -311,7 +314,7 @@ export class MondayCom implements INodeType {
 										state
 										board_folder_id
 										board_kind
-										owner() {
+										owners {
 											id
 										}
 									}
@@ -666,43 +669,57 @@ export class MondayCom implements INodeType {
 						const columnValue = this.getNodeParameter('columnValue', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const body: IGraphqlBody = {
-							query: `query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){
-									items_by_column_values (board_id: $boardId, column_id: $columnId, column_value: $columnValue, page: $page, limit: $limit) {
-										id
-										name
-										created_at
-										state
-										board {
-											id
-										}
-										column_values() {
-											id
-											text
-											title
-											type
-											value
-											additional_info
-										}
-									}
-								}`,
+						const dataToReturn = `{
+							id
+							name
+							created_at
+							state
+							board {
+								id
+							}
+							column_values {
+								id
+								text
+								type
+								value
+								column {
+									title
+									archived
+									description
+									settings_str
+								}
+							}
+						}`;
+						const body = {
+							query: `query ($boardId: ID!, $columnId: String!, $columnValue: String!, $limit: Int) {
+								items_page_by_column_values(
+									limit: $limit
+									board_id: $boardId
+									columns: [{column_id: $columnId, column_values: [$columnValue]}]
+								) {
+									cursor
+									items ${dataToReturn}
+								}
+							}`,
 							variables: {
 								boardId,
 								columnId,
 								columnValue,
+								limit: 1,
 							},
 						};
 
 						if (returnAll) {
-							responseData = await mondayComApiRequestAllItems.call(
+							responseData = await mondayComApiPaginatedRequest.call(
 								this,
-								'data.items_by_column_values',
-								body,
+								'items_page_by_column_values',
+								dataToReturn,
+								body as IDataObject,
 							);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i);
 							responseData = await mondayComApiRequest.call(this, body);
-							responseData = responseData.data.items_by_column_values;
+							responseData = responseData.data.items_page_by_column_values.items;
 						}
 					}
 					if (operation === 'move') {
