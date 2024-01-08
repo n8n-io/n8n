@@ -435,12 +435,21 @@ export class GithubTrigger implements INodeType {
 				description: 'The events to listen to',
 			},
 			{
-				displayName: 'Insecure SSL',
-				name: 'insecureSSL',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether the SSL certificate of the n8n host be verified by GitHub when delivering payloads',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Insecure SSL',
+						name: 'insecureSSL',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the SSL certificate of the n8n host be verified by GitHub when delivering payloads',
+					},
+				],
 			},
 		],
 	};
@@ -496,14 +505,14 @@ export class GithubTrigger implements INodeType {
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
-				const insecureSSL = this.getNodeParameter('insecureSSL') as boolean;
+				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
 				const body = {
 					name: 'web',
 					config: {
 						url: webhookUrl,
 						content_type: 'json',
-						insecure_ssl: insecureSSL ? '1' : '0',
+						insecure_ssl: options.insecureSSL ? '1' : '0',
 					},
 					events,
 					active: true,
