@@ -65,18 +65,19 @@ export async function mondayComApiRequestAllItems(
 
 export async function mondayComApiPaginatedRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
+	itemsPath: string,
 	fieldsToReturn: string,
 	body: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 
-	const { data } = await mondayComApiRequest.call(this, body);
+	const initialResponse = await mondayComApiRequest.call(this, body);
+	const data = get(initialResponse, itemsPath) as IDataObject;
 
-	if (data && data[propertyName]) {
-		returnData.push.apply(returnData, data[propertyName].items);
+	if (data) {
+		returnData.push.apply(returnData, data.items as IDataObject[]);
 
-		let cursor: null | string = data[propertyName].cursor as string;
+		let cursor: null | string = data.cursor as string;
 
 		while (cursor) {
 			const responseData = (
@@ -91,6 +92,8 @@ export async function mondayComApiPaginatedRequest(
 			if (responseData && responseData.next_items_page) {
 				returnData.push.apply(returnData, responseData.next_items_page.items);
 				cursor = responseData.next_items_page.cursor;
+			} else {
+				cursor = null;
 			}
 		}
 	}
