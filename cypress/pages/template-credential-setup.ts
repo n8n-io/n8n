@@ -29,7 +29,7 @@ export const getters = {
 
 export const enableTemplateCredentialSetupFeatureFlag = () => {
 	cy.window().then((win) => {
-		win.featureFlags.override('016_template_credential_setup', true);
+		win.featureFlags.override('017_template_credential_setup_v2', true);
 	});
 };
 
