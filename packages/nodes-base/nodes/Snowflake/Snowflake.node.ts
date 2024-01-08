@@ -24,6 +24,7 @@ export class Snowflake implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'snowflake',

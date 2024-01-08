@@ -3,7 +3,7 @@ import type { Variables } from '@db/entities/Variables';
 import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './environmentHelpers';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
@@ -17,8 +17,7 @@ export class VariablesService {
 
 	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
-			async refreshFunction() {
-				// TODO: log refresh cache metric
+			async refreshFn() {
 				return Container.get(VariablesService).findAll();
 			},
 		});

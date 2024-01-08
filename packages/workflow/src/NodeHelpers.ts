@@ -1230,6 +1230,11 @@ export const validateResourceMapperParameter = (
 	value: ResourceMapperValue,
 	skipRequiredCheck = false,
 ): Record<string, string[]> => {
+	// No issues to raise in automatic mapping mode, no user input to validate
+	if (value.mappingMode === 'autoMapInputData') {
+		return {};
+	}
+
 	const issues: Record<string, string[]> = {};
 	let fieldWordSingular =
 		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';

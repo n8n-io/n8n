@@ -4,7 +4,7 @@ import config from '@/config';
 import { Telemetry } from '@/telemetry';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { BinaryDataService } from 'n8n-core';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';

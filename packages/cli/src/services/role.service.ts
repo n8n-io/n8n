@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { CacheService } from './cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { InvalidRoleError } from '@/errors/invalid-role.error';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';

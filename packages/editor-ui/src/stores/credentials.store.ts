@@ -407,11 +407,11 @@ export const listenForCredentialChanges = (opts: {
 	onCredentialCreated?: (credential: ICredentialsResponse) => void;
 	onCredentialUpdated?: (credential: ICredentialsResponse) => void;
 	onCredentialDeleted?: (credentialId: string) => void;
-}): void => {
+}) => {
 	const { store, onCredentialCreated, onCredentialDeleted, onCredentialUpdated } = opts;
 	const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
 
-	store.$onAction((result) => {
+	return store.$onAction((result) => {
 		const { name, after, args } = result;
 		after(async (returnValue) => {
 			if (!listeningForActions.includes(name)) {

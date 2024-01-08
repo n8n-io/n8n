@@ -93,8 +93,8 @@ onBeforeUnmount(() => {
 .zoomMenu {
 	position: absolute;
 	width: 210px;
-	bottom: var(--spacing-2xl);
-	left: 35px;
+	bottom: var(--spacing-l);
+	left: var(--spacing-l);
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
