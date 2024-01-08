@@ -1,19 +1,14 @@
 import type express from 'express';
 import type {
 	BannerName,
-	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	IDataObject,
-	INode,
 	INodeCredentialTestRequest,
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
-	IPinData,
-	IRunData,
 	IUser,
-	IWorkflowSettings,
 } from 'n8n-workflow';
 
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
@@ -21,7 +16,6 @@ import { NoXss } from '@db/utils/customValidators';
 import type {
 	PublicUser,
 	IExecutionDeleteFilter,
-	IWorkflowDb,
 	SecretsProvider,
 	SecretsProviderState,
 } from '@/Interfaces';
@@ -80,55 +74,6 @@ export type AuthenticatedRequest<
 	mailer?: UserManagementMailer;
 	globalMemberRole?: Role;
 };
-
-// ----------------------------------
-//           /workflows
-// ----------------------------------
-
-export declare namespace WorkflowRequest {
-	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
-		name: string;
-		nodes: INode[];
-		connections: IConnections;
-		settings: IWorkflowSettings;
-		active: boolean;
-		tags: string[];
-		hash: string;
-		meta: Record<string, unknown>;
-	}>;
-
-	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
-		pinData: IPinData;
-		startNodes?: string[];
-		destinationNode?: string;
-	};
-
-	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
-
-	type Get = AuthenticatedRequest<{ id: string }>;
-
-	type Delete = Get;
-
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		CreateUpdatePayload,
-		{ forceSave?: string }
-	>;
-
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
-
-	type GetAllActive = AuthenticatedRequest;
-
-	type GetActivationError = Get;
-
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
-
-	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
-}
 
 // ----------------------------------
 //            list query
@@ -219,7 +164,7 @@ export declare namespace CredentialRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
-	type NewName = WorkflowRequest.NewName;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
@@ -575,4 +520,14 @@ export declare namespace WorkflowHistoryRequest {
 		{ workflowId: string; versionId: string },
 		WorkflowHistory
 	>;
+}
+
+// ----------------------------------
+//        /active-workflows
+// ----------------------------------
+
+export declare namespace ActiveWorkflowRequest {
+	type GetAllActive = AuthenticatedRequest;
+
+	type GetActivationError = AuthenticatedRequest<{ id: string }>;
 }

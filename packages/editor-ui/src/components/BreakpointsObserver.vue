@@ -17,14 +17,17 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
  * xl >= 1920
  */
 
-import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'BreakpointsObserver',
-	mixins: [debounceHelper],
 	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
+	setup() {
+		const { callDebounced } = useDebounce();
+		return { callDebounced };
+	},
 	data() {
 		return {
 			width: window.innerWidth,
@@ -83,7 +86,7 @@ export default defineComponent({
 	},
 	methods: {
 		onResize() {
-			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 50 });
 		},
 		async onResizeEnd() {
 			this.width = window.innerWidth;
