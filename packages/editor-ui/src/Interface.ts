@@ -274,6 +274,7 @@ export interface WorkflowMetadata {
 	onboardingId?: string;
 	templateId?: string;
 	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 // Almost identical to cli.Interfaces.ts
