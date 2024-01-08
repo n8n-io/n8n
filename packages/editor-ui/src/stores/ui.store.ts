@@ -629,11 +629,11 @@ export const listenForModalChanges = (opts: {
 	store: UiStore;
 	onModalOpened?: (name: keyof Modals) => void;
 	onModalClosed?: (name: keyof Modals) => void;
-}): void => {
+}) => {
 	const { store, onModalClosed, onModalOpened } = opts;
 	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
 
-	store.$onAction((result) => {
+	return store.$onAction((result) => {
 		const { name, after, args } = result;
 		after(async () => {
 			if (!listeningForActions.includes(name)) {
