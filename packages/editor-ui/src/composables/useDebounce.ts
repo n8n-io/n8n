@@ -6,7 +6,7 @@ export interface DebounceOptions {
 	trailing?: boolean;
 }
 
-export type DebouncedFunction<R = void> = (...args: unknown[]) => Promise<R> | R;
+export type DebouncedFunction<R = void> = (...args: unknown[]) => R;
 
 export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
