@@ -57,6 +57,7 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
+export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 

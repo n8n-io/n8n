@@ -1882,6 +1882,7 @@ export async function getCredentials(
 	type: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	executeData?: IExecuteData,
 	runExecutionData?: IRunExecutionData | null,
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
@@ -2001,6 +2002,7 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		executeData,
 		false,
 		expressionResolveValues,
 	);
@@ -2608,6 +2610,7 @@ async function getInputConnectionData(
 						key,
 						additionalData,
 						mode,
+						executeData,
 						runExecutionData,
 						runIndex,
 						connectionInputData,
@@ -2615,6 +2618,7 @@ async function getInputConnectionData(
 					);
 				} catch (error) {
 					// Display the error on the node which is causing it
+
 					let currentNodeRunIndex = 0;
 					if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
 						currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
@@ -3338,6 +3342,7 @@ export function getExecuteFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,
@@ -3636,6 +3641,7 @@ export function getExecuteSingleFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,

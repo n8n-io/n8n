@@ -134,7 +134,6 @@ export default defineComponent({
 		window.addEventListener('keydown', this.onWindowKeydown);
 
 		this.eventBus?.on('close', this.closeDialog);
-		this.eventBus?.on('closeAll', this.uiStore.closeAllModals);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -143,7 +142,6 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		this.eventBus?.off('close', this.closeDialog);
-		this.eventBus?.off('closeAll', this.uiStore.closeAllModals);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {
@@ -227,6 +225,7 @@ export default defineComponent({
 
 	.modal-content {
 		overflow: hidden;
+		overflow-y: auto;
 		flex-grow: 1;
 	}
 
