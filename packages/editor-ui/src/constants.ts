@@ -57,6 +57,7 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
+export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -624,7 +625,7 @@ export const ASK_AI_EXPERIMENT = {
 	gpt4: 'gpt4',
 };
 
-export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '016_template_credential_setup';
+export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
 export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
 

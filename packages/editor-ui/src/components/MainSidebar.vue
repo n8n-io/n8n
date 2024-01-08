@@ -107,7 +107,6 @@ import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
-import { debounceHelper } from '@/mixins/debounce';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -123,6 +122,7 @@ import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -131,12 +131,14 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 	},
-	mixins: [userHelpers, debounceHelper],
+	mixins: [userHelpers],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			callDebounced,
 			...useMessage(),
 		};
 	},
@@ -497,7 +499,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);
 		},
 		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

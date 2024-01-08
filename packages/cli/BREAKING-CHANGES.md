@@ -8,9 +8,13 @@ This list shows all the versions which include breaking changes and how to upgra
 
 The flag `N8N_CACHE_ENABLED` was removed. The cache is now always enabled.
 
+Additionally, expressions in credentials now follow the paired item, so if you have multiple input items, n8n will try to pair the matching row to fill in the credential details.
+
 ### When is action necessary?
 
 If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
+
+In regards to credentials, if you use expression in credentials, you might want to revisit them. Previously, n8n would stick to the first item only, but now it will try to match the proper paired item.
 
 ## 1.22.0
 
