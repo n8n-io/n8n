@@ -3,9 +3,10 @@ import { Container, Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { UserService } from '@/services/user.service';
+import { UserService } from './user.service';
 import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
+import { InternalHooks } from '@/InternalHooks';
 
 @Service()
 export class EventsService extends EventEmitter {
@@ -13,6 +14,8 @@ export class EventsService extends EventEmitter {
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly userService: UserService,
+		private readonly internalHooks: InternalHooks,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -52,14 +55,13 @@ export class EventsService extends EventEmitter {
 				};
 
 				if (!owner.settings?.userActivated) {
-					await Container.get(UserService).updateSettings(owner.id, {
+					await this.userService.updateSettings(owner.id, {
 						firstSuccessfulWorkflowId: workflowId,
 						userActivated: true,
 					});
 				}
 
-				// Send the metrics
-				this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
+				await this.internalHooks.onFirstProductionWorkflowSuccess(metrics);
 			}
 		} catch (error) {
 			this.logger.verbose('Unable to fire first workflow success telemetry event');
@@ -95,8 +97,7 @@ export class EventsService extends EventEmitter {
 			});
 		}
 
-		// Send metrics to posthog
-		this.emit('telemetry.onFirstWorkflowDataLoad', metrics);
+		await this.internalHooks.onFirstWorkflowDataLoad(metrics);
 	}
 }
 
@@ -108,20 +109,5 @@ export declare interface EventsService {
 	on(
 		event: 'workflowExecutionCompleted',
 		listener: (workflowData: IWorkflowBase, runData: IRun) => void,
-	): this;
-	on(
-		event: 'telemetry.onFirstProductionWorkflowSuccess',
-		listener: (metrics: { user_id: string; workflow_id: string }) => void,
-	): this;
-	on(
-		event: 'telemetry.onFirstWorkflowDataLoad',
-		listener: (metrics: {
-			user_id: string;
-			workflow_id: string;
-			node_type: string;
-			node_id: string;
-			credential_type?: string;
-			credential_id?: string;
-		}) => void,
 	): this;
 }
