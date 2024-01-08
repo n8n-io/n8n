@@ -521,3 +521,13 @@ export declare namespace WorkflowHistoryRequest {
 		WorkflowHistory
 	>;
 }
+
+// ----------------------------------
+//        /active-workflows
+// ----------------------------------
+
+export declare namespace ActiveWorkflowRequest {
+	type GetAllActive = AuthenticatedRequest;
+
+	type GetActivationError = AuthenticatedRequest<{ id: string }>;
+}
