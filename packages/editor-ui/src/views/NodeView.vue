@@ -315,7 +315,6 @@ import type {
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 
-import { debounceHelper } from '@/mixins/debounce';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -377,6 +376,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -404,7 +404,7 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper],
+	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -475,6 +475,7 @@ export default defineComponent({
 		const clipboard = useClipboard();
 		const { activeNode } = storeToRefs(ndvStore);
 		const pinnedData = usePinnedData(activeNode);
+		const { callDebounced } = useDebounce();
 
 		return {
 			locale,
@@ -484,6 +485,7 @@ export default defineComponent({
 			externalHooks,
 			clipboard,
 			pinnedData,
+			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -1443,7 +1445,7 @@ export default defineComponent({
 					return;
 				}
 
-				void this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+				void this.callDebounced(this.onSaveKeyboardShortcut, { debounceTime: 1000 }, e);
 
 				return;
 			}
@@ -1488,7 +1490,7 @@ export default defineComponent({
 				.filter((node) => !!node) as INode[];
 
 			if (e.key === 'd' && noModifierKeys && !readOnly) {
-				void this.callDebounced('toggleActivationNodes', { debounceTime: 350 }, selectedNodes);
+				void this.callDebounced(this.toggleActivationNodes, { debounceTime: 350 }, selectedNodes);
 			} else if (e.key === 'd' && ctrlModifier && !readOnly) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
@@ -1503,7 +1505,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('deleteNodes', { debounceTime: 500 }, selectedNodes);
+				void this.callDebounced(this.deleteNodes, { debounceTime: 500 }, selectedNodes);
 			} else if (e.key === 'Tab' && noModifierKeys && !readOnly) {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
@@ -1521,7 +1523,7 @@ export default defineComponent({
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 					void this.callDebounced(
-						'renameNodePrompt',
+						this.renameNodePrompt,
 						{ debounceTime: 1500 },
 						lastSelectedNode.name,
 					);
@@ -1531,15 +1533,15 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('selectAllNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectAllNodes, { debounceTime: 1000 });
 			} else if (e.key === 'c' && ctrlModifier) {
-				void this.callDebounced('copyNodes', { debounceTime: 1000 }, selectedNodes);
+				void this.callDebounced(this.copyNodes, { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'x' && ctrlModifier && !readOnly) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('cutNodes', { debounceTime: 1000 }, selectedNodes);
+				void this.callDebounced(this.cutNodes, { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'n' && ctrlAltModifier) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1576,7 +1578,9 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectDownstreamNodes, {
+					debounceTime: 1000,
+				});
 			} else if (e.key === 'ArrowRight' && noModifierKeys) {
 				// Set child node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1593,7 +1597,7 @@ export default defineComponent({
 				}
 
 				void this.callDebounced(
-					'nodeSelectedByName',
+					this.nodeSelectedByName,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1604,7 +1608,9 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced(this.selectUpstreamNodes, {
+					debounceTime: 1000,
+				});
 			} else if (e.key === 'ArrowLeft' && noModifierKeys) {
 				// Set parent node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1625,7 +1631,7 @@ export default defineComponent({
 				}
 
 				void this.callDebounced(
-					'nodeSelectedByName',
+					this.nodeSelectedByName,
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
 					false,
@@ -1697,7 +1703,7 @@ export default defineComponent({
 
 				if (nextSelectNode !== null) {
 					void this.callDebounced(
-						'nodeSelectedByName',
+						this.nodeSelectedByName,
 						{ debounceTime: 100 },
 						nextSelectNode,
 						false,
@@ -3057,7 +3063,7 @@ export default defineComponent({
 		},
 		onDragMove() {
 			const totalNodes = this.nodes.length;
-			void this.callDebounced('updateConnectionsOverlays', {
+			void this.callDebounced(this.updateConnectionsOverlays, {
 				debounceTime: totalNodes > 20 ? 200 : 0,
 			});
 		},
@@ -5014,7 +5020,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-2xl);
+	bottom: var(--spacing-l);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {
@@ -5218,8 +5224,8 @@ export default defineComponent({
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: 35px;
-	top: var(--spacing-s);
+	left: var(--spacing-l);
+	top: var(--spacing-l);
 }
 </style>
 

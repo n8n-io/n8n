@@ -625,7 +625,7 @@ export const ASK_AI_EXPERIMENT = {
 	gpt4: 'gpt4',
 };
 
-export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '016_template_credential_setup';
+export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
 export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
 
