@@ -19,6 +19,7 @@ export function createPage({
 	const sanitizedAuthentication = ['none', 'basicAuth', 'n8nUserAuth'].includes(authentication)
 		? authentication
 		: 'none';
+	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 
 	return `<doctype html>
 	<html lang="en">
@@ -64,7 +65,7 @@ export function createPage({
 					createChat({
 						mode: 'fullscreen',
 						webhookUrl: '${webhookUrl}',
-						showWelcomeScreen: ${showWelcomeScreen},
+						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
 						metadata: metadata,
 						webhookConfig: {
 							headers: {
