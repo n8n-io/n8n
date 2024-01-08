@@ -159,6 +159,10 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.getters.skipLink().click();
 
 			getSetupWorkflowCredentialsButton().should('be.visible');
+
+			// We need to save the workflow or otherwise a browser native popup
+			// will block cypress from continuing
+			workflowPage.actions.saveWorkflowOnButtonClick();
 		});
 
 		it('should allow credential setup from workflow editor if user fills in credentials partially during template setup', () => {
@@ -197,6 +201,10 @@ describe('Template credentials setup', () => {
 					expect(Object.keys(node.credentials ?? {})).to.have.lengthOf(1);
 				});
 			});
+
+			// We need to save the workflow or otherwise a browser native popup
+			// will block cypress from continuing
+			workflowPage.actions.saveWorkflowOnButtonClick();
 		});
 	});
 });
