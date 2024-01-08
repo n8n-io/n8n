@@ -10,6 +10,7 @@ import { pick } from 'lodash';
 import type { BaseChatMemory } from 'langchain/memory';
 import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
+import type { LoadPreviousSessionChatOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
@@ -340,7 +341,7 @@ export class ChatTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as {
 			getStarted?: string;
 			inputPlaceholder?: string;
-			loadPreviousSession?: 'manually' | 'memory' | 'notSupported';
+			loadPreviousSession?: LoadPreviousSessionChatOption;
 			showWelcomeScreen?: boolean;
 			subtitle?: string;
 			title?: string;
@@ -383,6 +384,7 @@ export class ChatTrigger implements INodeType {
 						en: i18nConfig,
 					},
 					showWelcomeScreen: options.showWelcomeScreen,
+					loadPreviousSession: options.loadPreviousSession,
 					initialMessages,
 					webhookUrl,
 					mode,

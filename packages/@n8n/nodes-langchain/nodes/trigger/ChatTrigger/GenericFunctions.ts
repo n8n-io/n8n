@@ -1,9 +1,10 @@
 import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 import basicAuth from 'basic-auth';
 import { ChatTriggerAuthorizationError } from './error';
+import type { AuthenticationChatOption } from './types';
 
 export async function validateAuth(context: IWebhookFunctions) {
-	const authentication = context.getNodeParameter('authentication') as string;
+	const authentication = context.getNodeParameter('authentication') as AuthenticationChatOption;
 	const req = context.getRequestObject();
 	const headers = context.getHeaderData();
 
@@ -29,7 +30,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 			// Provided authentication data is wrong
 			throw new ChatTriggerAuthorizationError(403);
 		}
-	} else if (authentication === 'headerAuth') {
+	} else if (authentication === 'n8nUserAuth') {
 		const webhookName = context.getWebhookName();
 
 		function getCookie(name: string) {

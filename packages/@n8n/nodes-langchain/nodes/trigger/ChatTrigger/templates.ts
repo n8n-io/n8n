@@ -1,7 +1,10 @@
+import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+
 export function createPage({
 	instanceId,
 	webhookUrl,
 	showWelcomeScreen,
+	loadPreviousSession,
 	i18n: { en },
 	initialMessages,
 	authentication,
@@ -9,17 +12,34 @@ export function createPage({
 	instanceId: string;
 	webhookUrl?: string;
 	showWelcomeScreen?: boolean;
+	loadPreviousSession?: LoadPreviousSessionChatOption;
 	i18n: {
 		en: Record<string, string>;
 	};
 	initialMessages: string[];
 	mode: 'test' | 'production';
-	authentication: 'none' | 'basicAuth' | 'n8nUserAuth';
+	authentication: AuthenticationChatOption;
 }) {
-	const sanitizedAuthentication = ['none', 'basicAuth', 'n8nUserAuth'].includes(authentication)
+	const validAuthenticationOptions: AuthenticationChatOption[] = [
+		'none',
+		'basicAuth',
+		'n8nUserAuth',
+	];
+	const validLoadPreviousSessionOptions: LoadPreviousSessionChatOption[] = [
+		'manually',
+		'memory',
+		'notSupported',
+	];
+
+	const sanitizedAuthentication = validAuthenticationOptions.includes(authentication)
 		? authentication
 		: 'none';
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
+	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
+		loadPreviousSession as LoadPreviousSessionChatOption,
+	)
+		? loadPreviousSession
+		: 'notSupported';
 
 	return `<doctype html>
 	<html lang="en">
@@ -66,6 +86,7 @@ export function createPage({
 						mode: 'fullscreen',
 						webhookUrl: '${webhookUrl}',
 						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
+						loadPreviousSession: ${sanitizedLoadPreviousSession !== 'notSupported'},
 						metadata: metadata,
 						webhookConfig: {
 							headers: {
