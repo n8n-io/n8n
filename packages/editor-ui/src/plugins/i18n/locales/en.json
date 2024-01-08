@@ -1095,7 +1095,7 @@
 	"nodeView.zoomOut": "Zoom Out",
 	"nodeView.zoomToFit": "Zoom to Fit",
 	"nodeView.replaceMe": "Replace Me",
-	"nodeView.setupTemplate": "Set up Template",
+	"nodeView.setupTemplate": "Set up template",
 	"contextMenu.node": "node | nodes",
 	"contextMenu.sticky": "sticky note | sticky notes",
 	"contextMenu.selectAll": "Select all",
