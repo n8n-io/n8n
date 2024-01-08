@@ -30,7 +30,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { workflowsController } from '@/workflows/workflows.controller';
+import { WorkflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
@@ -246,10 +246,11 @@ export class Server extends AbstractServer {
 			VariablesController,
 			RoleController,
 			ActiveWorkflowsController,
+			WorkflowsController,
 		];
 
 		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
-			const { DebugController } = await import('./controllers/debug.controller');
+			const { DebugController } = await import('@/controllers/debug.controller');
 			controllers.push(DebugController);
 		}
 
@@ -357,11 +358,6 @@ export class Server extends AbstractServer {
 		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Workflow
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
 		// SAML

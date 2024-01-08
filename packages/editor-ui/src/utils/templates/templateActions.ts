@@ -68,8 +68,12 @@ async function openTemplateCredentialSetup(opts: {
 	templateId: string;
 	router: Router;
 	inNewBrowserTab?: boolean;
+	telemetry: Telemetry;
+	source: string;
 }) {
-	const { router, templateId, inNewBrowserTab = false } = opts;
+	const { router, templateId, inNewBrowserTab = false, telemetry, source } = opts;
+
+	telemetry.track('User opened cred setup', { source }, { withPostHog: true });
 
 	const routeLocation: RouteLocationRaw = {
 		name: VIEWS.TEMPLATE_SETUP,
@@ -152,6 +156,7 @@ export async function useTemplateWorkflow(opts: {
 	router: Router;
 	inNewBrowserTab?: boolean;
 	telemetry: Telemetry;
+	source: string;
 }) {
 	const { nodeTypesStore, posthogStore, templateId, templatesStore } = opts;
 

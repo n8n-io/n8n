@@ -81,12 +81,7 @@ setupTemplateStore.setTemplateId(templateId.value);
 
 onMounted(async () => {
 	await setupTemplateStore.init();
-	const wasSkipped = await skipIfTemplateHasNoCreds();
-	if (!wasSkipped) {
-		telemetry.track('User opened cred setup', undefined, {
-			withPostHog: true,
-		});
-	}
+	await skipIfTemplateHasNoCreds();
 });
 
 //#endregion Lifecycle hooks

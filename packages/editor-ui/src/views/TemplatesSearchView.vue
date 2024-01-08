@@ -93,13 +93,13 @@ import type {
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface ISearchEvent {
 	search_string: string;
@@ -117,9 +117,11 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
-	mixins: [debounceHelper],
 	setup() {
+		const { callDebounced } = useDebounce();
+
 		return {
+			callDebounced,
 			...useToast(),
 		};
 	},
@@ -263,7 +265,10 @@ export default defineComponent({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			void this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced(this.updateSearch, {
+				debounceTime: 500,
+				trailing: true,
+			});
 
 			if (search.length === 0) {
 				this.trackSearch();

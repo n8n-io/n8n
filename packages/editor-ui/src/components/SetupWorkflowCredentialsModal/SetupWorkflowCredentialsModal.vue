@@ -5,9 +5,13 @@ import { useI18n } from '@/composables/useI18n';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import AppsRequiringCredsNotice from '@/views/SetupWorkflowFromTemplateView/AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from '@/views/SetupWorkflowFromTemplateView/SetupTemplateFormStep.vue';
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const workflowStore = useWorkflowsStore();
 
 const props = defineProps<{
 	modalName: string;
@@ -17,6 +21,7 @@ const props = defineProps<{
 const {
 	appCredentials,
 	credentialUsages,
+	numFilledCredentials,
 	selectedCredentialIdByKey,
 	setInitialCredentialSelection,
 	setCredential,
@@ -25,6 +30,17 @@ const {
 
 onMounted(() => {
 	setInitialCredentialSelection();
+
+	telemetry.track('User opened cred setup', { source: 'canvas' }, { withPostHog: true });
+});
+
+onUnmounted(() => {
+	telemetry.track('User closed cred setup', {
+		completed: numFilledCredentials.value === credentialUsages.value.length,
+		creds_filled: numFilledCredentials.value,
+		creds_needed: credentialUsages.value.length,
+		workflow_id: workflowStore.workflowId,
+	});
 });
 </script>
 

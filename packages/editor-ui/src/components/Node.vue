@@ -177,7 +177,6 @@ import TitledList from '@/components/TitledList.vue';
 import { get } from 'lodash-es';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -188,6 +187,7 @@ import { type ContextMenuTarget, useContextMenu } from '@/composables/useContext
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'Node',
@@ -196,7 +196,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers, debounceHelper],
+	mixins: [nodeBase, workflowHelpers],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -218,8 +218,9 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const node = workflowsStore.getNodeByName(props.name);
 		const pinnedData = usePinnedData(node);
+		const { callDebounced } = useDebounce();
 
-		return { contextMenu, externalHooks, nodeHelpers, pinnedData };
+		return { contextMenu, externalHooks, nodeHelpers, pinnedData, callDebounced };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -680,7 +681,7 @@ export default defineComponent({
 		},
 
 		onClick(event: MouseEvent) {
-			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
