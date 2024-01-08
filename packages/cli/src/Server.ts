@@ -102,7 +102,6 @@ import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
-import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
 
@@ -256,7 +255,9 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapController } = await require('@/controllers/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service');
+			const { LdapController } = await require('@/Ldap/ldap.controller');
+			await Container.get(LdapService).init();
 			controllers.push(LdapController);
 		}
 
@@ -351,8 +352,6 @@ export class Server extends AbstractServer {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await Container.get(Queue).init();
 		}
-
-		await LdapManager.handleLdapInit();
 
 		await handleMfaDisable();
 

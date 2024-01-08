@@ -2,7 +2,6 @@
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { Container } from 'typedi';
-import { Cipher } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
@@ -14,25 +13,15 @@ import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHisto
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_CONFIG_SCHEMA,
-	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse } from 'n8n-workflow';
 import { License } from '@/License';
-import {
-	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	setCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -40,37 +29,6 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 export const isLdapEnabled = () => {
 	return Container.get(License).isLdapEnabled();
 };
-
-/**
- * 	Check whether the LDAP feature is enabled in the instance
- */
-export const isLdapDisabled = (): boolean => !isLdapEnabled();
-
-/**
- * Set the LDAP login label to the configuration object
- */
-export const setLdapLoginLabel = (value: string): void => {
-	config.set(LDAP_LOGIN_LABEL, value);
-};
-
-/**
- * Set the LDAP login enabled to the configuration object
- */
-export async function setLdapLoginEnabled(enabled: boolean): Promise<void> {
-	if (isEmailCurrentAuthenticationMethod() || isLdapCurrentAuthenticationMethod()) {
-		if (enabled) {
-			config.set(LDAP_LOGIN_ENABLED, true);
-			await setCurrentAuthenticationMethod('ldap');
-		} else if (!enabled) {
-			config.set(LDAP_LOGIN_ENABLED, false);
-			await setCurrentAuthenticationMethod('email');
-		}
-	} else {
-		throw new InternalServerError(
-			`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
-		);
-	}
-}
 
 /**
  * Retrieve the LDAP login label from the configuration object
@@ -109,28 +67,6 @@ export const validateLdapConfigurationSchema = (
 		message = errors.map((error) => `request.body.${error.path[0]} ${error.message}`).join(',');
 	}
 	return { valid, message };
-};
-
-/**
- * Retrieve the LDAP configuration (decrypted) form the database
- */
-export const getLdapConfig = async (): Promise<LdapConfig> => {
-	const configuration = await Container.get(SettingsRepository).findOneByOrFail({
-		key: LDAP_FEATURE_NAME,
-	});
-	const configurationData = jsonParse<LdapConfig>(configuration.value);
-	configurationData.bindingAdminPassword = Container.get(Cipher).decrypt(
-		configurationData.bindingAdminPassword,
-	);
-	return configurationData;
-};
-
-/**
- * Take the LDAP configuration and set login enabled and login label to the config object
- */
-export const setGlobalLdapConfigVariables = async (ldapConfig: LdapConfig): Promise<void> => {
-	await setLdapLoginEnabled(ldapConfig.loginEnabled);
-	setLdapLoginLabel(ldapConfig.loginLabel);
 };
 
 export const resolveEntryBinaryAttributes = (entry: LdapUser): LdapUser => {
