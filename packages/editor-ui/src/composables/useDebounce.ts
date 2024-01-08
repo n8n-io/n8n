@@ -1,38 +1,54 @@
 import { ref } from 'vue';
-import { debounce } from 'lodash-es';
+import { debounce as _debounce } from 'lodash-es';
 
-type DebouncedFunction = (...args: unknown[]) => Promise<void> | void;
+export interface DebounceOptions {
+	debounceTime: number;
+	trailing?: boolean;
+}
 
-export function useDebounceHelper() {
+export type DebouncedFunction<R = void> = (...args: unknown[]) => R;
+
+export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
-	const debouncedFunctions = ref(new WeakMap<DebouncedFunction, DebouncedFunction>());
+	const debounceCache = ref(new WeakMap<DebouncedFunction<unknown>, DebouncedFunction<unknown>>());
 
-	const callDebounced = async (
-		func: DebouncedFunction,
-		options: { debounceTime: number; trailing?: boolean },
-		...inputParameters: unknown[]
-	): Promise<void> => {
+	const debounce = <T extends DebouncedFunction<ReturnType<T>>>(
+		fn: T,
+		options: DebounceOptions,
+	): T => {
 		const { trailing, debounceTime } = options;
 
 		// Check if a debounced version of the function is already stored in the WeakMap.
-		let debouncedFunc = debouncedFunctions.value.get(func);
+		let debouncedFn = debounceCache.value.get(fn);
 
 		// If a debounced version is not found, create one and store it in the WeakMap.
-		if (debouncedFunc === undefined) {
-			debouncedFunc = debounce(
+		if (debouncedFn === undefined) {
+			debouncedFn = _debounce(
 				async (...args: unknown[]) => {
-					await func(...args);
+					return fn(...args);
 				},
 				debounceTime,
 				trailing ? { trailing } : { leading: true },
 			);
-			debouncedFunctions.value.set(func, debouncedFunc);
+
+			debounceCache.value.set(fn, debouncedFn);
 		}
 
-		await debouncedFunc(...inputParameters);
+		return debouncedFn as T;
+	};
+
+	const callDebounced = <T extends DebouncedFunction<ReturnType<T>>>(
+		fn: T,
+		options: DebounceOptions,
+		...inputParameters: Parameters<T>
+	): ReturnType<T> => {
+		const debouncedFn = debounce(fn, options);
+
+		return debouncedFn(...inputParameters) as ReturnType<T>;
 	};
 
 	return {
+		debounce,
 		callDebounced,
 	};
 }
