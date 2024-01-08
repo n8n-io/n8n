@@ -15,6 +15,20 @@ const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
 
+// NodeView uses beforeunload listener that will show a browser
+// native popup, which will block cypress from continuing / exiting.
+// This prevent the registration of the listener.
+Cypress.on('window:before:load', (win) => {
+	const origAddEventListener = win.addEventListener;
+	win.addEventListener = (eventName: string, listener: any, opts: any) => {
+		if (eventName === 'beforeunload') {
+			return;
+		}
+
+		return origAddEventListener.call(win, eventName, listener, opts);
+	};
+});
+
 describe('Template credentials setup', () => {
 	beforeEach(() => {
 		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
@@ -159,10 +173,6 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.getters.skipLink().click();
 
 			getSetupWorkflowCredentialsButton().should('be.visible');
-
-			// We need to save the workflow or otherwise a browser native popup
-			// will block cypress from continuing
-			workflowPage.actions.saveWorkflowOnButtonClick();
 		});
 
 		it('should allow credential setup from workflow editor if user fills in credentials partially during template setup', () => {
@@ -203,10 +213,6 @@ describe('Template credentials setup', () => {
 			});
 
 			getSetupWorkflowCredentialsButton().should('not.exist');
-
-			// We need to save the workflow or otherwise a browser native popup
-			// will block cypress from continuing
-			workflowPage.actions.saveWorkflowOnButtonClick();
 		});
 	});
 });
