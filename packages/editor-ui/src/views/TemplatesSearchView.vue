@@ -125,7 +125,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			categories: [] as number[],
+			categories: [] as string[],
 			loading: true,
 			loadingCollections: true,
 			loadingWorkflows: true,
@@ -203,9 +203,7 @@ export default defineComponent({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories
-				.split(',')
-				.map((categoryId) => parseInt(categoryId, 10));
+			this.categories = this.$route.query.categories.split(',');
 		}
 	},
 	methods: {
