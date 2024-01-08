@@ -173,8 +173,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	top: var(--spacing-l);
+	right: var(--spacing-l);
 	pointer-events: all !important;
 
 	button {
