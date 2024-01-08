@@ -205,6 +205,7 @@ export class WorkflowService {
 				'active',
 				'nodes',
 				'connections',
+				'meta',
 				'settings',
 				'staticData',
 				'pinData',
