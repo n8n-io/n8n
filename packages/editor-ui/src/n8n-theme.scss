@@ -192,15 +192,7 @@
 	border: var(--border-base);
 	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
-	margin-top: 15vh;
 
-	@media (max-height: 1050px) {
-		margin: 4em auto !important;
-	}
-
-	@media (max-height: 930px) {
-		margin: 1em auto !important;
-	}
 	&.classic {
 		.el-dialog__header {
 			padding: 15px 20px;

@@ -14,11 +14,13 @@ import { License } from '@/License';
 import { badPasswords } from '../shared/testData';
 import { mockInstance } from '../../shared/mocking';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const internalHooks = mockInstance(InternalHooks);
 	const userService = mockInstance(UserService);
+	const userRepository = mockInstance(UserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -47,7 +49,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userService.findOneOrFail.mockResolvedValue(user);
+			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -82,7 +84,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userService.findOneOrFail.mockResolvedValue(user);
+			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
@@ -166,7 +168,7 @@ describe('MeController', () => {
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 			});
 			const res = mock<Response>();
-			userService.save.calledWith(req.user).mockResolvedValue(req.user);
+			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(req, res);

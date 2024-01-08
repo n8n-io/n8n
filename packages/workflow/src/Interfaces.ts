@@ -217,6 +217,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -526,6 +527,7 @@ export interface PaginationOptions {
 	binaryResult?: boolean;
 	continue: boolean | string;
 	request: IRequestOptionsSimplifiedAuth;
+	requestInterval: number;
 	maxRequests?: number;
 }
 
@@ -2120,23 +2122,6 @@ export interface IConnectedNode {
 	name: string;
 	indicies: number[];
 	depth: number;
-}
-
-export const enum OAuth2GrantType {
-	pkce = 'pkce',
-	authorizationCode = 'authorizationCode',
-	clientCredentials = 'clientCredentials',
-}
-export interface IOAuth2Credentials {
-	grantType: 'authorizationCode' | 'clientCredentials' | 'pkce';
-	clientId: string;
-	clientSecret: string;
-	accessTokenUrl: string;
-	authUrl: string;
-	authQueryParameters: string;
-	authentication: 'body' | 'header';
-	scope: string;
-	oauthTokenData?: IDataObject;
 }
 
 export type PublicInstalledPackage = {

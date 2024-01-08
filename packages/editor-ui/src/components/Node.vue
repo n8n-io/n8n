@@ -112,7 +112,7 @@
 					text
 					icon="play"
 					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.executeNode')"
+					:title="$locale.baseText('node.testStep')"
 					@click="executeNode"
 				/>
 				<n8n-icon-button
@@ -159,7 +159,6 @@ import {
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { pinData } from '@/mixins/pinData';
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -177,7 +176,6 @@ import TitledList from '@/components/TitledList.vue';
 import { get } from 'lodash-es';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -187,6 +185,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'Node',
@@ -195,7 +195,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
+	mixins: [nodeBase, workflowHelpers],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -210,17 +210,21 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup() {
+	setup(props) {
+		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const node = workflowsStore.getNodeByName(props.name);
+		const pinnedData = usePinnedData(node);
+		const { callDebounced } = useDebounce();
 
-		return { contextMenu, externalHooks, nodeHelpers };
+		return { contextMenu, externalHooks, nodeHelpers, pinnedData, callDebounced };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
-			return this.hasPinData && !this.isProductionExecutionPreview;
+			return this.pinnedData.hasData.value && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
@@ -247,7 +251,7 @@ export default defineComponent({
 				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
 			)
 				return true;
-			if (this.hasPinData) return false;
+			if (this.pinnedData.hasData.value) return false;
 			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
@@ -531,7 +535,7 @@ export default defineComponent({
 				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
-				!this.hasPinData &&
+				!this.pinnedData.hasData.value &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&
@@ -676,7 +680,7 @@ export default defineComponent({
 		},
 
 		onClick(event: MouseEvent) {
-			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {

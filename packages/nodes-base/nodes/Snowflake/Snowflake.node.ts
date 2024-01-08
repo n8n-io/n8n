@@ -24,6 +24,7 @@ export class Snowflake implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'snowflake',
@@ -69,7 +70,6 @@ export class Snowflake implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 				},
 				displayOptions: {
 					show: {

@@ -43,7 +43,6 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { TemplateCategoryFilter } from '@/Interface';
 import type { PropType } from 'vue';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -51,7 +50,6 @@ import { mapStores } from 'pinia';
 
 export default defineComponent({
 	name: 'TemplateFilters',
-	mixins: [genericHelpers],
 	props: {
 		sortOnPopulate: {
 			type: Boolean,

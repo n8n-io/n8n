@@ -167,6 +167,10 @@ export default defineComponent({
 				size: 'small',
 			}),
 		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
 	},
 	setup() {
 		const eventBus = createEventBus();

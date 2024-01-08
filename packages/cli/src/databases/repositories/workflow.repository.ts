@@ -54,8 +54,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async findByIds(workflowIds: string[]) {
-		return this.find({ where: { id: In(workflowIds) } });
+	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
+		const options: FindManyOptions<WorkflowEntity> = {
+			where: { id: In(workflowIds) },
+		};
+
+		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+
+		return this.find(options);
 	}
 
 	async getActiveTriggerCount() {
@@ -197,5 +203,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.select('DISTINCT workflow.id, workflow.name')
 			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
 			.execute() as Promise<Array<{ id: string; name: string }>>;
+	}
+
+	async updateActiveState(workflowId: string, newState: boolean) {
+		return this.update({ id: workflowId }, { active: newState });
+	}
+
+	async deactivateAll() {
+		return this.update({ active: true }, { active: false });
+	}
+
+	async findByActiveState(activeState: boolean) {
+		return this.findBy({ active: activeState });
 	}
 }

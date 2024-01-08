@@ -12,6 +12,7 @@ import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
+	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type {
@@ -103,7 +104,6 @@ import {
 	NodeHelpers,
 	NodeOperationError,
 	NodeSslError,
-	OAuth2GrantType,
 	WorkflowDataProxy,
 	createDeferredPromise,
 	deepCopy,
@@ -115,6 +115,7 @@ import {
 	ExecutionBaseError,
 	jsonParse,
 	ApplicationError,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -139,7 +140,6 @@ import {
 } from './Constants';
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
-import { getClientCredentialsToken } from './OAuth2Helper';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -987,16 +987,27 @@ export function assertBinaryData(
 ): IBinaryData {
 	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
 	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(node, 'No binary data exists on item!', {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description: 'Make sure that the previous node outputs a binary file',
+			},
+		);
 	}
 
 	const binaryPropertyData = binaryKeyData[propertyName];
 	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description:
+					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+			},
+		);
 	}
 
 	return binaryPropertyData;
@@ -1203,31 +1214,31 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = await this.getCredentials(credentialsType);
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as unknown as OAuth2CredentialData;
 
 	// Only the OAuth2 with authorization code grant needs connection
-	if (
-		credentials.grantType === OAuth2GrantType.authorizationCode &&
-		credentials.oauthTokenData === undefined
-	) {
+	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
 		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oAuthClient = new ClientOAuth2({
-		clientId: credentials.clientId as string,
-		clientSecret: credentials.clientSecret as string,
-		accessTokenUri: credentials.accessTokenUrl as string,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
 		scopes: (credentials.scope as string).split(' '),
-		ignoreSSLIssues: credentials.ignoreSSLIssues as boolean,
+		ignoreSSLIssues: credentials.ignoreSSLIssues,
+		authentication: credentials.authentication ?? 'header',
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
-		credentials.grantType === OAuth2GrantType.clientCredentials &&
+		credentials.grantType === 'clientCredentials' &&
 		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
 	) {
-		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
+		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new ApplicationError('Node does not have credential type', {
@@ -1237,12 +1248,13 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
+		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
 		await additionalData.credentialsHelper.updateCredentials(
 			nodeCredentials,
 			credentialsType,
-			Object.assign(credentials, { oauthTokenData: data }),
+			credentials as unknown as ICredentialDataDecryptedObject,
 		);
 
 		oauthTokenData = data;
@@ -1284,7 +1296,7 @@ export async function requestOAuth2(
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 					const body: IDataObject = {
-						client_id: credentials.clientId as string,
+						client_id: credentials.clientId,
 						...(credentials.grantType === 'authorizationCode' && {
 							client_secret: credentials.clientSecret as string,
 						}),
@@ -1302,8 +1314,8 @@ export async function requestOAuth2(
 				);
 				// if it's OAuth2 with client credentials grant type, get a new token
 				// instead of refreshing it.
-				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-					newToken = await getClientCredentialsToken(token.client, credentials);
+				if (credentials.grantType === 'clientCredentials') {
+					newToken = await token.client.credentials.getToken();
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1323,7 +1335,7 @@ export async function requestOAuth2(
 				await additionalData.credentialsHelper.updateCredentials(
 					nodeCredentials,
 					credentialsType,
-					credentials,
+					credentials as unknown as ICredentialDataDecryptedObject,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1379,8 +1391,8 @@ export async function requestOAuth2(
 
 				// if it's OAuth2 with client credentials grant type, get a new token
 				// instead of refreshing it.
-				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-					newToken = await getClientCredentialsToken(token.client, credentials);
+				if (credentials.grantType === 'clientCredentials') {
+					newToken = await token.client.credentials.getToken();
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1870,6 +1882,7 @@ export async function getCredentials(
 	type: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	executeData?: IExecuteData,
 	runExecutionData?: IRunExecutionData | null,
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
@@ -1989,6 +2002,7 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		executeData,
 		false,
 		expressionResolveValues,
 	);
@@ -2737,6 +2751,9 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (paginationOptions.requestInterval) {
+						await sleep(paginationOptions.requestInterval);
+					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
 						// via "requestOptions.simple = false" to not by default fail if it is for example
@@ -3134,6 +3151,7 @@ export function getExecuteFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,
@@ -3266,6 +3284,7 @@ export function getExecuteFunctions(
 									key,
 									additionalData,
 									mode,
+									executeData,
 									runExecutionData,
 									runIndex,
 									connectionInputData,
@@ -3593,6 +3612,7 @@ export function getExecuteSingleFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,

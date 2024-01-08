@@ -162,6 +162,16 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SetupWorkflowCredentialsModal
+					data-test-id="setup-workflow-credentials-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -197,6 +207,7 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+	SETUP_CREDENTIALS_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -229,6 +240,7 @@ import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderMo
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
+import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -263,6 +275,7 @@ export default defineComponent({
 		MfaSetupModal,
 		WorkflowHistoryVersionRestoreModal,
 		SuggestedTemplatesPreviewModal,
+		SetupWorkflowCredentialsModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -294,6 +307,7 @@ export default defineComponent({
 		MFA_SETUP_MODAL_KEY,
 		WORKFLOW_HISTORY_VERSION_RESTORE,
 		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+		SETUP_CREDENTIALS_MODAL_KEY,
 	}),
 });
 </script>
