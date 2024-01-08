@@ -166,7 +166,7 @@
 		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SetupWorkflowCredentialsModal
-					data-test-id="suggested-templates-preview-modal"
+					data-test-id="setup-workflow-credentials-modal"
 					:modal-name="modalName"
 					:data="data"
 				/>
