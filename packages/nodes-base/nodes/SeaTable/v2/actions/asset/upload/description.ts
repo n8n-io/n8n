@@ -56,25 +56,6 @@ export const assetUploadDescription: AssetProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-			numberStepSize: 1,
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['asset'],
-				operation: ['upload'],
-			},
-		},
-		default: '',
-		description:
-			'How to get the workspace ID: https://seatable.io/docs/arbeiten-mit-gruppen/workspace-id-einer-gruppe-ermitteln/?lang=auto',
-	},
-	{
 		displayName: 'Property Name',
 		name: 'dataPropertyName',
 		type: 'string',
@@ -88,17 +69,32 @@ export const assetUploadDescription: AssetProperties = [
 		},
 		description: 'Name of the binary property which contains the data for the file to be written',
 	},
-	/*{
-		displayName: 'Replace',
+	{
+		displayName: 'Replace existing file',
 		name: 'replace',
 		type: 'boolean',
-		default: false,
+		default: true,
 		displayOptions: {
 			show: {
 				resource: ['asset'],
 				operation: ['upload'],
 			},
 		},
-		description: 'Replace existing file if the file/image already exists with same name.',
-	},*/
+		description:
+			'Replace existing asset with the same name. Otherwise a new version with another name (numeral in parentheses) will be uploaded.',
+	},
+	{
+		displayName: 'Append to column',
+		name: 'append',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: ['asset'],
+				operation: ['upload'],
+			},
+		},
+		description:
+			'Keep existing files/images in the column and append the new asset. Otherwise the existing files/images are remove from the column.',
+	},
 ];
