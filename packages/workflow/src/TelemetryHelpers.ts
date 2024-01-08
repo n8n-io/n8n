@@ -1,4 +1,4 @@
-import { NodeHelpers } from '.';
+import { getNodeParameters } from '@/NodeHelpers';
 import type {
 	IConnection,
 	INode,
@@ -130,82 +130,80 @@ export function generateNodesGraph(
 	const nodeNameAndIndex: INodeNameIndex = {};
 	const webhookNodeNames: string[] = [];
 
-	try {
-		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
-		const otherNodes = workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+	const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
+	const otherNodes = workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 
-		notes.forEach((stickyNote: INode, index: number) => {
-			const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);
-			const { height, width } = getStickyDimensions(stickyNote, stickyType);
+	notes.forEach((stickyNote: INode, index: number) => {
+		const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);
+		const { height, width } = getStickyDimensions(stickyNote, stickyType);
 
-			const topLeft = stickyNote.position;
-			const bottomRight: [number, number] = [topLeft[0] + width, topLeft[1] + height];
-			const overlapping = Boolean(
-				otherNodes.find((node) => areOverlapping(topLeft, bottomRight, node.position)),
-			);
-			nodesGraph.notes[index] = {
-				overlapping,
-				position: topLeft,
-				height,
-				width,
-			};
-		});
+		const topLeft = stickyNote.position;
+		const bottomRight: [number, number] = [topLeft[0] + width, topLeft[1] + height];
+		const overlapping = Boolean(
+			otherNodes.find((node) => areOverlapping(topLeft, bottomRight, node.position)),
+		);
+		nodesGraph.notes[index] = {
+			overlapping,
+			position: topLeft,
+			height,
+			width,
+		};
+	});
 
-		otherNodes.forEach((node: INode, index: number) => {
-			nodesGraph.node_types.push(node.type);
-			const nodeItem: INodeGraphItem = {
-				id: node.id,
-				type: node.type,
-				version: node.typeVersion,
-				position: node.position,
-			};
+	otherNodes.forEach((node: INode, index: number) => {
+		nodesGraph.node_types.push(node.type);
+		const nodeItem: INodeGraphItem = {
+			id: node.id,
+			type: node.type,
+			version: node.typeVersion,
+			position: node.position,
+		};
 
-			if (options?.sourceInstanceId) {
-				nodeItem.src_instance_id = options.sourceInstanceId;
+		if (options?.sourceInstanceId) {
+			nodeItem.src_instance_id = options.sourceInstanceId;
+		}
+
+		if (node.id && options?.nodeIdMap?.[node.id]) {
+			nodeItem.src_node_id = options.nodeIdMap[node.id];
+		}
+
+		if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
+			try {
+				nodeItem.domain = new URL(node.parameters.url as string).hostname;
+			} catch {
+				nodeItem.domain = getDomainBase(node.parameters.url as string);
 			}
+		} else if (node.type === 'n8n-nodes-base.httpRequest' && [2, 3].includes(node.typeVersion)) {
+			const { authentication } = node.parameters as { authentication: string };
 
-			if (node.id && options?.nodeIdMap?.[node.id]) {
-				nodeItem.src_node_id = options.nodeIdMap[node.id];
-			}
+			nodeItem.credential_type = {
+				none: 'none',
+				genericCredentialType: node.parameters.genericAuthType as string,
+				predefinedCredentialType: node.parameters.nodeCredentialType as string,
+			}[authentication];
 
-			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
-				try {
-					nodeItem.domain = new URL(node.parameters.url as string).hostname;
-				} catch {
-					nodeItem.domain = getDomainBase(node.parameters.url as string);
-				}
-			} else if (node.type === 'n8n-nodes-base.httpRequest' && [2, 3].includes(node.typeVersion)) {
-				const { authentication } = node.parameters as { authentication: string };
+			nodeItem.credential_set = node.credentials ? Object.keys(node.credentials).length > 0 : false;
 
-				nodeItem.credential_type = {
-					none: 'none',
-					genericCredentialType: node.parameters.genericAuthType as string,
-					predefinedCredentialType: node.parameters.nodeCredentialType as string,
-				}[authentication];
+			const { url } = node.parameters as { url: string };
 
-				nodeItem.credential_set = node.credentials
-					? Object.keys(node.credentials).length > 0
-					: false;
-
-				const { url } = node.parameters as { url: string };
-
-				nodeItem.domain_base = getDomainBase(url);
-				nodeItem.domain_path = getDomainPath(url);
-				nodeItem.method = node.parameters.requestMethod as string;
-			} else if (node.type === 'n8n-nodes-base.webhook') {
-				webhookNodeNames.push(node.name);
-			} else {
-				const nodeType = nodeTypes.getByNameAndVersion(node.type);
-				const nodeParameters = NodeHelpers.getNodeParameters(
+			nodeItem.domain_base = getDomainBase(url);
+			nodeItem.domain_path = getDomainPath(url);
+			nodeItem.method = node.parameters.requestMethod as string;
+		} else if (node.type === 'n8n-nodes-base.webhook') {
+			webhookNodeNames.push(node.name);
+		} else {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type);
+			if (nodeType) {
+				const nodeParameters = getNodeParameters(
 					nodeType.description.properties,
 					node.parameters,
 					true,
 					false,
 					node,
 				);
-				
+
 				if (nodeParameters) {
-					const keys: ('operation' | 'resource' | 'mode')[] = ['operation', 'resource', 'mode'];
+					const keys: Array<'operation' | 'resource' | 'mode'> = ['operation', 'resource', 'mode'];
 					keys.forEach((key) => {
 						if (nodeParameters.hasOwnProperty(key)) {
 							nodeItem[key] = nodeParameters[key]?.toString();
@@ -213,25 +211,23 @@ export function generateNodesGraph(
 					});
 				}
 			}
-			nodesGraph.nodes[`${index}`] = nodeItem;
-			nodeNameAndIndex[node.name] = index.toString();
-		});
+		}
+		nodesGraph.nodes[`${index}`] = nodeItem;
+		nodeNameAndIndex[node.name] = index.toString();
+	});
 
-		const getGraphConnectionItem = (startNode: string, connectionItem: IConnection) => {
-			return { start: nodeNameAndIndex[startNode], end: nodeNameAndIndex[connectionItem.node] };
-		};
+	const getGraphConnectionItem = (startNode: string, connectionItem: IConnection) => {
+		return { start: nodeNameAndIndex[startNode], end: nodeNameAndIndex[connectionItem.node] };
+	};
 
-		Object.keys(workflow.connections).forEach((nodeName) => {
-			const connections = workflow.connections[nodeName];
-			connections.main.forEach((element) => {
-				element.forEach((element2) => {
-					nodesGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
-				});
+	Object.keys(workflow.connections).forEach((nodeName) => {
+		const connections = workflow.connections[nodeName];
+		connections.main.forEach((element) => {
+			element.forEach((element2) => {
+				nodesGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
 			});
 		});
-	} catch (e) {
-		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
-	}
-	
+	});
+
 	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }
