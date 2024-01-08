@@ -202,6 +202,8 @@ describe('Template credentials setup', () => {
 				});
 			});
 
+			getSetupWorkflowCredentialsButton().should('not.exist');
+
 			// We need to save the workflow or otherwise a browser native popup
 			// will block cypress from continuing
 			workflowPage.actions.saveWorkflowOnButtonClick();
