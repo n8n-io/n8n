@@ -21,6 +21,7 @@ overrides:
   xml2js: ^0.5.0
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
+  '@langchain/core': ^0.1.8
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -186,6 +187,12 @@ importers:
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
+      '@langchain/core':
+        specifier: ^0.1.8
+        version: 0.1.8
+      '@langchain/mistralai':
+        specifier: 0.0.6
+        version: 0.0.6
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -218,7 +225,7 @@ importers:
         version: 1.2.0
       langchain:
         specifier: 0.0.198
-        version: 0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
+        version: 0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(axios@1.6.2)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -5878,8 +5885,8 @@ packages:
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
     dev: false
 
-  /@langchain/core@0.0.2:
-    resolution: {integrity: sha512-Q3koIjjI295wUKrSMLTXoc3GUyGOS8L4NiLNWD05lozv9mXCNYG6/kmykzQLbiSWXVRKG4zQ82Kr7EHb39tQQw==}
+  /@langchain/core@0.1.8:
+    resolution: {integrity: sha512-ZTQ/NFjBbOKktVL+BlT/Fal5Ys0GAhygWeWdGNoFZg0qJfSt54fQzFhljNSpnQQ4Wavj8NkkCLiSFMnxDAuHjg==}
     engines: {node: '>=18'}
     dependencies:
       ansi-styles: 5.2.0
@@ -5887,10 +5894,21 @@ packages:
       decamelize: 1.2.0
       js-tiktoken: 1.0.8
       langsmith: 0.0.48
+      ml-distance: 4.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.0
       zod: 3.22.4
+    dev: false
+
+  /@langchain/mistralai@0.0.6:
+    resolution: {integrity: sha512-zA/xxKNF+rDM9IF1uvVx+LI/eWPZSO85tJBX60ENeQrcM35np92Sm3ca0D4ixcdBAkG0vnn+9ELcYHGdknCbHQ==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@langchain/core': 0.1.8
+      '@mistralai/mistralai': 0.0.7
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /@lezer/common@1.1.0:
@@ -6019,6 +6037,15 @@ packages:
   /@miragejs/pretender-node-polyfill@0.1.2:
     resolution: {integrity: sha512-M/BexG/p05C5lFfMunxo/QcgIJnMT2vDVCd00wNqK2ImZONIlEETZwWJu1QtLxtmYlSHlCFl3JNzp0tLe7OJ5g==}
     dev: true
+
+  /@mistralai/mistralai@0.0.7:
+    resolution: {integrity: sha512-47FiV/GBnt6gug99ZfDBcBofYuYvqT5AyhUDdtktUbCN+gq52tmiAbtwc88k7hlyUWHzJ28VpHRDfNTRfaWKxA==}
+    dependencies:
+      axios: 1.6.2(debug@3.2.7)
+      axios-retry: 4.0.0(axios@1.6.2)
+    transitivePeerDependencies:
+      - debug
+    dev: false
 
   /@mongodb-js/saslprep@1.1.0:
     resolution: {integrity: sha512-Xfijy7HvfzzqiOAhAepF4SGN5e9leLkMvg/OPOF97XemjfVCYN/oWa75wnkc6mltMSTwY+XlbhWgUOJmkFspSw==}
@@ -12056,6 +12083,15 @@ packages:
     resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
     dependencies:
       '@babel/runtime': 7.23.6
+      is-retry-allowed: 2.2.0
+    dev: false
+
+  /axios-retry@4.0.0(axios@1.6.2):
+    resolution: {integrity: sha512-F6P4HVGITD/v4z9Lw2mIA24IabTajvpDZmKa6zq/gGwn57wN5j1P3uWrAV0+diqnW6kTM2fTqmWNfgYWGmMuiA==}
+    peerDependencies:
+      axios: 0.x || 1.x
+    dependencies:
+      axios: 1.6.2(debug@3.2.7)
       is-retry-allowed: 2.2.0
     dev: false
 
@@ -18590,7 +18626,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
+  /langchain@0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(axios@1.6.2)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.11)(typeorm@0.3.17):
     resolution: {integrity: sha512-YC0O1g8r61InCWyF5NmiQjdghdq6LKcgMrDZtqLbgDxAe4RoSldonm+5oNXS3yjCISG0j3s5Cty+yB7klqvUpg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18901,11 +18937,12 @@ packages:
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 0.2.1
       '@huggingface/inference': 2.6.4
-      '@langchain/core': 0.0.2
+      '@langchain/core': 0.1.8
       '@pinecone-database/pinecone': 1.1.2
       '@qdrant/js-client-rest': 1.7.0(typescript@5.3.2)
       '@supabase/supabase-js': 2.38.5
       '@xata.io/client': 0.25.3(typescript@5.3.2)
+      axios: 1.6.2(debug@3.2.7)
       binary-extensions: 2.2.0
       cohere-ai: 6.2.2
       d3-dsv: 2.0.0
