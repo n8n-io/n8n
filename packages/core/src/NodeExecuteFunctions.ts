@@ -115,6 +115,7 @@ import {
 	ExecutionBaseError,
 	jsonParse,
 	ApplicationError,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -1881,6 +1882,7 @@ export async function getCredentials(
 	type: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	executeData?: IExecuteData,
 	runExecutionData?: IRunExecutionData | null,
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
@@ -2000,6 +2002,7 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		executeData,
 		false,
 		expressionResolveValues,
 	);
@@ -2748,6 +2751,9 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (paginationOptions.requestInterval) {
+						await sleep(paginationOptions.requestInterval);
+					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
 						// via "requestOptions.simple = false" to not by default fail if it is for example
@@ -3145,6 +3151,7 @@ export function getExecuteFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,
@@ -3277,6 +3284,7 @@ export function getExecuteFunctions(
 									key,
 									additionalData,
 									mode,
+									executeData,
 									runExecutionData,
 									runIndex,
 									connectionInputData,
@@ -3604,6 +3612,7 @@ export function getExecuteSingleFunctions(
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,

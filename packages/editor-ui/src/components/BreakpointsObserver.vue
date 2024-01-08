@@ -17,14 +17,13 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
  * xl >= 1920
  */
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 
 export default defineComponent({
 	name: 'BreakpointsObserver',
-	mixins: [genericHelpers, debounceHelper],
+	mixins: [debounceHelper],
 	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
 	data() {
 		return {

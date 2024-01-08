@@ -198,7 +198,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 		const localStorageFlag = localStorage.getItem(SUGGESTED_TEMPLATES_FLAG);
 		// Don't show if users already opted in
-		if (localStorageFlag !== 'false') {
+		if (localStorageFlag !== 'false' && hasPermission(['instanceOwner'])) {
 			await loadSuggestedTemplates();
 		}
 

@@ -97,6 +97,11 @@
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<Suspense>
+				<div :class="$style.setupCredentialsButtonWrapper">
+					<SetupWorkflowCredentialsButton />
+				</div>
+			</Suspense>
+			<Suspense>
 				<NodeCreation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
@@ -126,7 +131,7 @@
 							:loading="workflowRunning"
 							:label="runButtonText"
 							size="large"
-							icon="play-circle"
+							icon="flask"
 							type="primary"
 							:disabled="isExecutionDisabled"
 							data-test-id="execute-workflow-button"
@@ -193,7 +198,7 @@
 
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 
 import type {
 	Endpoint,
@@ -239,7 +244,6 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
 } from '@/constants';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -255,7 +259,6 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
-import { type PinDataSource, pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -372,6 +375,8 @@ import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/n
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -381,6 +386,10 @@ interface AddNodeOptions {
 
 const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
 const CanvasControls = defineAsyncComponent(async () => import('@/components/CanvasControls.vue'));
+const SetupWorkflowCredentialsButton = defineAsyncComponent(
+	async () =>
+		import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+);
 
 export default defineComponent({
 	name: 'NodeView',
@@ -393,8 +402,9 @@ export default defineComponent({
 		NodeCreation,
 		CanvasControls,
 		ContextMenu,
+		SetupWorkflowCredentialsButton,
 	},
-	mixins: [genericHelpers, moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper, pinData],
+	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun, debounceHelper],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -456,12 +466,15 @@ export default defineComponent({
 		}
 	},
 	setup(props, ctx) {
+		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
 		const clipboard = useClipboard();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
 
 		return {
 			locale,
@@ -470,6 +483,7 @@ export default defineComponent({
 			nodeHelpers,
 			externalHooks,
 			clipboard,
+			pinnedData,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -500,14 +514,14 @@ export default defineComponent({
 			// When entering this tab:
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
 				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
-					this.startLoading();
+					this.canvasStore.startLoading();
 					if (nodeViewNotInitialized) {
 						const previousDirtyState = this.uiStore.stateIsDirty;
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
 					await Promise.all([this.loadCredentials(), this.initView()]);
-					this.stopLoading();
+					this.canvasStore.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
 					}
@@ -566,6 +580,7 @@ export default defineComponent({
 			useExternalSecretsStore,
 			useCollaborationStore,
 			usePushConnectionStore,
+			useSourceControlStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -583,9 +598,7 @@ export default defineComponent({
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return (
-				this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
-			);
+			return !this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv;
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -698,10 +711,16 @@ export default defineComponent({
 			return this.canvasStore.jsPlumbInstance;
 		},
 		isLoading(): boolean {
-			return this.loadingService !== null;
+			return this.canvasStore.isLoading;
 		},
 		currentWorkflowObject(): Workflow {
 			return this.workflowsStore.getCurrentWorkflow();
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readOnlyCanvas === true;
 		},
 		nodeViewClasses(): string[] {
 			const classes = ['node-view'];
@@ -773,7 +792,7 @@ export default defineComponent({
 
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
-		this.startLoading();
+		this.canvasStore.startLoading();
 		const loadPromises = [
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
@@ -816,11 +835,11 @@ export default defineComponent({
 					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
 				);
 			}
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();
-				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 			}, 0);
 		});
 
@@ -1157,7 +1176,7 @@ export default defineComponent({
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
 		async openExecution(executionId: string) {
-			this.startLoading();
+			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
@@ -1256,7 +1275,7 @@ export default defineComponent({
 					duration: 0,
 				});
 			}
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 			if (!data.workflow.nodes || !data.workflow.connections) {
@@ -1274,8 +1293,8 @@ export default defineComponent({
 			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
-			this.startLoading();
-			this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
+			this.canvasStore.startLoading();
+			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -1314,10 +1333,10 @@ export default defineComponent({
 				templateName: data.name,
 				workflow: data.workflow,
 			});
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
-			this.startLoading();
+			this.canvasStore.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
@@ -1371,7 +1390,7 @@ export default defineComponent({
 			} else {
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
@@ -1696,7 +1715,7 @@ export default defineComponent({
 			this.nodeHelpers.disableNodes(nodes, true);
 		},
 
-		togglePinNodes(nodes: INode[], source: PinDataSource) {
+		togglePinNodes(nodes: INode[], source: 'keyboard-shortcut' | 'context-menu') {
 			if (!this.editAllowedCheck()) {
 				return;
 			}
@@ -1708,13 +1727,14 @@ export default defineComponent({
 			);
 
 			for (const node of nodes) {
+				const pinnedDataForNode = usePinnedData(node);
 				if (nextStatePinned) {
 					const dataToPin = this.dataSchema.getInputDataWithPinned(node);
 					if (dataToPin.length !== 0) {
-						this.setPinData(node, dataToPin, source);
+						pinnedDataForNode.setData(dataToPin, source);
 					}
 				} else {
-					this.unsetPinData(node, source);
+					pinnedDataForNode.unsetData(source);
 				}
 			}
 
@@ -2013,18 +2033,18 @@ export default defineComponent({
 		async getWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
 			let workflowData: IWorkflowDataUpdate;
 
-			this.startLoading();
+			this.canvasStore.startLoading();
 			try {
 				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
-				this.stopLoading();
+				this.canvasStore.stopLoading();
 				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
 				return;
 			}
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 
 			return workflowData;
 		},
@@ -3442,7 +3462,7 @@ export default defineComponent({
 				e.returnValue = true; //Gecko + IE
 				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
-				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
 				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
@@ -3453,7 +3473,7 @@ export default defineComponent({
 			clearTimeout(this.unloadTimeout);
 		},
 		async newWorkflow(): Promise<void> {
-			this.startLoading();
+			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -3465,7 +3485,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
-			this.stopLoading();
+			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			this.canvasStore.zoomToFit();
@@ -3793,7 +3813,7 @@ export default defineComponent({
 			data: ITaskData[] | null;
 			waiting: boolean;
 		}) {
-			const pinData = this.workflowsStore.getPinData;
+			const pinData = this.workflowsStore.pinnedWorkflowData;
 
 			if (pinData?.[name]) return;
 
@@ -4418,7 +4438,8 @@ export default defineComponent({
 
 					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
-						this.setPinData(node, data.pinData[nodeName], 'add-nodes');
+						const pinnedDataForNode = usePinnedData(node);
+						pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;
@@ -4592,9 +4613,9 @@ export default defineComponent({
 
 			if (nodesToBeFetched.length > 0) {
 				// Only call API if node information is actually missing
-				this.startLoading();
+				this.canvasStore.startLoading();
 				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-				this.stopLoading();
+				this.canvasStore.stopLoading();
 			}
 		},
 		async onPostMessageReceived(message: MessageEvent) {
@@ -4848,7 +4869,7 @@ export default defineComponent({
 		onPageShow(e: PageTransitionEvent) {
 			// Page was restored from the bfcache (back-forward cache)
 			if (e.persisted) {
-				this.stopLoading();
+				this.canvasStore.stopLoading();
 			}
 		},
 		readOnlyEnvRouteCheck() {
@@ -5193,6 +5214,12 @@ export default defineComponent({
 	60% {
 		transform: translate3d(4px, 0, 0);
 	}
+}
+
+.setupCredentialsButtonWrapper {
+	position: absolute;
+	left: 35px;
+	top: var(--spacing-s);
 }
 </style>
 

@@ -1,12 +1,8 @@
-import { BACKEND_BASE_URL, INSTANCE_ADMIN, INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { INSTANCE_OWNER } from '../constants';
 import './commands';
 
 before(() => {
-	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
-		owner: INSTANCE_OWNER,
-		members: INSTANCE_MEMBERS,
-		admin: INSTANCE_ADMIN,
-	});
+	cy.resetDatabase();
 
 	Cypress.on('uncaught:exception', (err) => {
 		return !err.message.includes('ResizeObserver');

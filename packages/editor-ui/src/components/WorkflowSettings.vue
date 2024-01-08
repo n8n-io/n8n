@@ -355,7 +355,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
@@ -383,13 +382,13 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
 	components: {
 		Modal,
 	},
-	mixins: [genericHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -459,9 +458,13 @@ export default defineComponent({
 			useRootStore,
 			useUsersStore,
 			useSettingsStore,
+			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},

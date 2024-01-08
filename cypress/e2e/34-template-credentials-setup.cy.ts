@@ -1,4 +1,3 @@
-import { CredentialsModal, MessageBox } from '../pages/modals';
 import {
 	clickUseWorkflowButtonByTitle,
 	visitTemplateCollectionPage,
@@ -7,10 +6,11 @@ import {
 import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
 import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
+import * as formStep from '../composables/setup-template-form-step';
+import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
+import * as setupCredsModal from '../composables/modals/workflow-credential-setup-modal';
 
 const templateWorkflowPage = new TemplateWorkflowPage();
-const credentialsModal = new CredentialsModal();
-const messageBox = new MessageBox();
 const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
@@ -72,13 +72,9 @@ describe('Template credentials setup', () => {
 			'The credential you select will be used in the Telegram node of the workflow template.',
 		];
 
-		templateCredentialsSetupPage.getters.appCredentialSteps().each(($el, index) => {
-			templateCredentialsSetupPage.getters
-				.stepHeading($el)
-				.should('have.text', expectedAppNames[index]);
-			templateCredentialsSetupPage.getters
-				.stepDescription($el)
-				.should('have.text', expectedAppDescriptions[index]);
+		formStep.getFormStep().each(($el, index) => {
+			formStep.getStepHeading($el).should('have.text', expectedAppNames[index]);
+			formStep.getStepDescription($el).should('have.text', expectedAppDescriptions[index]);
 		});
 	});
 
@@ -95,30 +91,120 @@ describe('Template credentials setup', () => {
 		// Continue button should be disabled if no credentials are created
 		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('Shopify').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
 
 		// Continue button should be enabled if at least one has been created
 		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('X (Formerly Twitter)').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
-		messageBox.actions.cancel();
+		templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
 
-		templateCredentialsSetupPage.getters.createAppCredentialsButton('Telegram').click();
-		credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
-		credentialsModal.actions.save(false);
-		credentialsModal.actions.close();
-
-		cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-		templateCredentialsSetupPage.getters.continueButton().should('be.enabled');
-		templateCredentialsSetupPage.getters.continueButton().click();
-		cy.wait('@createWorkflow');
+		templateCredentialsSetupPage.finishCredentialSetup();
 
 		workflowPage.getters.canvasNodes().should('have.length', 3);
+
+		// Focus the canvas so the copy to clipboard works
+		workflowPage.getters.canvasNodes().eq(0).realClick();
+		workflowPage.actions.selectAll();
+		workflowPage.actions.hitCopy();
+
+		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
+		// Check workflow JSON by copying it to clipboard
+		cy.readClipboard().then((workflowJSON) => {
+			const workflow = JSON.parse(workflowJSON);
+
+			expect(workflow.meta).to.haveOwnProperty('templateId', testTemplate.id.toString());
+			workflow.nodes.forEach((node: any) => {
+				expect(Object.keys(node.credentials ?? {})).to.have.lengthOf(1);
+			});
+		});
+	});
+
+	it('should work with a template that has no credentials (ADO-1603)', () => {
+		const templateWithoutCreds = templateCredentialsSetupPage.testData.templateWithoutCredentials;
+		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${templateWithoutCreds.id}`, {
+			fixture: templateWithoutCreds.fixture,
+		});
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(templateWithoutCreds.id);
+
+		const expectedAppNames = ['1. Email (IMAP)', '2. Nextcloud'];
+		const expectedAppDescriptions = [
+			'The credential you select will be used in the IMAP Email node of the workflow template.',
+			'The credential you select will be used in the Nextcloud node of the workflow template.',
+		];
+
+		formStep.getFormStep().each(($el, index) => {
+			formStep.getStepHeading($el).should('have.text', expectedAppNames[index]);
+			formStep.getStepDescription($el).should('have.text', expectedAppDescriptions[index]);
+		});
+
+		templateCredentialsSetupPage.getters.continueButton().should('be.disabled');
+
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Email (IMAP)');
+		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Nextcloud');
+
+		templateCredentialsSetupPage.finishCredentialSetup();
+
+		workflowPage.getters.canvasNodes().should('have.length', 3);
+	});
+
+	describe('Credential setup from workflow editor', () => {
+		beforeEach(() => {
+			cy.resetDatabase();
+			cy.signinAsOwner();
+		});
+
+		it('should allow credential setup from workflow editor if user skips it during template setup', () => {
+			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
+			templateCredentialsSetupPage.getters.skipLink().click();
+
+			getSetupWorkflowCredentialsButton().should('be.visible');
+
+			// We need to save the workflow or otherwise a browser native popup
+			// will block cypress from continuing
+			workflowPage.actions.saveWorkflowOnButtonClick();
+		});
+
+		it('should allow credential setup from workflow editor if user fills in credentials partially during template setup', () => {
+			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
+			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
+
+			templateCredentialsSetupPage.finishCredentialSetup();
+
+			getSetupWorkflowCredentialsButton().should('be.visible');
+		});
+
+		it('should fill credentials from workflow editor', () => {
+			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
+			templateCredentialsSetupPage.getters.skipLink().click();
+
+			getSetupWorkflowCredentialsButton().click();
+			setupCredsModal.getWorkflowCredentialsModal().should('be.visible');
+
+			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
+			templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
+			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
+
+			setupCredsModal.closeModal();
+
+			// Focus the canvas so the copy to clipboard works
+			workflowPage.getters.canvasNodes().eq(0).realClick();
+			workflowPage.actions.selectAll();
+			workflowPage.actions.hitCopy();
+
+			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
+			// Check workflow JSON by copying it to clipboard
+			cy.readClipboard().then((workflowJSON) => {
+				const workflow = JSON.parse(workflowJSON);
+
+				workflow.nodes.forEach((node: any) => {
+					expect(Object.keys(node.credentials ?? {})).to.have.lengthOf(1);
+				});
+			});
+
+			// We need to save the workflow or otherwise a browser native popup
+			// will block cypress from continuing
+			workflowPage.actions.saveWorkflowOnButtonClick();
+		});
 	});
 });

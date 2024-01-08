@@ -15,7 +15,7 @@
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
-				<div v-if="readonly || isReadOnlyRoute">
+				<div v-if="readonly">
 					<n8n-input
 						:model-value="getSelectedName(credentialTypeDescription.name)"
 						disabled
@@ -117,7 +117,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
@@ -147,7 +146,6 @@ export default defineComponent({
 	components: {
 		TitledList,
 	},
-	mixins: [genericHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
