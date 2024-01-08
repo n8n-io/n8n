@@ -35,7 +35,9 @@ export class NodeTypes implements INodeTypes {
 
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 		if (!versionedNodeType) {
-			throw new ApplicationError('Unknown node type version', { tags: { nodeTypeName, version } });
+			throw new ApplicationError('Unknown node type version', {
+				tags: { nodeType: nodeTypeName, nodeVersion: version },
+			});
 		}
 		const { description } = versionedNodeType;
 

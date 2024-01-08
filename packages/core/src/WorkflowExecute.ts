@@ -931,7 +931,7 @@ export class WorkflowExecute {
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new WorkflowOperationError(
+						throw new ApplicationError(
 							'Stopped execution because it seems to be in an endless loop',
 						);
 					}
