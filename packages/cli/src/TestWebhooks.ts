@@ -224,20 +224,20 @@ export class TestWebhooks implements IWebhookManager {
 			 * Additional data cannot be cached because of circular refs.
 			 * Hence store the `userId` and recreate additional data when needed.
 			 */
-			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
+			const { workflowExecuteAdditionalData: _, ...cacheableWebhook } = webhook;
 
-			rest.userId = userId;
+			cacheableWebhook.userId = userId;
 
 			try {
 				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
 
-				workflowEntity.staticData = workflow.staticData;
+				cacheableWebhook.staticData = workflow.staticData;
 
 				await this.registrations.register({
 					sessionId,
 					workflowEntity,
 					destinationNode,
-					webhook: rest as IWebhookData,
+					webhook: cacheableWebhook as IWebhookData,
 				});
 
 				this.timeouts[key] = timeout;
@@ -345,11 +345,13 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
-			const { userId } = webhook;
+			const { userId, staticData } = webhook;
 
 			if (userId) {
 				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
 			}
+
+			if (staticData) workflow.staticData = staticData;
 
 			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
 
@@ -368,7 +370,14 @@ export class TestWebhooks implements IWebhookManager {
 			connections: workflowEntity.connections,
 			active: false,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowEntity.staticData,
+
+			/**
+			 * `staticData` in the original workflow entity has production webhook IDs.
+			 * Since we are creating here a temporary workflow only for a test webhook,
+			 * `staticData` from the original workflow entity should not be transferred.
+			 */
+			staticData: undefined,
+
 			settings: workflowEntity.settings,
 		});
 	}

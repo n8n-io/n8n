@@ -1665,6 +1665,7 @@ export interface IWebhookData {
 	webhookId?: string;
 	isTest?: boolean;
 	userId?: string;
+	staticData?: Workflow['staticData'];
 }
 
 export interface IWebhookDescription {
