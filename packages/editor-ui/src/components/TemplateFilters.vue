@@ -85,7 +85,10 @@ export default defineComponent({
 			return this.selected.length === 0;
 		},
 		totalTemplateCount(): number {
-			return this.templatesStore.totalTemplateCount;
+			return this.templatesStore.allCategories.reduce(
+				(acc, { result_count }) => acc + result_count,
+				0,
+			);
 		},
 	},
 	watch: {
