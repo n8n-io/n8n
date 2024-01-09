@@ -5,53 +5,49 @@ import { v4 as uuid } from 'uuid';
 import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import type * as express from 'express';
 
 import type { IWorkflowDb, WebhookRequest } from '@/Interfaces';
-import type {
-	IWebhookData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
 } from '@/services/test-webhook-registrations.service';
 
-describe('TestWebhooks', () => {
-	const registrations = mock<TestWebhookRegistrationsService>();
-	const testWebhooks = new TestWebhooks(mock(), mock(), registrations);
+import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
 
+jest.mock('@/WorkflowExecuteAdditionalData');
+
+const mockedAdditionalData = AdditionalData as jest.Mocked<typeof AdditionalData>;
+
+const workflowEntity = mock<IWorkflowDb>({ id: generateNanoId(), nodes: [] });
+
+const httpMethod = 'GET';
+const path = uuid();
+const userId = '04ab4baf-85df-478f-917b-d303934a97de';
+
+const webhook = mock<IWebhookData>({
+	httpMethod,
+	path,
+	workflowId: workflowEntity.id,
+	userId,
+});
+
+const registrations = mock<TestWebhookRegistrationsService>();
+
+let testWebhooks: TestWebhooks;
+
+describe('TestWebhooks', () => {
 	beforeAll(() => {
+		testWebhooks = new TestWebhooks(mock(), mock(), registrations);
 		jest.useFakeTimers();
 	});
 
-	const httpMethod = 'GET';
-	const path = uuid();
-	const workflowId = generateNanoId();
-
-	const webhook = mock<IWebhookData>({
-		httpMethod,
-		path,
-		workflowId,
-	});
-
 	describe('needsWebhook()', () => {
-		type NeedsWebhookArgs = [
-			IWorkflowDb,
-			IWorkflowExecuteAdditionalData,
-			WorkflowExecuteMode,
-			WorkflowActivateMode,
-		];
-
-		const workflow = mock<Workflow>({ id: workflowId });
-
-		const args: NeedsWebhookArgs = [
-			mock<IWorkflowDb>({ id: workflowId, nodes: [] }),
+		const args: Parameters<typeof testWebhooks.needsWebhook> = [
+			userId,
+			workflowEntity,
 			mock<IWorkflowExecuteAdditionalData>(),
-			'manual',
-			'manual',
 		];
 
 		test('if webhook is needed, should return true and activate webhook', async () => {
@@ -103,17 +99,29 @@ describe('TestWebhooks', () => {
 
 			const registration = mock<TestWebhookRegistration>({
 				sessionId: 'some-session-id',
-				workflowEntity: mock<IWorkflowDb>({}),
+				workflowEntity,
 			});
 
 			await registrations.register(registration);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
-				mock(),
+				mock<express.Response>(),
 			);
 
 			await expect(promise).rejects.toThrowError(NotFoundError);
+		});
+	});
+
+	describe('deactivateWebhooks()', () => {
+		test('should add additional data to workflow', async () => {
+			registrations.getAllRegistrations.mockResolvedValue([{ workflowEntity, webhook }]);
+
+			const workflow = testWebhooks.toWorkflow(workflowEntity);
+
+			await testWebhooks.deactivateWebhooks(workflow);
+
+			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
 		});
 	});
 });
