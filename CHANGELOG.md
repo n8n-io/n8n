@@ -1,3 +1,12 @@
+## [1.22.5](https://github.com/n8n-io/n8n/compare/n8n@1.22.4...n8n@1.22.5) (2024-01-09)
+
+
+### Bug Fixes
+
+* **Webhook Node:** Fix handling of form-data files ([#8256](https://github.com/n8n-io/n8n/issues/8256)) ([458ffde](https://github.com/n8n-io/n8n/commit/458ffde11f4603d43d164829af778a79d5cffb37))
+
+
+
 ## [1.22.4](https://github.com/n8n-io/n8n/compare/n8n@1.22.3...n8n@1.22.4) (2024-01-03)
 
 
