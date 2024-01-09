@@ -26,10 +26,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		super();
 	}
 
-	hasSessionId(sessionId: string) {
-		return this.connections[sessionId] !== undefined;
-	}
-
 	protected add(sessionId: string, userId: User['id'], connection: T) {
 		const { connections, userIdBySessionId: userIdsBySessionId } = this;
 		this.logger.debug('Add editor-UI session', { sessionId });
@@ -43,6 +39,10 @@ export abstract class AbstractPush<T> extends EventEmitter {
 
 		connections[sessionId] = connection;
 		userIdsBySessionId[sessionId] = userId;
+	}
+
+	hasSessionId(sessionId: string) {
+		return this.connections[sessionId] !== undefined;
 	}
 
 	protected onMessageReceived(sessionId: string, msg: unknown) {
@@ -63,7 +63,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	}
 
 	/**
-	 * Send a push type and payload to multiple sessions.
+	 * Send data to multiple sessions.
 	 */
 	private sendToSessions(type: IPushDataType, data: unknown, sessionIds: string[]) {
 		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
@@ -81,14 +81,14 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	}
 
 	/**
-	 * Send a push type and payload to all sessions.
+	 * Send data to all sessions.
 	 */
 	broadcast(type: IPushDataType, data?: unknown) {
 		this.sendToSessions(type, data, Object.keys(this.connections));
 	}
 
 	/**
-	 * Send a push type and payload to one session.
+	 * Send data to one session.
 	 */
 	sendToSession(type: IPushDataType, data: unknown, sessionId: string) {
 		// @TODO: Skip if the webhook call reaches the correct main on multi-main setup
@@ -111,7 +111,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	}
 
 	/**
-	 * Send a push type and payload to multiple users.
+	 * Send data to multiple users.
 	 */
 	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
