@@ -276,9 +276,14 @@ export default defineComponent({
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			const override = !!this.activeNodeType?.triggerPanel;
+			if (typeof this.activeNodeType?.triggerPanel === 'boolean') {
+				return override;
+			}
+
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
-			const override = !!this.activeNodeType?.triggerPanel;
+
 			return (
 				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
 			);

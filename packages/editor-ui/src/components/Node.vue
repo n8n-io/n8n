@@ -6,6 +6,7 @@
 		:style="nodeWrapperStyles"
 		data-test-id="canvas-node"
 		:data-name="data.name"
+		:data-node-type="nodeType?.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div v-show="isSelected" class="select-background"></div>
@@ -1025,6 +1026,11 @@ export default defineComponent({
 			.node-executing-info {
 				left: -67px;
 			}
+		}
+
+		&[data-node-type='@n8n/n8n-nodes-langchain.chatTrigger'] {
+			--configurable-node-min-input-count: 1;
+			--configurable-node-input-width: 176px;
 		}
 	}
 

@@ -9,6 +9,8 @@ module.exports = {
 	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
+		'n8n-local-rules/dangerously-use-html-string-missing': 'error',
+
 		// TODO: Remove these
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',

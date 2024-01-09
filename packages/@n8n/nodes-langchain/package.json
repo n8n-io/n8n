@@ -91,6 +91,7 @@
       "dist/nodes/tools/ToolWolframAlpha/ToolWolframAlpha.node.js",
       "dist/nodes/tools/ToolWorkflow/ToolWorkflow.node.js",
       "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
+      "dist/nodes/trigger/ChatTrigger/ChatTrigger.node.js",
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",
@@ -107,6 +108,7 @@
     ]
   },
   "devDependencies": {
+    "@types/basic-auth": "^1.1.3",
     "@types/express": "^4.17.6",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.12",
@@ -128,6 +130,7 @@
     "@qdrant/js-client-rest": "1.7.0",
     "@supabase/supabase-js": "2.38.5",
     "@xata.io/client": "0.25.3",
+    "basic-auth": "2.0.1",
     "cohere-ai": "6.2.2",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.1",
