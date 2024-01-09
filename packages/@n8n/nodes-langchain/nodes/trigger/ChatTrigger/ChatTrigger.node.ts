@@ -404,7 +404,9 @@ export class ChatTrigger implements INodeType {
 				const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 					| BaseChatMemory
 					| undefined;
-				const messages = ((await memory?.chatHistory.getMessages()) ?? []).map(
+				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
+				.filter((message) => !message.additional_kwargs['hide_from_ui'])
+				.map(
 					(message) => message?.toJSON(),
 				);
 				return {

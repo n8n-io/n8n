@@ -14,6 +14,7 @@ type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {
 	type: MessageRole;
 	message: string;
+	hideFromUI: boolean;
 }
 
 function simplifyMessages(messages: BaseMessage[]) {
@@ -197,6 +198,14 @@ export class MemoryManager implements INodeType {
 								required: true,
 								default: '',
 							},
+							{
+								displayName: 'Hide from UI',
+								name: 'hideFromUI',
+								type: 'boolean',
+								required: true,
+								default: false,
+								description: 'Whether to hide the message from the chat UI'
+							},
 						],
 					},
 				],
@@ -285,6 +294,11 @@ export class MemoryManager implements INodeType {
 
 				for (const message of messagesToInsert) {
 					const MessageClass = new templateMapper[message.type](message.message);
+
+					if (message.hideFromUI) {
+						MessageClass.additional_kwargs.hide_from_ui = true;
+					}
+
 					await memory.chatHistory.addMessage(MessageClass);
 				}
 			}
