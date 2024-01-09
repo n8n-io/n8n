@@ -146,9 +146,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				const push = Container.get(Push);
 
-				push.getBackend().hasSessionId(sessionId);
-
-				// check that session ID in payload matches this main's session ID
+				if (!push.getBackend().hasSessionId(sessionId)) break;
 
 				// @ts-ignore @TODO: Fix type
 				push.send(eventName, args, sessionId);
