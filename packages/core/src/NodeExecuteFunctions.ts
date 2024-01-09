@@ -151,6 +151,7 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
+import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2532,9 +2533,7 @@ async function getInputConnectionData(
 	const node = this.getNode();
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (!nodeType) {
-		throw new ApplicationError('Unknown node type and version', {
-			extra: { nodeType: node.type, nodeVersion: node.typeVersion },
-		});
+		throw new UnrecognizedNodeTypeError(node.type, node.typeVersion);
 	}
 
 	const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
@@ -3419,9 +3418,7 @@ export function getExecuteFunctions(
 			getNodeOutputs(): INodeOutputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType) {
-					throw new ApplicationError('Unknown node type and version', {
-						extra: { nodeType: node.type, nodeVersion: node.typeVersion },
-					});
+					throw new UnrecognizedNodeTypeError(node.type, node.typeVersion);
 				}
 
 				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {

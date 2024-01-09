@@ -43,6 +43,7 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1065,12 +1066,10 @@ export class WorkflowExecute {
 									);
 
 									if (!nodeType) {
-										throw new ApplicationError('Unknown node type and version', {
-											extra: {
-												nodeType: executionData.node.type,
-												nodeVersion: executionData.node.typeVersion,
-											},
-										});
+										throw new UnrecognizedNodeTypeError(
+											executionData.node.type,
+											executionData.node.typeVersion,
+										);
 									}
 
 									const outputs = NodeHelpers.getNodeOutputs(
@@ -1528,12 +1527,7 @@ export class WorkflowExecute {
 								checkNode.typeVersion,
 							);
 							if (!nodeType) {
-								throw new ApplicationError('Unknown node type and version', {
-									extra: {
-										nodeType: checkNode.type,
-										nodeVersion: checkNode.typeVersion,
-									},
-								});
+								throw new UnrecognizedNodeTypeError(checkNode.type, checkNode.typeVersion);
 							}
 
 							// Check if the node is only allowed execute if all inputs received data

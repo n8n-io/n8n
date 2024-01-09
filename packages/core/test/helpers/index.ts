@@ -28,6 +28,7 @@ import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from
 import { Credentials } from '@/Credentials';
 
 import { predefinedNodesTypes } from './constants';
+import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -177,11 +178,11 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	for (const nodeName of nodeNames) {
 		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
+			throw new UnrecognizedNodeTypeError(nodeName);
 		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
+			throw new UnrecognizedNodeTypeError(nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);

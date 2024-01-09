@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from './application.error';
 
 export class UnrecognizedNodeTypeError extends ApplicationError {
 	severity = 'warning';
