@@ -43,7 +43,7 @@ describe('Template credentials setup', () => {
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -53,7 +53,7 @@ describe('Template credentials setup', () => {
 		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -61,7 +61,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -69,7 +69,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 
 		templateCredentialsSetupPage.getters
@@ -195,7 +195,8 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
 
-			setupCredsModal.closeModal();
+			setupCredsModal.closeModalFromContinueButton();
+			setupCredsModal.getWorkflowCredentialsModal().should('not.exist');
 
 			// Focus the canvas so the copy to clipboard works
 			workflowPage.getters.canvasNodes().eq(0).realClick();
