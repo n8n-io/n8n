@@ -55,20 +55,20 @@ export class Push extends EventEmitter {
 		this.emit('editorUiConnected', sessionId);
 	}
 
-	broadcast(pushType: IPushDataType, payload?: unknown) {
-		this.backend.broadcast(pushType, payload);
+	broadcast(type: IPushDataType, data?: unknown) {
+		this.backend.broadcast(type, data);
 	}
 
-	send(type: IPushDataType, payload: unknown, sessionId: string) {
-		this.backend.sendToSession(type, payload, sessionId);
+	send(type: IPushDataType, data: unknown, sessionId: string) {
+		this.backend.sendToSession(type, data, sessionId);
 	}
 
 	getBackend() {
 		return this.backend;
 	}
 
-	sendToUsers(pushType: IPushDataType, payload: unknown, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(pushType, payload, userIds);
+	sendToUsers(pushType: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushType, data, userIds);
 	}
 
 	@OnShutdown()

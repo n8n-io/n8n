@@ -9,7 +9,7 @@ export type RedisServiceCommand =
 	| 'reloadExternalSecretsProviders'
 	| 'workflowActiveStateChanged' // multi-main only
 	| 'workflowFailedToActivate' // multi-main only
-	| 'multi-main-setup:relay-execution-lifecycle-event';
+	| 'relay-execution-lifecycle-event'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -20,9 +20,10 @@ export type RedisServiceCommand =
 export type RedisServiceBaseCommand = {
 	senderId: string;
 	command: RedisServiceCommand;
-	payload?: {
-		[key: string]: string | number | boolean | string[] | number[] | boolean[];
-	};
+	// payload?: {
+	// 	[key: string]: string | number | boolean | string[] | number[] | boolean[];
+	// };
+	payload: unknown;
 };
 
 export type RedisServiceWorkerResponseObject = {
@@ -65,7 +66,7 @@ export type RedisServiceWorkerResponseObject = {
 			command: 'multi-main-setup:relay-execution-lifecycle-event';
 			payload: {
 				eventName: string;
-				args: Record<string, unknown>;
+				eventArgs: Record<string, unknown>;
 				sessionId: string;
 			};
 	  }

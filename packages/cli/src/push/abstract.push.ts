@@ -65,16 +65,13 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	/**
 	 * Send a push type and payload to multiple sessions.
 	 */
-	private sendToSessions(pushType: IPushDataType, payload: unknown, sessionIds: string[]) {
-		this.logger.debug(`Send data of type "${pushType}" to editor-UI`, {
-			dataType: pushType,
+	private sendToSessions(type: IPushDataType, data: unknown, sessionIds: string[]) {
+		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+			dataType: type,
 			sessionIds: sessionIds.join(', '),
 		});
 
-		const stringifiedPayload = jsonStringify(
-			{ type: pushType, data: payload },
-			{ replaceCircularRefs: true },
-		);
+		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
 		for (const sessionId of sessionIds) {
 			const connection = this.connections[sessionId];
@@ -86,22 +83,22 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	/**
 	 * Send a push type and payload to all sessions.
 	 */
-	broadcast<D>(pushType: IPushDataType, payload?: D) {
-		this.sendToSessions(pushType, payload, Object.keys(this.connections));
+	broadcast(type: IPushDataType, data?: unknown) {
+		this.sendToSessions(type, data, Object.keys(this.connections));
 	}
 
 	/**
 	 * Send a push type and payload to one session.
 	 */
-	sendToSession(pushType: IPushDataType, payload: unknown, sessionId: string) {
+	sendToSession(type: IPushDataType, data: unknown, sessionId: string) {
 		// @TODO: Skip if the webhook call reaches the correct main on multi-main setup
 		if (this.multiMainSetup.isEnabled) {
-			void this.multiMainSetup.publish('multi-main-setup:relay-execution-lifecycle-event', {
-				eventName: pushType,
-				// @ts-ignore // @TODO
-				args: payload,
+			void this.multiMainSetup.publish('relay-execution-lifecycle-event', {
+				event: type,
+				eventArgs: data,
 				sessionId,
 			});
+
 			return;
 		}
 
@@ -110,19 +107,19 @@ export abstract class AbstractPush<T> extends EventEmitter {
 			return;
 		}
 
-		this.sendToSessions(pushType, payload, [sessionId]);
+		this.sendToSessions(type, data, [sessionId]);
 	}
 
 	/**
 	 * Send a push type and payload to multiple users.
 	 */
-	sendToUsers(pushType: IPushDataType, payload: unknown, userIds: Array<User['id']>) {
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userSessionIds = Object.keys(connections).filter((sessionId) =>
 			userIds.includes(this.userIdBySessionId[sessionId]),
 		);
 
-		this.sendToSessions(pushType, payload, userSessionIds);
+		this.sendToSessions(type, data, userSessionIds);
 	}
 
 	/**
