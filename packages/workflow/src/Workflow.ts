@@ -1084,10 +1084,7 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
-			throw new ApplicationError('Node with unknown node type', {
-				extra: { nodeName: node.name },
-				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
-			});
+			throw new UnrecognizedNodeTypeError(node.type, node.typeVersion, node.name);
 		}
 
 		if (!nodeType.trigger) {
@@ -1165,10 +1162,7 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
-			throw new ApplicationError('Node with unknown node type or version', {
-				extra: { nodeName: node.name },
-				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
-			});
+			throw new UnrecognizedNodeTypeError(node.type, node.typeVersion, node.name);
 		}
 
 		if (!nodeType.poll) {

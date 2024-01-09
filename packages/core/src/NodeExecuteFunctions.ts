@@ -3783,9 +3783,7 @@ export function getLoadOptionsFunctions(
 				if (options?.extractValue) {
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
-						throw new ApplicationError('Node type is not known so cannot return parameter value', {
-							extra: { nodeType: node.type, nodeVersion: node.typeVersion },
-						});
+						throw new UnrecognizedNodeTypeError(node.type, node.typeVersion);
 					}
 					returnData = extractValue(
 						returnData,
