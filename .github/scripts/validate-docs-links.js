@@ -33,7 +33,7 @@ const validateUrl = async (kind, name, documentationUrl) =>
 					agent,
 				},
 				(res) => {
-					debug('\u2713', kind, name);
+					debug('✓', kind, name);
 					resolve([name, res.statusCode]);
 				},
 			)
