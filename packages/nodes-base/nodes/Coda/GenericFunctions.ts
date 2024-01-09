@@ -20,7 +20,10 @@ export async function codaApiRequest(
 	const credentials = await this.getCredentials('codaApi');
 
 	let options: OptionsWithUri = {
-		headers: { Authorization: `Bearer ${credentials.accessToken}` },
+		headers: {
+			Authorization: `Bearer ${credentials.accessToken}`,
+			'User-Agent': 'n8n',
+		},
 		method,
 		qs,
 		body,
