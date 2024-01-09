@@ -30,6 +30,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
 	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -40,6 +41,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
 
 export default defineComponent({
@@ -116,6 +118,9 @@ export default defineComponent({
 		isManualTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
+		isChatNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isFormTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
 		},
@@ -186,6 +191,10 @@ export default defineComponent({
 				return this.label;
 			}
 
+			if (this.isChatNode) {
+				return this.$locale.baseText('ndv.execute.testChat');
+			}
+
 			if (this.isWebhookNode) {
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
@@ -212,7 +221,10 @@ export default defineComponent({
 		},
 
 		async onClick() {
-			if (this.isListeningForEvents) {
+			if (this.isChatNode) {
+				this.ndvStore.setActiveNodeName(null);
+				nodeViewEventBus.emit('openChat');
+			} else if (this.isListeningForEvents) {
 				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
 				this.$emit('stopExecution');
