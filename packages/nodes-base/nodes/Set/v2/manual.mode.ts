@@ -23,6 +23,11 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
 		description: 'Edit existing fields or add new ones to modify the output data',
+		displayOptions: {
+			show: {
+				'@version': [3, 3.1, 3.2],
+			},
+		},
 		typeOptions: {
 			multipleValues: true,
 			sortable: true,
@@ -155,6 +160,17 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Fields to Set',
+		name: 'assignments',
+		type: 'assignmentCollection',
+		displayOptions: {
+			hide: {
+				'@version': [3, 3.1, 3.2],
+			},
+		},
+		default: {},
 	},
 ];
 

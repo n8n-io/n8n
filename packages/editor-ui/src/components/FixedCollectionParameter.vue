@@ -190,7 +190,6 @@ export default defineComponent({
 		multipleValues(): boolean {
 			return !!this.parameter.typeOptions?.multipleValues;
 		},
-
 		parameterOptions(): INodePropertyCollection[] {
 			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 				return this.parameter.options;

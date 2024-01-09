@@ -1,0 +1,230 @@
+<script setup lang="ts">
+import {
+	tryToParseDateTime,
+	type AssignmentCollectionValue,
+	type AssignmentValue,
+	type INode,
+	type INodeProperties,
+} from 'n8n-workflow';
+import { useI18n } from '@/composables/useI18n';
+import { computed, reactive } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
+import DropArea from '../DropArea/DropArea.vue';
+import Assignment from './Assignment.vue';
+import { v4 as uuid } from 'uuid';
+import { resolveParameter } from '@/mixins/workflowHelpers';
+import { isObject } from 'lodash-es';
+
+interface Props {
+	parameter: INodeProperties;
+	value: AssignmentCollectionValue;
+	path: string;
+	node: INode | null;
+}
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	(
+		event: 'valueChanged',
+		value: { name: string; node: string; value: AssignmentCollectionValue },
+	): void;
+}>();
+
+const i18n = useI18n();
+
+const state = reactive<{ paramValue: AssignmentCollectionValue }>({
+	paramValue: {
+		assignments: [],
+	},
+});
+
+const ndvStore = useNDVStore();
+
+const issues = computed(() => {
+	if (!ndvStore.activeNode) return {};
+	return ndvStore.activeNode?.issues?.parameters ?? {};
+});
+
+const empty = computed(() => state.paramValue.assignments.length === 0);
+
+function nameFromExpression(expression: string): string {
+	return (
+		expression
+			.replace(/^{{\s*|\s*}}$/g, '')
+			.split('.')
+			.pop() ?? 'name'
+	);
+}
+
+function inferAssignmentType(value: unknown): string {
+	if (typeof value === 'boolean') return 'boolean';
+	if (typeof value === 'number') return 'number';
+	if (typeof value === 'string') {
+		try {
+			const date = tryToParseDateTime(value);
+			return date ? 'dateTime' : 'string';
+		} catch (error) {
+			return 'string';
+		}
+	}
+	if (Array.isArray(value)) return 'array';
+	if (value === null || value === undefined || isObject(value)) return 'object';
+	return 'string';
+}
+
+function typeFromExpression(expression: string): string {
+	try {
+		const resolved = resolveParameter(`=${expression}`);
+		return inferAssignmentType(resolved);
+	} catch (error) {
+		return 'string';
+	}
+}
+
+function addAssignment(): void {
+	state.paramValue.assignments.push({ id: uuid(), name: '', value: '', type: 'string' });
+}
+
+function dropAssignment(expression: string): void {
+	state.paramValue.assignments.push({
+		id: uuid(),
+		name: nameFromExpression(expression),
+		value: `=${expression}`,
+		type: typeFromExpression(expression),
+	});
+}
+
+function onAssignmentUpdate(index: number, value: AssignmentValue): void {
+	state.paramValue.assignments[index] = value;
+}
+
+function onAssignmentRemove(index: number): void {
+	state.paramValue.assignments.splice(index, 1);
+}
+
+function getIssues(index: number): string[] {
+	return issues.value[`${props.parameter.name}.${index}`] ?? [];
+}
+</script>
+
+<template>
+	<div
+		:class="{ [$style.assignmentCollection]: true, [$style.empty]: empty }"
+		:data-test-id="`assignment-collection-${parameter.name}`"
+	>
+		<n8n-input-label
+			:label="parameter.displayName"
+			:underline="true"
+			:show-options="true"
+			:show-expression-selector="false"
+			color="text-dark"
+		>
+		</n8n-input-label>
+		<div :class="$style.content">
+			<div :class="$style.assignments">
+				<div v-for="(assignment, index) of state.paramValue.assignments" :key="assignment.id">
+					<Assignment
+						:model-value="assignment"
+						:index="index"
+						:path="`${path}.${index}`"
+						:issues="getIssues(index)"
+						:class="$style.assignment"
+						@update:model-value="(value) => onAssignmentUpdate(index, value)"
+						@remove="() => onAssignmentRemove(index)"
+					>
+					</Assignment>
+				</div>
+			</div>
+			<div :class="$style.dropAreaWrapper">
+				<DropArea :sticky-offset="empty ? [-4, 20] : [80, 0]" @drop="dropAssignment">
+					<template #default="{ active }">
+						<div
+							:class="{
+								[$style.dropArea]: true,
+								[$style.active]: active,
+							}"
+						>
+							<font-awesome-icon v-if="empty" :class="$style.icon" icon="plus-circle" />
+							<span>{{
+								i18n.baseText(active ? 'assignment.dropField' : 'assignment.dragFields')
+							}}</span>
+							<span :class="$style.or">{{ i18n.baseText('assignment.or') }}</span>
+							<n8n-button :class="$style.addButton" size="large" text @click="addAssignment">
+								{{ i18n.baseText('assignment.add') }}
+							</n8n-button>
+						</div>
+					</template>
+				</DropArea>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.assignmentCollection {
+	display: flex;
+	flex-direction: column;
+	margin: var(--spacing-xs) 0;
+}
+
+.content {
+	display: flex;
+	gap: var(--spacing-l);
+	flex-direction: column;
+}
+
+.assignments {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
+}
+
+.assignment {
+	padding-left: var(--spacing-l);
+}
+
+.dropAreaWrapper:not(.empty .dropAreaWrapper) {
+	padding-left: var(--spacing-l);
+}
+
+.dropArea {
+	display: flex;
+	align-items: baseline;
+	justify-content: center;
+	font-size: var(--font-size-s);
+	gap: 0.5ch;
+}
+
+.active {
+	pointer-events: none;
+
+	.icon {
+		color: var(--color-success-light);
+	}
+
+	.or,
+	.addButton {
+		opacity: 0;
+	}
+}
+
+.empty .dropArea {
+	flex-direction: column;
+	align-items: center;
+	padding-top: var(--spacing-xs);
+
+	> span:nth-child(2) {
+		padding-bottom: var(--spacing-2xs);
+	}
+}
+
+.icon {
+	font-size: var(--font-size-2xl);
+	margin-bottom: var(--spacing-2xs);
+}
+
+.addButton:not(.empty .addButton) {
+	padding-left: 0;
+}
+</style>

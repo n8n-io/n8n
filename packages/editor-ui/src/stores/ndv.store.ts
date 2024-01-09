@@ -46,8 +46,8 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			isDragging: false,
 			type: '',
 			data: '',
-			activeTargetId: null,
-			stickyPosition: null,
+			dimensions: null,
+			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 	}),
@@ -94,7 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return this.draggable.data;
 		},
 		canDraggableDrop(): boolean {
-			return this.draggable.activeTargetId !== null;
+			return this.draggable.activeTarget !== null;
 		},
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
@@ -106,7 +106,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			};
 		},
 		draggableStickyPos(): XYPosition | null {
-			return this.draggable.stickyPosition;
+			return this.draggable.activeTarget?.stickyPosition ?? null;
 		},
 		ndvInputNodeName(): string | undefined {
 			return this.input.nodeName;
@@ -189,13 +189,21 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setMappableNDVInputFocus(paramName: string): void {
 			this.focusedMappableInput = paramName;
 		},
-		draggableStartDragging({ type, data }: { type: string; data: string }): void {
+		draggableStartDragging({
+			type,
+			data,
+			dimensions,
+		}: {
+			type: string;
+			data: string;
+			dimensions: DOMRect | null;
+		}): void {
 			this.draggable = {
 				isDragging: true,
 				type,
 				data,
-				activeTargetId: null,
-				stickyPosition: null,
+				dimensions,
+				activeTarget: null,
 			};
 		},
 		draggableStopDragging(): void {
@@ -203,15 +211,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
-				activeTargetId: null,
-				stickyPosition: null,
+				activeTarget: null,
 			};
 		},
-		setDraggableStickyPos(position: XYPosition | null): void {
-			this.draggable.stickyPosition = position;
-		},
-		setDraggableTargetId(id: string | null): void {
-			this.draggable.activeTargetId = id;
+		setDraggableTarget(target: NDVState['draggable']['activeTarget']): void {
+			this.draggable.activeTarget = target;
 		},
 		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
 			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };

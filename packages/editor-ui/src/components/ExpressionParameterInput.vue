@@ -142,10 +142,9 @@ export default defineComponent({
 			}
 		},
 		onChange({ value, segments }: { value: string; segments: Segment[] }) {
-			if (this.isDragging) return;
-
 			this.segments = segments;
 
+			if (this.isDragging) return;
 			if (value === '=' + this.modelValue) return; // prevent report on change of target item
 
 			this.$emit('update:modelValue', value);
