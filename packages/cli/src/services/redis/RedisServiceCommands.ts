@@ -8,7 +8,8 @@ export type RedisServiceCommand =
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
 	| 'workflowActiveStateChanged' // multi-main only
-	| 'workflowFailedToActivate'; // multi-main only
+	| 'workflowFailedToActivate' // multi-main only
+	| 'executionLifecycleHook'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -16,7 +17,7 @@ export type RedisServiceCommand =
  * @field targets: The targets to execute the command on. Leave empty to execute on all workers or specify worker ids.
  * @field payload: Optional arguments to be sent with the command.
  */
-type RedisServiceBaseCommand = {
+export type RedisServiceBaseCommand = {
 	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {

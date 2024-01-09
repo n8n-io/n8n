@@ -40,6 +40,7 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
+				// @TODO: Should we be checking for multi-main here?
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					logger.error(
@@ -98,7 +99,7 @@ export async function handleCommandMessageMain(messageString: string) {
 							versionId,
 						});
 
-						await Container.get(MultiMainSetup).broadcastWorkflowFailedToActivate({
+						await Container.get(MultiMainSetup).publish('workflowFailedToActivate', {
 							workflowId,
 							errorMessage: error.message,
 						});
@@ -125,6 +126,32 @@ export async function handleCommandMessageMain(messageString: string) {
 				if (typeof workflowId !== 'string' || typeof errorMessage !== 'string') break;
 
 				Container.get(Push).broadcast('workflowFailedToActivate', { workflowId, errorMessage });
+			}
+
+			case 'executionLifecycleHook': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { eventName, args, sessionId } = message.payload ?? {};
+
+				if (
+					typeof eventName !== 'string' ||
+					typeof args !== 'object' ||
+					typeof sessionId !== 'string'
+				) {
+					break;
+				}
+
+				const push = Container.get(Push);
+
+				push.getBackend().hasSessionId(sessionId);
+
+				// check that session ID in payload matches this main's session ID
+
+				// @ts-ignore @TODO: Fix type
+				push.send(eventName, args, sessionId);
 			}
 
 			default:

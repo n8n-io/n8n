@@ -3,6 +3,8 @@ import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import type { Logger } from '@/Logger';
 import type { User } from '@db/entities/User';
+import type { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import type { RedisServiceBaseCommand } from '@/services/redis/RedisServiceCommands';
 
 /**
  * Abstract class for two-way push communication.
@@ -18,8 +20,15 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	protected abstract close(connection: T): void;
 	protected abstract sendToOne(connection: T, data: string): void;
 
-	constructor(protected readonly logger: Logger) {
+	constructor(
+		protected readonly logger: Logger,
+		private readonly multiMainSetup: MultiMainSetup,
+	) {
 		super();
+	}
+
+	hasSessionId(sessionId: string) {
+		return this.connections[sessionId] !== undefined;
 	}
 
 	protected add(sessionId: string, userId: User['id'], connection: T): void {
@@ -69,13 +78,26 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Send the given data to all connected users.
+	 */
 	broadcast<D>(type: IPushDataType, data?: D) {
 		this.sendToSessions(type, data, Object.keys(this.connections));
 	}
 
+	/**
+	 * Send the given data to one specific user.
+	 */
 	send<D>(type: IPushDataType, data: D, sessionId: string) {
-		const { connections } = this;
-		if (connections[sessionId] === undefined) {
+		if (this.multiMainSetup.isEnabled) {
+			void this.multiMainSetup.publish(
+				'executionLifecycleHook',
+				data as RedisServiceBaseCommand['payload'], // @TODO: Prevent assertion
+			);
+			return;
+		}
+
+		if (this.connections[sessionId] === undefined) {
 			this.logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
 			return;
 		}
@@ -84,7 +106,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	}
 
 	/**
-	 * Sends the given data to given users' connections
+	 * Send the given data to specific users.
 	 */
 	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
 		const { connections } = this;
@@ -96,7 +118,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	}
 
 	/**
-	 * Closes all push existing connections
+	 * Close all push existing connections.
 	 */
 	closeAllConnections() {
 		for (const sessionId in this.connections) {
