@@ -1,5 +1,5 @@
-import type { ChatMessage } from '@n8n/chat/types/messages';
 import type { Ref } from 'vue';
+import type { ChatMessage } from '@n8n/chat/types/messages';
 
 export interface Chat {
 	initialMessages: Ref<ChatMessage[]>;
