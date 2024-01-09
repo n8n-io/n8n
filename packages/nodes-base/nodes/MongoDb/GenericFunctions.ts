@@ -8,12 +8,14 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { ObjectId } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
+
+import * as tls from 'tls';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -139,4 +141,26 @@ export function stringifyObjectIDs(items: IDataObject[]) {
 			item.id = item.id.toString();
 		}
 	});
+}
+
+export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {
+	let client: MongoClient;
+
+	if (credentials.tls) {
+		const secureContext = tls.createSecureContext({
+			ca: (credentials.ca as string) || undefined,
+			cert: (credentials.cert as string) || undefined,
+			key: (credentials.key as string) || undefined,
+			passphrase: (credentials.passphrase as string) || undefined,
+		});
+
+		client = await MongoClient.connect(connectionString, {
+			tls: true,
+			secureContext,
+		});
+	} else {
+		client = await MongoClient.connect(connectionString);
+	}
+
+	return client;
 }
