@@ -1805,7 +1805,7 @@ export async function requestWithAuthentication(
 			}
 			throw error;
 		} catch (error) {
-			if (error instanceof NodeOperationError) throw error;
+			if (error instanceof ExecutionBaseError) throw error;
 
 			throw new NodeApiError(this.getNode(), error);
 		}
