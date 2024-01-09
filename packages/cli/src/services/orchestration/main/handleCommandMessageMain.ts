@@ -128,28 +128,21 @@ export async function handleCommandMessageMain(messageString: string) {
 				Container.get(Push).broadcast('workflowFailedToActivate', { workflowId, errorMessage });
 			}
 
-			case 'multi-main-setup:relay-execution-lifecycle-event': {
+			case 'relay-execution-lifecycle-event': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				const { eventName, args, sessionId } = message.payload ?? {};
+				if (message.command !== 'relay-execution-lifecycle-event') break;
 
-				if (
-					typeof eventName !== 'string' ||
-					typeof args !== 'object' ||
-					typeof sessionId !== 'string'
-				) {
-					break;
-				}
+				const { type, args, sessionId } = message.payload;
 
 				const push = Container.get(Push);
 
 				if (!push.getBackend().hasSessionId(sessionId)) break;
 
-				// @ts-ignore @TODO: Fix type
-				push.send(eventName, args, sessionId);
+				push.send(type, args, sessionId);
 			}
 
 			default:

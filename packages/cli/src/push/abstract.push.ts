@@ -80,24 +80,22 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 	}
 
-	/**
-	 * Send data to all sessions.
-	 */
-	broadcast(type: IPushDataType, data?: unknown) {
+	sendToAllSessions(type: IPushDataType, data?: unknown) {
 		this.sendToSessions(type, data, Object.keys(this.connections));
 	}
 
-	/**
-	 * Send data to one session.
-	 */
-	sendToSession(type: IPushDataType, data: unknown, sessionId: string) {
-		// @TODO: Skip if the webhook call reaches the correct main on multi-main setup
-		if (this.multiMainSetup.isEnabled) {
-			void this.multiMainSetup.publish('relay-execution-lifecycle-event', {
-				event: type,
-				eventArgs: data,
-				sessionId,
-			});
+	sendToOneSession(type: IPushDataType, data: unknown, sessionId: string) {
+		/**
+		 * In a manual webhook execution in multi-main setup, the main process that handles
+		 * a webhook might not be the same as the main process that created the webhook.
+		 *
+		 * If so, the handler process commands the creator process to relay execution
+		 * lifecyle events occurring at the handler to the creator's frontend.
+		 */
+		if (this.multiMainSetup.isEnabled && !this.hasSessionId(sessionId)) {
+			const payload = { type, args: data, sessionId };
+
+			void this.multiMainSetup.publish('relay-execution-lifecycle-event', payload);
 
 			return;
 		}

@@ -1,4 +1,4 @@
-import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
+import type { IPushDataType, IPushDataWorkerStatusPayload } from '@/Interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -17,14 +17,20 @@ export type RedisServiceCommand =
  * @field targets: The targets to execute the command on. Leave empty to execute on all workers or specify worker ids.
  * @field payload: Optional arguments to be sent with the command.
  */
-export type RedisServiceBaseCommand = {
-	senderId: string;
-	command: RedisServiceCommand;
-	// payload?: {
-	// 	[key: string]: string | number | boolean | string[] | number[] | boolean[];
-	// };
-	payload: unknown;
-};
+export type RedisServiceBaseCommand =
+	| {
+			senderId: string;
+			command: Exclude<RedisServiceCommand, 'relay-execution-lifecycle-event'>;
+			payload?: {
+				[key: string]: string | number | boolean | string[] | number[] | boolean[];
+			};
+	  }
+	| {
+			senderId: string;
+			command: 'relay-execution-lifecycle-event';
+			payload: { type: IPushDataType; args: Record<string, unknown>; sessionId: string };
+			targets: string[];
+	  };
 
 export type RedisServiceWorkerResponseObject = {
 	workerId: string;
@@ -63,7 +69,7 @@ export type RedisServiceWorkerResponseObject = {
 			};
 	  }
 	| {
-			command: 'multi-main-setup:relay-execution-lifecycle-event';
+			command: 'relay-execution-lifecycle-event';
 			payload: {
 				eventName: string;
 				eventArgs: Record<string, unknown>;

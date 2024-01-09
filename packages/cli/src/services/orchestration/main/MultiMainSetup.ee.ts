@@ -4,7 +4,10 @@ import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
-import type { RedisServiceCommand } from '@/services/redis/RedisServiceCommands';
+import type {
+	RedisServiceBaseCommand,
+	RedisServiceCommand,
+} from '@/services/redis/RedisServiceCommands';
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
@@ -123,8 +126,10 @@ export class MultiMainSetup extends SingleMainSetup {
 		}
 	}
 
-	async publish(command: RedisServiceCommand, payload: unknown) {
+	async publish(command: RedisServiceCommand, data: unknown) {
 		if (!this.sanityCheck()) return;
+
+		const payload = data as RedisServiceBaseCommand['payload'];
 
 		await this.redisPublisher.publishToCommandChannel({ command, payload });
 	}

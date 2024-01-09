@@ -56,11 +56,11 @@ export class Push extends EventEmitter {
 	}
 
 	broadcast(type: IPushDataType, data?: unknown) {
-		this.backend.broadcast(type, data);
+		this.backend.sendToAllSessions(type, data);
 	}
 
 	send(type: IPushDataType, data: unknown, sessionId: string) {
-		this.backend.sendToSession(type, data, sessionId);
+		this.backend.sendToOneSession(type, data, sessionId);
 	}
 
 	getBackend() {
