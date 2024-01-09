@@ -168,7 +168,6 @@ import {
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
-import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
@@ -476,14 +475,16 @@ export default defineComponent({
 				this.$emit('activate');
 			}
 		},
+		/**
+		 * Handles default node button parameter type actions
+		 * @param parameter
+		 */
 		onButtonAction(parameter: INodeProperties) {
 			const action: string | undefined = parameter.typeOptions?.action;
 
 			switch (action) {
-				case 'openChat':
-					this.ndvStore.setActiveNodeName(null);
-					nodeViewEventBus.emit('openChat');
-					break;
+				default:
+					return;
 			}
 		},
 		isNodeAuthField(name: string): boolean {

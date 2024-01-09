@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { ChatMessage } from '@/types';
+import type { ChatMessage } from '@n8n/chat/types';
 import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
@@ -14,6 +14,10 @@ const props = defineProps({
 });
 
 const { message } = toRefs(props);
+
+const messageText = computed(() => {
+	return message.value.text || '&lt;Empty response&gt;';
+});
 
 const classes = computed(() => {
 	return {
@@ -39,7 +43,7 @@ const markdownOptions = {
 		<slot>
 			<vue-markdown
 				class="chat-message-markdown"
-				:source="message.text"
+				:source="messageText"
 				:options="markdownOptions"
 			/>
 		</slot>
