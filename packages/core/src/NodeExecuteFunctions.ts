@@ -2256,9 +2256,7 @@ export function getNodeParameter(
 ): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
-			extra: { nodeType: node.type, nodeVersion: node.typeVersion },
-		});
+		throw new UnrecognizedNodeTypeError(node.type, node.typeVersion);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);

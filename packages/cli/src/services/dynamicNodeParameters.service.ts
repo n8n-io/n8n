@@ -19,6 +19,7 @@ import type {
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { NodeExecuteFunctions } from 'n8n-core';
 import { NodeTypes } from '@/NodeTypes';
+import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 
 @Service()
 export class DynamicNodeParametersService {
@@ -35,9 +36,7 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
-			throw new ApplicationError('Node type and version unknown', {
-				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
-			});
+			throw new UnrecognizedNodeTypeError(nodeTypeAndVersion.name, nodeTypeAndVersion.version);
 		}
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
@@ -138,9 +137,7 @@ export class DynamicNodeParametersService {
 	): Promise<INodeListSearchResult> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
-			throw new ApplicationError('Node type and version unknown', {
-				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
-			});
+			throw new UnrecognizedNodeTypeError(nodeTypeAndVersion.name, nodeTypeAndVersion.version);
 		}
 
 		const method = this.getMethod('listSearch', methodName, nodeType);
@@ -161,9 +158,7 @@ export class DynamicNodeParametersService {
 	): Promise<ResourceMapperFields> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
-			throw new ApplicationError('Node type and version unknown', {
-				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
-			});
+			throw new UnrecognizedNodeTypeError(nodeTypeAndVersion.name, nodeTypeAndVersion.version);
 		}
 
 		const method = this.getMethod('resourceMapping', methodName, nodeType);

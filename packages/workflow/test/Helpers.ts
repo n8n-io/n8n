@@ -40,6 +40,7 @@ import * as NodeHelpers from '@/NodeHelpers';
 import { deepCopy } from '@/utils';
 import { getGlobalState } from '@/GlobalState';
 import { ApplicationError } from '@/errors/application.error';
+import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
@@ -136,9 +137,7 @@ export function getNodeParameter(
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
-			tags: { nodeType: node.type },
-		});
+		throw new UnrecognizedNodeTypeError(node.type, node.typeVersion);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
