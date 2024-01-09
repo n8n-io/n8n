@@ -15,7 +15,8 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
-import * as tls from 'tls';
+import { createSecureContext } from 'tls';
+import { formatPrivateKey } from '../../utils/utilities';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -147,11 +148,16 @@ export async function connectMongoClient(connectionString: string, credentials: 
 	let client: MongoClient;
 
 	if (credentials.tls) {
-		const secureContext = tls.createSecureContext({
-			ca: (credentials.ca as string) || undefined,
-			cert: (credentials.cert as string) || undefined,
-			key: (credentials.key as string) || undefined,
-			passphrase: (credentials.passphrase as string) || undefined,
+		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
+		const cert = credentials.cert ? formatPrivateKey(credentials.cert as string) : undefined;
+		const key = credentials.key ? formatPrivateKey(credentials.key as string) : undefined;
+		const passphrase = (credentials.passphrase as string) || undefined;
+
+		const secureContext = createSecureContext({
+			ca,
+			cert,
+			key,
+			passphrase,
 		});
 
 		client = await MongoClient.connect(connectionString, {
