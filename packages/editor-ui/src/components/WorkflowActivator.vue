@@ -15,12 +15,13 @@
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
-				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+				<div>
+					{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}
+				</div>
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:modelValue="workflowActive"
-				@update:modelValue="activeChanged"
+				:model-value="workflowActive"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -29,13 +30,13 @@
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading"
 				data-test-id="workflow-activate-switch"
+				@update:modelValue="activeChanged"
 			>
 			</el-switch>
 		</n8n-tooltip>
 
-		<div class="could-not-be-started" v-if="couldNotBeStarted">
+		<div v-if="couldNotBeStarted" class="could-not-be-started">
 			<n8n-tooltip placement="top">
 				<template #content>
 					<div
@@ -43,30 +44,30 @@
 						v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
-				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
+				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import { getActivatableTriggerNodes } from '@/utils';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
-	setup(props) {
+	props: ['workflowActive', 'workflowId'],
+	setup(props, ctx) {
 		return {
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props),
+			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	computed: {
@@ -155,10 +156,6 @@ export default defineComponent({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
-
-	:deep(.el-loading-spinner) {
-		margin-top: -10px;
-	}
 }
 
 .could-not-be-started {

@@ -67,6 +67,6 @@ describe('Inline expression editor', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		// Resolving $parameter is slow, especially on CI runner
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
+		WorkflowPage.getters.inlineExpressionEditorOutput().should('have.text', 'getAll');
 	});
 });

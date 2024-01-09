@@ -2,6 +2,7 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
+	IRole,
 	IUserResponse,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
@@ -142,4 +143,16 @@ export async function submitPersonalizationSurvey(
 	params: IPersonalizationLatestVersion,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
+}
+
+export interface UpdateGlobalRolePayload {
+	id: string;
+	newRoleName: Exclude<IRole, 'default' | 'owner'>;
+}
+
+export async function updateGlobalRole(
+	context: IRestApiContext,
+	{ id, newRoleName }: UpdateGlobalRolePayload,
+): Promise<IUserResponse> {
+	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRoleName });
 }

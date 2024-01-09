@@ -17,6 +17,7 @@ import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } fr
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 type FeatureReturnType = Partial<
 	{
@@ -24,19 +25,13 @@ type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
-export class FeatureNotLicensedError extends Error {
-	constructor(feature: (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES]) {
-		super(
-			`Your license does not allow for ${feature}. To enable ${feature}, please upgrade to a license that supports this feature.`,
-		);
-	}
-}
-
 @Service()
 export class License {
 	private manager: LicenseManager | undefined;
 
 	private redisPublisher: RedisServicePubSubPublisher;
+
+	private isShuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -48,12 +43,15 @@ export class License {
 
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
+			this.logger.warn('License manager already initialized or shutting down');
+			return;
+		}
+		if (this.isShuttingDown) {
+			this.logger.warn('License manager already shutting down');
 			return;
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			await this.multiMainSetup.init();
-		}
+		await this.multiMainSetup.init();
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -201,7 +199,12 @@ export class License {
 		await this.manager.renew();
 	}
 
+	@OnShutdown()
 	async shutdown() {
+		// Shut down License manager to unclaim any floating entitlements
+		// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+		this.isShuttingDown = true;
+
 		if (!this.manager) {
 			return;
 		}
@@ -231,6 +234,10 @@ export class License {
 
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+	}
+
+	isAdvancedPermissionsLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
 	}
 
 	isDebugInEditorLicensed() {

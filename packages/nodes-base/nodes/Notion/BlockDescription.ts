@@ -199,4 +199,19 @@ export const blockFields: INodeProperties[] = [
 		},
 		default: false,
 	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['block'],
+				operation: ['getAll'],
+			},
+			hide: {
+				'@version': [1, 2],
+			},
+		},
+		default: true,
+	},
 ];

@@ -1,0 +1,49 @@
+{
+	"name": "Node versions",
+	"nodes": [
+	  {
+		"parameters": {},
+		"id": "aadaed66-84ed-4cf8-bf21-082e9a65db76",
+		"name": "When clicking \"Test Workflow\"",
+		"type": "n8n-nodes-base.manualTrigger",
+		"typeVersion": 1,
+		"position": [
+		  1540,
+		  780
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "93d73a85-82f0-4380-a032-713d5dc82b32",
+		"name": "Function",
+		"type": "n8n-nodes-base.function",
+		"typeVersion": 1,
+		"position": [
+		  2040,
+		  780
+		]
+	  },
+	  {
+		"id": "50f322d9-c622-4dd0-8d38-e851502739dd",
+		"name": "Edit Fields (old)",
+		"type": "n8n-nodes-base.set",
+		"typeVersion": 2,
+		"position": [
+		  1880,
+		  780
+		]
+	  },
+	  {
+		"id": "93aaadac-55fe-4618-b1eb-f63e61d1446a",
+		"name": "Edit Fields (latest)",
+		"type": "n8n-nodes-base.set",
+		"typeVersion": 3.2,
+		"position": [
+		  1720,
+		  780
+		]
+	  }
+	],
+	"pinData": {},
+	"connections": {}
+  }

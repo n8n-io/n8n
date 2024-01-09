@@ -3,7 +3,7 @@ import { Container, Service } from 'typedi';
 import path from 'path';
 import fsPromises from 'fs/promises';
 
-import type { DirectoryLoader, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	InstanceSettings,
@@ -17,7 +17,7 @@ import type {
 	INodeTypeData,
 	ICredentialTypeData,
 } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
 import {
@@ -56,7 +56,7 @@ export class LoadNodesAndCredentials {
 	) {}
 
 	async init() {
-		if (inTest) throw new Error('Not available in tests');
+		if (inTest) throw new ApplicationError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -82,6 +82,7 @@ export class LoadNodesAndCredentials {
 
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
 		// Load nodes from any other `n8n-nodes-*` packages in the download directory
@@ -249,7 +250,7 @@ export class LoadNodesAndCredentials {
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
 	private async runDirectoryLoader<T extends DirectoryLoader>(
-		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);

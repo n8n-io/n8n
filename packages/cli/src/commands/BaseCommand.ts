@@ -2,31 +2,32 @@ import 'reflect-metadata';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
-import { ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { LICENSE_FEATURES, inTest } from '@/constants';
+import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
+import type { N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { ShutdownService } from '@/shutdown/Shutdown.service';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected externalHooks: IExternalHooksClass;
+	protected externalHooks?: ExternalHooks;
 
 	protected nodeTypes: NodeTypes;
 
@@ -38,12 +39,19 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
+	protected shutdownService: ShutdownService = Container.get(ShutdownService);
+
+	/**
+	 * How long to wait for graceful shutdown before force killing the process.
+	 */
+	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
 
-		process.once('SIGTERM', async () => this.stopProcess());
-		process.once('SIGINT', async () => this.stopProcess());
+		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		// Make sure the settings exist
 		this.instanceSettings = Container.get(InstanceSettings);
@@ -54,6 +62,12 @@ export abstract class BaseCommand extends Command {
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		// This needs to happen after DB.init() or otherwise DB Connection is not
+		// available via the dependency Container that services depend on.
+		if (inDevelopment || inTest) {
+			this.shutdownService.validate();
+		}
 
 		await this.server?.init();
 
@@ -77,6 +91,22 @@ export abstract class BaseCommand extends Command {
 		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
 			this.logger.warn(
 				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
+			);
+		}
+
+		if (config.getEnv('executions.mode') === 'queue' && dbType === 'sqlite') {
+			this.logger.warn(
+				'Queue mode is not officially supported with sqlite. Please switch to PostgreSQL.',
+			);
+		}
+
+		if (
+			process.env.N8N_BINARY_DATA_TTL ??
+			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
+			process.env.EXECUTIONS_DATA_PRUNE_TIMEOUT
+		) {
+			this.logger.warn(
+				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL and EXECUTIONS_DATA_PRUNE_TIMEOUT no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.',
 			);
 		}
 
@@ -108,7 +138,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async exitSuccessFully() {
 		try {
-			await CrashJournal.cleanup();
+			await Promise.all([CrashJournal.cleanup(), Db.close()]);
 		} finally {
 			process.exit();
 		}
@@ -127,7 +157,7 @@ export abstract class BaseCommand extends Command {
 		if (!isSelected && !isAvailable) return;
 
 		if (isSelected && !isAvailable) {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
@@ -171,7 +201,7 @@ export abstract class BaseCommand extends Command {
 		const host = config.getEnv('externalStorage.s3.host');
 
 		if (host === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
@@ -182,13 +212,13 @@ export abstract class BaseCommand extends Command {
 		};
 
 		if (bucket.name === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
 			);
 		}
 
 		if (bucket.region === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
 			);
 		}
@@ -199,13 +229,13 @@ export abstract class BaseCommand extends Command {
 		};
 
 		if (credentials.accessKey === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
 			);
 		}
 
 		if (credentials.accessSecret === '') {
-			throw new Error(
+			throw new ApplicationError(
 				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
 			);
 		}
@@ -282,5 +312,29 @@ export abstract class BaseCommand extends Command {
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);
+	}
+
+	private onTerminationSignal(signal: string) {
+		return async () => {
+			if (this.shutdownService.isShuttingDown()) {
+				this.logger.info(`Received ${signal}. Already shutting down...`);
+				return;
+			}
+
+			const forceShutdownTimer = setTimeout(async () => {
+				// In case that something goes wrong with shutdown we
+				// kill after timeout no matter what
+				console.log(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
+				const errorMsg = `Shutdown timed out after ${this.gracefulShutdownTimeoutInS} seconds`;
+				await this.exitWithCrash(errorMsg, new Error(errorMsg));
+			}, this.gracefulShutdownTimeoutInS * 1000);
+
+			this.logger.info(`Received ${signal}. Shutting down...`);
+			this.shutdownService.shutdown();
+
+			await Promise.all([this.stopProcess(), this.shutdownService.waitForShutdown()]);
+
+			clearTimeout(forceShutdownTimer);
+		};
 	}
 }

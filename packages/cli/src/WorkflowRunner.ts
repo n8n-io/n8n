@@ -12,6 +12,7 @@ import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	IPinData,
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -217,7 +218,11 @@ export class WorkflowRunner {
 
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
-		if (executionsMode !== 'queue' || data.executionMode === 'manual') {
+		if (
+			executionsMode !== 'queue' ||
+			config.getEnv('generic.instanceType') === 'worker' ||
+			data.executionMode === 'manual'
+		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			const externalHooks = Container.get(ExternalHooks);
 			postExecutePromise
@@ -280,6 +285,11 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
+		let pinData: IPinData | undefined;
+		if (data.executionMode === 'manual') {
+			pinData = data.pinData ?? data.workflowData.pinData;
+		}
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: data.workflowData.name,
@@ -289,6 +299,7 @@ export class WorkflowRunner {
 			nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
+			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,

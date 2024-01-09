@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -12,7 +12,7 @@
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{
 					$locale.baseText('templates.collectionsNotFound')
 				}}</n8n-text>
@@ -21,7 +21,7 @@
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
+					<div v-if="loading || (collection && collection.description)" :class="$style.markdown">
 						<n8n-markdown
 							:content="collection && collection.description"
 							:images="collection && collection.image"
@@ -65,26 +65,38 @@ import type {
 	ITemplatesWorkflowFull,
 } from '@/Interface';
 
-import { setPageTitle } from '@/utils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
 	},
+	mixins: [workflowHelpers],
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
+	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
-		collection(): null | ITemplatesCollectionFull {
+		collection(): ITemplatesCollectionFull | null {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
 		collectionId(): string {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 		collectionWorkflows(): Array<ITemplatesWorkflow | ITemplatesWorkflowFull | null> | null {
 			if (!this.collection) {
@@ -100,43 +112,6 @@ export default defineComponent({
 			loading: true,
 			notFoundError: false,
 		};
-	},
-	methods: {
-		scrollToTop() {
-			setTimeout(() => {
-				const contentArea = document.getElementById('content');
-				if (contentArea) {
-					contentArea.scrollTo({
-						top: 0,
-						behavior: 'smooth',
-					});
-				}
-			}, 50);
-		},
-		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
-			this.navigateTo(event, VIEWS.TEMPLATE, id);
-		},
-		onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
-			const telemetryPayload = {
-				template_id: id,
-				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
-				source: 'collection',
-			};
-			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-				withPostHog: true,
-			});
-			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
-		},
-		navigateTo(e: MouseEvent, page: string, id: string) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				void this.$router.push({ name: page, params: { id } });
-			}
-		},
 	},
 	watch: {
 		collection(collection: ITemplatesCollection) {
@@ -161,6 +136,44 @@ export default defineComponent({
 			this.notFoundError = true;
 		}
 		this.loading = false;
+	},
+	methods: {
+		scrollToTop() {
+			setTimeout(() => {
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: 0,
+						behavior: 'smooth',
+					});
+				}
+			}, 50);
+		},
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
+			this.navigateTo(event, VIEWS.TEMPLATE, id);
+		},
+		async onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
+			await useTemplateWorkflow({
+				posthogStore: this.posthogStore,
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: event.metaKey || event.ctrlKey,
+				templatesStore: useTemplatesStore(),
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
+				source: 'template_list',
+			});
+		},
+		navigateTo(e: MouseEvent, page: string, id: string) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				void this.$router.push({ name: page, params: { id } });
+			}
+		},
 	},
 });
 </script>

@@ -2,6 +2,7 @@ import { NodeCreator } from '../pages/features/node-creator';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
 import { getVisibleSelect } from '../utils';
+import { IF_NODE_NAME } from '../constants';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
@@ -34,7 +35,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
@@ -101,15 +102,15 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').type('{rightarrow}');
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
-		// Navigate to rename action which should be the 4th item
-		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{rightarrow}');
+		// The 1st trigger is selected, up 1x to the collapsable header, up 2x to the last action (rename)
+		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{uparrow}{rightarrow}');
 		NDVModal.getters.parameterInput('operation').find('input').should('have.value', 'Rename');
 	});
 
 	it('should not show actions for single action nodes', () => {
 		const singleActionNodes = [
 			'DHL',
-			'iCalendar',
+			'Edit Fields',
 			'LingvaNex',
 			'Mailcheck',
 			'MSG91',
@@ -307,7 +308,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
-			WorkflowPage.actions.deleteNode('When clicking "Execute Workflow"');
+			WorkflowPage.actions.deleteNode('When clicking "Test Workflow"');
 			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
@@ -316,7 +317,7 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
@@ -360,7 +361,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
@@ -368,11 +369,11 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('IF');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', IF_NODE_NAME);
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
@@ -410,7 +411,7 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('js');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Code');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Item Lists');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('fi');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Filter');
@@ -483,8 +484,9 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('spreadsheet');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Spreadsheet File');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Google Sheets');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Convert to File');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Extract From File');
+		nodeCreatorFeature.getters.nodeItemName().eq(2).should('have.text', 'Google Sheets');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sheets');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Google Sheets');

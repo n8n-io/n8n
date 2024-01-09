@@ -6,15 +6,10 @@ import {
 	getResourceLocatorResults,
 	getResourceMapperFields,
 } from '@/api/nodeTypes';
-import {
-	DEFAULT_NODETYPE_VERSION,
-	HTTP_REQUEST_NODE_TYPE,
-	STORES,
-	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
-} from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
 import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit } from '@/utils';
+import { omit } from '@/utils/typesUtils';
 import type {
 	ConnectionTypes,
 	INode,
@@ -35,10 +30,9 @@ import {
 	getCredentialTypeName,
 	isCredentialOnlyNodeType,
 } from '@/utils/credentialOnlyNodes';
+import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 
-function getNodeVersions(nodeType: INodeTypeDescription) {
-	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
-}
+export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 	state: (): INodeTypesState => ({
@@ -84,6 +78,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return nodeType ?? null;
 			};
 		},
+		getNodeVersions() {
+			return (nodeTypeName: string): number[] => {
+				return Object.keys(this.nodeTypes[nodeTypeName] ?? {}).map(Number);
+			};
+		},
 		getCredentialOnlyNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 				const credentialName = getCredentialTypeName(nodeTypeName);
@@ -97,6 +96,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		isConfigNode() {
 			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+				if (!workflow.nodes[node.name]) {
+					return false;
+				}
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (!nodeType) {
 					return false;
@@ -158,6 +160,26 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 							}
 							acc[outputType].push(node.name);
 						});
+					} else {
+						// If outputs is not an array, it must be a string expression
+						// in which case we'll try to match all possible non-main output types that are supported
+						const connectorTypes: ConnectionTypes[] = [
+							NodeConnectionType.AiVectorStore,
+							NodeConnectionType.AiChain,
+							NodeConnectionType.AiDocument,
+							NodeConnectionType.AiEmbedding,
+							NodeConnectionType.AiLanguageModel,
+							NodeConnectionType.AiMemory,
+							NodeConnectionType.AiOutputParser,
+							NodeConnectionType.AiTextSplitter,
+							NodeConnectionType.AiTool,
+						];
+						connectorTypes.forEach((outputType: ConnectionTypes) => {
+							if (outputTypes.includes(outputType)) {
+								acc[outputType] = acc[outputType] || [];
+								acc[outputType].push(node.name);
+							}
+						});
 					}
 
 					return acc;
@@ -191,36 +213,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 	},
 	actions: {
 		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
-			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>(
-				(acc, newNodeType) => {
-					const newNodeVersions = getNodeVersions(newNodeType);
-
-					if (newNodeVersions.length === 0) {
-						const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
-
-						acc[newNodeType.name] = singleVersion;
-						return acc;
-					}
-
-					for (const version of newNodeVersions) {
-						// Node exists with the same name
-						if (acc[newNodeType.name]) {
-							acc[newNodeType.name][version] = Object.assign(
-								acc[newNodeType.name][version] ?? {},
-								newNodeType,
-							);
-						} else {
-							acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, {
-								[version]: newNodeType,
-							});
-						}
-					}
-
-					return acc;
-				},
-				{ ...this.nodeTypes },
-			);
-			this.nodeTypes = nodeTypes;
+			const nodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
+			this.nodeTypes = {
+				...this.nodeTypes,
+				...nodeTypes,
+			};
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
@@ -256,6 +253,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
+			}
+		},
+		/**
+		 * Loads node types if they haven't been loaded yet
+		 */
+		async loadNodeTypesIfNotLoaded(): Promise<void> {
+			if (Object.keys(this.nodeTypes).length === 0) {
+				await this.getNodeTypes();
 			}
 		},
 		async getNodeTranslationHeaders(): Promise<void> {

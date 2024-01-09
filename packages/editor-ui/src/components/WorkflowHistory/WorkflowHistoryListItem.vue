@@ -7,7 +7,7 @@ import type {
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 } from '@/types/workflowHistory';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	item: WorkflowHistory;
@@ -99,7 +99,7 @@ onMounted(() => {
 			[$style.actionsVisible]: actionsVisible,
 		}"
 	>
-		<slot :formattedCreatedAt="formattedCreatedAt">
+		<slot :formatted-created-at="formattedCreatedAt">
 			<p @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
 				<n8n-tooltip

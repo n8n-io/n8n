@@ -28,7 +28,10 @@ export interface RadioOption {
 }
 
 export default defineComponent({
-	name: 'n8n-radio-buttons',
+	name: 'N8nRadioButtons',
+	components: {
+		RadioButton,
+	},
 	props: {
 		modelValue: {
 			type: String,
@@ -43,9 +46,6 @@ export default defineComponent({
 		disabled: {
 			type: Boolean,
 		},
-	},
-	components: {
-		RadioButton,
 	},
 	methods: {
 		onClick(option: { label: string; value: string; disabled?: boolean }) {

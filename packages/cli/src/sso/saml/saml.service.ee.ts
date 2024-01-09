@@ -1,8 +1,7 @@
 import type express from 'express';
 import Container, { Service } from 'typedi';
 import type { User } from '@db/entities/User';
-import { jsonParse } from 'n8n-workflow';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
@@ -25,10 +24,12 @@ import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './samlValidator';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 export class SamlService {
@@ -54,7 +55,7 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
-		relayState: getInstanceBaseUrl(),
+		relayState: this.urlService.getInstanceBaseUrl(),
 		signatureConfig: {
 			prefix: 'ds',
 			location: {
@@ -72,7 +73,10 @@ export class SamlService {
 		};
 	}
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+	) {}
 
 	async init(): Promise<void> {
 		// load preferences first but do not apply so as to not load samlify unnecessarily
@@ -92,7 +96,7 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					throw new Error('Invalid SAML response');
+					throw new ApplicationError('Invalid SAML response');
 				}
 			},
 		});
@@ -100,7 +104,7 @@ export class SamlService {
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
 		if (this.samlify === undefined) {
-			throw new Error('Samlify is not initialized');
+			throw new ApplicationError('Samlify is not initialized');
 		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
@@ -113,7 +117,7 @@ export class SamlService {
 
 	getServiceProviderInstance(): ServiceProviderInstance {
 		if (this.samlify === undefined) {
-			throw new Error('Samlify is not initialized');
+			throw new ApplicationError('Samlify is not initialized');
 		}
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
@@ -142,14 +146,14 @@ export class SamlService {
 
 	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
 		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
 		return loginRequest;
 	}
 
 	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
 		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',
@@ -224,7 +228,7 @@ export class SamlService {
 		} else if (prefs.metadata) {
 			const validationResult = await validateMetadata(prefs.metadata);
 			if (!validationResult) {
-				throw new Error('Invalid SAML metadata');
+				throw new ApplicationError('Invalid SAML metadata');
 			}
 		}
 		this.getIdentityProviderInstance(true);

@@ -1,12 +1,12 @@
 <template>
 	<div>
-		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
+		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :readOnly="readOnly" />
-				<tab-bar
+				<WorkflowDetails :read-only="readOnly" />
+				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
-					:activeTab="activeHeaderTab"
+					:active-tab="activeHeaderTab"
 					@select="onTabSelected"
 				/>
 			</div>
@@ -30,7 +30,9 @@ import {
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useUIStore, useNDVStore, useSourceControlStore } from '@/stores';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -39,12 +41,12 @@ export default defineComponent({
 		TabBar,
 	},
 	mixins: [pushConnection, workflowHelpers],
-	setup(props) {
+	setup(props, ctx) {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props),
+			...pushConnection.setup?.(props, ctx),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props),
+			...workflowHelpers.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -87,19 +89,14 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
-	mounted() {
-		this.dirtyState = this.uiStore.stateIsDirty;
-		this.syncTabsWithRoute(this.$route);
-		// Initialize the push connection
-		this.pushConnect();
-	},
-	beforeUnmount() {
-		this.pushDisconnect();
-	},
 	watch: {
 		$route(to, from) {
 			this.syncTabsWithRoute(to);
 		},
+	},
+	mounted() {
+		this.dirtyState = this.uiStore.stateIsDirty;
+		this.syncTabsWithRoute(this.$route);
 	},
 	methods: {
 		syncTabsWithRoute(route: Route): void {
@@ -157,7 +154,6 @@ export default defineComponent({
 							params: { name: routeWorkflowId },
 						});
 					}
-					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 					break;
 				default:

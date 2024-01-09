@@ -6,7 +6,6 @@ import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { ListQuery } from '@/requests';
-import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
@@ -19,21 +18,23 @@ import { saveCredential } from './shared/db/credentials';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createTag } from './shared/db/tags';
+import { Push } from '@/push';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
+const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
 
-const licenseLike = mockInstance(License, {
-	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
-
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+mockInstance(Push);
 
 beforeAll(async () => {
 	owner = await createOwner();
@@ -43,7 +44,6 @@ beforeAll(async () => {
 beforeEach(async () => {
 	jest.resetAllMocks();
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory']);
-	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 describe('POST /workflows', () => {
@@ -65,7 +65,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -114,7 +114,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -217,7 +217,13 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
 					versionId: any(String),
-					ownedBy: { id: owner.id },
+					ownedBy: {
+						id: owner.id,
+						email: any(String),
+						firstName: any(String),
+						lastName: any(String),
+					},
+					sharedWith: [],
 				}),
 				objectContaining({
 					id: any(String),
@@ -227,7 +233,13 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [],
 					versionId: any(String),
-					ownedBy: { id: owner.id },
+					ownedBy: {
+						id: owner.id,
+						email: any(String),
+						firstName: any(String),
+						lastName: any(String),
+					},
+					sharedWith: [],
 				}),
 			]),
 		});
@@ -237,7 +249,7 @@ describe('GET /workflows', () => {
 		);
 
 		expect(found.nodes).toBeUndefined();
-		expect(found.sharedWith).toBeUndefined();
+		expect(found.sharedWith).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
@@ -418,8 +430,26 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					{ id: any(String), ownedBy: { id: owner.id } },
-					{ id: any(String), ownedBy: { id: owner.id } },
+					{
+						id: any(String),
+						ownedBy: {
+							id: owner.id,
+							email: any(String),
+							firstName: any(String),
+							lastName: any(String),
+						},
+						sharedWith: [],
+					},
+					{
+						id: any(String),
+						ownedBy: {
+							id: owner.id,
+							email: any(String),
+							firstName: any(String),
+							lastName: any(String),
+						},
+						sharedWith: [],
+					},
 				]),
 			});
 		});
@@ -428,7 +458,7 @@ describe('GET /workflows', () => {
 
 describe('PATCH /workflows/:id', () => {
 	test('should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -486,7 +516,7 @@ describe('PATCH /workflows/:id', () => {
 	});
 
 	test('should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
@@ -536,7 +566,7 @@ describe('PATCH /workflows/:id', () => {
 	});
 
 	test('should activate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -558,7 +588,7 @@ describe('PATCH /workflows/:id', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -578,5 +608,55 @@ describe('PATCH /workflows/:id', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
+	});
+
+	test('should update workflow meta', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			...workflow,
+			meta: {
+				templateCredsSetupCompleted: true,
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		const { data: updatedWorkflow } = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(updatedWorkflow.id).toBe(workflow.id);
+		expect(updatedWorkflow.meta).toEqual(payload.meta);
+	});
+});
+
+describe('POST /workflows/run', () => {
+	let sharingSpy: jest.SpyInstance;
+	let tamperingSpy: jest.SpyInstance;
+	let workflow: WorkflowEntity;
+
+	beforeAll(() => {
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+		const workflowRepository = Container.get(WorkflowRepository);
+
+		sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
+		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
+		workflow = workflowRepository.create({ id: uuid() });
+	});
+
+	test('should prevent tampering if sharing is enabled', async () => {
+		sharingSpy.mockReturnValue(true);
+
+		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+
+		expect(tamperingSpy).toHaveBeenCalledTimes(1);
+	});
+
+	test('should skip tampering prevention if sharing is disabled', async () => {
+		sharingSpy.mockReturnValue(false);
+
+		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+
+		expect(tamperingSpy).not.toHaveBeenCalled();
 	});
 });

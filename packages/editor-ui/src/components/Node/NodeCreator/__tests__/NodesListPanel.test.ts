@@ -12,14 +12,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
+		components: {
+			NodesListPanel,
+		},
 		props: {
 			nodeTypes: {
 				type: Array as PropType<INodeTypeDescription[]>,
 				required: false,
 			},
-		},
-		components: {
-			NodesListPanel,
 		},
 		setup,
 		template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
@@ -89,6 +89,9 @@ describe('NodesListPanel', () => {
 			);
 
 			const wrapperComponent = defineComponent({
+				components: {
+					NodesListPanel,
+				},
 				props: {
 					nodeTypes: {
 						type: Array as PropType<INodeTypeDescription[]>,
@@ -99,9 +102,6 @@ describe('NodesListPanel', () => {
 						default: REGULAR_NODE_CREATOR_VIEW,
 						required: false,
 					},
-				},
-				components: {
-					NodesListPanel,
 				},
 				setup(props) {
 					const { setActions, setMergeNodes, setSelectedView } = useNodeCreatorStore();
@@ -156,14 +156,14 @@ describe('NodesListPanel', () => {
 		);
 
 		const wrapperComponent = defineComponent({
+			components: {
+				NodesListPanel,
+			},
 			props: {
 				nodeTypes: {
 					type: Array as PropType<INodeTypeDescription[]>,
 					required: true,
 				},
-			},
-			components: {
-				NodesListPanel,
 			},
 			setup(props) {
 				const { setMergeNodes } = useNodeCreatorStore();

@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 
 interface Props {
@@ -170,24 +170,24 @@ defineExpose({
 		<n8n-input-label
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
-			:tooltipText="fieldTooltip"
+			:tooltip-text="fieldTooltip"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>
 			<template #options>
-				<parameter-options
+				<ParameterOptions
 					:parameter="parameter"
-					:customActions="parameterActions"
+					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
-					:loadingMessage="fetchingFieldsLabel"
+					:loading-message="fetchingFieldsLabel"
 					@update:modelValue="onParameterActionSelected"
 				/>
 			</template>
 			<n8n-select
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
-				:modelValue="state.selected"
+				:model-value="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
 				:teleported="teleported"

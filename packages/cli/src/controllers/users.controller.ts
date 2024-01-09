@@ -1,76 +1,63 @@
-import type { FindManyOptions } from 'typeorm';
-import { In, Not } from 'typeorm';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, Delete, Get, RestController, Patch } from '@/decorators';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
-import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
+import {
+	RequireGlobalScope,
+	Authorized,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+} from '@/decorators';
+import {
+	ListQuery,
+	UserRequest,
+	UserRoleChangePayload,
+	UserSettingsUpdatePayload,
+} from '@/requests';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { plainToInstance } from 'class-transformer';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import { validateEntity } from '@/GenericHelpers';
 
-@Authorized(['global', 'owner'])
+@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly externalHooks: IExternalHooksClass,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
 	) {}
 
-	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<User> = {};
+	static ERROR_MESSAGES = {
+		CHANGE_ROLE: {
+			NO_USER: 'Target user not found',
+			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
+			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
+		},
+	} as const;
 
-		if (!listQueryOptions) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
-			return findManyOptions;
-		}
-
-		const { filter, select, take, skip } = listQueryOptions;
-
-		if (select) findManyOptions.select = select;
-		if (take) findManyOptions.take = take;
-		if (skip) findManyOptions.skip = skip;
-
-		if (take && !select) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
-		}
-
-		if (take && select && !select?.id) {
-			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-		}
-
-		if (filter) {
-			const { isOwner, ...otherFilters } = filter;
-
-			findManyOptions.where = otherFilters;
-
-			if (isOwner !== undefined) {
-				const ownerRole = await this.roleService.findGlobalOwnerRole();
-
-				findManyOptions.relations = ['globalRole'];
-				findManyOptions.where.globalRole = { id: isOwner ? ownerRole.id : Not(ownerRole.id) };
-			}
-		}
-
-		return findManyOptions;
-	}
-
-	removeSupplementaryFields(
+	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: ListQuery.Options,
 	) {
@@ -100,17 +87,24 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
+	@RequireGlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		const findManyOptions = await this.toFindManyOptions(listQueryOptions);
+		const globalOwner = await this.roleService.findGlobalOwnerRole();
 
-		const users = await this.userService.findMany(findManyOptions);
+		const findManyOptions = await this.userRepository.toFindManyOptions(
+			listQueryOptions,
+			globalOwner.id,
+		);
+
+		const users = await this.userRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
+			users.map(async (u) =>
+				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			),
 		);
 
 		return listQueryOptions
@@ -118,11 +112,12 @@ export class UsersController {
 			: publicUsers;
 	}
 
-	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
+	@RequireGlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
+			relations: ['globalRole'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
@@ -132,8 +127,8 @@ export class UsersController {
 		return { link };
 	}
 
-	@Authorized(['global', 'owner'])
 	@Patch('/:id/settings')
+	@RequireGlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -141,9 +136,10 @@ export class UsersController {
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
+			relations: ['globalRole'],
 		});
 
 		return user.settings;
@@ -153,6 +149,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
+	@RequireGlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 
@@ -172,10 +169,9 @@ export class UsersController {
 			);
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([transferId, idToDelete]) },
-			relations: ['globalRole'],
-		});
+		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
+
+		const users = await this.userRepository.findManybyIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(
@@ -217,10 +213,11 @@ export class UsersController {
 
 				// Prevents issues with unique key constraints since user being assigned
 				// workflows and credentials might be a sharee
-				await transactionManager.delete(SharedWorkflow, {
-					user: transferee,
-					workflowId: In(sharedWorkflowIds),
-				});
+				await this.sharedWorkflowRepository.deleteByIds(
+					transactionManager,
+					sharedWorkflowIds,
+					transferee,
+				);
 
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
@@ -242,10 +239,11 @@ export class UsersController {
 
 				// Prevents issues with unique key constraints since user being assigned
 				// workflows and credentials might be a sharee
-				await transactionManager.delete(SharedCredentials, {
-					user: transferee,
-					credentialsId: In(sharedCredentialIds),
-				});
+				await this.sharedCredentialsRepository.deleteByIds(
+					transactionManager,
+					sharedCredentialIds,
+					transferee,
+				);
 
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
@@ -304,6 +302,46 @@ export class UsersController {
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
+		return { success: true };
+	}
+
+	@Patch('/:id/role')
+	@RequireGlobalScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
+	async changeGlobalRole(req: UserRequest.ChangeRole) {
+		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
+			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+
+		const payload = plainToInstance(UserRoleChangePayload, req.body);
+		await validateEntity(payload);
+
+		const targetUser = await this.userRepository.findOne({
+			where: { id: req.params.id },
+			relations: ['globalRole'],
+		});
+		if (targetUser === null) {
+			throw new NotFoundError(NO_USER);
+		}
+
+		if (req.user.globalRole.name === 'admin' && targetUser.globalRole.name === 'owner') {
+			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
+		}
+
+		if (req.user.globalRole.name === 'owner' && targetUser.globalRole.name === 'owner') {
+			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
+		}
+
+		const roleToSet = await this.roleService.findCached('global', payload.newRoleName);
+
+		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
+
+		void this.internalHooks.onUserRoleChange({
+			user: req.user,
+			target_user_id: targetUser.id,
+			target_user_new_role: ['global', payload.newRoleName].join(' '),
+			public_api: false,
+		});
+
 		return { success: true };
 	}
 }

@@ -1,42 +1,46 @@
-import { In } from 'typeorm';
-import Container, { Service } from 'typedi';
-import { Authorized, NoAuthRequired, Post, RestController } from '@/decorators';
-import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
+import { Response } from 'express';
+
+import config from '@/config';
+import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
 import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Response } from 'express';
 import { UserRequest } from '@/requests';
-import { Config } from '@/config';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
-import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
 import validator from 'validator';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { InternalHooks } from '@/InternalHooks';
+import { ExternalHooks } from '@/ExternalHooks';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Service()
+@Authorized()
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
-		private readonly config: Config,
 		private readonly logger: Logger,
-		private readonly internalHooks: IInternalHooksClass,
-		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: InternalHooks,
+		private readonly externalHooks: ExternalHooks,
 		private readonly userService: UserService,
-		private readonly postHog?: PostHogClient,
+		private readonly license: License,
+		private readonly passwordUtility: PasswordUtility,
+		private readonly userRepository: UserRepository,
+		private readonly postHog: PostHogClient,
 	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Authorized(['global', 'owner'])
 	@Post('/')
+	@RequireGlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
-		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
@@ -54,7 +58,7 @@ export class InvitationController {
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);
@@ -86,11 +90,26 @@ export class InvitationController {
 					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
 				);
 			}
+
+			if (invite.role && !['member', 'admin'].includes(invite.role)) {
+				throw new BadRequestError(
+					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'member' or 'admin'.`,
+				);
+			}
+
+			if (invite.role === 'admin' && !this.license.isAdvancedPermissionsLicensed()) {
+				throw new UnauthorizedError(
+					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
+				);
+			}
 		});
 
-		const emails = req.body.map((e) => e.email);
+		const attributes = req.body.map(({ email, role }) => ({
+			email,
+			role: role ?? 'member',
+		}));
 
-		const { usersInvited, usersCreated } = await this.userService.inviteMembers(req.user, emails);
+		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
@@ -115,12 +134,9 @@ export class InvitationController {
 			throw new BadRequestError('Invalid payload');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -145,9 +161,9 @@ export class InvitationController {
 
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
-		invitee.password = await hashPassword(validPassword);
+		invitee.password = await this.passwordUtility.hash(validPassword);
 
-		const updatedUser = await this.userService.save(invitee);
+		const updatedUser = await this.userRepository.save(invitee);
 
 		await issueCookie(res, updatedUser);
 
@@ -161,6 +177,6 @@ export class InvitationController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
+		return this.userService.toPublic(updatedUser, { posthog: this.postHog, withScopes: true });
 	}
 }

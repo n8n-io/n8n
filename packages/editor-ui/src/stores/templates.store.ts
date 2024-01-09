@@ -28,6 +28,8 @@ function getSearchKey(query: ITemplatesQuery): string {
 	return JSON.stringify([query.search || '', [...query.categories].sort()]);
 }
 
+export type TemplatesStore = ReturnType<typeof useTemplatesStore>;
+
 export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 	state: (): ITemplateState => ({
 		categories: {},
@@ -46,6 +48,12 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		getTemplateById() {
 			return (id: string): null | ITemplatesWorkflow => this.workflows[id];
+		},
+		getFullTemplateById() {
+			return (id: string): null | ITemplatesWorkflowFull => {
+				const template = this.workflows[id];
+				return template && 'full' in template && template.full ? template : null;
+			};
 		},
 		getCollectionById() {
 			return (id: string): null | ITemplatesCollection => this.collections[id];
@@ -214,9 +222,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				this.currentSessionId = `templates-${Date.now()}`;
 			}
 		},
-		async fetchTemplateById(
-			templateId: string,
-		): Promise<ITemplatesWorkflow | ITemplatesWorkflowFull> {
+		async fetchTemplateById(templateId: string): Promise<ITemplatesWorkflowFull> {
 			const settingsStore = useSettingsStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
 			const versionCli: string = settingsStore.versionCli;

@@ -1,13 +1,11 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import {
-	useWorkflowsStore,
-	useNodeTypesStore,
-	useUIStore,
-	useHistoryStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { INodeUi, XYPosition } from '@/Interface';
 import {
 	applyScale,
@@ -16,7 +14,7 @@ import {
 	scaleBigger,
 	scaleReset,
 	scaleSmaller,
-} from '@/utils';
+} from '@/utils/canvasUtils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
@@ -42,6 +40,7 @@ import {
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
+import { useLoadingService } from '@/composables/useLoadingService';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -49,6 +48,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 	const sourceControlStore = useSourceControlStore();
+	const loadingService = useLoadingService();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -98,8 +98,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const sidebarWidth = isDemo.value
 			? 0
 			: uiStore.sidebarMenuCollapsed
-			? SIDEBAR_WIDTH
-			: SIDEBAR_WIDTH_EXPANDED;
+			  ? SIDEBAR_WIDTH
+			  : SIDEBAR_WIDTH_EXPANDED;
 
 		const relativeX = position[0] - sidebarWidth;
 		const relativeY = isDemo.value
@@ -297,6 +297,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
+		isLoading: loadingService.isLoading,
+		startLoading: loadingService.startLoading,
+		setLoadingText: loadingService.setLoadingText,
+		stopLoading: loadingService.stopLoading,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
 		canvasPositionFromPagePosition,

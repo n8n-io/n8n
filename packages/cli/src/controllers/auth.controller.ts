@@ -1,13 +1,5 @@
 import validator from 'validator';
-import { In } from 'typeorm';
-import { Service } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import {
-	AuthError,
-	BadRequestError,
-	InternalServerError,
-	UnauthorizedError,
-} from '@/ResponseHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
@@ -27,8 +19,13 @@ import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ApplicationError } from 'n8n-workflow';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Service()
 @RestController()
 export class AuthController {
 	constructor(
@@ -37,6 +34,7 @@ export class AuthController {
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
+		private readonly userRepository: UserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -46,8 +44,8 @@ export class AuthController {
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
-		if (!email) throw new Error('Email is required to log in');
-		if (!password) throw new Error('Password is required to log in');
+		if (!email) throw new ApplicationError('Email is required to log in');
+		if (!password) throw new ApplicationError('Password is required to log in');
 
 		let user: User | undefined;
 
@@ -140,7 +138,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userService.findOneOrFail({ where: {} });
+			user = await this.userRepository.findOneOrFail({ where: {}, relations: ['globalRole'] });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',
@@ -189,10 +187,8 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
+
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',

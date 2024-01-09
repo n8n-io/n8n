@@ -1,21 +1,20 @@
-// import { createHash } from 'crypto';
-import { titleCase } from 'title-case';
-import * as ExpressionError from '../ExpressionError';
-import type { ExtensionMap } from './Extensions';
-import CryptoJS from 'crypto-js';
+import SHA from 'jssha';
+import MD5 from 'md5';
 import { encode } from 'js-base64';
+import { titleCase } from 'title-case';
+import type { ExtensionMap } from './Extensions';
 import { transliterate } from 'transliteration';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
-const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
-	md5: CryptoJS.MD5,
-	sha1: CryptoJS.SHA1,
-	sha224: CryptoJS.SHA224,
-	sha256: CryptoJS.SHA256,
-	sha384: CryptoJS.SHA384,
-	sha512: CryptoJS.SHA512,
-	sha3: CryptoJS.SHA3,
-	ripemd160: CryptoJS.RIPEMD160,
-};
+export const SupportedHashAlgorithms = [
+	'md5',
+	'sha1',
+	'sha224',
+	'sha256',
+	'sha384',
+	'sha512',
+	'sha3',
+] as const;
 
 // All symbols from https://www.xe.com/symbols/ as for 2022/11/09
 const CURRENCY_REGEXP =
@@ -113,23 +112,35 @@ const URL_REGEXP =
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
 
-function hash(value: string, extraArgs?: unknown): string {
-	const [algorithm = 'MD5'] = extraArgs as string[];
-	if (algorithm.toLowerCase() === 'base64') {
-		// We're using a library instead of btoa because btoa only
-		// works on ASCII
-		return encode(value);
+function hash(value: string, extraArgs: string[]): string {
+	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
+	switch (algorithm) {
+		case 'base64':
+			return encode(value);
+		case 'md5':
+			return MD5(value);
+		case 'sha1':
+		case 'sha224':
+		case 'sha256':
+		case 'sha384':
+		case 'sha512':
+		case 'sha3':
+			const variant = (
+				{
+					sha1: 'SHA-1',
+					sha224: 'SHA-224',
+					sha256: 'SHA-256',
+					sha384: 'SHA-384',
+					sha512: 'SHA-512',
+					sha3: 'SHA3-512',
+				} as const
+			)[algorithm];
+			return new SHA(variant, 'TEXT').update(value).getHash('HEX');
+		default:
+			throw new ExpressionExtensionError(
+				`Unknown algorithm ${algorithm}. Available algorithms are: ${SupportedHashAlgorithms.join()}, and Base64.`,
+			);
 	}
-	const hashFunction = hashFunctions[algorithm.toLowerCase()];
-	if (!hashFunction) {
-		throw new ExpressionError.ExpressionExtensionError(
-			`Unknown algorithm ${algorithm}. Available algorithms are: ${Object.keys(hashFunctions)
-				.map((s) => s.toUpperCase())
-				.join(', ')}, and Base64.`,
-		);
-	}
-	return hashFunction(value.toString()).toString();
-	// return createHash(format).update(value.toString()).digest('hex');
 }
 
 function isEmpty(value: string): boolean {
@@ -194,7 +205,7 @@ function toDate(value: string): Date {
 	const date = new Date(Date.parse(value));
 
 	if (date.toString() === 'Invalid Date') {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
+		throw new ExpressionExtensionError('cannot convert to date');
 	}
 	// If time component is not specified, force 00:00h
 	if (!/:/.test(value)) {
@@ -224,7 +235,7 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 	const int = parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
 
 	if (isNaN(int)) {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to integer');
+		throw new ExpressionExtensionError('cannot convert to integer');
 	}
 
 	return int;
@@ -232,15 +243,13 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 
 function toFloat(value: string) {
 	if (value.includes(',')) {
-		throw new ExpressionError.ExpressionExtensionError(
-			'cannot convert to float, expected . as decimal separator',
-		);
+		throw new ExpressionExtensionError('cannot convert to float, expected . as decimal separator');
 	}
 
 	const float = parseFloat(value.replace(CURRENCY_REGEXP, ''));
 
 	if (isNaN(float)) {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to float');
+		throw new ExpressionExtensionError('cannot convert to float');
 	}
 
 	return float;
@@ -409,7 +418,8 @@ toSnakeCase.doc = {
 
 toTitleCase.doc = {
 	name: 'toTitleCase',
-	description: 'Formats a string to title case. Example: "This Is a Title".',
+	description:
+		'Formats a string to title case. Example: "This Is a Title". Will not change already uppercase letters to prevent losing information from acronyms and trademarks such as iPhone or FAANG.',
 	returnType: 'string',
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toTitleCase',

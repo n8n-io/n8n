@@ -2,7 +2,7 @@
 	<Modal
 		width="700px"
 		:title="$locale.baseText('importCurlModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
@@ -10,13 +10,13 @@
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
-						:modelValue="curlCommand"
+						ref="input"
+						:model-value="curlCommand"
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
 						@update:modelValue="onInput"
 						@focus="$event.target.select()"
-						ref="input"
 					/>
 				</n8n-input-label>
 			</div>
@@ -29,9 +29,9 @@
 				/>
 				<div>
 					<n8n-button
-						@click="importCurlCommand"
 						float="right"
 						:label="$locale.baseText('importCurlModal.button.label')"
+						@click="importCurlCommand"
 					/>
 				</div>
 			</div>
@@ -46,7 +46,7 @@ import {
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
@@ -76,6 +76,12 @@ export default defineComponent({
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+	},
+	mounted() {
+		this.curlCommand = this.uiStore.getCurlCommand || '';
+		setTimeout(() => {
+			(this.$refs.input as HTMLTextAreaElement).focus();
+		});
 	},
 	methods: {
 		closeDialog(): void {
@@ -175,12 +181,6 @@ export default defineComponent({
 				protocol: data.protocol,
 			});
 		},
-	},
-	mounted() {
-		this.curlCommand = this.uiStore.getCurlCommand || '';
-		setTimeout(() => {
-			(this.$refs.input as HTMLTextAreaElement).focus();
-		});
 	},
 });
 </script>

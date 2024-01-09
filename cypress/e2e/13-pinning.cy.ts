@@ -3,6 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
+	BACKEND_BASE_URL,
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
@@ -150,10 +151,25 @@ describe('Data pinning', () => {
 
 		cy.get('div').contains(output).should('be.visible');
 	});
+
+	it('should use pin data in manual executions that are started by a webhook', () => {
+		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
+
+		workflowPage.actions.executeWorkflow();
+
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then((response) => {
+			expect(response.status).to.eq(200);
+		});
+
+		workflowPage.actions.openNode('End');
+
+		ndv.getters.outputTableRow(1).should('exist')
+		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
+	});
 });
 
 function setExpressionOnStringValueInSet(expression: string) {
-	cy.get('button').contains('Execute node').click();
+	cy.get('button').contains('Test step').click();
 	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
 	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();

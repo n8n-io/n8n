@@ -1,12 +1,12 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
-			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="getIconSize" />
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
 			</div>
-			<n8n-text size="small">
+			<N8nText size="small">
 				<slot />
-			</n8n-text>
+			</N8nText>
 			&nbsp;
 			<slot name="actions" />
 		</div>
@@ -28,7 +28,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 };
 
 export default defineComponent({
-	name: 'n8n-callout',
+	name: 'N8nCallout',
 	components: {
 		N8nText,
 		N8nIcon,

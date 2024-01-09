@@ -1,13 +1,15 @@
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<n8n-callout
-			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnlyRoute && !readOnlyEnv">
+			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
 				<n8n-link
 					theme="secondary"
 					size="small"
@@ -33,8 +35,8 @@
 		</n8n-callout>
 
 		<BinaryDataDisplay
-			:windowVisible="binaryDataDisplayVisible"
-			:displayData="binaryDataDisplayData"
+			:window-visible="binaryDataDisplayVisible"
+			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"
 		/>
 
@@ -43,15 +45,15 @@
 
 			<div
 				v-show="!hasRunError"
-				@click.stop
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
+				@click.stop
 			>
 				<n8n-radio-buttons
 					v-show="
 						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
-					:modelValue="displayMode"
+					:model-value="displayMode"
 					:options="buttons"
 					data-test-id="ndv-run-data-display-mode"
 					@update:modelValue="onDisplayModeChange"
@@ -69,16 +71,16 @@
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
-					placement="bottom-end"
 					v-if="canPinData && rawInputData.length"
 					v-show="!editMode.enabled"
+					placement="bottom-end"
 					:visible="
 						isControlledPinDataTooltip
 							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
 							: undefined
 					"
 				>
-					<template #content v-if="!isControlledPinDataTooltip">
+					<template v-if="!isControlledPinDataTooltip" #content>
 						<div :class="$style.tooltipContainer">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -90,7 +92,7 @@
 							</n8n-text>
 						</div>
 					</template>
-					<template #content v-else>
+					<template v-else #content>
 						<div :class="$style.tooltipContainer">
 							{{ $locale.baseText('node.discovery.pinData.ndv') }}
 						</div>
@@ -98,20 +100,20 @@
 					<n8n-icon-button
 						:class="['ml-2xs', $style.pinDataButton]"
 						type="tertiary"
-						:active="hasPinData"
+						:active="pinnedData.hasData.value"
 						icon="thumbtack"
 						:disabled="
 							editMode.enabled ||
-							(rawInputData.length === 0 && !hasPinData) ||
+							(rawInputData.length === 0 && !pinnedData.hasData.value) ||
 							isReadOnlyRoute ||
 							readOnlyEnv
 						"
-						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
+						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
 
-				<div :class="$style.editModeActions" v-show="editMode.enabled">
+				<div v-show="editMode.enabled" :class="$style.editModeActions">
 					<n8n-button
 						type="tertiary"
 						:label="$locale.baseText('runData.editor.cancel')"
@@ -128,28 +130,28 @@
 		</div>
 
 		<div
-			:class="$style.runSelector"
 			v-if="maxRunIndex > 0"
 			v-show="!editMode.enabled"
+			:class="$style.runSelector"
 			data-test-id="run-selector"
 		>
 			<div :class="$style.runSelectorWrapper">
 				<n8n-select
 					size="small"
-					:modelValue="runIndex"
+					:model-value="runIndex"
+					teleported
 					@update:modelValue="onRunIndexChange"
 					@click.stop
-					teleported
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 					<n8n-option
 						v-for="option in maxRunIndex + 1"
+						:key="option"
 						:label="getRunLabel(option)"
 						:value="option - 1"
-						:key="option"
 					></n8n-option>
 				</n8n-select>
-				<n8n-tooltip placement="right" v-if="canLinkRuns">
+				<n8n-tooltip v-if="canLinkRuns" placement="right">
 					<template #content>
 						{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 					</template>
@@ -164,11 +166,11 @@
 				</n8n-tooltip>
 				<slot name="run-info"></slot>
 			</div>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
@@ -180,15 +182,15 @@
 			data-test-id="branches"
 		>
 			<n8n-tabs
-				:modelValue="currentOutputIndex"
+				:model-value="currentOutputIndex"
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
@@ -219,16 +221,16 @@
 					})
 				}}
 			</n8n-text>
-			<run-data-search
+			<RunDataSearch
 				v-if="showIOSearch"
 				v-model="search"
-				:paneType="paneType"
-				:isAreaActive="isPaneActive"
+				:pane-type="paneType"
+				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
 
-		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
+		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
@@ -236,9 +238,8 @@
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<code-node-editor
-						:modelValue="editMode.value"
-						language="json"
+					<JsonEditor
+						:model-value="editMode.value"
 						@update:modelValue="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
@@ -284,7 +285,7 @@
 						})
 					}}
 				</n8n-text>
-				<slot name="content" v-else-if="$slots['content']"></slot>
+				<slot v-else-if="$slots['content']" name="content"></slot>
 				<NodeErrorView
 					v-else
 					:error="workflowRunData[node.name][runIndex].error"
@@ -347,7 +348,7 @@
 			</div>
 
 			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
-			<slot name="content" v-else-if="hasNodeRun && $slots['content']"></slot>
+			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
 
 			<div
 				v-else-if="
@@ -383,15 +384,15 @@
 			</div>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
-				<run-data-table
+				<RunDataTable
 					:node="node"
-					:inputData="inputDataPage"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
-					:runIndex="runIndex"
-					:pageOffset="currentPageOffset"
-					:totalRuns="maxRunIndex"
-					:hasDefaultHoverState="paneType === 'input' && !search"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:page-offset="currentPageOffset"
+					:total-runs="maxRunIndex"
+					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
 					@mounted="$emit('tableMounted', $event)"
 					@activeRowChanged="onItemHover"
@@ -400,33 +401,33 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
-				<run-data-json
-					:paneType="paneType"
-					:editMode="editMode"
-					:sessioId="sessionId"
+				<RunDataJson
+					:pane-type="paneType"
+					:edit-mode="editMode"
+					:sessio-id="sessionId"
 					:node="node"
-					:inputData="inputDataPage"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
-					:runIndex="runIndex"
-					:totalRuns="maxRunIndex"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
 					:search="search"
 				/>
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputHtml="inputDataPage[0].json.html" />
+				<RunDataHtml :input-html="inputDataPage[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
-				<run-data-schema
+				<RunDataSchema
 					:data="jsonData"
-					:mappingEnabled="mappingEnabled"
-					:distanceFromActive="distanceFromActive"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
 					:node="node"
-					:paneType="paneType"
-					:runIndex="runIndex"
-					:totalRuns="maxRunIndex"
+					:pane-type="paneType"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
 					:search="search"
 				/>
 			</Suspense>
@@ -439,7 +440,7 @@
 
 			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
 				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div :class="$style.binaryIndex" v-if="binaryData.length > 1">
+					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
 						<div>
 							{{ index + 1 }}
 						</div>
@@ -447,9 +448,9 @@
 
 					<div :class="$style.binaryRow">
 						<div
-							:class="$style.binaryCell"
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
+							:class="$style.binaryCell"
 						>
 							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
@@ -520,7 +521,6 @@
 			</div>
 		</div>
 		<div
-			:class="$style.pagination"
 			v-if="
 				hasNodeRun &&
 				!hasRunError &&
@@ -530,6 +530,7 @@
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
+			:class="$style.pagination"
 			data-test-id="ndv-data-pagination"
 		>
 			<el-pagination
@@ -539,17 +540,17 @@
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@update:current-page="onCurrentPageChange"
 				:total="dataCount"
+				@update:current-page="onCurrentPageChange"
 			>
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
 					size="mini"
-					:modelValue="pageSize"
-					@update:modelValue="onPageSizeChange"
+					:model-value="pageSize"
 					teleported
+					@update:modelValue="onPageSizeChange"
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
@@ -563,7 +564,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, toRef } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
@@ -604,20 +605,22 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { pinData } from '@/mixins/pinData';
-import type { PinDataSource } from '@/mixins/pinData';
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import type { PinDataSource } from '@/composables/usePinnedData';
+import { usePinnedData } from '@/composables/usePinnedData';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, isEmpty, searchInObject } from '@/utils';
+import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { searchInObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -631,11 +634,10 @@ export type EnterEditModeArgs = {
 
 export default defineComponent({
 	name: 'RunData',
-	mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
-		CodeNodeEditor,
+		JsonEditor,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -643,8 +645,9 @@ export default defineComponent({
 		RunDataSearch,
 	},
 	props: {
-		nodeUi: {
+		node: {
 			type: Object as PropType<INodeUi>,
+			default: null,
 		},
 		runIndex: {
 			type: Number,
@@ -673,6 +676,7 @@ export default defineComponent({
 		},
 		paneType: {
 			type: String as PropType<NodePanelType>,
+			required: true,
 		},
 		overrideOutputs: {
 			type: Array as PropType<number[]>,
@@ -696,9 +700,21 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup() {
+	setup(props) {
+		const ndvStore = useNDVStore();
+		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
+		const node = toRef(props, 'node');
+		const pinnedData = usePinnedData(node, {
+			runIndex: props.runIndex,
+			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
+		});
+
 		return {
 			...useToast(),
+			externalHooks,
+			nodeHelpers,
+			pinnedData,
 		};
 	},
 	data() {
@@ -742,7 +758,10 @@ export default defineComponent({
 		this.hidePinDataDiscoveryTooltip();
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readOnlyCanvas === true;
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
@@ -754,9 +773,6 @@ export default defineComponent({
 		},
 		displayMode(): IRunDataDisplayMode {
 			return this.ndvStore.getPanelDisplayMode(this.paneType);
-		},
-		node(): INodeUi | null {
-			return (this.nodeUi as INodeUi | null) || null;
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
@@ -790,7 +806,7 @@ export default defineComponent({
 			return (
 				!nonMainInputs &&
 				!this.isPaneTypeInput &&
-				this.isPinDataNodeType &&
+				this.pinnedData.isValidNodeType.value &&
 				!(this.binaryData && this.binaryData.length > 0)
 			);
 		},
@@ -826,7 +842,7 @@ export default defineComponent({
 				!this.isExecuting &&
 					this.node &&
 					((this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name)) ||
-						this.hasPinData),
+						this.pinnedData.hasData.value),
 			);
 		},
 		isArtificialRecoveredEventItem(): boolean {
@@ -858,7 +874,9 @@ export default defineComponent({
 			return this.getDataCount(this.runIndex, this.currentOutputIndex);
 		},
 		unfilteredDataCount(): number {
-			return this.pinData ? this.pinData.length : this.rawInputData.length;
+			return this.pinnedData.data.value
+				? this.pinnedData.data.value.length
+				: this.rawInputData.length;
 		},
 		dataSizeInMB(): string {
 			return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -926,7 +944,7 @@ export default defineComponent({
 				return [];
 			}
 
-			const binaryData = this.getBinaryData(
+			const binaryData = this.nodeHelpers.getBinaryData(
 				this.workflowRunData,
 				this.node.name,
 				this.runIndex,
@@ -1066,8 +1084,8 @@ export default defineComponent({
 			useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG).value = 'true';
 		},
 		enterEditMode({ origin }: EnterEditModeArgs) {
-			const inputData = this.pinData
-				? clearJsonKey(this.pinData)
+			const inputData = this.pinnedData.data.value
+				? clearJsonKey(this.pinnedData.data.value)
 				: executionDataToJson(this.rawInputData);
 
 			const data = inputData.length > 0 ? inputData : TEST_PIN_DATA;
@@ -1080,9 +1098,9 @@ export default defineComponent({
 				click_type: origin === 'editIconButton' ? 'button' : 'link',
 				session_id: this.sessionId,
 				run_index: this.runIndex,
-				is_output_present: this.hasNodeRun || this.hasPinData,
-				view: !this.hasNodeRun && !this.hasPinData ? 'undefined' : this.displayMode,
-				is_data_pinned: this.hasPinData,
+				is_output_present: this.hasNodeRun || this.pinnedData.hasData.value,
+				view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'undefined' : this.displayMode,
+				is_data_pinned: this.pinnedData.hasData.value,
 			});
 		},
 		onClickCancelEdit() {
@@ -1100,7 +1118,7 @@ export default defineComponent({
 			this.clearAllStickyNotifications();
 
 			try {
-				this.setPinData(this.node, clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+				this.pinnedData.setData(clearJsonKey(value) as INodeExecutionData[], 'save-edit');
 			} catch (error) {
 				console.error(error);
 				return;
@@ -1129,22 +1147,22 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					session_id: this.sessionId,
 					run_index: this.runIndex,
-					view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
+					view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'none' : this.displayMode,
 				};
 
-				void this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+				void this.externalHooks.run('runData.onTogglePinData', telemetryPayload);
 				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 			}
 
-			this.updateNodeParameterIssues(this.node);
+			this.nodeHelpers.updateNodeParameterIssues(this.node);
 
-			if (this.hasPinData) {
-				this.unsetPinData(this.node, source);
+			if (this.pinnedData.hasData.value) {
+				this.pinnedData.unsetData(source);
 				return;
 			}
 
 			try {
-				this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
+				this.pinnedData.setData(this.rawInputData, 'pin-icon-click');
 			} catch (error) {
 				console.error(error);
 				return;
@@ -1242,7 +1260,7 @@ export default defineComponent({
 			}
 
 			this.closeBinaryDataDisplay();
-			void this.$externalHooks().run('runData.displayModeChanged', {
+			void this.externalHooks.run('runData.displayModeChanged', {
 				newValue: displayMode,
 				oldValue: previous,
 			});
@@ -1277,7 +1295,7 @@ export default defineComponent({
 			let inputData: INodeExecutionData[] = [];
 
 			if (this.node) {
-				inputData = this.getNodeInputData(
+				inputData = this.nodeHelpers.getNodeInputData(
 					this.node,
 					runIndex,
 					outputIndex,
@@ -1293,14 +1311,14 @@ export default defineComponent({
 			return inputData;
 		},
 		getPinDataOrLiveData(inputData: INodeExecutionData[]): INodeExecutionData[] {
-			if (this.pinData && !this.isProductionExecutionPreview) {
-				return Array.isArray(this.pinData)
-					? this.pinData.map((value) => ({
+			if (this.pinnedData.data.value && !this.isProductionExecutionPreview) {
+				return Array.isArray(this.pinnedData.data.value)
+					? this.pinnedData.data.value.map((value) => ({
 							json: value,
 					  }))
 					: [
 							{
-								json: this.pinData,
+								json: this.pinnedData.data.value,
 							},
 					  ];
 			}
@@ -1323,7 +1341,7 @@ export default defineComponent({
 				return 0;
 			}
 
-			if (this.workflowRunData?.[this.node.name][runIndex].hasOwnProperty('error')) {
+			if (this.workflowRunData?.[this.node.name]?.[runIndex]?.hasOwnProperty('error')) {
 				return 1;
 			}
 
@@ -1360,7 +1378,7 @@ export default defineComponent({
 		},
 		clearExecutionData() {
 			this.workflowsStore.setWorkflowExecutionData(null);
-			this.updateNodesExecutionIssues();
+			this.nodeHelpers.updateNodesExecutionIssues();
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];
@@ -1386,7 +1404,7 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
+			const fileName = this.node.name.replace(/[^\w\d]/g, '_');
 			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], {
 				type: 'application/json',
 			});
@@ -1397,7 +1415,7 @@ export default defineComponent({
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
-				node: this.node!.name,
+				node: this.node.name,
 				runIndex: this.runIndex,
 				outputIndex: this.currentOutputIndex,
 				index,

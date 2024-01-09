@@ -1,7 +1,7 @@
 <template>
 	<AuthView
 		:form="FORM_CONFIG"
-		:formLoading="loading"
+		:form-loading="loading"
 		:subtitle="inviteMessage"
 		@submit="onSubmit"
 	/>
@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';

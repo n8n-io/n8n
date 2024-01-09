@@ -1,37 +1,38 @@
 <template>
 	<div :class="['n8n-form-box', $style.container]">
 		<div v-if="title" :class="$style.heading">
-			<n8n-heading size="xlarge">
+			<N8nHeading size="xlarge">
 				{{ title }}
-			</n8n-heading>
+			</N8nHeading>
 		</div>
 		<div :class="$style.inputsContainer">
-			<n8n-form-inputs
+			<N8nFormInputs
 				:inputs="inputs"
-				:eventBus="formBus"
-				:columnView="true"
+				:event-bus="formBus"
+				:column-view="true"
 				@update="onUpdateModelValue"
 				@submit="onSubmit"
 			/>
 		</div>
-		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
+		<div v-if="secondaryButtonText || buttonText" :class="$style.buttonsContainer">
 			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
-				<n8n-link size="medium" theme="text" @click="onSecondaryButtonClick">
+				<N8nLink size="medium" theme="text" @click="onSecondaryButtonClick">
 					{{ secondaryButtonText }}
-				</n8n-link>
+				</N8nLink>
 			</span>
-			<n8n-button
+			<N8nButton
 				v-if="buttonText"
 				:label="buttonText"
 				:loading="buttonLoading"
+				data-test-id="form-submit-button"
 				size="large"
 				@click="onButtonClick"
 			/>
 		</div>
 		<div :class="$style.actionContainer">
-			<n8n-link v-if="redirectText && redirectLink" :to="redirectLink">
+			<N8nLink v-if="redirectText && redirectLink" :to="redirectLink">
 				{{ redirectText }}
-			</n8n-link>
+			</N8nLink>
 		</div>
 		<slot></slot>
 	</div>
@@ -46,7 +47,7 @@ import N8nButton from '../N8nButton';
 import { createEventBus } from '../../utils';
 
 export default defineComponent({
-	name: 'n8n-form-box',
+	name: 'N8nFormBox',
 	components: {
 		N8nHeading,
 		N8nFormInputs,

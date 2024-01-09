@@ -2,7 +2,6 @@ import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
-import Chainable = Cypress.Chainable;
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -48,7 +47,9 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
 		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -349,9 +350,6 @@ export class WorkflowPage extends BasePage {
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
-		},
-		hitPaste: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
 		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');

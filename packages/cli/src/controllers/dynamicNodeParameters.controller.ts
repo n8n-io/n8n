@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { RequestHandler } from 'express';
 import { NextFunction, Response } from 'express';
 import type {
@@ -12,7 +11,7 @@ import { Authorized, Get, Middleware, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const assertMethodName: RequestHandler = (req, res, next) => {
 	const { methodName } = req.query as DynamicNodeParametersRequest.BaseRequest['query'];
@@ -22,7 +21,6 @@ const assertMethodName: RequestHandler = (req, res, next) => {
 	next();
 };
 
-@Service()
 @Authorized()
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {

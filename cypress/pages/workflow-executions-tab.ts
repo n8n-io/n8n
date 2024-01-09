@@ -14,6 +14,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		failedExecutionListItems: () => cy.get('[data-test-execution-status="error"]'),
 		executionCard: (executionId: string) => cy.getByTestId(`execution-details-${executionId}`),
 		executionPreviewDetails: () => cy.get('[data-test-id^="execution-preview-details-"]'),
+		executionPreviewDeleteButton: () => cy.get('[data-test-id="execution-preview-delete-button"]'),
 		executionPreviewDetailsById: (executionId: string) =>
 			cy.getByTestId(`execution-preview-details-${executionId}`),
 		executionPreviewTime: () =>
@@ -38,9 +39,15 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		switchToExecutionsTab: () => {
 			this.getters.executionsTabButton().click();
+			cy.url().should('include', '/executions');
 		},
 		switchToEditorTab: () => {
 			workflowPage.getters.editorTabButton().click();
+			cy.url().should('match', /\/workflow\/[^\/]+$/);
+		},
+		deleteExecutionInPreview: () => {
+			this.getters.executionPreviewDeleteButton().click();
+			cy.get('button.btn--confirm').click();
 		},
 	};
 }

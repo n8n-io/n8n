@@ -2,7 +2,7 @@
 	<div class="item">
 		<div v-if="item.options" class="options">
 			<div v-if="item.options.length" class="headline clickable" @click="extended = !extended">
-				<div class="options-toggle" v-if="extendAll !== true">
+				<div v-if="extendAll !== true" class="options-toggle">
 					<font-awesome-icon v-if="extended" icon="angle-down" />
 					<font-awesome-icon v-else icon="angle-right" />
 				</div>
@@ -10,10 +10,10 @@
 					{{ item.name }}
 
 					<el-dropdown
+						v-if="allowParentSelect === true"
 						trigger="click"
 						@click.stop
 						@command="optionSelected($event, item)"
-						v-if="allowParentSelect === true"
 					>
 						<span class="el-dropdown-link clickable" @click.stop>
 							<font-awesome-icon
@@ -24,9 +24,9 @@
 						<template #dropdown>
 							<el-dropdown-menu>
 								<el-dropdown-item
-									:command="operation.command"
 									v-for="operation in itemAddOperations"
 									:key="operation.command"
+									:command="operation.command"
 									>{{ operation.displayName }}</el-dropdown-item
 								>
 							</el-dropdown-menu>
@@ -37,11 +37,11 @@
 			<div v-if="item.options && (extended === true || extendAll === true)">
 				<variable-selector-item
 					v-for="option in item.options"
-					:item="option"
 					:key="option.key"
-					:extendAll="extendAll"
-					:allowParentSelect="option.allowParentSelect"
-					:redactValues="redactValues"
+					:item="option"
+					:extend-all="extendAll"
+					:allow-parent-select="option.allowParentSelect"
+					:redact-values="redactValues"
 					class="sub-level"
 					@itemSelected="forwardItemSelected"
 				></variable-selector-item>
@@ -62,26 +62,14 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
 
 export default defineComponent({
 	name: 'VariableSelectorItem',
-	mixins: [externalHooks],
 	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
-	mounted() {
-		if (this.extended) return;
-
-		const shouldAutoExtend =
-			[
-				this.$locale.baseText('variableSelectorItem.currentNode'),
-				this.$locale.baseText('variableSelectorItem.inputData'),
-				this.$locale.baseText('variableSelectorItem.binary'),
-				this.$locale.baseText('variableSelectorItem.json'),
-			].includes(this.item.name) && this.item.key === undefined;
-
-		if (shouldAutoExtend) {
-			this.extended = true;
-		}
+	data() {
+		return {
+			extended: false,
+		};
 	},
 	computed: {
 		itemAddOperations() {
@@ -114,10 +102,20 @@ export default defineComponent({
 			return returnOptions;
 		},
 	},
-	data() {
-		return {
-			extended: false,
-		};
+	mounted() {
+		if (this.extended) return;
+
+		const shouldAutoExtend =
+			[
+				this.$locale.baseText('variableSelectorItem.currentNode'),
+				this.$locale.baseText('variableSelectorItem.inputData'),
+				this.$locale.baseText('variableSelectorItem.binary'),
+				this.$locale.baseText('variableSelectorItem.json'),
+			].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
 	},
 	methods: {
 		optionSelected(command: string, item: IVariableSelectorOption) {

@@ -353,6 +353,75 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-plain-errors': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Only `ApplicationError` (from the `workflow` package) or its child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
+				recommended: 'error',
+			},
+			messages: {
+				useApplicationError:
+					'Throw an `ApplicationError` (from the `workflow` package) or its child classes.',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				ThrowStatement(node) {
+					if (!node.argument) return;
+
+					const isNewError =
+						node.argument.type === 'NewExpression' && node.argument.callee.name === 'Error';
+
+					const isNewlessError =
+						node.argument.type === 'CallExpression' && node.argument.callee.name === 'Error';
+
+					if (isNewError || isNewlessError) {
+						return context.report({
+							messageId: 'useApplicationError',
+							node,
+							fix: (fixer) =>
+								fixer.replaceText(
+									node,
+									`throw new ApplicationError(${node.argument.arguments
+										.map((arg) => arg.raw)
+										.join(', ')})`,
+								),
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-dynamic-import-template': {
+		meta: {
+			type: 'error',
+			docs: {
+				description:
+					'Disallow non-relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+				recommended: true,
+			},
+		},
+		create: function (context) {
+			return {
+				'AwaitExpression > ImportExpression TemplateLiteral'(node) {
+					const templateValue = node.quasis[0].value.cooked;
+
+					if (!templateValue?.startsWith('@/')) return;
+
+					context.report({
+						node,
+						message:
+							'Use relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+					});
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>

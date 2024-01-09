@@ -16,14 +16,14 @@ export default defineComponent({
 			routeHasHistory: false,
 		};
 	},
+	mounted() {
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
+	},
 	methods: {
 		navigateTo() {
 			if (this.routeHasHistory) this.$router.go(-1);
 			else void this.$router.push({ name: VIEWS.TEMPLATES });
 		},
-	},
-	mounted() {
-		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
 	},
 });
 </script>

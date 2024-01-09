@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import Modal from '@/components/Modal.vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -60,8 +60,8 @@ const closeModal = () => {
 			<div :class="$style.footer">
 				<n8n-button
 					v-for="(button, index) in props.data.buttons"
-					size="medium"
 					:key="index"
+					size="medium"
 					:type="button.type"
 					@click="
 						() => {

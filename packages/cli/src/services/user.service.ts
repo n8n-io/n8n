@@ -1,10 +1,7 @@
-import Container, { Service } from 'typedi';
-import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { Container, Service } from 'typedi';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
-import { generateUserInviteUrl, getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { type JwtPayload, JwtService } from './jwt.service';
@@ -14,9 +11,10 @@ import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { InternalServerError } from '@/ResponseHelper';
+import { UrlService } from '@/services/url.service';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 @Service()
 export class UserService {
@@ -26,38 +24,11 @@ export class UserService {
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly roleService: RoleService,
+		private readonly urlService: UrlService,
 	) {}
-
-	async findOne(options: FindOneOptions<User>) {
-		return this.userRepository.findOne({ relations: ['globalRole'], ...options });
-	}
-
-	async findOneOrFail(options: FindOneOptions<User>) {
-		return this.userRepository.findOneOrFail({ relations: ['globalRole'], ...options });
-	}
-
-	async findMany(options: FindManyOptions<User>) {
-		return this.userRepository.find(options);
-	}
-
-	async findOneBy(options: FindOptionsWhere<User>) {
-		return this.userRepository.findOneBy(options);
-	}
-
-	create(data: Partial<User>) {
-		return this.userRepository.create(data);
-	}
-
-	async save(user: Partial<User>) {
-		return this.userRepository.save(user);
-	}
 
 	async update(userId: string, data: Partial<User>) {
 		return this.userRepository.update(userId, data);
-	}
-
-	async getByIds(transaction: EntityManager, ids: string[]) {
-		return transaction.find(User, { where: { id: In(ids) } });
 	}
 
 	getManager() {
@@ -78,7 +49,7 @@ export class UserService {
 	}
 
 	generatePasswordResetUrl(user: User) {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
@@ -123,9 +94,15 @@ export class UserService {
 
 	async toPublic(
 		user: User,
-		options?: { withInviteUrl?: boolean; posthog?: PostHogClient; withScopes?: boolean },
+		options?: {
+			withInviteUrl?: boolean;
+			inviterId?: string;
+			posthog?: PostHogClient;
+			withScopes?: boolean;
+		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, apiKey, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } =
+			user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -135,30 +112,34 @@ export class UserService {
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
-		if (options?.withScopes) {
-			publicUser.globalScopes = user.globalScopes;
+		if (options?.withInviteUrl && !options?.inviterId) {
+			throw new ApplicationError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && publicUser.isPending) {
-			publicUser = this.addInviteUrl(publicUser, user.id);
+		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
+		if (options?.withScopes) {
+			publicUser.globalScopes = user.globalScopes;
+		}
+
 		return publicUser;
 	}
 
-	private addInviteUrl(user: PublicUser, inviterId: string) {
-		const url = new URL(getInstanceBaseUrl());
+	private addInviteUrl(inviterId: string, invitee: PublicUser) {
+		const url = new URL(this.urlService.getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', user.id);
+		url.searchParams.set('inviteeId', invitee.id);
 
-		user.inviteAcceptUrl = url.toString();
+		invitee.inviteAcceptUrl = url.toString();
 
-		return user;
+		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -178,12 +159,16 @@ export class UserService {
 		return Promise.race([fetchPromise, timeoutPromise]);
 	}
 
-	private async sendEmails(owner: User, toInviteUsers: { [key: string]: string }) {
-		const domain = getInstanceBaseUrl();
+	private async sendEmails(
+		owner: User,
+		toInviteUsers: { [key: string]: string },
+		role: 'member' | 'admin',
+	) {
+		const domain = this.urlService.getInstanceBaseUrl();
 
 		return Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = generateUserInviteUrl(owner.id, id);
+				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -215,6 +200,7 @@ export class UserService {
 						target_user_id: Object.values(toInviteUsers),
 						public_api: false,
 						email_sent: result.emailSent,
+						invitee_role: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
@@ -238,18 +224,16 @@ export class UserService {
 		);
 	}
 
-	public async inviteMembers(owner: User, emails: string[]) {
+	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
 		const memberRole = await this.roleService.findGlobalMemberRole();
+		const adminRole = await this.roleService.findGlobalAdminRole();
+		const emails = attributes.map(({ email }) => email);
 
-		const existingUsers = await this.findMany({
-			where: { email: In(emails) },
-			relations: ['globalRole'],
-			select: ['email', 'password', 'id'],
-		});
+		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
-		const toCreateUsers = emails.filter((email) => !existUsersEmails.includes(email));
+		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
 
 		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
 
@@ -264,10 +248,10 @@ export class UserService {
 		try {
 			await this.getManager().transaction(async (transactionManager) =>
 				Promise.all(
-					toCreateUsers.map(async (email) => {
+					toCreateUsers.map(async ({ email, role }) => {
 						const newUser = Object.assign(new User(), {
 							email,
-							globalRole: memberRole,
+							globalRole: role === 'member' ? memberRole : adminRole,
 						});
 						const savedUser = await transactionManager.save<User>(newUser);
 						createdUsers.set(email, savedUser.id);
@@ -283,8 +267,12 @@ export class UserService {
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));
 
-		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
+		const usersInvited = await this.sendEmails(
+			owner,
+			Object.fromEntries(createdUsers),
+			attributes[0].role, // same role for all invited users
+		);
 
-		return { usersInvited, usersCreated: toCreateUsers };
+		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 }

@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
@@ -20,7 +20,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 		},
 		displayOptions: {
 			hide: {
@@ -39,7 +38,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 		},
 		displayOptions: {
 			show: {
@@ -285,10 +283,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
-					throw new Error(
+					throw new ApplicationError(
 						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
 							', ',
 						)}`,
+						{ level: 'warning' },
 					);
 				}
 			} catch (error) {

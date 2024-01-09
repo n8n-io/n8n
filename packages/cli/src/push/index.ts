@@ -14,6 +14,7 @@ import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -30,6 +31,14 @@ export class Push extends EventEmitter {
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
+	constructor() {
+		super();
+
+		if (useWebSockets) {
+			this.backend.on('message', (msg) => this.emit('message', msg));
+		}
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			userId,
@@ -37,7 +46,6 @@ export class Push extends EventEmitter {
 		} = req;
 		if (req.ws) {
 			(this.backend as WebSocketPush).add(sessionId, userId, req.ws);
-			this.backend.on('message', (msg) => this.emit('message', msg));
 		} else if (!useWebSockets) {
 			(this.backend as SSEPush).add(sessionId, userId, { req, res });
 		} else {
@@ -56,8 +64,17 @@ export class Push extends EventEmitter {
 		this.backend.send(type, data, sessionId);
 	}
 
+	getBackend() {
+		return this.backend;
+	}
+
 	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
+	}
+
+	@OnShutdown()
+	onShutdown(): void {
+		this.backend.closeAllConnections();
 	}
 }
 
