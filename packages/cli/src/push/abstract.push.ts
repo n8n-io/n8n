@@ -17,7 +17,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	protected userIdBySessionId: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
-	protected abstract sendToConnection(connection: T, data: string): void;
+	protected abstract sendToOneConnection(connection: T, data: string): void;
 
 	constructor(
 		protected readonly logger: Logger,
@@ -69,7 +69,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		for (const sessionId of sessionIds) {
 			const connection = this.connections[sessionId];
 			assert(connection);
-			this.sendToConnection(connection, stringifiedPayload);
+			this.sendToOneConnection(connection, stringifiedPayload);
 		}
 	}
 

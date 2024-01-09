@@ -36,7 +36,7 @@ export class SSEPush extends AbstractPush<Connection> {
 		this.channel.removeClient(res);
 	}
 
-	protected sendToConnection(connection: Connection, data: string) {
+	protected sendToOneConnection(connection: Connection, data: string) {
 		this.channel.send(data, [connection.res]);
 	}
 }
