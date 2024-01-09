@@ -128,7 +128,7 @@ export async function handleCommandMessageMain(messageString: string) {
 				Container.get(Push).broadcast('workflowFailedToActivate', { workflowId, errorMessage });
 			}
 
-			case 'executionLifecycleHook': {
+			case 'multi-main-setup:relay-execution-lifecycle-event': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;

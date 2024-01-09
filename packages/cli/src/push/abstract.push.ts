@@ -4,7 +4,6 @@ import type { IPushDataType } from '@/Interfaces';
 import type { Logger } from '@/Logger';
 import type { User } from '@db/entities/User';
 import type { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
-import type { RedisServiceBaseCommand } from '@/services/redis/RedisServiceCommands';
 
 /**
  * Abstract class for two-way push communication.
@@ -89,11 +88,14 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	 * Send the given data to one specific user.
 	 */
 	send<D>(type: IPushDataType, data: D, sessionId: string) {
+		// @TODO: Skip if the webhook call reaches the correct main on multi-main setup
 		if (this.multiMainSetup.isEnabled) {
-			void this.multiMainSetup.publish(
-				'executionLifecycleHook',
-				data as RedisServiceBaseCommand['payload'], // @TODO: Prevent assertion
-			);
+			void this.multiMainSetup.publish('multi-main-setup:relay-execution-lifecycle-event', {
+				eventName: type,
+				// @ts-ignore // @TODO
+				args: data,
+				sessionId,
+			});
 			return;
 		}
 
