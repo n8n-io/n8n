@@ -67,8 +67,8 @@ export class Push extends EventEmitter {
 		return this.backend;
 	}
 
-	sendToUsers(pushType: IPushDataType, data: unknown, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(pushType, data, userIds);
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(type, data, userIds);
 	}
 
 	@OnShutdown()
