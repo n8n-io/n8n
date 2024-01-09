@@ -79,7 +79,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 
 	sendToOneSession(type: IPushDataType, data: unknown, sessionId: string) {
 		/**
-		 * In a manual webhook execution in multi-main setup, the main process that handles
+		 * Multi-main setup: In a manual webhook execution, the main process that handles
 		 * a webhook might not be the same as the main process that created the webhook.
 		 *
 		 * If so, the handler process commands the creator process to relay execution

@@ -1,4 +1,4 @@
-import type { IPushDataType, IPushDataWorkerStatusPayload } from '@/Interfaces';
+import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/Interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -9,7 +9,8 @@ export type RedisServiceCommand =
 	| 'reloadExternalSecretsProviders'
 	| 'workflowActiveStateChanged' // multi-main only
 	| 'workflowFailedToActivate' // multi-main only
-	| 'relay-execution-lifecycle-event'; // multi-main only
+	| 'relay-execution-lifecycle-event' // multi-main only
+	| 'clear-test-webhooks'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -20,7 +21,10 @@ export type RedisServiceCommand =
 export type RedisServiceBaseCommand =
 	| {
 			senderId: string;
-			command: Exclude<RedisServiceCommand, 'relay-execution-lifecycle-event'>;
+			command: Exclude<
+				RedisServiceCommand,
+				'relay-execution-lifecycle-event' | 'clear-test-webhooks'
+			>;
 			payload?: {
 				[key: string]: string | number | boolean | string[] | number[] | boolean[];
 			};
@@ -29,7 +33,11 @@ export type RedisServiceBaseCommand =
 			senderId: string;
 			command: 'relay-execution-lifecycle-event';
 			payload: { type: IPushDataType; args: Record<string, unknown>; sessionId: string };
-			targets: string[];
+	  }
+	| {
+			senderId: string;
+			command: 'clear-test-webhooks';
+			payload: { webhookKey: string; workflowEntity: IWorkflowDb; sessionId: string };
 	  };
 
 export type RedisServiceWorkerResponseObject = {
