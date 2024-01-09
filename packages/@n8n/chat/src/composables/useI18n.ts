@@ -1,4 +1,4 @@
-import { useOptions } from '@/composables/useOptions';
+import { useOptions } from '@n8n/chat/composables/useOptions';
 
 export function useI18n() {
 	const { options } = useOptions();

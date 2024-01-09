@@ -687,6 +687,8 @@ export type IPersonalizationSurveyVersions =
 
 export type IRole = 'default' | 'owner' | 'member' | 'admin';
 
+export type InvitableRoleName = 'member' | 'admin';
+
 export interface IUserResponse {
 	id: string;
 	firstName?: string;

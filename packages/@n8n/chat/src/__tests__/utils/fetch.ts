@@ -1,4 +1,4 @@
-import type { LoadPreviousSessionResponse, SendMessageResponse } from '@/types';
+import type { LoadPreviousSessionResponse, SendMessageResponse } from '@n8n/chat/types';
 
 export function createFetchResponse<T>(data: T) {
 	return async () =>

@@ -2,9 +2,9 @@
 This is an embeddable Chat widget for n8n. It allows the execution of AI-Powered Workflows through a Chat window.
 
 ## Prerequisites
-Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Webhook** node and return data using the **Respond to Webhook** node.
+Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Chat Trigger** node.
 
-Open the **Webhook** node and add your domain to the **Domain Allowlist** field. This makes sure that only requests from your domain are accepted.
+Open the **Chat Trigger** node and add your domain to the **Allowed Origins (CORS)** field. This makes sure that only requests from your domain are accepted.
 
 [See example workflow](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/chat/resources/workflow.json)
 
@@ -16,8 +16,6 @@ Each Chat request is sent to the n8n Webhook endpoint, which then sends back a r
 Each request is accompanied by an `action` query parameter, where `action` can be one of:
 - `loadPreviousSession` - When the user opens the Chatbot again and the previous chat session should be loaded
 - `sendMessage` - When the user sends a message
-
-We use the `Switch` node to handle the different actions.
 
 ## Installation
 
@@ -106,6 +104,10 @@ createChat({
 	},
 	target: '#n8n-chat',
 	mode: 'window',
+	chatInputKey: 'chatInput',
+	chatSessionKey: 'sessionId',
+	metadata: {},
+	showWelcomeScreen: false,
 	defaultLanguage: 'en',
 	initialMessages: [
 		'Hi there! 👋',
@@ -147,6 +149,21 @@ createChat({
 - **Description**: The render mode of the Chat window.
   - In `window` mode, the Chat window will be embedded in the target element as a chat toggle button and a fixed size chat window.
   - In `fullscreen` mode, the Chat will take up the entire width and height of its target container.
+
+### `showWelcomeScreen`
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to show the welcome screen when the Chat window is opened.
+
+### `chatSessionKey`
+- **Type**: `string`
+- **Default**: `'sessionId'`
+- **Description**: The key to use for sending the chat history session ID for the AI Memory node.
+
+### `chatInputKey`
+- **Type**: `string`
+- **Default**: `'chatInput'`
+- **Description**: The key to use for sending the chat input for the AI Agent node.
 
 ### `defaultLanguage`
 - **Type**: `string`
