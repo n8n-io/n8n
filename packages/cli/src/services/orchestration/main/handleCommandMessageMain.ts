@@ -40,9 +40,8 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				// @TODO
-				// Should we be enforcing that only the leader is entitled to reload the license?
-				// Check with Omar
+				// @TODO - Check with Omar
+				// What's up with this multi-main check?
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					logger.error(
