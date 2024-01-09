@@ -137,8 +137,6 @@ export class TestWebhooks implements IWebhookManager {
 			// Delete webhook also if an error is thrown
 			if (timeout) clearTimeout(timeout);
 
-			await this.registrations.deregisterAll();
-
 			await this.deactivateWebhooks(workflow);
 		});
 	}
@@ -342,9 +340,9 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
-
-			await this.registrations.deregister(webhook);
 		}
+
+		await this.registrations.deregisterAll();
 	}
 
 	/**
