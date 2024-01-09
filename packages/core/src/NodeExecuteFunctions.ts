@@ -2256,7 +2256,7 @@ export function getNodeParameter(
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
-			tags: { nodeType: node.type },
+			extra: { nodeType: node.type, nodeVersion: node.typeVersion },
 		});
 	}
 
@@ -3789,7 +3789,7 @@ export function getLoadOptionsFunctions(
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
 						throw new ApplicationError('Node type is not known so cannot return parameter value', {
-							tags: { nodeType: node.type, nodeVersion: node.typeVersion },
+							extra: { nodeType: node.type, nodeVersion: node.typeVersion },
 						});
 					}
 					returnData = extractValue(

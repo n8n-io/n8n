@@ -1085,7 +1085,7 @@ export class Workflow {
 		if (nodeType === undefined) {
 			throw new ApplicationError('Node with unknown node type', {
 				extra: { nodeName: node.name },
-				tags: { nodeType: node.type },
+				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
 			});
 		}
 
@@ -1164,9 +1164,9 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
-			throw new ApplicationError('Node with unknown node type', {
+			throw new ApplicationError('Node with unknown node type or version', {
 				extra: { nodeName: node.name },
-				tags: { nodeType: node.type },
+				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
 			});
 		}
 
@@ -1248,7 +1248,7 @@ export class Workflow {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new ApplicationError('Node type is unknown so cannot run it', {
-				tags: { nodeType: node.type, nodeVersion: node.typeVersion },
+				extra: { nodeType: node.type, nodeVersion: node.typeVersion },
 			});
 		}
 

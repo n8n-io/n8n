@@ -36,7 +36,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
 			throw new ApplicationError('Node type and version unknown', {
-				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
 			});
 		}
 		const method = this.getMethod('loadOptions', methodName, nodeType);
@@ -64,7 +64,7 @@ export class DynamicNodeParametersService {
 			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new ApplicationError(
 				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
-				{ tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version } },
+				{ extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version } },
 			);
 		}
 
@@ -139,7 +139,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
 			throw new ApplicationError('Node type and version unknown', {
-				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
 			});
 		}
 
@@ -162,7 +162,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType) {
 			throw new ApplicationError('Node type and version unknown', {
-				tags: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
+				extra: { nodeType: nodeTypeAndVersion.name, nodeVersion: nodeTypeAndVersion.version },
 			});
 		}
 
