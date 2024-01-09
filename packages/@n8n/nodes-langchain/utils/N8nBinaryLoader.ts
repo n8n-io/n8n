@@ -106,7 +106,7 @@ export class N8nBinaryLoader {
 		}
 
 		let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
-		let cleanupTmpFile: DirectoryResult["cleanup"] | undefined = undefined;
+		let cleanupTmpFile: DirectoryResult['cleanup'] | undefined = undefined;
 
 		switch (mimeType) {
 			case 'application/pdf':
@@ -144,12 +144,9 @@ export class N8nBinaryLoader {
 					cleanupTmpFile = tmpFileData.cleanup;
 					try {
 						const bufferData = await filePathOrBlob.arrayBuffer();
-						await pipeline(
-							[new Uint8Array(bufferData)],
-							createWriteStream(tmpFileData.path),
-						);
+						await pipeline([new Uint8Array(bufferData)], createWriteStream(tmpFileData.path));
 						loader = new EPubLoader(tmpFileData.path);
-						break
+						break;
 					} catch (error) {
 						await cleanupTmpFile();
 						throw new NodeOperationError(this.context.getNode(), error as Error);

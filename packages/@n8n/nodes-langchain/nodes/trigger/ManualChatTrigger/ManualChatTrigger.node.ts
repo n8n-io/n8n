@@ -16,6 +16,7 @@ export class ManualChatTrigger implements INodeType {
 		description: 'Runs the flow on new manual chat message',
 		eventTriggerDescription: '',
 		maxNodes: 1,
+		hidden: true,
 		defaults: {
 			name: 'On new manual Chat Message',
 			color: '#909298',

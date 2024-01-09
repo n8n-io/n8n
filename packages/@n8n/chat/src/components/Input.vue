@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
-import { useI18n, useChat } from '@/composables';
+import { useI18n, useChat } from '@n8n/chat/composables';
 import { computed, ref } from 'vue';
 
 const chatStore = useChat();

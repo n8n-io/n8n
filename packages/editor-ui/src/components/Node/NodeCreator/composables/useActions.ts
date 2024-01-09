@@ -12,6 +12,7 @@ import type {
 import {
 	AGENT_NODE_TYPE,
 	BASIC_CHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
@@ -190,7 +191,9 @@ export const useActions = () => {
 		];
 
 		const isChatTriggerMissing =
-			allNodes.find((node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE) === undefined;
+			allNodes.find((node) =>
+				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type),
+			) === undefined;
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 
 		return isCompatibleNode && isChatTriggerMissing;
@@ -211,7 +214,7 @@ export const useActions = () => {
 		}
 
 		if (shouldPrependChatTrigger(addedNodes)) {
-			addedNodes.unshift({ type: MANUAL_CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true });
+			addedNodes.unshift({ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
