@@ -65,7 +65,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.send('executionRecovered', data, sessionId1);
+		webSocketPush.sendToSession('executionRecovered', data, sessionId1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(
 			JSON.stringify({

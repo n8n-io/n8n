@@ -52,7 +52,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.close();
 	}
 
-	protected sendToOne(connection: WebSocket, data: string): void {
+	protected sendToConnection(connection: WebSocket, data: string): void {
 		connection.send(data);
 	}
 

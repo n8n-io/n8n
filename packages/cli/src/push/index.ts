@@ -34,9 +34,7 @@ export class Push extends EventEmitter {
 	constructor() {
 		super();
 
-		if (useWebSockets) {
-			this.backend.on('message', (msg) => this.emit('message', msg));
-		}
+		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -44,6 +42,7 @@ export class Push extends EventEmitter {
 			userId,
 			query: { sessionId },
 		} = req;
+
 		if (req.ws) {
 			(this.backend as WebSocketPush).add(sessionId, userId, req.ws);
 		} else if (!useWebSockets) {
@@ -56,24 +55,24 @@ export class Push extends EventEmitter {
 		this.emit('editorUiConnected', sessionId);
 	}
 
-	broadcast<D>(type: IPushDataType, data?: D) {
-		this.backend.broadcast(type, data);
+	broadcast(pushType: IPushDataType, payload?: unknown) {
+		this.backend.broadcast(pushType, payload);
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string) {
-		this.backend.send(type, data, sessionId);
+	send(type: IPushDataType, payload: unknown, sessionId: string) {
+		this.backend.sendToSession(type, payload, sessionId);
 	}
 
 	getBackend() {
 		return this.backend;
 	}
 
-	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(type, data, userIds);
+	sendToUsers(pushType: IPushDataType, payload: unknown, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushType, payload, userIds);
 	}
 
 	@OnShutdown()
-	onShutdown(): void {
+	onShutdown() {
 		this.backend.closeAllConnections();
 	}
 }

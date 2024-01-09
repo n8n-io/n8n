@@ -16,6 +16,7 @@ export class SSEPush extends AbstractPush<Connection> {
 
 	constructor(logger: Logger, multiMainSetup: MultiMainSetup) {
 		super(logger, multiMainSetup);
+
 		this.channel.on('disconnect', (channel, { req }) => {
 			this.remove(req?.query?.sessionId);
 		});
@@ -30,12 +31,12 @@ export class SSEPush extends AbstractPush<Connection> {
 		this.channel.addClient(connection.req, connection.res);
 	}
 
-	protected close({ res }: Connection): void {
+	protected close({ res }: Connection) {
 		res.end();
 		this.channel.removeClient(res);
 	}
 
-	protected sendToOne(connection: Connection, data: string): void {
+	protected sendToConnection(connection: Connection, data: string) {
 		this.channel.send(data, [connection.res]);
 	}
 }

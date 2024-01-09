@@ -17,7 +17,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 	protected userIdBySessionId: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
-	protected abstract sendToOne(connection: T, data: string): void;
+	protected abstract sendToConnection(connection: T, data: string): void;
 
 	constructor(
 		protected readonly logger: Logger,
@@ -30,13 +30,14 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		return this.connections[sessionId] !== undefined;
 	}
 
-	protected add(sessionId: string, userId: User['id'], connection: T): void {
+	protected add(sessionId: string, userId: User['id'], connection: T) {
 		const { connections, userIdBySessionId: userIdsBySessionId } = this;
 		this.logger.debug('Add editor-UI session', { sessionId });
 
 		const existingConnection = connections[sessionId];
+
 		if (existingConnection) {
-			// Make sure to remove existing connection with the same id
+			// Make sure to remove existing connection with the same ID
 			this.close(existingConnection);
 		}
 
@@ -44,56 +45,61 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		userIdsBySessionId[sessionId] = userId;
 	}
 
-	protected onMessageReceived(sessionId: string, msg: unknown): void {
+	protected onMessageReceived(sessionId: string, msg: unknown) {
 		this.logger.debug('Received message from editor-UI', { sessionId, msg });
+
 		const userId = this.userIdBySessionId[sessionId];
-		this.emit('message', {
-			sessionId,
-			userId,
-			msg,
-		});
+
+		this.emit('message', { sessionId, userId, msg });
 	}
 
-	protected remove(sessionId?: string): void {
-		if (sessionId !== undefined) {
-			this.logger.debug('Remove editor-UI session', { sessionId });
-			delete this.connections[sessionId];
-			delete this.userIdBySessionId[sessionId];
-		}
+	protected remove(sessionId?: string) {
+		if (!sessionId) return;
+
+		this.logger.debug('Removed editor-UI session', { sessionId });
+
+		delete this.connections[sessionId];
+		delete this.userIdBySessionId[sessionId];
 	}
 
-	private sendToSessions<D>(type: IPushDataType, data: D, sessionIds: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
-			dataType: type,
+	/**
+	 * Send a push type and payload to multiple sessions.
+	 */
+	private sendToSessions(pushType: IPushDataType, payload: unknown, sessionIds: string[]) {
+		this.logger.debug(`Send data of type "${pushType}" to editor-UI`, {
+			dataType: pushType,
 			sessionIds: sessionIds.join(', '),
 		});
 
-		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
+		const stringifiedPayload = jsonStringify(
+			{ type: pushType, data: payload },
+			{ replaceCircularRefs: true },
+		);
 
 		for (const sessionId of sessionIds) {
 			const connection = this.connections[sessionId];
 			assert(connection);
-			this.sendToOne(connection, sendData);
+			this.sendToConnection(connection, stringifiedPayload);
 		}
 	}
 
 	/**
-	 * Send the given data to all connected users.
+	 * Send a push type and payload to all sessions.
 	 */
-	broadcast<D>(type: IPushDataType, data?: D) {
-		this.sendToSessions(type, data, Object.keys(this.connections));
+	broadcast<D>(pushType: IPushDataType, payload?: D) {
+		this.sendToSessions(pushType, payload, Object.keys(this.connections));
 	}
 
 	/**
-	 * Send the given data to one specific user.
+	 * Send a push type and payload to one session.
 	 */
-	send<D>(type: IPushDataType, data: D, sessionId: string) {
+	sendToSession(pushType: IPushDataType, payload: unknown, sessionId: string) {
 		// @TODO: Skip if the webhook call reaches the correct main on multi-main setup
 		if (this.multiMainSetup.isEnabled) {
 			void this.multiMainSetup.publish('multi-main-setup:relay-execution-lifecycle-event', {
-				eventName: type,
+				eventName: pushType,
 				// @ts-ignore // @TODO
-				args: data,
+				args: payload,
 				sessionId,
 			});
 			return;
@@ -104,23 +110,23 @@ export abstract class AbstractPush<T> extends EventEmitter {
 			return;
 		}
 
-		this.sendToSessions(type, data, [sessionId]);
+		this.sendToSessions(pushType, payload, [sessionId]);
 	}
 
 	/**
-	 * Send the given data to specific users.
+	 * Send a push type and payload to multiple users.
 	 */
-	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+	sendToUsers(pushType: IPushDataType, payload: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userSessionIds = Object.keys(connections).filter((sessionId) =>
 			userIds.includes(this.userIdBySessionId[sessionId]),
 		);
 
-		this.sendToSessions(type, data, userSessionIds);
+		this.sendToSessions(pushType, payload, userSessionIds);
 	}
 
 	/**
-	 * Close all push existing connections.
+	 * Close all existing push connections.
 	 */
 	closeAllConnections() {
 		for (const sessionId in this.connections) {
