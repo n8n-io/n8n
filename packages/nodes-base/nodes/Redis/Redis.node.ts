@@ -12,8 +12,10 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
-import type { RedisClientOptions, RedisClientType } from 'redis';
+import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
+
+type RedisClientType = ReturnType<typeof createClient>;
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -582,7 +584,7 @@ export class Redis implements INodeType {
 			return returnData;
 		}
 
-		async function getValue(client: RedisClientType<any>, keyName: string, type?: string) {
+		async function getValue(client: RedisClientType, keyName: string, type?: string) {
 			if (type === undefined || type === 'automatic') {
 				// Request the type first
 				type = await client.type(keyName);
