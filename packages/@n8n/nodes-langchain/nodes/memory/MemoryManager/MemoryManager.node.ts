@@ -109,7 +109,6 @@ export class MemoryManager implements INodeType {
 				displayName: 'Insert Mode',
 				name: 'insertMode',
 				type: 'options',
-				// Detailed description of the field:
 				description:
 					'Determines how new messages are inserted into the memory. You can choose between "Insert Messages", which adds messages alongside existing ones, and "Override All Messages", which replaces the current memory with new messages.',
 				noDataExpression: true,
