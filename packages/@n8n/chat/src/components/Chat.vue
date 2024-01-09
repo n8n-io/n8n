@@ -1,24 +1,18 @@
 <script setup lang="ts">
-import Layout from '@/components/Layout.vue';
-import GetStarted from '@/components/GetStarted.vue';
-import GetStartedFooter from '@/components/GetStartedFooter.vue';
-import MessagesList from '@/components/MessagesList.vue';
-import Input from '@/components/Input.vue';
 import { nextTick, onMounted } from 'vue';
-import { useI18n, useChat } from '@/composables';
-import { chatEventBus } from '@/event-buses';
+import Layout from '@n8n/chat/components/Layout.vue';
+import GetStarted from '@n8n/chat/components/GetStarted.vue';
+import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
+import MessagesList from '@n8n/chat/components/MessagesList.vue';
+import Input from '@n8n/chat/components/Input.vue';
+import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 const { t } = useI18n();
 const chatStore = useChat();
 
 const { messages, currentSessionId } = chatStore;
-
-async function initialize() {
-	await chatStore.loadPreviousSession();
-	void nextTick(() => {
-		chatEventBus.emit('scrollToBottom');
-	});
-}
+const { options } = useOptions();
 
 async function getStarted() {
 	void chatStore.startNewSession();
@@ -27,18 +21,28 @@ async function getStarted() {
 	});
 }
 
-onMounted(() => {
-	void initialize();
+async function initialize() {
+	await chatStore.loadPreviousSession();
+	void nextTick(() => {
+		chatEventBus.emit('scrollToBottom');
+	});
+}
+
+onMounted(async () => {
+	await initialize();
+	if (!options.showWelcomeScreen && !currentSessionId.value) {
+		await getStarted();
+	}
 });
 </script>
 
 <template>
 	<Layout class="chat-wrapper">
-		<template #header v-if="!currentSessionId">
+		<template #header>
 			<h1>{{ t('title') }}</h1>
 			<p>{{ t('subtitle') }}</p>
 		</template>
-		<GetStarted v-if="!currentSessionId" @click:button="getStarted" />
+		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
 		<template #footer>
 			<Input v-if="currentSessionId" />

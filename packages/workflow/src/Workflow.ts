@@ -1203,12 +1203,15 @@ export class Workflow {
 			});
 		}
 
+		const closeFunctions: CloseFunction[] = [];
+
 		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
+			closeFunctions,
 		);
 		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}
