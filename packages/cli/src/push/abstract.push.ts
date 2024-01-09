@@ -41,10 +41,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		userIdsBySessionId[sessionId] = userId;
 	}
 
-	hasSessionId(sessionId: string) {
-		return this.connections[sessionId] !== undefined;
-	}
-
 	protected onMessageReceived(sessionId: string, msg: unknown) {
 		this.logger.debug('Received message from editor-UI', { sessionId, msg });
 
@@ -62,9 +58,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		delete this.userIdBySessionId[sessionId];
 	}
 
-	/**
-	 * Send data to multiple sessions.
-	 */
 	private sendToSessions(type: IPushDataType, data: unknown, sessionIds: string[]) {
 		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
 			dataType: type,
@@ -108,9 +101,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		this.sendToSessions(type, data, [sessionId]);
 	}
 
-	/**
-	 * Send data to multiple users.
-	 */
 	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userSessionIds = Object.keys(connections).filter((sessionId) =>
@@ -120,9 +110,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		this.sendToSessions(type, data, userSessionIds);
 	}
 
-	/**
-	 * Close all existing push connections.
-	 */
 	closeAllConnections() {
 		for (const sessionId in this.connections) {
 			// Signal the connection that we want to close it.
@@ -131,5 +118,9 @@ export abstract class AbstractPush<T> extends EventEmitter {
 			// has actually closed.
 			this.close(this.connections[sessionId]);
 		}
+	}
+
+	hasSessionId(sessionId: string) {
+		return this.connections[sessionId] !== undefined;
 	}
 }
