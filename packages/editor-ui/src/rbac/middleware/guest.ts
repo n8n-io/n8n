@@ -7,7 +7,7 @@ export const guestMiddleware: RouterMiddleware<GuestPermissionOptions> = async (
 	const valid = isGuest();
 	if (!valid) {
 		const redirect = to.query.redirect as string;
-		if (redirect && redirect.startsWith('/')) {
+		if (redirect && (redirect.startsWith('/') || redirect.startsWith(window.location.origin))) {
 			return next(redirect);
 		}
 
