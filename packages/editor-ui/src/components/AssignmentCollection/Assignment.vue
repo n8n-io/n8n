@@ -43,6 +43,7 @@ const nameParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
 	default: '',
+	placeholder: 'name',
 	type: 'string',
 }));
 
@@ -50,6 +51,7 @@ const valueParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
 	default: '',
+	placeholder: 'value',
 	type: assignmentTypeToNodePropType((assignment.value.type as NodePropertyTypes) ?? 'string'),
 }));
 
@@ -102,8 +104,7 @@ const onBlur = (): void => {
 					is-single-line
 					:parameter="nameParameter"
 					:value="assignment.name"
-					:path="`${path}.left`"
-					:class="[$style.input, $style.inputLeft]"
+					:path="`${path}.name`"
 					data-test-id="assignment-name"
 					@update="onAssignmentNameChange"
 					@blur="onBlur"
@@ -127,8 +128,7 @@ const onBlur = (): void => {
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="valueParameter"
 					:value="assignment.value"
-					:path="`${path}.right`"
-					:class="[$style.input, $style.inputRight]"
+					:path="`${path}.value`"
 					data-test-id="assignment-value"
 					@update="onAssignmentValueChange"
 					@blur="onBlur"

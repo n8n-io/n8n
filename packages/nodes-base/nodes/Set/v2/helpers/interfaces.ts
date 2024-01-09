@@ -17,6 +17,12 @@ export type SetField = {
 	objectValue?: string | IDataObject;
 };
 
+export type AssignmentSetField = {
+	name: string;
+	value: unknown;
+	type: string;
+};
+
 export const INCLUDE = {
 	ALL: 'all',
 	NONE: 'none',

@@ -7,13 +7,14 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
-import { computed, reactive } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import DropArea from '../DropArea/DropArea.vue';
 import Assignment from './Assignment.vue';
 import { v4 as uuid } from 'uuid';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { isObject } from 'lodash-es';
+import { useDebounceHelper } from '@/composables/useDebounce';
 
 interface Props {
 	parameter: INodeProperties;
@@ -35,11 +36,12 @@ const i18n = useI18n();
 
 const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: {
-		assignments: [],
+		assignments: props.value.assignments ?? [],
 	},
 });
 
 const ndvStore = useNDVStore();
+const { callDebounced } = useDebounceHelper();
 
 const issues = computed(() => {
 	if (!ndvStore.activeNode) return {};
@@ -47,6 +49,15 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
+
+watch(state.paramValue, (value) => {
+	void callDebounced(
+		() => {
+			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
+		},
+		{ debounceTime: 1000 },
+	);
+});
 
 function nameFromExpression(expression: string): string {
 	return (

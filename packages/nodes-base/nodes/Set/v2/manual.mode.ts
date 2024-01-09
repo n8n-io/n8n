@@ -1,4 +1,6 @@
 import type {
+	AssignmentCollectionValue,
+	FieldType,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -191,35 +193,60 @@ export async function execute(
 	node: INode,
 ) {
 	try {
-		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
+		if (node.typeVersion < 3.3) {
+			const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
-		const newData: IDataObject = {};
+			const newData: IDataObject = {};
 
-		for (const entry of fields) {
-			if (
-				entry.type === 'objectValue' &&
-				rawFieldsData[entry.name] !== undefined &&
-				entry.objectValue !== undefined &&
-				entry.objectValue !== null
-			) {
-				entry.objectValue = parseJsonParameter(
-					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
+			for (const entry of fields) {
+				if (
+					entry.type === 'objectValue' &&
+					rawFieldsData[entry.name] !== undefined &&
+					entry.objectValue !== undefined &&
+					entry.objectValue !== null
+				) {
+					entry.objectValue = parseJsonParameter(
+						resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
+						node,
+						i,
+						entry.name,
+					);
+				}
+
+				const { name, value } = validateEntry(
+					entry.name,
+					entry.type.replace('Value', '') as FieldType,
+					entry[entry.type],
 					node,
 					i,
-					entry.name,
+					options.ignoreConversionErrors,
+					node.typeVersion,
 				);
+				newData[name] = value;
 			}
 
-			const { name, value } = validateEntry(
-				entry,
-				node,
-				i,
-				options.ignoreConversionErrors,
-				node.typeVersion,
-			);
-			newData[name] = value;
+			return composeReturnItem.call(this, i, item, newData, options);
 		}
 
+		const assignmentCollection = this.getNodeParameter(
+			'assignments',
+			i,
+		) as AssignmentCollectionValue;
+		const newData = Object.fromEntries(
+			(assignmentCollection?.assignments ?? []).map((assignment) => {
+				const { name, value } = validateEntry(
+					assignment.name,
+					assignment.type as FieldType,
+					assignment.value,
+					node,
+					i,
+					options.ignoreConversionErrors,
+					node.typeVersion,
+				);
+
+				return [name, value];
+			}),
+		);
 		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
