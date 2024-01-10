@@ -3,83 +3,78 @@ import { useDeviceSupport } from '@/composables/useDeviceSupport';
 describe('useDeviceSupport()', () => {
 	beforeEach(() => {
 		global.window = Object.create(window);
-		Object.defineProperty(window, 'navigator', {
-			writable: true,
-			value: { userAgent: 'test-agent', maxTouchPoints: 0 },
-		});
+		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 };
 	});
 
-	describe('isTouchDevice property', () => {
+	describe('isTouchDevice', () => {
 		it('should be true if ontouchstart is in window', () => {
 			Object.defineProperty(window, 'ontouchstart', {});
 			const { isTouchDevice } = useDeviceSupport();
-			expect(isTouchDevice).toBe(true);
+			expect(isTouchDevice).toEqual(true);
 		});
 
 		it('should be true if navigator.maxTouchPoints > 0', () => {
-			window.navigator.maxTouchPoints = 1;
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 1 });
 			const { isTouchDevice } = useDeviceSupport();
-			expect(isTouchDevice).toBe(true);
+			expect(isTouchDevice).toEqual(true);
 		});
 
 		it('should be false if no touch support', () => {
 			delete window.ontouchstart;
-			window.navigator.maxTouchPoints = 0;
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 0 });
 			const { isTouchDevice } = useDeviceSupport();
-			expect(isTouchDevice).toBe(false);
+			expect(isTouchDevice).toEqual(false);
 		});
 	});
 
-	describe('isMacOs property', () => {
+	describe('isMacOs', () => {
 		it('should be true for macOS user agent', () => {
-			window.navigator.userAgent = 'macintosh';
+			Object.defineProperty(navigator, 'userAgent', { value: 'macintosh' });
 			const { isMacOs } = useDeviceSupport();
-			expect(isMacOs).toBe(true);
+			expect(isMacOs).toEqual(true);
 		});
-
-		// Additional tests for other macOS user agents (ipad, iphone, ipod)
 
 		it('should be false for non-macOS user agent', () => {
-			window.navigator.userAgent = 'windows';
+			Object.defineProperty(navigator, 'userAgent', { value: 'windows' });
 			const { isMacOs } = useDeviceSupport();
-			expect(isMacOs).toBe(false);
+			expect(isMacOs).toEqual(false);
 		});
 	});
 
-	describe('controlKeyCode property', () => {
+	describe('controlKeyCode', () => {
 		it('should return Meta on macOS', () => {
-			window.navigator.userAgent = 'macintosh';
+			Object.defineProperty(navigator, 'userAgent', { value: 'macintosh' });
 			const { controlKeyCode } = useDeviceSupport();
-			expect(controlKeyCode).toBe('Meta');
+			expect(controlKeyCode).toEqual('Meta');
 		});
 
 		it('should return Control on non-macOS', () => {
-			window.navigator.userAgent = 'windows';
+			Object.defineProperty(navigator, 'userAgent', { value: 'windows' });
 			const { controlKeyCode } = useDeviceSupport();
-			expect(controlKeyCode).toBe('Control');
+			expect(controlKeyCode).toEqual('Control');
 		});
 	});
 
-	describe('isCtrlKeyPressed function', () => {
+	describe('isCtrlKeyPressed()', () => {
 		it('should return true for metaKey press on macOS', () => {
-			window.navigator.userAgent = 'macintosh';
+			Object.defineProperty(navigator, 'userAgent', { value: 'macintosh' });
 			const { isCtrlKeyPressed } = useDeviceSupport();
 			const event = new KeyboardEvent('keydown', { metaKey: true });
-			expect(isCtrlKeyPressed(event)).toBe(true);
+			expect(isCtrlKeyPressed(event)).toEqual(true);
 		});
 
 		it('should return true for ctrlKey press on non-macOS', () => {
-			window.navigator.userAgent = 'windows';
+			Object.defineProperty(navigator, 'userAgent', { value: 'windows' });
 			const { isCtrlKeyPressed } = useDeviceSupport();
 			const event = new KeyboardEvent('keydown', { ctrlKey: true });
-			expect(isCtrlKeyPressed(event)).toBe(true);
+			expect(isCtrlKeyPressed(event)).toEqual(true);
 		});
 
 		it('should return true for touch device on MouseEvent', () => {
 			Object.defineProperty(window, 'ontouchstart', { value: {} });
 			const { isCtrlKeyPressed } = useDeviceSupport();
 			const mockEvent = new MouseEvent('click');
-			expect(isCtrlKeyPressed(mockEvent)).toBe(true);
+			expect(isCtrlKeyPressed(mockEvent)).toEqual(true);
 		});
 	});
 });
