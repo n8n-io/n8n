@@ -24,7 +24,7 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
-						:loading="loadingWorkflows"
+						:sort-on-populate="areCategoriesPrepopulated"
 						:selected="categories"
 						@clear="onCategoryUnselected"
 						@clearAll="onCategoriesCleared"
@@ -126,8 +126,10 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			areCategoriesPrepopulated: false,
 			categories: [] as string[],
 			loading: true,
+			loadingCategories: true,
 			loadingCollections: true,
 			loadingWorkflows: true,
 			search: '',
@@ -188,6 +190,7 @@ export default defineComponent({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
+		void this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();
 
@@ -267,12 +270,13 @@ export default defineComponent({
 				this.trackSearch();
 			}
 		},
-		onCategorySelected(selected: number) {
+		onCategorySelected(selected: string) {
+			console.log(selected);
 			this.categories = this.categories.concat(selected);
 			this.updateSearch();
 			this.trackCategories();
 		},
-		onCategoryUnselected(selected: number) {
+		onCategoryUnselected(selected: string) {
 			this.categories = this.categories.filter((id) => id !== selected);
 			this.updateSearch();
 			this.trackCategories();
@@ -328,6 +332,12 @@ export default defineComponent({
 			} finally {
 				this.loadingWorkflows = false;
 			}
+		},
+		async loadCategories() {
+			try {
+				await this.templatesStore.getCategories();
+			} catch (e) {}
+			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {

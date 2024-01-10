@@ -863,7 +863,7 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 }
 
 export interface ITemplatesQuery {
-	categories: number[];
+	categories: string[];
 	search: string;
 }
 
@@ -1375,7 +1375,7 @@ export interface INodeTypesState {
 }
 
 export interface ITemplateState {
-	categories: TemplateCategoryFilter[];
+	categories: ITemplatesCategory[];
 	collections: { [id: string]: ITemplatesCollection };
 	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
 	workflowSearches: {
@@ -1383,7 +1383,7 @@ export interface ITemplateState {
 			workflowIds: string[];
 			totalWorkflows: number;
 			loadingMore?: boolean;
-			categories?: TemplateCategoryFilter[];
+			categories?: ITemplatesCategory[];
 		};
 	};
 	collectionSearches: {

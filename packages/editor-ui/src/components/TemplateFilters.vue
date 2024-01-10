@@ -6,10 +6,7 @@
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
-				<el-checkbox
-					:model-value="allSelected"
-					@update:modelValue="(value) => resetCategories(value)"
-				>
+				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
 					{{ $locale.baseText('templates.allCategories') }}
 				</el-checkbox>
 			</li>
@@ -22,9 +19,9 @@
 			>
 				<el-checkbox
 					:model-value="isSelected(category.name)"
-					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
+					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
 				>
-					{{ category.name }} <n8n-tag :text="String(category.result_count)" />
+					{{ category.name }}
 				</el-checkbox>
 			</li>
 		</ul>
@@ -42,7 +39,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { TemplateCategoryFilter } from '@/Interface';
+import type { ITemplatesCategory } from '@/Interface';
 import type { PropType } from 'vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { mapStores } from 'pinia';
@@ -55,7 +52,7 @@ export default defineComponent({
 			default: false,
 		},
 		categories: {
-			type: Array as PropType<TemplateCategoryFilter[]>,
+			type: Array as PropType<ITemplatesCategory[]>,
 			default: () => [],
 		},
 		expandLimit: {
@@ -73,7 +70,7 @@ export default defineComponent({
 	data() {
 		return {
 			collapsed: true,
-			sortedCategories: [] as TemplateCategoryFilter[],
+			sortedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
@@ -84,13 +81,13 @@ export default defineComponent({
 	},
 	watch: {
 		categories: {
-			handler(categories: TemplateCategoryFilter[]) {
+			handler(categories: ITemplatesCategory[]) {
 				if (!this.sortOnPopulate) {
 					this.sortedCategories = categories;
 				} else {
 					const selected = this.selected || [];
-					const selectedCategories = categories.filter(({ name }) => selected.includes(name));
-					const notSelectedCategories = categories.filter(({ name }) => !selected.includes(name));
+					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
+					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
 					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
 				}
 			},
@@ -101,7 +98,7 @@ export default defineComponent({
 		collapseAction() {
 			this.collapsed = false;
 		},
-		handleCheckboxChanged(value: boolean, selectedCategory: TemplateCategoryFilter) {
+		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
 			this.$emit(value ? 'select' : 'clear', selectedCategory.name);
 		},
 		isSelected(categoryId: string) {
