@@ -92,7 +92,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		const { destinationNode, sessionId, workflowEntity } = registration;
 
-		const workflow = this.toTempWorkflow(workflowEntity);
+		const workflow = this.toWorkflow(workflowEntity);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
 
@@ -189,7 +189,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		const { workflowEntity } = registration;
 
-		const workflow = this.toTempWorkflow(workflowEntity);
+		const workflow = this.toWorkflow(workflowEntity);
 
 		const webhookNode = Object.values(workflow.nodes).find(
 			({ type, parameters, typeVersion }) =>
@@ -214,7 +214,7 @@ export class TestWebhooks implements IWebhookManager {
 	) {
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
-		const workflow = this.toTempWorkflow(workflowEntity);
+		const workflow = this.toWorkflow(workflowEntity);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
@@ -285,7 +285,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			const { sessionId, workflowEntity } = registration;
 
-			const workflow = this.toTempWorkflow(workflowEntity);
+			const workflow = this.toWorkflow(workflowEntity);
 
 			if (workflowEntity.id !== workflowId) continue;
 
@@ -380,7 +380,7 @@ export class TestWebhooks implements IWebhookManager {
 	/**
 	 * Convert a `WorkflowEntity` from `typeorm` to a temporary `Workflow` from `n8n-workflow`.
 	 */
-	toTempWorkflow(workflowEntity: IWorkflowDb) {
+	toWorkflow(workflowEntity: IWorkflowDb) {
 		return new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,

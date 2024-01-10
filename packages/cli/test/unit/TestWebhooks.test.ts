@@ -117,7 +117,7 @@ describe('TestWebhooks', () => {
 		test('should add additional data to workflow', async () => {
 			registrations.getAllRegistrations.mockResolvedValue([{ workflowEntity, webhook }]);
 
-			const workflow = testWebhooks.toTempWorkflow(workflowEntity);
+			const workflow = testWebhooks.toWorkflow(workflowEntity);
 
 			await testWebhooks.deactivateWebhooks(workflow);
 
