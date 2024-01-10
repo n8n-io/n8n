@@ -4,9 +4,10 @@
 
 export const getWorkflowCredentialsModal = () => cy.getByTestId('setup-workflow-credentials-modal');
 
+export const getContinueButton = () => cy.getByTestId('continue-button');
+
 /**
  * Actions
  */
 
-export const closeModal = () =>
-	getWorkflowCredentialsModal().find("button[aria-label='Close this dialog']").click();
+export const closeModalFromContinueButton = () => getContinueButton().click();

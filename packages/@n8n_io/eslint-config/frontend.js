@@ -16,12 +16,6 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['src/**/*.vue'],
-			rules: {
-				'n8n-local-rules/dangerously-use-html-string-missing': 'error',
-			},
-		},
-		{
 			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
