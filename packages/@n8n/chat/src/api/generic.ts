@@ -10,6 +10,7 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		mode: 'cors',
 		cache: 'no-cache',
 		headers: {
+			'Content-Type': 'application/json',
 			...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
 			...args[1]?.headers,
 		},
@@ -18,14 +19,12 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 	return (await response.json()) as Promise<T>;
 }
 
-export async function get<T>(
-	url: string,
-	query: Record<string, string> = {},
-	options: RequestInit = {},
-) {
+export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {
 	let resolvedUrl = url;
 	if (Object.keys(query).length > 0) {
-		resolvedUrl = `${resolvedUrl}?${new URLSearchParams(query).toString()}`;
+		resolvedUrl = `${resolvedUrl}?${new URLSearchParams(
+			query as Record<string, string>,
+		).toString()}`;
 	}
 
 	return authenticatedFetch<T>(resolvedUrl, { ...options, method: 'GET' });

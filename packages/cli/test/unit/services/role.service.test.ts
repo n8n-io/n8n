@@ -3,7 +3,7 @@ import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
 import { RoleService } from '@/services/role.service';
 import { RoleRepository } from '@db/repositories/role.repository';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { mockInstance } from '../../shared/mocking';
 import { chooseRandomly } from '../../integration/shared/random';

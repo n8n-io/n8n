@@ -225,18 +225,13 @@ export class SourceControlImportService {
 		const ownerWorkflowRole = await this.getWorkflowOwnerRole();
 		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
-		const existingWorkflows = await Container.get(WorkflowRepository).find({
-			where: {
-				id: In(candidateIds),
-			},
-			select: ['id', 'name', 'versionId', 'active'],
+		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
+			fields: ['id', 'name', 'versionId', 'active'],
 		});
-		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-			where: {
-				workflowId: In(candidateIds),
-			},
-			select: ['workflowId', 'roleId', 'userId'],
-		});
+		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).findWithFields(
+			candidateIds,
+			{ fields: ['workflowId', 'roleId', 'userId'] },
+		);
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
 			candidates.map(async (candidate) => {

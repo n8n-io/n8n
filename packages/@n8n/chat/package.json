@@ -3,20 +3,23 @@
   "version": "0.6.0",
   "scripts": {
     "dev": "pnpm run storybook",
-    "build": "pnpm type-check && pnpm build:vite && pnpm build:prepare",
-    "build:vite": "vite build && npm run build:vite:full",
+    "build": "pnpm type-check && pnpm build:vite && pnpm run build:individual && npm run build:prepare",
+    "build:full": "pnpm type-check && pnpm build:vite && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
+    "build:vite": "vite build",
     "build:vite:full": "INCLUDE_VUE=true vite build",
+    "build:individual": "unbuild",
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run --coverage",
     "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore --ignore-path .eslintignore",
+    "lint": "eslint . --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
     "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006 --no-open",
     "build:storybook": "storybook build",
-    "release": "pnpm run build && cd dist && pnpm publish"
+    "release": "pnpm run build:full && cd dist && pnpm publish"
   },
   "main": "./chat.umd.cjs",
   "module": "./chat.es.js",
@@ -29,6 +32,10 @@
     "./style.css": {
       "import": "./style.css",
       "require": "./style.css"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
     }
   },
   "dependencies": {
@@ -39,8 +46,8 @@
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
-    "n8n-design-system": "workspace:*",
     "shelljs": "^0.8.5",
+    "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
     "vite-plugin-dts": "^3.6.4"
   },

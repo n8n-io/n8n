@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
-			<div v-if="hasIssues" key="empty"></div>
+			<div v-if="hasIssues || hideContent" key="empty"></div>
 			<div v-else-if="isListeningForEvents" key="listening">
 				<n8n-pulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
@@ -45,6 +45,12 @@
 							{{ listeningHint }}
 						</n8n-text>
 					</div>
+					<div v-if="displayChatButton">
+						<n8n-button @click="openWebhookUrl()" class="mb-xl">
+							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
+						</n8n-button>
+					</div>
+
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
@@ -105,6 +111,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -156,6 +163,36 @@ export default defineComponent({
 
 			return null;
 		},
+		hideContent(): boolean {
+			if (!this.nodeType?.triggerPanel) {
+				return false;
+			}
+
+			if (
+				this.nodeType?.triggerPanel &&
+				this.nodeType?.triggerPanel.hasOwnProperty('hideContent')
+			) {
+				const hideContent = this.nodeType?.triggerPanel.hideContent;
+				if (typeof hideContent === 'boolean') {
+					return hideContent;
+				}
+
+				if (this.node) {
+					const hideContentValue = this.getCurrentWorkflow().expression.getSimpleParameterValue(
+						this.node,
+						hideContent,
+						'internal',
+						{},
+					);
+
+					if (typeof hideContentValue === 'boolean') {
+						return hideContentValue;
+					}
+				}
+			}
+
+			return false;
+		},
 		hasIssues(): boolean {
 			return Boolean(
 				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
@@ -167,6 +204,13 @@ export default defineComponent({
 			}
 
 			return '';
+		},
+		displayChatButton(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.type === CHAT_TRIGGER_NODE_TYPE &&
+					this.node.parameters.mode !== 'webhook',
+			);
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
@@ -219,11 +263,16 @@ export default defineComponent({
 				: this.$locale.baseText('ndv.trigger.webhookNode.listening');
 		},
 		listeningHint(): string {
-			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
-				? this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint')
-				: this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
+			switch (this.nodeType?.name) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.chatTrigger.serviceHint');
+				case FORM_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint');
+				default:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 						interpolate: { service: this.serviceName },
-				  });
+					});
+			}
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
@@ -348,6 +397,15 @@ export default defineComponent({
 			if (this.$refs.help) {
 				this.executionsHelpEventBus.emit('expand');
 			}
+		},
+		openWebhookUrl() {
+			this.$telemetry.track('User clicked ndv link', {
+				workflow_id: this.workflowsStore.workflowId,
+				session_id: this.sessionId,
+				pane: 'input',
+				type: 'open-chat',
+			});
+			window.open(this.webhookTestUrl, '_blank', 'noreferrer');
 		},
 		onLinkClick(e: MouseEvent) {
 			if (!e.target) {

@@ -104,14 +104,9 @@
 import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useMessage } from '@/composables/useMessage';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { workflowRun } from '@/mixins/workflowRun';
-
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
-import { debounceHelper } from '@/mixins/debounce';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -127,6 +122,7 @@ import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -135,15 +131,15 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 	},
-	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
+	mixins: [userHelpers],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			callDebounced,
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -418,31 +414,31 @@ export default defineComponent({
 		async handleSelect(key: string) {
 			switch (key) {
 				case 'workflows': {
-					if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.WORKFLOWS) {
 						this.goToRoute({ name: VIEWS.WORKFLOWS });
 					}
 					break;
 				}
 				case 'templates': {
-					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
+					if (this.$router.currentRoute.value.name !== VIEWS.TEMPLATES) {
 						this.goToRoute({ name: VIEWS.TEMPLATES });
 					}
 					break;
 				}
 				case 'credentials': {
-					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.CREDENTIALS) {
 						this.goToRoute({ name: VIEWS.CREDENTIALS });
 					}
 					break;
 				}
 				case 'variables': {
-					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+					if (this.$router.currentRoute.value.name !== VIEWS.VARIABLES) {
 						this.goToRoute({ name: VIEWS.VARIABLES });
 					}
 					break;
 				}
 				case 'executions': {
-					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.EXECUTIONS) {
 						this.goToRoute({ name: VIEWS.EXECUTIONS });
 					}
 					break;
@@ -451,7 +447,7 @@ export default defineComponent({
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
 						const route = this.$router.resolve({ name: defaultRoute });
-						if (this.$router.currentRoute.name !== defaultRoute) {
+						if (this.$router.currentRoute.value.name !== defaultRoute) {
 							this.goToRoute(route.path);
 						}
 					}
@@ -463,7 +459,7 @@ export default defineComponent({
 					break;
 				}
 				case 'cloud-admin': {
-					this.cloudPlanStore.redirectToDashboard();
+					void this.cloudPlanStore.redirectToDashboard();
 					break;
 				}
 				case 'quickstart':
@@ -494,7 +490,7 @@ export default defineComponent({
 
 			let defaultSettingsRoute = null;
 			for (const route of settingsRoutes) {
-				if (this.canUserAccessRouteByName(route)) {
+				if (this.canUserAccessRouteByName(route.toString())) {
 					defaultSettingsRoute = route;
 					break;
 				}
@@ -503,7 +499,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);
 		},
 		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

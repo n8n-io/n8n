@@ -1,5 +1,6 @@
 <template>
 	<RunData
+		ref="runData"
 		:node="node"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
@@ -10,7 +11,6 @@
 		:executing-message="$locale.baseText('ndv.output.executing')"
 		:session-id="sessionId"
 		:block-u-i="blockUI"
-		ref="runData"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
 		pane-type="output"
