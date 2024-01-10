@@ -92,7 +92,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		const { destinationNode, sessionId, workflowEntity } = registration;
 
-		const workflow = this.toWorkflow(workflowEntity);
+		const workflow = this.toTempWorkflow(workflowEntity);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
 
@@ -137,11 +137,10 @@ export class TestWebhooks implements IWebhookManager {
 			} catch {}
 
 			/**
-			 * Multi-main setup: In a manual webhook execution, the main process that handles
-			 * a webhook might not be the same as the main process that created the webhook.
-			 *
-			 * If so, after the test webhook has been successfully executed, the handler process
-			 * commands the creator process to clear its test webhooks.
+			 * Multi-main setup: In a manual webhook execution, the main process that
+			 * handles a webhook might not be the same as the main process that created
+			 * the webhook. If so, after the test webhook has been successfully executed,
+			 * the handler process commands the creator process to clear its test webhooks.
 			 */
 			if (
 				this.multiMainSetup.isEnabled &&
@@ -190,7 +189,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		const { workflowEntity } = registration;
 
-		const workflow = this.toWorkflow(workflowEntity);
+		const workflow = this.toTempWorkflow(workflowEntity);
 
 		const webhookNode = Object.values(workflow.nodes).find(
 			({ type, parameters, typeVersion }) =>
@@ -215,7 +214,7 @@ export class TestWebhooks implements IWebhookManager {
 	) {
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
-		const workflow = this.toWorkflow(workflowEntity);
+		const workflow = this.toTempWorkflow(workflowEntity);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
@@ -286,7 +285,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			const { sessionId, workflowEntity } = registration;
 
-			const workflow = this.toWorkflow(workflowEntity);
+			const workflow = this.toTempWorkflow(workflowEntity);
 
 			if (workflowEntity.id !== workflowId) continue;
 
@@ -379,9 +378,9 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Convert a `WorkflowEntity` from `typeorm` to a `Workflow` from `n8n-workflow`.
+	 * Convert a `WorkflowEntity` from `typeorm` to a temporary `Workflow` from `n8n-workflow`.
 	 */
-	toWorkflow(workflowEntity: IWorkflowDb) {
+	toTempWorkflow(workflowEntity: IWorkflowDb) {
 		return new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,

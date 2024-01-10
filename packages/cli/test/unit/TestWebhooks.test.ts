@@ -39,7 +39,7 @@ let testWebhooks: TestWebhooks;
 
 describe('TestWebhooks', () => {
 	beforeAll(() => {
-		testWebhooks = new TestWebhooks(mock(), mock(), registrations);
+		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock());
 		jest.useFakeTimers();
 	});
 
@@ -117,7 +117,7 @@ describe('TestWebhooks', () => {
 		test('should add additional data to workflow', async () => {
 			registrations.getAllRegistrations.mockResolvedValue([{ workflowEntity, webhook }]);
 
-			const workflow = testWebhooks.toWorkflow(workflowEntity);
+			const workflow = testWebhooks.toTempWorkflow(workflowEntity);
 
 			await testWebhooks.deactivateWebhooks(workflow);
 

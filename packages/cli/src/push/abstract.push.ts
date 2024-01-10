@@ -79,11 +79,10 @@ export abstract class AbstractPush<T> extends EventEmitter {
 
 	sendToOneSession(type: IPushDataType, data: unknown, sessionId: string) {
 		/**
-		 * Multi-main setup: In a manual webhook execution, the main process that handles
-		 * a webhook might not be the same as the main process that created the webhook.
-		 *
-		 * If so, the handler process commands the creator process to relay execution
-		 * lifecyle events occurring at the handler to the creator's frontend.
+		 * Multi-main setup: In a manual webhook execution, the main process that
+		 * handles a webhook might not be the same as the main process that created
+		 * the webhook. If so, the handler process commands the creator process to
+		 * relay the former's execution lifecyle events to the creator's frontend.
 		 */
 		if (this.multiMainSetup.isEnabled && !this.hasSessionId(sessionId)) {
 			const payload = { type, args: data, sessionId };

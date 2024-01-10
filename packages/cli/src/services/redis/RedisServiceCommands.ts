@@ -76,14 +76,6 @@ export type RedisServiceWorkerResponseObject = {
 				workflowId: string;
 			};
 	  }
-	| {
-			command: 'relay-execution-lifecycle-event';
-			payload: {
-				eventName: string;
-				eventArgs: Record<string, unknown>;
-				sessionId: string;
-			};
-	  }
 );
 
 export type RedisServiceCommandObject = {

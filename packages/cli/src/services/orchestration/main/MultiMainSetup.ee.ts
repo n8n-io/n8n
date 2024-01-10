@@ -131,6 +131,8 @@ export class MultiMainSetup extends SingleMainSetup {
 
 		const payload = data as RedisServiceBaseCommand['payload'];
 
+		this.logger.debug(`[Instance ID ${this.id}] Publishing command "${command}"`, payload);
+
 		await this.redisPublisher.publishToCommandChannel({ command, payload });
 	}
 

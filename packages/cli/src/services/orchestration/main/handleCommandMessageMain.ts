@@ -164,7 +164,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				testWebhooks.clearTimeout(webhookKey);
 
-				const workflow = testWebhooks.toWorkflow(workflowEntity);
+				const workflow = testWebhooks.toTempWorkflow(workflowEntity);
 
 				await testWebhooks.deactivateWebhooks(workflow);
 

@@ -22,10 +22,6 @@ export class SSEPush extends AbstractPush<Connection> {
 		});
 	}
 
-	hasSessionId(sessionId: string) {
-		return this.connections[sessionId] !== undefined;
-	}
-
 	add(sessionId: string, userId: User['id'], connection: Connection) {
 		super.add(sessionId, userId, connection);
 		this.channel.addClient(connection.req, connection.res);
