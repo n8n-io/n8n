@@ -1,3 +1,13 @@
+## [1.22.6](https://github.com/n8n-io/n8n/compare/n8n@1.22.5...n8n@1.22.6) (2024-01-10)
+
+
+### Bug Fixes
+
+* **HTTP Request Node:** Delete `response.request` only when it's a valid circular references ([#8293](https://github.com/n8n-io/n8n/issues/8293)) ([1de889e](https://github.com/n8n-io/n8n/commit/1de889ea3381419717d2c2ed77e1bfb05b81e1f2))
+* **Monday.com Node:** Migrate to api 2023-10 ([#8254](https://github.com/n8n-io/n8n/issues/8254)) ([4578bcd](https://github.com/n8n-io/n8n/commit/4578bcde053b1971ff299f5fec969d218dcd7981))
+
+
+
 ## [1.22.5](https://github.com/n8n-io/n8n/compare/n8n@1.22.4...n8n@1.22.5) (2024-01-09)
 
 
