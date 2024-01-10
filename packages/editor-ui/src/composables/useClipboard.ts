@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { debounce } from 'lodash-es';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
+import { useDebounce } from '@/composables/useDebounce';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -11,6 +11,7 @@ export function useClipboard(
 		onPaste() {},
 	},
 ) {
+	const { debounce } = useDebounce();
 	const { copy, copied, isSupported, text } = useClipboardCore();
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press'];
@@ -46,7 +47,9 @@ export function useClipboard(
 		}
 	}
 
-	const debouncedOnPaste = debounce(onPaste, 1000, { leading: true });
+	const debouncedOnPaste = debounce(onPaste, {
+		debounceTime: 1000,
+	});
 
 	/**
 	 * Initialize copy/paste elements and events

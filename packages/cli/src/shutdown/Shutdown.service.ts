@@ -39,6 +39,26 @@ export class ShutdownService {
 		this.handlersByPriority[priority].push(handler);
 	}
 
+	/** Validates that all the registered shutdown handlers are properly configured */
+	validate() {
+		const handlers = this.handlersByPriority.flat();
+
+		for (const { serviceClass, methodName } of handlers) {
+			if (!Container.has(serviceClass)) {
+				throw new ApplicationError(
+					`Component "${serviceClass.name}" is not registered with the DI container. Any component using @OnShutdown() must be decorated with @Service()`,
+				);
+			}
+
+			const service = Container.get(serviceClass);
+			if (!service[methodName]) {
+				throw new ApplicationError(
+					`Component "${serviceClass.name}" does not have a "${methodName}" method`,
+				);
+			}
+		}
+	}
+
 	/** Signals all registered listeners that the application is shutting down */
 	shutdown() {
 		if (this.shutdownPromise) {
