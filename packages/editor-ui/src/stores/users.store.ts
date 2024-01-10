@@ -29,6 +29,7 @@ import type {
 	IUserResponse,
 	IUsersState,
 	CurrentUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
@@ -302,7 +303,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
+		async inviteUsers(
+			params: Array<{ email: string; role: InvitableRoleName }>,
+		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
 			this.addUsers(
@@ -314,11 +317,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			);
 			return users;
 		},
-		async reinviteUser(params: { email: string }): Promise<void> {
+		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
-				{ email: params.email },
-			]);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}

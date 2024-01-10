@@ -1221,44 +1221,6 @@ export class HttpRequestV3 implements INodeType {
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
-		if (authentication === 'genericCredentialType') {
-			genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
-
-			if (genericCredentialType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.getCredentials('httpBasicAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.getCredentials('httpDigestAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.getCredentials('httpQueryAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpCustomAuth') {
-				try {
-					httpCustomAuth = await this.getCredentials('httpCustomAuth');
-				} catch {}
-			} else if (genericCredentialType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.getCredentials('oAuth1Api');
-				} catch {}
-			} else if (genericCredentialType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.getCredentials('oAuth2Api');
-				} catch {}
-			}
-		} else if (authentication === 'predefinedCredentialType') {
-			try {
-				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			} catch {}
-		}
-
 		type RequestOptions = OptionsWithUri & { useStream?: boolean };
 		let requestOptions: RequestOptions = {
 			uri: '',
@@ -1293,6 +1255,44 @@ export class HttpRequestV3 implements INodeType {
 		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			if (authentication === 'genericCredentialType') {
+				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
+
+				if (genericCredentialType === 'httpBasicAuth') {
+					try {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'httpDigestAuth') {
+					try {
+						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'httpHeaderAuth') {
+					try {
+						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'httpQueryAuth') {
+					try {
+						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'httpCustomAuth') {
+					try {
+						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'oAuth1Api') {
+					try {
+						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
+					} catch {}
+				} else if (genericCredentialType === 'oAuth2Api') {
+					try {
+						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+					} catch {}
+				}
+			} else if (authentication === 'predefinedCredentialType') {
+				try {
+					nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+				} catch {}
+			}
+
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
