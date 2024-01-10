@@ -1393,7 +1393,6 @@ export interface ITemplateState {
 	};
 	currentSessionId: string;
 	previousSessionId: string;
-	totalTemplateCount: number;
 }
 
 export interface IVersionsState {

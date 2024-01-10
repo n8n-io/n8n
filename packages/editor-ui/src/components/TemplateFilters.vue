@@ -11,7 +11,6 @@
 					@update:modelValue="(value) => resetCategories(value)"
 				>
 					{{ $locale.baseText('templates.allCategories') }}
-					<n8n-tag :text="String(totalTemplateCount)" />
 				</el-checkbox>
 			</li>
 			<li
@@ -81,12 +80,6 @@ export default defineComponent({
 		...mapStores(useTemplatesStore),
 		allSelected(): boolean {
 			return this.selected.length === 0;
-		},
-		totalTemplateCount(): number {
-			return this.templatesStore.allCategories.reduce(
-				(acc, { result_count }) => acc + result_count,
-				0,
-			);
 		},
 	},
 	watch: {
