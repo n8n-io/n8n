@@ -772,7 +772,7 @@ export async function proxyRequestToAxios(
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-				}
+			  }
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -1859,7 +1859,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-					}
+				  }
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -3121,7 +3121,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
 						level: 'warning',
-					})
+				  })
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {
