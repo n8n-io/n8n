@@ -109,7 +109,7 @@ export const TIME = {
 	MINUTE: 60 * 1000,
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
-};
+} as const;
 
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 

@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
 import { type IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 
 export type TestWebhookRegistration = {
 	sessionId?: string;
@@ -22,15 +23,13 @@ export class TestWebhookRegistrationsService {
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
 
 		/**
-		 * @TODO: Redis lib does not expose `EXPIRE`
-		 *
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
 		 * the webhook. If so, after the test webhook has been successfully executed,
 		 * the handler process commands the creator process to clear its test webhooks.
-		 * Even on creator process crash, test webhooks must be cleared from Redis.
+		 * We set a TTL on the key so that it is cleared even on creator process crash.
 		 */
-		// await this.cacheService.expire(this.cacheKey, TEST_WEBHOOK_TIMEOUT);
+		await this.cacheService.expire(this.cacheKey, TEST_WEBHOOK_TIMEOUT);
 	}
 
 	async deregister(arg: IWebhookData | string) {
