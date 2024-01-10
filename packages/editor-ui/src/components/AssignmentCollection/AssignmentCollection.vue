@@ -14,7 +14,7 @@ import Assignment from './Assignment.vue';
 import { v4 as uuid } from 'uuid';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { isObject } from 'lodash-es';
-import { useDebounceHelper } from '@/composables/useDebounce';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface Props {
 	parameter: INodeProperties;
@@ -41,7 +41,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 });
 
 const ndvStore = useNDVStore();
-const { callDebounced } = useDebounceHelper();
+const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
 	if (!ndvStore.activeNode) return {};
