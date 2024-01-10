@@ -14,10 +14,7 @@ module.exports = defineConfig({
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
-		video: true,
-		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
-		experimentalSessionAndOrigin: true,
 	},
 	env: {
 		MAX_PINNED_DATA_SIZE: process.env.VUE_APP_MAX_PINNED_DATA_SIZE
