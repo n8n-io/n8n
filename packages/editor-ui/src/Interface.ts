@@ -830,11 +830,6 @@ export interface ITemplatesWorkflowInfo {
 	};
 }
 
-export type TemplateCategoryFilter = {
-	name: string;
-	result_count: number;
-};
-
 export type TemplateSearchFacet = {
 	field_name: string;
 	sampled: boolean;
