@@ -1,10 +1,6 @@
 import type {
 	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -12,10 +8,9 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
-import type { RedisClientOptions } from 'redis';
-import { createClient } from 'redis';
 
-type RedisClientType = ReturnType<typeof createClient>;
+import type { RedisClientType } from './utils';
+import { setupRedisClient, redisConnectionTest } from './utils';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -500,39 +495,7 @@ export class Redis implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async redisConnectionTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as ICredentialDataDecryptedObject;
-				const redisOptions: RedisClientOptions = {
-					socket: {
-						host: credentials.host as string,
-						port: credentials.port as number,
-					},
-					database: credentials.database as number,
-				};
-
-				if (credentials.password) {
-					redisOptions.password = credentials.password as string;
-				}
-				try {
-					const client = createClient(redisOptions);
-					await client.connect();
-					await client.ping();
-					return {
-						status: 'OK',
-						message: 'Connection successful!',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.message,
-					};
-				}
-			},
-		},
+		credentialTest: { redisConnectionTest },
 	};
 
 	async execute(this: IExecuteFunctions) {
@@ -662,19 +625,7 @@ export class Redis implements INodeType {
 		//       Should maybe have a parameter which is JSON.
 		const credentials = await this.getCredentials('redis');
 
-		const redisOptions: RedisClientOptions = {
-			socket: {
-				host: credentials.host as string,
-				port: credentials.port as number,
-			},
-			database: credentials.database as number,
-		};
-
-		if (credentials.password) {
-			redisOptions.password = credentials.password as string;
-		}
-
-		const client = createClient(redisOptions);
+		const client = setupRedisClient(credentials);
 		await client.connect();
 		await client.ping();
 
