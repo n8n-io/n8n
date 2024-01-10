@@ -707,11 +707,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (
-				this.deviceSupport.isTouchDevice === true &&
-				!this.deviceSupport.isMacOs &&
-				!this.isTouchActive
-			) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
