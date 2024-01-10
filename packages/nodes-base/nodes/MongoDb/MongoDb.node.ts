@@ -17,12 +17,13 @@ import type {
 	UpdateOptions,
 	Sort,
 } from 'mongodb';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
+	connectMongoClient,
 	prepareFields,
 	prepareItems,
 	stringifyObjectIDs,
@@ -74,7 +75,7 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString);
+					const client = await connectMongoClient(connectionString, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -100,12 +101,10 @@ export class MongoDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const { database, connectionString } = validateAndResolveMongoCredentials(
-			this,
-			await this.getCredentials('mongoDb'),
-		);
+		const credentials = await this.getCredentials('mongoDb');
+		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
 
-		const client: MongoClient = await MongoClient.connect(connectionString);
+		const client = await connectMongoClient(connectionString, credentials);
 
 		const mdb = client.db(database);
 
