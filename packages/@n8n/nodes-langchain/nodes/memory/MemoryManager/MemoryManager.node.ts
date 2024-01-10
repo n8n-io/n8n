@@ -199,12 +199,12 @@ export class MemoryManager implements INodeType {
 								default: '',
 							},
 							{
-								displayName: 'Hide from UI',
+								displayName: 'Hide From UI',
 								name: 'hideFromUI',
 								type: 'boolean',
 								required: true,
 								default: false,
-								description: 'Whether to hide the message from the chat UI'
+								description: 'Whether to hide the message from the chat UI',
 							},
 						],
 					},
@@ -296,7 +296,7 @@ export class MemoryManager implements INodeType {
 					const MessageClass = new templateMapper[message.type](message.message);
 
 					if (message.hideFromUI) {
-						MessageClass.additional_kwargs.hide_from_ui = true;
+						MessageClass.additional_kwargs.hideFromUI = true;
 					}
 
 					await memory.chatHistory.addMessage(MessageClass);

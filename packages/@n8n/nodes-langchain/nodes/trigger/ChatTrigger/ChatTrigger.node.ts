@@ -405,10 +405,8 @@ export class ChatTrigger implements INodeType {
 					| BaseChatMemory
 					| undefined;
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
-				.filter((message) => !message.additional_kwargs['hide_from_ui'])
-				.map(
-					(message) => message?.toJSON(),
-				);
+					.filter((message) => !message?.additional_kwargs.hideFromUI)
+					.map((message) => message?.toJSON());
 				return {
 					webhookResponse: { data: messages },
 				};
