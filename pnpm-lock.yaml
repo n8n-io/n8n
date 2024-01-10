@@ -1462,9 +1462,6 @@ importers:
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
-      '@types/redis':
-        specifier: ^2.8.11
-        version: 2.8.32
       '@types/request-promise-native':
         specifier: ~1.0.15
         version: 1.0.18
@@ -10593,12 +10590,6 @@ packages:
       '@types/prop-types': 15.7.5
       '@types/scheduler': 0.16.2
       csstype: 3.1.1
-    dev: true
-
-  /@types/redis@2.8.32:
-    resolution: {integrity: sha512-7jkMKxcGq9p242exlbsVzuJb57KqHRhNl4dHoQu2Y5v9bCAbtIXXH0R3HleSQW4CTOqpHIYUW3t6tpUj4BVQ+w==}
-    dependencies:
-      '@types/node': 18.16.16
     dev: true
 
   /@types/replacestream@4.0.1:
