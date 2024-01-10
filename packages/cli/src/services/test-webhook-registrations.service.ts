@@ -20,6 +20,17 @@ export class TestWebhookRegistrationsService {
 		const hashKey = this.toKey(registration.webhook);
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+
+		/**
+		 * @TODO: Redis lib does not expose `EXPIRE`
+		 *
+		 * Multi-main setup: In a manual webhook execution, the main process that
+		 * handles a webhook might not be the same as the main process that created
+		 * the webhook. If so, after the test webhook has been successfully executed,
+		 * the handler process commands the creator process to clear its test webhooks.
+		 * Even on creator process crash, test webhooks must be cleared from Redis.
+		 */
+		// await this.cacheService.expire(this.cacheKey, TEST_WEBHOOK_TIMEOUT);
 	}
 
 	async deregister(arg: IWebhookData | string) {

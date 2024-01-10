@@ -114,3 +114,5 @@ export const TIME = {
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
