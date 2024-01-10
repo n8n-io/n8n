@@ -71,10 +71,10 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		// cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
 		cy.get('.has-issues').should('have.length', 2);
@@ -306,7 +306,7 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.getters.parameterInputIssues('remoteOptions').realHover();
+		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false});
 		// Remote options dropdown should not be visible
 		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
@@ -365,6 +365,8 @@ describe('NDV', () => {
 		ndv.actions.openCodeEditorFullscreen();
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
+		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
+		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 	});
