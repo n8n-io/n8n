@@ -811,8 +811,6 @@ export const addClassesToOverlays = ({
 }) => {
 	overlayIds.forEach((overlayId) => {
 		const overlay = getOverlay(connection, overlayId);
-		console.log(overlay);
-		console.log(connection);
 
 		overlay?.canvas?.classList.add(...classNames);
 		if (includeConnector) {
