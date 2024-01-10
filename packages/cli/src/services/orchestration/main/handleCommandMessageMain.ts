@@ -44,8 +44,6 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				// @TODO - Check with Omar
-				// What's up with this multi-main check?
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					logger.error(
