@@ -757,9 +757,11 @@ export const addConnectionOutputSuccess = (
 	connection: Connection,
 	output: { total: number; iterations: number; isPinned?: boolean },
 ) => {
-	const classNames = ['success'];
+	const classNames: string[] = [];
 	if (output.isPinned) {
 		classNames.push('pinned');
+	} else {
+		classNames.push('success');
 	}
 
 	connection.addClass(classNames.join(' '));
@@ -793,6 +795,29 @@ export const addConnectionOutputSuccess = (
 
 	(connection.endpoints || []).forEach((endpoint) => {
 		connection.instance.repaint(endpoint.element);
+	});
+};
+
+export const addClassesToOverlays = ({
+	connection,
+	overlayIds,
+	classNames,
+	includeConnector,
+}: {
+	connection: Connection;
+	overlayIds: string[];
+	classNames: string[];
+	includeConnector?: boolean;
+}) => {
+	overlayIds.forEach((overlayId) => {
+		const overlay = getOverlay(connection, overlayId);
+		console.log(overlay);
+		console.log(connection);
+
+		overlay?.canvas?.classList.add(...classNames);
+		if (includeConnector) {
+			connection.connector.canvas?.classList.add(...classNames);
+		}
 	});
 };
 

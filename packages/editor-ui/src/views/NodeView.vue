@@ -29,7 +29,7 @@
 				<div
 					id="node-view"
 					ref="nodeView"
-					:class="nodeViewClasses"
+					class="node-view"
 					:style="workflowStyle"
 					data-test-id="node-view"
 				>
@@ -723,27 +723,6 @@ export default defineComponent({
 		},
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
-		},
-		nodeViewClasses(): string[] {
-			const classes = ['node-view'];
-			const { isExecutionPreview, isProductionExecutionPreview, workflowExecution } = this;
-			const executedInEditor =
-				!isExecutionPreview && !isProductionExecutionPreview && workflowExecution;
-			const executed = isExecutionPreview || isProductionExecutionPreview || executedInEditor;
-
-			if (executed) {
-				classes.push('node-view__executed');
-			}
-			if (isExecutionPreview) {
-				classes.push('node-view__execution-preview');
-			}
-			if (isProductionExecutionPreview) {
-				classes.push('node-view__production-execution-preview');
-			}
-			if (executedInEditor) {
-				classes.push('node-view__executed-in-editor');
-			}
-			return classes;
 		},
 	},
 	data() {
@@ -3821,7 +3800,21 @@ export default defineComponent({
 		}) {
 			const pinData = this.workflowsStore.pinnedWorkflowData;
 
-			if (pinData?.[name]) return;
+			if (pinData?.[name]) {
+				const { outgoing } = this.getIncomingOutgoingConnections(name);
+
+				outgoing.forEach((connection: Connection) => {
+					if (connection.__meta?.sourceNodeName === name) {
+						NodeViewUtils.addClassesToOverlays({
+							connection,
+							overlayIds: [NodeViewUtils.OVERLAY_RUN_ITEMS_ID],
+							classNames: ['has-run'],
+							includeConnector: true,
+						});
+					}
+				});
+				return;
+			}
 
 			const sourceNodeName = name;
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
@@ -5247,8 +5240,8 @@ export default defineComponent({
 	}
 }
 
-:deep(.node-view__executed) {
+:deep(.node-view) {
 	@include applyColorToConnection('.success', '--color-success-light', '--color-success');
-	@include applyColorToConnection('.success.pinned', '--color-secondary', '--color-secondary');
+	@include applyColorToConnection('.has-run.pinned', '--color-secondary', '--color-secondary');
 }
 </style>
