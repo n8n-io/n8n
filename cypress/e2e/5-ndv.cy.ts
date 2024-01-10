@@ -365,6 +365,7 @@ describe('NDV', () => {
 		ndv.actions.openCodeEditorFullscreen();
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
+		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 	});
