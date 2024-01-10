@@ -71,10 +71,10 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		// cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
 		cy.get('.has-issues').should('have.length', 2);
