@@ -17,7 +17,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use Zep Memory',
 		defaults: {
 			name: 'Zep',
@@ -54,6 +54,23 @@ export class MemoryZep implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionId',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 		],
 	};
