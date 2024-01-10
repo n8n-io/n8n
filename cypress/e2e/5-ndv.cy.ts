@@ -306,7 +306,7 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.getters.parameterInputIssues('remoteOptions').realHover();
+		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false});
 		// Remote options dropdown should not be visible
 		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
