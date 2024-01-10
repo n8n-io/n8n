@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 
 import { onMounted, onUnmounted, nextTick } from 'vue';
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import type { Route } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
