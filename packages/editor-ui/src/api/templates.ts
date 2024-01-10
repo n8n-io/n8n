@@ -41,19 +41,18 @@ export async function getCollections(
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { skip: number; limit: number; categories: number[]; search: string },
+	query: { page: number; limit: number; categories: number[]; search: string },
 	headers?: IDataObject,
 ): Promise<{
 	totalWorkflows: number;
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
-	out_of: number;
 }> {
 	return get(
 		apiEndpoint,
 		'/templates/search',
 		{
-			skip: query.skip,
+			page: query.page,
 			rows: query.limit,
 			category: stringifyArray(query.categories),
 			search: query.search,
