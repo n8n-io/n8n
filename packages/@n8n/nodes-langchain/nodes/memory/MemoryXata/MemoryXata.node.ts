@@ -12,7 +12,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -51,6 +51,23 @@ export class MemoryXata implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionId',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 		],
 	};
