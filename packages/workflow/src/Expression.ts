@@ -161,7 +161,7 @@ export class Expression {
 						release: process.release,
 						version: process.pid,
 						versions: process.versions,
-				  }
+					}
 				: {};
 
 		/**
