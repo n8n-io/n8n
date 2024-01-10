@@ -18,7 +18,7 @@
 				:class="$style.item"
 			>
 				<el-checkbox
-					:model-value="isSelected(category.name)"
+					:model-value="isSelected(category)"
 					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
 				>
 					{{ category.name }}
@@ -63,7 +63,7 @@ export default defineComponent({
 			type: Boolean,
 		},
 		selected: {
-			type: Array,
+			type: Array as PropType<ITemplatesCategory[]>,
 			default: () => [],
 		},
 	},
@@ -86,8 +86,8 @@ export default defineComponent({
 					this.sortedCategories = categories;
 				} else {
 					const selected = this.selected || [];
-					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
-					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
+					const selectedCategories = categories.filter((cat) => selected.includes(cat));
+					const notSelectedCategories = categories.filter((cat) => !selected.includes(cat));
 					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
 				}
 			},
@@ -99,10 +99,10 @@ export default defineComponent({
 			this.collapsed = false;
 		},
 		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
-			this.$emit(value ? 'select' : 'clear', selectedCategory.name);
+			this.$emit(value ? 'select' : 'clear', selectedCategory);
 		},
-		isSelected(categoryId: string) {
-			return this.selected.includes(categoryId);
+		isSelected(category: ITemplatesCategory) {
+			return this.selected.includes(category);
 		},
 		resetCategories() {
 			this.$emit('clearAll');

@@ -151,7 +151,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			collections: ITemplatesCollection[];
 			query: ITemplatesQuery;
 		}): void {
-			const collectionIds = data.collections.map((collection) => collection.id);
+			const collectionIds = data.collections.map((collection) => String(collection.id));
 			const searchKey = getSearchKey(data.query);
 
 			this.collectionSearches = {
