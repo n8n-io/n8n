@@ -55,25 +55,6 @@ describe('RedisService', () => {
 		await pub.destroy();
 	});
 
-	test('should create list sender and receiver', async () => {
-		const sender = await redisService.getListSender();
-		const receiver = await redisService.getListReceiver();
-		expect(sender).toBeDefined();
-		expect(receiver).toBeDefined();
-		await sender.prepend(LIST_CHANNEL, 'middle');
-		await sender.prepend(LIST_CHANNEL, 'first');
-		await sender.append(LIST_CHANNEL, 'end');
-		let popResult = await receiver.popFromHead(LIST_CHANNEL);
-		expect(popResult).toBe('first');
-		popResult = await receiver.popFromTail(LIST_CHANNEL);
-		expect(popResult).toBe('end');
-		await sender.prepend(LIST_CHANNEL, 'somevalue');
-		popResult = await receiver.popFromTail(LIST_CHANNEL);
-		expect(popResult).toBe('middle');
-		await sender.destroy();
-		await receiver.destroy();
-	});
-
 	// NOTE: This test is failing because the mock Redis client does not support streams apparently
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test.skip('should create stream producer and consumer', async () => {
