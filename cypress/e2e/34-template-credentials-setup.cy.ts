@@ -15,6 +15,20 @@ const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
 
+// NodeView uses beforeunload listener that will show a browser
+// native popup, which will block cypress from continuing / exiting.
+// This prevent the registration of the listener.
+Cypress.on('window:before:load', (win) => {
+	const origAddEventListener = win.addEventListener;
+	win.addEventListener = (eventName: string, listener: any, opts: any) => {
+		if (eventName === 'beforeunload') {
+			return;
+		}
+
+		return origAddEventListener.call(win, eventName, listener, opts);
+	};
+});
+
 describe('Template credentials setup', () => {
 	beforeEach(() => {
 		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
@@ -29,7 +43,7 @@ describe('Template credentials setup', () => {
 		templateWorkflowPage.actions.clickUseThisWorkflowButton();
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -39,7 +53,7 @@ describe('Template credentials setup', () => {
 		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -47,7 +61,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 	});
 
@@ -55,7 +69,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title(`Setup 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
 			.should('be.visible');
 
 		templateCredentialsSetupPage.getters
@@ -159,10 +173,6 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.getters.skipLink().click();
 
 			getSetupWorkflowCredentialsButton().should('be.visible');
-
-			// We need to save the workflow or otherwise a browser native popup
-			// will block cypress from continuing
-			workflowPage.actions.saveWorkflowOnButtonClick();
 		});
 
 		it('should allow credential setup from workflow editor if user fills in credentials partially during template setup', () => {
@@ -185,7 +195,8 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
 
-			setupCredsModal.closeModal();
+			setupCredsModal.closeModalFromContinueButton();
+			setupCredsModal.getWorkflowCredentialsModal().should('not.exist');
 
 			// Focus the canvas so the copy to clipboard works
 			workflowPage.getters.canvasNodes().eq(0).realClick();
@@ -202,9 +213,7 @@ describe('Template credentials setup', () => {
 				});
 			});
 
-			// We need to save the workflow or otherwise a browser native popup
-			// will block cypress from continuing
-			workflowPage.actions.saveWorkflowOnButtonClick();
+			getSetupWorkflowCredentialsButton().should('not.exist');
 		});
 	});
 });
