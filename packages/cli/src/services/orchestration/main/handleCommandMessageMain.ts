@@ -134,11 +134,9 @@ export async function handleCommandMessageMain(messageString: string) {
 			}
 
 			case 'relay-execution-lifecycle-event': {
-				if (!debounceMessageReceiver(message, 100)) {
-					// @ts-expect-error Legacy typing
-					message.payload = { result: 'debounced' };
-					return message;
-				}
+				/**
+				 * Do not debounce this - all events share the same message name.
+				 */
 
 				const { type, args, sessionId } = message.payload;
 
