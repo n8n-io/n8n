@@ -1,14 +1,7 @@
 import { ref } from 'vue';
 
-interface DeviceSupportHelpers {
-	isTouchDevice: boolean;
-	isMacOs: boolean;
-	controlKeyCode: string;
-	isCtrlKeyPressed: (e: MouseEvent | KeyboardEvent) => boolean;
-}
-
-export function useDeviceSupport(): DeviceSupportHelpers {
-	const isTouchDevice = ref('ontouchstart' in window || navigator.maxTouchPoints > 0);
+export function useDeviceSupport() {
+	const isTouchDevice = ref(window.hasOwnProperty('ontouchstart') || navigator.maxTouchPoints > 0);
 	const userAgent = ref(navigator.userAgent.toLowerCase());
 	const isMacOs = ref(
 		userAgent.value.includes('macintosh') ||
