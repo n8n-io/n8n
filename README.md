@@ -34,6 +34,8 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
   [how to **use** it from the command line](https://docs.n8n.io/reference/cli-commands/)
 - :whale: Learn
   [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
+- :rocket: Learn
+  [one-click deploy template at **RepoCloud**](https://repocloud.io/details/?app_id=85)
 
 ## Start
 
