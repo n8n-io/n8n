@@ -288,4 +288,126 @@ describe('Execution', () => {
 			workflowPage.getters.successToast().contains('Execution deleted');
 		});
 	});
+
+	describe('connections should be colored differently for pinned data', () => {
+		beforeEach(() => {
+			cy.createFixtureWorkflow('Schedule_pinned.json', `Schedule pinned ${uuid()}`);
+			workflowPage.actions.deselectAll();
+			workflowPage.getters.zoomToFitButton().click();
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields1')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields5', 'Edit Fields6')
+				.should('not.have.class', 'success')
+				.should('not.have.class', 'pinned');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields7', 'Edit Fields9')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields1', 'Edit Fields2')
+				.should('not.have.class', 'success')
+				.should('not.have.class', 'pinned');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields2', 'Edit Fields3')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+		});
+
+		it('when executing the workflow', () => {
+			workflowPage.actions.executeWorkflow();
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields1')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields5', 'Edit Fields6')
+				.should('have.class', 'success')
+				.should('not.have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields7', 'Edit Fields9')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields1', 'Edit Fields2')
+				.should('have.class', 'success')
+				.should('not.have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields2', 'Edit Fields3')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+		});
+
+		it('when executing a node', () => {
+			workflowPage.actions.executeNode('Edit Fields3');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields1')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields5', 'Edit Fields6')
+				.should('not.have.class', 'success')
+				.should('not.have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields7', 'Edit Fields9')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields1', 'Edit Fields2')
+				.should('have.class', 'success')
+				.should('not.have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields2', 'Edit Fields3')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+		});
+	});
 });
