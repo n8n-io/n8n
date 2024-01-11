@@ -45,6 +45,8 @@ export abstract class NodeError extends ExecutionBaseError {
 		}
 
 		this.node = node;
+
+		if (error instanceof NodeError) return error;
 	}
 
 	/**
