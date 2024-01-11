@@ -3,11 +3,7 @@
 		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
-				<span>
-					(
-					<span v-if="totalCount > 0" data-test-id="template-count-label">{{ totalCount }}</span>
-					)
-				</span>
+				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>

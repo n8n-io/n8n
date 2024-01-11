@@ -48,11 +48,11 @@
 						<div :class="$style.header">
 							<n8n-heading :bold="true" size="medium" color="text-light">
 								{{ $locale.baseText('templates.collections') }}
-								(<span
+								<span
 									v-if="!loadingCollections"
 									data-test-id="collection-count-label"
-									v-text="`${collections.length}`"
-								/>)
+									v-text="`(${collections.length})`"
+								/>
 							</n8n-heading>
 						</div>
 						<TemplatesInfoCarousel
