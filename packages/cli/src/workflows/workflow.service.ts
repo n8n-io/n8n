@@ -320,6 +320,7 @@ export class WorkflowService {
 				user.id,
 				workflowData,
 				additionalData,
+				runData,
 				sessionId,
 				destinationNode,
 			);
