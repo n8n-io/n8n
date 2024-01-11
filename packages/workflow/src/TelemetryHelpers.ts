@@ -1,4 +1,4 @@
-import { getNodeParameters } from '@/NodeHelpers';
+import { getNodeParameters } from './NodeHelpers';
 import type {
 	IConnection,
 	INode,
