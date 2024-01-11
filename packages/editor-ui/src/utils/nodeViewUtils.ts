@@ -757,8 +757,7 @@ export const addConnectionOutputSuccess = (
 	connection: Connection,
 	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
-	const classNames: string[] = [];
-	classNames.push('success');
+	const classNames: string[] = ['success'];
 
 	if (output.classNames) {
 		classNames.push(...output.classNames);

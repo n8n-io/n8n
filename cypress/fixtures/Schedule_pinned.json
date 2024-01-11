@@ -9,143 +9,143 @@
           ]
         }
       },
-      "id": "64da2a78-a095-4ec2-a49b-95d620061700",
+      "id": "66358c29-b263-43dd-be25-3b068b0a88eb",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        940,
-        460
+        660,
+        340
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "fa1ba667-d56d-4202-8740-ff5093fce813",
+      "id": "6d903354-4e59-4032-81fe-426a5d6ec33c",
       "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1140,
-        360
+        860,
+        240
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "e30a3130-a43c-45bb-a6b3-9b0734426a2c",
+      "id": "d8a1e9cf-81d3-400f-97d4-ad6167e7b236",
       "name": "Edit Fields1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1140,
-        560
+        860,
+        440
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "ad776585-5e78-480e-9eaf-a03b0ab48d5b",
+      "id": "bdc41148-067e-4649-8f21-5707b128d877",
       "name": "Edit Fields2",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1360,
-        560
+        1080,
+        440
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "e67812ce-bce6-49eb-a398-0fc5abf17e50",
+      "id": "d5a4337f-a6b3-4b51-9b02-e668593d9ae8",
       "name": "Edit Fields3",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1580,
-        560
+        1300,
+        440
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "e476be93-c436-447a-bc47-2c14e51fca3b",
+      "id": "fbc23f60-e7f6-4423-9329-33b0e4809a9a",
       "name": "Edit Fields4",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1780,
-        560
+        1500,
+        440
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "574db186-53ee-4db2-8de5-6eeeb4eb2311",
+      "id": "eaee47b0-94ec-4137-bfeb-a6c1a2c63f81",
       "name": "Edit Fields5",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1360,
-        360
+        1080,
+        240
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "11eefa82-0024-4d33-872e-a7b1a4130602",
+      "id": "eabb6308-21e9-4e59-8f74-9220a03c3186",
       "name": "Edit Fields6",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1580,
-        360
+        1300,
+        240
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "a12d2b55-07aa-4539-9be4-a8add01d9b0f",
+      "id": "8812a45b-5545-4080-aad8-8e9f7b17ecd7",
       "name": "Edit Fields7",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1780,
-        360
+        1500,
+        240
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "b18ab78f-eda8-43fc-a9c3-2a53d9a1529f",
+      "id": "d5ea3c5b-0b3e-4514-93e1-9c88563bab5c",
       "name": "Edit Fields9",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1980,
-        360
+        1700,
+        240
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "b29c4069-8cd2-492d-9729-40fdc37da484",
+      "id": "7af34474-5cd0-40b1-abea-850858e3b495",
       "name": "Edit Fields10",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1980,
-        560
+        1700,
+        440
       ]
     }
   ],
@@ -165,6 +165,20 @@
       }
     ],
     "Edit Fields7": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ],
+    "Edit Fields2": [
       {
         "json": {
           "name": "First item",
@@ -289,8 +303,9 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "ad34c59a-82d1-467d-b585-374049f6e6c0",
+  "versionId": "9b6c68c0-f94f-45bc-a604-bf97d17a47ac",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
   },
   "id": "nWzcnYUb3AVaZpHG",
