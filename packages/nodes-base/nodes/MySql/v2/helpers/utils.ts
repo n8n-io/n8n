@@ -21,6 +21,22 @@ import type {
 
 import { BATCH_MODE } from './interfaces';
 
+export function escapeSqlIdentifier(identifier: string): string {
+	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
+
+	return parts
+		.map((part) => {
+			const trimmedPart = part.trim();
+
+			if (trimmedPart.startsWith('`') && trimmedPart.endsWith('`')) {
+				return trimmedPart;
+			}
+
+			return `\`${trimmedPart}\``;
+		})
+		.join('.');
+}
+
 export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
 	if (replacements === undefined) {
 		return { query: rawQuery, values: [] };
@@ -35,7 +51,7 @@ export const prepareQueryAndReplacements = (rawQuery: string, replacements?: Que
 	for (const match of matches) {
 		if (match.includes(':name')) {
 			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			query = query.replace(match, `\`${replacements[matchIndex]}\``);
+			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
 		} else {
 			const matchIndex = Number(match.replace('$', '')) - 1;
 			query = query.replace(match, '?');
@@ -379,7 +395,9 @@ export function addWhereClauses(
 
 		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 
-		whereQuery += ` \`${clause.column}\` ${clause.condition}${valueReplacement}${operator}`;
+		whereQuery += ` ${escapeSqlIdentifier(clause.column)} ${
+			clause.condition
+		}${valueReplacement}${operator}`;
 	});
 
 	return [`${query}${whereQuery}`, replacements.concat(...values)];
@@ -398,7 +416,7 @@ export function addSortRules(
 	rules.forEach((rule, index) => {
 		const endWith = index === rules.length - 1 ? '' : ',';
 
-		orderByQuery += ` \`${rule.column}\` ${rule.direction}${endWith}`;
+		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${rule.direction}${endWith}`;
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];
