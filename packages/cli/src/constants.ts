@@ -28,7 +28,7 @@ export const NODE_TYPES = {
 	MANUAL_CHAT_TRIGGER: '@n8n/n8n-nodes-langchain.manualChatTrigger',
 };
 
-export const STARTING_NODES = [
+export const STARTING_NODES_IN_ORDER = [
 	NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER,
 	NODE_TYPES.MANUAL_CHAT_TRIGGER,
 	NODE_TYPES.START,

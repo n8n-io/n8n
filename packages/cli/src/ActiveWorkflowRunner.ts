@@ -37,7 +37,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionsService } from './executions/executions.service';
 import {
-	STARTING_NODES,
+	STARTING_NODES_IN_ORDER,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
@@ -599,7 +599,7 @@ export class ActiveWorkflowRunner {
 				settings: dbWorkflow.settings,
 			});
 
-			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES);
+			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES_IN_ORDER);
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(

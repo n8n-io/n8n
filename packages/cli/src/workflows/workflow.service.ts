@@ -31,6 +31,7 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowUtility } from '@/services/workflow.utility';
 
 @Service()
 export class WorkflowService {
@@ -49,49 +50,8 @@ export class WorkflowService {
 		private readonly testWebhooks: TestWebhooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly workflowUtility: WorkflowUtility,
 	) {}
-
-	/**
-	 * Find the pinned trigger to execute the workflow from, if any.
-	 *
-	 * - In a full execution, select the _first_ pinned trigger.
-	 * - In a partial execution,
-	 *   - select the _first_ pinned trigger that leads to the executed node,
-	 *   - else select the executed pinned trigger.
-	 */
-	findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
-		if (!pinData || !startNodes) return null;
-
-		const isTrigger = (nodeTypeName: string) =>
-			['trigger', 'webhook'].some((suffix) => nodeTypeName.toLowerCase().includes(suffix));
-
-		const pinnedTriggers = workflow.nodes.filter(
-			(node) => !node.disabled && pinData[node.name] && isTrigger(node.type),
-		);
-
-		if (pinnedTriggers.length === 0) return null;
-
-		if (startNodes?.length === 0) return pinnedTriggers[0]; // full execution
-
-		const [startNodeName] = startNodes;
-
-		const parentNames = new Workflow({
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			active: workflow.active,
-			nodeTypes: this.nodeTypes,
-		}).getParentNodes(startNodeName);
-
-		let checkNodeName = '';
-
-		if (parentNames.length === 0) {
-			checkNodeName = startNodeName;
-		} else {
-			checkNodeName = parentNames.find((pn) => pn === pinnedTriggers[0].name) as string;
-		}
-
-		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
-	}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		const { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
@@ -304,7 +264,23 @@ export class WorkflowService {
 		user: User,
 		sessionId?: string,
 	) {
-		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
+		let pinnedTrigger = null;
+
+		if (pinData && startNodes) {
+			const tempWorkflow = new Workflow({
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: workflowData.active,
+				nodeTypes: this.nodeTypes,
+			});
+
+			pinnedTrigger = this.workflowUtility.findStartingPinnedTrigger(
+				tempWorkflow,
+				workflowData.nodes,
+				pinData,
+				startNodes,
+			);
+		}
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (

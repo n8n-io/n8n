@@ -1,7 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
-import { STARTING_NODES } from '@/constants';
+import { STARTING_NODES_IN_ORDER } from '@/constants';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
@@ -809,7 +809,9 @@ describe('POST /workflows', () => {
 			},
 		});
 
-		const found = response.body.nodes.find((node: INode) => STARTING_NODES.includes(node.type));
+		const found = response.body.nodes.find((node: INode) =>
+			STARTING_NODES_IN_ORDER.includes(node.type),
+		);
 
 		expect(found).toBeUndefined();
 	});

@@ -18,7 +18,7 @@ export declare namespace WorkflowRequest {
 	type ManualRunPayload = {
 		workflowData: IWorkflowDb;
 		runData: IRunData;
-		pinData: IPinData;
+		pinData?: IPinData;
 		startNodes?: string[];
 		destinationNode?: string;
 	};
