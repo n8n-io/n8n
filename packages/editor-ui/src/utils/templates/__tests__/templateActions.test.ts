@@ -67,6 +67,7 @@ describe('templateActions', () => {
 					templateId,
 					templatesStore,
 					router,
+					source: 'workflow',
 				});
 			});
 
@@ -75,18 +76,6 @@ describe('templateActions', () => {
 					name: VIEWS.TEMPLATE_IMPORT,
 					params: { id: templateId },
 				});
-			});
-
-			it("should track 'User inserted workflow template'", async () => {
-				expect(telemetry.track).toHaveBeenCalledWith(
-					'User inserted workflow template',
-					{
-						source: 'workflow',
-						template_id: templateId,
-						wf_template_repo_session_id: '',
-					},
-					{ withPostHog: true },
-				);
 			});
 		});
 
@@ -111,6 +100,7 @@ describe('templateActions', () => {
 					templateId,
 					templatesStore,
 					router,
+					source: 'workflow',
 				});
 			});
 
@@ -144,6 +134,7 @@ describe('templateActions', () => {
 					templateId,
 					templatesStore,
 					router,
+					source: 'workflow',
 				});
 			});
 
