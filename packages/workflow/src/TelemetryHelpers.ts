@@ -183,23 +183,33 @@ export function generateNodesGraph(
 		} else if (node.type === 'n8n-nodes-base.webhook') {
 			webhookNodeNames.push(node.name);
 		} else {
-			const nodeType = nodeTypes.getByNameAndVersion(node.type);
-			if (nodeType) {
-				const nodeParameters = getNodeParameters(
-					nodeType.description.properties,
-					node.parameters,
-					true,
-					false,
-					node,
-				);
+			try {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type);
+				if (nodeType) {
+					const nodeParameters = getNodeParameters(
+						nodeType.description.properties,
+						node.parameters,
+						true,
+						false,
+						node,
+					);
 
-				if (nodeParameters) {
-					const keys: Array<'operation' | 'resource' | 'mode'> = ['operation', 'resource', 'mode'];
-					keys.forEach((key) => {
-						if (nodeParameters.hasOwnProperty(key)) {
-							nodeItem[key] = nodeParameters[key]?.toString();
-						}
-					});
+					if (nodeParameters) {
+						const keys: Array<'operation' | 'resource' | 'mode'> = [
+							'operation',
+							'resource',
+							'mode',
+						];
+						keys.forEach((key) => {
+							if (nodeParameters.hasOwnProperty(key)) {
+								nodeItem[key] = nodeParameters[key]?.toString();
+							}
+						});
+					}
+				}
+			} catch (e: unknown) {
+				if (!(e instanceof Error && e.message.includes('Unrecognized node type'))) {
+					throw e;
 				}
 			}
 		}
