@@ -93,19 +93,19 @@ describe('Templates', () => {
 		let initialCollectionCount = 0;
 
 		templatesPage.getters.templateCountLabel().then(($el) => {
-			initialTemplateCount = Number($el.text());
+			initialTemplateCount = parseInt($el.text().replace(/\D/g, ''), 10);
 			templatesPage.getters.collectionCountLabel().then(($el) => {
-				initialCollectionCount = Number($el.text());
+				initialCollectionCount = parseInt($el.text().replace(/\D/g, ''), 10);
 
 				templatesPage.getters.categoryFilter('sales').click();
 				templatesPage.getters.templatesLoadingContainer().should('not.exist');
 
 				// Should have less templates and collections after selecting a category
 				templatesPage.getters.templateCountLabel().should(($el) => {
-					expect(Number($el.text())).to.be.lessThan(initialTemplateCount);
+					expect(parseInt($el.text().replace(/\D/g, ''), 10)).to.be.lessThan(initialTemplateCount);
 				});
 				templatesPage.getters.collectionCountLabel().should(($el) => {
-					expect(Number($el.text())).to.be.lessThan(initialCollectionCount);
+					expect(parseInt($el.text().replace(/\D/g, ''), 10)).to.be.lessThan(initialCollectionCount);
 				});
 			});
 		});
