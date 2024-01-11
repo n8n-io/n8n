@@ -11,8 +11,8 @@ const templateWorkflowPage = new TemplateWorkflowPage();
 
 describe('Templates', () => {
 	beforeEach(() => {
-		cy.intercept('GET', '**/api/templates/search?page=1&rows=10&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
-		cy.intercept('GET', '**/api/templates/search?page=1&rows=10&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');
 		cy.intercept('GET', '**/api/templates/workflows/*', { fixture: 'templates_search/test_template_preview.json' }).as('singleTemplateRequest');
 		cy.intercept('GET', '**/api/workflows/templates/*', { fixture: 'templates_search/test_template_import.json' }).as('singleTemplateRequest');
 	});
@@ -44,10 +44,9 @@ describe('Templates', () => {
 
 	it('should save template id with the workflow', () => {
 		cy.visit(templatesPage.url);
-		cy.intercept('GET', '**/api/templates/**').as('loadApi');
 		cy.get('.el-skeleton.n8n-loading').should('not.exist');
 		templatesPage.getters.firstTemplateCard().should('exist');
-		cy.wait('@loadApi');
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
 		templatesPage.getters.firstTemplateCard().click();
 		cy.url().should('include', '/templates/');
 
