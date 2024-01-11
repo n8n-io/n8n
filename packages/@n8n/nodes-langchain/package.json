@@ -116,7 +116,8 @@
     "@types/temp": "^0.9.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "gulp": "^4.0.2",
-    "n8n-core": "workspace:*"
+    "n8n-core": "workspace:*",
+    "@aws-sdk/types": "3.357.0"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.454.0",
@@ -150,6 +151,7 @@
     "temp": "0.9.4",
     "typeorm": "0.3.17",
     "zod": "3.22.4",
-    "zod-to-json-schema": "3.22.0"
+    "zod-to-json-schema": "3.22.0",
+    "@aws-sdk/credential-provider-node": "3.451.0"
   }
 }
