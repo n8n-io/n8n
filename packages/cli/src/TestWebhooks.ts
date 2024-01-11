@@ -1,12 +1,11 @@
 import type express from 'express';
 import { Service } from 'typedi';
-import {
-	type IWebhookData,
-	type IWorkflowExecuteAdditionalData,
-	type IHttpRequestMethods,
-	WebhookPathTakenError,
-	Workflow,
-IRunData,
+import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import type {
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	IHttpRequestMethods,
+	IRunData,
 } from 'n8n-workflow';
 import type {
 	IResponseCallbackData,
