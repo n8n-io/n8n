@@ -229,7 +229,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { connections, nodes, name, settings } = workflowData ?? {};
 		await this.executionDataRepository.insert({
 			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData?.id },
+			workflowData: { connections, nodes, name, settings, id: workflowData.id },
 			data: stringify(data),
 		});
 		return String(executionId);

@@ -281,7 +281,7 @@ export class ExecutionsService {
 		if (req.body.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
-			const workflowId = execution.workflowData.id as string;
+			const workflowId = execution.workflowData.id;
 			const workflowData = (await Container.get(WorkflowRepository).findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;
@@ -296,7 +296,7 @@ export class ExecutionsService {
 			data.workflowData = workflowData;
 			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
-				id: workflowData.id as string,
+				id: workflowData.id,
 				name: workflowData.name,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,

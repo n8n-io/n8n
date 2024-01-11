@@ -81,7 +81,6 @@ export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'upd
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: string;
 	tags?: TagEntity[];
 }
 
@@ -124,13 +123,13 @@ export interface IExecutionBase {
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
+	waitTill?: Date | null;
 }
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
-	waitTill?: Date | null;
-	workflowData?: IWorkflowBase;
+	workflowData: IWorkflowBase;
 }
 
 /**

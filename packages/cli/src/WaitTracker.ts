@@ -79,41 +79,21 @@ export class WaitTracker {
 		}
 
 		// Also check in database
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
+			unflattenData: true,
 		});
 
-		if (!execution) {
+		if (!fullExecutionData) {
 			throw new ApplicationError('Execution not found.', {
 				extra: { executionId },
 			});
 		}
 
-		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
+		if (!['new', 'unknown', 'waiting', 'running'].includes(fullExecutionData.status)) {
 			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
+				`Only running or waiting executions can be stopped and ${executionId} is currently ${fullExecutionData.status}.`,
 			);
-		}
-		let fullExecutionData: IExecutionResponse;
-		try {
-			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-		} catch (error) {
-			// if the execution ended in an unforseen, non-cancelable state, try to recover it
-			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
-			// find recovered data
-			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
-			if (!restoredExecution) {
-				throw new ApplicationError('Execution could not be recovered or canceled.', {
-					extra: { executionId },
-				});
-			}
-			fullExecutionData = restoredExecution;
 		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
