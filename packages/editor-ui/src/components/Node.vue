@@ -1179,17 +1179,6 @@ export default defineComponent({
 .drop-add-node-label {
 	z-index: 10;
 }
-
-.jtk-connector.success:not(.jtk-hover) {
-	path:not(.jtk-connector-outline) {
-		stroke: var(--color-success-light);
-	}
-	path[jtk-overlay-id='reverse-arrow'],
-	path[jtk-overlay-id='endpoint-arrow'],
-	path[jtk-overlay-id='midpoint-arrow'] {
-		fill: var(--color-success-light);
-	}
-}
 </style>
 
 <style lang="scss">
@@ -1262,7 +1251,6 @@ export default defineComponent({
 		white-space: nowrap;
 		font-size: var(--font-size-s);
 		font-weight: var(--font-weight-regular);
-		color: var(--color-success);
 		margin-top: -15px;
 
 		&.floating {
