@@ -6,9 +6,10 @@ import type { FilterOperator } from './types';
 
 interface Props {
 	selected: string;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const selected = ref(props.selected);
 const menuOpen = ref(false);
@@ -57,6 +58,7 @@ function onGroupSelect(group: string) {
 		data-test-id="filter-operator-select"
 		size="small"
 		:model-value="selected"
+		:disabled="readOnly"
 		@update:modelValue="onOperatorChange"
 		@visible-change="onSelectVisibleChange"
 		@mouseenter="shouldRenderItems = true"
