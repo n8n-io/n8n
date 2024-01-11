@@ -29,6 +29,7 @@
 		<div
 			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
 			:class="$style.button"
+			data-test-id="expand-categories-button"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">

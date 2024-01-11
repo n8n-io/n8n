@@ -10,6 +10,13 @@ const workflowPage = new WorkflowPage();
 const templateWorkflowPage = new TemplateWorkflowPage();
 
 describe('Templates', () => {
+	beforeEach(() => {
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=10&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=10&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');
+		cy.intercept('GET', '**/api/templates/workflows/*', { fixture: 'templates_search/test_template_preview.json' }).as('singleTemplateRequest');
+		cy.intercept('GET', '**/api/workflows/templates/*', { fixture: 'templates_search/test_template_import.json' }).as('singleTemplateRequest');
+	});
+
 	it('can open onboarding flow', () => {
 		templatesPage.actions.openOnboardingFlow(1234, OnboardingWorkflow.name, OnboardingWorkflow);
 		cy.url().then(($url) => {
@@ -68,6 +75,7 @@ describe('Templates', () => {
 		templateWorkflowPage.getters.description().find('img').should('have.length', 1);
 	});
 
+
 	it('renders search elements correctly', () => {
 		cy.visit(templatesPage.url);
 		templatesPage.getters.searchInput().should('exist');
@@ -79,6 +87,7 @@ describe('Templates', () => {
 	it('can filter templates by category', () => {
 		cy.visit(templatesPage.url);
 		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.expandCategoriesButton().click();
 		templatesPage.getters.categoryFilter('sales').should('exist');
 		let initialTemplateCount = 0;
 		let initialCollectionCount = 0;
@@ -105,6 +114,7 @@ describe('Templates', () => {
 	it('should preserve search query in URL', () => {
 		cy.visit(templatesPage.url);
 		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.expandCategoriesButton().click();
 		templatesPage.getters.categoryFilter('sales').should('exist');
 		templatesPage.getters.categoryFilter('sales').click();
 		templatesPage.getters.searchInput().type('auto');

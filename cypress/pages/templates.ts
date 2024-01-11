@@ -14,6 +14,7 @@ export class TemplatesPage extends BasePage {
 		collectionCountLabel: () => cy.getByTestId('collection-count-label'),
 		templateCountLabel: () => cy.getByTestId('template-count-label'),
 		templatesLoadingContainer: () => cy.getByTestId('templates-loading-container'),
+		expandCategoriesButton: () => cy.getByTestId('expand-categories-button'),
 	};
 
 	actions = {

@@ -1,0 +1,19 @@
+{
+	"id": 60,
+	"name": "test1 test1",
+	"workflow": {
+			"nodes": [
+					{
+							"name": "Start",
+							"type": "n8n-nodes-base.start",
+							"position": [
+									250,
+									300
+							],
+							"parameters": {},
+							"typeVersion": 1
+					}
+			],
+			"connections": {}
+	}
+}
