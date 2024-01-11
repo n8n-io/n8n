@@ -7,18 +7,27 @@ import N8nLink from 'n8n-design-system/components/N8nLink';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import TemplatesView from '../TemplatesView.vue';
-import { VIEWS } from '@/constants';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { usePostHog } from '@/stores/posthog.store';
 
 // Store
 const setupTemplateStore = useSetupTemplateStore();
 const i18n = useI18n();
-const telemetry = useTelemetry();
+const posthogStore = usePostHog();
 
 // Router
 const route = useRoute();
 const router = useRouter();
+
+const currentTemplateId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
+
+if (!posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
+	void router.replace({
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: currentTemplateId },
+	});
+}
 
 //#region Computed
 
