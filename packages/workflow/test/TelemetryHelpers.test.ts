@@ -436,6 +436,228 @@ describe('generateNodesGraph', () => {
 			webhookNodeNames: [],
 		});
 	});
+
+	test('should return graph with webhook node', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						path: 'bf4c0699-cff8-4440-8964-8e97fda8b4f8',
+						options: {},
+					},
+					id: '5e49e129-2c59-4650-95ea-14d4b94db1f3',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1.1,
+					position: [520, 380],
+					webhookId: 'bf4c0699-cff8-4440-8964-8e97fda8b4f8',
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.webhook'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: '5e49e129-2c59-4650-95ea-14d4b94db1f3',
+						type: 'n8n-nodes-base.webhook',
+						version: 1.1,
+						position: [520, 380],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { Webhook: '0' },
+			webhookNodeNames: ['Webhook'],
+		});
+	});
+
+	test('should return graph with http v4 node with generic auth', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						url: 'google.com/path/test',
+						authentication: 'genericCredentialType',
+						genericAuthType: 'httpBasicAuth',
+						options: {},
+					},
+					id: '04d6e44f-09c1-454d-9225-60aeed7f022c',
+					name: 'HTTP Request V4 with generic auth',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.1,
+					position: [780, 120],
+					credentials: {
+						httpBasicAuth: {
+							id: 'yuuJAO2Ang5B64wd',
+							name: 'Unnamed credential',
+						},
+					},
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.httpRequest'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: '04d6e44f-09c1-454d-9225-60aeed7f022c',
+						type: 'n8n-nodes-base.httpRequest',
+						version: 4.1,
+						position: [780, 120],
+						credential_type: 'httpBasicAuth',
+						credential_set: true,
+						domain_base: 'google.com',
+						domain_path: '/path/test',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'HTTP Request V4 with generic auth': '0' },
+			webhookNodeNames: [],
+		});
+	});
+
+	test('should return graph with HTTP V4 with predefined cred', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						url: 'google.com/path/test',
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: 'activeCampaignApi',
+						options: {},
+					},
+					id: 'dcc4a9e1-c2c5-4d7e-aec0-2a23adabbb77',
+					name: 'HTTP Request V4 with predefined cred',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.1,
+					position: [320, 220],
+					credentials: {
+						httpBasicAuth: {
+							id: 'yuuJAO2Ang5B64wd',
+							name: 'Unnamed credential',
+						},
+						activeCampaignApi: {
+							id: 'SFCbnfgRBuSzRu6N',
+							name: 'ActiveCampaign account',
+						},
+					},
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.httpRequest'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'dcc4a9e1-c2c5-4d7e-aec0-2a23adabbb77',
+						type: 'n8n-nodes-base.httpRequest',
+						version: 4.1,
+						position: [320, 220],
+						credential_type: 'activeCampaignApi',
+						credential_set: true,
+						domain_base: 'google.com',
+						domain_path: '/path/test',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'HTTP Request V4 with predefined cred': '0' },
+			webhookNodeNames: [],
+		});
+	});
+
+	test('should return graph with http v1 node', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						url: 'https://google.com',
+						options: {},
+					},
+					id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+					name: 'HTTP Request V1',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [320, 460],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.httpRequest'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+						type: 'n8n-nodes-base.httpRequest',
+						version: 1,
+						position: [320, 460],
+						domain: 'google.com',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'HTTP Request V1': '0' },
+			webhookNodeNames: [],
+		});
+	});
+
+	test('should return graph with http v4 node with no parameters and no credentials', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						options: {},
+					},
+					id: 'd002e66f-deba-455c-9f8b-65239db453c3',
+					name: 'HTTP Request v4 with defaults',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.1,
+					position: [600, 240],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.httpRequest'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'd002e66f-deba-455c-9f8b-65239db453c3',
+						type: 'n8n-nodes-base.httpRequest',
+						version: 4.1,
+						position: [600, 240],
+						credential_set: false,
+						domain_base: '',
+						domain_path: '',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'HTTP Request v4 with defaults': '0' },
+			webhookNodeNames: [],
+		});
+	});
 });
 
 function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {

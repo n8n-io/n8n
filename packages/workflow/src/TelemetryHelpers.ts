@@ -164,7 +164,7 @@ export function generateNodesGraph(
 			} catch {
 				nodeItem.domain = getDomainBase(node.parameters.url as string);
 			}
-		} else if (node.type === 'n8n-nodes-base.httpRequest' && [2, 3].includes(node.typeVersion)) {
+		} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion > 1) {
 			const { authentication } = node.parameters as { authentication: string };
 
 			nodeItem.credential_type = {
@@ -203,6 +203,7 @@ export function generateNodesGraph(
 				}
 			}
 		}
+
 		nodesGraph.nodes[`${index}`] = nodeItem;
 		nodeNameAndIndex[node.name] = index.toString();
 	});
