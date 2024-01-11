@@ -308,7 +308,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			);
 
 			this.addWorkflows(payload.workflows);
-			// this.setCategories(payload.filters);
 			this.addWorkflowsSearch({ ...payload, query });
 			return this.getSearchedWorkflows(query) || [];
 		},
@@ -330,7 +329,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 
 				this.setWorkflowSearchLoaded(query);
 				this.addWorkflows(payload.workflows);
-				// this.setCategories(payload.filters);
 				this.addWorkflowsSearch({ ...payload, query });
 
 				return this.getSearchedWorkflows(query) || [];
