@@ -33,7 +33,7 @@ export const STARTING_NODES = [
 	NODE_TYPES.MANUAL_CHAT_TRIGGER,
 	NODE_TYPES.START,
 	NODE_TYPES.MANUAL_TRIGGER,
-] as const;
+];
 
 export const N8N_VERSION = getN8nPackageJson().version;
 

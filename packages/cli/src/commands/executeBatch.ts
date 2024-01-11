@@ -12,7 +12,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { findCliWorkflowStart } from '@/utils';
+import { WorkflowUtility } from '@/services/workflow.utility';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import type {
@@ -635,7 +635,10 @@ export class ExecuteBatch extends BaseCommand {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
-				const startingNode = findCliWorkflowStart(workflowData.nodes);
+				const startingNode = Container.get(WorkflowUtility).findStartingNode(
+					workflowData.nodes,
+					'cli',
+				);
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',

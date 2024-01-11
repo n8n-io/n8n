@@ -5,12 +5,12 @@ import { STARTING_NODES } from '@/constants';
 @Utility()
 export class WorkflowUtility {
 	/**
-	 * Find the node to start execution from:
+	 * Find the node to start a workflow execution from:
 	 * - for a subworkflow (`integrated` execution mode), or
 	 * - for a CLI-started workflow (`cli` execution mode).
 	 */
 	findStartingNode(nodes: INode[], executionMode: 'cli' | 'integrated') {
-		const found = nodes.find((node) => STARTING_NODES.includes(node.type));
+		const found = nodes.find((n) => STARTING_NODES.includes(n.type));
 
 		if (found) return found;
 
