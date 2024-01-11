@@ -83,8 +83,6 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.
-			// this.mouseUp(e);
-			console.log('HERE BRO');
 			onMouseUp(e);
 			return;
 		}
