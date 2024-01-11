@@ -97,14 +97,14 @@ export function generateNodesGraph(
 		nodeIdMap?: { [curr: string]: string };
 	},
 ): INodesGraphResult {
-	const nodesGraph: INodesGraph = {
+	const nodeGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
 		nodes: {},
 		notes: {},
 		is_pinned: Object.keys(workflow.pinData ?? {}).length > 0,
 	};
-	const nodeNameAndIndex: INodeNameIndex = {};
+	const nameIndices: INodeNameIndex = {};
 	const webhookNodeNames: string[] = [];
 
 	const notes = (workflow.nodes ?? []).filter((node) => node.type === STICKY_NODE_TYPE);
@@ -133,7 +133,7 @@ export function generateNodesGraph(
 		const overlapping = Boolean(
 			otherNodes.find((node) => areOverlapping(topLeft, bottomRight, node.position)),
 		);
-		nodesGraph.notes[index] = {
+		nodeGraph.notes[index] = {
 			overlapping,
 			position: topLeft,
 			height,
@@ -142,7 +142,7 @@ export function generateNodesGraph(
 	});
 
 	otherNodes.forEach((node: INode, index: number) => {
-		nodesGraph.node_types.push(node.type);
+		nodeGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {
 			id: node.id,
 			type: node.type,
@@ -214,12 +214,12 @@ export function generateNodesGraph(
 			}
 		}
 
-		nodesGraph.nodes[`${index}`] = nodeItem;
-		nodeNameAndIndex[node.name] = index.toString();
+		nodeGraph.nodes[index.toString()] = nodeItem;
+		nameIndices[node.name] = index.toString();
 	});
 
 	const getGraphConnectionItem = (startNode: string, connectionItem: IConnection) => {
-		return { start: nodeNameAndIndex[startNode], end: nodeNameAndIndex[connectionItem.node] };
+		return { start: nameIndices[startNode], end: nameIndices[connectionItem.node] };
 	};
 
 	Object.keys(workflow.connections ?? []).forEach((nodeName) => {
@@ -230,10 +230,10 @@ export function generateNodesGraph(
 
 		connections.main.forEach((element) => {
 			element.forEach((element2) => {
-				nodesGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
+				nodeGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
 			});
 		});
 	});
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
+	return { nodeGraph, nameIndices, webhookNodeNames };
 }
