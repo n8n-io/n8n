@@ -6,6 +6,7 @@ import {
 	type IHttpRequestMethods,
 	WebhookPathTakenError,
 	Workflow,
+IRunData,
 } from 'n8n-workflow';
 import type {
 	IResponseCallbackData,
@@ -189,6 +190,7 @@ export class TestWebhooks implements IWebhookManager {
 		userId: string,
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		runData?: IRunData,
 		sessionId?: string,
 		destinationNode?: string,
 	) {
@@ -212,6 +214,10 @@ export class TestWebhooks implements IWebhookManager {
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
 			const registration = await this.registrations.get(key);
+
+			if (runData && webhook.node in runData) {
+				return false;
+			}
 
 			if (registration && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
