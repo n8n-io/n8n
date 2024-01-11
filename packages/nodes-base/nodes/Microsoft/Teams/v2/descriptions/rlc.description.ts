@@ -7,7 +7,7 @@ export const teamRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description:
-		'Select the Team from the list or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
+		'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	modes: [
 		{
 			displayName: 'From List',
@@ -66,6 +66,8 @@ export const channelRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	description:
+		'Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)',
 	typeOptions: {
 		loadOptionsDependsOn: ['teamId.value'],
 	},
@@ -115,6 +117,8 @@ export const chatRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	description:
+		'Select the chat from the list, by URL, or by ID (find the chat ID after "conversations/" in the URL)',
 	modes: [
 		{
 			displayName: 'From List',
