@@ -1,5 +1,5 @@
 import Container, { Service } from 'typedi';
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
@@ -14,7 +14,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { hasSharing, type ListQuery } from '@/requests';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { TagService } from '@/services/tag.service';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
