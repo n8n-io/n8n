@@ -23,7 +23,6 @@
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
-						:categories="templatesStore.allCategories"
 						:sort-on-populate="areCategoriesPrepopulated"
 						:selected="categories"
 						@clear="onCategoryUnselected"
@@ -184,9 +183,9 @@ export default defineComponent({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
+		await this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();
-		await this.loadCategories();
 
 		this.restoreSearchFromRoute();
 
@@ -199,6 +198,7 @@ export default defineComponent({
 	},
 	methods: {
 		createQueryObject(categoryId: 'name' | 'id'): ITemplatesQuery {
+			// We are using category names for template search and ids for collection search
 			return {
 				categories: this.categories.map((category) =>
 					categoryId === 'name' ? category.name : String(category.id),
@@ -207,14 +207,19 @@ export default defineComponent({
 			};
 		},
 		restoreSearchFromRoute() {
+			let updateSearch = false;
 			if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 				this.search = this.$route.query.search;
+				updateSearch = true;
 			}
 			if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
 				const categoriesFromURL = this.$route.query.categories.split(',');
 				this.categories = this.templatesStore.allCategories.filter((category) =>
 					categoriesFromURL.includes(category.id.toString()),
 				);
+				updateSearch = true;
+			}
+			if (updateSearch) {
 				this.updateSearch();
 				this.trackCategories();
 				this.areCategoriesPrepopulated = true;

@@ -51,10 +51,6 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		categories: {
-			type: Array as PropType<ITemplatesCategory[]>,
-			default: () => [],
-		},
 		expandLimit: {
 			type: Number,
 			default: 12,
@@ -71,29 +67,26 @@ export default defineComponent({
 	data() {
 		return {
 			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
+		allCategories(): ITemplatesCategory[] {
+			return this.templatesStore.allCategories;
+		},
+		sortedCategories(): ITemplatesCategory[] {
+			if (!this.sortOnPopulate) {
+				return this.allCategories;
+			} else {
+				const selectedCategories = this.selected || [];
+				const notSelectedCategories = this.allCategories.filter(
+					(cat) => !selectedCategories.includes(cat),
+				);
+				return selectedCategories.concat(notSelectedCategories);
+			}
+		},
 		allSelected(): boolean {
 			return this.selected.length === 0;
-		},
-	},
-	watch: {
-		sortOnPopulate: {
-			handler(value: boolean) {
-				if (!value) {
-					this.sortedCategories = this.categories;
-				} else {
-					const selectedCategories = this.selected || [];
-					const notSelectedCategories = this.categories.filter(
-						(cat) => !selectedCategories.includes(cat),
-					);
-					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
-				}
-			},
-			immediate: true,
 		},
 	},
 	methods: {
