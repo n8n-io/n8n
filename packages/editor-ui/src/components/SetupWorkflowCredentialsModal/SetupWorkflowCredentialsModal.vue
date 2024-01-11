@@ -8,10 +8,12 @@ import SetupTemplateFormStep from '@/views/SetupWorkflowFromTemplateView/SetupTe
 import { onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowStore = useWorkflowsStore();
+const uiStore = useUIStore();
 
 const props = defineProps<{
 	modalName: string;
@@ -45,7 +47,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Modal width="900px" max-height="90%" :name="props.modalName">
+	<Modal width="700px" max-height="90%" :name="props.modalName">
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge">
 				{{ i18n.baseText('setupCredentialsModal.title') }}
@@ -74,6 +76,18 @@ onUnmounted(() => {
 				</div>
 			</div>
 		</template>
+
+		<template #footer>
+			<div :class="$style.footer">
+				<n8n-button
+					size="large"
+					:label="i18n.baseText('templateSetup.continue.button')"
+					:disabled="numFilledCredentials === 0"
+					data-test-id="continue-button"
+					@click="uiStore.closeModal(props.modalName)"
+				/>
+			</div>
+		</template>
 	</Modal>
 </template>
 
@@ -84,7 +98,6 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	max-width: 768px;
 }
 
 .notice {
@@ -101,5 +114,10 @@ onUnmounted(() => {
 .appCredential:not(:last-of-type) {
 	padding-bottom: var(--spacing-2xl);
 	border-bottom: 1px solid var(--color-foreground-light);
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>

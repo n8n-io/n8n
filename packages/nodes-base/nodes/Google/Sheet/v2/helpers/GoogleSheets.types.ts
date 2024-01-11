@@ -62,12 +62,24 @@ export type GoogleSheetsSheet = Entity<GoogleSheetsMap, 'sheet'>;
 export type SpreadSheetProperties = PropertiesOf<GoogleSheetsSpreadSheet>;
 export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
-export type ResourceLocator = 'id' | 'url' | 'list';
+export type ResourceLocator = 'id' | 'url' | 'list' | 'name';
 
 export const ResourceLocatorUiNames = {
 	id: 'By ID',
 	url: 'By URL',
 	list: 'From List',
+	name: 'By Name',
+};
+
+type SpreadSheetResponseSheet = {
+	properties: {
+		title: string;
+		sheetId: number;
+	};
+};
+
+export type SpreadSheetResponse = {
+	sheets: SpreadSheetResponseSheet[];
 };
 
 export type SheetCellDecoded = {

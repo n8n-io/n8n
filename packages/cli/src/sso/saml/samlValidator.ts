@@ -88,7 +88,13 @@ export async function validateMetadata(metadata: string): Promise<boolean> {
 			return true;
 		} else {
 			logger.warn('SAML Validate Metadata: Invalid metadata');
-			logger.warn(validationResult ? validationResult.errors.join('\n') : '');
+			logger.warn(
+				validationResult
+					? validationResult.errors
+							.map((error) => `${error.message} - ${error.rawMessage}`)
+							.join('\n')
+					: '',
+			);
 		}
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -118,7 +124,13 @@ export async function validateResponse(response: string): Promise<boolean> {
 			return true;
 		} else {
 			logger.warn('SAML Validate Response: Failed');
-			logger.warn(validationResult ? validationResult.errors.join('\n') : '');
+			logger.warn(
+				validationResult
+					? validationResult.errors
+							.map((error) => `${error.message} - ${error.rawMessage}`)
+							.join('\n')
+					: '',
+			);
 		}
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { chatEventBus } from '@/event-buses';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 const chatBodyRef = ref<HTMLElement | null>(null);
 
@@ -26,7 +26,7 @@ onBeforeUnmount(() => {
 		<div v-if="$slots.header" class="chat-header">
 			<slot name="header" />
 		</div>
-		<div v-if="$slots.default" class="chat-body" ref="chatBodyRef">
+		<div v-if="$slots.default" ref="chatBodyRef" class="chat-body">
 			<slot />
 		</div>
 		<div v-if="$slots.footer" class="chat-footer">

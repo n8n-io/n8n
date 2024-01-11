@@ -11,7 +11,7 @@
 			:class="{
 				'sticky-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
@@ -122,6 +122,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { useDeviceSupport } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'Sticky',
@@ -135,6 +136,7 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const deviceSupport = useDeviceSupport();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -147,7 +149,7 @@ export default defineComponent({
 			}
 		});
 
-		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -318,7 +320,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;

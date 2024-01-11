@@ -6,6 +6,7 @@
 		:style="nodeWrapperStyles"
 		data-test-id="canvas-node"
 		:data-name="data.name"
+		:data-node-type="nodeType?.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div v-show="isSelected" class="select-background"></div>
@@ -13,7 +14,7 @@
 			:class="{
 				'node-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'menu-open': isContextMenuOpen,
 				'disable-pointer-events': disablePointerEvents,
 			}"
@@ -186,6 +187,7 @@ import { type ContextMenuTarget, useContextMenu } from '@/composables/useContext
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
@@ -217,9 +219,17 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const node = workflowsStore.getNodeByName(props.name);
 		const pinnedData = usePinnedData(node);
+		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 
-		return { contextMenu, externalHooks, nodeHelpers, pinnedData, callDebounced };
+		return {
+			contextMenu,
+			externalHooks,
+			nodeHelpers,
+			pinnedData,
+			deviceSupport,
+			callDebounced,
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -697,7 +707,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -1025,6 +1035,11 @@ export default defineComponent({
 			.node-executing-info {
 				left: -67px;
 			}
+		}
+
+		&[data-node-type='@n8n/n8n-nodes-langchain.chatTrigger'] {
+			--configurable-node-min-input-count: 1;
+			--configurable-node-input-width: 176px;
 		}
 	}
 

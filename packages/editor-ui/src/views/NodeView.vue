@@ -237,6 +237,7 @@ import {
 	EnterpriseEditionFeature,
 	REGULAR_NODE_CREATOR_VIEW,
 	NODE_CREATOR_OPEN_SOURCES,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
@@ -376,6 +377,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface AddNodeOptions {
@@ -475,6 +477,7 @@ export default defineComponent({
 		const clipboard = useClipboard();
 		const { activeNode } = storeToRefs(ndvStore);
 		const pinnedData = usePinnedData(activeNode);
+		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 
 		return {
@@ -485,6 +488,7 @@ export default defineComponent({
 			externalHooks,
 			clipboard,
 			pinnedData,
+			deviceSupport,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -692,12 +696,14 @@ export default defineComponent({
 		containsTrigger(): boolean {
 			return this.triggerNodes.length > 0;
 		},
-		isManualChatOnly(): boolean {
-			return this.containsChatNodes && this.triggerNodes.length === 1;
-		},
 		containsChatNodes(): boolean {
-			return !!this.nodes.find(
-				(node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
+			return (
+				!this.executionWaitingForWebhook &&
+				!!this.nodes.find(
+					(node) =>
+						[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
+						node.disabled !== true,
+				)
 			);
 		},
 		isExecutionDisabled(): boolean {
@@ -1375,7 +1381,7 @@ export default defineComponent({
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
-			if (this.isTouchDevice) {
+			if (this.deviceSupport.isTouchDevice) {
 				this.mouseDown(e);
 			}
 		},
@@ -1400,7 +1406,7 @@ export default defineComponent({
 			this.mouseUpMoveWorkflow(e);
 		},
 		keyUp(e: KeyboardEvent) {
-			if (e.key === this.controlKeyCode) {
+			if (e.key === this.deviceSupport.controlKeyCode) {
 				this.ctrlKeyPressed = false;
 			}
 			if (e.key === ' ') {
@@ -1410,10 +1416,10 @@ export default defineComponent({
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
 
-			const ctrlModifier = this.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
-			const shiftModifier = e.shiftKey && !e.altKey && !this.isCtrlKeyPressed(e);
-			const ctrlAltModifier = this.isCtrlKeyPressed(e) && e.altKey && !e.shiftKey;
-			const noModifierKeys = !this.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
+			const ctrlModifier = this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
+			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
+			const ctrlAltModifier = this.deviceSupport.isCtrlKeyPressed(e) && e.altKey && !e.shiftKey;
+			const noModifierKeys = !this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
 			const readOnly = this.isReadOnlyRoute || this.readOnlyEnv;
 
 			if (e.key === 's' && ctrlModifier && !readOnly) {
@@ -1494,7 +1500,7 @@ export default defineComponent({
 				void this.onRunWorkflow();
 			} else if (e.key === 'S' && shiftModifier && !readOnly) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
-			} else if (e.key === this.controlKeyCode) {
+			} else if (e.key === this.deviceSupport.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
 				this.moveCanvasKeyPressed = true;

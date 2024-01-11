@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -48,9 +48,9 @@
     "@types/supertest": "^2.0.12",
     "@vitest/coverage-v8": "^1.1.0",
     "cross-env": "^7.0.3",
-    "cypress": "^12.17.2",
+    "cypress": "^13.6.2",
     "cypress-otp": "^1.0.3",
-    "cypress-real-events": "^1.9.1",
+    "cypress-real-events": "^1.11.0",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
     "jest-expect-message": "^1.1.3",
