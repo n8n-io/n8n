@@ -23,6 +23,7 @@
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
+						:categories="templatesStore.allCategories"
 						:sort-on-populate="areCategoriesPrepopulated"
 						:selected="categories"
 						:loading="loadingCategories"

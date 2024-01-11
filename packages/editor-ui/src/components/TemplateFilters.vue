@@ -49,6 +49,10 @@ import { mapStores } from 'pinia';
 export default defineComponent({
 	name: 'TemplateFilters',
 	props: {
+		categories: {
+			type: Array as PropType<ITemplatesCategory[]>,
+			default: () => [],
+		},
 		sortOnPopulate: {
 			type: Boolean,
 			default: false,
@@ -69,29 +73,44 @@ export default defineComponent({
 	data() {
 		return {
 			collapsed: true,
+			sortedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
-		allCategories(): ITemplatesCategory[] {
-			return this.templatesStore.allCategories;
-		},
-		sortedCategories(): ITemplatesCategory[] {
-			if (!this.sortOnPopulate) {
-				return this.allCategories;
-			} else {
-				const selectedCategories = this.selected || [];
-				const notSelectedCategories = this.allCategories.filter(
-					(cat) => !selectedCategories.includes(cat),
-				);
-				return selectedCategories.concat(notSelectedCategories);
-			}
-		},
 		allSelected(): boolean {
 			return this.selected.length === 0;
 		},
 	},
+	watch: {
+		sortOnPopulate: {
+			handler(value: boolean) {
+				if (value) {
+					this.sortCategories();
+				}
+			},
+			immediate: true,
+		},
+		categories: {
+			handler(categories: ITemplatesCategory[]) {
+				if (categories.length > 0) {
+					this.sortCategories();
+				}
+			},
+			immediate: true,
+		},
+	},
 	methods: {
+		sortCategories() {
+			if (!this.sortOnPopulate) {
+				this.sortedCategories = this.categories;
+			} else {
+				const selected = this.selected || [];
+				const selectedCategories = this.categories.filter((cat) => selected.includes(cat));
+				const notSelectedCategories = this.categories.filter((cat) => !selected.includes(cat));
+				this.sortedCategories = selectedCategories.concat(notSelectedCategories);
+			}
+		},
 		collapseAction() {
 			this.collapsed = false;
 		},
