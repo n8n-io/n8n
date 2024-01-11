@@ -11,8 +11,8 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 // Dependencies needed underneath the hood. We add them
 // here only to track where what dependency is used
-import '@aws-sdk/credential-provider-node'
-import '@aws-sdk/client-bedrock-runtime'
+import '@aws-sdk/credential-provider-node';
+import '@aws-sdk/client-bedrock-runtime';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
