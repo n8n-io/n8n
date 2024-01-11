@@ -55,7 +55,9 @@ export const vmResolver = makeResolverFromLegacyOptions({
 	},
 	resolve(moduleName, parentDirname) {
 		if (moduleName.match(/^langchain\//)) {
-			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, { paths: [parentDirname] });
+			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
+				paths: [parentDirname],
+			});
 		}
 		return;
 	},
