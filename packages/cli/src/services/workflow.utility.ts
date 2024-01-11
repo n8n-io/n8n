@@ -41,7 +41,9 @@ export class WorkflowUtility {
 	}
 
 	/**
-	 * Find all pinned triggers in a workflow.
+	 * Find all pinned triggers in a workflow. The term "trigger" here refers to
+	 * generally webhook, poller and trigger nodes. More details on these categories
+	 * in the docline for `ActiveWorkflowRunner.add()`.
 	 */
 	private findAllPinnedTriggers(nodes: INode[], pinData: IPinData) {
 		const isTrigger = (nodeTypeName: string) =>
