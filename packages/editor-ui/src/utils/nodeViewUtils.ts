@@ -755,13 +755,13 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number; isPinned?: boolean },
+	output: { total: number; iterations: number; additionalClasses?: string[] },
 ) => {
 	const classNames: string[] = [];
-	if (output.isPinned) {
-		classNames.push('pinned');
-	} else {
-		classNames.push('success');
+	classNames.push('success');
+
+	if (output.additionalClasses) {
+		classNames.push(...output.additionalClasses);
 	}
 
 	connection.addClass(classNames.join(' '));

@@ -2158,7 +2158,7 @@ export default defineComponent({
 
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 					setTimeout(() => {
-						this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
+						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 					});
 				}
 			} catch (error) {
@@ -3811,10 +3811,11 @@ export default defineComponent({
 
 				outgoing.forEach((connection: Connection) => {
 					if (connection.__meta?.sourceNodeName === name) {
+						const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(name) !== null;
 						NodeViewUtils.addClassesToOverlays({
 							connection,
 							overlayIds: [NodeViewUtils.OVERLAY_RUN_ITEMS_ID],
-							classNames: ['has-run'],
+							classNames: hasRun ? ['has-run'] : [],
 							includeConnector: true,
 						});
 					}
@@ -4707,7 +4708,7 @@ export default defineComponent({
 					NodeViewUtils.addConnectionOutputSuccess(connection, {
 						total: pinData[nodeName].length,
 						iterations: 0,
-						isPinned: true,
+						additionalClasses: ['pinned'],
 					});
 				});
 			});
@@ -5248,6 +5249,15 @@ export default defineComponent({
 
 :deep(.node-view) {
 	@include applyColorToConnection('.success', '--color-success-light', '--color-success');
-	@include applyColorToConnection('.has-run.pinned', '--color-secondary', '--color-secondary');
+	@include applyColorToConnection(
+		'.success.pinned',
+		'--color-foreground-xdark',
+		'--color-foreground-xdark'
+	);
+	@include applyColorToConnection(
+		'.success.pinned.has-run',
+		'--color-secondary',
+		'--color-secondary'
+	);
 }
 </style>
