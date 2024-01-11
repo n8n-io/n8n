@@ -755,13 +755,13 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number; additionalClasses?: string[] },
+	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
 	const classNames: string[] = [];
 	classNames.push('success');
 
-	if (output.additionalClasses) {
-		classNames.push(...output.additionalClasses);
+	if (output.classNames) {
+		classNames.push(...output.classNames);
 	}
 
 	connection.addClass(classNames.join(' '));

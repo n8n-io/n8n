@@ -4708,7 +4708,7 @@ export default defineComponent({
 					NodeViewUtils.addConnectionOutputSuccess(connection, {
 						total: pinData[nodeName].length,
 						iterations: 0,
-						additionalClasses: ['pinned'],
+						classNames: ['pinned'],
 					});
 				});
 			});
