@@ -72,7 +72,7 @@ export class MemoryChatRetriever implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
-				displayName: 'This node is deprecated. Use Memory Manager node instead.',
+				displayName: "This node is deprecated. Use 'Chat Memory Manager' node instead.",
 				type: 'notice',
 				default: '',
 				name: 'deprecatedNotice',

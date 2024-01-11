@@ -44,7 +44,7 @@ export class MemoryManager implements INodeType {
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
-		description: 'Massage chat messages memory and use it in the workflow',
+		description: 'Manage chat messages memory and use it in the workflow',
 		defaults: {
 			name: 'Chat Memory Manager',
 		},
@@ -110,18 +110,19 @@ export class MemoryManager implements INodeType {
 				displayName: 'Insert Mode',
 				name: 'insertMode',
 				type: 'options',
-				description:
-					'Determines how new messages are inserted into the memory. You can choose between "Insert Messages", which adds messages alongside existing ones, and "Override All Messages", which replaces the current memory with new messages.',
+				description: 'Choose how new messages are inserted into the memory',
 				noDataExpression: true,
 				default: 'insert',
 				options: [
 					{
 						name: 'Insert Messages',
 						value: 'insert',
+						description: 'Add messages alongside existing ones',
 					},
 					{
 						name: 'Override All Messages',
 						value: 'override',
+						description: 'Replace the current memory with new messages',
 					},
 				],
 				displayOptions: {
@@ -134,20 +135,19 @@ export class MemoryManager implements INodeType {
 				displayName: 'Delete Mode',
 				name: 'deleteMode',
 				type: 'options',
-				description:
-					'Configures how messages are deleted from memory. "Last N" will delete the last N messages, while "All Messages" will clear all messages from the memory.',
+				description: 'How messages are deleted from memory',
 				noDataExpression: true,
 				default: 'lastN',
 				options: [
 					{
 						name: 'Last N',
-						description: 'Delete the last N messages',
 						value: 'lastN',
+						description: 'Delete the last N messages',
 					},
 					{
 						name: 'All Messages',
-						description: 'Delete all messages',
 						value: 'all',
+						description: 'Clear all messages from memory',
 					},
 				],
 				displayOptions: {
@@ -199,7 +199,7 @@ export class MemoryManager implements INodeType {
 								default: '',
 							},
 							{
-								displayName: 'Hide From UI',
+								displayName: 'Hide Message in Chat',
 								name: 'hideFromUI',
 								type: 'boolean',
 								required: true,
