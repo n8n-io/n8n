@@ -397,6 +397,45 @@ describe('generateNodesGraph', () => {
 			webhookNodeNames: [],
 		});
 	});
+
+	test('should return node graph indicating pinned data', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'e59d3ad9-3448-4899-9f47-d2922c8727ce',
+					name: 'When clicking "Execute Workflow"',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [460, 460],
+				},
+			],
+			connections: {},
+			pinData: {
+				'When clicking "Execute Workflow"': [],
+			},
+		};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nameIndices: {
+				'When clicking "Execute Workflow"': '0',
+			},
+			nodeGraph: {
+				is_pinned: true,
+				node_connections: [],
+				node_types: ['n8n-nodes-base.manualTrigger'],
+				nodes: {
+					'0': {
+						id: 'e59d3ad9-3448-4899-9f47-d2922c8727ce',
+						position: [460, 460],
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+					},
+				},
+				notes: {},
+			},
+			webhookNodeNames: [],
+		});
+	});
 });
 
 function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
