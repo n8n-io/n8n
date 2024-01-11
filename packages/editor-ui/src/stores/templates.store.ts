@@ -22,7 +22,7 @@ import {
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
 
-const TEMPLATES_PAGE_SIZE = 10;
+const TEMPLATES_PAGE_SIZE = 20;
 
 function getSearchKey(query: ITemplatesQuery): string {
 	return JSON.stringify([query.search || '', [...query.categories].sort()]);
