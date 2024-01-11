@@ -603,15 +603,15 @@ export default defineComponent({
 		setTimeout(() => {
 			this.setSubtitle();
 		}, 0);
-		// if (this.nodeRunData) {
-		// 	setTimeout(() => {
-		// 		this.$emit('run', {
-		// 			name: this.data && this.data.name,
-		// 			data: this.nodeRunData,
-		// 			waiting: !!this.waiting,
-		// 		});
-		// 	}, 0);
-		// }
+		if (this.nodeRunData) {
+			setTimeout(() => {
+				this.$emit('run', {
+					name: this.data && this.data.name,
+					data: this.nodeRunData,
+					waiting: !!this.waiting,
+				});
+			}, 0);
+		}
 	},
 	data() {
 		return {
