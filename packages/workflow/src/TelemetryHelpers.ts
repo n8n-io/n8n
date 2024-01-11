@@ -228,9 +228,11 @@ export function generateNodesGraph(
 			return;
 		}
 
-		connections.main.forEach((element) => {
-			element.forEach((element2) => {
-				nodeGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
+		Object.keys(connections).forEach((key) => {
+			connections[key].forEach((element) => {
+				element.forEach((element2) => {
+					nodeGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
+				});
 			});
 		});
 	});

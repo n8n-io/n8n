@@ -6,7 +6,7 @@ import {
 	getDomainPath,
 } from '@/TelemetryHelpers';
 import type { IWorkflowBase } from '@/index';
-import { nodeTypes } from './ExpressionExtensions/Helpers';
+import { nodeTypes, workflow } from './ExpressionExtensions/Helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -655,6 +655,111 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: { 'HTTP Request v4 with defaults': '0' },
+			webhookNodeNames: [],
+		});
+	});
+
+	test('should support custom connections like in AI nodes', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+					name: 'When clicking "Test Workflow"',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [540, 220],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+					name: 'Chain',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [760, 320],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+					name: 'Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [780, 500],
+				},
+			],
+			connections: {
+				'When clicking "Test Workflow"': {
+					main: [
+						[
+							{
+								node: 'Chain',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Model: {
+					ai_languageModel: [
+						[
+							{
+								node: 'Chain',
+								type: 'ai_languageModel',
+								index: 0,
+							},
+						],
+					],
+				},
+			},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [
+					'n8n-nodes-base.manualTrigger',
+					'@n8n/n8n-nodes-langchain.chainLlm',
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				],
+				node_connections: [
+					{
+						start: '0',
+						end: '1',
+					},
+					{
+						start: '2',
+						end: '1',
+					},
+				],
+				nodes: {
+					'0': {
+						id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						position: [540, 220],
+					},
+					'1': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1,
+						position: [760, 320],
+					},
+					'2': {
+						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						position: [780, 500],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: {
+				'When clicking "Test Workflow"': '0',
+				Chain: '1',
+				Model: '2',
+			},
 			webhookNodeNames: [],
 		});
 	});
