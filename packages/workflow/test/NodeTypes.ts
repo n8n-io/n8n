@@ -7,6 +7,36 @@ import {
 	type LoadedClass,
 } from '@/index';
 
+const stickyNode: LoadedClass<INodeType> = {
+	type: {
+		description: {
+			displayName: 'Sticky Note',
+			name: 'n8n-nodes-base.stickyNote',
+			icon: 'fa:sticky-note',
+			group: ['input'],
+			version: 1,
+			description: 'Make your workflow easier to understand',
+			defaults: { name: 'Sticky Note', color: '#FFD233' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Content',
+					name: 'content',
+					type: 'string',
+					required: true,
+					default:
+						"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+				},
+				{ displayName: 'Height', name: 'height', type: 'number', required: true, default: 160 },
+				{ displayName: 'Width', name: 'width', type: 'number', required: true, default: 240 },
+				{ displayName: 'Color', name: 'color', type: 'number', required: true, default: 1 },
+			],
+		},
+	},
+	sourcePath: '',
+};
+
 const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 	sourcePath: '',
 	type: {
@@ -508,6 +538,7 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
+		'n8n-nodes-base.stickyNote': stickyNode,
 		'test.googleSheets': googleSheetsNode,
 		'test.set': {
 			sourcePath: '',

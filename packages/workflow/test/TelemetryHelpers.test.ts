@@ -164,6 +164,21 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test('should return node graph when workflow keys are not set', () => {
+		const workflow: Partial<IWorkflowBase> = {};
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [],
+				node_connections: [],
+				nodes: {},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: {},
+			webhookNodeNames: [],
+		});
+	});
+
 	test('should return node graph when node has multiple operation fields with different display options', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),
@@ -229,7 +244,7 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
-	test('should return node graph with both notes and nodes', () => {
+	test('should return node graph with stickies of default size', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),
 			updatedAt: new Date('2024-01-05T15:44:31.000Z'),
@@ -297,7 +312,7 @@ describe('generateNodesGraph', () => {
 						resource: 'sheet',
 					},
 				},
-				notes: { '0': { overlapping: false, position: [240, 140], height: 0, width: 0 } },
+				notes: { '0': { overlapping: false, position: [240, 140], height: 160, width: 240 } },
 				is_pinned: false,
 			},
 			nameIndices: { 'When clicking "Execute Workflow"': '0', 'Google Sheets': '1' },
@@ -305,7 +320,7 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
-	test('should return node graph with notes indicating overlap', () => {
+	test('should return node graph with stickies indicating overlap', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),
 			updatedAt: new Date('2024-01-05T15:44:31.000Z'),

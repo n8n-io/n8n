@@ -8,7 +8,6 @@ import type {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
-	INodeType,
 } from './Interfaces';
 import { ApplicationError } from './errors/application.error';
 
@@ -20,28 +19,6 @@ export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): I
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
-}
-
-function getStickyDimensions(note: INode, stickyType: INodeType | undefined) {
-	const heightProperty = stickyType?.description?.properties.find(
-		(property) => property.name === 'height',
-	);
-	const widthProperty = stickyType?.description?.properties.find(
-		(property) => property.name === 'width',
-	);
-
-	const defaultHeight =
-		heightProperty && isNumber(heightProperty?.default) ? heightProperty.default : 0;
-	const defaultWidth =
-		widthProperty && isNumber(widthProperty?.default) ? widthProperty.default : 0;
-
-	const height: number = isNumber(note.parameters.height) ? note.parameters.height : defaultHeight;
-	const width: number = isNumber(note.parameters.width) ? note.parameters.width : defaultWidth;
-
-	return {
-		height,
-		width,
-	};
 }
 
 type XYPosition = [number, number];
@@ -113,7 +90,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 }
 
 export function generateNodesGraph(
-	workflow: IWorkflowBase,
+	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
 	options?: {
 		sourceInstanceId?: string;
@@ -130,12 +107,26 @@ export function generateNodesGraph(
 	const nodeNameAndIndex: INodeNameIndex = {};
 	const webhookNodeNames: string[] = [];
 
-	const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
-	const otherNodes = workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+	const notes = (workflow.nodes ?? []).filter((node) => node.type === STICKY_NODE_TYPE);
+	const otherNodes = (workflow.nodes ?? []).filter((node) => node.type !== STICKY_NODE_TYPE);
 
 	notes.forEach((stickyNote: INode, index: number) => {
 		const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);
-		const { height, width } = getStickyDimensions(stickyNote, stickyType);
+		if (!stickyType) {
+			return;
+		}
+
+		const nodeParameters =
+			getNodeParameters(
+				stickyType.description.properties,
+				stickyNote.parameters,
+				true,
+				false,
+				stickyNote,
+			) ?? {};
+
+		const height: number = typeof nodeParameters.height === 'number' ? nodeParameters.height : 0;
+		const width: number = typeof nodeParameters.width === 'number' ? nodeParameters.width : 0;
 
 		const topLeft = stickyNote.position;
 		const bottomRight: [number, number] = [topLeft[0] + width, topLeft[1] + height];
@@ -220,8 +211,12 @@ export function generateNodesGraph(
 		return { start: nodeNameAndIndex[startNode], end: nodeNameAndIndex[connectionItem.node] };
 	};
 
-	Object.keys(workflow.connections).forEach((nodeName) => {
-		const connections = workflow.connections[nodeName];
+	Object.keys(workflow.connections ?? []).forEach((nodeName) => {
+		const connections = workflow.connections?.[nodeName];
+		if (!connections) {
+			return;
+		}
+
 		connections.main.forEach((element) => {
 			element.forEach((element2) => {
 				nodesGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
