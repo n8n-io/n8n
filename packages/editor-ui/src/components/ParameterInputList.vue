@@ -102,6 +102,7 @@
 				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 				:path="getPath(parameter.name)"
 				:node="node"
+				:read-only="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
 			<div
