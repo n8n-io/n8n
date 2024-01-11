@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-	tryToParseDateTime,
 	type AssignmentCollectionValue,
 	type AssignmentValue,
 	type INode,
@@ -71,16 +70,9 @@ function nameFromExpression(expression: string): string {
 function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
 	if (typeof value === 'number') return 'number';
-	if (typeof value === 'string') {
-		try {
-			const date = tryToParseDateTime(value);
-			return date ? 'dateTime' : 'string';
-		} catch (error) {
-			return 'string';
-		}
-	}
+	if (typeof value === 'string') return 'string';
 	if (Array.isArray(value)) return 'array';
-	if (value === null || value === undefined || isObject(value)) return 'object';
+	if (isObject(value)) return 'object';
 	return 'string';
 }
 
@@ -126,9 +118,10 @@ function getIssues(index: number): string[] {
 	>
 		<n8n-input-label
 			:label="parameter.displayName"
-			:underline="true"
-			:show-options="true"
 			:show-expression-selector="false"
+			size="small"
+			show-options
+			underline
 			color="text-dark"
 		>
 		</n8n-input-label>
@@ -148,7 +141,7 @@ function getIssues(index: number): string[] {
 				</div>
 			</div>
 			<div :class="$style.dropAreaWrapper">
-				<DropArea :sticky-offset="empty ? [-4, 20] : [80, 0]" @drop="dropAssignment">
+				<DropArea :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
 					<template #default="{ active }">
 						<div
 							:class="{
@@ -210,32 +203,29 @@ function getIssues(index: number): string[] {
 .active {
 	pointer-events: none;
 
-	.icon {
-		color: var(--color-success-light);
-	}
-
 	.or,
 	.addButton {
 		opacity: 0;
 	}
 }
 
-.empty .dropArea {
-	flex-direction: column;
-	align-items: center;
-	padding-top: var(--spacing-xs);
+.empty {
+	.dropArea {
+		flex-direction: column;
+		align-items: center;
+		gap: var(--spacing-2xs);
+	}
 
-	> span:nth-child(2) {
-		padding-bottom: var(--spacing-2xs);
+	.content {
+		gap: var(--spacing-s);
 	}
 }
 
 .icon {
 	font-size: var(--font-size-2xl);
-	margin-bottom: var(--spacing-2xs);
 }
 
-.addButton:not(.empty .addButton) {
-	padding-left: 0;
+.addButton {
+	padding: 0;
 }
 </style>

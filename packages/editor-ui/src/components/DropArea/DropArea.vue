@@ -46,7 +46,8 @@ const onDrop = (value: string) => {
 }
 
 .droppable {
-	border-color: var(--color-primary);
+	border-color: var(--color-ndv-droppable-parameter);
+	border-style: dashed;
 }
 
 .active {
