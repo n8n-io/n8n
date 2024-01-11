@@ -29,9 +29,10 @@ interface Props {
 	value: FilterValue;
 	path: string;
 	node: INode | null;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
@@ -145,7 +146,7 @@ function getIssues(index: number): string[] {
 				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
 					<CombinatorSelect
 						v-if="index !== 0"
-						:read-only="index !== 1"
+						:read-only="index !== 1 || readOnly"
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
@@ -157,6 +158,7 @@ function getIssues(index: number): string[] {
 						:index="index"
 						:options="state.paramValue.options"
 						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+						:read-only="readOnly"
 						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
@@ -166,7 +168,7 @@ function getIssues(index: number): string[] {
 					></Condition>
 				</div>
 			</div>
-			<div v-if="!singleCondition" :class="$style.addConditionWrapper">
+			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
