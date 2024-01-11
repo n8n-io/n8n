@@ -67,6 +67,7 @@ export default defineComponent({
 			default: () => [],
 		},
 	},
+	emits: ['clearAll', 'select', 'clear'],
 	data() {
 		return {
 			collapsed: true,
@@ -80,14 +81,15 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		categories: {
-			handler(categories: ITemplatesCategory[]) {
-				if (!this.sortOnPopulate) {
-					this.sortedCategories = categories;
+		sortOnPopulate: {
+			handler(value: boolean) {
+				if (!value) {
+					this.sortedCategories = this.categories;
 				} else {
-					const selected = this.selected || [];
-					const selectedCategories = categories.filter((cat) => selected.includes(cat));
-					const notSelectedCategories = categories.filter((cat) => !selected.includes(cat));
+					const selectedCategories = this.selected || [];
+					const notSelectedCategories = this.categories.filter(
+						(cat) => !selectedCategories.includes(cat),
+					);
 					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
 				}
 			},
