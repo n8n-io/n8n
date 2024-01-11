@@ -760,12 +760,6 @@ export const addConnectionOutputSuccess = (
 	const classNames: string[] = [];
 	classNames.push('success');
 
-	console.log(
-		'output.additionalClasses',
-		output.additionalClasses,
-		connection.__meta.sourceNodeName,
-	);
-
 	if (output.additionalClasses) {
 		classNames.push(...output.additionalClasses);
 	}
