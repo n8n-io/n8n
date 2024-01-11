@@ -25,6 +25,7 @@
 					<TemplateFilters
 						:sort-on-populate="areCategoriesPrepopulated"
 						:selected="categories"
+						:loading="loadingCategories"
 						@clear="onCategoryUnselected"
 						@clear-all="onCategoriesCleared"
 						@select="onCategorySelected"
