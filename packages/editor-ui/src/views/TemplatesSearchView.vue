@@ -35,6 +35,7 @@
 						:model-value="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
 						clearable
+						data-test-id="template-search-input"
 						@update:model-value="onSearchInput"
 						@blur="trackSearch"
 					>
@@ -46,7 +47,11 @@
 						<div :class="$style.header">
 							<n8n-heading :bold="true" size="medium" color="text-light">
 								{{ $locale.baseText('templates.collections') }}
-								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+								(<span
+									v-if="!loadingCollections"
+									data-test-id="collection-count-label"
+									v-text="`${collections.length}`"
+								/>)
 							</n8n-heading>
 						</div>
 						<TemplatesInfoCarousel

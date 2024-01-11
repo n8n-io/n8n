@@ -1,11 +1,11 @@
 <template>
-	<div :class="$style.filters" class="template-filters">
+	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
 			<n8n-loading :loading="loading" :rows="expandLimit" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
-			<li :class="$style.item">
+			<li :class="$style.item" data-test-id="template-filter-all-categories">
 				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
 					{{ $locale.baseText('templates.allCategories') }}
 				</el-checkbox>
@@ -16,6 +16,7 @@
 					: sortedCategories"
 				:key="index"
 				:class="$style.item"
+				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
 			>
 				<el-checkbox
 					:model-value="isSelected(category)"

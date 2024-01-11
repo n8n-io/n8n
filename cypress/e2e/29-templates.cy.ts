@@ -67,4 +67,64 @@ describe('Templates', () => {
 
 		templateWorkflowPage.getters.description().find('img').should('have.length', 1);
 	});
+
+	it('renders search elements correctly', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.searchInput().should('exist');
+		templatesPage.getters.allCategoriesFilter().should('exist');
+		templatesPage.getters.categoryFilters().should('have.length.greaterThan', 1);
+		templatesPage.getters.templateCards().should('have.length.greaterThan', 0);
+	});
+
+	it('can filter templates by category', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.categoryFilter('sales').should('exist');
+		let initialTemplateCount = 0;
+		let initialCollectionCount = 0;
+
+		templatesPage.getters.templateCountLabel().then(($el) => {
+			initialTemplateCount = Number($el.text());
+			templatesPage.getters.collectionCountLabel().then(($el) => {
+				initialCollectionCount = Number($el.text());
+
+				templatesPage.getters.categoryFilter('sales').click();
+				templatesPage.getters.templatesLoadingContainer().should('not.exist');
+
+				// Should have less templates and collections after selecting a category
+				templatesPage.getters.templateCountLabel().should(($el) => {
+					expect(Number($el.text())).to.be.lessThan(initialTemplateCount);
+				});
+				templatesPage.getters.collectionCountLabel().should(($el) => {
+					expect(Number($el.text())).to.be.lessThan(initialCollectionCount);
+				});
+			});
+		});
+	});
+
+	it('should preserve search query in URL', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.categoryFilter('sales').should('exist');
+		templatesPage.getters.categoryFilter('sales').click();
+		templatesPage.getters.searchInput().type('auto');
+
+		cy.url().should('include', '?categories=');
+		cy.url().should('include', '&search=');
+
+		cy.reload();
+
+		// Should preserve search query in URL
+		cy.url().should('include', '?categories=');
+		cy.url().should('include', '&search=');
+
+		// Sales category should still be selected
+		templatesPage.getters.categoryFilter('sales').find('label').should('have.class', 'is-checked');
+		// Search input should still have the search query
+		templatesPage.getters.searchInput().should('have.value', 'auto');
+		// Sales checkbox should be pushed to the top
+		templatesPage.getters.categoryFilters().eq(1).then(($el) => {
+			expect($el.text()).to.equal('Sales');
+		});
+	});
 });
