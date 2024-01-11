@@ -6,7 +6,7 @@ import {
 	getDomainPath,
 } from '@/TelemetryHelpers';
 import type { IWorkflowBase } from '@/index';
-import { nodeTypes, workflow } from './ExpressionExtensions/Helpers';
+import { nodeTypes } from './ExpressionExtensions/Helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
