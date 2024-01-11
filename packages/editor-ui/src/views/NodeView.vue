@@ -14,7 +14,7 @@
 				data-test-id="node-view-wrapper"
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
-				@touchmove="mouseMoveNodeWorkflow"
+				@touchmove="canvasPanning.onMouseMove"
 				@mousedown="mouseDown"
 				@mouseup="mouseUp"
 				@contextmenu="contextMenu.open"
@@ -28,7 +28,7 @@
 				/>
 				<div
 					id="node-view"
-					ref="nodeView"
+					ref="nodeViewRef"
 					class="node-view"
 					:style="workflowStyle"
 					data-test-id="node-view"
@@ -197,7 +197,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -245,7 +245,6 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
 } from '@/constants';
-import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -379,6 +378,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useCanvasPanning } from '@/composables/useCanvasPanning';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -406,7 +406,7 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [moveNodeWorkflow, workflowHelpers, workflowRun],
+	mixins: [workflowHelpers, workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -468,6 +468,7 @@ export default defineComponent({
 		}
 	},
 	setup(props, ctx) {
+		const nodeViewRef = ref(null);
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
@@ -479,6 +480,7 @@ export default defineComponent({
 		const pinnedData = usePinnedData(activeNode);
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
+		const canvasPanning = useCanvasPanning(nodeViewRef);
 
 		return {
 			locale,
@@ -489,6 +491,8 @@ export default defineComponent({
 			clipboard,
 			pinnedData,
 			deviceSupport,
+			canvasPanning,
+			nodeViewRef,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -555,7 +559,7 @@ export default defineComponent({
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 		},
 		nodeViewScale(newScale) {
-			const elementRef = this.$refs.nodeView as HTMLDivElement | undefined;
+			const elementRef = this.nodeViewRef as HTMLDivElement | undefined;
 			if (elementRef) {
 				elementRef.style.transform = `scale(${newScale})`;
 			}
@@ -773,7 +777,7 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.resetWorkspace();
-		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
+		this.canvasStore.initInstance(this.nodeViewRef as HTMLElement);
 		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -1393,7 +1397,7 @@ export default defineComponent({
 			}
 
 			this.mouseDownMouseSelect(e as MouseEvent, this.moveCanvasKeyPressed);
-			this.mouseDownMoveWorkflow(e as MouseEvent, this.moveCanvasKeyPressed);
+			this.canvasPanning.onMouseDown(e as MouseEvent, this.moveCanvasKeyPressed);
 
 			// Hide the node-creator
 			this.createNodeActive = false;
@@ -1403,7 +1407,7 @@ export default defineComponent({
 				this.moveCanvasKeyPressed = false;
 			}
 			this.mouseUpMouseSelect(e);
-			this.mouseUpMoveWorkflow(e);
+			this.canvasPanning.onMouseUp(e);
 		},
 		keyUp(e: KeyboardEvent) {
 			if (e.key === this.deviceSupport.controlKeyCode) {
