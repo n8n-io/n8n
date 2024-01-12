@@ -53,6 +53,14 @@ export const vmResolver = makeResolverFromLegacyOptions({
 		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
 		transitive: false,
 	},
+	resolve(moduleName, parentDirname) {
+		if (moduleName.match(/^langchain\//)) {
+			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
+				paths: [parentDirname],
+			});
+		}
+		return;
+	},
 	builtin: builtIn?.split(',') ?? [],
 });
 
