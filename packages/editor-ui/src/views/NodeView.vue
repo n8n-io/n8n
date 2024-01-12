@@ -4702,6 +4702,13 @@ export default defineComponent({
 					return;
 				}
 
+				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
+				const classNames = ['pinned'];
+
+				if (hasRun) {
+					classNames.push('has-run');
+				}
+
 				// @ts-ignore
 				const connections = this.instance?.getConnections({
 					source: node.id,
@@ -4711,7 +4718,7 @@ export default defineComponent({
 					NodeViewUtils.addConnectionOutputSuccess(connection, {
 						total: pinData[nodeName].length,
 						iterations: 0,
-						classNames: ['pinned'],
+						classNames,
 					});
 				});
 			});
@@ -4824,6 +4831,9 @@ export default defineComponent({
 					});
 				});
 			}
+
+			// This works somewhat but resets the color of connection if the parent has run already
+			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
