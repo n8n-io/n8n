@@ -4,14 +4,8 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import * as ResponseHelper from '@/ResponseHelper';
-import type {
-	IExecutionResponse,
-	IExecutionsStopData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
@@ -157,11 +151,19 @@ export class WaitTracker {
 			const workflowRunner = new WorkflowRunner();
 			await workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
+			console.log('got an error', error.message, error.stack);
 			ErrorReporter.error(error);
 			this.logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },
 			);
+		});
+	}
+
+	shutdown() {
+		clearInterval(this.mainTimer);
+		Object.keys(this.waitingExecutions).forEach((executionId) => {
+			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
 	}
 }

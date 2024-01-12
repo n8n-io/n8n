@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from 'express';
-import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -8,13 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
-import type {
-	IExecutionDb,
-	IExecutionFlatted,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-	IWorkflowDb,
-} from '@/Interfaces';
+
 import { inDevelopment } from '@/constants';
 import { ResponseError } from './errors/response-errors/abstract/response.error';
 
