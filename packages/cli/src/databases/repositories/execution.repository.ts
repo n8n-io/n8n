@@ -23,6 +23,7 @@ import {
 	type IExecutionsSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
+import { PruningService } from '@/services/pruning.service';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -38,7 +39,6 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import { PruningService } from '@/services/pruning.service';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,

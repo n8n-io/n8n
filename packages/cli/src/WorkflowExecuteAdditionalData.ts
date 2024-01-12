@@ -463,7 +463,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.executionId,
 								this.retryOf,
 							);
-
 							await Container.get(ExecutionRepository).hardDelete({
 								workflowId: this.workflowData.id as string,
 								executionId: this.executionId,

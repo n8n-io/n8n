@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { BinaryDataService, DisallowedFilepathError } from 'n8n-core';
+import { DisallowedFilepathError } from 'n8n-core';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -27,7 +27,6 @@ export class PruningService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	isPruningEnabled() {
