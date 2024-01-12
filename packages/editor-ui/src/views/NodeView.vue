@@ -495,7 +495,7 @@ export default defineComponent({
 			deviceSupport,
 			canvasPanning,
 			nodeViewRef,
-			onMouseMoveEnd, // To be refactored (unref) when migrating to composition API
+			onMouseMoveEnd,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -782,7 +782,8 @@ export default defineComponent({
 		};
 	},
 	async mounted() {
-		this.onMouseMoveEnd.value = this.mouseUp;
+		// To be refactored (unref) when migrating to composition API
+		this.onMouseMoveEnd = this.mouseUp;
 
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.nodeViewRef as HTMLElement);
