@@ -59,6 +59,16 @@ export class WaitTracker {
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
+				if (!(execution.waitTill instanceof Date)) {
+					ErrorReporter.error('Wait Till is not a date object', {
+						extra: {
+							variableType: typeof execution.waitTill,
+						},
+					});
+					if (typeof execution.waitTill === 'string') {
+						execution.waitTill = new Date(execution.waitTill);
+					}
+				}
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
