@@ -20,14 +20,14 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a message',
-				action: 'Create a message in a channel',
+				description: 'Create a message in a channel',
+				action: 'Create message',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many messages',
-				action: 'Get many messages in a channel',
+				description: 'Get many messages from a channel',
+				action: 'Get many messages',
 			},
 		],
 		default: 'create',
