@@ -90,22 +90,30 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
-		const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowActiveStateChanged');
+		const publishSpy = jest.spyOn(multiMainSetup, 'publish');
 
 		workflow.active = false;
 		await workflowService.update(owner, workflow, workflow.id);
 
-		expect(broadcastSpy).toHaveBeenCalledTimes(1);
+		expect(publishSpy).toHaveBeenCalledTimes(1);
+		expect(publishSpy).toHaveBeenCalledWith(
+			'workflowActiveStateChanged',
+			expect.objectContaining({
+				newState: false,
+				oldState: true,
+				workflowId: workflow.id,
+			}),
+		);
 	});
 
 	test('should not broadcast active workflow state change if state did not change', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
-		const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowActiveStateChanged');
+		const publishSpy = jest.spyOn(multiMainSetup, 'publish');
 
 		await workflowService.update(owner, workflow, workflow.id);
 
-		expect(broadcastSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 	});
 });
