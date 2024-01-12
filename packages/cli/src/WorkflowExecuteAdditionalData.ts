@@ -68,7 +68,6 @@ import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionPr
 import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
-import { WorkflowUtility } from './services/workflow.utility';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -657,10 +656,7 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	const startingNode = Container.get(WorkflowUtility).findStartingNode(
-		workflowData.nodes,
-		'integrated',
-	);
+	const startingNode = Workflow.selectSubworkflowStarter(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [

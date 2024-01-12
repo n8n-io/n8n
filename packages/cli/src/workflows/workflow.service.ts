@@ -31,7 +31,6 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowUtility } from '@/services/workflow.utility';
 
 @Service()
 export class WorkflowService {
@@ -50,7 +49,6 @@ export class WorkflowService {
 		private readonly testWebhooks: TestWebhooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly workflowUtility: WorkflowUtility,
 	) {}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
@@ -264,23 +262,16 @@ export class WorkflowService {
 		user: User,
 		sessionId?: string,
 	) {
-		let pinnedTrigger = null;
-
-		if (pinData && startNodes) {
-			const tempWorkflow = new Workflow({
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: workflowData.active,
-				nodeTypes: this.nodeTypes,
-			});
-
-			pinnedTrigger = this.workflowUtility.findStartingPinnedTrigger(
-				tempWorkflow,
-				workflowData.nodes,
-				pinData,
-				startNodes,
-			);
-		}
+		const pinnedTrigger =
+			pinData && startNodes
+				? new Workflow({
+						nodes: workflowData.nodes,
+						connections: workflowData.connections,
+						active: workflowData.active,
+						nodeTypes: this.nodeTypes,
+						pinData,
+				  }).selectPinnedActivatorStarter(startNodes)
+				: null;
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (

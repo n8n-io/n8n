@@ -21,3 +21,17 @@ export const CREDENTIAL_EMPTY_VALUE =
 	'__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da' as const;
 
 export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';
+
+export const NODE_TYPES = {
+	EXECUTE_WORKFLOW_TRIGGER: 'n8n-nodes-base.executeWorkflowTrigger',
+	START: 'n8n-nodes-base.start',
+	MANUAL_TRIGGER: 'n8n-nodes-base.manualTrigger',
+	MANUAL_CHAT_TRIGGER: '@n8n/n8n-nodes-langchain.manualChatTrigger',
+};
+
+export const SUBWORKFLOW_STARTER_NODES = [
+	NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER,
+	NODE_TYPES.MANUAL_CHAT_TRIGGER,
+	NODE_TYPES.START,
+	NODE_TYPES.MANUAL_TRIGGER,
+];

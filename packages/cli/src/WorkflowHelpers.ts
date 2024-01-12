@@ -574,7 +574,6 @@ export function validateWorkflowCredentialUsage(
 	return newWorkflowVersion;
 }
 
-// @TODO
 export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 	let startNode;
 	if (

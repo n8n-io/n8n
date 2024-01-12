@@ -27,6 +27,8 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	WebhookPathTakenError,
 	ApplicationError,
+	SUBWORKFLOW_STARTER_NODES,
+	NODE_TYPES,
 } from 'n8n-workflow';
 
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -36,11 +38,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionsService } from './executions/executions.service';
-import {
-	STARTING_NODES_IN_ORDER,
-	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
+import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -599,7 +597,11 @@ export class ActiveWorkflowRunner {
 				settings: dbWorkflow.settings,
 			});
 
-			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES_IN_ORDER);
+			const starters = SUBWORKFLOW_STARTER_NODES.filter(
+				(node) => node !== NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER,
+			);
+
+			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(starters);
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(

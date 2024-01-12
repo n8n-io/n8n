@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, Workflow, jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -12,7 +12,6 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { WorkflowUtility } from '@/services/workflow.utility';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import type {
@@ -635,10 +634,7 @@ export class ExecuteBatch extends BaseCommand {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
-				const startingNode = Container.get(WorkflowUtility).findStartingNode(
-					workflowData.nodes,
-					'cli',
-				);
+				const startingNode = Workflow.selectSubworkflowStarter(workflowData.nodes);
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',

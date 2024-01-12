@@ -8,7 +8,6 @@ export { WorkflowActivationError } from './workflow-activation.error';
 export { WorkflowDeactivationError } from './workflow-deactivation.error';
 export { WorkflowOperationError } from './workflow-operation.error';
 export { SubworkflowOperationError } from './subworkflow-operation.error';
-export { CliWorkflowOperationError } from './cli-subworkflow-operation.error';
 
 export { NodeError } from './abstract/node.error';
 export { ExecutionBaseError } from './abstract/execution-base.error';

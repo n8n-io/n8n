@@ -51,7 +51,7 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
-import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import { NODES_WITH_RENAMABLE_CONTENT, SUBWORKFLOW_STARTER_NODES } from './Constants';
 import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -64,6 +64,8 @@ export class Workflow {
 	name: string | undefined;
 
 	nodes: INodes = {};
+
+	nodeNames: string[] = [];
 
 	connectionsBySourceNode: IConnections;
 
@@ -106,6 +108,7 @@ export class Workflow {
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
 			this.nodes[node.name] = node;
+			this.nodeNames.push(node.name);
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
@@ -1420,6 +1423,75 @@ export class Workflow {
 				),
 			};
 		}
+	}
+
+	/**
+	 * Select the node to use as starter for a subworkflow execution.
+	 */
+	static selectSubworkflowStarter(nodes: INode[]) {
+		const found = nodes.find((n) => SUBWORKFLOW_STARTER_NODES.includes(n.type));
+
+		if (found) return found;
+
+		const starterNodesToDisplay = SUBWORKFLOW_STARTER_NODES.join(', ');
+
+		throw new ApplicationError(
+			`Missing node to start execution. Please ensure the workflow you are calling contains at least one of the following nodes: ${starterNodesToDisplay}`,
+		);
+	}
+
+	/**
+	 * Select the pinned activator node to use as starter for a manual execution.
+	 *
+	 * In a full manual execution, select the pinned activator that was first added
+	 * to the workflow, prioritizing `n8n-nodes-base.webhook` over other activators.
+	 *
+	 * In a partial manual execution, if the executed node has parent nodes among the
+	 * pinned activators, select the pinned activator that was first added to the workflow,
+	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
+	 * has no upstream nodes and is itself is a pinned activator, select it.
+	 */
+	selectPinnedActivatorStarter(startNodeNames: string[]) {
+		const allPinnedActivators = this.findAllPinnedActivators().sort((a) =>
+			a.type.endsWith('webhook') ? -1 : 1,
+		);
+
+		const [firstPinnedActivator] = allPinnedActivators;
+
+		// full manual execution
+
+		if (startNodeNames?.length === 0) return firstPinnedActivator ?? null;
+
+		// partial manual execution
+
+		const [firstStartNodeName] = startNodeNames;
+
+		const parentNodeNames = this.getParentNodes(firstStartNodeName);
+
+		if (parentNodeNames.length > 0) {
+			const parentNodeName = parentNodeNames.find((p) => p === firstPinnedActivator.name);
+
+			return allPinnedActivators.find((pa) => pa.name === parentNodeName) ?? null;
+		}
+
+		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
+	}
+
+	/**
+	 * Find all pinned nodes that may activate a workflow.
+	 */
+	private findAllPinnedActivators() {
+		return this.nodeNames
+			.reduce<INode[]>((acc, nodeName) => {
+				acc.push(this.nodes[nodeName]);
+				return acc;
+			}, [])
+			.filter(
+				(node) =>
+					!node.disabled &&
+					this.pinData?.[node.name] &&
+					['trigger', 'webhook'].some((suffix) => node.type.toLowerCase().endsWith(suffix)),
+			);
 	}
 }
 

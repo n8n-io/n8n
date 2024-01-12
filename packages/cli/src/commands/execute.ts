@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { flags } from '@oclif/command';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
+import { ApplicationError, ExecutionBaseError, Workflow } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -12,7 +12,6 @@ import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowUtility } from '@/services/workflow.utility';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -97,7 +96,7 @@ export class Execute extends BaseCommand {
 			workflowId = undefined;
 		}
 
-		const startingNode = Container.get(WorkflowUtility).findStartingNode(workflowData.nodes, 'cli');
+		const startingNode = Workflow.selectSubworkflowStarter(workflowData.nodes);
 
 		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
