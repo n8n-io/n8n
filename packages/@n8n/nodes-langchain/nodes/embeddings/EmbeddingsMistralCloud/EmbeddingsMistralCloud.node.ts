@@ -49,7 +49,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '{{$credentials.endpoint}}/v1',
+			baseURL: '={{$credentials.endpoint}}/v1',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),

@@ -50,7 +50,7 @@ export class LmChatMistralCloud implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '{{$credentials.endpoint}}/v1',
+			baseURL: '={{$credentials.endpoint}}/v1',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
