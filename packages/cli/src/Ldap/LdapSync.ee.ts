@@ -1,5 +1,5 @@
 import type { Entry as LdapUser } from 'ldapts';
-import { QueryFailedError } from 'typeorm/error/QueryFailedError';
+import { QueryFailedError } from '@/databases/types';
 import type { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import {
