@@ -1452,9 +1452,7 @@ export class Workflow {
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
 	selectPinnedActivatorStarter(startNodeNames: string[]) {
-		const allPinnedActivators = this.findAllPinnedActivators().sort((a) =>
-			a.type.endsWith('webhook') ? -1 : 1,
-		);
+		const allPinnedActivators = this.findAllPinnedActivators();
 
 		const [firstPinnedActivator] = allPinnedActivators;
 
@@ -1478,7 +1476,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Find all pinned nodes that may activate a workflow.
+	 * Find all pinned nodes that may activate a workflow, prioritizing `n8n-nodes-base.webhook`.
 	 */
 	private findAllPinnedActivators() {
 		return this.nodeNames
@@ -1491,7 +1489,8 @@ export class Workflow {
 					!node.disabled &&
 					this.pinData?.[node.name] &&
 					['trigger', 'webhook'].some((suffix) => node.type.toLowerCase().endsWith(suffix)),
-			);
+			)
+			.sort((a) => (a.type.endsWith('webhook') ? -1 : 1));
 	}
 }
 
