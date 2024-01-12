@@ -41,7 +41,8 @@ const properties: INodeProperties[] = [
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
-				type: 'dateTime',
+				type: 'string',
+				validateType: 'dateTime',
 				default: '',
 				description:
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',

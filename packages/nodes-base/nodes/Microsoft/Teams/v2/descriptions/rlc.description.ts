@@ -83,25 +83,6 @@ export const channelRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'From URL',
-			name: 'url',
-			type: 'string',
-			placeholder: 'e.g. https://teams.microsoft.com/l/team/19%3AP8l9gXd6oqlgq…',
-			extractValue: {
-				type: 'regex',
-				regex: 'threadId=([a-f0-9-]+)\\&',
-			},
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: 'https:\\/\\/teams.microsoft.com\\/.*groupId=[a-f0-9-]+\\&.*',
-						errorMessage: 'Not a valid Microsoft Channel URL',
-					},
-				},
-			],
-		},
-		{
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
@@ -128,26 +109,6 @@ export const chatRLC: INodeProperties = {
 			typeOptions: {
 				searchListMethod: 'getChats',
 				searchable: true,
-			},
-		},
-		{
-			displayName: 'By URL',
-			name: 'url',
-			type: 'string',
-			placeholder:
-				'https://teams.microsoft.com/_#/conversations/19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces?ctx=chat',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)\\?ctx=chat[ \t]*',
-						errorMessage: 'Not a valid Microsoft Teams URL',
-					},
-				},
-			],
-			extractValue: {
-				type: 'regex',
-				regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)',
 			},
 		},
 		{

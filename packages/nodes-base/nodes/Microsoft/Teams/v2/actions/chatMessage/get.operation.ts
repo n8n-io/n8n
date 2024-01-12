@@ -1,4 +1,4 @@
-import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest } from '../../transport';
 import { chatRLC } from '../../descriptions';
@@ -28,8 +28,27 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 
-	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
-	const messageId = this.getNodeParameter('messageId', i) as string;
+	try {
+		const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+		const messageId = this.getNodeParameter('messageId', i) as string;
 
-	return microsoftApiRequest.call(this, 'GET', `/v1.0/chats/${chatId}/messages/${messageId}`);
+		return await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/v1.0/chats/${chatId}/messages/${messageId}`,
+		);
+	} catch (error) {
+		if (
+			error.message &&
+			(error.message.includes('NotFound') || error.message.includes('InvalidParameter'))
+		) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"The message you are trying to get doesn't exist",
+				{
+					description: "Check that the 'Message ID' parameter is correctly set",
+				},
+			);
+		}
+	}
 }
