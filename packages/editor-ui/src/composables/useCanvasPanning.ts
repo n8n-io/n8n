@@ -8,6 +8,7 @@ import { useDeviceSupport } from 'n8n-design-system';
 export function useCanvasPanning(
 	elementRef: Ref<null | HTMLElement>,
 	options: {
+		// To be refactored (unref) when migrating NodeView to composition API
 		onMouseMoveEnd?: Ref<null | ((e: MouseEvent) => void)>;
 	} = {},
 ) {

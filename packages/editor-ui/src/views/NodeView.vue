@@ -495,7 +495,7 @@ export default defineComponent({
 			deviceSupport,
 			canvasPanning,
 			nodeViewRef,
-			onMouseMoveEnd,
+			onMouseMoveEnd, // To be refactored (unref) when migrating to composition API
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
