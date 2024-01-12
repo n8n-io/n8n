@@ -142,14 +142,6 @@ export class BinaryDataService {
 		return this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		const manager = this.managers[this.mode];
-
-		if (!manager) return;
-
-		if (manager.deleteMany) await manager.deleteMany(ids);
-	}
-
 	async duplicateBinaryData(
 		workflowId: string,
 		executionId: string,

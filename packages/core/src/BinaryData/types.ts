@@ -38,8 +38,6 @@ export namespace BinaryData {
 
 	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
-	export type IdsForDeletion = Array<{ workflowId: string; executionId: string }>;
-
 	export interface Manager {
 		init(): Promise<void>;
 
@@ -54,11 +52,6 @@ export namespace BinaryData {
 		getAsBuffer(fileId: string): Promise<Buffer>;
 		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
-
-		/**
-		 * Present for `FileSystem`, absent for `ObjectStore` (delegated to S3 lifecycle config)
-		 */
-		deleteMany?(ids: IdsForDeletion): Promise<void>;
 
 		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
 		copyByFilePath(
