@@ -49,7 +49,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.mistral.ai/v1',
+			baseURL: '{{$credentials.endpoint}}/v1',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
@@ -145,6 +145,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 
 		const embeddings = new MistralAIEmbeddings({
 			apiKey: credentials.apiKey as string,
+			endpoint: credentials.endpoint as string,
 			modelName,
 			...options,
 		});
