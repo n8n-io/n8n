@@ -1,11 +1,11 @@
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
-import { mockInstance } from '../../integration/shared/utils/';
 import { RoleService } from '@/services/role.service';
-import { RoleRepository } from '@/databases/repositories';
-import { CacheService } from '@/services/cache.service';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { RoleRepository } from '@db/repositories/role.repository';
+import { CacheService } from '@/services/cache/cache.service';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { mockInstance } from '../../shared/mocking';
 import { chooseRandomly } from '../../integration/shared/random';
 import config from '@/config';
 

@@ -9,6 +9,7 @@ export type FormField = {
 export type FormTriggerInput = {
 	isSelect?: boolean;
 	isMultiSelect?: boolean;
+	isTextarea?: boolean;
 	isInput?: boolean;
 	labbel: string;
 	id: string;
@@ -25,6 +26,8 @@ export type FormTriggerData = {
 	formTitle: string;
 	formDescription?: string;
 	formSubmittedText?: string;
+	redirectUrl?: string;
 	n8nWebsiteLink: string;
 	formFields: FormTriggerInput[];
+	useResponseData?: boolean;
 };

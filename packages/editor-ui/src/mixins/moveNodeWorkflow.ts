@@ -1,12 +1,11 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
+import { useDeviceSupport } from 'n8n-design-system';
 
 export const moveNodeWorkflow = defineComponent({
-	mixins: [deviceSupportHelpers],
 	data() {
 		return {
 			moveLastPosition: [0, 0],
@@ -30,7 +29,9 @@ export const moveNodeWorkflow = defineComponent({
 			this.moveLastPosition[1] = y;
 		},
 		mouseDownMoveWorkflow(e: MouseEvent, moveButtonPressed: boolean) {
-			if (this.isCtrlKeyPressed(e) === false && !moveButtonPressed) {
+			const deviceSupport = useDeviceSupport();
+
+			if (!deviceSupport.isCtrlKeyPressed(e) && !moveButtonPressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
@@ -55,7 +56,7 @@ export const moveNodeWorkflow = defineComponent({
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
 		mouseUpMoveWorkflow(e: MouseEvent) {
-			if (this.uiStore.nodeViewMoveInProgress === false) {
+			if (!this.uiStore.nodeViewMoveInProgress) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;

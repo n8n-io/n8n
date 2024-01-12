@@ -40,7 +40,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export default defineComponent({
 	name: 'InlineExpressionEditorOutput',
@@ -62,18 +62,6 @@ export default defineComponent({
 			required: true,
 		},
 	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
-
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
 	setup() {
 		const i18n = useI18n();
 
@@ -86,18 +74,6 @@ export default defineComponent({
 			editor: null as EditorView | null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
-		});
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
 	},
 	computed: {
 		resolvedExpression(): string {
@@ -119,13 +95,37 @@ export default defineComponent({
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
 							: segment.resolved
-							? (segment.resolved as any).toString().length
-							: 0;
+							  ? segment.resolved.toString().length
+							  : 0;
 					segment.to = cursor;
 					return segment;
 				})
 				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
 		},
+	},
+	watch: {
+		segments() {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
+			});
+
+			highlighter.addColor(this.editor, this.resolvedSegments);
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+		},
+	},
+	mounted() {
+		this.editor = new EditorView({
+			parent: this.$refs.root as HTMLDivElement,
+			state: EditorState.create({
+				doc: this.resolvedExpression,
+				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
+			}),
+		});
+	},
+	beforeUnmount() {
+		this.editor?.destroy();
 	},
 });
 </script>
@@ -140,13 +140,17 @@ export default defineComponent({
 	flex-direction: column;
 	position: absolute;
 	z-index: 2; // cover tooltips
-	background: white;
+	background: var(--color-code-background);
 	border: var(--border-base);
 	border-top: none;
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
+
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
 
 	.header,
 	.body,
@@ -179,7 +183,7 @@ export default defineComponent({
 			display: inline-block;
 			font-size: var(--font-size-2xs);
 			height: var(--font-size-m);
-			background-color: #f0f0f0;
+			background-color: var(--color-expression-syntax-example);
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);
 		}

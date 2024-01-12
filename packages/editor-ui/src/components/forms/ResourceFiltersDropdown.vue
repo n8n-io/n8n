@@ -15,11 +15,11 @@
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
-			<slot :filters="modelValue" :setKeyValue="setKeyValue" />
+			<slot :filters="modelValue" :set-key-value="setKeyValue" />
 			<enterprise-edition
+				v-if="shareable"
 				class="mb-s"
 				:features="[EnterpriseEditionFeature.Sharing]"
-				v-if="shareable"
 			>
 				<n8n-input-label
 					:label="$locale.baseText('forms.resourceFiltersDropdown.ownedBy')"
@@ -30,13 +30,13 @@
 				/>
 				<n8n-user-select
 					:users="ownedByUsers"
-					:currentUserId="usersStore.currentUser.id"
-					:modelValue="modelValue.ownedBy"
+					:current-user-id="usersStore.currentUser.id"
+					:model-value="modelValue.ownedBy"
 					size="medium"
 					@update:modelValue="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
+			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
 				<n8n-input-label
 					:label="$locale.baseText('forms.resourceFiltersDropdown.sharedWith')"
 					:bold="false"
@@ -46,13 +46,13 @@
 				/>
 				<n8n-user-select
 					:users="sharedWithUsers"
-					:currentUserId="usersStore.currentUser.id"
-					:modelValue="modelValue.sharedWith"
+					:current-user-id="usersStore.currentUser.id"
+					:model-value="modelValue.sharedWith"
 					size="medium"
 					@update:modelValue="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
-			<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
+			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
 				<n8n-link @click="resetFilters">
 					{{ $locale.baseText('forms.resourceFiltersDropdown.reset') }}
 				</n8n-link>
@@ -109,7 +109,7 @@ export default defineComponent({
 		filtersLength(): number {
 			let length = 0;
 
-			(this.keys as string[]).forEach((key) => {
+			this.keys.forEach((key) => {
 				if (key === 'search') {
 					return;
 				}
@@ -129,6 +129,11 @@ export default defineComponent({
 			return this.filtersLength > 0;
 		},
 	},
+	watch: {
+		filtersLength(value: number) {
+			this.$emit('update:filtersLength', value);
+		},
+	},
 	methods: {
 		setKeyValue(key: string, value: unknown) {
 			const filters = {
@@ -144,17 +149,12 @@ export default defineComponent({
 			} else {
 				const filters = { ...this.modelValue };
 
-				(this.keys as string[]).forEach((key) => {
+				this.keys.forEach((key) => {
 					filters[key] = Array.isArray(this.modelValue[key]) ? [] : '';
 				});
 
 				this.$emit('update:modelValue', filters);
 			}
-		},
-	},
-	watch: {
-		filtersLength(value: number) {
-			this.$emit('update:filtersLength', value);
 		},
 	},
 });

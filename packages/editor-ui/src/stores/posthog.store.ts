@@ -1,23 +1,27 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
-import { debounce } from 'lodash-es';
+import { useDebounce } from '@/composables/useDebounce';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
+
+export type PosthogStore = ReturnType<typeof usePostHog>;
 
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
+	const { debounce } = useDebounce();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -38,13 +42,20 @@ export const usePostHog = defineStore('posthog', () => {
 		return getVariant(experiment) === variant;
 	};
 
+	/**
+	 * Checks if the given feature flag is enabled. Should only be used for boolean flags
+	 */
+	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
+		return featureFlags.value?.[experiment] === true;
+	};
+
 	if (!window.featureFlags) {
 		// for testing
-		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
-		if (cachedOverrdies) {
+		const cachedOverrides = useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value;
+		if (cachedOverrides) {
 			try {
-				console.log('Overriding feature flags', cachedOverrdies);
-				overrides.value = JSON.parse(cachedOverrdies);
+				console.log('Overriding feature flags', cachedOverrides);
+				overrides.value = JSON.parse(cachedOverrides);
 			} catch (e) {
 				console.log('Could not override experiment', e);
 			}
@@ -59,12 +70,12 @@ export const usePostHog = defineStore('posthog', () => {
 					[name]: value,
 				};
 				try {
-					localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
+					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
 			},
 
 			getVariant,
-			getAll: () => featureFlags.value || {},
+			getAll: () => featureFlags.value ?? {},
 		};
 	}
 
@@ -88,6 +99,27 @@ export const usePostHog = defineStore('posthog', () => {
 			...overrides.value,
 		};
 	};
+
+	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		const variant = featFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+			name,
+			variant,
+		});
+
+		trackedDemoExp.value[name] = variant;
+	};
+
+	const trackExperiments = (featFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, {
+		debounceTime: 2000,
+	});
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {
@@ -142,25 +174,6 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const trackExperiments = (featureFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	};
-	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
-
-	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
-		const variant = featureFlags[name];
-		if (!variant || trackedDemoExp.value[name] === variant) {
-			return;
-		}
-
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
-
-		trackedDemoExp.value[name] = variant;
-	};
-
 	const capture = (event: string, properties: IDataObject) => {
 		if (typeof window.posthog?.capture === 'function') {
 			window.posthog.capture(event, properties);
@@ -180,9 +193,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
 		reset,
+		identify,
 		capture,
 		setMetadata,
 	};

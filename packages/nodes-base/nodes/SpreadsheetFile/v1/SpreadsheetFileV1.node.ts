@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -24,10 +23,11 @@ import {
 } from 'xlsx';
 
 import {
-	operationProperties,
-	fromFileProperties,
+	operationProperty,
+	binaryProperty,
 	toFileProperties,
-	optionsProperties,
+	fromFileOptions,
+	toFileOptions,
 } from '../description';
 import { flattenObject, generatePairedItemData } from '@utils/utilities';
 import { oldVersionNotice } from '@utils/descriptions';
@@ -47,10 +47,11 @@ export class SpreadsheetFileV1 implements INodeType {
 			outputs: ['main'],
 			properties: [
 				oldVersionNotice,
-				...operationProperties,
-				...fromFileProperties,
+				operationProperty,
+				binaryProperty,
 				...toFileProperties,
-				...optionsProperties,
+				fromFileOptions,
+				toFileOptions,
 			],
 		};
 	}
@@ -78,6 +79,7 @@ export class SpreadsheetFileV1 implements INodeType {
 
 					if (binaryData.id) {
 						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+						xlsxOptions.codepage = 65001; // utf8 codepage
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
 						const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);

@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import * as sheet from './sheet/Sheet.resource';
-import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
+import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
+import * as sheet from './sheet/Sheet.resource';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let operationResult: INodeExecutionData[] = [];
@@ -29,17 +29,25 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			const googleSheet = new GoogleSheet(spreadsheetId, this);
 
 			let sheetId = '';
+			let sheetName = '';
+
 			if (operation !== 'create') {
-				sheetId = this.getNodeParameter('sheetName', 0, undefined, {
+				const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
 					extractValue: true,
 				}) as string;
+				const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+					mode: ResourceLocator;
+				};
+
+				const result = await googleSheet.spreadsheetGetSheet(
+					this.getNode(),
+					sheetMode,
+					sheetWithinDocument,
+				);
+				sheetId = result.sheetId.toString();
+				sheetName = result.title;
 			}
 
-			if (sheetId === 'gid=0') {
-				sheetId = '0';
-			}
-
-			let sheetName = '';
 			switch (operation) {
 				case 'create':
 					sheetName = spreadsheetId;
@@ -50,8 +58,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'remove':
 					sheetName = `${spreadsheetId}||${sheetId}`;
 					break;
-				default:
-					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			}
 
 			results = await sheet[googleSheets.operation].execute.call(

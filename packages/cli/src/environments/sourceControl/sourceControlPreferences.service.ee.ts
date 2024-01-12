@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
@@ -10,8 +10,7 @@ import {
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
-import * as Db from '@/Db';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -22,6 +21,7 @@ import path from 'path';
 import type { KeyPairType } from './types/keyPairType';
 import config from '@/config';
 import { Logger } from '@/Logger';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 
 @Service()
 export class SourceControlPreferencesService {
@@ -108,7 +108,7 @@ export class SourceControlPreferencesService {
 				});
 				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
 			} catch (error) {
-				throw Error(`Failed to save key pair: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save key pair', { cause: error });
 			}
 		}
 		// update preferences only after generating key pair to prevent endless loop
@@ -150,7 +150,9 @@ export class SourceControlPreferencesService {
 			validationError: { target: false },
 		});
 		if (validationResult.length > 0) {
-			throw new Error(`Invalid source control preferences: ${JSON.stringify(validationResult)}`);
+			throw new ApplicationError('Invalid source control preferences', {
+				extra: { preferences: validationResult },
+			});
 		}
 		return validationResult;
 	}
@@ -171,13 +173,13 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Db.collections.Settings.save({
+				await Container.get(SettingsRepository).save({
 					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
 					value: settingsValue,
 					loadOnStartup: true,
 				});
 			} catch (error) {
-				throw new Error(`Failed to save source control preferences: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;
@@ -186,7 +188,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Db.collections.Settings.findOne({
+		const loadedPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {

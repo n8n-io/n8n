@@ -1,19 +1,21 @@
 import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
 import type { IRestApiContext, RootState } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import { setGlobalState, type IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
 export const useRootStore = defineStore(STORES.ROOT, {
 	state: (): RootState => ({
-		baseUrl:
-			VUE_APP_URL_BASE_API ?? (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
+		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint:
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
 				? 'rest'
 				: window.REST_ENDPOINT,
 		defaultLocale: 'en',
+		endpointForm: 'form',
+		endpointFormTest: 'form-test',
+		endpointFormWaiting: 'form-waiting',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
 		pushConnectionActive: true,
@@ -32,6 +34,18 @@ export const useRootStore = defineStore(STORES.ROOT, {
 	getters: {
 		getBaseUrl(): string {
 			return this.baseUrl;
+		},
+
+		getFormUrl(): string {
+			return `${this.urlBaseWebhook}${this.endpointForm}`;
+		},
+
+		getFormTestUrl(): string {
+			return `${this.urlBaseEditor}${this.endpointFormTest}`;
+		},
+
+		getFormWaitingUrl(): string {
+			return `${this.baseUrl}${this.endpointFormWaiting}`;
 		},
 
 		getWebhookUrl(): string {
@@ -71,6 +85,15 @@ export const useRootStore = defineStore(STORES.ROOT, {
 			const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
 			this.urlBaseEditor = url;
 		},
+		setEndpointForm(endpointForm: string): void {
+			this.endpointForm = endpointForm;
+		},
+		setEndpointFormTest(endpointFormTest: string): void {
+			this.endpointFormTest = endpointFormTest;
+		},
+		setEndpointFormWaiting(endpointFormWaiting: string): void {
+			this.endpointFormWaiting = endpointFormWaiting;
+		},
 		setEndpointWebhook(endpointWebhook: string): void {
 			this.endpointWebhook = endpointWebhook;
 		},
@@ -79,6 +102,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		},
 		setTimezone(timezone: string): void {
 			this.timezone = timezone;
+			setGlobalState({ defaultTimezone: timezone });
 		},
 		setExecutionTimeout(executionTimeout: number): void {
 			this.executionTimeout = executionTimeout;

@@ -17,7 +17,6 @@ import {
 import { SourceControlGitService } from './sourceControlGit.service.ee';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
-import { BadRequestError } from '@/ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { SourceControlPushWorkFolder } from './types/sourceControlPushWorkFolder';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
@@ -33,8 +32,10 @@ import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
 import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class SourceControlService {
@@ -83,7 +84,7 @@ export class SourceControlService {
 				false,
 			);
 			if (!foldersExisted) {
-				throw new Error();
+				throw new ApplicationError('No folders exist');
 			}
 			if (!this.gitService.git) {
 				await this.initGitService();
@@ -94,7 +95,7 @@ export class SourceControlService {
 				branches.current !==
 					this.sourceControlPreferencesService.sourceControlPreferences.branchName
 			) {
-				throw new Error();
+				throw new ApplicationError('Branch is not set up correctly');
 			}
 		} catch (error) {
 			throw new BadRequestError(
@@ -116,7 +117,7 @@ export class SourceControlService {
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
-			throw Error(`Failed to disconnect from source control: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to disconnect from source control', { cause: error });
 		}
 	}
 
@@ -195,7 +196,7 @@ export class SourceControlService {
 			await this.gitService.pull();
 		} catch (error) {
 			this.logger.error(`Failed to reset workfolder: ${(error as Error).message}`);
-			throw new Error(
+			throw new ApplicationError(
 				'Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page.',
 			);
 		}

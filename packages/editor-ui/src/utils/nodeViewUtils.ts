@@ -1,5 +1,4 @@
-import { getStyleTokenValue } from '@/utils/htmlUtils';
-import { isNumber, closestNumberDivisibleBy } from '@/utils';
+import { isNumber } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
@@ -8,7 +7,6 @@ import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	ConnectionTypes,
 	IConnection,
-	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -16,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 /*
 	Canvas constants and functions.
@@ -88,7 +86,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 	strokeWidth: 2,
 	outlineWidth: 12,
 	outlineStroke: 'transparent',
@@ -96,12 +94,12 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 
 export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-xdark', true),
+	stroke: 'var(--color-foreground-xdark)',
 };
 
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary', true),
+	stroke: 'var(--color-primary)',
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
@@ -109,10 +107,14 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...{
 		dashstyle: '5 3',
 	},
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 };
 
-export const getConnectorColor = (type: ConnectionTypes): string => {
+export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
+	if (category === 'error') {
+		return '--node-error-output-color';
+	}
+
 	if (type === NodeConnectionType.Main) {
 		return '--node-type-main-color';
 	}
@@ -121,31 +123,40 @@ export const getConnectorColor = (type: ConnectionTypes): string => {
 };
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	const additionalStyles: PaintStyle = {};
 	if (connection.parameters.type !== NodeConnectionType.Main) {
 		additionalStyles.dashstyle = '5 3';
 	}
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 		...additionalStyles,
 	};
 };
 
 export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
-export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStyleData = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
@@ -248,8 +259,8 @@ export const getInputEndpointStyle = (
 	return {
 		width,
 		height,
-		fill: getStyleTokenValue(color),
-		stroke: getStyleTokenValue(color),
+		fill: `var(${color})`,
+		stroke: `var(${color})`,
 		lineWidth: 0,
 	};
 };
@@ -271,9 +282,9 @@ export const getInputNameOverlay = (
 				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
+			label.classList.add(`node-connection-type-${inputName ?? 'main'}`);
 			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
-				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -285,13 +296,14 @@ export const getOutputEndpointStyle = (
 	color: string,
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color, true),
+	fill: `var(${color})`,
 	outlineStroke: 'none',
 });
 
 export const getOutputNameOverlay = (
 	labelText: string,
 	outputName: ConnectionTypes,
+	category?: string,
 ): OverlaySpec => ({
 	type: 'Custom',
 	options: {
@@ -302,10 +314,15 @@ export const getOutputNameOverlay = (
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
 
-			label.setAttribute('data-endpoint-node-type', ep?.__meta?.nodeType);
+			if (ep?.__meta?.endpointLabelLength) {
+				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
+			}
+			label.classList.add(`node-connection-type-${getScope(outputName) ?? 'main'}`);
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
-				label.classList.add(`node-connection-type-${getScope(outputName)}`);
+			}
+			if (category) {
+				label.classList.add(`node-connection-category-${category}`);
 			}
 			return label;
 		},
@@ -318,7 +335,7 @@ export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => 
 	});
 };
 
-export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
+export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
 	return nodes.reduce((leftmostTop, node) => {
 		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
 			return leftmostTop;
@@ -495,6 +512,25 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	return true;
 };
 
+const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
+	const quotient = Math.ceil(inputNumber / divisibleBy);
+
+	// 1st possible closest number
+	const inputNumber1 = divisibleBy * quotient;
+
+	// 2nd possible closest number
+	const inputNumber2 =
+		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
+
+	// if true, then inputNumber1 is the required closest number
+	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
+		return inputNumber1;
+	}
+
+	// else inputNumber2 is the required closest number
+	return inputNumber2;
+};
+
 export const getNewNodePosition = (
 	nodes: INodeUi[],
 	newPosition: XYPosition,
@@ -566,7 +602,7 @@ export const getBackgroundStyles = (
 	if (executionPreview) {
 		return {
 			'background-image':
-				'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+				'linear-gradient(135deg, var(--color-canvas-read-only-line) 25%, var(--color-canvas-background) 25%, var(--color-canvas-background) 50%, var(--color-canvas-read-only-line) 50%, var(--color-canvas-read-only-line) 75%, var(--color-canvas-background) 75%, var(--color-canvas-background) 100%)',
 			'background-size': `${squareSize}px ${squareSize}px`,
 			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 		};
@@ -577,10 +613,9 @@ export const getBackgroundStyles = (
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
 	if (squareSize > 10.5) {
-		const dotColor = getStyleTokenValue('--color-canvas-dot');
 		return {
 			...styles,
-			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
+			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, var(--color-canvas-dot) ${dotSize}px, transparent 0)`,
 		};
 	}
 
@@ -628,7 +663,7 @@ export const getOutputSummary = (
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data?.[connectionType]) {
+		if (!run?.data?.[connectionType]) {
 			return;
 		}
 
@@ -720,9 +755,15 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number },
+	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
-	connection.addClass('success');
+	const classNames: string[] = ['success'];
+
+	if (output.classNames) {
+		classNames.push(...output.classNames);
+	}
+
+	connection.addClass(classNames.join(' '));
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
@@ -736,7 +777,7 @@ export const addConnectionOutputSuccess = (
 					const container = document.createElement('div');
 					const span = document.createElement('span');
 
-					container.classList.add('connection-run-items-label');
+					container.classList.add(...['connection-run-items-label', ...classNames]);
 					span.classList.add('floating');
 					span.innerHTML = getRunItemsLabel(output);
 					container.appendChild(span);
@@ -753,6 +794,27 @@ export const addConnectionOutputSuccess = (
 
 	(connection.endpoints || []).forEach((endpoint) => {
 		connection.instance.repaint(endpoint.element);
+	});
+};
+
+export const addClassesToOverlays = ({
+	connection,
+	overlayIds,
+	classNames,
+	includeConnector,
+}: {
+	connection: Connection;
+	overlayIds: string[];
+	classNames: string[];
+	includeConnector?: boolean;
+}) => {
+	overlayIds.forEach((overlayId) => {
+		const overlay = getOverlay(connection, overlayId);
+
+		overlay?.canvas?.classList.add(...classNames);
+		if (includeConnector) {
+			connection.connector.canvas?.classList.add(...classNames);
+		}
 	});
 };
 
@@ -946,7 +1008,7 @@ export const getInputEndpointUUID = (
 	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
 };
 
-export const getFixedNodesList = (workflowNodes: INode[]) => {
+export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
 	const nodes = [...workflowNodes];
 
 	if (nodes.length) {
@@ -963,3 +1025,61 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 
 	return nodes;
 };
+
+/**
+ * Calculates the intersecting distances of the mouse event coordinates with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns { {x: number | null, y: number | null} | null } Object containing intersecting distances along x and y axes or null if no intersection.
+ */
+export function calculateElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): { x: number | null; y: number | null } | null {
+	const { top, left, right, bottom } = element.getBoundingClientRect();
+	const [x, y] = getMousePosition(mouseEvent);
+
+	let intersectX: number | null = null;
+	let intersectY: number | null = null;
+
+	if (x >= left - offset && x <= right + offset) {
+		intersectX = Math.min(x - (left - offset), right + offset - x);
+	}
+	if (y >= top - offset && y <= bottom + offset) {
+		intersectY = Math.min(y - (top - offset), bottom + offset - y);
+	}
+
+	if (intersectX === null && intersectY === null) return null;
+
+	return { x: intersectX, y: intersectY };
+}
+
+/**
+ * Checks if the mouse event coordinates intersect with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns {boolean} True if the mouse coordinates intersect with the element.
+ */
+export function isElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): boolean {
+	const intersection = calculateElementIntersection(element, mouseEvent, offset);
+
+	if (intersection === null) {
+		return false;
+	}
+
+	const isWithinVerticalBounds = intersection.y !== null;
+	const isWithinHorizontalBounds = intersection.x !== null;
+
+	return isWithinVerticalBounds && isWithinHorizontalBounds;
+}

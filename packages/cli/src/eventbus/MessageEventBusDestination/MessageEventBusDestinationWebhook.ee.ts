@@ -5,24 +5,19 @@
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
-import {
-	jsonParse,
-	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationWebhookOptions,
-} from 'n8n-workflow';
+import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 	IWorkflowExecuteAdditionalData,
+	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { Agent as HTTPSAgent } from 'https';
-import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
-import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
 import Container from 'typedi';
 
@@ -107,13 +102,12 @@ export class MessageEventBusDestinationWebhook
 	async matchDecryptedCredentialType(credentialType: string) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
-			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
 				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
-				timezone,
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;
@@ -168,7 +162,6 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		const parametersToKeyValue = async (
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
@@ -332,9 +325,15 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			this.axiosRequestOptions.headers = {
+				...this.axiosRequestOptions.headers,
+				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
+			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+			this.axiosRequestOptions.params = {
+				...this.axiosRequestOptions.params,
+				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
+			};
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
 				username: httpDigestAuth.user as string,

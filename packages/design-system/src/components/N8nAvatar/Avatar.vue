@@ -24,7 +24,10 @@ const sizes: { [size: string]: number } = {
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-avatar',
+	name: 'N8nAvatar',
+	components: {
+		Avatar,
+	},
 	props: {
 		firstName: {
 			type: String,
@@ -47,9 +50,6 @@ export default defineComponent({
 				'--color-primary-tint-1',
 			],
 		},
-	},
-	components: {
-		Avatar,
 	},
 	computed: {
 		initials() {
@@ -89,7 +89,7 @@ export default defineComponent({
 	position: absolute;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-xlight);
+	color: var(--color-avatar-font);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
 }
 

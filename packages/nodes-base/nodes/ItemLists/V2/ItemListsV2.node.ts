@@ -58,8 +58,8 @@ const shuffleArray = (array: any[]) => {
 	}
 };
 
-import * as summarize from './summarize.operation';
 import { sortByCode } from '../V3/helpers/utils';
+import * as summarize from './summarize.operation';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -598,7 +598,7 @@ export class ItemListsV2 implements INodeType {
 					type: 'string',
 					typeOptions: {
 						alwaysOpenEditWindow: true,
-						editor: 'code',
+						editor: 'jsEditor',
 						rows: 10,
 					},
 					default: `// The two items to compare are in the variables a and b

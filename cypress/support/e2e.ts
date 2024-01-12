@@ -1,11 +1,8 @@
-import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { INSTANCE_OWNER } from '../constants';
 import './commands';
 
 before(() => {
-	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
-		owner: INSTANCE_OWNER,
-		members: INSTANCE_MEMBERS,
-	});
+	cy.resetDatabase();
 
 	Cypress.on('uncaught:exception', (err) => {
 		return !err.message.includes('ResizeObserver');
@@ -18,6 +15,7 @@ beforeEach(() => {
 	}
 
 	cy.intercept('GET', '/rest/settings').as('loadSettings');
+	cy.intercept('GET', '/types/nodes.json').as('loadNodeTypes');
 
 	// Always intercept the request to test credentials and return a success
 	cy.intercept('POST', '/rest/credentials/test', {

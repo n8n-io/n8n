@@ -6,20 +6,19 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Query',
 		name: 'queryJson',
-		type: 'string',
+		type: 'json',
 		required: true,
 		default: '=[\n  {\n    "_name": "listOrganisation"\n  }\n]',
 		description: 'Search for objects with filtering and sorting capabilities',
 		hint: 'The query should be an array of operations with the required selection and optional filtering, sorting, and pagination. See <a href="https://docs.strangebee.com/thehive/api-docs/#operation/Query%20API" target="_blank">Query API</a> for more information.',
 		typeOptions: {
-			editor: 'json',
 			rows: 10,
 		},
 	},

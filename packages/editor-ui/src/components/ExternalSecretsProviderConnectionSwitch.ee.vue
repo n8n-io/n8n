@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
-import { useExternalSecretsStore } from '@/stores';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useLoadingService } from '@/composables/useLoadingService';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 
@@ -70,7 +72,7 @@ async function onUpdateConnected(value: boolean) {
 </script>
 
 <template>
-	<div class="connection-switch" v-loading="saving" element-loading-spinner="el-icon-loading">
+	<div v-loading="saving" class="connection-switch">
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"
@@ -85,7 +87,7 @@ async function onUpdateConnected(value: boolean) {
 			}}
 		</n8n-text>
 		<el-switch
-			:modelValue="provider.connected"
+			:model-value="provider.connected"
 			:title="
 				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
 					interpolate: { provider: provider.displayName },

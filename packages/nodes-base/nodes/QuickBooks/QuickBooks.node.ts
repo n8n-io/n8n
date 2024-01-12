@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
+import isEmpty from 'lodash/isEmpty';
 import {
 	billFields,
 	billOperations,
@@ -44,10 +46,6 @@ import {
 	quickBooksApiRequest,
 	simplifyTransactionReport,
 } from './GenericFunctions';
-
-import { capitalCase } from 'change-case';
-
-import isEmpty from 'lodash/isEmpty';
 
 import type { QuickBooksOAuth2Credentials, TransactionFields, TransactionReport } from './types';
 

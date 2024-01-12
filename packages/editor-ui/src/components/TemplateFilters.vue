@@ -8,7 +8,7 @@
 			<li :class="$style.item">
 				<el-checkbox
 					:label="$locale.baseText('templates.allCategories')"
-					:modelValue="allSelected"
+					:model-value="allSelected"
 					@update:modelValue="(value) => resetCategories(value)"
 				/>
 			</li>
@@ -19,14 +19,14 @@
 			>
 				<el-checkbox
 					:label="category.name"
-					:modelValue="isSelected(category.id)"
+					:model-value="isSelected(category.id)"
 					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
 				/>
 			</li>
 		</ul>
 		<div
-			:class="$style.button"
 			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
+			:class="$style.button"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
@@ -38,12 +38,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { ITemplatesCategory } from '@/Interface';
 
 export default defineComponent({
 	name: 'TemplateFilters',
-	mixins: [genericHelpers],
 	props: {
 		sortOnPopulate: {
 			type: Boolean,
@@ -63,6 +61,17 @@ export default defineComponent({
 			type: Array,
 		},
 	},
+	data() {
+		return {
+			collapsed: true,
+			sortedCategories: [] as ITemplatesCategory[],
+		};
+	},
+	computed: {
+		allSelected(): boolean {
+			return this.selected.length === 0;
+		},
+	},
 	watch: {
 		categories: {
 			handler(categories: ITemplatesCategory[]) {
@@ -76,17 +85,6 @@ export default defineComponent({
 				}
 			},
 			immediate: true,
-		},
-	},
-	data() {
-		return {
-			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
-		};
-	},
-	computed: {
-		allSelected(): boolean {
-			return this.selected.length === 0;
 		},
 	},
 	methods: {

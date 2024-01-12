@@ -7,13 +7,13 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
 				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			ref="iframeRef"
 			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
@@ -23,7 +23,8 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -36,11 +37,15 @@ const props = withDefaults(
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
+		canOpenNDV?: boolean;
+		hideNodeIssues?: boolean;
 	}>(),
 	{
 		loading: false,
 		mode: 'workflow',
 		loaderType: 'image',
+		canOpenNDV: true,
+		hideNodeIssues: false,
 	},
 );
 
@@ -81,6 +86,8 @@ const loadWorkflow = () => {
 			JSON.stringify({
 				command: 'openWorkflow',
 				workflow: props.workflow,
+				canOpenNDV: props.canOpenNDV,
+				hideNodeIssues: props.hideNodeIssues,
 			}),
 			'*',
 		);
@@ -103,6 +110,7 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode || '',
+				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',
 		);
@@ -135,6 +143,9 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
 	try {
 		const json = JSON.parse(data);
 		if (json.command === 'n8nReady') {
@@ -238,6 +249,10 @@ watch(
 
 .imageLoader {
 	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
 }
 
 .executionPreview {

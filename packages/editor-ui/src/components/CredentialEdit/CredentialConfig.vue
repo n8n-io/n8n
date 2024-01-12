@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container" data-test-id="node-credentials-config-container">
-		<banner
+		<Banner
 			v-show="showValidationWarning"
 			theme="danger"
 			:message="
@@ -13,7 +13,7 @@
 			"
 		/>
 
-		<banner
+		<Banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
 			:message="
@@ -25,43 +25,43 @@
 				)
 			"
 			:details="authError"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			buttonLoadingLabel="Retrying"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			button-loading-label="Retrying"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			@click="$emit('retest')"
 		/>
 
-		<banner
+		<Banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
 		>
-			<template #button v-if="isGoogleOAuthType">
+			<template v-if="isGoogleOAuthType" #button>
 				<p
-					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 				/>
 				<GoogleAuthButton @click="$emit('oauth')" />
 			</template>
-		</banner>
+		</Banner>
 
-		<banner
+		<Banner
 			v-show="testedSuccessfully && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			:buttonLoadingLabel="$locale.baseText('credentialEdit.credentialConfig.retrying')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
-			@click="$emit('retest')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			:button-loading-label="$locale.baseText('credentialEdit.credentialConfig.retrying')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			data-test-id="credentials-config-container-test-success"
+			@click="$emit('retest')"
 		/>
 
-		<template v-if="credentialPermissions.updateConnection">
+		<template v-if="credentialPermissions.update">
 			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -73,7 +73,7 @@
 
 			<AuthTypeSelector
 				v-if="showAuthTypeSelector && isNewCredential"
-				:credentialType="credentialType"
+				:credential-type="credentialType"
 				@authTypeChanged="onAuthTypeChange"
 			/>
 
@@ -81,17 +81,17 @@
 				v-if="isOAuthType && credentialProperties.length"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
-				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+				:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
 				:hint="
 					$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })
 				"
-				:toastTitle="
+				:toast-title="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
-				:redactValue="true"
+				:redact-value="true"
 			/>
 		</template>
-		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
+		<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 			<div>
 				<n8n-info-tip :bold="false">
 					{{
@@ -101,14 +101,14 @@
 					}}
 				</n8n-info-tip>
 			</div>
-		</enterprise-edition>
+		</EnterpriseEdition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
-			:credentialData="credentialData"
-			:credentialProperties="credentialProperties"
-			:documentationUrl="documentationUrl"
-			:showValidationWarnings="showValidationWarning"
+			v-if="credentialType && credentialPermissions.update"
+			:credential-data="credentialData"
+			:credential-properties="credentialProperties"
+			:documentation-url="documentationUrl"
+			:show-validation-warnings="showValidationWarning"
 			@update="onDataChange"
 		/>
 
@@ -119,7 +119,7 @@
 				!isOAuthConnected &&
 				credentialPermissions.isOwner
 			"
-			:isGoogleOAuthType="isGoogleOAuthType"
+			:is-google-o-auth-type="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
 
@@ -145,7 +145,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
@@ -288,7 +288,7 @@ export default defineComponent({
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			const documentationUrl = type && type.documentationUrl;
+			const documentationUrl = type?.documentationUrl;
 
 			if (!documentationUrl) {
 				return '';
@@ -306,7 +306,7 @@ export default defineComponent({
 
 			if (url.hostname === DOCS_DOMAIN) {
 				url.searchParams.set('utm_source', 'n8n_app');
-				url.searchParams.set('utm_medium', 'left_nav_menu');
+				url.searchParams.set('utm_medium', 'credential_settings');
 				url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
 			}
 

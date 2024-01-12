@@ -1,10 +1,10 @@
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
-import { apiRequest } from './v2/transport';
-import type { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 
 import * as XLSX from 'xlsx';
 import isEqual from 'lodash/isEqual';
 import zip from 'lodash/zip';
+import type { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
+import { apiRequest } from './v2/transport';
 
 export const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 

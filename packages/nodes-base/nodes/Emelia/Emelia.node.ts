@@ -7,13 +7,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
 import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
 
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import isEmpty from 'lodash/isEmpty';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {

@@ -2,17 +2,18 @@ import type { Plugin } from 'vue';
 
 import 'regenerator-runtime/runtime';
 
-import ElementPlus from 'element-plus';
-import { ElLoading, ElMessageBox } from 'element-plus';
+import ElementPlus, { ElLoading, ElMessageBox } from 'element-plus';
 import { N8nPlugin } from 'n8n-design-system';
 import { useMessage } from '@/composables/useMessage';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import RBAC from '@/components/RBAC.vue';
 
 export const GlobalComponentsPlugin: Plugin<{}> = {
 	install(app) {
 		const messageService = useMessage();
 
-		app.component('enterprise-edition', EnterpriseEdition);
+		app.component('EnterpriseEdition', EnterpriseEdition);
+		app.component('RBAC', RBAC);
 
 		app.use(ElementPlus);
 		app.use(N8nPlugin);

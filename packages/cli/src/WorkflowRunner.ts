@@ -12,6 +12,7 @@ import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	IPinData,
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -37,22 +38,18 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
-// eslint-disable-next-line import/no-cycle
+
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-// eslint-disable-next-line import/no-cycle
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { eventBus } from './eventbus';
-import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from './Logger';
 
 export class WorkflowRunner {
@@ -131,9 +128,13 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
+			const { eventBus } = await import('./eventbus');
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
+				const { recoverExecutionDataFromEventLogMessages } = await import(
+					'./eventbus/MessageEventBus/recoverEvents'
+				);
 				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
 					executionId,
 					eventLogMessages,
@@ -217,7 +218,11 @@ export class WorkflowRunner {
 
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
-		if (executionsMode !== 'queue' || data.executionMode === 'manual') {
+		if (
+			executionsMode !== 'queue' ||
+			config.getEnv('generic.instanceType') === 'worker' ||
+			data.executionMode === 'manual'
+		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			const externalHooks = Container.get(ExternalHooks);
 			postExecutePromise
@@ -280,6 +285,11 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
+		let pinData: IPinData | undefined;
+		if (data.executionMode === 'manual') {
+			pinData = data.pinData ?? data.workflowData.pinData;
+		}
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: data.workflowData.name,
@@ -289,6 +299,7 @@ export class WorkflowRunner {
 			nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
+			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
@@ -306,13 +317,9 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		try {
-			this.logger.verbose(
-				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
-				{ executionId },
-			);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
@@ -563,11 +570,8 @@ export class WorkflowRunner {
 					};
 				}
 
-				let racingPromisesResult: JobResponse = {
-					success: false,
-				};
 				try {
-					racingPromisesResult = await Promise.race(racingPromises);
+					await Promise.race(racingPromises);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
@@ -621,6 +625,7 @@ export class WorkflowRunner {
 					mode: fullExecutionData.mode,
 					startedAt: fullExecutionData.startedAt,
 					stoppedAt: fullExecutionData.stoppedAt,
+					status: fullExecutionData.status,
 				} as IRun;
 
 				if (executionHasPostExecutionPromises) {
@@ -635,31 +640,6 @@ export class WorkflowRunner {
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
 				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
-				try {
-					// Check if this execution data has to be removed from database
-					// based on workflow settings.
-					const workflowSettings = data.workflowData.settings ?? {};
-					const saveDataErrorExecution =
-						workflowSettings.saveDataErrorExecution ?? config.getEnv('executions.saveDataOnError');
-					const saveDataSuccessExecution =
-						workflowSettings.saveDataSuccessExecution ??
-						config.getEnv('executions.saveDataOnSuccess');
-
-					const workflowDidSucceed = !racingPromisesResult.error;
-					if (
-						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
-						(!workflowDidSucceed && saveDataErrorExecution === 'none')
-					) {
-						await Container.get(ExecutionRepository).hardDelete({
-							workflowId: data.workflowData.id as string,
-							executionId,
-						});
-					}
-					// eslint-disable-next-line id-denylist
-				} catch (err) {
-					// We don't want errors here to crash n8n. Just log and proceed.
-					console.log('Error removing saved execution from database. More details: ', err);
-				}
 
 				resolve(runData);
 			},
@@ -701,6 +681,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

@@ -14,11 +14,10 @@ import type {
 
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -43,7 +42,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -172,11 +171,13 @@ export async function execute(
 			];
 		}
 
-		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 		const placeholder = `(${columns.map(() => '?').join(',')})`;
 		const replacements = items.map(() => placeholder).join(',');
 
-		const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements}`;
+		const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
+			table,
+		)} (${escapedColumns}) VALUES ${replacements}`;
 
 		const values = insertItems.reduce(
 			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
@@ -215,10 +216,12 @@ export async function execute(
 				columns = Object.keys(insertItem);
 			}
 
-			const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+			const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 			const placeholder = `(${columns.map(() => '?').join(',')})`;
 
-			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${placeholder};`;
+			const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
+				table,
+			)} (${escapedColumns}) VALUES ${placeholder};`;
 
 			const values = Object.values(insertItem) as QueryValues;
 

@@ -40,7 +40,7 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
@@ -99,6 +99,8 @@ jobs:
           runTests: false
           install: false
           build: pnpm build
+        env:
+          VUE_APP_MAX_PINNED_DATA_SIZE: 16384
 
       - name: Cypress install
         run: pnpm cypress:install

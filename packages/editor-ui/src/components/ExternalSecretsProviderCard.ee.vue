@@ -3,8 +3,11 @@ import type { PropType, Ref } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
-import { useExternalSecretsStore, useUIStore } from '@/stores';
-import { useExternalSecretsProvider, useI18n, useToast } from '@/composables';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRefs } from 'vue';
@@ -51,7 +54,7 @@ const canConnect = computed(() => {
 });
 
 const formattedDate = computed((provider: ExternalSecretsProvider) => {
-	return DateTime.fromISO(props.provider.connectedAt!).toFormat('dd LLL yyyy');
+	return DateTime.fromISO(props.provider.connectedAt).toFormat('dd LLL yyyy');
 });
 
 onMounted(() => {
@@ -110,7 +113,7 @@ async function onActionDropdownClick(id: string) {
 			<ExternalSecretsProviderImage :class="$style.cardImage" :provider="provider" />
 			<div :class="$style.cardContent">
 				<n8n-text bold>{{ provider.displayName }}</n8n-text>
-				<n8n-text color="text-light" size="small" v-if="provider.connected">
+				<n8n-text v-if="provider.connected" color="text-light" size="small">
 					<span>
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
@@ -132,10 +135,10 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</n8n-text>
 			</div>
-			<div :class="$style.cardActions" v-if="canConnect">
+			<div v-if="canConnect" :class="$style.cardActions">
 				<ExternalSecretsProviderConnectionSwitch
 					:provider="provider"
-					:beforeUpdate="onBeforeConnectionUpdate"
+					:before-update="onBeforeConnectionUpdate"
 					:disabled="connectionState === 'error' && !provider.connected"
 				/>
 				<n8n-action-toggle

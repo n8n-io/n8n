@@ -1,10 +1,10 @@
 <template>
 	<n8n-card :class="$style.card" v-bind="$attrs">
-		<template #header v-if="!loading">
-			<span v-text="title" :class="$style.title" />
+		<template v-if="!loading" #header>
+			<span :class="$style.title" v-text="title" />
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
-		<template #footer v-if="!loading">
+		<template v-if="!loading" #footer>
 			<slot name="footer" />
 		</template>
 	</n8n-card>
@@ -12,11 +12,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
 	name: 'Card',
-	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,
@@ -30,7 +28,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .card {
-	width: 240px !important;
+	min-width: 235px;
 	height: 140px;
 	margin-right: var(--spacing-2xs);
 	cursor: pointer;

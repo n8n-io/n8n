@@ -28,7 +28,7 @@ export function getSpreadsheetId(
 		throw new NodeOperationError(
 			node,
 			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
-			{ severity: 'warning' },
+			{ level: 'warning' },
 		);
 	}
 	if (documentIdType === 'url') {
@@ -43,6 +43,11 @@ export function getSpreadsheetId(
 	}
 	// If it is byID or byList we can just return
 	return value;
+}
+
+export function getSheetId(value: string): number {
+	if (value === 'gid=0') return 0;
+	return parseInt(value);
 }
 
 // Convert number to Sheets / Excel column name

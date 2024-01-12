@@ -2,19 +2,19 @@
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
 					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
 						v-else
-						class="mr-xl"
 						v-model="autoRefresh"
-						@update:modelValue="handleAutoRefreshToggle"
+						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
+						@update:modelValue="handleAutoRefreshToggle"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter
+					<ExecutionFilter
 						v-show="!isMounting"
 						:workflows="workflows"
 						@filterChanged="onFilterChanged"
@@ -31,9 +31,9 @@
 						interpolate: { executionNum: finishedExecutionsCount },
 					})
 				"
-				:modelValue="allExistingSelected"
-				@update:modelValue="handleCheckAllExistingChange"
+				:model-value="allExistingSelected"
 				data-test-id="select-all-executions-checkbox"
+				@update:modelValue="handleCheckAllExistingChange"
 			/>
 
 			<div v-if="isMounting">
@@ -46,11 +46,11 @@
 					<tr>
 						<th>
 							<el-checkbox
-								:modelValue="allVisibleSelected"
-								@update:modelValue="handleCheckAllVisibleChange"
+								:model-value="allVisibleSelected"
 								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
+								@update:modelValue="handleCheckAllVisibleChange"
 							/>
 						</th>
 						<th>{{ i18n.baseText('executionsList.name') }}</th>
@@ -72,10 +72,10 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:modelValue="selectedItems[execution.id] || allExistingSelected"
-								@update:modelValue="handleCheckboxChanged(execution.id)"
+								:model-value="selectedItems[execution.id] || allExistingSelected"
 								label=""
 								data-test-id="select-execution-checkbox"
+								@update:modelValue="handleCheckboxChanged(execution.id)"
 							/>
 						</td>
 						<td>
@@ -107,14 +107,14 @@
 											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
 										>
 											{{
-												displayTimer(
+												i18n.displayTimer(
 													new Date(execution.stoppedAt).getTime() -
 														new Date(execution.startedAt).getTime(),
 													true,
 												)
 											}}
 										</span>
-										<execution-time v-else :start-time="execution.startedAt" />
+										<ExecutionTime v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n-t>
 								<n8n-tooltip v-else placement="top">
@@ -168,8 +168,8 @@
 									size="small"
 									outline
 									:label="i18n.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
 									:loading="stoppingExecutions.includes(execution.id)"
+									@click.stop="stopExecution(execution.id)"
 								/>
 							</div>
 						</td>
@@ -231,18 +231,18 @@
 				{{ i18n.baseText('executionsList.empty') }}
 			</div>
 			<div
-				:class="$style.loadMore"
 				v-else-if="
 					finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated
 				"
+				:class="$style.loadMore"
 			>
 				<n8n-button
 					icon="sync"
 					:title="i18n.baseText('executionsList.loadMore')"
 					:label="i18n.baseText('executionsList.loadMore')"
-					@click="loadMore()"
 					:loading="isDataLoading"
 					data-test-id="load-more-button"
+					@click="loadMore()"
 				/>
 			</div>
 			<div
@@ -269,14 +269,14 @@
 			<n8n-button
 				:label="i18n.baseText('generic.delete')"
 				type="tertiary"
-				@click="handleDeleteSelected"
 				data-test-id="delete-selected-button"
+				@click="handleDeleteSelected"
 			/>
 			<n8n-button
 				:label="i18n.baseText('executionsList.clearSelection')"
 				type="tertiary"
-				@click="handleClearSelection"
 				data-test-id="clear-selection-button"
+				@click="handleClearSelection"
 			/>
 		</div>
 	</div>
@@ -287,11 +287,12 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useToast, useMessage, useI18n, useTelemetry } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -304,16 +305,19 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isEmpty, setPageTitle } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { setPageTitle } from '@/utils/htmlUtils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
 	name: 'ExecutionsList',
-	mixins: [externalHooks, genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
 		ExecutionFilter,
 	},
+	mixins: [executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,
@@ -323,10 +327,14 @@ export default defineComponent({
 	setup() {
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
+		const externalHooks = useExternalHooks();
+		const route = useRoute();
 
 		return {
 			i18n,
 			telemetry,
+			externalHooks,
+			route,
 			...useToast(),
 			...useMessage(),
 		};
@@ -340,7 +348,7 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: this.autoRefreshEnabled,
+			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
@@ -362,14 +370,16 @@ export default defineComponent({
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
+		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
-		void this.$externalHooks().run('executionsList.openDialog');
+		void this.externalHooks.run('executionsList.openDialog');
 		this.telemetry.track('User opened Executions log', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
 	},
 	beforeUnmount() {
+		this.autoRefresh = false;
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
@@ -932,7 +942,7 @@ export default defineComponent({
 			}
 		},
 		async startAutoRefreshInterval() {
-			if (this.autoRefresh) {
+			if (this.autoRefresh && this.route.name === VIEWS.EXECUTIONS) {
 				await this.loadAutoRefresh();
 				this.autoRefreshTimeout = setTimeout(() => {
 					void this.startAutoRefreshInterval();
@@ -940,10 +950,8 @@ export default defineComponent({
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshTimeout) {
-				clearTimeout(this.autoRefreshTimeout);
-				this.autoRefreshTimeout = undefined;
-			}
+			clearTimeout(this.autoRefreshTimeout);
+			this.autoRefreshTimeout = undefined;
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
@@ -1074,7 +1082,7 @@ export default defineComponent({
 		top: calc(var(--spacing-3xl) * -1);
 		z-index: 2;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-base);
+		background: var(--color-table-header-background);
 
 		&:first-child {
 			padding-left: var(--spacing-s);
@@ -1085,7 +1093,7 @@ export default defineComponent({
 	td {
 		height: 100%;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-xlight);
+		background: var(--color-table-row-background);
 
 		&:not(:first-child, :nth-last-child(-n + 3)) {
 			width: 100%;
@@ -1127,33 +1135,33 @@ export default defineComponent({
 		}
 
 		&:nth-child(even) td {
-			background: var(--color-background-light);
+			background: var(--color-table-row-even-background);
 		}
 
 		&:hover td {
-			background: var(--color-primary-tint-3);
+			background: var(--color-table-row-hover-background);
 		}
 
 		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: hsl(var(--color-danger-h), 94%, 80%);
+			background: var(--execution-card-border-error);
 		}
 
 		&.success td:first-child::before {
-			background: hsl(var(--color-success-h), 60%, 70%);
+			background: var(--execution-card-border-success);
 		}
 
 		&.new td:first-child::before,
 		&.running td:first-child::before {
-			background: hsl(var(--color-warning-h), 94%, 80%);
+			background: var(--execution-card-border-running);
 		}
 
 		&.waiting td:first-child::before {
-			background: hsl(var(--color-secondary-h), 94%, 80%);
+			background: var(--execution-card-border-waiting);
 		}
 
 		&.unknown td:first-child::before {
-			background: var(--color-text-light);
+			background: var(--execution-card-border-unknown);
 		}
 	}
 }
@@ -1167,6 +1175,7 @@ export default defineComponent({
 .loadedAll {
 	text-align: center;
 	font-size: var(--font-size-s);
+	color: var(--color-text-light);
 	margin: var(--spacing-l) 0;
 }
 

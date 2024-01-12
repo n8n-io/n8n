@@ -1,8 +1,8 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
+			<div class="error-message" v-text="getErrorMessage()" />
+			<div v-if="error.description" class="error-description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
@@ -76,19 +76,19 @@
 							</div>
 						</template>
 						<div>
-							<div class="copy-button" v-if="displayCause">
+							<div v-if="displayCause" class="copy-button">
 								<n8n-icon-button
-									@click="copyCause"
 									:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 									icon="copy"
+									@click="copyCause"
 								/>
 							</div>
-							<vue-json-pretty
+							<VueJsonPretty
 								v-if="displayCause"
 								:data="error.cause"
 								:deep="3"
-								:showLength="true"
-								selectableType="single"
+								:show-length="true"
+								selectable-type="single"
 								path="error"
 								class="json-data"
 							/>
@@ -121,24 +121,31 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
+import type {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeErrorView',
-	mixins: [copyPaste],
-	props: ['error'],
 	components: {
 		VueJsonPretty,
 	},
+	props: ['error'],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -170,7 +177,19 @@ export default defineComponent({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
-			if (!this.error.context || !this.error.context.descriptionTemplate) {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				return sanitizeHtml(
+					this.error.description +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
+			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
 
@@ -182,7 +201,21 @@ export default defineComponent({
 		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
-			if (!this.error.context || !this.error.context.messageTemplate) {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				const baseErrorMessageSubNode = this.$locale.baseText('nodeErrorView.errorSubNode', {
+					interpolate: { node: this.error.node.name },
+				});
+				return baseErrorMessageSubNode;
+			}
+
+			if (this.error.message === this.error.description) {
+				return baseErrorMessage;
+			}
+			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}
 
@@ -200,7 +233,7 @@ export default defineComponent({
 					throw new Error();
 				}
 
-				if (fullPath === false) {
+				if (!fullPath) {
 					return parameters.pop()!.displayName;
 				}
 				return parameters.map((parameter) => parameter.displayName).join(' > ');
@@ -252,7 +285,7 @@ export default defineComponent({
 			return [currentParameter];
 		},
 		copyCause() {
-			this.copyToClipboard(JSON.stringify(this.error.cause));
+			void this.clipboard.copy(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {
@@ -271,7 +304,7 @@ export default defineComponent({
 }
 
 .error-message {
-	color: #ff0000;
+	color: var(--color-ndv-ouptut-error-font);
 	font-weight: bold;
 	font-size: 1.1rem;
 }

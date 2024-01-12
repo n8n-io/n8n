@@ -6,9 +6,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import snowflake from 'snowflake-sdk';
 import { connect, destroy, execute } from './GenericFunctions';
 
-import snowflake from 'snowflake-sdk';
 import { getResolvables } from '@utils/utilities';
 
 export class Snowflake implements INodeType {
@@ -24,6 +24,7 @@ export class Snowflake implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'snowflake',
@@ -69,7 +70,6 @@ export class Snowflake implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 				},
 				displayOptions: {
 					show: {

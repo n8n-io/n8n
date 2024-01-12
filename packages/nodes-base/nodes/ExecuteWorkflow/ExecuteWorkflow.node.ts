@@ -6,8 +6,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { getWorkflowInfo } from './GenericFunctions';
 import { generatePairedItemData } from '../../utils/utilities';
+import { getWorkflowInfo } from './GenericFunctions';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -111,9 +111,8 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
-					editor: 'json',
 					rows: 10,
 				},
 				displayOptions: {

@@ -286,9 +286,9 @@ export const jsonFieldCompletions = defineComponent({
 				nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
 			}
 
-			const pinData: IPinData | undefined = this.workflowsStore.getPinData;
+			const pinData: IPinData | undefined = this.workflowsStore.pinnedWorkflowData;
 
-			const nodePinData = pinData && pinData[nodeName];
+			const nodePinData = pinData?.[nodeName];
 
 			if (nodePinData) {
 				try {

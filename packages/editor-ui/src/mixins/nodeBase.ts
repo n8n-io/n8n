@@ -3,7 +3,6 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { INodeUi } from '@/Interface';
-import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import {
 	NO_OP_NODE_TYPE,
 	NODE_CONNECTION_TYPE_ALLOW_MULTIPLE,
@@ -17,6 +16,7 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
+	Workflow,
 } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -27,6 +27,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
+import { useDeviceSupport } from 'n8n-design-system';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -55,7 +56,12 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 });
 
 export const nodeBase = defineComponent({
-	mixins: [deviceSupportHelpers],
+	data() {
+		return {
+			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
+			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
+		};
+	},
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {
@@ -66,12 +72,6 @@ export const nodeBase = defineComponent({
 				// Shouldn't affect anything
 			}
 		}
-	},
-	data() {
-		return {
-			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
-			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
-		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),
@@ -85,6 +85,7 @@ export const nodeBase = defineComponent({
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		instance: {
 			type: Object as PropType<BrowserJsPlumbInstance>,
@@ -103,6 +104,10 @@ export const nodeBase = defineComponent({
 		},
 		showCustomTooltip: {
 			type: Boolean,
+		},
+		workflow: {
+			type: Object as () => Workflow,
+			required: true,
 		},
 	},
 	methods: {
@@ -123,9 +128,8 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const inputs: Array<ConnectionTypes | INodeInputConfiguration> =
-				NodeHelpers.getNodeInputs(workflow, this.data!, nodeTypeData) || [];
+				NodeHelpers.getNodeInputs(this.workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
 
 			const sortedInputs = [...inputs];
@@ -338,14 +342,13 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
-			this.outputs = outputs;
+			this.outputs = NodeHelpers.getNodeOutputs(this.workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
-
-			outputs.forEach((value, i) => {
+			let maxLabelLength = 0;
+			const outputConfigurations: INodeOutputConfiguration[] = [];
+			this.outputs.forEach((value, i) => {
 				let outputConfiguration: INodeOutputConfiguration;
 				if (typeof value === 'string') {
 					outputConfiguration = {
@@ -354,6 +357,24 @@ export const nodeBase = defineComponent({
 				} else {
 					outputConfiguration = value;
 				}
+				if (nodeTypeData.outputNames?.[i]) {
+					outputConfiguration.displayName = nodeTypeData.outputNames[i];
+				}
+
+				if (outputConfiguration.displayName) {
+					maxLabelLength =
+						outputConfiguration.displayName.length > maxLabelLength
+							? outputConfiguration.displayName.length
+							: maxLabelLength;
+				}
+
+				outputConfigurations.push(outputConfiguration);
+			});
+
+			const endpointLabelLength = maxLabelLength < 4 ? 'short' : 'medium';
+
+			this.outputs.forEach((value, i) => {
+				const outputConfiguration = outputConfigurations[i];
 
 				const outputName: ConnectionTypes = outputConfiguration.type;
 
@@ -376,7 +397,7 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
 				const typeIndex = typeIndexData[outputName];
 
-				const outputsOfSameRootType = outputs.filter((outputData) => {
+				const outputsOfSameRootType = this.outputs.filter((outputData) => {
 					const thisOutputName: string =
 						typeof outputData === 'string' ? outputData : outputData.type;
 					return outputName === NodeConnectionType.Main
@@ -417,7 +438,7 @@ export const nodeBase = defineComponent({
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
 					dragAllowedWhenFull: false,
-					...this.__getOutputConnectionStyle(outputName, nodeTypeData),
+					...this.__getOutputConnectionStyle(outputName, outputConfiguration, nodeTypeData),
 				};
 
 				const endpoint = this.instance.addEndpoint(
@@ -426,11 +447,12 @@ export const nodeBase = defineComponent({
 				);
 
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
-				if (outputConfiguration.displayName || nodeTypeData.outputNames?.[i]) {
+				if (outputConfiguration.displayName) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
-						outputConfiguration.displayName || nodeTypeData.outputNames[i],
+						outputConfiguration.displayName,
 						outputName,
+						outputConfiguration?.category,
 					);
 					endpoint.addOverlay(overlaySpec);
 				}
@@ -441,7 +463,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: outputsOfSameRootType.length,
-						nodeType: node.type,
+						endpointLabelLength,
 					};
 				}
 
@@ -455,9 +477,9 @@ export const nodeBase = defineComponent({
 							options: {
 								dimensions: 24,
 								connectedEndpoint: endpoint,
-								showOutputLabel: outputs.length === 1,
-								size: outputs.length >= 3 ? 'small' : 'medium',
-								nodeType: node.type,
+								showOutputLabel: this.outputs.length === 1,
+								size: this.outputs.length >= 3 ? 'small' : 'medium',
+								endpointLabelLength,
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},
@@ -475,10 +497,16 @@ export const nodeBase = defineComponent({
 							nodeId: this.nodeId,
 							type: outputName,
 							index: typeIndex,
+							category: outputConfiguration?.category,
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
 					};
+
+					if (outputConfiguration?.category) {
+						plusEndpointData.cssClass = `${plusEndpointData.cssClass} ${outputConfiguration?.category}`;
+					}
+
 					const plusEndpoint = this.instance.addEndpoint(
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
@@ -538,6 +566,7 @@ export const nodeBase = defineComponent({
 		},
 		__getOutputConnectionStyle(
 			connectionType: ConnectionTypes,
+			outputConfiguration: INodeOutputConfiguration,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
 			const type = 'output';
@@ -557,6 +586,18 @@ export const nodeBase = defineComponent({
 			});
 
 			if (connectionType === NodeConnectionType.Main) {
+				if (outputConfiguration.category === 'error') {
+					return {
+						paintStyle: {
+							...NodeViewUtils.getOutputEndpointStyle(
+								nodeTypeData,
+								this.__getEndpointColor(NodeConnectionType.Main),
+							),
+							fill: 'var(--node-error-output-color)',
+						},
+						cssClass: `dot-${type}-endpoint`,
+					};
+				}
 				return {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
@@ -573,13 +614,16 @@ export const nodeBase = defineComponent({
 			return createSupplementalConnectionType(connectionType);
 		},
 		touchEnd(e: MouseEvent) {
-			if (this.isTouchDevice) {
+			const deviceSupport = useDeviceSupport();
+			if (deviceSupport.isTouchDevice) {
 				if (this.uiStore.isActionActive('dragActive')) {
 					this.uiStore.removeActiveAction('dragActive');
 				}
 			}
 		},
 		mouseLeftClick(e: MouseEvent) {
+			const deviceSupport = useDeviceSupport();
+
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 			for (let index = 0; index < path.length; index++) {
@@ -592,11 +636,11 @@ export const nodeBase = defineComponent({
 				}
 			}
 
-			if (!this.isTouchDevice) {
+			if (!deviceSupport.isTouchDevice) {
 				if (this.uiStore.isActionActive('dragActive')) {
 					this.uiStore.removeActiveAction('dragActive');
 				} else {
-					if (!this.isCtrlKeyPressed(e)) {
+					if (!deviceSupport.isCtrlKeyPressed(e)) {
 						this.$emit('deselectAllNodes');
 					}
 

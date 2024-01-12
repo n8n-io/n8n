@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
@@ -7,19 +7,22 @@ import isbot from 'isbot';
 
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
-import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
+import { WaitingForms } from '@/WaitingForms';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
+import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
+import { OnShutdown } from '@/decorators/OnShutdown';
+import { ActiveWebhooks } from '@/ActiveWebhooks';
 
+@Service()
 export abstract class AbstractServer {
 	protected logger: Logger;
 
@@ -27,9 +30,7 @@ export abstract class AbstractServer {
 
 	readonly app: express.Application;
 
-	protected externalHooks: IExternalHooksClass;
-
-	protected activeWorkflowRunner: ActiveWorkflowRunner;
+	protected externalHooks: ExternalHooks;
 
 	protected protocol: string;
 
@@ -37,9 +38,13 @@ export abstract class AbstractServer {
 
 	protected sslCert: string;
 
-	protected timezone: string;
-
 	protected restEndpoint: string;
+
+	protected endpointForm: string;
+
+	protected endpointFormTest: string;
+
+	protected endpointFormWaiting: string;
 
 	protected endpointWebhook: string;
 
@@ -57,13 +62,19 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
+		const proxyHops = config.getEnv('proxy_hops');
+		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
+
 		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.timezone = config.getEnv('generic.timezone');
-
 		this.restEndpoint = config.getEnv('endpoints.rest');
+
+		this.endpointForm = config.getEnv('endpoints.form');
+		this.endpointFormTest = config.getEnv('endpoints.formTest');
+		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
+
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -149,7 +160,6 @@ export abstract class AbstractServer {
 		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
 		this.externalHooks = Container.get(ExternalHooks);
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.setupHealthCheck();
 
@@ -166,10 +176,18 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
+			const activeWebhooks = Container.get(ActiveWebhooks);
+
+			// Register a handler for active forms
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWebhooks));
+
 			// Register a handler for active webhooks
+			this.app.all(`/${this.endpointWebhook}/:path(*)`, webhookRequestHandler(activeWebhooks));
+
+			// Register a handler for waiting forms
 			this.app.all(
-				`/${this.endpointWebhook}/:path(*)`,
-				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+				`/${this.endpointFormWaiting}/:path/:suffix?`,
+				webhookRequestHandler(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
@@ -182,14 +200,15 @@ export abstract class AbstractServer {
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler for test webhooks
+			// Register a handler
+			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 
 			// Removes a test webhook
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(
 				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+				send(async (req) => testWebhooks.cancelWebhook(req.params.id)),
 			);
 		}
 
@@ -222,5 +241,27 @@ export abstract class AbstractServer {
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
+	}
+
+	/**
+	 * Stops the HTTP(S) server from accepting new connections. Gives all
+	 * connections configured amount of time to finish their work and
+	 * then closes them forcefully.
+	 */
+	@OnShutdown()
+	async onShutdown(): Promise<void> {
+		if (!this.server) {
+			return;
+		}
+
+		this.logger.debug(`Shutting down ${this.protocol} server`);
+
+		this.server.close((error) => {
+			if (error) {
+				this.logger.error(`Error while shutting down ${this.protocol} server`, { error });
+			}
+
+			this.logger.debug(`${this.protocol} server shut down`);
+		});
 	}
 }

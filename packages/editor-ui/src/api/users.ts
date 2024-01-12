@@ -1,8 +1,8 @@
 import type {
 	CurrentUserResponse,
-	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
+	IRole,
 	IUserResponse,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
@@ -124,17 +124,6 @@ export async function getUsers(context: IRestApiContext): Promise<IUserResponse[
 	return makeRestApiRequest(context, 'GET', '/users');
 }
 
-export async function inviteUsers(
-	context: IRestApiContext,
-	params: Array<{ email: string }>,
-): Promise<IInviteResponse[]> {
-	return makeRestApiRequest(context, 'POST', '/users', params as unknown as IDataObject);
-}
-
-export async function reinvite(context: IRestApiContext, { id }: { id: string }): Promise<void> {
-	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
-}
-
 export async function getInviteLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
@@ -154,4 +143,16 @@ export async function submitPersonalizationSurvey(
 	params: IPersonalizationLatestVersion,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
+}
+
+export interface UpdateGlobalRolePayload {
+	id: string;
+	newRoleName: Exclude<IRole, 'default' | 'owner'>;
+}
+
+export async function updateGlobalRole(
+	context: IRestApiContext,
+	{ id, newRoleName }: UpdateGlobalRolePayload,
+): Promise<IUserResponse> {
+	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRoleName });
 }

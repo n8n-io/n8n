@@ -6,14 +6,15 @@
 			firstItem && $style.first,
 			!loading && $style.loaded,
 		]"
+		data-test-id="template-card"
 		@click="onCardClick"
 	>
-		<div :class="$style.loading" v-if="loading">
-			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
+		<div v-if="loading" :class="$style.loading">
+			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
 		<div v-else>
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
-			<div :class="$style.content" v-if="!simpleView">
+			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
 						<font-awesome-icon icon="eye" />
@@ -30,14 +31,15 @@
 				>
 			</div>
 		</div>
-		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
+		<div v-if="!loading" :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]">
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
-		<div :class="$style.buttonContainer" v-if="useWorkflowButton">
+		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
 			<n8n-button
 				v-if="useWorkflowButton"
 				outline
 				label="Use workflow"
+				data-test-id="use-workflow-button"
 				@click.stop="onUseWorkflowClick"
 			/>
 		</div>
@@ -46,14 +48,17 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { filterTemplateNodes, abbreviateNumber } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
 
 export default defineComponent({
 	name: 'TemplateCard',
-	mixins: [genericHelpers],
+	components: {
+		TimeAgo,
+		NodeList,
+	},
 	props: {
 		lastItem: {
 			type: Boolean,
@@ -76,10 +81,6 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-	},
-	components: {
-		TimeAgo,
-		NodeList,
 	},
 	data() {
 		return {

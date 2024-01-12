@@ -7,11 +7,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
-import type { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 
 import {
 	arrayOfArraysToJson,
@@ -20,7 +21,6 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
-import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -399,11 +399,21 @@ export class GoogleSheetsTrigger implements INodeType {
 				extractValue: true,
 			}) as string;
 
-			let sheetId = this.getNodeParameter('sheetName', undefined, {
+			const sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
 				extractValue: true,
 			}) as string;
+			const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+				mode: ResourceLocator;
+			};
 
-			sheetId = sheetId === 'gid=0' ? '0' : sheetId;
+			const googleSheet = new GoogleSheet(documentId, this);
+			const { sheetId, title: sheetName } = await googleSheet.spreadsheetGetSheet(
+				this.getNode(),
+				sheetMode,
+				sheetWithinDocument,
+			);
+
+			const options = this.getNodeParameter('options') as IDataObject;
 
 			// If the documentId or sheetId changed, reset the workflow static data
 			if (
@@ -416,10 +426,6 @@ export class GoogleSheetsTrigger implements INodeType {
 				workflowStaticData.lastRevisionLink = undefined;
 				workflowStaticData.lastIndexChecked = undefined;
 			}
-
-			const googleSheet = new GoogleSheet(documentId, this);
-			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(sheetId);
-			const options = this.getNodeParameter('options') as IDataObject;
 
 			const previousRevision = workflowStaticData.lastRevision as number;
 			const previousRevisionLink = workflowStaticData.lastRevisionLink as string;

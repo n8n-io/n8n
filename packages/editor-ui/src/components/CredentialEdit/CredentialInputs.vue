@@ -1,5 +1,5 @@
 <template>
-	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
+	<div v-if="credentialProperties.length" :class="$style.container" @keydown.stop>
 		<form
 			v-for="parameter in credentialProperties"
 			:key="parameter.name"
@@ -9,14 +9,14 @@
 		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<n8n-notice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
-			<parameter-input-expanded
+			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
 				:value="credentialData[parameter.name]"
-				:documentationUrl="documentationUrl"
-				:showValidationWarnings="showValidationWarnings"
+				:documentation-url="documentationUrl"
+				:show-validation-warnings="showValidationWarnings"
 				:label="label"
-				eventSource="credentials"
+				event-source="credentials"
 				@update="valueChanged"
 			/>
 		</form>
@@ -31,15 +31,15 @@ import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
 export default defineComponent({
 	name: 'CredentialsInput',
+	components: {
+		ParameterInputExpanded,
+	},
 	props: [
 		'credentialProperties',
 		'credentialData', // ICredentialsDecryptedResponse
 		'documentationUrl',
 		'showValidationWarnings',
 	],
-	components: {
-		ParameterInputExpanded,
-	},
 	data(): { label: IParameterLabel } {
 		return {
 			label: {

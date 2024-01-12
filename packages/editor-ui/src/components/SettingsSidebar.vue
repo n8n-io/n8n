@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="$emit('return')" data-test-id="settings-back">
+				<div :class="$style.returnButton" data-test-id="settings-back" @click="$emit('return')">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
@@ -11,7 +11,7 @@
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
-					<n8n-link @click="onVersionClick" size="small">
+					<n8n-link size="small" @click="onVersionClick">
 						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
 					</n8n-link>
 				</div>
@@ -31,6 +31,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { hasPermission } from '@/rbac/permissions';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
@@ -116,6 +117,16 @@ export default defineComponent({
 					position: 'top',
 					available: this.canAccessLdapSettings(),
 					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
+				},
+				{
+					id: 'settings-workersview',
+					icon: 'project-diagram',
+					label: this.$locale.baseText('mainSidebar.workersView'),
+					position: 'top',
+					available:
+						this.settingsStore.isQueueModeEnabled &&
+						hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
+					activateOnRouteNames: [VIEWS.WORKER_VIEW],
 				},
 			];
 
@@ -241,6 +252,10 @@ export default defineComponent({
 						void this.$router.push({ name: VIEWS.AUDIT_LOGS });
 					}
 					break;
+				case 'settings-workersview': {
+					await this.navigateTo(VIEWS.WORKER_VIEW);
+					break;
+				}
 				default:
 					break;
 			}

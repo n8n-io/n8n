@@ -3,8 +3,8 @@
 		:class="[$style.accordion, 'mt-2xl']"
 		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
-		:initiallyExpanded="shouldExpandAccordion"
-		:headerIcon="accordionIcon"
+		:initially-expanded="shouldExpandAccordion"
+		:header-icon="accordionIcon"
 		@click:body="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
 	>
@@ -23,9 +23,9 @@
 						</div>
 					</template>
 					<n8n-link
-						@click.prevent="openWorkflowSettings"
 						:class="{ [$style.disabled]: isNewWorkflow }"
 						size="small"
+						@click.prevent="openWorkflowSettings"
 					>
 						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
 					</n8n-link>
@@ -54,7 +54,7 @@ interface IWorkflowSaveSettings {
 }
 
 export default defineComponent({
-	name: 'executions-info-accordion',
+	name: 'ExecutionsInfoAccordion',
 	mixins: [workflowHelpers],
 	props: {
 		initiallyExpanded: {
@@ -76,20 +76,20 @@ export default defineComponent({
 			} as IWorkflowSaveSettings,
 		};
 	},
+	watch: {
+		workflowSettings(newSettings: IWorkflowSettings) {
+			this.updateSettings(newSettings);
+		},
+	},
 	mounted() {
 		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
 		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
 		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
 	},
-	watch: {
-		workflowSettings(newSettings: IWorkflowSettings) {
-			this.updateSettings(newSettings);
-		},
-	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
-		accordionItems(): Object[] {
+		accordionItems(): object[] {
 			return [
 				{
 					id: 'productionExecutions',
@@ -114,7 +114,7 @@ export default defineComponent({
 			];
 		},
 		shouldExpandAccordion(): boolean {
-			if (this.initiallyExpanded === false) {
+			if (!this.initiallyExpanded) {
 				return false;
 			}
 			return (

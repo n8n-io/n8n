@@ -1,3 +1,4 @@
+import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
@@ -5,18 +6,23 @@ import type { INode } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
+import { mockInstance } from '../shared/mocking';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-import { createWorkflow, getGlobalMemberRole, getGlobalOwnerRole } from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils/';
 import { randomCredentialPayload } from './shared/random';
-import { License } from '@/License';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
-import Container from 'typedi';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
+import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
+import { createUser } from './shared/db/users';
+import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
+import type { Role } from '@/databases/entities/Role';
+import { Push } from '@/push';
 
+let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let anotherMember: User;
@@ -25,32 +31,30 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const licenseLike = utils.mockInstance(License, {
-	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
-const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
+const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+mockInstance(Push);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
 });
+const license = testServer.license;
 
 beforeAll(async () => {
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	const globalOwnerRole = await getGlobalOwnerRole();
+	globalMemberRole = await getGlobalMemberRole();
+	const credentialOwnerRole = await getCredentialOwnerRole();
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
-	anotherMember = await testDb.createUser({ globalRole: globalMemberRole });
+	owner = await createUser({ globalRole: globalOwnerRole });
+	member = await createUser({ globalRole: globalMemberRole });
+	anotherMember = await createUser({ globalRole: globalMemberRole });
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initNodeTypes();
 });
@@ -59,8 +63,7 @@ beforeEach(async () => {
 	activeWorkflowRunnerLike.add.mockReset();
 	activeWorkflowRunnerLike.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', WorkflowHistoryRepository]);
-	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 });
 
 describe('router should switch based on flag', () => {
@@ -98,7 +101,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
+		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
 	});
 
@@ -111,7 +114,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
+		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(1);
 	});
 
@@ -124,7 +127,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
+		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(3);
 	});
 
@@ -137,7 +140,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
+		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(3);
 
 		const secondResponse = await authOwnerAgent
@@ -145,8 +148,77 @@ describe('PUT /workflows/:id', () => {
 			.send({ shareWithIds: [member.id] });
 		expect(secondResponse.statusCode).toBe(200);
 
-		const secondSharedWorkflows = await testDb.getWorkflowSharing(workflow);
+		const secondSharedWorkflows = await getWorkflowSharing(workflow);
 		expect(secondSharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing by the instance owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id, owner.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing with self by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMember.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const tempUser = await createUser({ globalRole: globalMemberRole });
+
+		const response = await authAnotherMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [tempUser.id] });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
 	});
 });
 
@@ -198,7 +270,7 @@ describe('GET /workflows/:id', () => {
 
 	test('GET should return shared workflow with user data', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await testDb.shareWorkflowWithUsers(workflow, [member]);
+		await shareWorkflowWithUsers(workflow, [member]);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
 
@@ -221,7 +293,7 @@ describe('GET /workflows/:id', () => {
 
 	test('GET should return all sharees', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await testDb.shareWorkflowWithUsers(workflow, [member, anotherMember]);
+		await shareWorkflowWithUsers(workflow, [member, anotherMember]);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
 
@@ -290,7 +362,7 @@ describe('GET /workflows/:id', () => {
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, member);
-		await testDb.shareWorkflowWithUsers(workflow, [anotherMember]);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
 
 		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`);
 		expect(responseMember1.statusCode).toBe(200);
@@ -318,14 +390,14 @@ describe('GET /workflows/:id', () => {
 	test('GET should return workflow with credentials for all users with access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		// Both users have access to the credential (none is owner)
-		await testDb.shareCredentialWithUsers(savedCredential, [anotherMember]);
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, member);
-		await testDb.shareWorkflowWithUsers(workflow, [anotherMember]);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
 
 		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`);
 		expect(responseMember1.statusCode).toBe(200);
@@ -403,7 +475,7 @@ describe('POST /workflows', () => {
 
 	it('Should allow saving a workflow using a credential owned by others and shared with you', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		await testDb.shareCredentialWithUsers(savedCredential, [anotherMember]);
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflow = makeWorkflow({
 			withPinData: false,
@@ -415,7 +487,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		license.enable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -464,7 +536,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -927,8 +999,8 @@ describe('getSharedWorkflowIds', () => {
 		const workflow1 = await createWorkflow({}, anotherMember);
 		const workflow2 = await createWorkflow({}, anotherMember);
 		const workflow3 = await createWorkflow({}, anotherMember);
-		await testDb.shareWorkflowWithUsers(workflow1, [member]);
-		await testDb.shareWorkflowWithUsers(workflow3, [member]);
+		await shareWorkflowWithUsers(workflow1, [member]);
+		await shareWorkflowWithUsers(workflow3, [member]);
 		const sharedWorkflowIds = await getSharedWorkflowIds(member);
 		expect(sharedWorkflowIds).toHaveLength(2);
 		expect(sharedWorkflowIds).toContain(workflow1.id);
@@ -938,8 +1010,8 @@ describe('getSharedWorkflowIds', () => {
 
 describe('PATCH /workflows/:id - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
-		const workflow = await testDb.createWorkflow({}, owner);
+		license.enable('feat:workflowHistory');
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -996,8 +1068,8 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 
 	test('Should not create workflow history version when not licensed', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({}, owner);
+		license.disable('feat:workflowHistory');
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -1048,8 +1120,8 @@ describe('PATCH /workflows/:id - workflow history', () => {
 
 describe('PATCH /workflows/:id - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({}, owner);
+		license.disable('feat:workflowHistory');
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: true,
@@ -1070,8 +1142,8 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		license.disable('feat:workflowHistory');
+		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: false,
