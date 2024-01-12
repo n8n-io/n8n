@@ -142,9 +142,12 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: Role[] = isSharingEnabled()
-				? []
-				: await Container.get(RoleRepository).findByName('owner');
+			const roles: Role[] = [];
+
+			if (!isSharingEnabled()) {
+				const role = await Container.get(RoleRepository).findRole('workflow', 'owner');
+				if (role) roles.push(role);
+			}
 
 			const sharedWorkflowIds = await Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(
 				req.user,
