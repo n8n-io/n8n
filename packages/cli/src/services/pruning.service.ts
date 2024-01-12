@@ -140,7 +140,7 @@ export class PruningService {
 		try {
 			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
 
-			await this.executionRepository.deleteExternalData(ids);
+			await this.executionRepository.deleteAssociatedData(ids);
 
 			await this.executionRepository.deleteByIds(executionIds);
 

@@ -250,7 +250,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([this.delete(ids.executionId), this.deleteExternalData([ids])]);
+		return Promise.all([this.delete(ids.executionId), this.deleteAssociatedData([ids])]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {
@@ -546,7 +546,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Remove all data associated with an execution and stored outside the DB.
 	 * Currently, this affects only binary data in filesystem mode.
 	 */
-	async deleteExternalData(ids: Array<{ workflowId: string; executionId: string }>) {
+	async deleteAssociatedData(ids: Array<{ workflowId: string; executionId: string }>) {
 		if (ids.length === 0) return;
 
 		if (config.getEnv('binaryDataManager.mode') !== 'filesystem') return;
