@@ -39,4 +39,8 @@ export class RoleRepository extends Repository<Role> {
 			where: { name: In(roleNames), scope: 'workflow' },
 		}).then((role) => role.map(({ id }) => id));
 	}
+
+	async findByName(roleName: RoleNames) {
+		return this.find({ where: { name: roleName } });
+	}
 }

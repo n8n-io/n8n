@@ -141,4 +141,16 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			workflowId: In(sharedWorkflowIds),
 		});
 	}
+
+	async findWorkflowIdsByUser(user: User, { roles }: { roles?: Role[] } = {}) {
+		const where: FindOptionsWhere<SharedWorkflow> = {};
+
+		if (!user.hasGlobalScope('workflow:read')) where.userId = user.id;
+
+		if (roles) where.role = In(roles.map((r) => r.id));
+
+		const sharings = await this.find({ select: ['workflowId'], where });
+
+		return sharings.map((s) => s.workflowId);
+	}
 }

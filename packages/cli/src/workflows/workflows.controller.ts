@@ -32,12 +32,13 @@ import { NamingService } from '@/services/naming.service';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { RoleNames } from '@/databases/entities/Role';
+import type { Role } from '@/databases/entities/Role';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { CredentialsService } from '../credentials/credentials.service';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
 import { WorkflowRequest } from './workflow.request';
+import { RoleRepository } from '@/databases/repositories/role.repository';
 
 @Service()
 @Authorized()
@@ -141,8 +142,14 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
-			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, roles);
+			const roles: Role[] = isSharingEnabled()
+				? []
+				: await Container.get(RoleRepository).findByName('owner');
+
+			const sharedWorkflowIds = await Container.get(SharedWorkflowRepository).findWorkflowIdsByUser(
+				req.user,
+				{ roles },
+			);
 
 			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
 				sharedWorkflowIds,
