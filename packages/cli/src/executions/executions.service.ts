@@ -35,7 +35,6 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { PruningService } from '@/services/pruning.service';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -449,7 +448,7 @@ export class ExecutionsService {
 	async hardDelete({ executionId, workflowId }: { executionId: string; workflowId: string }) {
 		await Promise.all([
 			Container.get(ExecutionRepository).delete(executionId),
-			Container.get(PruningService).deleteExternalData([{ workflowId, executionId }]),
+			Container.get(ExecutionRepository).deleteExternalData([{ workflowId, executionId }]),
 		]);
 	}
 }

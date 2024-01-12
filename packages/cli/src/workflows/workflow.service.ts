@@ -31,7 +31,6 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { PruningService } from '@/services/pruning.service';
 
 @Service()
 export class WorkflowService {
@@ -50,7 +49,6 @@ export class WorkflowService {
 		private readonly testWebhooks: TestWebhooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly pruningService: PruningService,
 	) {}
 
 	/**
@@ -386,7 +384,7 @@ export class WorkflowService {
 			.then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
 
 		await this.workflowRepository.delete(workflowId);
-		await this.pruningService.deleteExternalData(idsForDeletion);
+		await this.executionRepository.deleteExternalData(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);

@@ -14,11 +14,6 @@ import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
 
-import fsp from 'node:fs/promises';
-import { mock } from 'jest-mock-extended';
-
-jest.mock('fs/promises');
-
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
 
