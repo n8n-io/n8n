@@ -23,7 +23,6 @@ import {
 	type IExecutionsSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
-import { BinaryDataService } from 'n8n-core';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -39,6 +38,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
+import { PruningService } from '@/services/pruning.service';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -87,7 +87,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
-		private readonly binaryDataService: BinaryDataService,
+		private readonly pruningService: PruningService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -243,6 +243,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+	}
+
+	/**
+	 * Permanently remove a single execution and its binary data.
+	 */
+	async hardDelete(ids: { workflowId: string; executionId: string }) {
+		return Promise.all([
+			this.delete(ids.executionId),
+			this.pruningService.deleteExternalData([ids]),
+		]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {

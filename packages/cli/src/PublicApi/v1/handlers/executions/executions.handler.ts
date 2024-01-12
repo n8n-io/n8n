@@ -9,7 +9,7 @@ import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionsService } from '@/executions/executions.service';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 export = {
 	deleteExecution: [
@@ -32,7 +32,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await Container.get(ExecutionsService).hardDelete({
+			await Container.get(ExecutionRepository).hardDelete({
 				workflowId: execution.workflowId as string,
 				executionId: execution.id,
 			});

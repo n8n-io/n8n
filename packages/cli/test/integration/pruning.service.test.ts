@@ -251,7 +251,7 @@ describe('removeAssociatedData()', () => {
 
 			fsp.rm = jest.fn().mockResolvedValue(undefined);
 
-			const promise = pruningService.removeAssociatedData(ids);
+			const promise = pruningService.deleteExternalData(ids);
 
 			await expect(promise).resolves.not.toThrow();
 
@@ -263,7 +263,7 @@ describe('removeAssociatedData()', () => {
 
 			fsp.rm = jest.fn().mockResolvedValue(undefined);
 
-			const promise = pruningService.removeAssociatedData(ids);
+			const promise = pruningService.deleteExternalData(ids);
 
 			await expect(promise).resolves.not.toThrow();
 
@@ -284,7 +284,7 @@ describe('removeAssociatedData()', () => {
 			fsp.rm = jest.fn().mockResolvedValue(undefined);
 			fsp.readdir = jest.fn().mockResolvedValue([firstLegacyId, secondLegacyId]);
 
-			const promise = pruningService.removeAssociatedData([
+			const promise = pruningService.deleteExternalData([
 				{ workflowId, executionId: firstExecutionId },
 				{ workflowId: otherWorkflowId, executionId: secondExecutionId },
 			]);

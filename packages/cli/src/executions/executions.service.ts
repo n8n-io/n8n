@@ -449,7 +449,7 @@ export class ExecutionsService {
 	async hardDelete({ executionId, workflowId }: { executionId: string; workflowId: string }) {
 		await Promise.all([
 			Container.get(ExecutionRepository).delete(executionId),
-			Container.get(PruningService).removeAssociatedData([{ workflowId, executionId }]),
+			Container.get(PruningService).deleteExternalData([{ workflowId, executionId }]),
 		]);
 	}
 }

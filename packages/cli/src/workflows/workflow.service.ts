@@ -386,7 +386,7 @@ export class WorkflowService {
 			.then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
 
 		await this.workflowRepository.delete(workflowId);
-		await this.pruningService.removeAssociatedData(idsForDeletion);
+		await this.pruningService.deleteExternalData(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);

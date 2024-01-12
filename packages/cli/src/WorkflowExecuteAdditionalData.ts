@@ -68,7 +68,6 @@ import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionPr
 import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
-import { ExecutionsService } from './executions/executions.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -465,7 +464,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.retryOf,
 							);
 
-							await Container.get(ExecutionsService).hardDelete({
+							await Container.get(ExecutionRepository).hardDelete({
 								workflowId: this.workflowData.id as string,
 								executionId: this.executionId,
 							});
@@ -1083,7 +1082,7 @@ export function getWorkflowHooksWorkerMain(
 				(executionStatus !== 'success' && !saveSettings.error);
 
 			if (shouldNotSave) {
-				await Container.get(ExecutionsService).hardDelete({
+				await Container.get(ExecutionRepository).hardDelete({
 					workflowId: this.workflowData.id as string,
 					executionId: this.executionId,
 				});

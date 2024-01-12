@@ -127,9 +127,10 @@ export class PruningService {
 	}
 
 	/**
-	 * Remove all data associated with an execution. Currently, only binary data in filesystem mode.
+	 * Remove all data associated with an execution and stored outside the DB.
+	 * Currently, this affects only binary data in filesystem mode.
 	 */
-	async removeAssociatedData(ids: Array<{ workflowId: string; executionId: string }>) {
+	async deleteExternalData(ids: Array<{ workflowId: string; executionId: string }>) {
 		if (ids.length === 0) return;
 
 		if (config.getEnv('binaryDataManager.mode') !== 'filesystem') return;
@@ -203,7 +204,7 @@ export class PruningService {
 		try {
 			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
 
-			await this.removeAssociatedData(ids);
+			await this.deleteExternalData(ids);
 
 			await this.executionRepository.deleteByIds(executionIds);
 
