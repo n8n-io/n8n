@@ -153,16 +153,6 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			wf_template_repo_session_id: templatesStore.currentSessionId,
 		});
 
-		telemetry.track(
-			'User inserted workflow template',
-			{
-				source: 'workflow',
-				template_id: templateId.value,
-				wf_template_repo_session_id: templatesStore.currentSessionId,
-			},
-			{ withPostHog: true },
-		);
-
 		telemetry.track('User closed cred setup', {
 			completed: false,
 			creds_filled: 0,
