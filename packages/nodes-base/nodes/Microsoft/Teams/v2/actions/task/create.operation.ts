@@ -14,7 +14,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		placeholder: '“e.g. new task',
+		placeholder: 'e.g. new task',
 		description: 'Title of the task',
 	},
 	{
@@ -40,7 +40,7 @@ const properties: INodeProperties[] = [
 				validateType: 'dateTime',
 				default: '',
 				description:
-					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.”.',
+					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Percent Complete',

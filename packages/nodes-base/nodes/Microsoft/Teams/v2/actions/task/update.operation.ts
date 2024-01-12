@@ -63,6 +63,7 @@ const properties: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
+				placeholder: 'e.g. 75',
 				description:
 					'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
@@ -78,6 +79,7 @@ const properties: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. my task',
 				description: 'Title of the task',
 			},
 		],
