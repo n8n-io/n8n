@@ -5,7 +5,12 @@ import { getMousePosition } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useDeviceSupport } from 'n8n-design-system';
 
-export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
+export function useCanvasPanning(
+	elementRef: Ref<null | HTMLElement>,
+	options: {
+		onMouseMoveEnd?: Ref<null | ((e: MouseEvent) => void)>;
+	} = {},
+) {
 	const uiStore = useUIStore();
 	const moveLastPosition = ref([0, 0]);
 	const deviceSupport = useDeviceSupport();
@@ -22,6 +27,8 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 		// Update the last position
 		moveLastPosition.value[0] = x;
 		moveLastPosition.value[1] = y;
+
+		return [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 	}
 
 	function onMouseDown(e: MouseEvent, moveButtonPressed: boolean) {
@@ -47,7 +54,7 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 		moveLastPosition.value[1] = y;
 
 		const element = unref(elementRef);
-		element.addEventListener('mousemove', onMouseMove);
+		element?.addEventListener('mousemove', onMouseMove);
 	}
 
 	function onMouseUp(e: MouseEvent) {
@@ -58,7 +65,7 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 		}
 
 		const element = unref(elementRef);
-		element.removeEventListener('mousemove', onMouseMove);
+		element?.removeEventListener('mousemove', onMouseMove);
 
 		uiStore.nodeViewMoveInProgress = false;
 
@@ -66,7 +73,7 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 	}
 
 	function onMouseMove(e: MouseEvent) {
-		if (e.target && !e.target.id.includes('node-view')) {
+		if (e.target && !(e.target as HTMLElement).id.includes('node-view')) {
 			return;
 		}
 
@@ -83,7 +90,8 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.
-			onMouseUp(e);
+			const onMouseMoveEnd = unref(options.onMouseMoveEnd);
+			onMouseMoveEnd?.(e);
 			return;
 		}
 
@@ -91,6 +99,7 @@ export function useCanvasPanning(elementRef: Ref<HTMLElement>) {
 	}
 
 	return {
+		moveLastPosition,
 		onMouseDown,
 		onMouseUp,
 		onMouseMove,

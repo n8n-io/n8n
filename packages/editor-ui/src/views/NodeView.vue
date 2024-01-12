@@ -469,6 +469,8 @@ export default defineComponent({
 	},
 	setup(props, ctx) {
 		const nodeViewRef = ref(null);
+		const onMouseMoveEnd = ref(null);
+
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const locale = useI18n();
@@ -480,7 +482,7 @@ export default defineComponent({
 		const pinnedData = usePinnedData(activeNode);
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
-		const canvasPanning = useCanvasPanning(nodeViewRef);
+		const canvasPanning = useCanvasPanning(nodeViewRef, { onMouseMoveEnd });
 
 		return {
 			locale,
@@ -493,6 +495,7 @@ export default defineComponent({
 			deviceSupport,
 			canvasPanning,
 			nodeViewRef,
+			onMouseMoveEnd,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -779,6 +782,8 @@ export default defineComponent({
 		};
 	},
 	async mounted() {
+		this.onMouseMoveEnd.value = this.mouseUp;
+
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.nodeViewRef as HTMLElement);
 		this.titleReset();
