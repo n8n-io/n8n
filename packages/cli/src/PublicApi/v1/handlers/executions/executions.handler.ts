@@ -9,7 +9,7 @@ import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export = {
 	deleteExecution: [

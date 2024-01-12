@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { jsonStringify } from 'n8n-workflow';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 @Service()
 export class PruningService {
@@ -117,7 +117,7 @@ export class PruningService {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	shutdown(): void {
 		this.isShuttingDown = true;
 		this.stopPruning();
 	}
