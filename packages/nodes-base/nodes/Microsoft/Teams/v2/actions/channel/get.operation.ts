@@ -27,14 +27,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			`/v1.0/teams/${teamId}/channels/${channelId}`,
 		);
 	} catch (error) {
-		if (error.message && error.message.includes('NotFound')) {
-			throw new NodeOperationError(
-				this.getNode(),
-				"The channel you are trying to get doesn't exist",
-				{
-					description: "Check that the 'Channel' parameter is correctly set",
-				},
-			);
-		}
+		throw new NodeOperationError(
+			this.getNode(),
+			"The channel you are trying to get doesn't exist",
+			{
+				description: "Check that the 'Channel' parameter is correctly set",
+			},
+		);
 	}
 }

@@ -1,11 +1,10 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
-import { groupRLC, groupSourceOptions, planRLC } from '../../descriptions';
+import { groupRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { returnAllOrLimit } from '@utils/descriptions';
 
 const properties: INodeProperties[] = [
-	groupSourceOptions,
 	{
 		displayName: 'Tasks For',
 		name: 'tasksFor',

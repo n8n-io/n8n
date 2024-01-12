@@ -24,14 +24,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		await microsoftApiRequest.call(this, 'DELETE', `/v1.0/teams/${teamId}/channels/${channelId}`);
 		return { success: true };
 	} catch (error) {
-		if (error.message && error.message.includes('NotFound')) {
-			throw new NodeOperationError(
-				this.getNode(),
-				"The channel you are trying to delete doesn't exist",
-				{
-					description: "Check that the 'Channel' parameter is correctly set",
-				},
-			);
-		}
+		throw new NodeOperationError(
+			this.getNode(),
+			"The channel you are trying to delete doesn't exist",
+			{
+				description: "Check that the 'Channel' parameter is correctly set",
+			},
+		);
 	}
 }

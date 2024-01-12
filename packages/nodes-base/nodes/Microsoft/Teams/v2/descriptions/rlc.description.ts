@@ -124,7 +124,7 @@ export const chatRLC: INodeProperties = {
 };
 
 export const groupRLC: INodeProperties = {
-	displayName: 'Group',
+	displayName: 'Team',
 	name: 'groupId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
@@ -137,7 +137,7 @@ export const groupRLC: INodeProperties = {
 			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Group...',
+			placeholder: 'Select a Team...',
 			typeOptions: {
 				searchListMethod: 'getGroups',
 				searchable: true,

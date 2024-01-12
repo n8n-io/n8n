@@ -38,17 +38,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			`/v1.0/chats/${chatId}/messages/${messageId}`,
 		);
 	} catch (error) {
-		if (
-			error.message &&
-			(error.message.includes('NotFound') || error.message.includes('InvalidParameter'))
-		) {
-			throw new NodeOperationError(
-				this.getNode(),
-				"The message you are trying to get doesn't exist",
-				{
-					description: "Check that the 'Message ID' parameter is correctly set",
-				},
-			);
-		}
+		throw new NodeOperationError(
+			this.getNode(),
+			"The message you are trying to get doesn't exist",
+			{
+				description: "Check that the 'Message ID' parameter is correctly set",
+			},
+		);
 	}
 }

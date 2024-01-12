@@ -152,12 +152,12 @@ export async function getGroups(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	const groupSource = this.getCurrentNodeParameter('groupSource') as string;
-	let requestUrl = '/v1.0/groups' as string;
+	// const groupSource = this.getCurrentNodeParameter('groupSource') as string;
+	const requestUrl = '/v1.0/groups' as string;
 
-	if (groupSource === 'mine') {
-		requestUrl = '/v1.0/me/transitiveMemberOf';
-	}
+	// if (groupSource === 'mine') {
+	// 	requestUrl = '/v1.0/me/transitiveMemberOf';
+	// }
 
 	const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
 
