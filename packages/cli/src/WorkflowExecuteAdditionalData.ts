@@ -68,7 +68,7 @@ import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionPr
 import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
-import { PruningService } from './services/pruning.service';
+import { ExecutionsService } from './executions/executions.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -464,15 +464,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.executionId,
 								this.retryOf,
 							);
-							await Promise.all([
-								Container.get(ExecutionRepository).delete(this.executionId),
-								Container.get(PruningService).removeAssociatedData([
-									{
-										workflowId: this.workflowData.id as string,
-										executionId: this.executionId,
-									},
-								]),
-							]);
+
+							await Container.get(ExecutionsService).hardDelete({
+								workflowId: this.workflowData.id as string,
+								executionId: this.executionId,
+							});
 
 							return;
 						}
@@ -1087,15 +1083,10 @@ export function getWorkflowHooksWorkerMain(
 				(executionStatus !== 'success' && !saveSettings.error);
 
 			if (shouldNotSave) {
-				await Promise.all([
-					Container.get(ExecutionRepository).delete(this.executionId),
-					Container.get(PruningService).removeAssociatedData([
-						{
-							workflowId: this.workflowData.id as string,
-							executionId: this.executionId,
-						},
-					]),
-				]);
+				await Container.get(ExecutionsService).hardDelete({
+					workflowId: this.workflowData.id as string,
+					executionId: this.executionId,
+				});
 			}
 		},
 	];

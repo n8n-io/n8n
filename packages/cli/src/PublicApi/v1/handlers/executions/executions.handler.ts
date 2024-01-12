@@ -9,8 +9,6 @@ import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { PruningService } from '@/services/pruning.service';
 
 export = {
 	deleteExecution: [
@@ -33,15 +31,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await Promise.all([
-				Container.get(ExecutionRepository).delete(execution.id),
-				Container.get(PruningService).removeAssociatedData([
-					{
-						workflowId: execution.workflowId as string,
-						executionId: execution.id,
-					},
-				]),
-			]);
+			await Container.get(ExecutionsService).hardDelete({
+				workflowId: execution.workflowId as string,
+				executionId: execution.id,
+			});
 
 			execution.id = id;
 
