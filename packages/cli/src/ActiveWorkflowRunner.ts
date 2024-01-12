@@ -27,8 +27,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	WebhookPathTakenError,
 	ApplicationError,
-	SUBWORKFLOW_STARTER_NODES,
-	NODE_TYPES,
+	STARTERS_TO_IGNORE_IN_REGULAR_EXECUTION,
 } from 'n8n-workflow';
 
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -597,11 +596,9 @@ export class ActiveWorkflowRunner {
 				settings: dbWorkflow.settings,
 			});
 
-			const starters = SUBWORKFLOW_STARTER_NODES.filter(
-				(node) => node !== NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER,
+			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(
+				STARTERS_TO_IGNORE_IN_REGULAR_EXECUTION,
 			);
-
-			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(starters);
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(

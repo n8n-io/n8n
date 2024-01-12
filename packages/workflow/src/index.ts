@@ -69,4 +69,4 @@ declare module 'http' {
 	}
 }
 
-export { SUBWORKFLOW_STARTER_NODES } from './Constants';
+export { SUBWORKFLOW_STARTER_NODES, STARTERS_TO_IGNORE_IN_REGULAR_EXECUTION } from './Constants';
