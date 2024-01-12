@@ -1,5 +1,6 @@
 import { CredentialsModal, MessageBox } from './modals';
 import * as formStep from '../composables/setup-template-form-step';
+import { overrideFeatureFlag } from '../composables/featureFlags';
 
 export type TemplateTestData = {
 	id: number;
@@ -28,15 +29,14 @@ export const getters = {
 };
 
 export const enableTemplateCredentialSetupFeatureFlag = () => {
-	cy.window().then((win) => {
-		win.featureFlags.override('017_template_credential_setup_v2', true);
-	});
+	overrideFeatureFlag('017_template_credential_setup_v2', true);
 };
 
 export const visitTemplateCredentialSetupPage = (templateId: number) => {
-	cy.visit(`/templates/${templateId}/setup`);
-	formStep.getFormStep().eq(0).should('be.visible');
+	cy.visit(`templates/${templateId}/setup`);
 	enableTemplateCredentialSetupFeatureFlag();
+
+	formStep.getFormStep().eq(0).should('be.visible');
 };
 
 /**
