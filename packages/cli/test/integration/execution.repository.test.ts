@@ -5,7 +5,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 
 jest.mock('fs/promises');
 
-describe('deleteExternalData()', () => {
+describe('deleteAssociatedData()', () => {
 	const pruningService = new ExecutionRepository(mock(), mock(), mock());
 
 	const workflowId = 'ObogjVbqpNOQpiyV';
