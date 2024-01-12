@@ -9,6 +9,7 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
 import { MultiMainSetup } from './MultiMainSetup.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TestWebhooks } from '@/TestWebhooks';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -31,6 +32,9 @@ export async function handleCommandMessageMain(messageString: string) {
 			);
 			return message;
 		}
+
+		const push = Container.get(Push);
+
 		switch (message.command) {
 			case 'reloadLicense':
 				if (!debounceMessageReceiver(message, 500)) {
@@ -84,8 +88,6 @@ export async function handleCommandMessageMain(messageString: string) {
 					break;
 				}
 
-				const push = Container.get(Push);
-
 				if (!oldState && newState) {
 					try {
 						await activeWorkflowRunner.add(workflowId, 'activate');
@@ -98,7 +100,7 @@ export async function handleCommandMessageMain(messageString: string) {
 							versionId,
 						});
 
-						await Container.get(MultiMainSetup).broadcastWorkflowFailedToActivate({
+						await Container.get(MultiMainSetup).publish('workflowFailedToActivate', {
 							workflowId,
 							errorMessage: error.message,
 						});
@@ -125,6 +127,44 @@ export async function handleCommandMessageMain(messageString: string) {
 				if (typeof workflowId !== 'string' || typeof errorMessage !== 'string') break;
 
 				Container.get(Push).broadcast('workflowFailedToActivate', { workflowId, errorMessage });
+
+				break;
+			}
+
+			case 'relay-execution-lifecycle-event': {
+				/**
+				 * Do not debounce this - all events share the same message name.
+				 */
+
+				const { type, args, sessionId } = message.payload;
+
+				if (!push.getBackend().hasSessionId(sessionId)) break;
+
+				push.send(type, args, sessionId);
+
+				break;
+			}
+
+			case 'clear-test-webhooks': {
+				if (!debounceMessageReceiver(message, 100)) {
+					// @ts-expect-error Legacy typing
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { webhookKey, workflowEntity, sessionId } = message.payload;
+
+				if (!push.getBackend().hasSessionId(sessionId)) break;
+
+				const testWebhooks = Container.get(TestWebhooks);
+
+				testWebhooks.clearTimeout(webhookKey);
+
+				const workflow = testWebhooks.toWorkflow(workflowEntity);
+
+				await testWebhooks.deactivateWebhooks(workflow);
+
+				break;
 			}
 
 			default:
