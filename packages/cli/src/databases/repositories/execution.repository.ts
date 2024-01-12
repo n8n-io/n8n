@@ -23,7 +23,6 @@ import {
 	type IExecutionsSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
-import { PruningService } from '@/services/pruning.service';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -39,6 +38,9 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
+import { DisallowedFilepathError } from 'n8n-core';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -87,7 +89,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
-		private readonly pruningService: PruningService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -249,10 +250,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([
-			this.delete(ids.executionId),
-			this.pruningService.deleteExternalData([ids]),
-		]);
+		return Promise.all([this.delete(ids.executionId), this.deleteExternalData([ids])]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {
@@ -542,5 +540,65 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				waitTill: 'ASC',
 			},
 		});
+	}
+
+	/**
+	 * Remove all data associated with an execution and stored outside the DB.
+	 * Currently, this affects only binary data in filesystem mode.
+	 */
+	async deleteExternalData(ids: Array<{ workflowId: string; executionId: string }>) {
+		if (ids.length === 0) return;
+
+		if (config.getEnv('binaryDataManager.mode') !== 'filesystem') return;
+
+		const storagePath = config.getEnv('binaryDataManager').localStoragePath;
+
+		// binary files stored separate in nested dirs - `filesystem-v2`
+
+		await Promise.all(
+			ids.map(async ({ workflowId, executionId }) => {
+				const nestedPath = `workflows/${workflowId}/executions/${executionId}`;
+				const dir = path.join(storagePath, nestedPath);
+
+				if (path.relative(storagePath, dir).startsWith('..')) {
+					throw new DisallowedFilepathError(dir);
+				}
+
+				await fs.rm(dir, { recursive: true, force: true });
+			}),
+		);
+
+		// binary files stored flat in single dir - `filesystem` (legacy)
+
+		const executionIds = ids.map((o) => o.executionId);
+
+		const set = new Set(executionIds);
+
+		let fileNames: string[] = [];
+		try {
+			fileNames = await fs.readdir(storagePath);
+		} catch {
+			return; // no such dir
+		}
+
+		const EXECUTION_ID_EXTRACTOR =
+			/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
+
+		for (const fileName of fileNames) {
+			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
+
+			if (executionId && set.has(executionId)) {
+				const filePath = path.join(storagePath, fileName);
+
+				if (path.relative(storagePath, filePath).startsWith('..')) {
+					throw new DisallowedFilepathError(filePath);
+				}
+
+				await Promise.all([
+					fs.rm(filePath, { force: true }),
+					fs.rm(`${filePath}.metadata`, { force: true }),
+				]);
+			}
+		}
 	}
 }

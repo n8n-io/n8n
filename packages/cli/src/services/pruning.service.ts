@@ -1,13 +1,10 @@
 import { Service } from 'typedi';
-import { DisallowedFilepathError } from 'n8n-core';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { jsonStringify } from 'n8n-workflow';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 @Service()
 export class PruningService {
@@ -126,66 +123,6 @@ export class PruningService {
 	}
 
 	/**
-	 * Remove all data associated with an execution and stored outside the DB.
-	 * Currently, this affects only binary data in filesystem mode.
-	 */
-	async deleteExternalData(ids: Array<{ workflowId: string; executionId: string }>) {
-		if (ids.length === 0) return;
-
-		if (config.getEnv('binaryDataManager.mode') !== 'filesystem') return;
-
-		const storagePath = config.getEnv('binaryDataManager').localStoragePath;
-
-		// binary files stored separate in nested dirs - `filesystem-v2`
-
-		await Promise.all(
-			ids.map(async ({ workflowId, executionId }) => {
-				const nestedPath = `workflows/${workflowId}/executions/${executionId}`;
-				const dir = path.join(storagePath, nestedPath);
-
-				if (path.relative(storagePath, dir).startsWith('..')) {
-					throw new DisallowedFilepathError(dir);
-				}
-
-				await fs.rm(dir, { recursive: true, force: true });
-			}),
-		);
-
-		// binary files stored flat in single dir - `filesystem` (legacy)
-
-		const executionIds = ids.map((o) => o.executionId);
-
-		const set = new Set(executionIds);
-
-		let fileNames: string[] = [];
-		try {
-			fileNames = await fs.readdir(storagePath);
-		} catch {
-			return; // no such dir
-		}
-
-		const EXECUTION_ID_EXTRACTOR =
-			/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
-
-		for (const fileName of fileNames) {
-			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
-
-			if (executionId && set.has(executionId)) {
-				const filePath = path.join(storagePath, fileName);
-
-				if (path.relative(storagePath, filePath).startsWith('..')) {
-					throw new DisallowedFilepathError(filePath);
-				}
-
-				await Promise.all([
-					fs.rm(filePath, { force: true }),
-					fs.rm(`${filePath}.metadata`, { force: true }),
-				]);
-			}
-		}
-	}
-
-	/**
 	 * Permanently remove all soft-deleted executions and their associated data, in a pruning cycle.
 	 * @return Delay in ms after which the next cycle should be started
 	 */
@@ -203,7 +140,7 @@ export class PruningService {
 		try {
 			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
 
-			await this.deleteExternalData(ids);
+			await this.executionRepository.deleteExternalData(ids);
 
 			await this.executionRepository.deleteByIds(executionIds);
 
