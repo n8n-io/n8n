@@ -1,11 +1,11 @@
 import type express from 'express';
 import { Service } from 'typedi';
-import {
-	type IWebhookData,
-	type IWorkflowExecuteAdditionalData,
-	type IHttpRequestMethods,
-	WebhookPathTakenError,
-	Workflow,
+import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import type {
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	IHttpRequestMethods,
+	IRunData,
 } from 'n8n-workflow';
 import type {
 	IResponseCallbackData,
@@ -17,13 +17,15 @@ import type {
 import { Push } from '@/push';
 import { NodeTypes } from '@/NodeTypes';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { TIME } from '@/constants';
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 @Service()
 export class TestWebhooks implements IWebhookManager {
@@ -31,6 +33,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
+		private readonly multiMainSetup: MultiMainSetup,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -88,7 +91,6 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		const { destinationNode, sessionId, workflowEntity } = registration;
-		const timeout = this.timeouts[key];
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -134,13 +136,32 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			} catch {}
 
-			// Delete webhook also if an error is thrown
-			if (timeout) clearTimeout(timeout);
+			/**
+			 * Multi-main setup: In a manual webhook execution, the main process that
+			 * handles a webhook might not be the same as the main process that created
+			 * the webhook. If so, after the test webhook has been successfully executed,
+			 * the handler process commands the creator process to clear its test webhooks.
+			 */
+			if (
+				this.multiMainSetup.isEnabled &&
+				sessionId &&
+				!this.push.getBackend().hasSessionId(sessionId)
+			) {
+				const payload = { webhookKey: key, workflowEntity, sessionId };
+				void this.multiMainSetup.publish('clear-test-webhooks', payload);
+				return;
+			}
 
-			await this.registrations.deregisterAll();
+			this.clearTimeout(key);
 
 			await this.deactivateWebhooks(workflow);
 		});
+	}
+
+	clearTimeout(key: string) {
+		const timeout = this.timeouts[key];
+
+		if (timeout) clearTimeout(timeout);
 	}
 
 	async getWebhookMethods(path: string) {
@@ -185,8 +206,10 @@ export class TestWebhooks implements IWebhookManager {
 	 * For every webhook call to listen for, also activate the webhook.
 	 */
 	async needsWebhook(
+		userId: string,
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		runData?: IRunData,
 		sessionId?: string,
 		destinationNode?: string,
 	) {
@@ -205,11 +228,15 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), 2 * TIME.MINUTE);
+		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), TEST_WEBHOOK_TIMEOUT);
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
 			const registration = await this.registrations.get(key);
+
+			if (runData && webhook.node in runData) {
+				return false;
+			}
 
 			if (registration && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
@@ -219,21 +246,23 @@ export class TestWebhooks implements IWebhookManager {
 			webhook.isTest = true;
 
 			/**
-			 * Remove additional data from webhook because:
-			 *
-			 * - It is not needed for the test webhook to be executed.
-			 * - It contains circular refs that cannot be cached.
+			 * Additional data cannot be cached because of circular refs.
+			 * Hence store the `userId` and recreate additional data when needed.
 			 */
-			const { workflowExecuteAdditionalData: _, ...rest } = webhook;
+			const { workflowExecuteAdditionalData: _, ...cacheableWebhook } = webhook;
+
+			cacheableWebhook.userId = userId;
 
 			try {
 				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
+
+				cacheableWebhook.staticData = workflow.staticData;
 
 				await this.registrations.register({
 					sessionId,
 					workflowEntity,
 					destinationNode,
-					webhook: rest as IWebhookData,
+					webhook: cacheableWebhook as IWebhookData,
 				});
 
 				this.timeouts[key] = timeout;
@@ -261,13 +290,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			const { sessionId, workflowEntity } = registration;
 
-			const timeout = this.timeouts[key];
-
 			const workflow = this.toWorkflow(workflowEntity);
 
 			if (workflowEntity.id !== workflowId) continue;
 
-			clearTimeout(timeout);
+			this.clearTimeout(key);
 
 			if (sessionId !== undefined) {
 				try {
@@ -341,16 +368,24 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
-			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
+			const { userId, staticData } = webhook;
 
-			await this.registrations.deregister(webhook);
+			if (userId) {
+				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+			}
+
+			if (staticData) workflow.staticData = staticData;
+
+			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
 		}
+
+		await this.registrations.deregisterAll();
 	}
 
 	/**
-	 * Convert a `WorkflowEntity` from `typeorm` to a `Workflow` from `n8n-workflow`.
+	 * Convert a `WorkflowEntity` from `typeorm` to a temporary `Workflow` from `n8n-workflow`.
 	 */
-	private toWorkflow(workflowEntity: IWorkflowDb) {
+	toWorkflow(workflowEntity: IWorkflowDb) {
 		return new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,
@@ -358,7 +393,14 @@ export class TestWebhooks implements IWebhookManager {
 			connections: workflowEntity.connections,
 			active: false,
 			nodeTypes: this.nodeTypes,
+
+			/**
+			 * `staticData` in the original workflow entity has production webhook IDs.
+			 * Since we are creating here a temporary workflow only for a test webhook,
+			 * `staticData` from the original workflow entity should not be transferred.
+			 */
 			staticData: undefined,
+
 			settings: workflowEntity.settings,
 		});
 	}

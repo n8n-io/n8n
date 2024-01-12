@@ -122,6 +122,13 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						// await this.stopProcess();
 						break;
 					default:
+						if (
+							message.command === 'relay-execution-lifecycle-event' ||
+							message.command === 'clear-test-webhooks'
+						) {
+							break; // meant only for main
+						}
+
 						logger.debug(
 							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,

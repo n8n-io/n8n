@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
 import { type IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
+import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 
 export type TestWebhookRegistration = {
 	sessionId?: string;
@@ -20,6 +21,19 @@ export class TestWebhookRegistrationsService {
 		const hashKey = this.toKey(registration.webhook);
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+
+		/**
+		 * Multi-main setup: In a manual webhook execution, the main process that
+		 * handles a webhook might not be the same as the main process that created
+		 * the webhook. If so, after the test webhook has been successfully executed,
+		 * the handler process commands the creator process to clear its test webhooks.
+		 * We set a TTL on the key so that it is cleared even on creator process crash,
+		 * with an additional buffer to ensure this safeguard expiration will not delete
+		 * the key before the regular test webhook timeout fetches the key to delete it.
+		 */
+		const ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER;
+
+		await this.cacheService.expire(this.cacheKey, ttl);
 	}
 
 	async deregister(arg: IWebhookData | string) {

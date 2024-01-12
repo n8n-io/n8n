@@ -141,6 +141,7 @@ export default defineComponent({
 				nodeTypesStore: useNodeTypesStore(),
 				telemetry: this.$telemetry,
 				templatesStore: useTemplatesStore(),
+				source: 'template_preview',
 			});
 		},
 		onHidePreview() {
