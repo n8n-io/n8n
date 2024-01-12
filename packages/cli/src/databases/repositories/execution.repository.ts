@@ -649,7 +649,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
 		return this.findSingleExecution(executionId, {
 			where: {
-				id: executionId,
 				workflowId: In(sharedWorkflowIds),
 			},
 			includeData: true,
