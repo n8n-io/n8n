@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSetupTemplateStore } from './setupTemplate.store';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
@@ -19,15 +19,6 @@ const posthogStore = usePostHog();
 // Router
 const route = useRoute();
 const router = useRouter();
-
-const currentTemplateId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
-
-if (!posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
-	void router.replace({
-		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: currentTemplateId },
-	});
-}
 
 //#region Computed
 
@@ -87,6 +78,15 @@ const skipIfTemplateHasNoCreds = async () => {
 //#region Lifecycle hooks
 
 setupTemplateStore.setTemplateId(templateId.value);
+
+onBeforeMount(async () => {
+	if (!posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
+		void router.replace({
+			name: VIEWS.TEMPLATE_IMPORT,
+			params: { id: templateId.value },
+		});
+	}
+});
 
 onMounted(async () => {
 	await setupTemplateStore.init();
