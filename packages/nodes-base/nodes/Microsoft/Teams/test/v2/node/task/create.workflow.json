@@ -1,15 +1,15 @@
 {
-  "name": "My workflow 35",
+  "name": "My workflow 69",
   "nodes": [
     {
       "parameters": {},
-      "id": "6666-9999-77777",
+      "id": "28f1f78e-0d50-4bfe-aa16-1a53f0832793",
       "name": "When clicking \"Execute Workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        880,
-        380
+        520,
+        300
       ]
     },
     {
@@ -45,13 +45,13 @@
           "percentComplete": 25
         }
       },
-      "id": "6666-5555-77777",
+      "id": "e1c2eafd-4a1e-48aa-bc0e-d5a03644fedc",
       "name": "Microsoft Teams",
       "type": "n8n-nodes-base.microsoftTeams",
       "typeVersion": 2,
       "position": [
-        1100,
-        380
+        740,
+        300
       ],
       "credentials": {
         "microsoftTeamsOAuth2Api": {
@@ -62,13 +62,13 @@
     },
     {
       "parameters": {},
-      "id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+      "id": "a05a3079-3431-44b8-a317-79e5d8babe25",
       "name": "No Operation, do nothing",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1400,
-        380
+        1040,
+        300
       ]
     }
   ],
@@ -81,11 +81,11 @@
           "planId": "THwgIivuyU26ki8qS7ufcJgAB6zf",
           "bucketId": "CO-ZsX1s4kO7FtO6ZHZdDpgAFL1m",
           "title": "do this",
-          "orderHint": "8585032308935758184",
+          "orderHint": "8584964728139267910",
           "assigneePriority": "",
           "percentComplete": 25,
           "startDateTime": null,
-          "createdDateTime": "2023-10-27T03:06:31.9017623Z",
+          "createdDateTime": "2024-01-13T08:21:11.5507897Z",
           "dueDateTime": "2023-10-30T22:00:00Z",
           "hasDescription": false,
           "previewType": "automatic",
@@ -96,31 +96,31 @@
           "activeChecklistItemCount": 0,
           "conversationThreadId": null,
           "priority": 5,
-          "id": "lDrRJ7N_-06p_26iKBtJ6ZgAKffD",
+          "id": "mYxTKaD9VkqWaBCJE5v4E5gAHcPB",
           "createdBy": {
             "user": {
               "displayName": null,
-              "id": "11111-2222-3333"
+              "id": "b834447b-6848-4af9-8390-d2259ce46b74"
             },
             "application": {
               "displayName": null,
-              "id": "11111-2222-3333-44444"
+              "id": "66bdd989-4a29-465d-86fb-d94ed8fd86ed"
             }
           },
           "appliedCategories": {},
           "assignments": {
             "ba4a422e-bdce-4795-b4b6-579287363f0e": {
               "@odata.type": "#microsoft.graph.plannerAssignment",
-              "assignedDateTime": "2023-10-27T03:06:31.9017623Z",
-              "orderHint": "8585032309536070726PE",
+              "assignedDateTime": "2024-01-13T08:21:11.5507897Z",
+              "orderHint": "8584964728740986700PZ",
               "assignedBy": {
                 "user": {
                   "displayName": null,
-                  "id": "11111-2222-3333"
+                  "id": "b834447b-6848-4af9-8390-d2259ce46b74"
                 },
                 "application": {
                   "displayName": null,
-                  "id": "11111-2222-3333-44444"
+                  "id": "66bdd989-4a29-465d-86fb-d94ed8fd86ed"
                 }
               }
             }
@@ -157,10 +157,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "a726a1fd-7095-454c-984c-92404582bbee",
-  "id": "i3NYGF0LXV4qDFV9",
+  "versionId": "8cb42e14-a12c-4c24-8374-4105664065c3",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
   },
+  "id": "73ZPNCHsvTvFBx1V",
   "tags": []
 }

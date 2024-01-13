@@ -2,6 +2,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
+import { DateTime } from 'luxon';
 
 const properties: INodeProperties[] = [
 	{
@@ -126,6 +127,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			updateFields[key] = this.getNodeParameter(`updateFields.${key}`, i, '', {
 				extractValue: true,
 			}) as string;
+		}
+
+		if (key === 'dueDateTime' && updateFields.dueDateTime instanceof DateTime) {
+			updateFields.dueDateTime = updateFields.dueDateTime.toISO();
 		}
 	}
 
