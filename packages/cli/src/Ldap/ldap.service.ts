@@ -99,7 +99,7 @@ export class LdapService {
 			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
 		}
 
-		this.setConfig(ldapConfig);
+		this.setConfig({ ...ldapConfig });
 
 		ldapConfig.bindingAdminPassword = this.cipher.encrypt(ldapConfig.bindingAdminPassword);
 
