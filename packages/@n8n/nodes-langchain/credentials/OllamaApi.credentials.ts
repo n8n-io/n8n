@@ -20,15 +20,8 @@ export class OllamaApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',
-			url: '/api/generate',
-			method: 'POST',
-			headers: {
-				'anthropic-version': '2023-06-01',
-			},
-			body: {
-				model: 'llama2',
-				prompt: 'Hello',
-			},
+			url: '/',
+			method: 'GET',
 		},
 	};
 }

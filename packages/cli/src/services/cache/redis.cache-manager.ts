@@ -39,6 +39,7 @@ export interface RedisStore extends Store {
 	hvals<T>(key: string): Promise<T[]>;
 	hexists(key: string, field: string): Promise<boolean>;
 	hdel(key: string, field: string): Promise<number>;
+	expire(key: string, ttlSeconds: number): Promise<void>;
 }
 
 function builder(
@@ -55,6 +56,9 @@ function builder(
 			const val = await redisCache.get(key);
 			if (val === undefined || val === null) return undefined;
 			else return jsonParse<T>(val);
+		},
+		async expire(key: string, ttlSeconds: number) {
+			await redisCache.expire(key, ttlSeconds);
 		},
 		async set(key, value, ttl) {
 			// eslint-disable-next-line @typescript-eslint/no-throw-literal, @typescript-eslint/restrict-template-expressions
