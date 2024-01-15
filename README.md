@@ -44,6 +44,12 @@ From the terminal, run:
 
 This command will download everything that is needed to start n8n. You can then access n8n and start building workflows by opening [http://localhost:5678](http://localhost:5678).
 
+## Self Host
+
+You can also deploy a self-hosted version in one-click with [Dome](https://app.trydome.io/signup?package=n8n):
+
+[![Deploy to Dome](https://trydome.io/button.svg)](https://app.trydome.io/signup?package=n8n)
+
 ## n8n cloud
 
 Sign-up for an [n8n cloud](https://www.n8n.io/cloud/) account.
