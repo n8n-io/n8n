@@ -29,7 +29,6 @@ export async function googleApiRequest(
 		headers: {
 			'Content-Type': 'application/json',
 		},
-
 		method,
 		body,
 		qs,
@@ -38,7 +37,6 @@ export async function googleApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-
 	try {
 		if (Object.keys(body).length === 0) {
 			delete options.body;
@@ -52,7 +50,11 @@ export async function googleApiRequest(
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.httpRequest(options);
 		} else {
-			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
+			return await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				'googleDriveOAuth2Api',
+				options,
+			);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
