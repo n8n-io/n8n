@@ -214,6 +214,7 @@ function getIssues(index: number): string[] {
 		flex-direction: column;
 		align-items: center;
 		gap: var(--spacing-2xs);
+		min-height: 15vh;
 	}
 
 	.content {
