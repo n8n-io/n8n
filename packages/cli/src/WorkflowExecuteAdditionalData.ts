@@ -876,6 +876,7 @@ async function executeWorkflow(
 			stoppedAt: fullRunData.stoppedAt,
 			status: fullRunData.status,
 			workflowData,
+			workflowId: workflowData.id,
 		};
 		if (workflowData.id) {
 			fullExecutionData.workflowId = workflowData.id;

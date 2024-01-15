@@ -118,7 +118,7 @@ export interface IExecutionBase {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
-	workflowId?: string; // To be able to filter executions easily //
+	workflowId: string;
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
