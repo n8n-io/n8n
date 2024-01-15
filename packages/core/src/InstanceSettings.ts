@@ -75,12 +75,12 @@ export class InstanceSettings {
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 
-			console.log('[file] encryptionKey', encryptionKey);
-			console.log('[env] N8N_ENCRYPTION_KEY', process.env.N8N_ENCRYPTION_KEY);
+			// console.log('[file] encryptionKey', encryptionKey);
+			// console.log('[env] N8N_ENCRYPTION_KEY', process.env.N8N_ENCRYPTION_KEY);
 
 			if (process.env.N8N_ENCRYPTION_KEY && encryptionKey !== process.env.N8N_ENCRYPTION_KEY) {
 				throw new ApplicationError(
-					`The encryption key in the settings file ${this.settingsFile} does not match the one in the N8N_ENCRYPTION_KEY. If specifying this environment variable, please make sure it matches the value in the settings file.`,
+					`The encryption key in the settings file ${this.settingsFile} does not match the one in the N8N_ENCRYPTION_KEY ${process.env.N8N_ENCRYPTION_KEY}. If specifying this environment variable, please make sure it matches the value in the settings file.`,
 				);
 			}
 
