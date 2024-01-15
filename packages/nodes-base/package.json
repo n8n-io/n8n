@@ -860,7 +860,6 @@
     "luxon": "3.3.0",
     "mailparser": "3.5.0",
     "minifaker": "1.34.1",
-    "moment": "2.29.4",
     "moment-timezone": "0.5.37",
     "mongodb": "4.17.1",
     "mqtt": "5.0.2",
