@@ -147,7 +147,6 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
-	waitTill?: Date | null;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
@@ -161,9 +160,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: string;
 	data: string;
-	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
-	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
