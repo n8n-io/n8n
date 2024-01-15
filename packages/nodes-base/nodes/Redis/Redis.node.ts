@@ -1,16 +1,19 @@
 import type {
 	IExecuteFunctions,
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
-import type { RedisClientType } from './utils';
-import { setupRedisClient, redisConnectionTest } from './utils';
+import {
+	setupRedisClient,
+	redisConnectionTest,
+	convertInfoToObject,
+	getValue,
+	setValue,
+} from './utils';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -499,126 +502,6 @@ export class Redis implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		// Parses the given value in a number if it is one else returns a string
-		function getParsedValue(value: string): string | number {
-			if (value.match(/^[\d\.]+$/) === null) {
-				// Is a string
-				return value;
-			} else {
-				// Is a number
-				return parseFloat(value);
-			}
-		}
-
-		// Converts the Redis Info String into an object
-		function convertInfoToObject(stringData: string): IDataObject {
-			const returnData: IDataObject = {};
-
-			let key: string, value: string;
-			for (const line of stringData.split('\n')) {
-				if (['#', ''].includes(line.charAt(0))) {
-					continue;
-				}
-				[key, value] = line.split(':');
-				if (key === undefined || value === undefined) {
-					continue;
-				}
-				value = value.trim();
-
-				if (value.includes('=')) {
-					returnData[key] = {};
-					let key2: string, value2: string;
-					for (const keyValuePair of value.split(',')) {
-						[key2, value2] = keyValuePair.split('=');
-						(returnData[key] as IDataObject)[key2] = getParsedValue(value2);
-					}
-				} else {
-					returnData[key] = getParsedValue(value);
-				}
-			}
-
-			return returnData;
-		}
-
-		async function getValue(client: RedisClientType, keyName: string, type?: string) {
-			if (type === undefined || type === 'automatic') {
-				// Request the type first
-				type = await client.type(keyName);
-			}
-
-			if (type === 'string') {
-				return client.get(keyName);
-			} else if (type === 'hash') {
-				return client.hGetAll(keyName);
-			} else if (type === 'list') {
-				return client.lRange(keyName, 0, -1);
-			} else if (type === 'sets') {
-				return client.sMembers(keyName);
-			}
-		}
-
-		const setValue = async (
-			client: RedisClientType,
-			keyName: string,
-			value: string | number | object | string[] | number[],
-			expire: boolean,
-			ttl: number,
-			type?: string,
-			valueIsJSON?: boolean,
-		) => {
-			if (type === undefined || type === 'automatic') {
-				// Request the type first
-				if (typeof value === 'string') {
-					type = 'string';
-				} else if (Array.isArray(value)) {
-					type = 'list';
-				} else if (typeof value === 'object') {
-					type = 'hash';
-				} else {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Could not identify the type to set. Please set it manually!',
-					);
-				}
-			}
-
-			if (type === 'string') {
-				await client.set(keyName, value.toString());
-			} else if (type === 'hash') {
-				if (valueIsJSON) {
-					let values: unknown;
-					if (typeof value === 'string') {
-						try {
-							values = JSON.parse(value);
-						} catch {
-							// This is how we originally worked and prevents a breaking change
-							values = value;
-						}
-					} else {
-						values = value;
-					}
-					for (const key of Object.keys(values as object)) {
-						await client.hSet(keyName, key, (values as IDataObject)[key]!.toString());
-					}
-				} else {
-					const values = value.toString().split(' ');
-					await client.hSet(keyName, values);
-				}
-			} else if (type === 'list') {
-				for (let index = 0; index < (value as string[]).length; index++) {
-					await client.lSet(keyName, index, (value as IDataObject)[index]!.toString());
-				}
-			} else if (type === 'sets') {
-				//@ts-ignore
-				await client.sAdd(keyName, value);
-			}
-
-			if (expire) {
-				await client.expire(keyName, ttl);
-			}
-			return;
-		};
-
 		// TODO: For array and object fields it should not have a "value" field it should
 		//       have a parameter field for a path. Because it is not possible to set
 		//       array, object via parameter directly (should maybe be possible?!?!)
@@ -635,8 +518,7 @@ export class Redis implements INodeType {
 		try {
 			if (operation === 'info') {
 				const result = await client.info();
-				await client.quit();
-				return [[{ json: convertInfoToObject(result) }]];
+				returnItems.push({ json: convertInfoToObject(result) });
 			} else if (
 				['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
 			) {
@@ -690,7 +572,7 @@ export class Redis implements INodeType {
 						const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
 						const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
 
-						await setValue(client, keySet, value, expire, ttl, keyType, valueIsJSON);
+						await setValue.call(this, client, keySet, value, expire, ttl, keyType, valueIsJSON);
 						returnItems.push(items[itemIndex]);
 					} else if (operation === 'incr') {
 						const keyIncr = this.getNodeParameter('key', itemIndex) as string;
@@ -740,11 +622,11 @@ export class Redis implements INodeType {
 				}
 			}
 		} catch (error) {
-			await client.quit();
 			throw error;
+		} finally {
+			await client.quit();
 		}
 
-		await client.quit();
 		return [returnItems];
 	}
 }
