@@ -101,6 +101,23 @@ export class Redis implements INodeType {
 			},
 
 			// ----------------------------------
+			//         delete
+			// ----------------------------------
+			{
+				displayName: 'Key',
+				name: 'key',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['delete'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the key to delete from Redis',
+			},
+
+			// ----------------------------------
 			//         get
 			// ----------------------------------
 			{
@@ -116,19 +133,6 @@ export class Redis implements INodeType {
 				required: true,
 				description:
 					'Name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name".',
-			},
-			{
-				displayName: 'Key',
-				name: 'key',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['delete'],
-					},
-				},
-				default: '',
-				required: true,
-				description: 'Name of the key to delete from Redis',
 			},
 			{
 				displayName: 'Key',

@@ -22,6 +22,12 @@ describe('Redis Node', () => {
 
 	beforeEach(() => jest.clearAllMocks());
 
+	afterEach(() => {
+		expect(mockClient.connect).toHaveBeenCalled();
+		expect(mockClient.ping).toHaveBeenCalled();
+		expect(mockClient.quit).toHaveBeenCalled();
+	});
+
 	it('info operation', async () => {
 		thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('info');
 		mockClient.info.mockResolvedValue(`
@@ -51,11 +57,7 @@ master_failover_state:no-failover
 
 		const output = await node.execute.call(thisArg);
 
-		expect(mockClient.connect).toHaveBeenCalled();
-		expect(mockClient.ping).toHaveBeenCalled();
 		expect(mockClient.info).toHaveBeenCalled();
-		expect(mockClient.quit).toHaveBeenCalled();
-
 		expect(output[0][0].json).toEqual({
 			redis_version: 6.2,
 			redis_git_sha1: 0,
@@ -82,11 +84,75 @@ master_failover_state:no-failover
 		mockClient.del.calledWith('key1').mockResolvedValue(1);
 
 		const output = await node.execute.call(thisArg);
-		expect(mockClient.connect).toHaveBeenCalled();
-		expect(mockClient.ping).toHaveBeenCalled();
-		expect(mockClient.info).not.toHaveBeenCalled();
 		expect(mockClient.del).toHaveBeenCalledWith('key1');
-		expect(mockClient.quit).toHaveBeenCalled();
 		expect(output[0][0].json).toEqual({ x: 1 });
+	});
+
+	describe('get operation', () => {
+		beforeEach(() => {
+			thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+			thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('get');
+			thisArg.getNodeParameter.calledWith('options', 0).mockReturnValue({ dotNotation: true });
+			thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('key1');
+			thisArg.getNodeParameter.calledWith('propertyName', 0).mockReturnValue('x.y');
+		});
+
+		it('keyType = automatic', async () => {
+			thisArg.getNodeParameter.calledWith('keyType', 0).mockReturnValue('automatic');
+			mockClient.type.calledWith('key1').mockResolvedValue('string');
+			mockClient.get.calledWith('key1').mockResolvedValue('value');
+
+			const output = await node.execute.call(thisArg);
+			expect(mockClient.type).toHaveBeenCalledWith('key1');
+			expect(mockClient.get).toHaveBeenCalledWith('key1');
+			expect(output[0][0].json).toEqual({ x: { y: 'value' } });
+		});
+
+		it('keyType = hash', async () => {
+			thisArg.getNodeParameter.calledWith('keyType', 0).mockReturnValue('hash');
+			mockClient.hGetAll.calledWith('key1').mockResolvedValue({
+				field1: '1',
+				field2: '2',
+			});
+
+			const output = await node.execute.call(thisArg);
+			expect(mockClient.hGetAll).toHaveBeenCalledWith('key1');
+			expect(output[0][0].json).toEqual({
+				x: {
+					y: {
+						field1: '1',
+						field2: '2',
+					},
+				},
+			});
+		});
+	});
+
+	describe('keys operation', () => {
+		beforeEach(() => {
+			thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+			thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('keys');
+			thisArg.getNodeParameter.calledWith('keyPattern', 0).mockReturnValue('key*');
+			mockClient.keys.calledWith('key*').mockResolvedValue(['key1', 'key2']);
+		});
+
+		it('getValues = false', async () => {
+			thisArg.getNodeParameter.calledWith('getValues', 0).mockReturnValue(false);
+
+			const output = await node.execute.call(thisArg);
+			expect(mockClient.keys).toHaveBeenCalledWith('key*');
+			expect(output[0][0].json).toEqual({ keys: ['key1', 'key2'] });
+		});
+
+		it('getValues = true', async () => {
+			thisArg.getNodeParameter.calledWith('getValues', 0).mockReturnValue(true);
+			mockClient.type.mockResolvedValue('string');
+			mockClient.get.calledWith('key1').mockResolvedValue('value1');
+			mockClient.get.calledWith('key2').mockResolvedValue('value2');
+
+			const output = await node.execute.call(thisArg);
+			expect(mockClient.keys).toHaveBeenCalledWith('key*');
+			expect(output[0][0].json).toEqual({ key1: 'value1', key2: 'value2' });
+		});
 	});
 });
