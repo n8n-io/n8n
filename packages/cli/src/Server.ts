@@ -70,7 +70,7 @@ import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
+import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -255,7 +255,9 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapController } = await require('@/controllers/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service');
+			const { LdapController } = await require('@/Ldap/ldap.controller');
+			await Container.get(LdapService).init();
 			controllers.push(LdapController);
 		}
 
@@ -350,8 +352,6 @@ export class Server extends AbstractServer {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await Container.get(Queue).init();
 		}
-
-		await handleLdapInit();
 
 		await handleMfaDisable();
 
