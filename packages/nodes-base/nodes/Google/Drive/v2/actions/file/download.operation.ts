@@ -192,8 +192,8 @@ export async function execute(
 
 	const requestOptions = {
 		useStream: true,
-		resolveWithFullResponse: true,
-		encoding: null,
+		returnFullResponse: true,
+		encoding: 'arraybuffer',
 		json: false,
 	};
 
