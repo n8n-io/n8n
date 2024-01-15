@@ -1,14 +1,15 @@
+import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LdapService } from '@/Ldap/LdapService.ee';
+import { LdapService } from '@/Ldap/ldap.service';
 import { saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
@@ -16,8 +17,7 @@ import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
-import Container from 'typedi';
-import { Cipher } from 'n8n-core';
+
 import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -167,7 +167,7 @@ describe('PUT /ldap/config', () => {
 
 	test('should apply "Convert all LDAP users to email users" strategy when LDAP login disabled', async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
 		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
 
@@ -230,7 +230,7 @@ describe('POST /ldap/sync', () => {
 			lastNameAttribute: 'sn',
 			emailAttribute: 'mail',
 		});
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 	});
 
 	describe('dry mode', () => {
@@ -493,7 +493,7 @@ test('GET /ldap/sync should return paginated synchronizations', async () => {
 describe('POST /login', () => {
 	const runTest = async (ldapUser: LdapUser) => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
 		await setCurrentAuthenticationMethod('ldap');
 
@@ -556,7 +556,7 @@ describe('POST /login', () => {
 
 	test('should allow instance owner to sign in with email/password when LDAP is enabled', async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
 		const response = await testServer.authlessAgent
 			.post('/login')
@@ -590,7 +590,7 @@ describe('POST /login', () => {
 describe('Instance owner should able to delete LDAP users', () => {
 	test("don't transfer workflows", async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
 		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
 
@@ -599,7 +599,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 
 	test('transfer workflows and credentials', async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
 		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
 
