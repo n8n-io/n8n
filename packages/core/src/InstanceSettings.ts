@@ -14,6 +14,8 @@ interface WritableSettings {
 
 type Settings = ReadOnlySettings & WritableSettings;
 
+const inTest = process.env.NODE_ENV === 'test';
+
 @Service()
 export class InstanceSettings {
 	private readonly userHome = this.getUserHome();
@@ -69,7 +71,7 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 
@@ -90,7 +92,7 @@ export class InstanceSettings {
 
 		this.save(settings);
 
-		if (!process.env.N8N_ENCRYPTION_KEY) {
+		if (!inTest && !process.env.N8N_ENCRYPTION_KEY) {
 			console.info(`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`);
 		}
 
