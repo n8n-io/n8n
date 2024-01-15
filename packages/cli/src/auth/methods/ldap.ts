@@ -1,32 +1,32 @@
+import { Container } from 'typedi';
+
 import { InternalHooks } from '@/InternalHooks';
+import { LdapService } from '@/Ldap/ldap.service';
 import {
 	createLdapUserOnLocalDb,
-	findAndAuthenticateLdapUser,
-	getLdapConfig,
 	getLdapUserRole,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
-	isLdapDisabled,
+	isLdapEnabled,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
-import { Container } from 'typedi';
 
 export const handleLdapLogin = async (
 	loginId: string,
 	password: string,
 ): Promise<User | undefined> => {
-	if (isLdapDisabled()) return undefined;
+	if (!isLdapEnabled()) return undefined;
 
-	const ldapConfig = await getLdapConfig();
+	const ldapService = Container.get(LdapService);
 
-	if (!ldapConfig.loginEnabled) return undefined;
+	if (!ldapService.config.loginEnabled) return undefined;
 
-	const { loginIdAttribute, userFilter } = ldapConfig;
+	const { loginIdAttribute, userFilter } = ldapService.config;
 
-	const ldapUser = await findAndAuthenticateLdapUser(
+	const ldapUser = await ldapService.findAndAuthenticateLdapUser(
 		loginId,
 		password,
 		loginIdAttribute,
@@ -35,7 +35,7 @@ export const handleLdapLogin = async (
 
 	if (!ldapUser) return undefined;
 
-	const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, ldapConfig);
+	const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, ldapService.config);
 
 	const { email: emailAttributeValue } = ldapAttributesValues;
 
