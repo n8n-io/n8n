@@ -262,7 +262,7 @@ export class Worker extends BaseCommand {
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
-				'Missing environment variable "N8N_ENCRYPTION_KEY" on worker. Please specify the encryption key when starting a worker. For more information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
 			);
 		}
 
