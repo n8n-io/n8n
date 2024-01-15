@@ -26,7 +26,7 @@ describe('test GoogleDriveV2: file download', () => {
 		jest.unmock('../../../../v2/transport');
 	});
 
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'deleteFile',
 			fileId: {
@@ -58,7 +58,7 @@ describe('test GoogleDriveV2: file download', () => {
 			{},
 			{ alt: 'media' },
 			undefined,
-			{ encoding: null, json: false, resolveWithFullResponse: true, useStream: true },
+			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);
 	});
 });
