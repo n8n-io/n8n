@@ -26,6 +26,7 @@ import {
 import * as testDb from './shared/testDb';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { PasswordUtility } from '@/services/password.utility';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -156,7 +157,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
-		const token = jwtService.signData({ sub: uuid() });
+		const token = jwtService.sign({ sub: uuid() });
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -207,7 +208,10 @@ describe('POST /change-password', () => {
 			id: owner.id,
 		});
 
-		const comparisonResult = await compare(passwordToStore, storedPassword);
+		const comparisonResult = await Container.get(PasswordUtility).compare(
+			passwordToStore,
+			storedPassword,
+		);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
 

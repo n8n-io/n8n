@@ -18,11 +18,10 @@ export class AddNodeIds1658930531669 implements ReversibleMigration {
 					}
 				});
 
-				await runQuery(
-					`UPDATE ${tableName} SET nodes = :nodes WHERE id = :id`,
-					{ nodes: JSON.stringify(nodes) },
-					{ id: workflow.id },
-				);
+				await runQuery(`UPDATE ${tableName} SET nodes = :nodes WHERE id = :id`, {
+					nodes: JSON.stringify(nodes),
+					id: workflow.id,
+				});
 			});
 		});
 	}
@@ -33,11 +32,10 @@ export class AddNodeIds1658930531669 implements ReversibleMigration {
 		await runInBatches<Workflow>(workflowsQuery, async (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = parseJson(workflow.nodes).map(({ id, ...rest }) => rest);
-				await runQuery(
-					`UPDATE ${tableName} SET nodes = :nodes WHERE id = :id`,
-					{ nodes: JSON.stringify(nodes) },
-					{ id: workflow.id },
-				);
+				await runQuery(`UPDATE ${tableName} SET nodes = :nodes WHERE id = :id`, {
+					nodes: JSON.stringify(nodes),
+					id: workflow.id,
+				});
 			});
 		});
 	}

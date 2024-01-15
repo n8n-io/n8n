@@ -118,7 +118,7 @@ export class RedisTrigger implements INodeType {
 		};
 
 		if (this.getMode() === 'trigger') {
-			await manualTriggerFunction();
+			void manualTriggerFunction();
 		}
 
 		async function closeFunction() {

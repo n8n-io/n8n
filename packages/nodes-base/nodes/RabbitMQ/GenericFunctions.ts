@@ -76,6 +76,19 @@ export async function rabbitmqConnectQueue(
 	return new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertQueue(queue, options);
+
+			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
+				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
+					async (binding: IDataObject) => {
+						await channel.bindQueue(
+							queue,
+							binding.exchange as string,
+							binding.routingKey as string,
+						);
+					},
+				);
+			}
+
 			resolve(channel);
 		} catch (error) {
 			reject(error);

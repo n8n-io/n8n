@@ -8,6 +8,8 @@ import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
+import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
@@ -110,50 +112,59 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<div
-			v-for="item in elements"
-			:key="item.uuid"
-			data-test-id="item-iterator-item"
-			:class="{
-				clickable: !disabled,
-				[$style.active]: activeItemId === item.uuid,
-				[$style.iteratorItem]: true,
-				[$style[item.type]]: true,
-			}"
-			ref="iteratorItems"
-			:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
-			:data-keyboard-nav-id="item.uuid"
-			@click="wrappedEmit('selected', item)"
-		>
+		<div v-for="item in elements" :key="item.uuid">
 			<div v-if="renderedItems.includes(item)">
-				<label-item v-if="item.type === 'label'" :item="item" />
-				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+				<CategorizedItemsRenderer
+					v-if="item.type === 'section'"
+					:elements="item.children"
+					expanded
+					:category="item.title"
+					@selected="(child) => wrappedEmit('selected', child)"
+				>
+				</CategorizedItemsRenderer>
 
-				<node-item
-					v-if="item.type === 'node'"
-					:nodeType="item.properties"
-					:active="true"
-					:subcategory="item.subcategory"
-				/>
+				<div
+					v-else
+					ref="iteratorItems"
+					:class="{
+						clickable: !disabled,
+						[$style.active]: activeItemId === item.uuid,
+						[$style.iteratorItem]: true,
+						[$style[item.type]]: true,
+					}"
+					data-test-id="item-iterator-item"
+					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
+					:data-keyboard-nav-id="item.uuid"
+					@click="wrappedEmit('selected', item)"
+				>
+					<LabelItem v-if="item.type === 'label'" :item="item" />
+					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
-				<action-item
-					v-if="item.type === 'action'"
-					:nodeType="item.properties"
-					:action="item.properties"
-					:active="true"
-				/>
+					<NodeItem
+						v-if="item.type === 'node'"
+						:node-type="item.properties"
+						:active="true"
+						:subcategory="item.subcategory"
+					/>
 
-				<view-item
-					v-else-if="item.type === 'view'"
-					:view="item.properties"
-					:class="$style.viewItem"
-				/>
+					<ActionItem
+						v-if="item.type === 'action'"
+						:node-type="item.properties"
+						:action="item.properties"
+						:active="true"
+					/>
+
+					<ViewItem
+						v-else-if="item.type === 'view'"
+						:view="item.properties"
+						:class="$style.viewItem"
+					/>
+				</div>
 			</div>
-
-			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
+			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
-	<div :class="$style.empty" v-else>
+	<div v-else :class="$style.empty">
 		<slot name="empty" />
 	</div>
 </template>

@@ -10,7 +10,7 @@ import type { Route } from 'vue-router';
 	and components used to display workflow in node view.
 	These are general-purpose functions that are exported
 	with this module and should be used by importing from
-	'@/utils'.
+	'@/utils/canvasUtils'.
 */
 
 const SCALE_CHANGE_FACTOR = 1.25;
@@ -50,25 +50,6 @@ export const scaleSmaller = applyScale(1 / SCALE_CHANGE_FACTOR);
 
 export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return applyScale(1 / config.scale)(config);
-};
-
-export const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
-	const quotient = Math.ceil(inputNumber / divisibleBy);
-
-	// 1st possible closest number
-	const inputNumber1 = divisibleBy * quotient;
-
-	// 2nd possible closest number
-	const inputNumber2 =
-		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
-
-	// if true, then inputNumber1 is the required closest number
-	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
-		return inputNumber1;
-	}
-
-	// else inputNumber2 is the required closest number
-	return inputNumber2;
 };
 
 export const getNodeViewTab = (route: Route): string | null => {

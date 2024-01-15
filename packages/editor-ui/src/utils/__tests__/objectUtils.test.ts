@@ -1,4 +1,4 @@
-import { isObjectOrArray, isObject, searchInObject } from '@/utils';
+import { isObjectOrArray, isObject, searchInObject } from '@/utils/objectUtils';
 
 const testData = [1, '', true, null, undefined, new Date(), () => {}].map((value) => [
 	value,

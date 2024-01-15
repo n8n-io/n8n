@@ -187,12 +187,14 @@ describe('Webhook Trigger node', async () => {
 
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Convert to/from binary data');
+		workflowPage.actions.addNodeToCanvas('Convert to File');
 		workflowPage.actions.zoomToFit();
 
-		workflowPage.actions.openNode('Convert to/from binary data');
+		workflowPage.actions.openNode('Convert to File');
+		cy.getByTestId('parameter-input-operation').click();
+		getVisibleSelect().find('.option-headline').contains('Convert to JSON').click();
 		cy.getByTestId('parameter-input-mode').click();
-		getVisibleSelect().find('.option-headline').contains('JSON to Binary').click();
+		getVisibleSelect().find('.option-headline').contains('Each Item to Separate File').click();
 		ndv.getters.backToCanvas().click();
 
 		workflowPage.actions.executeWorkflow();

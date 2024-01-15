@@ -60,6 +60,7 @@ describe('POST /owner/setup', () => {
 			password,
 			isPending,
 			apiKey,
+			globalScopes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -72,6 +73,7 @@ describe('POST /owner/setup', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).not.toHaveLength(0);
 
 		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
 		expect(storedOwner.password).not.toBe(newOwnerData.password);

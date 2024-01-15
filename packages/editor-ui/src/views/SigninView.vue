@@ -3,17 +3,17 @@
 		<AuthView
 			v-if="!showMfaView"
 			:form="FORM_CONFIG"
-			:formLoading="loading"
+			:form-loading="loading"
 			:with-sso="true"
 			data-test-id="signin-form"
 			@submit="onEmailPasswordSubmitted"
 		/>
 		<MfaView
 			v-if="showMfaView"
+			:report-error="reportError"
 			@submit="onMFASubmitted"
 			@onBackClick="onBackClick"
 			@onFormChanged="onFormChanged"
-			:reportError="reportError"
 		/>
 	</div>
 </template>
@@ -22,18 +22,17 @@
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
 import MfaView, { FORM } from './MfaView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCloudPlanStore, useUIStore } from '@/stores';
-import { genericHelpers } from '@/mixins/genericHelpers';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'SigninView',
-	mixins: [genericHelpers],
 	components: {
 		AuthView,
 		MfaView,
@@ -115,6 +114,17 @@ export default defineComponent({
 		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
 			await this.login(form);
 		},
+		isRedirectSafe() {
+			const redirect = this.getRedirectQueryParameter();
+			return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
+		},
+		getRedirectQueryParameter() {
+			let redirect = '';
+			if (typeof this.$route.query?.redirect === 'string') {
+				redirect = decodeURIComponent(this.$route.query?.redirect);
+			}
+			return redirect;
+		},
 		async login(form: { email: string; password: string; token?: string; recoveryCode?: string }) {
 			try {
 				this.loading = true;
@@ -125,7 +135,13 @@ export default defineComponent({
 					mfaRecoveryCode: form.recoveryCode,
 				});
 				this.loading = false;
-				await this.cloudPlanStore.checkForCloudPlanData();
+				if (this.settingsStore.isCloudDeployment) {
+					try {
+						await this.cloudPlanStore.checkForCloudPlanData();
+					} catch (error) {
+						console.warn('Failed to check for cloud plan data', error);
+					}
+				}
 				await this.settingsStore.getSettings();
 				this.clearAllStickyNotifications();
 				this.checkRecoveryCodesLeft();
@@ -136,6 +152,11 @@ export default defineComponent({
 
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
+					if (redirect.startsWith('http')) {
+						window.location.href = redirect;
+						return;
+					}
+
 					void this.$router.push(redirect);
 					return;
 				}

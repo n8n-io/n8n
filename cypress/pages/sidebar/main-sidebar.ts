@@ -12,6 +12,7 @@ export class MainSidebar extends BasePage {
 		workflows: () => this.getters.menuItem('Workflows'),
 		credentials: () => this.getters.menuItem('Credentials'),
 		executions: () => this.getters.menuItem('Executions'),
+		adminPanel: () => this.getters.menuItem('Admin Panel'),
 		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};

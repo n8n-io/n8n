@@ -49,7 +49,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 	setupOverlays() {
 		this.clearOverlays();
-		this.endpoint.instance.setSuspendDrawing(true);
 		this.stalkOverlay = this.endpoint.addOverlay({
 			type: 'Custom',
 			options: {
@@ -78,7 +77,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				},
 			},
 		});
-		this.endpoint.instance.setSuspendDrawing(false);
 	}
 
 	bindEvents() {
@@ -151,18 +149,14 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 	}
 
 	setIsVisible(visible: boolean) {
-		this.instance.setSuspendDrawing(true);
 		Object.keys(this.endpoint.getOverlays()).forEach((overlay) => {
 			this.endpoint.getOverlays()[overlay].setVisible(visible);
 		});
-
 		this.setVisible(visible);
-
 		// Re-trigger the success state if label is set
 		if (visible && this.label) {
 			this.setSuccessOutput(this.label);
 		}
-		this.instance.setSuspendDrawing(false);
 	}
 
 	setSuccessOutput(label: string) {

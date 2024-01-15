@@ -1,6 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
 import { Container } from 'typedi';
-import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -13,6 +12,7 @@ import * as utils from './shared/utils/';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser, createUserShell } from './shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
+import { MfaService } from '@/Mfa/mfa.service';
 
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
@@ -21,10 +21,14 @@ let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
 const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
+const license = testServer.license;
+
+let mfaService: MfaService;
 
 beforeAll(async () => {
 	globalOwnerRole = await getGlobalOwnerRole();
 	globalMemberRole = await getGlobalMemberRole();
+	mfaService = Container.get(MfaService);
 });
 
 beforeEach(async () => {
@@ -49,8 +53,19 @@ describe('POST /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+			mfaSecret,
+			mfaRecoveryCodes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -63,13 +78,61 @@ describe('POST /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(mfaRecoveryCodes).toBeUndefined();
+		expect(mfaSecret).toBeUndefined();
+
+		const authToken = utils.getAuthToken(response);
+		expect(authToken).toBeDefined();
+	});
+
+	test('should log user with MFA enabled', async () => {
+		const secret = 'test';
+		const recoveryCodes = ['1'];
+		await mfaService.saveSecretAndRecoveryCodes(owner.id, secret, recoveryCodes);
+		await mfaService.enableMfa(owner.id);
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			email: owner.email,
+			password: ownerPassword,
+			mfaToken: mfaService.totp.generateTOTP(secret),
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			mfaRecoveryCodes,
+			mfaSecret,
+		} = response.body.data;
+
+		expect(validator.isUUID(id)).toBe(true);
+		expect(email).toBe(owner.email);
+		expect(firstName).toBe(owner.firstName);
+		expect(lastName).toBe(owner.lastName);
+		expect(password).toBeUndefined();
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeUndefined();
+		expect(globalRole).toBeDefined();
+		expect(globalRole.name).toBe('owner');
+		expect(globalRole.scope).toBe('global');
+		expect(apiKey).toBeUndefined();
+		expect(mfaRecoveryCodes).toBeUndefined();
+		expect(mfaSecret).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
 	});
 
 	test('should throw AuthError for non-owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const password = 'testpassword';
 		const member = await createUser({
 			password,
@@ -83,11 +146,10 @@ describe('POST /login', () => {
 	});
 
 	test('should not throw AuthError for owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const ownerUser = await createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,
-			isOwner: true,
 		});
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
@@ -135,8 +197,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -149,6 +220,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -161,8 +234,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -175,6 +257,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -187,8 +271,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -201,6 +294,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -213,8 +308,17 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
-			response.body.data;
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			globalScopes,
+		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(member.email);
@@ -227,6 +331,8 @@ describe('GET /login', () => {
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).toBeDefined();
+		expect(globalScopes).not.toContain('workflow:read');
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
@@ -262,7 +368,7 @@ describe('GET /resolve-signup-token', () => {
 	});
 
 	test('should return 403 if user quota reached', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		license.setQuota('quota:users', 0);
 		const memberShell = await createUserShell(globalMemberRole);
 
 		const response = await authOwnerAgent

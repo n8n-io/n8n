@@ -1,7 +1,6 @@
 import util from 'util';
 import type {
 	IExecuteFunctions,
-	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -757,17 +756,8 @@ export class Redis implements INodeType {
 									continue;
 								}
 
-								const promises: {
-									[key: string]: GenericValue;
-								} = {};
-
 								for (const keyName of keys) {
-									promises[keyName] = await getValue(client, keyName);
-								}
-
-								for (const keyName of keys) {
-									// eslint-disable-next-line @typescript-eslint/await-thenable
-									item.json[keyName] = await promises[keyName];
+									item.json[keyName] = await getValue(client, keyName);
 								}
 								returnItems.push(item);
 							} else if (operation === 'set') {

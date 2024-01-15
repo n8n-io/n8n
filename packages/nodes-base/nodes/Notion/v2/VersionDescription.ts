@@ -15,7 +15,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'notion',
 	icon: 'file:notion.svg',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Notion API',
 	defaults: {

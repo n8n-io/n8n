@@ -89,6 +89,13 @@ export const companyReportGetDescription: INodeProperties[] = [
 				default: true,
 				description: 'Whether to apply the standard duplicate field filtering or not',
 			},
+			{
+				displayName: 'Only Current',
+				name: 'onlyCurrent',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to hide future dated values from the history table fields or not',
+			},
 		],
 	},
 ];

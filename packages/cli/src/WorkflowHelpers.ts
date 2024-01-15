@@ -43,7 +43,7 @@ import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { RoleService } from './services/role.service';
-import { VariablesService } from './environments/variables/variables.service';
+import { VariablesService } from './environments/variables/variables.service.ee';
 import { Logger } from './Logger';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -173,10 +173,13 @@ export async function executeErrorWorkflow(
 		});
 
 		try {
+			const failedNode = workflowErrorData.execution?.lastNodeExecuted
+				? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
+				: undefined;
 			await PermissionChecker.checkSubworkflowExecutePolicy(
 				workflowInstance,
-				runningUser.id,
-				workflowErrorData.workflow.id,
+				workflowErrorData.workflow.id!,
+				failedNode ?? undefined,
 			);
 		} catch (error) {
 			const initialNode = workflowInstance.getStartNode();
@@ -415,20 +418,15 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 
 /**
  * Get the IDs of the workflows that have been shared with the user.
- * Returns all IDs if user is global owner (see `whereClause`)
+ * Returns all IDs if user has the 'workflow:read' scope.
  */
-export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, roleNames?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (user.globalRole?.name !== 'owner') {
+	if (!user.hasGlobalScope('workflow:read')) {
 		where.userId = user.id;
 	}
-	if (roles?.length) {
-		const roleIds = await Container.get(RoleRepository)
-			.find({
-				select: ['id'],
-				where: { name: In(roles), scope: 'workflow' },
-			})
-			.then((role) => role.map(({ id }) => id));
+	if (roleNames?.length) {
+		const roleIds = await Container.get(RoleRepository).getIdsInScopeWorkflowByNames(roleNames);
 
 		where.roleId = In(roleIds);
 	}

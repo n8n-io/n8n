@@ -7,6 +7,9 @@ const defaultSettings: IN8nUISettings = {
 	allowedModules: {},
 	communityNodesEnabled: false,
 	defaultLocale: '',
+	endpointForm: '',
+	endpointFormTest: '',
+	endpointFormWaiting: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	enterprise: {
@@ -41,6 +44,7 @@ const defaultSettings: IN8nUISettings = {
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
 	onboardingCallPromptEnabled: false,
 	personalizationSurveyEnabled: false,
+	releaseChannel: 'stable',
 	posthog: {
 		apiHost: '',
 		apiKey: '',

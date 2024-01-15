@@ -25,6 +25,7 @@ import type {
 	IHttpRequestMethods,
 	IN8nHttpFullResponse,
 	INode,
+	IPinData,
 	IRunExecutionData,
 	IWebhookData,
 	IWebhookResponseData,
@@ -37,7 +38,6 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -50,7 +50,6 @@ import type {
 	WebhookCORSRequest,
 	WebhookRequest,
 } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -61,8 +60,10 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
-import { WorkflowsService } from './workflows/workflows.services';
 import { Logger } from './Logger';
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { InternalServerError } from './errors/response-errors/internal-server.error';
+import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -98,7 +99,28 @@ export const webhookRequestHandler =
 					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			}
-			res.header('Access-Control-Allow-Origin', req.headers.origin);
+
+			const requestedMethod =
+				method === 'OPTIONS'
+					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+					: method;
+			if (webhookManager.findAccessControlOptions && requestedMethod) {
+				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
+				const { allowedOrigins } = options ?? {};
+
+				res.header(
+					'Access-Control-Allow-Origin',
+					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
+				);
+
+				if (method === 'OPTIONS') {
+					res.header('Access-Control-Max-Age', '300');
+					const requestedHeaders = req.headers['access-control-request-headers'];
+					if (requestedHeaders?.length) {
+						res.header('Access-Control-Allow-Headers', requestedHeaders);
+					}
+				}
+			}
 		}
 
 		if (method === 'OPTIONS') {
@@ -109,16 +131,7 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			if (
-				error.errorCode === 404 &&
-				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
-			) {
-				const isTestWebhook = req.originalUrl.includes('webhook-test');
-				res.status(404);
-				return res.render('form-trigger-404', { isTestWebhook });
-			} else {
-				return ResponseHelper.sendErrorResponse(res, error as Error);
-			}
+			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
 
 		// Don't respond, if already responded
@@ -216,7 +229,7 @@ export async function executeWebhook(
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.InternalServerError(errorMessage);
+		throw new InternalServerError(errorMessage);
 	}
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -233,7 +246,7 @@ export async function executeWebhook(
 		try {
 			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
 		} catch (error) {
-			throw new ResponseHelper.NotFoundError('Cannot find workflow');
+			throw new NotFoundError('Cannot find workflow');
 		}
 	}
 
@@ -273,21 +286,27 @@ export async function executeWebhook(
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.InternalServerError(errorMessage);
+		throw new InternalServerError(errorMessage);
 	}
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
-	const binaryData = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		'={{$parameter["options"]["binaryData"]}}',
-		executionMode,
-		additionalKeys,
-		undefined,
-		false,
-	);
+	let binaryData;
+
+	const nodeVersion = workflowStartNode.typeVersion;
+	if (nodeVersion === 1) {
+		// binaryData option is removed in versions higher than 1
+		binaryData = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			'={{$parameter["options"]["binaryData"]}}',
+			executionMode,
+			additionalKeys,
+			undefined,
+			false,
+		);
+	}
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
@@ -297,6 +316,7 @@ export async function executeWebhook(
 		let webhookResultData: IWebhookResponseData;
 
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
+		// always falsy for versions higher than 1
 		if (!binaryData) {
 			const { contentType, encoding } = req;
 			if (contentType === 'multipart/form-data') {
@@ -313,7 +333,19 @@ export async function executeWebhook(
 					});
 				});
 			} else {
-				await parseBody(req);
+				if (nodeVersion > 1) {
+					if (
+						contentType?.startsWith('application/json') ||
+						contentType?.startsWith('text/plain') ||
+						contentType?.startsWith('application/x-www-form-urlencoded') ||
+						contentType?.endsWith('/xml') ||
+						contentType?.endsWith('+xml')
+					) {
+						await parseBody(req);
+					}
+				} else {
+					await parseBody(req);
+				}
 			}
 		}
 
@@ -352,9 +384,6 @@ export async function executeWebhook(
 				workflowData: [[{ json: {} }]],
 			};
 		}
-
-		// Save static data if it changed
-		await WorkflowsService.saveStaticData(workflow);
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,
@@ -486,11 +515,19 @@ export async function executeWebhook(
 			Object.assign(runExecutionData, runExecutionDataMerge);
 		}
 
+		let pinData: IPinData | undefined;
+		const usePinData = executionMode === 'manual';
+		if (usePinData) {
+			pinData = workflowData.pinData;
+			runExecutionData.resultData.pinData = pinData;
+		}
+
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			pinData,
 			userId: user.id,
 		};
 
@@ -517,10 +554,27 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
+						const headers = response.headers;
+						let responseCode = response.statusCode;
+						let data = response.body as IDataObject;
+
+						// for formTrigger node redirection has to be handled by sending redirectURL in response body
+						if (
+							nodeType.description.name === 'formTrigger' &&
+							headers.location &&
+							String(responseCode).startsWith('3')
+						) {
+							responseCode = 200;
+							data = {
+								redirectURL: headers.location,
+							};
+							headers.location = undefined;
+						}
+
 						responseCallback(null, {
-							data: response.body as IDataObject,
-							headers: response.headers,
-							responseCode: response.statusCode,
+							data,
+							headers,
+							responseCode,
 						});
 					}
 
@@ -570,8 +624,8 @@ export async function executeWebhook(
 						return undefined;
 					}
 
-					if (workflowData.pinData) {
-						data.data.resultData.pinData = workflowData.pinData;
+					if (usePinData) {
+						data.data.resultData.pinData = pinData;
 					}
 
 					const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
@@ -760,28 +814,17 @@ export async function executeWebhook(
 						responseCallback(new Error('There was a problem executing the workflow'), {});
 					}
 
-					throw new ResponseHelper.InternalServerError(e.message);
+					throw new InternalServerError(e.message);
 				});
 		}
 		return executionId;
 	} catch (e) {
 		const error =
-			e instanceof ResponseHelper.UnprocessableRequestError
+			e instanceof UnprocessableRequestError
 				? e
 				: new Error('There was a problem executing the workflow', { cause: e });
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
 	}
-}
-
-/**
- * Returns the base URL of the webhooks
- */
-export function getWebhookBaseUrl() {
-	let urlBaseWebhook = process.env.WEBHOOK_URL ?? GenericHelpers.getBaseUrl();
-	if (!urlBaseWebhook.endsWith('/')) {
-		urlBaseWebhook += '/';
-	}
-	return urlBaseWebhook;
 }

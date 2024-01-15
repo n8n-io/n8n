@@ -47,7 +47,7 @@ const directionsCursorMaps: { [key: string]: string } = {
 };
 
 export default defineComponent({
-	name: 'n8n-resize',
+	name: 'N8nResize',
 	props: {
 		isResizingEnabled: {
 			type: Boolean,

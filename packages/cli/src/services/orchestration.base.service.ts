@@ -5,7 +5,7 @@ import config from '@/config';
 import { EventEmitter } from 'node:events';
 
 export abstract class OrchestrationService extends EventEmitter {
-	protected initialized = false;
+	protected isInitialized = false;
 
 	protected queueModeId: string;
 
@@ -36,17 +36,17 @@ export abstract class OrchestrationService extends EventEmitter {
 	}
 
 	sanityCheck(): boolean {
-		return this.initialized && this.isQueueMode;
+		return this.isInitialized && this.isQueueMode;
 	}
 
 	async init() {
 		await this.initPublisher();
-		this.initialized = true;
+		this.isInitialized = true;
 	}
 
 	async shutdown() {
 		await this.redisPublisher?.destroy();
-		this.initialized = false;
+		this.isInitialized = false;
 	}
 
 	protected async initPublisher() {

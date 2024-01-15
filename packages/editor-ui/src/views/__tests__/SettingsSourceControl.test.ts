@@ -3,7 +3,8 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore, useSourceControlStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import SettingsSourceControl from '@/views/SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -168,6 +169,7 @@ describe('SettingsSourceControl', () => {
 			['git@github.enterprise.com:org-name/repo-name', true],
 			['git@192.168.1.101:2222:user/repo', true],
 			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
+			['ssh://git@mydomain.example:2224/gitolite-admin', true],
 			['http://github.com/user/repository', false],
 			['https://github.com/user/repository', false],
 		])('%s', async (url: string, isValid: boolean) => {

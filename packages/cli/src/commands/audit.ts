@@ -6,6 +6,7 @@ import type { Risk } from '@/security-audit/types';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ApplicationError } from 'n8n-workflow';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -46,7 +47,7 @@ export class SecurityAudit extends BaseCommand {
 
 			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
 
-			throw new Error([message, hint].join('. '));
+			throw new ApplicationError([message, hint].join('. '));
 		}
 
 		const result = await Container.get(SecurityAuditService).run(

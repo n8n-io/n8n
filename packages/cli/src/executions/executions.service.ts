@@ -1,29 +1,40 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
+import type {
+	IWorkflowBase,
+	JsonObject,
+	ExecutionStatus,
+	ExecutionError,
+	INode,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type {
+	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
-import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -74,6 +85,7 @@ const schemaGetExecutionsQueryFilter = {
 
 const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
 
+@Service()
 export class ExecutionsService {
 	/**
 	 * Function to get the workflow Ids for a User
@@ -114,9 +126,7 @@ export class ExecutionsService {
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
-				throw new ResponseHelper.InternalServerError(
-					'Parameter "filter" contained invalid JSON string.',
-				);
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
 			}
 		}
 
@@ -156,7 +166,7 @@ export class ExecutionsService {
 			filter,
 			sharedWorkflowIds,
 			executingWorkflowIds,
-			req.user.globalRole.name === 'owner',
+			req.user.hasGlobalScope('workflow:list'),
 		);
 
 		const formattedExecutions = await Container.get(ExecutionRepository).searchExecutions(
@@ -231,13 +241,11 @@ export class ExecutionsService {
 					executionId,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
-				`The execution with the ID "${executionId}" does not exist.`,
-			);
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
 
 		if (execution.finished) {
-			throw new Error('The execution succeeded, so it cannot be retried.');
+			throw new ApplicationError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
@@ -279,8 +287,9 @@ export class ExecutionsService {
 			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
-				throw new Error(
-					`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`,
+				throw new ApplicationError(
+					'Workflow could not be found and so the data not be loaded for the retry.',
+					{ extra: { workflowId } },
 				);
 			}
 
@@ -327,7 +336,7 @@ export class ExecutionsService {
 			await Container.get(ActiveExecutions).getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
-			throw new Error('The retry did not start for an unknown reason.');
+			throw new ApplicationError('The retry did not start for an unknown reason.');
 		}
 
 		return !!executionData.finished;
@@ -351,9 +360,7 @@ export class ExecutionsService {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new ResponseHelper.InternalServerError(
-					'Parameter "filter" contained invalid JSON string.',
-				);
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
 			}
 		}
 
@@ -365,5 +372,76 @@ export class ExecutionsService {
 				ids,
 			},
 		);
+	}
+
+	async createErrorExecution(
+		error: ExecutionError,
+		node: INode,
+		workflowData: IWorkflowDb,
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+	): Promise<void> {
+		const saveDataErrorExecutionDisabled =
+			workflowData?.settings?.saveDataErrorExecution === 'none';
+
+		if (saveDataErrorExecutionDisabled) return;
+
+		const executionData: IRunExecutionData = {
+			startData: {
+				destinationNode: node.name,
+				runNodeFilter: [node.name],
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [
+					{
+						node,
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										pairedItem: {
+											item: 0,
+										},
+									},
+								],
+							],
+						},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+			resultData: {
+				runData: {
+					[node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							error,
+							source: [],
+						},
+					],
+				},
+				error,
+				lastNodeExecuted: node.name,
+			},
+		};
+
+		const fullExecutionData: ExecutionPayload = {
+			data: executionData,
+			mode,
+			finished: false,
+			startedAt: new Date(),
+			workflowData,
+			workflowId: workflow.id,
+			stoppedAt: new Date(),
+			status: 'error',
+		};
+
+		await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 	}
 }

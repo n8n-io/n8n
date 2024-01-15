@@ -172,7 +172,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				'@version': [4, 4.1],
+				'@version': [4, 4.1, 4.2],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -414,7 +414,7 @@ export async function execute(
 		for (const [index, entry] of mappedValues.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItems: { item: index },
+				pairedItem: { item: index },
 			});
 		}
 		return returnData;

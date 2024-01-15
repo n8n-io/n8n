@@ -3,6 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
+	BACKEND_BASE_URL,
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
@@ -70,7 +71,7 @@ describe('Data pinning', () => {
 
 	it('Should be duplicating pin data when duplicating node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
@@ -78,7 +79,7 @@ describe('Data pinning', () => {
 		ndv.actions.setPinnedData([{ test: 1 }]);
 		ndv.actions.close();
 
-		workflowPage.actions.duplicateNode(workflowPage.getters.canvasNodes().last());
+		workflowPage.actions.duplicateNode(EDIT_FIELDS_SET_NODE_NAME);
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
@@ -88,9 +89,37 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
+	it('Should be able to pin data from canvas (context menu or shortcut)', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, 'overflow-button');
+		workflowPage.getters
+			.contextMenuAction('toggle_pin')
+			.parent()
+			.should('have.class', 'is-disabled');
+
+		// Unpin using context menu
+		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+		ndv.actions.setPinnedData([{ test: 1 }]);
+		ndv.actions.close();
+		workflowPage.actions.pinNode(EDIT_FIELDS_SET_NODE_NAME);
+		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+		ndv.getters.nodeOutputHint().should('exist');
+		ndv.actions.close();
+
+		// Unpin using shortcut
+		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+		ndv.actions.setPinnedData([{ test: 1 }]);
+		ndv.actions.close();
+		workflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		workflowPage.actions.hitPinNodeShortcut();
+		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+		ndv.getters.nodeOutputHint().should('exist');
+	});
+
 	it('Should show an error when maximum pin data size is exceeded', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
@@ -122,10 +151,25 @@ describe('Data pinning', () => {
 
 		cy.get('div').contains(output).should('be.visible');
 	});
+
+	it('should use pin data in manual executions that are started by a webhook', () => {
+		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
+
+		workflowPage.actions.executeWorkflow();
+
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then((response) => {
+			expect(response.status).to.eq(200);
+		});
+
+		workflowPage.actions.openNode('End');
+
+		ndv.getters.outputTableRow(1).should('exist')
+		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
+	});
 });
 
 function setExpressionOnStringValueInSet(expression: string) {
-	cy.get('button').contains('Execute node').click();
+	cy.get('button').contains('Test step').click();
 	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
 	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();

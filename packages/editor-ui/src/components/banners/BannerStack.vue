@@ -23,7 +23,7 @@ export const N8N_BANNERS: N8nBanners = {
 <script setup lang="ts">
 import { useUIStore } from '@/stores/ui.store';
 import { computed, onMounted } from 'vue';
-import { getBannerRowHeight } from '@/utils';
+import { getBannerRowHeight } from '@/utils/htmlUtils';
 
 const uiStore = useUIStore();
 

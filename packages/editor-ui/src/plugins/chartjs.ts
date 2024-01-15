@@ -8,6 +8,7 @@ import {
 	PointElement,
 	CategoryScale,
 	LinearScale,
+	LineController,
 } from 'chart.js';
 
 export const ChartJSPlugin = {
@@ -21,6 +22,7 @@ export const ChartJSPlugin = {
 			Title,
 			Tooltip,
 			Legend,
+			LineController,
 		);
 	},
 };

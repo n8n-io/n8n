@@ -2,9 +2,15 @@ import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
 import { getGlobalMemberRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
-	const testServer = utils.setupTestServer({ endpointGroups: ['me', 'auth', 'owner', 'users'] });
+	mockInstance(ActiveWorkflowRunner);
+
+	const testServer = utils.setupTestServer({
+		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
+	});
 
 	/** Routes requiring a valid `n8n-auth` cookie for a user, either owner or member. */
 	const ROUTES_REQUIRING_AUTHENTICATION: Readonly<Array<[string, string]>> = [
@@ -17,9 +23,8 @@ describe('Auth Middleware', () => {
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
-		['POST', '/users'],
+		['POST', '/invitations'],
 		['DELETE', '/users/123'],
-		['POST', '/users/123/reinvite'],
 		['POST', '/owner/setup'],
 	];
 

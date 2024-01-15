@@ -1,0 +1,165 @@
+{
+  "name": "Filter test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f332a7d1-31b4-4e78-b31e-9e8db945bf3f",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    \"count\": 1,\n    \"label\": \"Apple\",\n  },\n  {\n    \"count\": 5,\n    \"label\": \"Banana\"\n  },\n  {\n    \"count\": 12,\n    \"label\": \"Kiwi\"\n  }\n]"
+      },
+      "id": "60697c7f-3948-4790-97ba-8aba03d02ac2",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.count }}",
+              "rightValue": "1",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.count }}",
+              "rightValue": "10",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "7531191b-5ac3-45dc-8afb-27ae83d8f33a",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        380,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d8c614ea-0bbf-4b12-ad7d-c9ebe09ce583",
+      "name": "Then",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "69364770-60d2-4ef4-9f29-9570718a9a10",
+      "name": "Else",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        600,
+        580
+      ]
+    }
+  ],
+  "pinData": {
+    "Then": [
+      {
+        "json": {
+          "count": 1,
+          "label": "Apple"
+        }
+      },
+      {
+        "json": {
+          "count": 12,
+          "label": "Kiwi"
+        }
+      }
+    ],
+    "Else": [
+      {
+        "json": {
+          "count": 5,
+          "label": "Banana"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Then",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Else",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "78d54316-4f39-4012-bbb8-c789f1f8865b",
+  "id": "BWUTRs5RHxVgQ4uT",
+  "meta": {
+    "instanceId": "78577815012af39cf16dad7a787b0898c42fb7514b8a7f99b2136862c2af502c"
+  },
+  "tags": []
+}

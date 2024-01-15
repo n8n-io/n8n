@@ -2,7 +2,7 @@ import type { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Int
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import * as Helpers from './Helpers';
-import { ExpressionError } from '@/ExpressionError';
+import { ExpressionError } from '@/errors/expression.error';
 
 describe('WorkflowDataProxy', () => {
 	describe('test data proxy', () => {

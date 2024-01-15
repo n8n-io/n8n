@@ -88,7 +88,7 @@ describe('Execute Stop and Error Node', () => {
 			const stopAndError1RunData = result.data.resultData.runData['Stop and Error1'];
 			const stopAndError1Object = (
 				(stopAndError1RunData as unknown as IDataObject[])[0].error as IDataObject
-			).cause;
+			).errorResponse;
 
 			expect(stopAndError1Object).toEqual({
 				code: 404,

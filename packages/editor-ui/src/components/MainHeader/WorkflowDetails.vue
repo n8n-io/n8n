@@ -1,24 +1,24 @@
 <template>
-	<div class="container" v-if="workflowName">
-		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
+	<div v-if="workflowName" class="container">
+		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
-					testId="workflow-name-input"
+					test-id="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:modelValue="workflowName"
-							:previewValue="shortenedName"
-							:isEditEnabled="isNameEditEnabled"
-							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							:model-value="workflowName"
+							:preview-value="shortenedName"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:disabled="readOnly"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
 						/>
 					</template>
 				</ShortenName>
@@ -28,11 +28,11 @@
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<TagsDropdown
 				v-if="isTagsEditEnabled && !readOnly"
-				v-model="appliedTagIds"
-				:createEnabled="true"
-				:eventBus="tagsEditBus"
-				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				ref="dropdown"
+				v-model="appliedTagIds"
+				:create-enabled="true"
+				:event-bus="tagsEditBus"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
 				@blur="onTagsBlur"
@@ -45,29 +45,31 @@
 			</div>
 			<TagsContainer
 				v-else
-				:tagIds="currentWorkflowTagIds"
+				:key="currentWorkflowId"
+				:tag-ids="currentWorkflowTagIds"
 				:clickable="true"
 				:responsive="true"
-				:key="currentWorkflowId"
-				@click="onTagsEditEnable"
 				data-test-id="workflow-tags"
+				@click="onTagsEditEnable"
 			/>
 		</span>
 		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
-			<span class="activator">
+			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 			</span>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-				<n8n-button
-					type="secondary"
-					class="mr-2xs"
-					@click="onShareButtonClick"
-					data-test-id="workflow-share-button"
-				>
-					{{ $locale.baseText('workflowDetails.share') }}
-				</n8n-button>
+				<div :class="$style.group">
+					<CollaborationPane />
+					<n8n-button
+						type="secondary"
+						data-test-id="workflow-share-button"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</div>
 				<template #fallback>
 					<n8n-tooltip>
 						<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
@@ -94,32 +96,34 @@
 					</n8n-tooltip>
 				</template>
 			</enterprise-edition>
-			<SaveButton
-				type="primary"
-				:saved="!this.isDirty && !this.isNewWorkflow"
-				:disabled="isWorkflowSaving || readOnly"
-				data-test-id="workflow-save-button"
-				@click="onSaveButtonClick"
-			/>
-			<router-link
-				v-if="isWorkflowHistoryFeatureEnabled"
-				:to="workflowHistoryRoute"
-				:class="$style.workflowHistoryButton"
-			>
-				<n8n-icon-button
-					:disabled="isWorkflowHistoryButtonDisabled"
-					data-test-id="workflow-history-button"
-					type="tertiary"
-					icon="history"
-					size="medium"
-					text
+			<div :class="$style.group">
+				<SaveButton
+					type="primary"
+					:saved="!isDirty && !isNewWorkflow"
+					:disabled="isWorkflowSaving || readOnly"
+					data-test-id="workflow-save-button"
+					@click="onSaveButtonClick"
 				/>
-			</router-link>
-			<div :class="$style.workflowMenuContainer">
+				<router-link
+					v-if="isWorkflowHistoryFeatureEnabled"
+					:to="workflowHistoryRoute"
+					:class="$style.workflowHistoryButton"
+				>
+					<n8n-icon-button
+						:disabled="isWorkflowHistoryButtonDisabled"
+						data-test-id="workflow-history-button"
+						type="tertiary"
+						icon="history"
+						size="medium"
+						text
+					/>
+				</router-link>
+			</div>
+			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
+					ref="importFile"
 					:class="$style.hiddenInput"
 					type="file"
-					ref="importFile"
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
@@ -159,26 +163,28 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import type { MessageBoxInputData } from 'element-plus';
-import {
-	useUIStore,
-	useSettingsStore,
-	useWorkflowsStore,
-	useRootStore,
-	useTagsStore,
-	useUsersStore,
-	useUsageStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { genericHelpers } from '@/mixins/genericHelpers';
+import { hasPermission } from '@/rbac/permissions';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -191,7 +197,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -201,7 +206,9 @@ export default defineComponent({
 		TagsDropdown,
 		InlineTextEdit,
 		BreakpointsObserver,
+		CollaborationPane,
 	},
+	mixins: [workflowHelpers],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -237,11 +244,12 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useSourceControlStore,
+			useCanvasStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		contextBasedTranslationKeys(): NestedRecord<string> {
+		contextBasedTranslationKeys() {
 			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isWorkflowActive(): boolean {
@@ -289,7 +297,7 @@ export default defineComponent({
 			].includes(this.$route.name || '');
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+			return getWorkflowPermissions(this.currentUser, this.workflow);
 		},
 		workflowMenuItems(): Array<{}> {
 			const actions = [
@@ -321,15 +329,17 @@ export default defineComponent({
 				);
 			}
 
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.PUSH,
-				label: this.$locale.baseText('menuActions.push'),
-				disabled:
-					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
-					!this.onWorkflowPage ||
-					this.onExecutionsTab ||
-					this.readOnlyEnv,
-			});
+			if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.PUSH,
+					label: this.$locale.baseText('menuActions.push'),
+					disabled:
+						!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+						!this.onWorkflowPage ||
+						this.onExecutionsTab ||
+						this.readOnlyEnv,
+				});
+			}
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -364,6 +374,12 @@ export default defineComponent({
 		},
 		isWorkflowHistoryButtonDisabled(): boolean {
 			return this.workflowsStore.isNewWorkflow;
+		},
+	},
+	watch: {
+		currentWorkflowId() {
+			this.isTagsEditEnabled = false;
+			this.isNameEditEnabled = false;
 		},
 	},
 	methods: {
@@ -528,6 +544,7 @@ export default defineComponent({
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
+							...(this.workflowsStore.workflow.meta || {}),
 							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map((tagId) => {
@@ -570,7 +587,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.startLoading();
+					this.canvasStore.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -581,9 +598,20 @@ export default defineComponent({
 							data: { eventBus: this.eventBus, status },
 						});
 					} catch (error) {
-						this.showError(error, this.$locale.baseText('error'));
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						switch (error.message) {
+							case 'source_control_not_connected':
+								this.showError(
+									{ ...error, message: '' },
+									this.$locale.baseText('settings.sourceControl.error.not.connected.title'),
+									this.$locale.baseText('settings.sourceControl.error.not.connected.message'),
+								);
+								break;
+							default:
+								this.showError(error, this.$locale.baseText('error'));
+						}
 					} finally {
-						this.stopLoading();
+						this.canvasStore.stopLoading();
 					}
 
 					break;
@@ -638,12 +666,6 @@ export default defineComponent({
 			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 	},
-	watch: {
-		currentWorkflowId() {
-			this.isTagsEditEnabled = false;
-			this.isNameEditEnabled = false;
-		},
-	},
 });
 </script>
 
@@ -675,7 +697,6 @@ $--header-spacing: 20px;
 	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
-	margin-right: 30px;
 
 	> span {
 		margin-right: 5px;
@@ -711,14 +732,15 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-m);
 }
 </style>
 
 <style module lang="scss">
-.workflowMenuContainer {
-	margin-left: var(--spacing-2xs);
+.group {
+	display: flex;
+	gap: var(--spacing-xs);
 }
-
 .hiddenInput {
 	display: none;
 }
@@ -734,8 +756,6 @@ $--header-spacing: 20px;
 .workflowHistoryButton {
 	width: 30px;
 	height: 30px;
-	margin-left: var(--spacing-m);
-	margin-right: var(--spacing-4xs);
 	color: var(--color-text-dark);
 	border-radius: var(--border-radius-base);
 

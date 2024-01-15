@@ -1,6 +1,7 @@
 import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
+import type { Class } from 'n8n-core';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -116,7 +117,7 @@ const repositories = [
  */
 export async function truncate(names: Array<(typeof repositories)[number]>) {
 	for (const name of names) {
-		const RepositoryClass: { new (): Repository<any> } = (
+		const RepositoryClass: Class<Repository<object>> = (
 			await import(`@db/repositories/${name.charAt(0).toLowerCase() + name.slice(1)}.repository`)
 		)[`${name}Repository`];
 		await Container.get(RepositoryClass).delete({});

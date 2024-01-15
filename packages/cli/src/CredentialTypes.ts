@@ -1,6 +1,11 @@
 import { Service } from 'typedi';
 import { loadClassInIsolation } from 'n8n-core';
-import type { ICredentialType, ICredentialTypes, LoadedClass } from 'n8n-workflow';
+import {
+	ApplicationError,
+	type ICredentialType,
+	type ICredentialTypes,
+	type LoadedClass,
+} from 'n8n-workflow';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
@@ -46,6 +51,8 @@ export class CredentialTypes implements ICredentialTypes {
 			loadedCredentials[type] = { sourcePath, type: loaded };
 			return loadedCredentials[type];
 		}
-		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL}: ${type}`);
+		throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL, {
+			tags: { credentialType: type },
+		});
 	}
 }

@@ -5,6 +5,8 @@ import type {
 	ValidationResult,
 } from 'n8n-workflow';
 
+export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
+
 export interface IProcessMessage {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	data?: any;

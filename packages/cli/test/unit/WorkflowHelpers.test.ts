@@ -193,7 +193,7 @@ function generateCredentialEntity(credentialId: string) {
 	return credentialEntity;
 }
 
-function getWorkflow(options?: {
+export function getWorkflow(options?: {
 	addNodeWithoutCreds?: boolean;
 	addNodeWithOneCred?: boolean;
 	addNodeWithTwoCreds?: boolean;

@@ -126,6 +126,7 @@ describe('Debug', () => {
 		cy.url().should('not.include', '/debug');
 
 		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.deleteNode(IF_NODE_NAME);
 
 		executionsTab.actions.switchToExecutionsTab();

@@ -117,3 +117,6 @@ export async function createWorkflowWithTrigger(
 export async function getAllWorkflows() {
 	return Container.get(WorkflowRepository).find();
 }
+
+export const getWorkflowById = async (id: string) =>
+	Container.get(WorkflowRepository).findOneBy({ id });

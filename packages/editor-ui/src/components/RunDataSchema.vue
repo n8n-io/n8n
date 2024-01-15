@@ -6,10 +6,12 @@ import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
-import { isEmpty, runExternalHook } from '@/utils';
+import { isEmpty } from '@/utils/typesUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
+
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;
@@ -18,6 +20,7 @@ type Props = {
 	totalRuns: number;
 	paneType: 'input' | 'output';
 	node: INodeUi | null;
+	search: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -57,7 +60,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		void runExternalHook('runDataJson.onDragEnd', telemetryPayload);
+		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
@@ -69,10 +72,10 @@ const onDragEnd = (el: HTMLElement) => {
 		<n8n-info-tip v-if="isDataEmpty">{{
 			i18n.baseText('dataMapping.schemaView.emptyData')
 		}}</n8n-info-tip>
-		<draggable
+		<Draggable
 			v-else
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -81,19 +84,20 @@ const onDragEnd = (el: HTMLElement) => {
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
 			<div :class="$style.schema">
-				<run-data-schema-item
+				<RunDataSchemaItem
 					:schema="schema"
 					:level="0"
 					:parent="null"
-					:paneType="paneType"
-					:subKey="`${schema.type}-0-0`"
-					:mappingEnabled="mappingEnabled"
-					:draggingPath="draggingPath"
-					:distanceFromActive="distanceFromActive"
+					:pane-type="paneType"
+					:sub-key="`${schema.type}-0-0`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
 					:node="node"
+					:search="search"
 				/>
 			</div>
-		</draggable>
+		</Draggable>
 	</div>
 </template>
 

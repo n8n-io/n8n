@@ -2,7 +2,6 @@ import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
-import Chainable = Cypress.Chainable;
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -48,7 +47,9 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
 		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -71,6 +72,7 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
 		workflowSettingsErrorWorkflowSelect: () => cy.getByTestId('workflow-settings-error-workflow'),
@@ -127,6 +129,7 @@ export class WorkflowPage extends BasePage {
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 		colors: () => cy.getByTestId('color'),
+		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
 	actions = {
 		visit: (preventNodeViewUnload = true) => {
@@ -171,25 +174,85 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.wait(500);
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
 						cy.contains(action).click();
 					} else {
 						// Select the first action
-						cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
+							cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						}
 					}
 				}
 			});
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
+		openContextMenu: (
+			nodeTypeName?: string,
+			method: 'right-click' | 'overflow-button' = 'right-click',
+		) => {
+			const target = nodeTypeName
+				? this.getters.canvasNodeByName(nodeTypeName)
+				: this.getters.nodeViewBackground();
+
+			if (method === 'right-click') {
+				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
+			} else {
+				target.realHover();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+			}
+		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
-		duplicateNode: (node: Chainable<JQuery<HTMLElement>>) => {
-			node.find('[data-test-id="duplicate-node-button"]').click({ force: true });
+		duplicateNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('duplicate');
+		},
+		deleteNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('delete');
+		},
+		executeNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('execute');
+		},
+		addStickyFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('add_sticky');
+		},
+		renameNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('rename');
+		},
+		copyNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('copy');
+		},
+		contextMenuAction: (action: string) => {
+			this.getters.contextMenuAction(action).click();
+		},
+		disableNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_activation');
+		},
+		pinNode: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName);
+			this.actions.contextMenuAction('toggle_pin');
+		},
+		openNodeFromContextMenu: (nodeTypeName: string) => {
+			this.actions.openContextMenu(nodeTypeName, 'overflow-button');
+			this.actions.contextMenuAction('open');
+		},
+		selectAllFromContextMenu: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('select_all');
+		},
+		deselectAll: () => {
+			this.actions.openContextMenu();
+			this.actions.contextMenuAction('deselect_all');
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -284,13 +347,22 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+			cy.get('body').type('d');
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		},
-		hitPaste: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
+		hitPinNodeShortcut: () => {
+			cy.get('body').type('p');
+		},
+		hitExecuteWorkflowShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		},
+		hitDuplicateNodeShortcut: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		},
+		hitAddStickyShortcut: () => {
+			cy.get('body').type('{shift}', { delay: 500, release: false }).type('S');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();

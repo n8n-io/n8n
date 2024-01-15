@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 const GET_STATUS_ENDPOINT = '/orchestration/worker/status';
 

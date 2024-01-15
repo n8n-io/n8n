@@ -14,6 +14,7 @@ import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -30,14 +31,20 @@ export class Push extends EventEmitter {
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
+	constructor() {
+		super();
+
+		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			userId,
 			query: { sessionId },
 		} = req;
+
 		if (req.ws) {
 			(this.backend as WebSocketPush).add(sessionId, userId, req.ws);
-			this.backend.on('message', (msg) => this.emit('message', msg));
 		} else if (!useWebSockets) {
 			(this.backend as SSEPush).add(sessionId, userId, { req, res });
 		} else {
@@ -48,16 +55,25 @@ export class Push extends EventEmitter {
 		this.emit('editorUiConnected', sessionId);
 	}
 
-	broadcast<D>(type: IPushDataType, data?: D) {
-		this.backend.broadcast(type, data);
+	broadcast(type: IPushDataType, data?: unknown) {
+		this.backend.sendToAllSessions(type, data);
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string) {
-		this.backend.send(type, data, sessionId);
+	send(type: IPushDataType, data: unknown, sessionId: string) {
+		this.backend.sendToOneSession(type, data, sessionId);
 	}
 
-	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+	getBackend() {
+		return this.backend;
+	}
+
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
+	}
+
+	@OnShutdown()
+	onShutdown() {
+		this.backend.closeAllConnections();
 	}
 }
 

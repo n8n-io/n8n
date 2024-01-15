@@ -38,7 +38,7 @@ import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
-import { averageWorkerLoadFromLoads, memAsGb } from '../../utils/workerUtils';
+import { averageWorkerLoadFromLoads, memAsGb } from '@/utils/workerUtils';
 
 const props = defineProps<{
 	workerId: string;

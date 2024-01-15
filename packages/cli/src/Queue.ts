@@ -1,6 +1,10 @@
 import type Bull from 'bull';
 import { Service } from 'typedi';
-import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
+import {
+	ApplicationError,
+	type ExecutionError,
+	type IExecuteResponsePromiseData,
+} from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 
@@ -96,7 +100,7 @@ export class Queue {
 	getBullObjectInstance(): JobQueue {
 		if (this.jobQueue === undefined) {
 			// if queue is not initialized yet throw an error, since we do not want to hand around an undefined queue
-			throw new Error('Queue is not initialized yet!');
+			throw new ApplicationError('Queue is not initialized yet!');
 		}
 		return this.jobQueue;
 	}

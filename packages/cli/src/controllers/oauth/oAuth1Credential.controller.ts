@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Response } from 'express';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -8,8 +7,10 @@ import { createHmac } from 'crypto';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
-import { NotFoundError, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { sendErrorResponse } from '@/ResponseHelper';
 import { AbstractOAuthController } from './abstractOAuth.controller';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';
@@ -28,7 +29,6 @@ const algorithmMap = {
 	/* eslint-enable */
 } as const;
 
-@Service()
 @Authorized()
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController extends AbstractOAuthController {

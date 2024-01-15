@@ -6,6 +6,7 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
 import { mockInstance } from '../shared/mocking';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -27,9 +28,10 @@ describe('License', () => {
 	let license: License;
 	const logger = mockInstance(Logger);
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
+	mockInstance(MultiMainSetup);
 
 	beforeEach(async () => {
-		license = new License(logger, instanceSettings, mock(), mock());
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
 		await license.init();
 	});
 
@@ -52,7 +54,7 @@ describe('License', () => {
 	});
 
 	test('initializes license manager for worker', async () => {
-		license = new License(logger, instanceSettings, mock(), mock());
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
 		await license.init('worker');
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: false,
@@ -83,20 +85,20 @@ describe('License', () => {
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
 	});
 
-	test('check if feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check if sharing feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if sharing feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check fetching entitlements', async () => {
-		await license.getCurrentEntitlements();
+	test('check fetching entitlements', () => {
+		license.getCurrentEntitlements();
 
 		expect(LicenseManager.prototype.getCurrentEntitlements).toHaveBeenCalled();
 	});
@@ -108,7 +110,7 @@ describe('License', () => {
 	});
 
 	test('check management jwt', async () => {
-		await license.getManagementJwt();
+		license.getManagementJwt();
 
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});

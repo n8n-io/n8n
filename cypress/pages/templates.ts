@@ -4,10 +4,18 @@ export class TemplatesPage extends BasePage {
 	url = '/templates';
 
 	getters = {
+		useTemplateButton: () => cy.getByTestId('use-template-button'),
+		templateCards: () => cy.getByTestId('template-card'),
+		firstTemplateCard: () => this.getters.templateCards().first(),
 	};
 
 	actions = {
-		openOnboardingFlow: (id: number, name: string , workflow: object) => {
+		openSingleTemplateView: (templateId: number) => {
+			cy.visit(`${this.url}/${templateId}`);
+			cy.waitForLoad();
+		},
+
+		openOnboardingFlow: (id: number, name: string, workflow: object) => {
 			const apiResponse = {
 				id,
 				name,
@@ -41,8 +49,7 @@ export class TemplatesPage extends BasePage {
 			cy.visit(`/workflows/templates/${id}`);
 
 			cy.wait('@getTemplate');
-			cy.wait( '@getWorkflow');
-		}
-	}
+			cy.wait('@getWorkflow');
+		},
+	};
 }
-

@@ -26,6 +26,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	notionApiRequestGetBlockChildrens,
+	simplifyBlocksOutput,
 	simplifyObjects,
 	validateJSON,
 } from '../GenericFunctions';
@@ -311,6 +312,16 @@ export class NotionV2 implements INodeType {
 						parent_id: blockId,
 						..._data,
 					}));
+
+					const nodeVersion = this.getNode().typeVersion;
+
+					if (nodeVersion > 2) {
+						const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
+
+						if (simplifyOutput) {
+							responseData = simplifyBlocksOutput(responseData, blockId);
+						}
+					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject),

@@ -1,4 +1,5 @@
-import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionError } from '../errors/expression.error';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { average as aAverage } from './ArrayExtensions';
 
 const min = Math.min;
@@ -66,7 +67,7 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/#if-empty',
+	docURL: 'https://docs.n8n.io/code/builtin/convenience',
 };
 
 export const extendedFunctions = {

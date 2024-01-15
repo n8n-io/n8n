@@ -6,7 +6,7 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 import { isEqual, isNull, merge } from 'lodash';
 
@@ -90,12 +90,12 @@ export function processJsonInput<T>(jsonData: T, inputName?: string) {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new Error(`Input ${input}must contain a valid JSON`);
+			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new Error(`Input ${input}must contain a valid JSON`);
+		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;

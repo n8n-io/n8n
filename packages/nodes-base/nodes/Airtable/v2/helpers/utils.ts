@@ -1,4 +1,4 @@
-import type { IDataObject, NodeApiError } from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
 import type { UpdateRecord } from './interfaces';
 
 export function removeIgnored(data: IDataObject, ignore: string | string[]) {
@@ -42,7 +42,7 @@ export function findMatches(
 		});
 
 		if (!matches?.length) {
-			throw new Error('No records match provided keys');
+			throw new ApplicationError('No records match provided keys', { level: 'warning' });
 		}
 
 		return matches;
@@ -57,7 +57,9 @@ export function findMatches(
 		});
 
 		if (!match) {
-			throw new Error('Record matching provided keys was not found');
+			throw new ApplicationError('Record matching provided keys was not found', {
+				level: 'warning',
+			});
 		}
 
 		return [match];

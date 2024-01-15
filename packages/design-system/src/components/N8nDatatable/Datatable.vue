@@ -3,19 +3,18 @@ import type { PropType } from 'vue';
 import { computed, defineComponent, ref, useCssModule } from 'vue';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
-import { useI18n } from '../../composables';
+import { useI18n } from '../../composables/useI18n';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nPagination from '../N8nPagination';
 
 export default defineComponent({
-	name: 'n8n-datatable',
+	name: 'N8nDatatable',
 	components: {
 		N8nSelect,
 		N8nOption,
 		N8nPagination,
 	},
-	emits: ['update:currentPage', 'update:rowsPerPage'],
 	props: {
 		columns: {
 			type: Array as PropType<DatatableColumn[]>,
@@ -38,6 +37,7 @@ export default defineComponent({
 			default: 10,
 		},
 	},
+	emits: ['update:currentPage', 'update:rowsPerPage'],
 	setup(props, { emit }) {
 		const { t } = useI18n();
 		const rowsPerPageOptions = ref([10, 25, 50, 100]);
@@ -130,10 +130,10 @@ export default defineComponent({
 			</thead>
 			<tbody>
 				<template v-for="row in visibleRows">
-					<slot name="row" :columns="columns" :row="row" :getTdValue="getTdValue">
+					<slot name="row" :columns="columns" :row="row" :get-td-value="getTdValue">
 						<tr :key="row.id">
 							<td v-for="column in columns" :key="column.id" :class="column.classes">
-								<component v-if="column.render" :is="column.render" :row="row" :column="column" />
+								<component :is="column.render" v-if="column.render" :row="row" :column="column" />
 								<span v-else>{{ getTdValue(row, column) }}</span>
 							</td>
 						</tr>
@@ -143,33 +143,33 @@ export default defineComponent({
 		</table>
 
 		<div :class="$style.pagination">
-			<n8n-pagination
+			<N8nPagination
 				v-if="totalPages > 1"
 				background
 				:pager-count="5"
 				:page-size="rowsPerPage"
 				layout="prev, pager, next"
 				:total="totalRows"
-				:currentPage="currentPage"
+				:current-page="currentPage"
 				@update:currentPage="onUpdateCurrentPage"
 			/>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select
+				<N8nSelect
 					size="mini"
-					:modelValue="rowsPerPage"
-					@update:modelValue="onRowsPerPageChange"
+					:model-value="rowsPerPage"
 					teleported
+					@update:modelValue="onRowsPerPageChange"
 				>
 					<template #prepend>{{ t('datatable.pageSize') }}</template>
-					<n8n-option
+					<N8nOption
 						v-for="size in rowsPerPageOptions"
 						:key="size"
 						:label="`${size}`"
 						:value="size"
 					/>
-					<n8n-option :label="`All`" value="*"> </n8n-option>
-				</n8n-select>
+					<N8nOption :label="`All`" value="*"> </N8nOption>
+				</N8nSelect>
 			</div>
 		</div>
 	</div>

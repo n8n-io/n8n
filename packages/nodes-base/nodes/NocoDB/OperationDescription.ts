@@ -430,7 +430,7 @@ export const operationFields: INodeProperties[] = [
 	},
 	{
 		displayName:
-			"In this mode, make sure the incoming data fields are named the same as the columns in NocoDB. (Use a 'set' node before this node to change them if required.)",
+			"In this mode, make sure the incoming data fields are named the same as the columns in NocoDB. (Use an 'Edit Fields' node before this node to change them if required.)",
 		name: 'info',
 		type: 'notice',
 		default: '',
@@ -495,7 +495,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Is Binary Data',
+						displayName: 'Is Binary File',
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,

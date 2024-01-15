@@ -36,6 +36,7 @@ export class MicrosoftSql implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'microsoftSql',
@@ -88,7 +89,6 @@ export class MicrosoftSql implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'MSSQL',
 				},
 				displayOptions: {

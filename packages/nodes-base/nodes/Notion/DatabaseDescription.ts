@@ -8,8 +8,10 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['database'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [
@@ -178,9 +180,11 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['database'],
 				operation: ['getAll', 'get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,

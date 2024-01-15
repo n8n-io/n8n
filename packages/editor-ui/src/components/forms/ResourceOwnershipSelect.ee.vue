@@ -3,7 +3,7 @@
 		<n8n-menu
 			:items="menuItems"
 			mode="tabs"
-			:modelValue="value ? 'owner' : 'all'"
+			:model-value="value ? 'owner' : 'all'"
 			@update:modelValue="onSelectOwner"
 		/>
 	</div>

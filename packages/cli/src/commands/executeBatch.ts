@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -12,7 +12,6 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
@@ -24,6 +23,7 @@ import type {
 	IWorkflowExecutionProgress,
 } from '../types/commands.types';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 
 const re = /\d+/;
 
@@ -276,7 +276,7 @@ export class ExecuteBatch extends BaseCommand {
 			ExecuteBatch.githubWorkflow = true;
 		}
 
-		ExecuteBatch.instanceOwner = await getInstanceOwner();
+		ExecuteBatch.instanceOwner = await Container.get(OwnershipService).getInstanceOwner();
 
 		const query = Container.get(WorkflowRepository).createQueryBuilder('workflows');
 
@@ -486,7 +486,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new Error('Wrong execution status - cannot proceed');
+								throw new ApplicationError('Wrong execution status - cannot proceed');
 							}
 						});
 					}

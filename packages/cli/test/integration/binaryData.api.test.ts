@@ -87,6 +87,26 @@ describe('GET /binary-data', () => {
 		});
 	});
 
+	describe('should handle non-ASCII filename [filesystem]', () => {
+		test('on request to download', async () => {
+			const nonAsciiFileName = 'äöüß.png';
+
+			const res = await authOwnerAgent
+				.get('/binary-data')
+				.query({
+					id: fsBinaryDataId,
+					fileName: nonAsciiFileName,
+					mimeType,
+					action: 'download',
+				})
+				.expect(200);
+
+			expect(res.headers['content-disposition']).toBe(
+				`attachment; filename="${encodeURIComponent(nonAsciiFileName)}"`,
+			);
+		});
+	});
+
 	describe('should return 404 on file not found [filesystem]', () => {
 		test.each(['view', 'download'])('on request to %s', async (action) => {
 			binaryDataService.getAsStream.mockImplementation(throwFileNotFound);

@@ -285,9 +285,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
 					`;
 				} else {
-					mailOptions.text = `${
-						mailOptions.text
-					}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
+					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
 				}
 			}
 

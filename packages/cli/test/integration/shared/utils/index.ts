@@ -16,7 +16,9 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { mockNodeTypesData } from '../../../unit/Helpers';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { mockInstance } from '../../../shared/mocking';
+import { ExecutionsService } from '@/executions/executions.service';
 
 export { setupTestServer } from './testServer';
 
@@ -28,6 +30,9 @@ export { setupTestServer } from './testServer';
  * Initialize node types.
  */
 export async function initActiveWorkflowRunner() {
+	mockInstance(MultiMainSetup);
+
+	mockInstance(ExecutionsService);
 	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	await workflowRunner.init();

@@ -1,25 +1,25 @@
 <template>
-	<el-input
+	<ElInput
+		ref="innerInput"
 		:size="computedSize"
 		:class="['n8n-input', ...classes]"
-		:autoComplete="autocomplete"
+		:autocomplete="autocomplete"
 		:name="name"
-		ref="innerInput"
 		v-bind="{ ...$props, ...$attrs }"
 	>
-		<template #prepend v-if="$slots.prepend">
+		<template v-if="$slots.prepend" #prepend>
 			<slot name="prepend" />
 		</template>
-		<template #append v-if="$slots.append">
+		<template v-if="$slots.append" #append>
 			<slot name="append" />
 		</template>
-		<template #prefix v-if="$slots.prefix">
+		<template v-if="$slots.prefix" #prefix>
 			<slot name="prefix" />
 		</template>
-		<template #suffix v-if="$slots.suffix">
+		<template v-if="$slots.suffix" #suffix>
 			<slot name="suffix" />
 		</template>
-	</el-input>
+	</ElInput>
 </template>
 
 <script lang="ts">
@@ -31,7 +31,7 @@ import { uid } from '../../utils';
 type InputRef = InstanceType<typeof ElInput>;
 
 export default defineComponent({
-	name: 'n8n-input',
+	name: 'N8nInput',
 	components: {
 		ElInput,
 	},

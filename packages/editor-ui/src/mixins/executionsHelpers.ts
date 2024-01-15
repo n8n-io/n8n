@@ -2,8 +2,8 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
-import { genericHelpers } from './genericHelpers';
 import type { IExecutionsSummary } from 'n8n-workflow';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
 export interface IExecutionUIData {
 	name: string;
@@ -13,7 +13,6 @@ export interface IExecutionUIData {
 }
 
 export const executionHelpers = defineComponent({
-	mixins: [genericHelpers],
 	computed: {
 		...mapStores(useWorkflowsStore),
 		executionId(): string {
@@ -63,7 +62,7 @@ export const executionHelpers = defineComponent({
 				const stoppedAt = execution.stoppedAt
 					? new Date(execution.stoppedAt).getTime()
 					: Date.now();
-				status.runningTime = this.displayTimer(
+				status.runningTime = this.$locale.displayTimer(
 					stoppedAt - new Date(execution.startedAt).getTime(),
 					true,
 				);
@@ -72,7 +71,7 @@ export const executionHelpers = defineComponent({
 			return status;
 		},
 		formatDate(fullDate: Date | string | number) {
-			const { date, time } = this.convertToDisplayDate(fullDate);
+			const { date, time } = convertToDisplayDate(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 	},

@@ -1,20 +1,17 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
-import { setGlobalState } from 'n8n-workflow';
+import { ApplicationError, setGlobalState } from 'n8n-workflow';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
-	process.env = {
-		E2E_TESTS: 'true',
-		EXECUTIONS_PROCESS: 'main',
-		N8N_DIAGNOSTICS_ENABLED: 'false',
-		N8N_PUBLIC_API_DISABLED: 'true',
-		EXTERNAL_FRONTEND_HOOKS_URLS: '',
-		N8N_PERSONALIZATION_ENABLED: 'false',
-		N8N_AI_ENABLED: 'true',
-	};
+	process.env.EXECUTIONS_PROCESS = 'main';
+	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
+	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
+	process.env.N8N_PERSONALIZATION_ENABLED = 'false';
+	process.env.N8N_AI_ENABLED = 'true';
 } else if (inTest) {
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
@@ -56,7 +53,7 @@ if (!inE2ETests && !inTest) {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
-						throw new Error(`The file "${fileName}" could not be found.`);
+						throw new ApplicationError('File not found', { extra: { fileName } });
 					}
 					throw error;
 				}
@@ -76,4 +73,3 @@ setGlobalState({
 
 // eslint-disable-next-line import/no-default-export
 export default config;
-export type Config = typeof config;

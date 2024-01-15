@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -164,11 +165,15 @@ describe('UI store', () => {
 		const fetchUserCloudAccountSpy = vi
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
+		const getCurrentUsageSpy = vi
+			.spyOn(cloudPlanApi, 'getCurrentUsage')
+			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
 		setupOwnerAndCloudDeployment();
 		await cloudPlanStore.checkForCloudPlanData();
 		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
+		expect(getCurrentUsageSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL');
 		// There should be no email confirmation banner for trialing users
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
@@ -182,10 +187,15 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
+		const getCurrentUsageSpy = vi
+			.spyOn(cloudPlanApi, 'getCurrentUsage')
+			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
+		setupOwnerAndCloudDeployment();
 		await cloudPlanStore.checkForCloudPlanData();
 		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
+		expect(getCurrentUsageSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
 		// There should be no email confirmation banner for trialing users
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');

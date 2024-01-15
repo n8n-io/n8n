@@ -1,4 +1,4 @@
-import { isNumber, closestNumberDivisibleBy } from '@/utils';
+import { isNumber } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
@@ -7,7 +7,6 @@ import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	ConnectionTypes,
 	IConnection,
-	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -15,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 /*
 	Canvas constants and functions.
@@ -283,9 +282,9 @@ export const getInputNameOverlay = (
 				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
+			label.classList.add(`node-connection-type-${inputName ?? 'main'}`);
 			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
-				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -318,9 +317,9 @@ export const getOutputNameOverlay = (
 			if (ep?.__meta?.endpointLabelLength) {
 				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
 			}
+			label.classList.add(`node-connection-type-${getScope(outputName) ?? 'main'}`);
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
-				label.classList.add(`node-connection-type-${getScope(outputName)}`);
 			}
 			if (category) {
 				label.classList.add(`node-connection-category-${category}`);
@@ -336,7 +335,7 @@ export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => 
 	});
 };
 
-export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
+export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
 	return nodes.reduce((leftmostTop, node) => {
 		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
 			return leftmostTop;
@@ -513,6 +512,25 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	return true;
 };
 
+const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
+	const quotient = Math.ceil(inputNumber / divisibleBy);
+
+	// 1st possible closest number
+	const inputNumber1 = divisibleBy * quotient;
+
+	// 2nd possible closest number
+	const inputNumber2 =
+		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
+
+	// if true, then inputNumber1 is the required closest number
+	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
+		return inputNumber1;
+	}
+
+	// else inputNumber2 is the required closest number
+	return inputNumber2;
+};
+
 export const getNewNodePosition = (
 	nodes: INodeUi[],
 	newPosition: XYPosition,
@@ -645,7 +663,7 @@ export const getOutputSummary = (
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data?.[connectionType]) {
+		if (!run?.data?.[connectionType]) {
 			return;
 		}
 
@@ -737,9 +755,15 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number },
+	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
-	connection.addClass('success');
+	const classNames: string[] = ['success'];
+
+	if (output.classNames) {
+		classNames.push(...output.classNames);
+	}
+
+	connection.addClass(classNames.join(' '));
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
@@ -753,7 +777,7 @@ export const addConnectionOutputSuccess = (
 					const container = document.createElement('div');
 					const span = document.createElement('span');
 
-					container.classList.add('connection-run-items-label');
+					container.classList.add(...['connection-run-items-label', ...classNames]);
 					span.classList.add('floating');
 					span.innerHTML = getRunItemsLabel(output);
 					container.appendChild(span);
@@ -770,6 +794,27 @@ export const addConnectionOutputSuccess = (
 
 	(connection.endpoints || []).forEach((endpoint) => {
 		connection.instance.repaint(endpoint.element);
+	});
+};
+
+export const addClassesToOverlays = ({
+	connection,
+	overlayIds,
+	classNames,
+	includeConnector,
+}: {
+	connection: Connection;
+	overlayIds: string[];
+	classNames: string[];
+	includeConnector?: boolean;
+}) => {
+	overlayIds.forEach((overlayId) => {
+		const overlay = getOverlay(connection, overlayId);
+
+		overlay?.canvas?.classList.add(...classNames);
+		if (includeConnector) {
+			connection.connector.canvas?.classList.add(...classNames);
+		}
 	});
 };
 
@@ -963,7 +1008,7 @@ export const getInputEndpointUUID = (
 	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
 };
 
-export const getFixedNodesList = (workflowNodes: INode[]) => {
+export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
 	const nodes = [...workflowNodes];
 
 	if (nodes.length) {
@@ -980,3 +1025,61 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 
 	return nodes;
 };
+
+/**
+ * Calculates the intersecting distances of the mouse event coordinates with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns { {x: number | null, y: number | null} | null } Object containing intersecting distances along x and y axes or null if no intersection.
+ */
+export function calculateElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): { x: number | null; y: number | null } | null {
+	const { top, left, right, bottom } = element.getBoundingClientRect();
+	const [x, y] = getMousePosition(mouseEvent);
+
+	let intersectX: number | null = null;
+	let intersectY: number | null = null;
+
+	if (x >= left - offset && x <= right + offset) {
+		intersectX = Math.min(x - (left - offset), right + offset - x);
+	}
+	if (y >= top - offset && y <= bottom + offset) {
+		intersectY = Math.min(y - (top - offset), bottom + offset - y);
+	}
+
+	if (intersectX === null && intersectY === null) return null;
+
+	return { x: intersectX, y: intersectY };
+}
+
+/**
+ * Checks if the mouse event coordinates intersect with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns {boolean} True if the mouse coordinates intersect with the element.
+ */
+export function isElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): boolean {
+	const intersection = calculateElementIntersection(element, mouseEvent, offset);
+
+	if (intersection === null) {
+		return false;
+	}
+
+	const isWithinVerticalBounds = intersection.y !== null;
+	const isWithinHorizontalBounds = intersection.x !== null;
+
+	return isWithinVerticalBounds && isWithinHorizontalBounds;
+}

@@ -2,16 +2,16 @@ import { promises as fs } from 'fs';
 import { flags } from '@oclif/command';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ExecutionBaseError } from 'n8n-workflow';
+import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -89,7 +89,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (!workflowData) {
-			throw new Error('Failed to retrieve workflow data for requested workflow');
+			throw new ApplicationError('Failed to retrieve workflow data for requested workflow');
 		}
 
 		if (!isWorkflowIdValid(workflowId)) {
@@ -98,7 +98,7 @@ export class Execute extends BaseCommand {
 
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
-		const user = await getInstanceOwner();
+		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [startingNode.name],
@@ -113,7 +113,7 @@ export class Execute extends BaseCommand {
 		const data = await activeExecutions.getPostExecutePromise(executionId);
 
 		if (data === undefined) {
-			throw new Error('Workflow did not return any data!');
+			throw new ApplicationError('Workflow did not return any data');
 		}
 
 		if (data.data.resultData.error) {

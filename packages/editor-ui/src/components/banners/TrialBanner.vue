@@ -23,14 +23,14 @@ function onUpdatePlanClick() {
 </script>
 
 <template>
-	<base-banner name="TRIAL" theme="custom">
+	<BaseBanner name="TRIAL" theme="custom">
 		<template #mainContent>
 			<span>{{ messageText }}</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem" size="small">{{
+			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
 			}}</n8n-button>
 		</template>
-	</base-banner>
+	</BaseBanner>
 </template>

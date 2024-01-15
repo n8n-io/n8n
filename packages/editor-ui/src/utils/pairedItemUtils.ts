@@ -1,6 +1,6 @@
 import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
-import type { IExecutionResponse, TargetItem } from '../Interface';
-import { isNotNull } from '@/utils';
+import type { IExecutionResponse, TargetItem } from '@/Interface';
+import { isNotNull } from '@/utils/typeGuards';
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -30,8 +30,8 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem)
 		? item.pairedItem
 		: typeof item.pairedItem === 'object'
-		? [item.pairedItem]
-		: [{ item: item.pairedItem }];
+		  ? [item.pairedItem]
+		  : [{ item: item.pairedItem }];
 	const sourceItems = pairedItem.map((item) => {
 		const input = item.input || 0;
 		return {

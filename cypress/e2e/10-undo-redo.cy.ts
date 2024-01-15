@@ -1,12 +1,14 @@
 import { CODE_NODE_NAME, SET_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
 
 const WorkflowPage = new WorkflowPageClass();
+const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
@@ -65,13 +67,10 @@ describe('Undo/Redo', () => {
 			.should('have.css', 'top', '220px');
 	});
 
-	it('should undo/redo deleting node using delete button', () => {
+	it('should undo/redo deleting node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodeByName(CODE_NODE_NAME)
-			.find('[data-test-id=delete-node-button]')
-			.click({ force: true });
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
@@ -151,7 +150,7 @@ describe('Undo/Redo', () => {
 			.should('have.css', 'top', '320px');
 	});
 
-	it('should undo/redo deleting a connection by pressing delete button', () => {
+	it('should undo/redo deleting a connection using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().realHover();
@@ -177,14 +176,10 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-	it('should undo/redo disabling a node using disable button', () => {
+	it('should undo/redo disabling a node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="disable-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -252,11 +247,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo duplicating a node', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="duplicate-node-button"]')
-			.click({ force: true });
+		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.actions.hitRedo();
@@ -335,5 +326,66 @@ describe('Undo/Redo', () => {
 				WorkflowPage.getters.canvasNodes().should('have.length', 3);
 				WorkflowPage.getters.nodeConnections().should('have.length', 2);
 			});
+	});
+
+	it('should be able to copy and paste pinned data nodes in workflows with dynamic Switch node', () => {
+		cy.fixture('Test_workflow_form_switch.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		WorkflowPage.actions.zoomToFit();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
+					.should('have.css', 'left', `637px`)
+					.should('have.css', 'top', `501px`);
+
+		cy.fixture('Test_workflow_form_switch.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		WorkflowPage.getters.canvasNodes().should('have.length', 4);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+
+		WorkflowPage.actions.hitUndo();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
+					.should('have.css', 'left', `637px`)
+					.should('have.css', 'top', `501px`);
+	});
+
+	it('should not undo/redo when NDV or a modal is open', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: true });
+		// Try while NDV is open
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		ndv.getters.backToCanvas().click();
+		// Try while modal is open
+		cy.getByTestId('menu-item').contains('About n8n').click({ force: true });
+		cy.getByTestId('about-modal').should('be.visible');
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		cy.getByTestId('close-about-modal-button').click();
+		// Should work now
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+	});
+
+	it('should not undo/redo when NDV or a prompt is open', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, { keepNdvOpen: false });
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
+		// Try while prompt is open
+		messageBox.getters.header().click();
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		// Close prompt and try again
+		messageBox.actions.cancel();
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});
 });

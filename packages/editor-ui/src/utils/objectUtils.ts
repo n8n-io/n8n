@@ -16,5 +16,5 @@ export const searchInObject = (obj: ObjectOrArray, searchString: string): boolea
 	(Array.isArray(obj) ? obj : Object.entries(obj)).some((entry) =>
 		isObjectOrArray(entry)
 			? searchInObject(entry, searchString)
-			: entry?.toString().includes(searchString),
+			: entry?.toString().toLowerCase().includes(searchString.toLowerCase()),
 	);

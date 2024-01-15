@@ -60,10 +60,10 @@ export const descriptions: INodeProperties[] = [
 				action: 'Delete rows or columns from sheet',
 			},
 			{
-				name: 'Get Many Rows',
+				name: 'Get Row(s)',
 				value: 'read',
-				description: 'Retrieves all the rows in a sheet',
-				action: 'Get many rows in sheet',
+				description: 'Retrieve one or more rows from a sheet',
+				action: 'Get row(s) in sheet',
 			},
 			{
 				name: 'Update Row',
@@ -183,6 +183,12 @@ export const descriptions: INodeProperties[] = [
 						},
 					},
 				],
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'Sheet1',
 			},
 		],
 		displayOptions: {

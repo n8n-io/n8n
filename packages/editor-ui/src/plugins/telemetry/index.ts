@@ -4,17 +4,18 @@ import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useNDVStore, useUIStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTelemetryStore } from '@/stores/telemetry.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -98,7 +99,7 @@ export class Telemetry {
 	track(
 		event: string,
 		properties?: ITelemetryTrackProperties,
-		{ withPostHog } = { withPostHog: false },
+		options: { withPostHog?: boolean; withAppCues?: boolean } = {},
 	) {
 		if (!this.rudderStack) return;
 
@@ -109,8 +110,12 @@ export class Telemetry {
 
 		this.rudderStack.track(event, updatedProperties);
 
-		if (withPostHog) {
+		if (options.withPostHog) {
 			usePostHog().capture(event, updatedProperties);
+		}
+
+		if (options.withAppCues && window.Appcues) {
+			window.Appcues.track(event, updatedProperties);
 		}
 	}
 

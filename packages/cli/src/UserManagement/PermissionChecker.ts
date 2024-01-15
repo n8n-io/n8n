@@ -1,9 +1,6 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import config from '@/config';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { isSharingEnabled } from './UserManagementHelper';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
@@ -32,7 +29,7 @@ export class PermissionChecker {
 			relations: ['globalRole'],
 		});
 
-		if (user.globalRole.name === 'owner') return;
+		if (user.hasGlobalScope('workflow:execute')) return;
 
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
@@ -48,17 +45,12 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
+		const roleId = await Container.get(RoleService).findCredentialOwnerRoleId();
 
-		if (!isSharingEnabled()) {
-			const role = await Container.get(RoleService).findCredentialOwnerRole();
-			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.roleId = role.id;
-		}
-
-		const credentialSharings = await Container.get(SharedCredentialsRepository).find({
-			where: credentialsWhere,
-		});
+		const credentialSharings = await Container.get(SharedCredentialsRepository).findSharings(
+			workflowUserIds,
+			roleId,
+		);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
@@ -72,14 +64,14 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
-			severity: 'warning',
+			level: 'warning',
 		});
 	}
 
 	static async checkSubworkflowExecutePolicy(
 		subworkflow: Workflow,
-		userId: string,
-		parentWorkflowId?: string,
+		parentWorkflowId: string,
+		node?: INode,
 	) {
 		/**
 		 * Important considerations: both the current workflow and the parent can have empty IDs.
@@ -101,15 +93,22 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
+		const parentWorkflowOwner =
+			await Container.get(OwnershipService).getWorkflowOwnerCached(parentWorkflowId);
+
 		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
 			subworkflow.id,
 		);
 
-		const errorToThrow = new SubworkflowOperationError(
-			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
-			subworkflowOwner.id === userId
+		const description =
+			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+
+		const errorToThrow = new WorkflowOperationError(
+			`Target workflow ID ${subworkflow.id} may not be called`,
+			node,
+			description,
 		);
 
 		if (policy === 'none') {
@@ -130,10 +129,8 @@ export class PermissionChecker {
 			}
 		}
 
-		if (policy === 'workflowsFromSameOwner') {
-			if (subworkflowOwner?.id !== userId) {
-				throw errorToThrow;
-			}
+		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
+			throw errorToThrow;
 		}
 	}
 
@@ -146,6 +143,7 @@ export class PermissionChecker {
 					if (!cred.id) {
 						throw new NodeOperationError(node, 'Node uses invalid credential', {
 							description: 'Please recreate the credential.',
+							level: 'warning',
 						});
 					}
 

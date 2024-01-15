@@ -9,6 +9,10 @@ export async function getGlobalMemberRole() {
 	return Container.get(RoleService).findGlobalMemberRole();
 }
 
+export async function getGlobalAdminRole() {
+	return Container.get(RoleService).findGlobalAdminRole();
+}
+
 export async function getWorkflowOwnerRole() {
 	return Container.get(RoleService).findWorkflowOwnerRole();
 }
