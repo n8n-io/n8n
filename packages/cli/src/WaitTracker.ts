@@ -151,7 +151,6 @@ export class WaitTracker {
 			const workflowRunner = new WorkflowRunner();
 			await workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
-			console.log('got an error', error.message, error.stack);
 			ErrorReporter.error(error);
 			this.logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
