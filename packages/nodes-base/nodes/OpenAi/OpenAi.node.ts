@@ -17,6 +17,7 @@ export class OpenAi extends VersionedNodeType {
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new OpenAiV1(baseDescription),
+			1.1: new OpenAiV1(baseDescription),
 			2: new OpenAiV2(baseDescription),
 		};
 
