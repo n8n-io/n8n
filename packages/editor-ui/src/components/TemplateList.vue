@@ -34,7 +34,6 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import TemplateCard from './TemplateCard.vue';
 
 export default defineComponent({
@@ -42,7 +41,6 @@ export default defineComponent({
 	components: {
 		TemplateCard,
 	},
-	mixins: [genericHelpers],
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,

@@ -37,6 +37,10 @@ describe('Templates', () => {
 
 	it('should save template id with the workflow', () => {
 		cy.visit(templatesPage.url);
+		cy.intercept('GET', '**/api/templates/**').as('loadApi');
+		cy.get('.el-skeleton.n8n-loading').should('not.exist');
+		templatesPage.getters.firstTemplateCard().should('exist');
+		cy.wait('@loadApi');
 		templatesPage.getters.firstTemplateCard().click();
 		cy.url().should('include', '/templates/');
 

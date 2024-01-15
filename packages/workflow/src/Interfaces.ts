@@ -217,6 +217,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -464,6 +465,7 @@ export interface IGetExecuteWebhookFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		webhookData: IWebhookData,
+		closeFunctions: CloseFunction[],
 	): IWebhookFunctions;
 }
 
@@ -526,6 +528,7 @@ export interface PaginationOptions {
 	binaryResult?: boolean;
 	continue: boolean | string;
 	request: IRequestOptionsSimplifiedAuth;
+	requestInterval: number;
 	maxRequests?: number;
 }
 
@@ -924,6 +927,11 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	getInputConnectionData(
+		inputName: ConnectionTypes,
+		itemIndex: number,
+		inputIndex?: number,
+	): Promise<unknown>;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -1331,7 +1339,7 @@ export interface SupplyData {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData>;
+	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
@@ -1631,21 +1639,24 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
-	triggerPanel?: {
-		header?: string;
-		executionsHelp?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-		activationHint?:
-			| string
-			| {
-					active: string;
-					inactive: string;
-			  };
-	};
+	triggerPanel?:
+		| {
+				hideContent?: boolean | string;
+				header?: string;
+				executionsHelp?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+				activationHint?:
+					| string
+					| {
+							active: string;
+							inactive: string;
+					  };
+		  }
+		| boolean;
 	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
@@ -1663,6 +1674,8 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	userId?: string;
+	staticData?: Workflow['staticData'];
 }
 
 export interface IWebhookDescription {
@@ -1679,8 +1692,8 @@ export interface IWebhookDescription {
 	restartWebhook?: boolean;
 	isForm?: boolean;
 	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
-	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
-	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
+	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
+	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
 
 export interface ProxyInput {
@@ -2120,23 +2133,6 @@ export interface IConnectedNode {
 	name: string;
 	indicies: number[];
 	depth: number;
-}
-
-export const enum OAuth2GrantType {
-	pkce = 'pkce',
-	authorizationCode = 'authorizationCode',
-	clientCredentials = 'clientCredentials',
-}
-export interface IOAuth2Credentials {
-	grantType: 'authorizationCode' | 'clientCredentials' | 'pkce';
-	clientId: string;
-	clientSecret: string;
-	accessTokenUrl: string;
-	authUrl: string;
-	authQueryParameters: string;
-	authentication: 'body' | 'header';
-	scope: string;
-	oauthTokenData?: IDataObject;
 }
 
 export type PublicInstalledPackage = {

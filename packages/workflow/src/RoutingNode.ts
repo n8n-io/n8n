@@ -235,7 +235,7 @@ export class RoutingNode {
 
 				let routingError = error as AxiosError;
 
-				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
+				if (error instanceof NodeApiError && error.cause) routingError = error.cause as AxiosError;
 
 				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,

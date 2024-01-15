@@ -53,10 +53,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -78,7 +78,6 @@ export default defineComponent({
 		PanelDragButton,
 		NDVFloatingNodes,
 	},
-	mixins: [debounceHelper],
 	props: {
 		isDraggable: {
 			type: Boolean,
@@ -93,6 +92,11 @@ export default defineComponent({
 			type: Object as PropType<INodeTypeDescription>,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
 	},
 	data(): {
 		windowWidth: number;
@@ -343,7 +347,7 @@ export default defineComponent({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				void this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced(this.onResize, { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {

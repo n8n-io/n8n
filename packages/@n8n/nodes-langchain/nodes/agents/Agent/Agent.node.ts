@@ -72,6 +72,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
+						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 					],
 				},
 			},
@@ -144,7 +145,7 @@ export class Agent implements INodeType {
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",

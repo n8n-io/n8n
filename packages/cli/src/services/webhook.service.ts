@@ -1,6 +1,6 @@
 import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 

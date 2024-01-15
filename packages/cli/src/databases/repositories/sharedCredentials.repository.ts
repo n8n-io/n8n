@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { DataSource, In, Not, Repository } from 'typeorm';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
@@ -59,5 +59,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		if (roleId) where.roleId = roleId;
 
 		return this.find({ where });
+	}
+
+	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
+		return transaction.delete(SharedCredentials, {
+			user,
+			credentialsId: In(sharedCredentialsIds),
+		});
 	}
 }

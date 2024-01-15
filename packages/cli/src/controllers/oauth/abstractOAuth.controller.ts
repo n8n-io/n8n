@@ -73,6 +73,7 @@ export abstract class AbstractOAuthController {
 			credential,
 			credential.type,
 			'internal',
+			undefined,
 			true,
 		);
 	}

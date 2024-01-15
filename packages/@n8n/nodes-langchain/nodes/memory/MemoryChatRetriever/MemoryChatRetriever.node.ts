@@ -32,12 +32,14 @@ function simplifyMessages(messages: BaseMessage[]) {
 	return transformedMessages;
 }
 
+// This node is deprecated. Use MemoryManager instead.
 export class MemoryChatRetriever implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
 		group: ['transform'],
+		hidden: true,
 		version: 1,
 		description: 'Retrieve chat messages from memory and use them in the workflow',
 		defaults: {
@@ -69,6 +71,12 @@ export class MemoryChatRetriever implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.Main],
 		properties: [
+			{
+				displayName: "This node is deprecated. Use 'Chat Memory Manager' node instead.",
+				type: 'notice',
+				default: '',
+				name: 'deprecatedNotice',
+			},
 			{
 				displayName: 'Simplify Output',
 				name: 'simplifyOutput',

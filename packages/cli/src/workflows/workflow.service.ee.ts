@@ -15,7 +15,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { RoleService } from '@/services/role.service';
-import type { EntityManager } from 'typeorm';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Service()
@@ -44,13 +43,6 @@ export class EnterpriseWorkflowService {
 		const { workflow } = sharing;
 
 		return { ownsWorkflow: true, workflow };
-	}
-
-	async share(transaction: EntityManager, workflow: WorkflowEntity, shareWithIds: string[]) {
-		const users = await this.userRepository.getByIds(transaction, shareWithIds);
-		const role = await this.roleService.findWorkflowEditorRole();
-
-		await this.sharedWorkflowRepository.share(transaction, workflow, users, role.id);
 	}
 
 	addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {

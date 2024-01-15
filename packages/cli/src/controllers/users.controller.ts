@@ -1,4 +1,3 @@
-import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -214,10 +213,11 @@ export class UsersController {
 
 				// Prevents issues with unique key constraints since user being assigned
 				// workflows and credentials might be a sharee
-				await transactionManager.delete(SharedWorkflow, {
-					user: transferee,
-					workflowId: In(sharedWorkflowIds),
-				});
+				await this.sharedWorkflowRepository.deleteByIds(
+					transactionManager,
+					sharedWorkflowIds,
+					transferee,
+				);
 
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
@@ -239,10 +239,11 @@ export class UsersController {
 
 				// Prevents issues with unique key constraints since user being assigned
 				// workflows and credentials might be a sharee
-				await transactionManager.delete(SharedCredentials, {
-					user: transferee,
-					credentialsId: In(sharedCredentialIds),
-				});
+				await this.sharedCredentialsRepository.deleteByIds(
+					transactionManager,
+					sharedCredentialIds,
+					transferee,
+				);
 
 				// Transfer ownership of owned credentials
 				await transactionManager.update(

@@ -1279,12 +1279,6 @@ export const schema = {
 	},
 
 	cache: {
-		enabled: {
-			doc: 'Whether caching is enabled',
-			format: Boolean,
-			default: true,
-			env: 'N8N_CACHE_ENABLED',
-		},
 		backend: {
 			doc: 'Backend to use for caching',
 			format: ['memory', 'redis', 'auto'] as const,

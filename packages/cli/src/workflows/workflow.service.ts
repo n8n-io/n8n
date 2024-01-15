@@ -11,7 +11,8 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import { type WorkflowRequest, hasSharing, type ListQuery } from '@/requests';
+import { hasSharing, type ListQuery } from '@/requests';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { TagService } from '@/services/tag.service';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -205,6 +206,7 @@ export class WorkflowService {
 				'active',
 				'nodes',
 				'connections',
+				'meta',
 				'settings',
 				'staticData',
 				'pinData',
@@ -280,7 +282,7 @@ export class WorkflowService {
 		const newState = updatedWorkflow.active;
 
 		if (this.multiMainSetup.isEnabled && oldState !== newState) {
-			await this.multiMainSetup.broadcastWorkflowActiveStateChanged({
+			await this.multiMainSetup.publish('workflowActiveStateChanged', {
 				workflowId,
 				oldState,
 				newState,
@@ -302,9 +304,6 @@ export class WorkflowService {
 		user: User,
 		sessionId?: string,
 	) {
-		const EXECUTION_MODE = 'manual';
-		const ACTIVATION_MODE = 'manual';
-
 		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
@@ -315,25 +314,13 @@ export class WorkflowService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const workflow = new Workflow({
-				id: workflowData.id?.toString(),
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: false,
-				nodeTypes: this.nodeTypes,
-				staticData: undefined,
-				settings: workflowData.settings,
-			});
-
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 			const needsWebhook = await this.testWebhooks.needsWebhook(
+				user.id,
 				workflowData,
-				workflow,
 				additionalData,
-				EXECUTION_MODE,
-				ACTIVATION_MODE,
+				runData,
 				sessionId,
 				destinationNode,
 			);
@@ -347,7 +334,7 @@ export class WorkflowService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode,
-			executionMode: EXECUTION_MODE,
+			executionMode: 'manual',
 			runData,
 			pinData,
 			sessionId,

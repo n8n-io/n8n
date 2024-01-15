@@ -98,6 +98,9 @@ export class NDV extends BasePage {
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
+		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
+		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
+		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
 		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 	};
@@ -251,9 +254,15 @@ export class NDV extends BasePage {
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
 		},
+
+		openCodeEditorFullscreen: () => {
+			this.getters.codeEditorFullscreenButton().click({ force: true });
+		},
 		changeNodeOperation: (operation: string) => {
 			this.getters.parameterInput('operation').click();
-			cy.get('.el-select-dropdown__item').contains(new RegExp(`^${operation}$`)).click({ force: true });
+			cy.get('.el-select-dropdown__item')
+				.contains(new RegExp(`^${operation}$`))
+				.click({ force: true });
 			this.getters.parameterInput('operation').find('input').should('have.value', operation);
 		},
 	};

@@ -7,6 +7,7 @@ import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
 
 const includeVue = process.env.INCLUDE_VUE === 'true';
+const srcPath = fileURLToPath(new URL('./src', import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,7 +20,8 @@ export default defineConfig({
 	],
 	resolve: {
 		alias: {
-			'@': fileURLToPath(new URL('./src', import.meta.url)),
+			'@': srcPath,
+			'@n8n/chat': srcPath,
 		},
 	},
 	define: {

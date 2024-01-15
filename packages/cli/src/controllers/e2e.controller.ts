@@ -14,7 +14,7 @@ import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {

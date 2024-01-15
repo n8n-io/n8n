@@ -27,10 +27,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build nodes-base
-        run: pnpm --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base build
+        run: pnpm --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base --filter @n8n/n8n-nodes-langchain build
+
+      - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Test URLs
-        run: node scripts/validate-docs-links.js
+        run: node .github/scripts/validate-docs-links.js
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0

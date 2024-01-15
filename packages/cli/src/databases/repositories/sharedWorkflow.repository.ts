@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { DataSource, Repository, In, Not } from 'typeorm';
-import type { EntityManager, FindOptionsWhere } from 'typeorm';
+import type { EntityManager, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
 import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
@@ -124,5 +124,21 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
+	}
+
+	async findWithFields(workflowIds: string[], { fields }: { fields: string[] }) {
+		return this.find({
+			where: {
+				workflowId: In(workflowIds),
+			},
+			select: fields as FindOptionsSelect<SharedWorkflow>,
+		});
+	}
+
+	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
+		return transaction.delete(SharedWorkflow, {
+			user,
+			workflowId: In(sharedWorkflowIds),
+		});
 	}
 }

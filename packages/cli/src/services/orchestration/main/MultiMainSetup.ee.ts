@@ -4,6 +4,10 @@ import { TIME } from '@/constants';
 import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import type {
+	RedisServiceBaseCommand,
+	RedisServiceCommand,
+} from '@/services/redis/RedisServiceCommands';
 
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
@@ -122,27 +126,14 @@ export class MultiMainSetup extends SingleMainSetup {
 		}
 	}
 
-	async broadcastWorkflowActiveStateChanged(payload: {
-		workflowId: string;
-		oldState: boolean;
-		newState: boolean;
-		versionId: string;
-	}) {
+	async publish(command: RedisServiceCommand, data: unknown) {
 		if (!this.sanityCheck()) return;
 
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowActiveStateChanged',
-			payload,
-		});
-	}
+		const payload = data as RedisServiceBaseCommand['payload'];
 
-	async broadcastWorkflowFailedToActivate(payload: { workflowId: string; errorMessage: string }) {
-		if (!this.sanityCheck()) return;
+		this.logger.debug(`[Instance ID ${this.id}] Publishing command "${command}"`, payload);
 
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowFailedToActivate',
-			payload,
-		});
+		await this.redisPublisher.publishToCommandChannel({ command, payload });
 	}
 
 	async fetchLeaderKey() {

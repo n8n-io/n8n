@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 5,
 		},
-		default: '{\n  "my_field_1": "value",\n  "my_field_2": 1\n}',
+		default: '{\n  "my_field_1": "value",\n  "my_field_2": 1\n}\n',
 		validateType: 'object',
 		ignoreValidationDuringExecution: true,
 	},

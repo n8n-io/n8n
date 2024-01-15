@@ -1,11 +1,19 @@
 #!/usr/bin/env node
 
+const packages = ['nodes-base', '@n8n/nodes-langchain'];
+const concurrency = 20;
+let exitCode = 0;
+
+const debug = require('debug')('n8n');
 const path = require('path');
 const https = require('https');
-const glob = require('fast-glob');
+const glob = require('glob');
 const pLimit = require('p-limit');
+const Lookup = require('cacheable-lookup').default;
 
-const nodesBaseDir = path.resolve(__dirname, '../packages/nodes-base');
+const agent = new https.Agent({ keepAlive: true, keepAliveMsecs: 5000 });
+new Lookup().install(agent);
+const limiter = pLimit(concurrency);
 
 const validateUrl = async (kind, name, documentationUrl) =>
 	new Promise((resolve, reject) => {
@@ -22,21 +30,26 @@ const validateUrl = async (kind, name, documentationUrl) =>
 					port: 443,
 					path: url.pathname,
 					method: 'HEAD',
+					agent,
 				},
-				(res) => resolve([name, res.statusCode]),
+				(res) => {
+					debug('✓', kind, name);
+					resolve([name, res.statusCode]);
+				},
 			)
 			.on('error', (e) => reject(e))
 			.end();
 	});
 
-const checkLinks = async (kind) => {
-	let types = require(path.join(nodesBaseDir, `dist/types/${kind}.json`));
+const checkLinks = async (baseDir, kind) => {
+	let types = require(path.join(baseDir, `dist/types/${kind}.json`));
 	if (kind === 'nodes')
 		types = types.filter(({ codex }) => !!codex?.resources?.primaryDocumentation);
-	const limit = pLimit(30);
+	debug(kind, types.length);
+
 	const statuses = await Promise.all(
 		types.map((type) =>
-			limit(() => {
+			limiter(() => {
 				const documentationUrl =
 					kind === 'credentials'
 						? type.documentationUrl
@@ -55,10 +68,13 @@ const checkLinks = async (kind) => {
 
 	if (missingDocs.length) console.log('Documentation URL missing for %s', kind, missingDocs);
 	if (invalidUrls.length) console.log('Documentation URL invalid for %s', kind, invalidUrls);
-	if (missingDocs.length || invalidUrls.length) process.exit(1);
+	if (missingDocs.length || invalidUrls.length) exitCode = 1;
 };
 
 (async () => {
-	await checkLinks('credentials');
-	await checkLinks('nodes');
+	for (const packageName of packages) {
+		const baseDir = path.resolve(__dirname, '../../packages', packageName);
+		await Promise.all([checkLinks(baseDir, 'credentials'), checkLinks(baseDir, 'nodes')]);
+		if (exitCode !== 0) process.exit(exitCode);
+	}
 })();

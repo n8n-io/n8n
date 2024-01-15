@@ -107,7 +107,7 @@
 											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
 										>
 											{{
-												displayTimer(
+												i18n.displayTimer(
 													new Date(execution.stoppedAt).getTime() -
 														new Date(execution.startedAt).getTime(),
 													true,
@@ -288,7 +288,6 @@ import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
@@ -318,7 +317,7 @@ export default defineComponent({
 		ExecutionTime,
 		ExecutionFilter,
 	},
-	mixins: [genericHelpers, executionHelpers],
+	mixins: [executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,

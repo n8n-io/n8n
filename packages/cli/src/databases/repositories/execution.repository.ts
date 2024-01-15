@@ -226,10 +226,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { data, workflowData, ...rest } = execution;
 		const { identifiers: inserted } = await this.insert(rest);
 		const { id: executionId } = inserted[0] as { id: string };
-		const { connections, nodes, name } = workflowData ?? {};
+		const { connections, nodes, name, settings } = workflowData ?? {};
 		await this.executionDataRepository.insert({
 			executionId,
-			workflowData: { connections, nodes, name, id: workflowData?.id },
+			workflowData: { connections, nodes, name, settings, id: workflowData?.id },
 			data: stringify(data),
 		});
 		return String(executionId);

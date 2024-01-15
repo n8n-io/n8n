@@ -30,7 +30,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { workflowsController } from '@/workflows/workflows.controller';
+import { WorkflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
@@ -70,7 +70,7 @@ import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
+import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -246,15 +246,18 @@ export class Server extends AbstractServer {
 			VariablesController,
 			RoleController,
 			ActiveWorkflowsController,
+			WorkflowsController,
 		];
 
 		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
-			const { DebugController } = await import('./controllers/debug.controller');
+			const { DebugController } = await import('@/controllers/debug.controller');
 			controllers.push(DebugController);
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapController } = await require('@/controllers/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service');
+			const { LdapController } = await require('@/Ldap/ldap.controller');
+			await Container.get(LdapService).init();
 			controllers.push(LdapController);
 		}
 
@@ -350,18 +353,11 @@ export class Server extends AbstractServer {
 			await Container.get(Queue).init();
 		}
 
-		await handleLdapInit();
-
 		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Workflow
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
 		// SAML
