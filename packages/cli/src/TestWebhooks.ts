@@ -23,6 +23,7 @@ import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
+import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -232,13 +233,13 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
-			const registration = await this.registrations.get(key);
+			const isAlreadyRegistered = await this.registrations.get(key);
 
 			if (runData && webhook.node in runData) {
 				return false;
 			}
 
-			if (registration && !webhook.webhookId) {
+			if (isAlreadyRegistered && !webhook.webhookId) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
@@ -253,17 +254,25 @@ export class TestWebhooks implements IWebhookManager {
 
 			cacheableWebhook.userId = userId;
 
+			const registration: TestWebhookRegistration = {
+				sessionId,
+				workflowEntity,
+				destinationNode,
+				webhook: cacheableWebhook as IWebhookData,
+			};
+
 			try {
+				/**
+				 * Register the test webhook _before_ creation at third-party service
+				 * in case service sends a confirmation request immediately on creation.
+				 */
+				await this.registrations.register(registration);
+
 				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
 
 				cacheableWebhook.staticData = workflow.staticData;
 
-				await this.registrations.register({
-					sessionId,
-					workflowEntity,
-					destinationNode,
-					webhook: cacheableWebhook as IWebhookData,
-				});
+				await this.registrations.register(registration);
 
 				this.timeouts[key] = timeout;
 			} catch (error) {

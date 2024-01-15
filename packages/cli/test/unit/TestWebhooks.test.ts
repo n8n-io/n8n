@@ -8,7 +8,7 @@ import * as WebhookHelpers from '@/WebhookHelpers';
 import type * as express from 'express';
 
 import type { IWorkflowDb, WebhookRequest } from '@/Interfaces';
-import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { IWebhookData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
@@ -50,11 +50,18 @@ describe('TestWebhooks', () => {
 			mock<IWorkflowExecuteAdditionalData>(),
 		];
 
-		test('if webhook is needed, should return true and activate webhook', async () => {
+		test('if webhook is needed, should register then create webhook and return true', async () => {
+			const workflow = mock<Workflow>();
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const needsWebhook = await testWebhooks.needsWebhook(...args);
 
+			const [registerOrder] = registrations.register.mock.invocationCallOrder;
+			const [createOrder] = workflow.createWebhookIfNotExists.mock.invocationCallOrder;
+
+			expect(registerOrder).toBeLessThan(createOrder);
 			expect(needsWebhook).toBe(true);
 		});
 
