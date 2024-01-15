@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { twistApiRequest } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';

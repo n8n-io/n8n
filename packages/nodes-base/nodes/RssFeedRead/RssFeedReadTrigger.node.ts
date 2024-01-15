@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
