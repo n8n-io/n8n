@@ -4844,7 +4844,6 @@ export default defineComponent({
 				});
 			}
 
-			// This works somewhat but resets the color of connection if the parent has run already
 			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 		},
 
