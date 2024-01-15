@@ -3,10 +3,11 @@ import {
 	type IExecuteFunctions,
 	type IDataObject,
 	type INodeExecutionData,
-	BINARY_ENCODING,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
+import get from 'lodash/get';
 
 const properties: INodeProperties[] = [
 	// {
@@ -168,13 +169,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((propertyName) => propertyName.trim());
 
 		for (const propertyName of binaryPropertyName) {
-			const buffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
-			const base64 = Buffer.from(buffer).toString(BINARY_ENCODING);
+			const binaryData = get(this.getInputData(i)[0].binary, propertyName);
+
+			if (!binaryData) {
+				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+			}
 
 			content.push({
 				type: 'image_url',
 				image_url: {
-					url: `data:image/png;base64,${base64}`,
+					url: `data:${binaryData.mimeType};base64,${binaryData.data}`,
 					detail,
 				},
 			});
