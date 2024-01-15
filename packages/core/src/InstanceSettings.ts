@@ -2,7 +2,7 @@ import path from 'path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash, randomBytes } from 'crypto';
 import { Service } from 'typedi';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 interface ReadOnlySettings {
 	encryptionKey: string;
@@ -57,26 +57,44 @@ export class InstanceSettings {
 		return process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 	}
 
+	/**
+	 * Load instance settings from the settings file. If missing, create a new
+	 * settings file with an auto-generated encryption key.
+	 */
 	private loadOrCreate(): Settings {
-		let settings: Settings;
-		const { settingsFile } = this;
-		if (existsSync(settingsFile)) {
-			const content = readFileSync(settingsFile, 'utf8');
-			settings = jsonParse(content, {
-				errorMessage: `Error parsing n8n-config file "${settingsFile}". It does not seem to be valid JSON.`,
+		if (existsSync(this.settingsFile)) {
+			const content = readFileSync(this.settingsFile, 'utf8');
+
+			const settings = jsonParse<Settings>(content, {
+				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
-		} else {
-			// Ensure that the `.n8n` folder exists
-			mkdirSync(this.n8nFolder, { recursive: true });
-			// If file doesn't exist, create new settings
-			const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
-			settings = { encryptionKey };
-			this.save(settings);
-			// console.info(`UserSettings were generated and saved to: ${settingsFile}`);
+
+			console.info(`User settings loaded from: ${this.settingsFile}`);
+
+			const { encryptionKey, tunnelSubdomain } = settings;
+
+			if (process.env.N8N_ENCRYPTION_KEY && encryptionKey !== process.env.N8N_ENCRYPTION_KEY) {
+				throw new ApplicationError(
+					`The encryption key in the settings file ${this.settingsFile} does not match the one in the N8N_ENCRYPTION_KEY. If specifying this environment variable, please make sure it matches the value in the settings file.`,
+				);
+			}
+
+			return { encryptionKey, tunnelSubdomain };
 		}
 
-		const { encryptionKey, tunnelSubdomain } = settings;
-		return { encryptionKey, tunnelSubdomain };
+		mkdirSync(this.n8nFolder, { recursive: true });
+
+		const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
+
+		const settings: Settings = { encryptionKey };
+
+		this.save(settings);
+
+		if (!process.env.N8N_ENCRYPTION_KEY) {
+			console.info(`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`);
+		}
+
+		return settings;
 	}
 
 	private generateInstanceId() {
