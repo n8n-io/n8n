@@ -795,8 +795,8 @@ async function executeWorkflow(
 
 	let data;
 	try {
-		await PermissionChecker.check(workflow, additionalData.userId);
-		await PermissionChecker.checkSubworkflowExecutePolicy(
+		await Container.get(PermissionChecker).check(workflow, additionalData.userId);
+		await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
 			workflow,
 			options.parentWorkflowId,
 			options.node,

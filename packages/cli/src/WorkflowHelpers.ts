@@ -176,7 +176,7 @@ export async function executeErrorWorkflow(
 			const failedNode = workflowErrorData.execution?.lastNodeExecuted
 				? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
 				: undefined;
-			await PermissionChecker.checkSubworkflowExecutePolicy(
+			await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
 				workflowInstance,
 				workflowErrorData.workflow.id!,
 				failedNode ?? undefined,

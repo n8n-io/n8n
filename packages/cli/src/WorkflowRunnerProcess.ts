@@ -142,7 +142,7 @@ class WorkflowRunnerProcess {
 			pinData: this.data.pinData,
 		});
 		try {
-			await PermissionChecker.check(this.workflow, userId);
+			await Container.get(PermissionChecker).check(this.workflow, userId);
 		} catch (error) {
 			const caughtError = error as NodeOperationError;
 			const failedExecutionData = generateFailedExecutionFromError(
