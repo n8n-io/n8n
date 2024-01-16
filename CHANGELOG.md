@@ -1,3 +1,28 @@
+## [1.24.1](https://github.com/n8n-io/n8n/compare/n8n@1.24.0...n8n@1.24.1) (2024-01-16)
+
+
+### Bug Fixes
+
+* Add fallback resolver for langchain modules ([#8308](https://github.com/n8n-io/n8n/issues/8308)) ([82199f4](https://github.com/n8n-io/n8n/commit/82199f42329fcd7fd3aeddb92238e2a17167d953))
+* **API:** Fix manual chat trigger execution ([#8300](https://github.com/n8n-io/n8n/issues/8300)) ([c715ad5](https://github.com/n8n-io/n8n/commit/c715ad5c0597554fe5075cbbcafe1b4771774f01))
+* **AwsS3 Node:** Return confirmation of success after upload ([#8312](https://github.com/n8n-io/n8n/issues/8312)) ([d6676ba](https://github.com/n8n-io/n8n/commit/d6676ba803380402e389be464290113d17269aa4))
+* **core:** Account for immediate confirmation request during test webhook creation ([#8329](https://github.com/n8n-io/n8n/issues/8329)) ([aa14332](https://github.com/n8n-io/n8n/commit/aa143328343d53613cd541cf8a8f7cd8edb11f72))
+* **core:** Prevent invalid compressed responses from making executions stuck forever ([#8315](https://github.com/n8n-io/n8n/issues/8315)) ([beecfac](https://github.com/n8n-io/n8n/commit/beecfac095b37937f3b49bbc2dd248025faba536))
+* **core:** Replace all `moment` imports with `moment-timezone` ([#8337](https://github.com/n8n-io/n8n/issues/8337)) ([65ec5cf](https://github.com/n8n-io/n8n/commit/65ec5cfebbd1bb9d0de2c439c2372bc838aa0c75))
+* **editor:** Fix issue with synchronization table on LDAP not loading data ([#8327](https://github.com/n8n-io/n8n/issues/8327)) ([886653a](https://github.com/n8n-io/n8n/commit/886653a4cf3773b60935d14a2d2710520ee431e6))
+* **editor:** Properly set colors for connections and labels on nodes with pinned data ([#8209](https://github.com/n8n-io/n8n/issues/8209)) ([2410047](https://github.com/n8n-io/n8n/commit/241004789b7e06f9a6b4b81c9fdff9bc59f3c377))
+* **Google Drive Node:** Fix issue preventing service account from downloading files ([#7642](https://github.com/n8n-io/n8n/issues/7642)) ([be11d38](https://github.com/n8n-io/n8n/commit/be11d380f51b71a0d6963274b7e00532d239e081))
+* **HTTP Request Node:** Delete `response.request` only when it's a valid circular references ([#8293](https://github.com/n8n-io/n8n/issues/8293)) ([138df40](https://github.com/n8n-io/n8n/commit/138df409c558aa48e34724fab2c82f9e81b1b77f))
+* **Microsoft SQL Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#8334](https://github.com/n8n-io/n8n/issues/8334)) ([61cabb6](https://github.com/n8n-io/n8n/commit/61cabb6af2e3ab9fc91f35cc0dd6606c3f708194))
+* **Ollama Model Node:** Use a simpler credentials test ([#8318](https://github.com/n8n-io/n8n/issues/8318)) ([371d0ae](https://github.com/n8n-io/n8n/commit/371d0aec2bcb5a06f8b88bb63c949bcab0c3eb5c))
+* **OpenAI Node:** Load correct models for operation ([#8313](https://github.com/n8n-io/n8n/issues/8313)) ([6ec30d6](https://github.com/n8n-io/n8n/commit/6ec30d60a6f4318afec3f8855792226032087b2e))
+* Properly output saml validation errors ([#8284](https://github.com/n8n-io/n8n/issues/8284)) ([7467648](https://github.com/n8n-io/n8n/commit/7467648e6f6421aba8378943f00febfcd69cad8b))
+* **Supabase Node:** Pagination for get all rows ([#8311](https://github.com/n8n-io/n8n/issues/8311)) ([69795df](https://github.com/n8n-io/n8n/commit/69795df9d77350fab37f6f8b80d58597d2f1d0e8))
+* **Venafi TLS Protect Cloud Node:** Remove parameter `Application Server Type` ([#8325](https://github.com/n8n-io/n8n/issues/8325)) ([29a19a4](https://github.com/n8n-io/n8n/commit/29a19a4f3f9c2cbc45d05f5f452c3f0bd7c66f5f))
+* **Venafi TLS Protect Cloud Trigger Node:** Handle new webhook payload format  ([#8326](https://github.com/n8n-io/n8n/issues/8326)) ([7680723](https://github.com/n8n-io/n8n/commit/76807232997cd52cb4e64c8689921ae3c699db4e))
+
+
+
 # [1.24.0](https://github.com/n8n-io/n8n/compare/n8n@1.23.0...n8n@1.24.0) (2024-01-10)
 
 
