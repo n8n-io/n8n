@@ -2,7 +2,7 @@ import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } f
 
 import * as operations from './operations';
 
-type OpenAiType = 'generateImage' | 'analyzeImage';
+type OpenAiType = 'generateImage' | 'analyzeImage' | 'createModeration' | 'generateAudio';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];

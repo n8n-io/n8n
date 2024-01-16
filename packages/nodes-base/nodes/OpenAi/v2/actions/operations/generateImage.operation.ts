@@ -59,6 +59,8 @@ const properties: INodeProperties[] = [
 				displayName: 'Quality',
 				name: 'quality',
 				type: 'options',
+				description:
+					'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
 				options: [
 					{
 						name: 'HD',
@@ -134,10 +136,12 @@ const properties: INodeProperties[] = [
 					{
 						name: 'Natural',
 						value: 'natural',
+						description: 'Produce more natural looking images',
 					},
 					{
 						name: 'Vivid',
 						value: 'vivid',
+						description: 'Lean towards generating hyper-real and dramatic images',
 					},
 				],
 				displayOptions: {
@@ -148,7 +152,7 @@ const properties: INodeProperties[] = [
 				default: 'vivid',
 			},
 			{
-				displayName: 'Responde with Image Url',
+				displayName: 'Responde with Image URL(s)',
 				name: 'returnImageUrls',
 				type: 'boolean',
 				default: false,
