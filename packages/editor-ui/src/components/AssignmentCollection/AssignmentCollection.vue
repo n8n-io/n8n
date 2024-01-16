@@ -140,7 +140,7 @@ function getIssues(index: number): string[] {
 					</Assignment>
 				</div>
 			</div>
-			<div :class="$style.dropAreaWrapper">
+			<div :class="$style.dropAreaWrapper" data-test-id="assignment-collection-drop-area">
 				<DropArea :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
 					<template #default="{ active }">
 						<div
@@ -154,7 +154,13 @@ function getIssues(index: number): string[] {
 								i18n.baseText(active ? 'assignment.dropField' : 'assignment.dragFields')
 							}}</span>
 							<span :class="$style.or">{{ i18n.baseText('assignment.or') }}</span>
-							<n8n-button :class="$style.addButton" size="large" text @click="addAssignment">
+							<n8n-button
+								data-test-id="assignment-collection-add"
+								:class="$style.addButton"
+								size="large"
+								text
+								@click="addAssignment"
+							>
 								{{ i18n.baseText('assignment.add') }}
 							</n8n-button>
 						</div>

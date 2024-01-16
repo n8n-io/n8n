@@ -89,8 +89,7 @@ const onBlur = (): void => {
 			text
 			size="mini"
 			icon="trash"
-			data-test-id="filter-remove-condition"
-			:title="i18n.baseText('filter.removeCondition')"
+			data-test-id="assignment-remove"
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
