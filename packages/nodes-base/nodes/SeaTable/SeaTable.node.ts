@@ -8,7 +8,7 @@ export class SeaTable extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'SeaTable',
-			name: 'seatable',
+			name: 'seaTable',
 			icon: 'file:seatable.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
@@ -17,7 +17,7 @@ export class SeaTable extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new SeaTableV1(),
+			1: new SeaTableV1(baseDescription),
 			2: new SeaTableV2(baseDescription),
 		};
 

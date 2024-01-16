@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -21,50 +22,20 @@ import {
 	updateAble,
 } from './GenericFunctions';
 
-import { rowFields, rowOperations } from './RowDescription';
-
 import type { TColumnsUiValues, TColumnValue } from './types';
 
 import type { ICtx, IRow, IRowObject } from './Interfaces';
+import { versionDescription } from './VersionDescription';
 
 export class SeaTableV1 implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'SeaTable',
-		name: 'seaTable',
-		icon: 'file:seaTable.svg',
-		group: ['input'],
-		version: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
-		description: 'Consume the SeaTable API',
-		defaults: {
-			name: 'SeaTable',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'seaTableApi',
-				required: true,
-			},
-		],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Row',
-						value: 'row',
-					},
-				],
-				default: 'row',
-			},
-			...rowOperations,
-			...rowFields,
-		],
-	};
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			...versionDescription,
+		};
+	}
 
 	methods = {
 		loadOptions: {
