@@ -91,13 +91,13 @@ export async function seaTableApiRequest(
 	// some API endpoints require the api_token instead of base_access_token.
 	const token =
 		endpoint.indexOf('/api/v2.1/dtable/app-download-link/') === 0 ||
-		endpoint == '/api/v2.1/dtable/app-upload-link/' ||
+		endpoint === '/api/v2.1/dtable/app-upload-link/' ||
 		endpoint.indexOf('/seafhttp/upload-api') === 0
 			? `${ctx?.credentials?.token}`
 			: `${ctx?.base?.access_token}`;
 
 	let options: OptionsWithUri = {
-		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+		uri: url ?? `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		headers: {
 			Authorization: `Token ${token}`,
 		},
@@ -133,7 +133,7 @@ export async function seaTableApiRequest(
 	}
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'seaTableApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'seaTableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -142,13 +142,13 @@ export async function seaTableApiRequest(
 export async function getBaseCollaborators(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IPollFunctions,
 ): Promise<any> {
-	let collaboratorsResult: ICollaboratorsResult = await seaTableApiRequest.call(
+	const collaboratorsResult: ICollaboratorsResult = await seaTableApiRequest.call(
 		this,
 		{},
 		'GET',
 		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/related-users/',
 	);
-	let collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
+	const collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
 	return collaborators;
 }
 
@@ -201,10 +201,9 @@ function getCollaboratorInfo(
 	authLocal: string | null | undefined,
 	collaboratorList: ICollaborator[],
 ) {
-	let collaboratorDetails: ICollaborator;
-	collaboratorDetails = collaboratorList.find(
-		(singleCollaborator) => singleCollaborator['email'] === authLocal,
-	) || { contact_email: 'unknown', name: 'unkown', email: 'unknown' };
+	const collaboratorDetails: ICollaborator = collaboratorList.find(
+		(singleCollaborator) => singleCollaborator.email === authLocal,
+	) || { contact_email: 'unknown', name: 'unknown', email: 'unknown' };
 	return collaboratorDetails;
 }
 
@@ -224,19 +223,19 @@ export function enrichColumns(
 	collaboratorList: ICollaborator[],
 ): IRow {
 	Object.keys(row).forEach((key) => {
-		let columnDef = metadata.find((obj) => obj.name === key || obj.key === key);
+		const columnDef = metadata.find((obj) => obj.name === key || obj.key === key);
 		//console.log(key + " is from type " + columnDef?.type);
 
 		if (columnDef?.type === 'collaborator') {
 			// collaborator is an array of strings.
-			let collaborators = (row[key] as string[]) || [];
+			const collaborators = (row[key] as string[]) || [];
 			if (collaborators.length > 0) {
-				let newArray = collaborators.map((email) => {
-					let collaboratorDetails = getCollaboratorInfo(email, collaboratorList);
-					let newColl = {
-						email: email,
-						contact_email: collaboratorDetails['contact_email'],
-						name: collaboratorDetails['name'],
+				const newArray = collaborators.map((email) => {
+					const collaboratorDetails = getCollaboratorInfo(email, collaboratorList);
+					const newColl = {
+						email,
+						contact_email: collaboratorDetails.contact_email,
+						name: collaboratorDetails.name,
 					};
 					return newColl;
 				});
@@ -251,22 +250,22 @@ export function enrichColumns(
 			columnDef?.key === '_last_modifier'
 		) {
 			// creator or last-modifier are always a single string.
-			let collaboratorDetails = getCollaboratorInfo(row[key] as string, collaboratorList);
+			const collaboratorDetails = getCollaboratorInfo(row[key] as string, collaboratorList);
 			row[key] = {
 				email: row[key],
-				contact_email: collaboratorDetails['contact_email'],
-				name: collaboratorDetails['name'],
+				contact_email: collaboratorDetails.contact_email,
+				name: collaboratorDetails.name,
 			};
 		}
 
 		if (columnDef?.type === 'image') {
-			let pictures = (row[key] as string[]) || [];
+			const pictures = (row[key] as string[]) || [];
 			if (pictures.length > 0) {
-				let newArray = pictures.map((url) => ({
+				const newArray = pictures.map((url) => ({
 					name: url.split('/').pop(),
 					size: 0,
 					type: 'image',
-					url: url,
+					url,
 					path: getAssetPath('images', url),
 				}));
 				row[key] = newArray;
@@ -274,18 +273,18 @@ export function enrichColumns(
 		}
 
 		if (columnDef?.type === 'file') {
-			let files = (row[key] as IFile[]) || [];
+			const files = (row[key] as IFile[]) || [];
 			files.forEach((file) => {
 				file.path = getAssetPath('files', file.url);
 			});
 		}
 
 		if (columnDef?.type === 'digital-sign') {
-			let digitalSignature: IColumnDigitalSignature | any = row[key];
-			let collaboratorDetails = getCollaboratorInfo(digitalSignature?.username, collaboratorList);
+			const digitalSignature: IColumnDigitalSignature | any = row[key];
+			const collaboratorDetails = getCollaboratorInfo(digitalSignature?.username, collaboratorList);
 			if (digitalSignature?.username) {
-				digitalSignature.contact_email = collaboratorDetails['contact_email'];
-				digitalSignature.name = collaboratorDetails['name'];
+				digitalSignature.contact_email = collaboratorDetails.contact_email;
+				digitalSignature.name = collaboratorDetails.name;
 			}
 		}
 
@@ -304,7 +303,7 @@ export function splitStringColumnsToArrays(
 	columns: TDtableMetadataColumns,
 ): IRowObject {
 	columns.map((column) => {
-		if (column.type == 'collaborator' || column.type == 'multiple-select') {
+		if (column.type === 'collaborator' || column.type === 'multiple-select') {
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = input.split(',').map((item) => item.trim());
@@ -316,7 +315,7 @@ export function splitStringColumnsToArrays(
 
 // sollte eher heißen: remove nonUpdateColumnTypes and only use allowed columns!
 export function rowExport(row: IRowObject, columns: TDtableMetadataColumns): IRowObject {
-	let rowAllowed = {} as IRowObject;
+	const rowAllowed = {} as IRowObject;
 	columns.map((column) => {
 		if (row[column.name]) {
 			rowAllowed[column.name] = row[column.name];

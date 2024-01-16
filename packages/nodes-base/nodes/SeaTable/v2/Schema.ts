@@ -16,6 +16,7 @@ export const schema = {
 	columnTypes: {
 		text: 'Text',
 		'long-text': 'Long Text',
+		// eslint-disable-next-line id-denylist
 		number: 'Number',
 		collaborator: 'Collaborator',
 		date: 'Date',
