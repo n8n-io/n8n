@@ -197,16 +197,16 @@ class WorkflowRunnerProcess {
 		additionalData.executeWorkflow = async (
 			workflowInfo: IExecuteWorkflowInfo,
 			additionalData: IWorkflowExecuteAdditionalData,
-			options?: {
-				parentWorkflowId?: string;
+			options: {
+				parentWorkflowId: string;
 				inputData?: INodeExecutionData[];
 				parentWorkflowSettings?: IWorkflowSettings;
 			},
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				options?.parentWorkflowId,
-				options?.parentWorkflowSettings,
+				options.parentWorkflowId,
+				options.parentWorkflowSettings,
 			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
