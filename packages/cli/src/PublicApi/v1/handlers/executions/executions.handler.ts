@@ -33,7 +33,7 @@ export = {
 			}
 
 			await Container.get(ExecutionRepository).hardDelete({
-				workflowId: execution.workflowId as string,
+				workflowId: execution.workflowId,
 				executionId: execution.id,
 			});
 
