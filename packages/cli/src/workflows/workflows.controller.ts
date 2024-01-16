@@ -32,12 +32,12 @@ import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NamingService } from '@/services/naming.service';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NamingService } from '@/services/naming.service';
+import { UserOnboardingService } from '@/services/userOnboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { WorkflowRequest } from './workflow.request';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { WorkflowOnboardingService } from './workflowOnboarding.service';
 import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 
@@ -55,10 +55,10 @@ export class WorkflowsController {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
+		private readonly userOnboardingService: UserOnboardingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly workflowOnboardingService: WorkflowOnboardingService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
@@ -174,7 +174,7 @@ export class WorkflowsController {
 		const onboardingFlowEnabled =
 			!config.getEnv('workflows.onboardingFlowDisabled') &&
 			!req.user.settings?.isOnboarded &&
-			(await this.workflowOnboardingService.isBelowThreshold(req.user));
+			(await this.userOnboardingService.isBelowThreshold(req.user));
 
 		return { name, onboardingFlowEnabled };
 	}

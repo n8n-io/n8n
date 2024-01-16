@@ -8,7 +8,7 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
 @Service()
-export class WorkflowOnboardingService {
+export class UserOnboardingService {
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
