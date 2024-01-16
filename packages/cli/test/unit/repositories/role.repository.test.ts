@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import { DataSource, EntityManager } from 'typeorm';
 import { mock } from 'jest-mock-extended';
-import type { RoleNames, RoleScopes } from '@db/entities/Role';
+import type { RoleName, RoleScope } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories/role.repository';
 import { mockInstance } from '../../shared/mocking';
@@ -29,6 +29,6 @@ describe('RoleRepository', () => {
 		});
 	});
 
-	const createRole = (scope: RoleScopes, name: RoleNames) =>
+	const createRole = (scope: RoleScope, name: RoleName) =>
 		Object.assign(new Role(), { name, scope, id: `${randomInteger()}` });
 });

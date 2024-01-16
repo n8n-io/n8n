@@ -33,7 +33,7 @@ export class OwnershipService {
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
 			where: { workflowId, roleId: workflowOwnerRole.id },
-			relations: ['user', 'user.globalRole'],
+			relations: ['user'],
 		});
 
 		void this.cacheService.setHash('workflow-ownership', { [workflowId]: sharedWorkflow.user });
@@ -72,11 +72,8 @@ export class OwnershipService {
 	}
 
 	async getInstanceOwner() {
-		const globalOwnerRole = await this.roleService.findGlobalOwnerRole();
-
 		return await this.userRepository.findOneOrFail({
-			where: { globalRoleId: globalOwnerRole.id },
-			relations: ['globalRole'],
+			where: { role: 'owner' },
 		});
 	}
 }

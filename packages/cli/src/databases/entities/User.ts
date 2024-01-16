@@ -6,13 +6,11 @@ import {
 	Entity,
 	Index,
 	OneToMany,
-	ManyToOne,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
@@ -28,6 +26,8 @@ const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
 	member: memberPermissions,
 	admin: adminPermissions,
 };
+
+export type GlobalRole = 'owner' | 'admin' | 'member';
 
 @Entity()
 export class User extends WithTimestamps implements IUser {
@@ -72,11 +72,8 @@ export class User extends WithTimestamps implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne('Role', 'globalForUsers', { nullable: false })
-	globalRole: Role;
-
 	@Column()
-	globalRoleId: string;
+	role: GlobalRole;
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
@@ -127,11 +124,11 @@ export class User extends WithTimestamps implements IUser {
 
 	@AfterLoad()
 	computeIsOwner(): void {
-		this.isOwner = this.globalRole?.name === 'owner';
+		this.isOwner = this.role === 'owner';
 	}
 
 	get globalScopes() {
-		return STATIC_SCOPE_MAP[this.globalRole?.name] ?? [];
+		return STATIC_SCOPE_MAP[this.role] ?? [];
 	}
 
 	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {

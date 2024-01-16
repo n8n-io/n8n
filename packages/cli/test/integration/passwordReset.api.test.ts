@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 
 import { License } from '@/License';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -24,14 +23,11 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 import { PasswordUtility } from '@/services/password.utility';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let member: User;
 
@@ -41,15 +37,10 @@ const testServer = setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 let userService: UserService;
 
-beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	globalMemberRole = await getGlobalMemberRole();
-});
-
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await createUser({ globalRole: globalOwnerRole });
-	member = await createUser({ globalRole: globalMemberRole });
+	owner = await createUser({ role: 'owner' });
+	member = await createUser({ role: 'member' });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
 	userService = Container.get(UserService);
@@ -59,7 +50,7 @@ describe('POST /forgot-password', () => {
 	test('should send password reset email', async () => {
 		const member = await createUser({
 			email: 'test@test.com',
-			globalRole: globalMemberRole,
+			role: 'member',
 		});
 
 		await Promise.all(
@@ -85,7 +76,7 @@ describe('POST /forgot-password', () => {
 		await setCurrentAuthenticationMethod('saml');
 		const member = await createUser({
 			email: 'test@test.com',
-			globalRole: globalMemberRole,
+			role: 'member',
 		});
 
 		await testServer.authlessAgent

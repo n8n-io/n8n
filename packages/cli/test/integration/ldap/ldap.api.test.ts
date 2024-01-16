@@ -6,7 +6,6 @@ import { jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapService } from '@/Ldap/ldap.service';
@@ -18,7 +17,6 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
 
-import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
@@ -26,7 +24,6 @@ import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProvider
 
 jest.mock('@/telemetry');
 
-let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
@@ -50,14 +47,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const [globalOwnerRole, fetchedGlobalMemberRole] = await Promise.all([
-		getGlobalOwnerRole(),
-		getGlobalMemberRole(),
-	]);
-
-	globalMemberRole = fetchedGlobalMemberRole;
-
-	owner = await createUser({ globalRole: globalOwnerRole, password: 'password' });
+	owner = await createUser({ role: 'owner', password: 'password' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
@@ -97,7 +87,7 @@ const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<L
 };
 
 test('Member role should not be able to access ldap routes', async () => {
-	const member = await createUser({ globalRole: globalMemberRole });
+	const member = await createUser({ role: 'member' });
 	const authAgent = testServer.authAgentFor(member);
 	await authAgent.get('/ldap/config').expect(403);
 	await authAgent.put('/ldap/config').expect(403);
@@ -169,7 +159,7 @@ describe('PUT /ldap/config', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'member' }, uniqueId());
 
 		const configuration = ldapConfig;
 
@@ -281,10 +271,7 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await createLdapUser(
-				{ globalRole: globalMemberRole, email: ldapUserEmail },
-				ldapUserId,
-			);
+			const member = await createLdapUser({ role: 'member', email: ldapUserEmail }, ldapUserId);
 
 			const synchronization = await runTest([
 				{
@@ -310,10 +297,7 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await createLdapUser(
-				{ globalRole: globalMemberRole, email: ldapUserEmail },
-				ldapUserId,
-			);
+			const member = await createLdapUser({ role: 'member', email: ldapUserEmail }, ldapUserId);
 
 			const synchronization = await runTest([]);
 
@@ -394,7 +378,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					globalRole: globalMemberRole,
+					role: 'member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: randomName(),
@@ -427,7 +411,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					globalRole: globalMemberRole,
+					role: 'member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: ldapUser.sn,
@@ -456,7 +440,7 @@ describe('POST /ldap/sync', () => {
 		});
 
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
-			const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+			const member = await createLdapUser({ role: 'member' }, uniqueId());
 
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
@@ -543,7 +527,7 @@ describe('POST /login', () => {
 
 		await createLdapUser(
 			{
-				globalRole: globalMemberRole,
+				role: 'member',
 				email: ldapUser.mail,
 				firstName: 'firstname',
 				lastName: 'lastname',
@@ -577,7 +561,7 @@ describe('POST /login', () => {
 		};
 
 		await createUser({
-			globalRole: globalMemberRole,
+			role: 'member',
 			email: ldapUser.mail,
 			firstName: ldapUser.givenName,
 			lastName: 'lastname',
@@ -592,7 +576,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'member' }, uniqueId());
 
 		await authOwnerAgent.post(`/users/${member.id}`);
 	});
@@ -601,7 +585,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'member' }, uniqueId());
 
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
 		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);

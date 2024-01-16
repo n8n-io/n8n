@@ -13,7 +13,6 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let owner: User;
 let member: User;
@@ -25,14 +24,12 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
-		await getAllRoles();
+	const [_, fetchedCredentialOwnerRole] = await getAllRoles();
 
-	globalMemberRole = fetchedGlobalMemberRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	owner = await addApiKey(await createUserShell(globalOwnerRole));
-	member = await createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	owner = await addApiKey(await createUserShell('owner'));
+	member = await createUser({ role: 'member', apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -156,7 +153,7 @@ describe('DELETE /credentials/:id', () => {
 
 	test('should delete owned cred for member but leave others untouched', async () => {
 		const anotherMember = await createUser({
-			globalRole: globalMemberRole,
+			role: 'member',
 			apiKey: randomApiKey(),
 		});
 

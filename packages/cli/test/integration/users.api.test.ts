@@ -216,7 +216,6 @@ describe('GET /users', () => {
 			/**
 			 * Some list query options require auxiliary fields:
 			 *
-			 * - `isOwner` requires `globalRole`
 			 * - `select` with `take` requires `id` (for pagination)
 			 */
 			test('should support options that require auxiliary fields', async () => {
@@ -523,8 +522,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(otherAdmin.id);
 
-			expect(user.globalRole.scope).toBe('global');
-			expect(user.globalRole.name).toBe('member');
+			expect(user.role).toBe('member');
 
 			// restore other admin
 
@@ -542,8 +540,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.globalRole.scope).toBe('global');
-			expect(user.globalRole.name).toBe('member');
+			expect(user.role).toBe('member');
 
 			// restore admin
 
@@ -561,8 +558,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.globalRole.scope).toBe('global');
-			expect(user.globalRole.name).toBe('admin');
+			expect(user.role).toBe('admin');
 
 			// restore member
 
@@ -611,8 +607,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.globalRole.scope).toBe('global');
-			expect(user.globalRole.name).toBe('admin');
+			expect(user.role).toBe('admin');
 
 			// restore member
 
@@ -630,8 +625,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.globalRole.scope).toBe('global');
-			expect(user.globalRole.name).toBe('member');
+			expect(user.role).toBe('member');
 
 			// restore admin
 

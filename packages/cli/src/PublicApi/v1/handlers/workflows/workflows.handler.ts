@@ -104,7 +104,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (['owner', 'admin'].includes(req.user.globalRole.name)) {
+			if (['owner', 'admin'].includes(req.user.role)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),

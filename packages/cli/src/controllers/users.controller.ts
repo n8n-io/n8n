@@ -70,7 +70,7 @@ export class UsersController {
 		}
 
 		if (filter?.isOwner) {
-			for (const user of publicUsers) delete user.globalRole;
+			for (const user of publicUsers) delete user.role;
 		}
 
 		// remove computed fields (unselectable)
@@ -92,12 +92,7 @@ export class UsersController {
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		const globalOwner = await this.roleService.findGlobalOwnerRole();
-
-		const findManyOptions = await this.userRepository.toFindManyOptions(
-			listQueryOptions,
-			globalOwner.id,
-		);
+		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
 
 		const users = await this.userRepository.find(findManyOptions);
 
@@ -118,7 +113,6 @@ export class UsersController {
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
-			relations: ['globalRole'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
@@ -140,7 +134,6 @@ export class UsersController {
 		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
-			relations: ['globalRole'],
 		});
 
 		return user.settings;
@@ -318,23 +311,20 @@ export class UsersController {
 
 		const targetUser = await this.userRepository.findOne({
 			where: { id: req.params.id },
-			relations: ['globalRole'],
 		});
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.globalRole.name === 'admin' && targetUser.globalRole.name === 'owner') {
+		if (req.user.role === 'admin' && targetUser.role === 'owner') {
 			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.globalRole.name === 'owner' && targetUser.globalRole.name === 'owner') {
+		if (req.user.role === 'owner' && targetUser.role === 'owner') {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		const roleToSet = await this.roleService.findCached('global', payload.newRoleName);
-
-		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
+		await this.userService.update(targetUser.id, { role: payload.newRoleName });
 
 		void this.internalHooks.onUserRoleChange({
 			user: req.user,

@@ -173,17 +173,16 @@ export class E2EController {
 			['editor', 'workflow'],
 		];
 
-		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }, { id: globalAdminRoleId }] =
-			await this.roleRepo.save(
-				roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-			);
+		await this.roleRepo.save(
+			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
+		);
 
-		const instanceOwner = {
+		const instanceOwner = this.userRepo.create({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
-			globalRoleId: globalOwnerRoleId,
-		};
+			role: 'owner',
+		});
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
@@ -192,12 +191,12 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const adminUser = {
+		const adminUser = this.userRepo.create({
 			id: uuid(),
 			...admin,
 			password: await this.passwordUtility.hash(admin.password),
-			globalRoleId: globalAdminRoleId,
-		};
+			role: 'admin',
+		});
 
 		const users = [];
 
@@ -209,7 +208,7 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					globalRoleId: globalMemberRoleId,
+					role: 'member',
 				}),
 			);
 		}

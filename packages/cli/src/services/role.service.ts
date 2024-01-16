@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { CacheService } from '@/services/cache/cache.service';
-import type { RoleNames, RoleScopes } from '@db/entities/Role';
+import type { RoleName, RoleScope } from '@db/entities/Role';
 import { InvalidRoleError } from '@/errors/invalid-role.error';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 
@@ -24,7 +24,7 @@ export class RoleService {
 		void this.cacheService.setMany(allRoles.map((r) => [r.cacheKey, r]));
 	}
 
-	async findCached(scope: RoleScopes, name: RoleNames) {
+	async findCached(scope: RoleScope, name: RoleName) {
 		const cacheKey = `role:${scope}:${name}`;
 
 		const cachedRole = await this.cacheService.get(cacheKey);
@@ -47,10 +47,7 @@ export class RoleService {
 		return dbRole;
 	}
 
-	private roles: Array<{ name: RoleNames; scope: RoleScopes }> = [
-		{ scope: 'global', name: 'owner' },
-		{ scope: 'global', name: 'member' },
-		{ scope: 'global', name: 'admin' },
+	private roles: Array<{ name: RoleName; scope: RoleScope }> = [
 		{ scope: 'workflow', name: 'owner' },
 		{ scope: 'credential', name: 'owner' },
 		{ scope: 'credential', name: 'user' },
@@ -61,20 +58,8 @@ export class RoleService {
 		return this.roles;
 	}
 
-	private isValid(scope: RoleScopes, name: RoleNames) {
+	private isValid(scope: RoleScope, name: RoleName) {
 		return this.roles.some((r) => r.scope === scope && r.name === name);
-	}
-
-	async findGlobalOwnerRole() {
-		return await this.findCached('global', 'owner');
-	}
-
-	async findGlobalMemberRole() {
-		return await this.findCached('global', 'member');
-	}
-
-	async findGlobalAdminRole() {
-		return await this.findCached('global', 'admin');
 	}
 
 	async findWorkflowOwnerRole() {

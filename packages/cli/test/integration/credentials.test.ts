@@ -3,7 +3,6 @@ import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { ListQuery } from '@/requests';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
@@ -11,7 +10,7 @@ import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
+import { getCredentialOwnerRole } from './shared/db/roles';
 import { createManyUsers, createUser } from './shared/db/users';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
@@ -21,8 +20,6 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let secondMember: User;
@@ -31,13 +28,11 @@ let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	globalMemberRole = await getGlobalMemberRole();
 	const credentialOwnerRole = await getCredentialOwnerRole();
 
-	owner = await createUser({ globalRole: globalOwnerRole });
-	member = await createUser({ globalRole: globalMemberRole });
-	secondMember = await createUser({ globalRole: globalMemberRole });
+	owner = await createUser({ role: 'owner' });
+	member = await createUser({ role: 'member' });
+	secondMember = await createUser({ role: 'member' });
 
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
@@ -74,7 +69,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: 'member',
 		});
 
 		const [savedCredential1] = await Promise.all([

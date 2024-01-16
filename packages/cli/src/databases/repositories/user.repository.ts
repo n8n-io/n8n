@@ -13,7 +13,6 @@ export class UserRepository extends Repository<User> {
 	async findManyByIds(userIds: string[]) {
 		return await this.find({
 			where: { id: In(userIds) },
-			relations: ['globalRole'],
 		});
 	}
 
@@ -28,7 +27,6 @@ export class UserRepository extends Repository<User> {
 	async findManyByEmail(emails: string[]) {
 		return await this.find({
 			where: { email: In(emails) },
-			relations: ['globalRole'],
 			select: ['email', 'password', 'id'],
 		});
 	}
@@ -43,15 +41,27 @@ export class UserRepository extends Repository<User> {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities', 'globalRole'],
+			relations: ['authIdentities'],
 		});
 	}
 
-	async toFindManyOptions(listQueryOptions?: ListQuery.Options, globalOwnerRoleId?: string) {
+	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
+	async countUsersByRole() {
+		const rows = (await this.createQueryBuilder()
+			.select(['role', 'COUNT(role) as count'])
+			.groupBy('role')
+			.execute()) as Array<{ role: string; count: string }>;
+		return rows.reduce<Record<string, number>>((acc, row) => {
+			acc[row.role] = parseInt(row.count, 10);
+			return acc;
+		}, {});
+	}
+
+	async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<User> = {};
 
 		if (!listQueryOptions) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			findManyOptions.relations = ['authIdentities'];
 			return findManyOptions;
 		}
 
@@ -62,7 +72,7 @@ export class UserRepository extends Repository<User> {
 		if (skip) findManyOptions.skip = skip;
 
 		if (take && !select) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			findManyOptions.relations = ['authIdentities'];
 		}
 
 		if (take && select && !select?.id) {
@@ -74,11 +84,8 @@ export class UserRepository extends Repository<User> {
 
 			findManyOptions.where = otherFilters;
 
-			if (isOwner !== undefined && globalOwnerRoleId) {
-				findManyOptions.relations = ['globalRole'];
-				findManyOptions.where.globalRole = {
-					id: isOwner ? globalOwnerRoleId : Not(globalOwnerRoleId),
-				};
+			if (isOwner !== undefined) {
+				findManyOptions.where.role = isOwner ? 'owner' : Not('owner');
 			}
 		}
 

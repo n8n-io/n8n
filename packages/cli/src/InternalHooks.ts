@@ -22,7 +22,7 @@ import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
-import type { User } from '@db/entities/User';
+import type { GlobalRole, User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
@@ -36,14 +36,14 @@ function userToPayload(user: User): {
 	_email: string;
 	_firstName: string;
 	_lastName: string;
-	globalRole?: string;
+	globalRole: GlobalRole;
 } {
 	return {
 		userId: user.id,
 		_email: user.email,
 		_firstName: user.firstName,
 		_lastName: user.lastName,
-		globalRole: user.globalRole?.name,
+		globalRole: user.role,
 	};
 }
 

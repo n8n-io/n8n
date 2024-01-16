@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { In, type FindOptionsWhere } from 'typeorm';
 
-import type { RoleNames } from '@db/entities/Role';
+import type { RoleName } from '@db/entities/Role';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories/role.repository';
@@ -18,7 +18,7 @@ export class WorkflowSharingService {
 	 * Get the IDs of the workflows that have been shared with the user.
 	 * Returns all IDs if user has the 'workflow:read' scope.
 	 */
-	async getSharedWorkflowIds(user: User, roleNames?: RoleNames[]): Promise<string[]> {
+	async getSharedWorkflowIds(user: User, roleNames?: RoleName[]): Promise<string[]> {
 		const where: FindOptionsWhere<SharedWorkflow> = {};
 		if (!user.hasGlobalScope('workflow:read')) {
 			where.userId = user.id;

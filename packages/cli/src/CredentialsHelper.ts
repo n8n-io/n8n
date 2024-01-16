@@ -791,10 +791,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					name: 'owner',
 				},
 				user: {
-					globalRole: {
-						scope: 'global',
-						name: 'owner',
-					},
+					role: 'owner',
 				},
 				credentials: {
 					id: nodeCredential.id,

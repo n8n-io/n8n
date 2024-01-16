@@ -8,7 +8,6 @@ import config from '@/config';
 import { mockInstance } from '../shared/mocking';
 import * as testDb from '../integration/shared/testDb';
 import { setupTestServer } from '../integration/shared/utils';
-import { getGlobalOwnerRole } from '../integration/shared/db/roles';
 import { createUser } from '../integration/shared/db/users';
 import { createWorkflow } from '../integration/shared/db/workflows';
 import { createExecution } from '../integration/shared/db/executions';
@@ -25,8 +24,7 @@ const watchers = new Watchers();
 const watchedWorkflowExecuteAfter = jest.spyOn(watchers, 'workflowExecuteAfter');
 
 beforeAll(async () => {
-	const globalOwnerRole = await getGlobalOwnerRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'owner' });
 
 	mockInstance(Push);
 	Container.set(Push, new Push());

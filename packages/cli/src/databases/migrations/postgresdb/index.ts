@@ -50,6 +50,7 @@ import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWor
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { DropGlobalRoleMapping1705429061930 } from '../common/1705429061930-DropGlobalRoleMapping';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -103,4 +104,5 @@ export const postgresMigrations: Migration[] = [
 	MigrateToTimestampTz1694091729095,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
+	DropGlobalRoleMapping1705429061930,
 ];

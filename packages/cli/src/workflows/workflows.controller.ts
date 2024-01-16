@@ -10,7 +10,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
 import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
-import type { RoleNames } from '@db/entities/Role';
+import type { RoleName } from '@/databases/entities/Role';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -146,7 +146,7 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
+			const roles: RoleName[] = isSharingEnabled() ? [] : ['owner'];
 			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
 				req.user,
 				roles,

@@ -9,26 +9,12 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import {
-	mockCredRole,
-	mockCredential,
-	mockUser,
-	mockInstanceOwnerRole,
-	wfOwnerRole,
-} from '../shared/mockObjects';
+import { mockCredRole, mockCredential, mockUser, wfOwnerRole } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const roleService = mockInstance(RoleService);
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
-
-	const ownershipService = new OwnershipService(
-		mock(),
-		userRepository,
-		roleService,
-		sharedWorkflowRepository,
-	);
-
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -167,14 +153,10 @@ describe('OwnershipService', () => {
 
 		describe('getInstanceOwner()', () => {
 			test('should find owner using global owner role ID', async () => {
-				const instanceOwnerRole = mockInstanceOwnerRole();
-				roleService.findGlobalOwnerRole.mockResolvedValue(instanceOwnerRole);
-
 				await ownershipService.getInstanceOwner();
 
 				expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-					where: { globalRoleId: instanceOwnerRole.id },
-					relations: ['globalRole'],
+					where: { role: 'owner' },
 				});
 			});
 		});

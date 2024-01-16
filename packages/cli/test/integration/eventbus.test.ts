@@ -1,8 +1,6 @@
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 
 /**
@@ -11,7 +9,6 @@ import { createUser } from './shared/db/users';
  * The tests in this file are only checking endpoint permissions.
  */
 
-let globalOwnerRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
@@ -21,8 +18,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 

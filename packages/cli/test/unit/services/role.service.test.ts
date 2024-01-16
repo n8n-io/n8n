@@ -1,5 +1,5 @@
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import type { RoleNames, RoleScopes } from '@db/entities/Role';
+import type { RoleName, RoleScope } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
 import { RoleService } from '@/services/role.service';
 import { RoleRepository } from '@db/repositories/role.repository';
@@ -9,7 +9,7 @@ import { mockInstance } from '../../shared/mocking';
 import { chooseRandomly } from '../../integration/shared/random';
 import config from '@/config';
 
-const ROLE_PROPS: Array<{ name: RoleNames; scope: RoleScopes }> = [
+const ROLE_PROPS: Array<{ name: RoleName; scope: RoleScope }> = [
 	{ name: 'owner', scope: 'global' },
 	{ name: 'member', scope: 'global' },
 	{ name: 'owner', scope: 'workflow' },
