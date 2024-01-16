@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from 'express';
-import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -8,13 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
-import type {
-	IExecutionDb,
-	IExecutionFlatted,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-	IWorkflowDb,
-} from '@/Interfaces';
+
 import { inDevelopment } from '@/constants';
 import { ResponseError } from './errors/response-errors/abstract/response.error';
 
@@ -171,68 +164,6 @@ export function send<T, R extends Request, S extends Response>(
 			sendErrorResponse(res, error);
 		}
 	};
-}
-
-/**
- * Flattens the Execution data.
- * As it contains a lot of references which normally would be saved as duplicate data
- * with regular JSON.stringify it gets flattened which keeps the references in place.
- *
- * @param {IExecutionDb} fullExecutionData The data to flatten
- */
-// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
-export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
-	// Flatten the data
-	const returnData: IExecutionFlatted = {
-		data: stringify(fullExecutionData.data),
-		mode: fullExecutionData.mode,
-		// @ts-ignore
-		waitTill: fullExecutionData.waitTill,
-		startedAt: fullExecutionData.startedAt,
-		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
-		workflowId: fullExecutionData.workflowId,
-
-		workflowData: fullExecutionData.workflowData!,
-		status: fullExecutionData.status,
-	};
-
-	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id;
-	}
-
-	if (fullExecutionData.retryOf !== undefined) {
-		returnData.retryOf = fullExecutionData.retryOf.toString();
-	}
-
-	if (fullExecutionData.retrySuccessId !== undefined) {
-		returnData.retrySuccessId = fullExecutionData.retrySuccessId.toString();
-	}
-
-	return returnData;
-}
-
-/**
- * Unflattens the Execution data.
- *
- * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
- */
-// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
-export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
-	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id,
-		workflowData: fullExecutionData.workflowData as IWorkflowDb,
-		data: parse(fullExecutionData.data),
-		mode: fullExecutionData.mode,
-		waitTill: fullExecutionData.waitTill ? fullExecutionData.waitTill : undefined,
-		startedAt: fullExecutionData.startedAt,
-		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
-		workflowId: fullExecutionData.workflowId,
-		status: fullExecutionData.status,
-	};
-
-	return returnData;
 }
 
 export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
