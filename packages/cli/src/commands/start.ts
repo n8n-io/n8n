@@ -232,6 +232,12 @@ export class Start extends BaseCommand {
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
+		/**
+		 * @tech_debt This is temporarily necessary so that worker view is accessible
+		 * in multi-main mode.
+		 */
+		await Container.get(SingleMainSetup).init();
+
 		const multiMainSetup = Container.get(MultiMainSetup);
 
 		await multiMainSetup.init();
