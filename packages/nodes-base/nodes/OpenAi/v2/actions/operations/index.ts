@@ -6,6 +6,9 @@ import * as createModeration from './createModeration.operation';
 import * as generateAudio from './generateAudio.operation';
 import * as transcribeRecording from './transcribeRecording.operation';
 import * as translateRecording from './translateRecording.operation';
+import * as uploadFile from './uploadFile.operation';
+import * as deleteFile from './deleteFile.operation';
+import * as listFiles from './listFiles.operation';
 
 export {
 	generateImage,
@@ -14,6 +17,9 @@ export {
 	generateAudio,
 	transcribeRecording,
 	translateRecording,
+	uploadFile,
+	deleteFile,
+	listFiles,
 };
 
 export const description: INodeProperties[] = [
@@ -23,4 +29,7 @@ export const description: INodeProperties[] = [
 	...generateAudio.description,
 	...transcribeRecording.description,
 	...translateRecording.description,
+	...uploadFile.description,
+	...deleteFile.description,
+	...listFiles.description,
 ];

@@ -46,16 +46,19 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Upload a File',
 					value: 'uploadFile',
 					action: 'Upload a file',
+					description: 'Upload a file that can be used across various endpoints',
 				},
 				{
 					name: 'List Files',
 					value: 'listFiles',
 					action: 'List files',
+					description: "Returns a list of files that belong to the user's organization",
 				},
 				{
 					name: 'Delete a File',
 					value: 'deleteFile',
 					action: 'Delete a file',
+					description: 'Delete a file from the server',
 				},
 				{
 					name: 'Generate an Image',

@@ -8,7 +8,10 @@ type OpenAiType =
 	| 'createModeration'
 	| 'generateAudio'
 	| 'transcribeRecording'
-	| 'translateRecording';
+	| 'translateRecording'
+	| 'uploadFile'
+	| 'deleteFile'
+	| 'listFiles';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -26,7 +29,10 @@ export async function router(this: IExecuteFunctions) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+			throw new NodeOperationError(this.getNode(), error, {
+				itemIndex: i,
+				description: error.description,
+			});
 		}
 	}
 
