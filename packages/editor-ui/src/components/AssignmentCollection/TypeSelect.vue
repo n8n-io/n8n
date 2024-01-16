@@ -26,7 +26,12 @@ const onTypeChange = (type: string): void => {
 </script>
 
 <template>
-	<n8n-select size="small" :model-value="modelValue" @update:model-value="onTypeChange">
+	<n8n-select
+		data-test-id="assignment-type-select"
+		size="small"
+		:model-value="modelValue"
+		@update:model-value="onTypeChange"
+	>
 		<template #prefix>
 			<n8n-icon :class="$style.icon" :icon="icon" color="text-light" size="small" />
 		</template>
