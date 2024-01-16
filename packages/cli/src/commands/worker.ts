@@ -185,7 +185,7 @@ export class Worker extends BaseCommand {
 		);
 
 		try {
-			await PermissionChecker.check(workflow, workflowOwner.id);
+			await Container.get(PermissionChecker).check(workflow, workflowOwner.id);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				const failedExecution = generateFailedExecutionFromError(
