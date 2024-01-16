@@ -1308,9 +1308,6 @@ importers:
       minifaker:
         specifier: 1.34.1
         version: 1.34.1
-      moment:
-        specifier: 2.29.4
-        version: 2.29.4
       moment-timezone:
         specifier: 0.5.37
         version: 0.5.37
