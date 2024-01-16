@@ -35,24 +35,30 @@ const onDrop = (value: string) => {
 
 <style lang="scss" module>
 .area {
-	border: dashed 2px var(--color-foreground-base);
-	border-radius: var(--border-radius-base);
+	border: dashed 1px var(--color-foreground-dark);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-light);
 	padding: var(--spacing-s) var(--spacing-m);
 	display: flex;
 	align-items: baseline;
 	justify-content: center;
 	font-size: var(--font-size-s);
 	transition: border-color 0.1s ease-in;
+	box-shadow: inset 0 0 0px 1.5px var(--color-background-xlight);
+
+	&:not(.active):hover {
+		border-color: var(--color-ndv-droppable-parameter);
+		background: var(--color-ndv-droppable-parameter-background);
+	}
 }
 
 .droppable {
 	border-color: var(--color-ndv-droppable-parameter);
-	border-style: dashed;
+	background: var(--color-ndv-droppable-parameter-background);
 }
 
 .active {
 	border-color: var(--color-success);
-	border-style: solid;
-	background-color: var(--prim-color-alt-a-alpha-025);
+	background: var(--color-ndv-droppable-parameter-active-background);
 }
 </style>

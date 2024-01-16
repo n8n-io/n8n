@@ -149,7 +149,6 @@ function getIssues(index: number): string[] {
 								[$style.active]: active,
 							}"
 						>
-							<font-awesome-icon v-if="empty" :class="$style.icon" icon="plus-circle" />
 							<span>{{
 								i18n.baseText(active ? 'assignment.dropField' : 'assignment.dragFields')
 							}}</span>
@@ -197,7 +196,13 @@ function getIssues(index: number): string[] {
 	align-items: baseline;
 	justify-content: center;
 	font-size: var(--font-size-s);
+	color: var(--color-text-dark);
 	gap: 0.5ch;
+
+	.or {
+		color: var(--color-text-light);
+		font-size: var(--font-size-2xs);
+	}
 }
 
 .active {
@@ -213,7 +218,7 @@ function getIssues(index: number): string[] {
 	.dropArea {
 		flex-direction: column;
 		align-items: center;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-3xs);
 	}
 
 	.content {
