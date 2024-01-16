@@ -14,7 +14,7 @@ import { License } from '@/License';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { OwnershipService } from '@/services/ownership.service';
-import { PermissionChecker, PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import { mockInstance } from '../shared/mocking';
 import {
