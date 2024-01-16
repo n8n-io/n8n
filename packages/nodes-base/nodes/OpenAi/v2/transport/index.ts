@@ -8,10 +8,12 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
+	headers: IDataObject = {},
 ) {
 	query = query || {};
 
 	const options = {
+		headers,
 		method,
 		body,
 		qs: query,

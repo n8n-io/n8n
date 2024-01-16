@@ -2,14 +2,16 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as operations from './operations';
+import { prettifyOperation } from '../helpers/utils';
 
+// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'OpenAI',
 	name: 'openAi',
 	icon: 'file:openAi.svg',
 	group: ['transform'],
 	version: 2,
-	subtitle: '={{$parameter.operation}}',
+	subtitle: `={{(${prettifyOperation})($parameter.operation)}}`,
 	description: 'Consume Open AI',
 	defaults: {
 		name: 'OpenAI',
@@ -71,6 +73,13 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Transcribe a Recording',
 					value: 'transcribeRecording',
 					action: 'Transcribe a recording',
+					description: 'Transcribes audio into the text',
+				},
+				{
+					name: 'Translate a Recording',
+					value: 'translateRecording',
+					action: 'Translate a recording',
+					description: 'Translate audio into the text in the english language',
 				},
 				{
 					name: 'Analyze Image',
