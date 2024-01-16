@@ -203,10 +203,11 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 
 	const segments = prop.split('.');
 
-	let result: any = obj;
+	let result = obj;
 	let i = 0;
 	while (result && i < segments.length) {
-		result = result[segments[i]];
+		const key = segments[i] as keyof T;
+		result = result[key] as T;
 		i++;
 	}
 	return result;

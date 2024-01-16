@@ -3,11 +3,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
-import { assertDir } from './utils';
-import { FileNotFoundError } from '../errors';
+import { assertDir, doesNotExist } from './utils';
+import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
+import { FileNotFoundError } from '../errors/file-not-found.error';
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
@@ -46,17 +47,21 @@ export class FileSystemManager implements BinaryData.Manager {
 	async getAsStream(fileId: string, chunkSize?: number) {
 		const filePath = this.resolvePath(fileId);
 
+		if (await doesNotExist(filePath)) {
+			throw new FileNotFoundError(filePath);
+		}
+
 		return createReadStream(filePath, { highWaterMark: chunkSize });
 	}
 
 	async getAsBuffer(fileId: string) {
 		const filePath = this.resolvePath(fileId);
 
-		try {
-			return await fs.readFile(filePath);
-		} catch {
-			throw new Error(`Error finding file: ${filePath}`);
+		if (await doesNotExist(filePath)) {
+			throw new FileNotFoundError(filePath);
 		}
+
+		return fs.readFile(filePath);
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
@@ -167,7 +172,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const returnPath = path.join(this.storagePath, ...args);
 
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
-			throw new FileNotFoundError('Invalid path detected');
+			throw new DisallowedFilepathError(returnPath);
 		}
 
 		return returnPath;
@@ -186,7 +191,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			const stats = await fs.stat(filePath);
 			return stats.size;
 		} catch (error) {
-			throw new Error('Failed to find binary data file in filesystem', { cause: error });
+			throw new FileNotFoundError(filePath);
 		}
 	}
 }

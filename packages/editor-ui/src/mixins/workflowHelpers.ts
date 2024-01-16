@@ -1,5 +1,6 @@
 import {
 	EnterpriseEditionFeature,
+	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -42,14 +43,13 @@ import type {
 	IWorkflowDb,
 	TargetItem,
 	XYPosition,
-} from '../Interface';
+} from '@/Interface';
 
-import { useMessage, useToast } from '@/composables';
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { isEqual } from 'lodash-es';
+import { get, isEqual } from 'lodash-es';
 
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
@@ -62,9 +62,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getSourceItems } from '@/utils';
+import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
+import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -164,6 +168,13 @@ export function resolveParameter(
 		nodeConnection,
 	);
 
+	if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
+		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
+		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
+		const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
+		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
+	}
+
 	let runExecutionData: IRunExecutionData;
 	if (!executionData?.data) {
 		runExecutionData = {
@@ -184,6 +195,7 @@ export function resolveParameter(
 			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: useEnvironmentsStore().variablesAsObject,
 
@@ -193,6 +205,16 @@ export function resolveParameter(
 
 		...opts.additionalKeys,
 	};
+
+	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+		// Add $response for HTTP Request-Nodes as it is used
+		// in pagination expressions
+		additionalKeys.$response = get(
+			executionData,
+			`data.executionData.contextData['node:${activeNode.name}'].response`,
+			{},
+		);
+	}
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
 	if (
@@ -216,7 +238,6 @@ export function resolveParameter(
 		activeNode!.name,
 		_connectionInputData,
 		'manual',
-		useRootStore().timezone,
 		additionalKeys,
 		_executeData,
 		false,
@@ -389,7 +410,7 @@ export function executeData(
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			const parentPinData = workflowsStore.getPinData![parentNodeName];
+			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
 
 			// populate `executeData` from `pinData`
 
@@ -462,11 +483,13 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [externalHooks, nodeHelpers, genericHelpers],
 	setup() {
+		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useToast(),
 			...useMessage(),
+			nodeHelpers,
 		};
 	},
 	computed: {
@@ -560,7 +583,8 @@ export const workflowHelpers = defineComponent({
 						workflow.nodes[nodeName].disabled !== true &&
 						workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE
 					) {
-						checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						const childNodes = workflow.getChildNodes(nodeName);
+						checkWebhook = [nodeName, ...checkWebhook, ...childNodes];
 					}
 				}
 
@@ -570,8 +594,14 @@ export const workflowHelpers = defineComponent({
 					// If no webhook nodes got found try to find another trigger node
 					const startNode = workflow.getStartNode();
 					if (startNode !== undefined) {
-						checkNodes = workflow.getChildNodes(startNode.name);
-						checkNodes.push(startNode.name);
+						checkNodes = [...workflow.getChildNodes(startNode.name), startNode.name];
+
+						// For the short-listed checkNodes, we also need to check them for any
+						// connected sub-nodes
+						for (const nodeName of checkNodes) {
+							const childNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+							checkNodes.push(...childNodes);
+						}
 					}
 				}
 			}
@@ -593,7 +623,9 @@ export const workflowHelpers = defineComponent({
 						typeUnknown: true,
 					};
 				} else {
-					nodeIssues = this.getNodeIssues(nodeType.description, node, ['execution']);
+					nodeIssues = useNodeHelpers().getNodeIssues(nodeType.description, node, workflow, [
+						'execution',
+					]);
 				}
 
 				if (nodeIssues !== null) {
@@ -626,12 +658,13 @@ export const workflowHelpers = defineComponent({
 			const data: IWorkflowData = {
 				name: this.workflowsStore.workflowName,
 				nodes,
-				pinData: this.workflowsStore.getPinData,
+				pinData: this.workflowsStore.pinnedWorkflowData,
 				connections: workflowConnections,
 				active: this.workflowsStore.isWorkflowActive,
 				settings: this.workflowsStore.workflow.settings,
 				tags: this.workflowsStore.workflowTags,
 				versionId: this.workflowsStore.workflow.versionId,
+				meta: this.workflowsStore.workflow.meta,
 			};
 
 			const workflowId = this.workflowsStore.workflowId;
@@ -650,6 +683,7 @@ export const workflowHelpers = defineComponent({
 				'credentials',
 				'disabled',
 				'issues',
+				'onError',
 				'notes',
 				'parameters',
 				'status',
@@ -672,11 +706,18 @@ export const workflowHelpers = defineComponent({
 			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 			if (nodeType !== null) {
+				const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
+
+				if (isCredentialOnly) {
+					nodeData.type = HTTP_REQUEST_NODE_TYPE;
+					nodeData.extendsCredential = getCredentialTypeName(nodeType.name);
+				}
+
 				// Node-Type is known so we can save the parameters correctly
 				const nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
 					node.parameters,
-					false,
+					isCredentialOnly,
 					false,
 					node,
 				);
@@ -687,7 +728,7 @@ export const workflowHelpers = defineComponent({
 					const saveCredentials: INodeCredentials = {};
 					for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
 						if (
-							this.hasProxyAuth(node) ||
+							useNodeHelpers().hasProxyAuth(node) ||
 							Object.keys(node.parameters).includes('genericAuthType')
 						) {
 							saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
@@ -696,7 +737,7 @@ export const workflowHelpers = defineComponent({
 
 						const credentialTypeDescription = nodeType.credentials
 							// filter out credentials with same name in different node versions
-							.filter((c) => this.displayParameter(node.parameters, c, '', node))
+							.filter((c) => useNodeHelpers().displayParameter(node.parameters, c, '', node))
 							.find((c) => c.name === nodeCredentialTypeName);
 
 						if (credentialTypeDescription === undefined) {
@@ -704,7 +745,14 @@ export const workflowHelpers = defineComponent({
 							continue;
 						}
 
-						if (!this.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+						if (
+							!useNodeHelpers().displayParameter(
+								node.parameters,
+								credentialTypeDescription,
+								'',
+								node,
+							)
+						) {
 							// Credential should not be displayed so do also not save
 							continue;
 						}
@@ -726,14 +774,16 @@ export const workflowHelpers = defineComponent({
 				}
 			}
 
-			// Save the disabled property and continueOnFail only when is set
+			// Save the disabled property, continueOnFail and onError only when is set
 			if (node.disabled === true) {
 				nodeData.disabled = true;
 			}
 			if (node.continueOnFail === true) {
 				nodeData.continueOnFail = true;
 			}
-
+			if (node.onError !== 'stopWorkflow') {
+				nodeData.onError = node.onError;
+			}
 			// Save the notes only if when they contain data
 			if (![undefined, ''].includes(node.notes)) {
 				nodeData.notes = node.notes;
@@ -754,12 +804,16 @@ export const workflowHelpers = defineComponent({
 		},
 
 		getWebhookUrl(webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
-			if (webhookData.restartWebhook === true) {
-				return '$execution.resumeUrl';
+			const { isForm, restartWebhook } = webhookData;
+			if (restartWebhook === true) {
+				return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 			}
-			let baseUrl = this.rootStore.getWebhookUrl;
+
+			let baseUrl;
 			if (showUrlFor === 'test') {
-				baseUrl = this.rootStore.getWebhookTestUrl;
+				baseUrl = isForm ? this.rootStore.getFormTestUrl : this.rootStore.getWebhookTestUrl;
+			} else {
+				baseUrl = isForm ? this.rootStore.getFormUrl : this.rootStore.getWebhookUrl;
 			}
 
 			const workflowId = this.workflowsStore.workflowId;
@@ -841,12 +895,13 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
-			if (this.readOnlyEnv) {
-				return;
+			const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
+			if (readOnlyEnv) {
+				return false;
 			}
 
+			const isLoading = useCanvasStore().isLoading;
 			const currentWorkflow = id || this.$route.params.name;
-			const isLoading = this.loadingService !== null;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 				return this.saveAsNewWorkflow({ name, tags }, redirect);
@@ -890,7 +945,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -997,9 +1052,8 @@ export const workflowHelpers = defineComponent({
 				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
-
 				if (
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
+					useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
 					this.usersStore.currentUser
 				) {
 					this.workflowsEEStore.setWorkflowOwnedBy({
@@ -1055,7 +1109,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;

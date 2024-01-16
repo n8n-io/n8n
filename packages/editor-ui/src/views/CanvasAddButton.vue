@@ -1,8 +1,8 @@
 <template>
 	<div
+		ref="container"
 		:class="$style.canvasAddButton"
 		:style="containerCssVars"
-		ref="container"
 		data-test-id="canvas-add-button"
 	>
 		<n8n-tooltip
@@ -12,7 +12,7 @@
 			:popper-class="$style.tooltip"
 			:show-after="700"
 		>
-			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
+			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>

@@ -1,14 +1,15 @@
+import Container from 'typedi';
 import config from '@/config';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import * as testDb from './../shared/testDb';
-import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
-import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
-import Container from 'typedi';
-import { JwtService } from '@/services/jwt.service';
+import { UserService } from '@/services/user.service';
+import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
+import * as testDb from '../shared/testDb';
+import * as utils from '../shared/utils';
+import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
+import { UserRepository } from '@db/repositories/user.repository';
 
 jest.mock('@/telemetry');
 
@@ -22,7 +23,7 @@ const testServer = utils.setupTestServer({
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ globalRole: globalOwnerRole });
 
 	config.set('userManagement.disabled', false);
 });
@@ -160,7 +161,7 @@ describe('Enable MFA setup', () => {
 
 			expect(statusCode).toBe(200);
 
-			const user = await Db.collections.User.findOneOrFail({
+			const user = await Container.get(UserRepository).findOneOrFail({
 				where: {},
 				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
@@ -174,13 +175,13 @@ describe('Enable MFA setup', () => {
 
 describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
-		const { user } = await testDb.createUserWithMfaEnabled();
+		const { user } = await createUserWithMfaEnabled();
 
 		const response = await testServer.authAgentFor(user).delete('/mfa/disable');
 
 		expect(response.statusCode).toBe(200);
 
-		const dbUser = await Db.collections.User.findOneOrFail({
+		const dbUser = await Container.get(UserRepository).findOneOrFail({
 			where: { id: user.id },
 			select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 		});
@@ -193,7 +194,7 @@ describe('Disable MFA setup', () => {
 
 describe('Change password with MFA enabled', () => {
 	test('PATCH /me/password should fail due to missing MFA token', async () => {
-		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+		const { user, rawPassword } = await createUserWithMfaEnabled();
 
 		const newPassword = randomPassword();
 
@@ -206,7 +207,7 @@ describe('Change password with MFA enabled', () => {
 	});
 
 	test('POST /change-password should fail due to missing MFA token', async () => {
-		const { user } = await testDb.createUserWithMfaEnabled();
+		await createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
 
@@ -216,11 +217,11 @@ describe('Change password with MFA enabled', () => {
 			.post('/change-password')
 			.send({ password: newPassword, token: resetPasswordToken });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('POST /change-password should fail due to invalid MFA token', async () => {
-		const { user } = await testDb.createUserWithMfaEnabled();
+		await createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
 
@@ -232,19 +233,17 @@ describe('Change password with MFA enabled', () => {
 			mfaToken: randomDigit(),
 		});
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('POST /change-password should update password', async () => {
-		const { user, rawSecret } = await testDb.createUserWithMfaEnabled();
+		const { user, rawSecret } = await createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
 
 		config.set('userManagement.jwtSecret', randomString(5, 10));
 
-		const jwtService = Container.get(JwtService);
-
-		const resetPasswordToken = jwtService.signData({ sub: user.id });
+		const resetPasswordToken = Container.get(UserService).generatePasswordResetToken(user);
 
 		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 
@@ -274,7 +273,7 @@ describe('Login', () => {
 	test('POST /login with email/password should succeed when mfa is disabled', async () => {
 		const password = randomPassword();
 
-		const user = await testDb.createUser({ password });
+		const user = await createUser({ password });
 
 		const response = await testServer.authlessAgent
 			.post('/login')
@@ -305,7 +304,7 @@ describe('Login', () => {
 	});
 
 	test('POST /login with email/password should fail when mfa is enabled', async () => {
-		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+		const { user, rawPassword } = await createUserWithMfaEnabled();
 
 		const response = await testServer.authlessAgent
 			.post('/login')
@@ -316,7 +315,7 @@ describe('Login', () => {
 
 	describe('Login with MFA token', () => {
 		test('POST /login should fail due to invalid MFA token', async () => {
-			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword } = await createUserWithMfaEnabled();
 
 			const response = await testServer.authlessAgent
 				.post('/login')
@@ -326,7 +325,7 @@ describe('Login', () => {
 		});
 
 		test('POST /login should fail due two MFA step needed', async () => {
-			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword } = await createUserWithMfaEnabled();
 
 			const response = await testServer.authlessAgent
 				.post('/login')
@@ -337,7 +336,7 @@ describe('Login', () => {
 		});
 
 		test('POST /login should succeed with MFA token', async () => {
-			const { user, rawSecret, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawSecret, rawPassword } = await createUserWithMfaEnabled();
 
 			const token = new TOTPService().generateTOTP(rawSecret);
 
@@ -354,7 +353,7 @@ describe('Login', () => {
 
 	describe('Login with recovery code', () => {
 		test('POST /login should fail due to invalid MFA recovery code', async () => {
-			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword } = await createUserWithMfaEnabled();
 
 			const response = await testServer.authlessAgent
 				.post('/login')
@@ -364,7 +363,7 @@ describe('Login', () => {
 		});
 
 		test('POST /login should succeed with MFA recovery code', async () => {
-			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword, rawRecoveryCodes } = await createUserWithMfaEnabled();
 
 			const response = await testServer.authlessAgent
 				.post('/login')
@@ -376,7 +375,7 @@ describe('Login', () => {
 			expect(data.mfaEnabled).toBe(true);
 			expect(data.hasRecoveryCodesLeft).toBe(true);
 
-			const dbUser = await Db.collections.User.findOneOrFail({
+			const dbUser = await Container.get(UserRepository).findOneOrFail({
 				where: { id: user.id },
 				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
@@ -387,7 +386,7 @@ describe('Login', () => {
 		});
 
 		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
-			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled({
+			const { user, rawPassword, rawRecoveryCodes } = await createUserWithMfaEnabled({
 				numberOfRecoveryCodes: 1,
 			});
 

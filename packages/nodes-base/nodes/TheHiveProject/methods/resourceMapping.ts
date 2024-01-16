@@ -9,19 +9,18 @@ import type {
 import { theHiveApiRequest } from '../transport';
 
 import {
+	alertCommonFields,
+	caseCommonFields,
+	observableCommonFields,
+	taskCommonFields,
+} from '../helpers/constants';
+import {
 	loadAlertStatus,
 	loadCaseStatus,
 	loadCaseTemplate,
 	loadObservableTypes,
 	loadUsers,
 } from './loadOptions';
-
-import {
-	alertCommonFields,
-	caseCommonFields,
-	observableCommonFields,
-	taskCommonFields,
-} from '../helpers/constants';
 
 async function getCustomFields(this: ILoadOptionsFunctions) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {

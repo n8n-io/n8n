@@ -10,8 +10,8 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../transport';
-import { updateDisplayOptions } from '@utils/utilities';
 import { returnAllOrLimit } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	...returnAllOrLimit,

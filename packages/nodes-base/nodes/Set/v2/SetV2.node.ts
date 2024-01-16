@@ -22,7 +22,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:pen',
 	group: ['input'],
 	version: [3, 3.1, 3.2],
-	description: 'Change the structure of your items',
+	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
@@ -157,7 +157,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Include Binary Data',
+					displayName: 'Include Binary File',
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,

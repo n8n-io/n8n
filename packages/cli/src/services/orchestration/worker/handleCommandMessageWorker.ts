@@ -9,6 +9,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { Logger } from '@/Logger';
+import { N8N_VERSION } from '@/constants';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
@@ -33,13 +34,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				}
 				switch (message.command) {
 					case 'getStatus':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getStatus',
 							payload: {
 								workerId: options.queueModeId,
-								runningJobs: options.getRunningJobIds(),
 								runningJobsSummary: options.getRunningJobsSummary(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -49,27 +49,32 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								arch: os.arch(),
 								platform: os.platform(),
 								hostname: os.hostname(),
-								net: Object.values(os.networkInterfaces()).flatMap(
+								interfaces: Object.values(os.networkInterfaces()).flatMap(
 									(interfaces) =>
-										interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
+										(interfaces ?? [])?.map((net) => ({
+											family: net.family,
+											address: net.address,
+											internal: net.internal,
+										})),
 								),
+								version: N8N_VERSION,
 							},
 						});
 						break;
 					case 'getId':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getId',
 						});
 						break;
 					case 'restartEventBus':
-						if (!debounceMessageReceiver(message, 100)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'success',
 								},
@@ -77,7 +82,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,
@@ -86,12 +91,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 						break;
 					case 'reloadExternalSecretsProviders':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'success',
 								},
@@ -99,7 +104,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,
@@ -117,6 +122,13 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						// await this.stopProcess();
 						break;
 					default:
+						if (
+							message.command === 'relay-execution-lifecycle-event' ||
+							message.command === 'clear-test-webhooks'
+						) {
+							break; // meant only for main
+						}
+
 						logger.debug(
 							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,

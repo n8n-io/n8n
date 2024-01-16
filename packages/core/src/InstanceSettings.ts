@@ -16,10 +16,13 @@ type Settings = ReadOnlySettings & WritableSettings;
 
 @Service()
 export class InstanceSettings {
-	readonly userHome = this.getUserHome();
+	private readonly userHome = this.getUserHome();
 
 	/** The path to the n8n folder in which all n8n related data gets saved */
 	readonly n8nFolder = path.join(this.userHome, '.n8n');
+
+	/** The path to the folder where all generated static assets are copied to */
+	readonly staticCacheDir = path.join(this.userHome, '.cache/n8n/public');
 
 	/** The path to the folder containing custom nodes and credentials */
 	readonly customExtensionDir = path.join(this.n8nFolder, 'custom');

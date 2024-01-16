@@ -3,7 +3,6 @@ import { defineComponent, h } from 'vue';
 import type { DatatableRow } from '../../../types';
 import N8nButton from '../../N8nButton';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const ActionComponent = defineComponent({
 	props: {
 		row: {

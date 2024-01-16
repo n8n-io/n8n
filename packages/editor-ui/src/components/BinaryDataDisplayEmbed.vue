@@ -11,13 +11,13 @@
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
-			<vue-json-pretty
+			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="data"
 				:deep="3"
-				:showLength="true"
+				:show-length="true"
 			/>
-			<run-data-html v-else-if="binaryData.fileType === 'html'" :inputHtml="data" />
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
 			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
 		</span>
 	</span>
@@ -30,7 +30,7 @@ import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import RunDataHtml from '@/components/RunDataHtml.vue';
 
 export default defineComponent({

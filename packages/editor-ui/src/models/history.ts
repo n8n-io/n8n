@@ -1,6 +1,5 @@
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import type { IConnection } from 'n8n-workflow';
-import type { XYPosition } from '../Interface';
 import { createEventBus } from 'n8n-design-system/utils';
 
 // Command names don't serve any particular purpose in the app
@@ -48,7 +47,9 @@ export class BulkCommand extends Undoable {
 
 export class MoveNodeCommand extends Command {
 	nodeName: string;
+
 	oldPosition: XYPosition;
+
 	newPosition: XYPosition;
 
 	constructor(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
@@ -196,7 +197,9 @@ export class RemoveConnectionCommand extends Command {
 
 export class EnableNodeToggleCommand extends Command {
 	nodeName: string;
+
 	oldState: boolean;
+
 	newState: boolean;
 
 	constructor(nodeName: string, oldState: boolean, newState: boolean) {
@@ -229,6 +232,7 @@ export class EnableNodeToggleCommand extends Command {
 
 export class RenameNodeCommand extends Command {
 	currentName: string;
+
 	newName: string;
 
 	constructor(currentName: string, newName: string) {

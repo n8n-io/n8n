@@ -1,5 +1,5 @@
 <template>
-	<ExpandableInputBase :modelValue="modelValue" :staticSize="true">
+	<ExpandableInputBase :model-value="modelValue" :static-size="true">
 		<input
 			:class="{ 'el-input__inner': true, clickable: true }"
 			:value="modelValue"

@@ -5,6 +5,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
 import { seaTableApiRequest, simplify_new, enrichColumns } from './v2/GenericFunctions';
 
 import type {
@@ -18,8 +20,6 @@ import type {
 	ICollaboratorsResult,
 	IColumnDigitalSignature,
 } from './v2/actions/Interfaces';
-
-import moment from 'moment';
 
 import { loadOptions } from './v2/methods';
 

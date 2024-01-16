@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort } from 'worker_threads';

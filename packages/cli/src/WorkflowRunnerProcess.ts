@@ -178,7 +178,7 @@ class WorkflowRunnerProcess {
 		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 			executionId: inputData.executionId,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
@@ -197,16 +197,16 @@ class WorkflowRunnerProcess {
 		additionalData.executeWorkflow = async (
 			workflowInfo: IExecuteWorkflowInfo,
 			additionalData: IWorkflowExecuteAdditionalData,
-			options?: {
-				parentWorkflowId?: string;
+			options: {
+				parentWorkflowId: string;
 				inputData?: INodeExecutionData[];
 				parentWorkflowSettings?: IWorkflowSettings;
 			},
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				options?.parentWorkflowId,
-				options?.parentWorkflowSettings,
+				options.parentWorkflowId,
+				options.parentWorkflowSettings,
 			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
@@ -309,9 +309,7 @@ class WorkflowRunnerProcess {
 
 	/**
 	 * Sends hook data to the parent process that it executes them
-	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
 		try {
 			await sendToParentProcess('processHook', {
@@ -384,7 +382,6 @@ class WorkflowRunnerProcess {
  * @param {string} type The type of data to send
  * @param {*} data The data
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
 	return new Promise((resolve, reject) => {
 		process.send!(

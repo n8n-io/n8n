@@ -53,6 +53,7 @@ describe('getPath()', () => {
 describe('getAsBuffer()', () => {
 	it('should return a buffer', async () => {
 		fsp.readFile = jest.fn().mockResolvedValue(mockBuffer);
+		fsp.access = jest.fn().mockImplementation(async () => {});
 
 		const result = await fsManager.getAsBuffer(fileId);
 
@@ -64,6 +65,7 @@ describe('getAsBuffer()', () => {
 describe('getAsStream()', () => {
 	it('should return a stream', async () => {
 		fs.createReadStream = jest.fn().mockReturnValue(mockStream);
+		fsp.access = jest.fn().mockImplementation(async () => {});
 
 		const stream = await fsManager.getAsStream(fileId);
 
@@ -123,6 +125,7 @@ describe('copyByFilePath()', () => {
 		const targetPath = toFullFilePath(otherFileId);
 
 		fsp.cp = jest.fn().mockResolvedValue(undefined);
+		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
 
 		const result = await fsManager.copyByFilePath(
 			workflowId,
@@ -132,6 +135,11 @@ describe('copyByFilePath()', () => {
 		);
 
 		expect(fsp.cp).toHaveBeenCalledWith(sourceFilePath, targetPath);
+		expect(fsp.writeFile).toHaveBeenCalledWith(
+			`${toFullFilePath(otherFileId)}.metadata`,
+			JSON.stringify({ ...metadata, fileSize: mockBuffer.length }),
+			{ encoding: 'utf-8' },
+		);
 		expect(result.fileSize).toBe(mockBuffer.length);
 	});
 });

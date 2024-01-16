@@ -1,6 +1,6 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
-		<el-sub-menu
+		<ElSubMenu
 			v-if="item.children?.length"
 			:id="item.id"
 			:class="{
@@ -13,7 +13,7 @@
 			:popper-class="submenuPopperClass"
 		>
 			<template #title>
-				<n8n-icon
+				<N8nIcon
 					v-if="item.icon"
 					:class="$style.icon"
 					:icon="item.icon"
@@ -26,21 +26,21 @@
 				:key="child.id"
 				:item="child"
 				:compact="false"
-				:tooltipDelay="tooltipDelay"
-				:popperClass="popperClass"
+				:tooltip-delay="tooltipDelay"
+				:popper-class="popperClass"
 				:mode="mode"
-				:activeTab="activeTab"
+				:active-tab="activeTab"
 				:handle-select="handleSelect"
 			/>
-		</el-sub-menu>
-		<n8n-tooltip
+		</ElSubMenu>
+		<N8nTooltip
 			v-else
 			placement="right"
 			:content="item.label"
 			:disabled="!compact"
 			:show-after="tooltipDelay"
 		>
-			<el-menu-item
+			<ElMenuItem
 				:id="item.id"
 				:class="{
 					[$style.menuItem]: true,
@@ -53,14 +53,14 @@
 				:index="item.id"
 				@click="handleSelect(item)"
 			>
-				<n8n-icon
+				<N8nIcon
 					v-if="item.icon"
 					:class="$style.icon"
 					:icon="item.icon"
 					:size="item.customIconSize || 'large'"
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
-				<n8n-tooltip
+				<N8nTooltip
 					v-if="item.secondaryIcon"
 					:class="$style.secondaryIcon"
 					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
@@ -68,10 +68,10 @@
 					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
 					:show-after="tooltipDelay"
 				>
-					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
-				</n8n-tooltip>
-			</el-menu-item>
-		</n8n-tooltip>
+					<N8nIcon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
+				</N8nTooltip>
+			</ElMenuItem>
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -84,7 +84,7 @@ import { defineComponent } from 'vue';
 import type { IMenuItem, RouteObject } from '../../types';
 
 export default defineComponent({
-	name: 'n8n-menu-item',
+	name: 'N8nMenuItem',
 	components: {
 		ElSubMenu,
 		ElMenuItem,

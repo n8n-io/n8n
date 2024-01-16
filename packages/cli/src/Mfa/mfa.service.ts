@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Service } from 'typedi';
 import { Cipher } from 'n8n-core';
-import { UserRepository } from '@db/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import { TOTPService } from './totp.service';
 
 @Service()

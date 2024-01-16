@@ -1,15 +1,17 @@
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
 import Container from 'typedi';
+import { getGlobalOwnerRole } from './shared/db/roles';
+import { createUserShell } from './shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });
 
 beforeAll(async () => {
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const globalOwnerRole = await getGlobalOwnerRole();
+	const ownerShell = await createUserShell(globalOwnerRole);
 	authOwnerAgent = testServer.authAgentFor(ownerShell);
 });
 

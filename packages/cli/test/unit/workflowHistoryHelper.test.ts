@@ -1,7 +1,7 @@
 import { License } from '@/License';
-import { mockInstance } from '../integration/shared/utils';
 import config from '@/config';
 import { getWorkflowHistoryPruneTime } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { mockInstance } from '../shared/mocking';
 
 let licenseMock: License;
 let licensePruneTime = -1;

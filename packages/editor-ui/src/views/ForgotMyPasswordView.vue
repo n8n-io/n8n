@@ -1,10 +1,10 @@
 <template>
-	<AuthView :form="formConfig" :formLoading="loading" @submit="onSubmit" />
+	<AuthView :form="formConfig" :form-loading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
@@ -88,14 +88,20 @@ export default defineComponent({
 				});
 			} catch (error) {
 				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
-				if (error.httpStatusCode === 422) {
-					message = this.$locale.baseText(error.message);
+				if (error.httpStatusCode) {
+					const { httpStatusCode: status } = error;
+					if (status === 429) {
+						message = this.$locale.baseText('forgotPassword.tooManyRequests');
+					} else if (error.httpStatusCode === 422) {
+						message = this.$locale.baseText(error.message);
+					}
+
+					this.showMessage({
+						type: 'error',
+						title: this.$locale.baseText('forgotPassword.sendingEmailError'),
+						message,
+					});
 				}
-				this.showMessage({
-					type: 'error',
-					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
-					message,
-				});
 			}
 			this.loading = false;
 		},

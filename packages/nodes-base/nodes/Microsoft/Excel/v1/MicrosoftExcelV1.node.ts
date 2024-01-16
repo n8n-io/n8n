@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
@@ -25,7 +26,6 @@ import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 import { tableFields, tableOperations } from './TableDescription';
 
 import { oldVersionNotice } from '@utils/descriptions';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',

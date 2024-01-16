@@ -10,7 +10,7 @@ function getUserPlanData(trialExpirationDate: Date, isTrial = true): Cloud.PlanD
 		isActive: true,
 		displayName: 'Trial',
 		metadata: {
-			group: isTrial ? 'trial' : 'pro',
+			group: isTrial ? 'trial' : 'opt-in',
 			slug: 'trial-1',
 			trial: {
 				gracePeriod: 3,

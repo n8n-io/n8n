@@ -8,7 +8,7 @@ import type {
 } from '@/types/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 
@@ -17,6 +17,7 @@ const props = defineProps<{
 	workflowVersion: WorkflowVersion | null;
 	actions: UserAction[];
 	isListLoading?: boolean;
+	isFirstItemShown?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -42,6 +43,12 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	};
 });
 
+const actions = computed(() =>
+	props.isFirstItemShown
+		? props.actions.filter((action) => action.value !== 'restore')
+		: props.actions,
+);
+
 const onAction = ({
 	action,
 	id,
@@ -61,17 +68,16 @@ const onAction = ({
 			v-if="props.workflowVersion"
 			:workflow="workflowVersionPreview"
 			:loading="props.isListLoading"
-			loaderType="spinner"
+			loader-type="spinner"
 		/>
 		<ul :class="$style.info">
-			<workflow-history-list-item
-				:class="$style.card"
+			<WorkflowHistoryListItem
 				v-if="props.workflowVersion"
-				:full="true"
+				:class="$style.card"
 				:index="-1"
 				:item="props.workflowVersion"
-				:isActive="false"
-				:actions="props.actions"
+				:is-active="false"
+				:actions="actions"
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
@@ -99,12 +105,12 @@ const onAction = ({
 					</section>
 				</template>
 				<template #action-toggle-button>
-					<n8n-button type="tertiary" size="small" data-test-id="action-toggle-button">
+					<n8n-button type="tertiary" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
 					</n8n-button>
 				</template>
-			</workflow-history-list-item>
+			</WorkflowHistoryListItem>
 		</ul>
 	</div>
 </template>
@@ -146,8 +152,9 @@ const onAction = ({
 
 			&:first-child {
 				padding-top: var(--spacing-3xs);
-				padding-bottom: var(--spacing-3xs);
+				padding-bottom: var(--spacing-4xs);
 				* {
+					margin-top: auto;
 					font-size: var(--font-size-m);
 				}
 			}
@@ -161,6 +168,7 @@ const onAction = ({
 			}
 
 			.label {
+				color: var(--color-text-light);
 				padding-right: var(--spacing-4xs);
 			}
 

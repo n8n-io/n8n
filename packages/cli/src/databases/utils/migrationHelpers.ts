@@ -3,7 +3,7 @@ import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import type { ObjectLiteral } from 'typeorm';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
@@ -23,7 +23,7 @@ function loadSurveyFromDisk(): string | null {
 		const personalizationSurvey = JSON.parse(surveyFile) as object;
 		const kvPairs = Object.entries(personalizationSurvey);
 		if (!kvPairs.length) {
-			throw new Error('personalizationSurvey is empty');
+			throw new ApplicationError('personalizationSurvey is empty');
 		} else {
 			const emptyKeys = kvPairs.reduce((acc, [, value]) => {
 				if (!value || (Array.isArray(value) && !value.length)) {
@@ -32,7 +32,7 @@ function loadSurveyFromDisk(): string | null {
 				return acc;
 			}, 0);
 			if (emptyKeys === kvPairs.length) {
-				throw new Error('incomplete personalizationSurvey');
+				throw new ApplicationError('incomplete personalizationSurvey');
 			}
 		}
 		return surveyFile;
@@ -52,14 +52,14 @@ function logMigrationStart(migrationName: string): void {
 		runningMigrations = true;
 	}
 
-	logger.debug(`Starting migration ${migrationName}`);
+	logger.info(`Starting migration ${migrationName}`);
 }
 
 function logMigrationEnd(migrationName: string): void {
 	if (inTest) return;
 
 	const logger = Container.get(Logger);
-	logger.debug(`Finished migration ${migrationName}`);
+	logger.info(`Finished migration ${migrationName}`);
 }
 
 const runDisablingForeignKeys = async (
@@ -68,7 +68,8 @@ const runDisablingForeignKeys = async (
 	fn: MigrationFn,
 ) => {
 	const { dbType, queryRunner } = context;
-	if (dbType !== 'sqlite') throw new Error('Disabling transactions only available in sqlite');
+	if (dbType !== 'sqlite')
+		throw new ApplicationError('Disabling transactions only available in sqlite');
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
 	try {
@@ -110,16 +111,12 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 		indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
 	},
-	runQuery: async <T>(
-		sql: string,
-		unsafeParameters?: ObjectLiteral,
-		safeParameters?: ObjectLiteral,
-	) => {
-		if (unsafeParameters) {
+	runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
+		if (namedParameters) {
 			const [query, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
 				sql,
-				unsafeParameters,
-				safeParameters ?? {},
+				namedParameters,
+				{},
 			);
 			return queryRunner.query(query, parameters) as Promise<T>;
 		} else {

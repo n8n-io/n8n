@@ -16,13 +16,14 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
-import { transformNodeType } from '../utils';
+import { flattenCreateElements, transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
-import { useI18n, useTelemetry } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -70,6 +71,7 @@ function onSelected(item: INodeCreateElement) {
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
+			sections: item.properties.sections,
 		});
 
 		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
@@ -159,7 +161,8 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	return item;
 }
 
-function baseSubcategoriesFilter(item: INodeCreateElement) {
+function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
+	if (item.type === 'section') return true;
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
@@ -179,10 +182,10 @@ function arrowLeft() {
 }
 
 function onKeySelect(activeItemId: string) {
-	const mergedItems = [
-		...(activeViewStack.value.items || []),
-		...(globalSearchItemsDiff.value || []),
-	];
+	const mergedItems = flattenCreateElements([
+		...(activeViewStack.value.items ?? []),
+		...(globalSearchItemsDiff.value ?? []),
+	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;
@@ -206,15 +209,15 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected" :class="$style.items">
+		<ItemsRenderer :elements="activeViewStack.items" :class="$style.items" @selected="onSelected">
 			<template
-				#empty
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
+				#empty
 			>
 				<NoResults
-					:rootView="activeViewStack.rootView"
-					showIcon
-					showRequest
+					:root-view="activeViewStack.rootView"
+					show-icon
+					show-request
 					@addWebhookNode="selectNodeType([WEBHOOK_NODE_TYPE])"
 					@addHttpNode="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
 				/>

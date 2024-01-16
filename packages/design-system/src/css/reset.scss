@@ -7,40 +7,6 @@
 	box-sizing: border-box;
 }
 
-html {
-	height: 100%;
-	width: 100%;
-}
-
-body {
-	height: 100%;
-	width: 100%;
-	overscroll-behavior: none;
-	line-height: 1;
-	font-size: var(--font-size-m);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-dark);
-	background-color: var(--color-background-xlight);
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
-
-body,
-button,
-input {
-	font-family: var(--font-family);
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
-
-input {
-	font-weight: var(--font-weight-regular);
-}
-
-button {
-	font-weight: var(--font-weight-bold);
-}
-
 html,
 body,
 div,
@@ -115,6 +81,40 @@ video {
 	border: 0;
 	outline: 0;
 	background: transparent;
+}
+
+html {
+	height: 100%;
+	width: 100%;
+}
+
+body {
+	height: 100%;
+	width: 100%;
+	overscroll-behavior: none;
+	line-height: 1;
+	font-size: var(--font-size-m);
+	font-weight: var(--font-weight-regular);
+	color: var(--color-text-dark);
+	background-color: var(--color-background-xlight);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body,
+button,
+input {
+	font-family: var(--font-family);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+input {
+	font-weight: var(--font-weight-regular);
+}
+
+button {
+	font-weight: var(--font-weight-bold);
 }
 
 article,

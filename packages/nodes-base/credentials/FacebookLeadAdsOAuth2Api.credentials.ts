@@ -34,7 +34,8 @@ export class FacebookLeadAdsOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'leads_retrieval pages_show_list pages_manage_metadata pages_manage_ads',
+			default:
+				'leads_retrieval pages_show_list pages_manage_metadata pages_manage_ads business_management',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

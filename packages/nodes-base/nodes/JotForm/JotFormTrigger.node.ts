@@ -88,6 +88,9 @@ export class JotFormTrigger implements INodeType {
 					limit: 1000,
 				};
 				const forms = await jotformApiRequest.call(this, 'GET', '/user/forms', {}, qs);
+
+				if (!Array.isArray(forms?.content)) return [];
+
 				for (const form of forms.content) {
 					const formName = form.title;
 					const formId = form.id;

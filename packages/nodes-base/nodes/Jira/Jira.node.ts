@@ -183,6 +183,9 @@ export class Jira implements INodeType {
 					`/api/2/project/${projectId}`,
 					'GET',
 				);
+
+				if (!issueTypes) return { results: [] };
+
 				for (const issueType of issueTypes) {
 					const issueTypeName = issueType.name;
 					const issueTypeId = issueType.id;

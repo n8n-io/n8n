@@ -7,9 +7,8 @@ import {
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import * as Db from '@/Db';
 import glob from 'fast-glob';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
@@ -25,10 +24,17 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
-import { VariablesService } from '../variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { VariablesService } from '../variables/variables.service.ee';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
+import { VariablesRepository } from '@db/repositories/variables.repository';
 
 @Service()
 export class SourceControlImportService {
@@ -57,7 +63,7 @@ export class SourceControlImportService {
 		const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
 		if (!globalOwnerRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return globalOwnerRole;
@@ -67,7 +73,7 @@ export class SourceControlImportService {
 		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
 
 		if (!credentialOwnerRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return credentialOwnerRole;
@@ -77,7 +83,7 @@ export class SourceControlImportService {
 		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 
 		if (!workflowOwnerRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+			throw new ApplicationError(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return workflowOwnerRole;
@@ -110,7 +116,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
-		const localWorkflows = await Db.collections.Workflow.find({
+		const localWorkflows = await Container.get(WorkflowRepository).find({
 			select: ['id', 'name', 'versionId', 'updatedAt'],
 		});
 		return localWorkflows.map((local) => ({
@@ -153,7 +159,7 @@ export class SourceControlImportService {
 	public async getLocalCredentialsFromDb(): Promise<
 		Array<ExportableCredential & { filename: string }>
 	> {
-		const localCredentials = await Db.collections.Credentials.find({
+		const localCredentials = await Container.get(CredentialsRepository).find({
 			select: ['id', 'name', 'type', 'nodesAccess'],
 		});
 		return localCredentials.map((local) => ({
@@ -209,7 +215,7 @@ export class SourceControlImportService {
 		const localTags = await this.tagRepository.find({
 			select: ['id', 'name'],
 		});
-		const localMappings = await Db.collections.WorkflowTagMapping.find({
+		const localMappings = await Container.get(WorkflowTagMappingRepository).find({
 			select: ['workflowId', 'tagId'],
 		});
 		return { tags: localTags, mappings: localMappings };
@@ -219,18 +225,13 @@ export class SourceControlImportService {
 		const ownerWorkflowRole = await this.getWorkflowOwnerRole();
 		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
-		const existingWorkflows = await Db.collections.Workflow.find({
-			where: {
-				id: In(candidateIds),
-			},
-			select: ['id', 'name', 'versionId', 'active'],
+		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
+			fields: ['id', 'name', 'versionId', 'active'],
 		});
-		const allSharedWorkflows = await Db.collections.SharedWorkflow.find({
-			where: {
-				workflowId: In(candidateIds),
-			},
-			select: ['workflowId', 'roleId', 'userId'],
-		});
+		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).findWithFields(
+			candidateIds,
+			{ fields: ['workflowId', 'roleId', 'userId'] },
+		);
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
 			candidates.map(async (candidate) => {
@@ -244,9 +245,14 @@ export class SourceControlImportService {
 				const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
 				importedWorkflow.active = existingWorkflow?.active ?? false;
 				this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-				const upsertResult = await Db.collections.Workflow.upsert({ ...importedWorkflow }, ['id']);
+				const upsertResult = await Container.get(WorkflowRepository).upsert(
+					{ ...importedWorkflow },
+					['id'],
+				);
 				if (upsertResult?.identifiers?.length !== 1) {
-					throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
+					throw new ApplicationError('Failed to upsert workflow', {
+						extra: { workflowId: importedWorkflow.id ?? 'new' },
+					});
 				}
 				// Update workflow owner to the user who exported the workflow, if that user exists
 				// in the instance, and the workflow doesn't already have an owner
@@ -254,7 +260,7 @@ export class SourceControlImportService {
 				if (cachedOwnerIds.has(importedWorkflow.owner)) {
 					workflowOwnerId = cachedOwnerIds.get(importedWorkflow.owner) ?? userId;
 				} else {
-					const foundUser = await Db.collections.User.findOne({
+					const foundUser = await Container.get(UserRepository).findOne({
 						where: {
 							email: importedWorkflow.owner,
 						},
@@ -278,7 +284,7 @@ export class SourceControlImportService {
 				);
 				if (!existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
 					// no owner exists yet, so create one
-					await Db.collections.SharedWorkflow.insert({
+					await Container.get(SharedWorkflowRepository).insert({
 						workflowId: importedWorkflow.id,
 						userId: workflowOwnerId,
 						roleId: ownerWorkflowRole.id,
@@ -288,7 +294,7 @@ export class SourceControlImportService {
 				} else if (existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
 					// if the worklflow has a non-global owner that is referenced by the owner file,
 					// and no existing global owner, update the owner to the user referenced in the owner file
-					await Db.collections.SharedWorkflow.update(
+					await Container.get(SharedWorkflowRepository).update(
 						{
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
@@ -310,7 +316,7 @@ export class SourceControlImportService {
 					} catch (error) {
 						this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
 					} finally {
-						await Db.collections.Workflow.update(
+						await Container.get(WorkflowRepository).update(
 							{ id: existingWorkflow.id },
 							{ versionId: importedWorkflow.versionId },
 						);
@@ -331,7 +337,7 @@ export class SourceControlImportService {
 
 	public async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const candidateIds = candidates.map((c) => c.id);
-		const existingCredentials = await Db.collections.Credentials.find({
+		const existingCredentials = await Container.get(CredentialsRepository).find({
 			where: {
 				id: In(candidateIds),
 			},
@@ -339,7 +345,7 @@ export class SourceControlImportService {
 		});
 		const ownerCredentialRole = await this.getCredentialOwnerRole();
 		const ownerGlobalRole = await this.getOwnerGlobalRole();
-		const existingSharedCredentials = await Db.collections.SharedCredentials.find({
+		const existingSharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			select: ['userId', 'credentialsId', 'roleId'],
 			where: {
 				credentialsId: In(candidateIds),
@@ -370,7 +376,7 @@ export class SourceControlImportService {
 				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await Db.collections.Credentials.upsert(newCredentialObject, ['id']);
+				await Container.get(CredentialsRepository).upsert(newCredentialObject, ['id']);
 
 				if (!sharedOwner) {
 					const newSharedCredential = new SharedCredentials();
@@ -378,7 +384,7 @@ export class SourceControlImportService {
 					newSharedCredential.userId = userId;
 					newSharedCredential.roleId = ownerCredentialRole.id;
 
-					await Db.collections.SharedCredentials.upsert({ ...newSharedCredential }, [
+					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [
 						'credentialsId',
 						'userId',
 					]);
@@ -413,7 +419,7 @@ export class SourceControlImportService {
 
 		const existingWorkflowIds = new Set(
 			(
-				await Db.collections.Workflow.find({
+				await Container.get(WorkflowRepository).find({
 					select: ['id'],
 				})
 			).map((e) => e.id),
@@ -426,7 +432,7 @@ export class SourceControlImportService {
 					select: ['id'],
 				});
 				if (findByName && findByName.id !== tag.id) {
-					throw new Error(
+					throw new ApplicationError(
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
@@ -442,7 +448,7 @@ export class SourceControlImportService {
 		await Promise.all(
 			mappedTags.mappings.map(async (mapping) => {
 				if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-				await Db.collections.WorkflowTagMapping.upsert(
+				await Container.get(WorkflowTagMappingRepository).upsert(
 					{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
 					{
 						skipUpdateIfNoValuesChanged: true,
@@ -489,12 +495,12 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
-				await Db.collections.Variables.upsert({ ...variable }, ['id']);
+				await Container.get(VariablesRepository).upsert({ ...variable }, ['id']);
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
 					try {
-						await Db.collections.Variables.update({ key: variable.key }, { ...variable });
+						await Container.get(VariablesRepository).update({ key: variable.key }, { ...variable });
 					} catch (errorUpdate) {
 						this.logger.debug(`Failed to update variable ${variable.key}, skipping`);
 						this.logger.debug((errorUpdate as Error).message);
@@ -509,8 +515,11 @@ export class SourceControlImportService {
 		if (overriddenKeys.length > 0 && valueOverrides) {
 			for (const key of overriddenKeys) {
 				result.imported.push(key);
-				const newVariable = Db.collections.Variables.create({ key, value: valueOverrides[key] });
-				await Db.collections.Variables.save(newVariable);
+				const newVariable = Container.get(VariablesRepository).create({
+					key,
+					value: valueOverrides[key],
+				});
+				await Container.get(VariablesRepository).save(newVariable);
 			}
 		}
 

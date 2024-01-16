@@ -1,10 +1,10 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useRootStore } from '../n8nRoot.store';
 
-vi.mock('@/utils', () => ({
+vi.mock('@/utils/apiUtils', () => ({
 	makeRestApiRequest: vi.fn(),
 }));
 

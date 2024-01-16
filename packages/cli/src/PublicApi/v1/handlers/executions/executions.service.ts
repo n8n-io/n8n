@@ -3,9 +3,8 @@ import { In, Not, Raw, LessThan } from 'typeorm';
 import { Container } from 'typedi';
 import type { ExecutionStatus } from 'n8n-workflow';
 
-import * as Db from '@/Db';
 import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 function getStatusCondition(status: ExecutionStatus) {
 	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
@@ -83,7 +82,7 @@ export async function getExecutionsCount(data: {
 	excludedWorkflowIds?: string[];
 }): Promise<number> {
 	// TODO: Consider moving this to the repository as well
-	const executions = await Db.collections.Execution.count({
+	const executions = await Container.get(ExecutionRepository).count({
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),

@@ -11,7 +11,6 @@ import type { MessageEventBusDestination } from '../MessageEventBusDestination/M
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'events';
 import config from '@/config';
-import * as Db from '@/Db';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/MessageEventBusDestinationFromDb';
 import uniqby from 'lodash/uniqBy';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
@@ -29,11 +28,13 @@ import {
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import { Container, Service } from 'typedi';
-import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { Logger } from '@/Logger';
+import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -79,7 +80,7 @@ export class MessageEventBus extends EventEmitter {
 
 		this.logger.debug('Initializing event bus...');
 
-		const savedEventDestinations = await Db.collections.EventDestinations.find({});
+		const savedEventDestinations = await Container.get(EventDestinationsRepository).find({});
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
@@ -206,9 +207,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await Container.get(
-				OrchestrationMainService,
-			).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(SingleMainSetup).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return destination;
 	}
@@ -234,9 +233,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await Container.get(
-				OrchestrationMainService,
-			).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(SingleMainSetup).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return result;
 	}

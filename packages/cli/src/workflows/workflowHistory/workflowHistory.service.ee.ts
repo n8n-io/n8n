@@ -1,15 +1,14 @@
-import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import type { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
-import { SharedWorkflowRepository } from '@/databases/repositories';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { Service } from 'typedi';
 import { isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';
 import { Logger } from '@/Logger';
-
-export class SharedWorkflowNotFoundError extends Error {}
-export class HistoryVersionNotFoundError extends Error {}
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 
 @Service()
 export class WorkflowHistoryService {
@@ -22,7 +21,7 @@ export class WorkflowHistoryService {
 	private async getSharedWorkflow(user: User, workflowId: string): Promise<SharedWorkflow | null> {
 		return this.sharedWorkflowRepository.findOne({
 			where: {
-				...(!user.isOwner && { userId: user.id }),
+				...(!user.hasGlobalScope('workflow:read') && { userId: user.id }),
 				workflowId,
 			},
 		});
@@ -36,7 +35,7 @@ export class WorkflowHistoryService {
 	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
 		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
 		if (!sharedWorkflow) {
-			throw new SharedWorkflowNotFoundError();
+			throw new SharedWorkflowNotFoundError('');
 		}
 		return this.workflowHistoryRepository.find({
 			where: {
@@ -52,7 +51,7 @@ export class WorkflowHistoryService {
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
 		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
 		if (!sharedWorkflow) {
-			throw new SharedWorkflowNotFoundError();
+			throw new SharedWorkflowNotFoundError('');
 		}
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
@@ -61,13 +60,16 @@ export class WorkflowHistoryService {
 			},
 		});
 		if (!hist) {
-			throw new HistoryVersionNotFoundError();
+			throw new WorkflowHistoryVersionNotFoundError('');
 		}
 		return hist;
 	}
 
 	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
-		if (isWorkflowHistoryEnabled()) {
+		// On some update scenarios, `nodes` and `connections` are missing, such as when
+		// changing workflow settings or renaming. In these cases, we don't want to save
+		// a new version
+		if (isWorkflowHistoryEnabled() && workflow.nodes && workflow.connections) {
 			try {
 				await this.workflowHistoryRepository.insert({
 					authors: user.firstName + ' ' + user.lastName,

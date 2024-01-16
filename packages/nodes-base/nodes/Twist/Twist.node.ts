@@ -8,6 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+import moment from 'moment-timezone';
 import { twistApiRequest } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -19,8 +21,6 @@ import {
 
 import { threadFields, threadOperations } from './ThreadDescription';
 import { commentFields, commentOperations } from './CommentDescription';
-import { v4 as uuid } from 'uuid';
-import moment from 'moment';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {

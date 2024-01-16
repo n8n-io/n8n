@@ -1,30 +1,31 @@
 <template>
 	<n8n-input-label
+		:class="$style.wrapper"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
-		:showTooltip="focused"
-		:showOptions="menuExpanded || focused || forceShowExpression"
+		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
+		:show-tooltip="focused"
+		:show-options="menuExpanded || focused || forceShowExpression"
+		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
 	>
-		<template #options>
-			<parameter-options
-				v-if="displayOptions"
+		<template v-if="displayOptions && optionsPosition === 'top'" #options>
+			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="isReadOnly"
-				:showOptions="displayOptions"
-				:showExpressionSelector="showExpressionSelector"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
 				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<draggable-target
+		<DraggableTarget
 			type="mapping"
 			:disabled="isDropDisabled"
 			:sticky="true"
-			:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+			:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
@@ -42,29 +43,48 @@
 							"
 						/>
 					</template>
-					<parameter-input-wrapper
+					<ParameterInputWrapper
 						ref="param"
 						:parameter="parameter"
-						:modelValue="value"
+						:model-value="value"
 						:path="path"
-						:isReadOnly="isReadOnly"
+						:is-read-only="isReadOnly"
+						:is-single-line="isSingleLine"
 						:droppable="droppable"
-						:activeDrop="activeDrop"
-						:forceShowExpression="forceShowExpression"
+						:active-drop="activeDrop"
+						:force-show-expression="forceShowExpression"
 						:hint="hint"
+						:hide-hint="hideHint"
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
+						input-size="small"
 						@update="valueChanged"
 						@textInput="onTextInput"
 						@focus="onFocus"
 						@blur="onBlur"
 						@drop="onDrop"
-						inputSize="small"
 					/>
 				</n8n-tooltip>
 			</template>
-		</draggable-target>
+		</DraggableTarget>
+		<div
+			:class="{
+				[$style.options]: true,
+				[$style.visible]: menuExpanded || focused || forceShowExpression,
+			}"
+		>
+			<ParameterOptions
+				v-if="optionsPosition === 'bottom'"
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				@update:modelValue="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
 	</n8n-input-label>
 </template>
 
@@ -77,36 +97,80 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useI18n, useToast } from '@/composables';
-import {
-	hasExpressionMapping,
-	isResourceLocatorValue,
-	hasOnlyListMode,
-	isValueExpression,
-} from '@/utils';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import type {
-	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
-import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default defineComponent({
-	name: 'parameter-input-full',
-	mixins: [externalHooks],
+	name: 'ParameterInputFull',
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	props: {
+		displayOptions: {
+			type: Boolean,
+			default: false,
+		},
+		optionsPosition: {
+			type: String as PropType<'bottom' | 'top'>,
+			default: 'top',
+		},
+		hideHint: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		isSingleLine: {
+			type: Boolean,
+			default: false,
+		},
+		hideLabel: {
+			type: Boolean,
+			default: false,
+		},
+		hideIssues: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object as PropType<INodeProperties>,
+		},
+		path: {
+			type: String,
+		},
+		value: {
+			type: [Number, String, Boolean, Array, Object] as PropType<NodeParameterValueType>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
 	},
 	setup() {
 		const eventBus = createEventBus();
@@ -126,39 +190,6 @@ export default defineComponent({
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
 		};
-	},
-	props: {
-		displayOptions: {
-			type: Boolean,
-			default: false,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		hideLabel: {
-			type: Boolean,
-			default: false,
-		},
-		hideIssues: {
-			type: Boolean,
-			default: false,
-		},
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-		},
-		path: {
-			type: String,
-		},
-		value: {
-			type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
-		},
-		label: {
-			type: Object as PropType<IParameterLabel>,
-			default: () => ({
-				size: 'small',
-			}),
-		},
 	},
 	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
@@ -341,3 +372,26 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style module>
+.wrapper {
+	position: relative;
+
+	&:hover {
+		.options {
+			opacity: 1;
+		}
+	}
+}
+.options {
+	position: absolute;
+	bottom: -22px;
+	right: 0;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+</style>

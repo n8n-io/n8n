@@ -6,7 +6,7 @@ import { Push } from '@/push';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -195,7 +195,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			push.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					push.send('executionRecovered', { executionId });
+					push.broadcast('executionRecovered', { executionId });
 				}, 1000);
 			});
 		}

@@ -1,11 +1,11 @@
 <template>
-	<n8n-route :to="to" :newWindow="newWindow" v-bind="$attrs" class="n8n-link">
+	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
-			<n8n-text :size="size" :bold="bold">
+			<N8nText :size="size" :bold="bold">
 				<slot></slot>
-			</n8n-text>
+			</N8nText>
 		</span>
-	</n8n-route>
+	</N8nRoute>
 </template>
 
 <script lang="ts">
@@ -14,7 +14,11 @@ import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
 export default defineComponent({
-	name: 'n8n-link',
+	name: 'N8nLink',
+	components: {
+		N8nText,
+		N8nRoute,
+	},
 	props: {
 		size: {
 			type: String,
@@ -41,21 +45,18 @@ export default defineComponent({
 				['primary', 'danger', 'text', 'secondary'].includes(value),
 		},
 	},
-	components: {
-		N8nText,
-		N8nRoute,
-	},
 });
 </script>
 
 <style lang="scss" module>
 @import '../../utils';
+@import '../../css/common/var';
 
 .primary {
-	color: var(--color-primary);
+	color: $link-color;
 
 	&:active {
-		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
+		color: $link-color-active;
 	}
 }
 
@@ -63,11 +64,11 @@ export default defineComponent({
 	color: var(--color-text-base);
 
 	&:hover {
-		color: var(--color-primary);
+		color: $link-color;
 	}
 
 	&:active {
-		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
+		color: $link-color-active;
 	}
 }
 
@@ -75,20 +76,16 @@ export default defineComponent({
 	color: var(--color-danger);
 
 	&:active {
-		color: saturation(--color-danger-h, --color-danger-s, --color-danger-l, -(20%));
+		color: var(--color-danger-shade-1);
 	}
 }
 
 .secondary {
-	color: var(--color-secondary);
+	color: var(--color-secondary-link);
 
 	&:active {
-		color: saturation(--color-secondary-h, --color-secondary-s, --color-secondary-l, -(20%));
+		color: var(--color-secondary-link-hover);
 	}
-}
-
-.secondary {
-	color: var(--color-secondary);
 }
 
 .primary-underline {

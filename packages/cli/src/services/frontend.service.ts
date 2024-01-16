@@ -12,18 +12,16 @@ import type {
 } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
-import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import config from '@/config';
+import { LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { getLdapLoginLabel } from '@/Ldap/helpers';
 import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/enviromentHelpers';
+import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -31,6 +29,8 @@ import {
 import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
+import { UrlService } from './url.service';
+import { InternalHooks } from '@/InternalHooks';
 
 @Service()
 export class FrontendService {
@@ -46,6 +46,8 @@ export class FrontendService {
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
+		private readonly internalHooks: InternalHooks,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
 		void this.generateTypes();
@@ -61,7 +63,7 @@ export class FrontendService {
 	}
 
 	private initSettings() {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		const telemetrySettings: ITelemetrySettings = {
@@ -81,6 +83,9 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			endpointForm: config.getEnv('endpoints.form'),
+			endpointFormTest: config.getEnv('endpoints.formTest'),
+			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
 			endpointWebhook: config.getEnv('endpoints.webhook'),
 			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),
 			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
@@ -90,7 +95,7 @@ export class FrontendService {
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: config.getEnv('generic.timezone'),
-			urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
+			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
 			releaseChannel: config.getEnv('generic.releaseChannel'),
@@ -175,6 +180,8 @@ export class FrontendService {
 				debugInEditor: false,
 				binaryDataS3: false,
 				workflowHistory: false,
+				workerView: false,
+				advancedPermissions: false,
 			},
 			mfa: {
 				enabled: false,
@@ -205,19 +212,22 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
+		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): IN8nUISettings {
+	getSettings(sessionId?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(sessionId);
+
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
-		const instanceBaseUrl = getInstanceBaseUrl();
-		this.settings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -262,6 +272,8 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
+			workerView: this.license.isWorkerViewLicensed(),
+			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -295,6 +307,8 @@ export class FrontendService {
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
+		this.settings.executionMode = config.getEnv('executions.mode');
+
 		return this.settings;
 	}
 
@@ -303,7 +317,8 @@ export class FrontendService {
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
-		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
+		const { staticCacheDir } = this.instanceSettings;
+		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
 		data.forEach((entry, index) => {

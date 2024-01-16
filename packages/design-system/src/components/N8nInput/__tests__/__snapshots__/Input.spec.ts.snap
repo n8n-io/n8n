@@ -1,13 +1,13 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`N8nInput > should render correctly 1`] = `
-"<div class=\\"el-input el-input--large n8n-input\\">
+"<div class="el-input el-input--large n8n-input">
   <!-- input -->
   <!-- prepend slot -->
   <!--v-if-->
-  <div class=\\"el-input__wrapper\\">
+  <div class="el-input__wrapper">
     <!-- prefix slot -->
-    <!--v-if--><input class=\\"el-input__inner\\" autocomplete=\\"off\\" name=\\"input\\" rows=\\"2\\" maxlength=\\"Infinity\\" title=\\"\\" type=\\"text\\" tabindex=\\"0\\" placeholder=\\"\\"><!-- suffix slot -->
+    <!--v-if--><input class="el-input__inner" name="input" rows="2" maxlength="Infinity" title="" type="text" autocomplete="off" tabindex="0" placeholder=""><!-- suffix slot -->
     <!--v-if-->
   </div><!-- append slot -->
   <!--v-if-->

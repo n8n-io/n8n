@@ -143,7 +143,6 @@ export async function getDefaultRedisClient(
 	additionalRedisOptions?: RedisOptions,
 	redisType?: RedisClientType,
 ): Promise<Redis | Cluster> {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const { default: Redis } = await import('ioredis');
 	const clusterNodes = getRedisClusterNodes();
 	const usesRedisCluster = clusterNodes.length > 0;

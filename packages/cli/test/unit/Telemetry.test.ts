@@ -4,17 +4,10 @@ import config from '@/config';
 import { flushPromises } from './Helpers';
 import { PostHogClient } from '@/posthog';
 import { mock } from 'jest-mock-extended';
-import { mockInstance } from '../integration/shared/utils';
 import { InstanceSettings } from 'n8n-core';
+import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/telemetry');
-jest.mock('@/license/License.service', () => {
-	return {
-		LicenseService: {
-			getActiveTriggerCount: async () => 0,
-		},
-	};
-});
 jest.mock('@/posthog');
 
 describe('Telemetry', () => {
@@ -55,7 +48,7 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient(instanceSettings);
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings);
+		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
 		(telemetry as any).rudderStack = mockRudderStack;
 	});
 

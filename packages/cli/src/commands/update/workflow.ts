@@ -1,9 +1,7 @@
 import { flags } from '@oclif/command';
-import type { FindOptionsWhere } from 'typeorm';
-import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import * as Db from '@/Db';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 export class UpdateWorkflowCommand extends BaseCommand {
 	static description = 'Update workflows';
@@ -42,7 +40,6 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			return;
 		}
 
-		const updateQuery: QueryDeepPartialEntity<WorkflowEntity> = {};
 		if (flags.active === undefined) {
 			console.info('No update flag like "--active=true" has been set!');
 			return;
@@ -53,18 +50,16 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			return;
 		}
 
-		updateQuery.active = flags.active === 'true';
+		const newState = flags.active === 'true';
 
-		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
 		if (flags.id) {
 			this.logger.info(`Deactivating workflow with ID: ${flags.id}`);
-			findQuery.id = flags.id;
+			await Container.get(WorkflowRepository).updateActiveState(flags.id, newState);
 		} else {
 			this.logger.info('Deactivating all workflows');
-			findQuery.active = true;
+			await Container.get(WorkflowRepository).deactivateAll();
 		}
 
-		await Db.collections.Workflow.update(findQuery, updateQuery);
 		this.logger.info('Done');
 	}
 

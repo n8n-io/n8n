@@ -76,12 +76,13 @@ export async function getFileSha(
 	filePath: string,
 	branch?: string,
 ): Promise<any> {
-	const getBody: IDataObject = {};
+	const query: IDataObject = {};
 	if (branch !== undefined) {
-		getBody.branch = branch;
+		query.ref = branch;
 	}
+
 	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, getBody, {});
+	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
 
 	if (responseData.sha === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Could not get the SHA of the file.');

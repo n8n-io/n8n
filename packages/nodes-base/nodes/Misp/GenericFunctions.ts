@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,8 +10,6 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
 import type { MispCredentials } from './types';
-
-import { URL } from 'url';
 
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

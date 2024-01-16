@@ -34,7 +34,7 @@ export function longestCommonPrefix(...strings: string[]) {
 		}
 
 		return acc.slice(0, i);
-	});
+	}, '');
 }
 
 // Process user input if expressions are used as part of complex expression
