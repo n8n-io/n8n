@@ -259,6 +259,13 @@ export class Worker extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
+
+		if (!process.env.N8N_ENCRYPTION_KEY) {
+			throw new ApplicationError(
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+			);
+		}
+
 		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
 	}
