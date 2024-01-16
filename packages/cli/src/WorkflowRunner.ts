@@ -327,7 +327,7 @@ export class WorkflowRunner {
 			);
 
 			try {
-				await PermissionChecker.check(workflow, data.userId);
+				await Container.get(PermissionChecker).check(workflow, data.userId);
 			} catch (error) {
 				ErrorReporter.error(error);
 				// Create a failed execution with the data for the node
