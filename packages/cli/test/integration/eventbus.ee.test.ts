@@ -3,7 +3,6 @@ import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type {
 	MessageEventBusDestinationSentryOptions,
@@ -26,7 +25,6 @@ import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessag
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 
 import * as utils from './shared/utils';
-import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
@@ -35,7 +33,6 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
-let globalOwnerRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
@@ -85,8 +82,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());

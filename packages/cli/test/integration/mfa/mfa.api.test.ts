@@ -1,6 +1,5 @@
 import Container from 'typedi';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
@@ -13,7 +12,6 @@ import { UserRepository } from '@db/repositories/user.repository';
 
 jest.mock('@/telemetry');
 
-let globalOwnerRole: Role;
 let owner: User;
 
 const testServer = utils.setupTestServer({
@@ -23,7 +21,7 @@ const testServer = utils.setupTestServer({
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'owner' });
 
 	config.set('userManagement.disabled', false);
 });

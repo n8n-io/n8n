@@ -15,7 +15,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Authorized(['global', 'owner'])
+@Authorized('owner')
 @RestController('/owner')
 export class OwnerController {
 	constructor(
@@ -35,7 +35,7 @@ export class OwnerController {
 	@Post('/setup')
 	async setupOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
-		const { id: userId, globalRole } = req.user;
+		const { id: userId, role } = req.user;
 
 		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
@@ -66,7 +66,7 @@ export class OwnerController {
 		}
 
 		// TODO: This check should be in a middleware outside this class
-		if (globalRole.scope === 'global' && globalRole.name !== 'owner') {
+		if (role !== 'owner') {
 			this.logger.debug(
 				'Request to claim instance ownership failed because user shell does not exist or has wrong role!',
 				{

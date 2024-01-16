@@ -17,7 +17,6 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { getGlobalAdminRole, getGlobalMemberRole } from './shared/db/roles';
 import { createMember, createOwner, createUser, createUserShell } from './shared/db/users';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
@@ -56,8 +55,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fill out a member shell', async () => {
-		const globalMemberRole = await getGlobalMemberRole();
-		const memberShell = await createUserShell(globalMemberRole);
+		const memberShell = await createUserShell('member');
 
 		const memberData = {
 			inviterId: owner.id,
@@ -78,7 +76,7 @@ describe('POST /invitations/:id/accept', () => {
 			lastName,
 			personalizationAnswers,
 			password,
-			globalRole,
+			role,
 			isPending,
 			apiKey,
 			globalScopes,
@@ -91,8 +89,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole.scope).toBe('global');
-		expect(globalRole.name).toBe('member');
+		expect(role).toBe('member');
 		expect(apiKey).not.toBeDefined();
 		expect(globalScopes).toBeDefined();
 		expect(globalScopes).not.toHaveLength(0);
@@ -110,8 +107,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fill out an admin shell', async () => {
-		const globalAdminRole = await getGlobalAdminRole();
-		const adminShell = await createUserShell(globalAdminRole);
+		const adminShell = await createUserShell('admin');
 
 		const memberData = {
 			inviterId: owner.id,
@@ -132,7 +128,7 @@ describe('POST /invitations/:id/accept', () => {
 			lastName,
 			personalizationAnswers,
 			password,
-			globalRole,
+			role,
 			isPending,
 			apiKey,
 			globalScopes,
@@ -145,8 +141,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole.scope).toBe('global');
-		expect(globalRole.name).toBe('admin');
+		expect(role).toBe('admin');
 		expect(apiKey).not.toBeDefined();
 		expect(globalScopes).toBeDefined();
 		expect(globalScopes).not.toHaveLength(0);
@@ -166,11 +161,9 @@ describe('POST /invitations/:id/accept', () => {
 	test('should fail with invalid payloads', async () => {
 		const memberShellEmail = randomEmail();
 
-		const globalMemberRole = await getGlobalMemberRole();
-
 		const memberShell = await Container.get(UserRepository).save({
 			email: memberShellEmail,
-			globalRole: globalMemberRole,
+			role: 'member',
 		});
 
 		const invalidPayloads = [
@@ -219,8 +212,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fail with already accepted invite', async () => {
-		const globalMemberRole = await getGlobalMemberRole();
-		const member = await createUser({ globalRole: globalMemberRole });
+		const member = await createUser({ role: 'member' });
 
 		const memberData = {
 			inviterId: owner.id,
@@ -384,8 +376,7 @@ describe('POST /invitations', () => {
 
 		mailer.invite.mockResolvedValue({ emailSent: true });
 
-		const globalMemberRole = await getGlobalMemberRole();
-		const memberShell = await createUserShell(globalMemberRole);
+		const memberShell = await createUserShell('member');
 
 		const newUser = randomEmail();
 

@@ -73,7 +73,7 @@ export class UserService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities', 'globalRole'],
+			relations: ['authIdentities'],
 		});
 
 		if (!user) {
@@ -225,8 +225,6 @@ export class UserService {
 	}
 
 	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
-		const memberRole = await this.roleService.findGlobalMemberRole();
-		const adminRole = await this.roleService.findGlobalAdminRole();
 		const emails = attributes.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
@@ -250,10 +248,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const newUser = Object.assign(new User(), {
-								email,
-								globalRole: role === 'member' ? memberRole : adminRole,
-							});
+							const newUser = transactionManager.create(User, { email, role });
 							const savedUser = await transactionManager.save<User>(newUser);
 							createdUsers.set(email, savedUser.id);
 							return savedUser;

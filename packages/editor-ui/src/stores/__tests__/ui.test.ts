@@ -25,11 +25,7 @@ function setUser(role: IRole) {
 		{
 			id: '1',
 			isPending: false,
-			globalRole: {
-				id: '1',
-				name: role,
-				createdAt: new Date(),
-			},
+			role,
 		},
 	]);
 

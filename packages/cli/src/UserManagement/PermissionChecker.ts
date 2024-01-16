@@ -37,7 +37,6 @@ export class PermissionChecker {
 
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
-			relations: ['globalRole'],
 		});
 
 		if (user.hasGlobalScope('workflow:execute')) return;

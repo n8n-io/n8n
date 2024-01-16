@@ -13,7 +13,7 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = ['owner', 'admin'].includes(user.globalRole.name) ? {} : { userId: user.id };
+	const where = ['owner', 'admin'].includes(user.role) ? {} : { userId: user.id };
 	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 		where,
 		select: ['workflowId'],
@@ -27,7 +27,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
+			...(!['owner', 'admin'].includes(user.role) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],

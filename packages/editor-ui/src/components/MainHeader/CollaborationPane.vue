@@ -16,7 +16,7 @@ const activeUsersSorted = computed(() => {
 	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
 		(userInfo) => userInfo.user,
 	);
-	const owner = currentWorkflowUsers.find((user) => user.globalRoleId === 1);
+	const owner = currentWorkflowUsers.find((user) => user.role === 'owner');
 	return {
 		defaultGroup: owner
 			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]

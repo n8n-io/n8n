@@ -59,16 +59,6 @@ export class SourceControlImportService {
 		);
 	}
 
-	private async getOwnerGlobalRole() {
-		const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		if (!globalOwnerRole) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return globalOwnerRole;
-	}
-
 	private async getCredentialOwnerRole() {
 		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
 
@@ -344,12 +334,11 @@ export class SourceControlImportService {
 			select: ['id', 'name', 'type', 'data'],
 		});
 		const ownerCredentialRole = await this.getCredentialOwnerRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
 		const existingSharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			select: ['userId', 'credentialsId', 'roleId'],
 			where: {
 				credentialsId: In(candidateIds),
-				roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
+				roleId: In([ownerCredentialRole.id]),
 			},
 		});
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];

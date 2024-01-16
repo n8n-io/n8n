@@ -34,17 +34,17 @@ mockInstance(Push);
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
+	const [fetchedWorkflowOwnerRole] = await getAllRoles();
 
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 
 	owner = await createUser({
-		globalRole: globalOwnerRole,
+		role: 'owner',
 		apiKey: randomApiKey(),
 	});
 
 	member = await createUser({
-		globalRole: globalMemberRole,
+		role: 'member',
 		apiKey: randomApiKey(),
 	});
 

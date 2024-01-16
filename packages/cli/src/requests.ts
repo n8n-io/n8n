@@ -14,7 +14,7 @@ import type {
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import type { Role, RoleNames } from '@db/entities/Role';
+import type { Role, RoleName } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
@@ -49,7 +49,7 @@ export class UserSettingsUpdatePayload {
 
 export class UserRoleChangePayload {
 	@IsIn(['member', 'admin'])
-	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
+	newRoleName: Exclude<RoleName, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<

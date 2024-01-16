@@ -35,7 +35,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getAllActive() {
 		return await this.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: ['shared', 'shared.user', 'shared.role'],
 		});
 	}
 
@@ -50,7 +50,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: ['shared', 'shared.user', 'shared.role'],
 		});
 	}
 

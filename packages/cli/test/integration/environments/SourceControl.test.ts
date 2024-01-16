@@ -8,7 +8,6 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
 
 import * as utils from '../shared/utils/';
-import { getGlobalOwnerRole } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
@@ -20,8 +19,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const globalOwnerRole = await getGlobalOwnerRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	Container.get(SourceControlPreferencesService).isSourceControlConnected = () => true;

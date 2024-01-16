@@ -102,7 +102,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	): Promise<SharedWorkflow[]> {
 		return await this.find({
 			where: {
-				...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
+				...(!['owner', 'admin'].includes(user.role) && { userId: user.id }),
 				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 			},
 			...(options.relations && { relations: options.relations }),

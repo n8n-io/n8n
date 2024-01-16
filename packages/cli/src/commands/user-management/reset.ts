@@ -14,6 +14,7 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
+	role: 'owner',
 };
 
 export class Reset extends BaseCommand {
@@ -59,19 +60,17 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		const owner = await Container.get(UserRepository).findOneBy({ globalRoleId: globalRole.id });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'owner' });
 
 		if (owner) return owner;
 
 		const user = new User();
 
-		Object.assign(user, { ...defaultUserProps, globalRole });
+		Object.assign(user, defaultUserProps);
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
+		return await Container.get(UserRepository).findOneByOrFail({ role: 'owner' });
 	}
 
 	async catch(error: Error): Promise<void> {

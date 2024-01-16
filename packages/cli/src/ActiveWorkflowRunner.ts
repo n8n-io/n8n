@@ -229,7 +229,7 @@ export class ActiveWorkflowRunner {
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (workflowData === null) {

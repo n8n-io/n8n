@@ -51,6 +51,7 @@ import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-Execut
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { DropGlobalRoleMapping1705429061930 } from '../common/1705429061930-DropGlobalRoleMapping';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -105,4 +106,5 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowMetadata1695128658538,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
+	DropGlobalRoleMapping1705429061930,
 ];
