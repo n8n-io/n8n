@@ -63,7 +63,7 @@ describe('Workflow.selectSubworkflowStarter()', () => {
 		expect(found).toEqual(starters[NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER]);
 	});
 
-	it('should prioritize Execute Workflow Trigger over other starters', () => {
+	it('should throw if no starter', () => {
 		expect(() => Workflow.selectSubworkflowStarter([hackerNewsNode])).toThrow();
 	});
 
