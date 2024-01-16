@@ -26,7 +26,13 @@ export class ApplicationError extends Error {
 		this.extra = extra;
 
 		try {
-			const filePath = callsites()[2].getFileName() ?? '';
+			const filePath = callsites()[1].getFileName() ?? '';
+
+			if (filePath.includes('/dist/errors/')) {
+				this.packageName = 'unknown';
+				return;
+			}
+
 			const match = /packages\/([^\/]+)\//.exec(filePath)?.[1];
 
 			if (match) this.tags.packageName = match;
