@@ -53,6 +53,8 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT, SUBWORKFLOW_STARTER_NODES } from './Constants';
 import { ApplicationError } from './errors/application.error';
+// eslint-disable-next-line import/no-cycle
+import { SubworkflowOperationError } from '.';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -1435,8 +1437,9 @@ export class Workflow {
 
 		const starterNodesToDisplay = SUBWORKFLOW_STARTER_NODES.join(', ');
 
-		throw new ApplicationError(
-			`Missing node to start execution. Please ensure the workflow you are calling contains at least one of the following nodes: ${starterNodesToDisplay}`,
+		throw new SubworkflowOperationError(
+			'Missing node to start execution',
+			`Please ensure the workflow you are calling contains at least one of the following nodes: ${starterNodesToDisplay}`,
 		);
 	}
 
