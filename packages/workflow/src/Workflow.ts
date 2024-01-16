@@ -53,8 +53,7 @@ import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
 import { NODES_WITH_RENAMABLE_CONTENT, SUBWORKFLOW_STARTER_NODES } from './Constants';
 import { ApplicationError } from './errors/application.error';
-// eslint-disable-next-line import/no-cycle
-import { SubworkflowOperationError } from '.';
+import { SubworkflowOperationError } from './errors/subworkflow-operation.error';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
