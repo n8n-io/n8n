@@ -27,6 +27,15 @@ const executeWorkflowTriggerNode: INode = {
 	position: [0, 0],
 };
 
+const respondToWebhookNode: INode = {
+	name: 'Respond to Webhook',
+	type: 'n8n-nodes-base.respondToWebhook',
+	id: '66d63bca-bb6c-4568-948f-8ed9aacb1fe9',
+	parameters: {},
+	typeVersion: 1,
+	position: [0, 0],
+};
+
 const args: ConstructorParameters<typeof Workflow>[number] = {
 	nodes: [],
 	connections: {},
@@ -50,6 +59,23 @@ describe('Workflow.selectPinnedActivatorStarter()', () => {
 		const node = workflow.selectPinnedActivatorStarter([]);
 
 		expect(node).toEqual(webhookNode);
+	});
+
+	it('should return `null` if no choice', () => {
+		const workflow = new Workflow(args);
+
+		const node = workflow.selectPinnedActivatorStarter([]);
+
+		expect(node).toBeNull();
+	});
+
+	it('should return `null` if Respond to Webhook is only choice', () => {
+		args.nodes.push(respondToWebhookNode);
+		const workflow = new Workflow(args);
+
+		const node = workflow.selectPinnedActivatorStarter([]);
+
+		expect(node).toBeNull();
 	});
 
 	it('should select execute workflow trigger if only choice', () => {

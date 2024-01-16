@@ -1430,9 +1430,15 @@ export class Workflow {
 	 * Select the node to use as starter for a subworkflow execution.
 	 */
 	static selectSubworkflowStarter(nodes: INode[]) {
-		const found = nodes.find((n) => SUBWORKFLOW_STARTER_NODES.includes(n.type));
+		const [executeWorkflowTrigger, ...otherStarters] = SUBWORKFLOW_STARTER_NODES;
 
-		if (found) return found;
+		const foundEwt = nodes.find((n) => n.type === executeWorkflowTrigger);
+
+		if (foundEwt) return foundEwt;
+
+		const foundOther = nodes.find((n) => otherStarters.includes(n.type));
+
+		if (foundOther) return foundOther;
 
 		const starterNodesToDisplay = SUBWORKFLOW_STARTER_NODES.join(', ');
 
@@ -1490,7 +1496,8 @@ export class Workflow {
 				(node) =>
 					!node.disabled &&
 					this.pinData?.[node.name] &&
-					['trigger', 'webhook'].some((suffix) => node.type.toLowerCase().endsWith(suffix)),
+					['trigger', 'webhook'].some((suffix) => node.type.toLowerCase().endsWith(suffix)) &&
+					node.type !== 'n8n-nodes-base.respondToWebhook',
 			)
 			.sort((a) => (a.type.endsWith('webhook') ? -1 : 1));
 	}

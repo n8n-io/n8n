@@ -54,6 +54,19 @@ const hackerNewsNode: INode = {
 };
 
 describe('Workflow.selectSubworkflowStarter()', () => {
+	it('should prioritize Execute Workflow Trigger over other starters', () => {
+		const found = Workflow.selectSubworkflowStarter([
+			starters[NODE_TYPES.MANUAL_TRIGGER],
+			starters[NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER],
+		]);
+
+		expect(found).toEqual(starters[NODE_TYPES.EXECUTE_WORKFLOW_TRIGGER]);
+	});
+
+	it('should prioritize Execute Workflow Trigger over other starters', () => {
+		expect(() => Workflow.selectSubworkflowStarter([hackerNewsNode])).toThrow();
+	});
+
 	for (const starter of SUBWORKFLOW_STARTER_NODES) {
 		it(`should select ${starter} node if only choice`, () => {
 			const found = Workflow.selectSubworkflowStarter([starters[starter]]);
