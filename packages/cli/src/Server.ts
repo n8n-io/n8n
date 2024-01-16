@@ -39,7 +39,8 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper, ExecutionRequest } from '@/requests';
+import type { CurlHelper } from '@/requests';
+import type { ExecutionRequest } from '@/executions/execution.request';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -56,7 +57,7 @@ import { TranslationController } from '@/controllers/translation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
-import { executionsController } from '@/executions/executions.controller';
+import { ExecutionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -247,6 +248,7 @@ export class Server extends AbstractServer {
 			RoleController,
 			ActiveWorkflowsController,
 			WorkflowsController,
+			ExecutionsController,
 		];
 
 		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
@@ -396,12 +398,6 @@ export class Server extends AbstractServer {
 				}
 			}),
 		);
-
-		// ----------------------------------------
-		// Executions
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/executions`, executionsController);
 
 		// ----------------------------------------
 		// Executing Workflows

@@ -21,7 +21,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from '@/requests';
+import type { ExecutionRequest } from './execution.request';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
