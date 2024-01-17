@@ -3,7 +3,6 @@ import type { IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useI18n } from '@/composables/useI18n';
 import type { AssignmentValue, INodeProperties, NodePropertyTypes } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
@@ -24,8 +23,6 @@ const emit = defineEmits<{
 	(event: 'update:model-value', value: AssignmentValue): void;
 	(event: 'remove'): void;
 }>();
-
-const i18n = useI18n();
 
 const assignmentTypeToNodePropType = (type: string): NodePropertyTypes => {
 	switch (type) {
@@ -93,7 +90,7 @@ const onBlur = (): void => {
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
-		<InputTriple>
+		<InputTriple middle-width="100px">
 			<template #left>
 				<ParameterInputFull
 					:key="nameParameter.type"
@@ -124,6 +121,7 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					is-single-line
+					is-assignment
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="valueParameter"
 					:value="assignment.value"

@@ -1,3 +1,10 @@
+<script setup lang="ts">
+type Props = {
+	middleWidth?: string;
+};
+withDefaults(defineProps<Props>(), { middleWidth: '160px' });
+</script>
+
 <template>
 	<n8n-resize-observer
 		:class="{ [$style.observer]: true }"
@@ -19,7 +26,11 @@
 				<div v-if="$slots.left" :class="$style.item">
 					<slot name="left" :breakpoint="bp"></slot>
 				</div>
-				<div v-if="$slots.middle" :class="[$style.item, $style.middle]">
+				<div
+					v-if="$slots.middle"
+					:class="[$style.item, $style.middle]"
+					:style="{ flexBasis: middleWidth }"
+				>
 					<slot name="middle" :breakpoint="bp"></slot>
 				</div>
 				<div v-if="$slots.right" :class="$style.item">

@@ -4,9 +4,15 @@
 		:class="$style['expression-parameter-input']"
 		@keydown.tab="onBlur"
 	>
-		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
+		<div
+			:class="[
+				$style['all-sections'],
+				{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
+			]"
+		>
 			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
-				<ExpressionFunctionIcon />
+				<span v-if="isAssignment">=</span>
+				<ExpressionFunctionIcon v-else />
 			</div>
 			<InlineExpressionEditorInput
 				ref="inlineInput"
@@ -75,6 +81,10 @@ export default defineComponent({
 			default: false,
 		},
 		isSingleLine: {
+			type: Boolean,
+			default: false,
+		},
+		isAssignment: {
 			type: Boolean,
 			default: false,
 		},
@@ -175,6 +185,10 @@ export default defineComponent({
 		width: 22px;
 		text-align: center;
 	}
+}
+
+.assignment .prepend-section {
+	padding-top: 0;
 }
 
 .expression-editor-modal-opener {

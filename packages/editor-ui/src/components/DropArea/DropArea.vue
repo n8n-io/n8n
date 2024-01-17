@@ -1,12 +1,5 @@
 <script setup lang="ts">
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import type { XYPosition } from '@/Interface';
-
-type Props = {
-	stickyOffset?: XYPosition;
-};
-
-withDefaults(defineProps<Props>(), { stickyOffset: () => [0, 0] as XYPosition });
 
 const emit = defineEmits<{ (event: 'drop', value: string): void }>();
 
@@ -16,18 +9,12 @@ const onDrop = (value: string) => {
 </script>
 
 <template>
-	<DraggableTarget
-		sticky
-		sticky-origin="center"
-		:sticky-offset="stickyOffset"
-		type="mapping"
-		@drop="onDrop"
-	>
+	<DraggableTarget type="mapping" @drop="onDrop">
 		<template #default="{ droppable, activeDrop }">
 			<div
 				:class="{ [$style.area]: true, [$style.active]: activeDrop, [$style.droppable]: droppable }"
 			>
-				<slot :active="activeDrop"></slot>
+				<slot :active="activeDrop" :droppable="droppable"></slot>
 			</div>
 		</template>
 	</DraggableTarget>

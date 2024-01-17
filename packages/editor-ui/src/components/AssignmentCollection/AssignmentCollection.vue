@@ -48,6 +48,7 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
+const activeDragField = computed(() => nameFromExpression(ndvStore.draggableData));
 
 watch(state.paramValue, (value) => {
 	void callDebounced(
@@ -140,28 +141,23 @@ function getIssues(index: number): string[] {
 					</Assignment>
 				</div>
 			</div>
-			<div :class="$style.dropAreaWrapper" data-test-id="assignment-collection-drop-area">
+			<div
+				:class="$style.dropAreaWrapper"
+				data-test-id="assignment-collection-drop-area"
+				@click="addAssignment"
+			>
 				<DropArea :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
-					<template #default="{ active }">
-						<div
-							:class="{
-								[$style.dropArea]: true,
-								[$style.active]: active,
-							}"
-						>
-							<span>{{
-								i18n.baseText(active ? 'assignment.dropField' : 'assignment.dragFields')
-							}}</span>
-							<span :class="$style.or">{{ i18n.baseText('assignment.or') }}</span>
-							<n8n-button
-								data-test-id="assignment-collection-add"
-								:class="$style.addButton"
-								size="large"
-								text
-								@click="addAssignment"
-							>
-								{{ i18n.baseText('assignment.add') }}
-							</n8n-button>
+					<template #default="{ active, droppable }">
+						<div :class="{ [$style.active]: active, [$style.droppable]: droppable }">
+							<div v-if="droppable" :class="$style.dropArea">
+								<span>{{ i18n.baseText('assignment.dropField') }}</span>
+								<span :class="$style.activeField">{{ activeDragField }}</span>
+							</div>
+							<div v-else :class="$style.dropArea">
+								<span>{{ i18n.baseText('assignment.dragFields') }}</span>
+								<span :class="$style.or">{{ i18n.baseText('assignment.or') }}</span>
+								<span :class="$style.add">{{ i18n.baseText('assignment.add') }} </span>
+							</div>
 						</div>
 					</template>
 				</DropArea>
@@ -193,8 +189,16 @@ function getIssues(index: number): string[] {
 	padding-left: var(--spacing-l);
 }
 
-.dropAreaWrapper:not(.empty .dropAreaWrapper) {
-	padding-left: var(--spacing-l);
+.dropAreaWrapper {
+	cursor: pointer;
+
+	&:not(.empty .dropAreaWrapper) {
+		padding-left: var(--spacing-l);
+	}
+
+	&:hover .add {
+		color: var(--color-primary-shade-1);
+	}
 }
 
 .dropArea {
@@ -204,19 +208,26 @@ function getIssues(index: number): string[] {
 	font-size: var(--font-size-s);
 	color: var(--color-text-dark);
 	gap: 0.5ch;
+}
 
-	.or {
-		color: var(--color-text-light);
-		font-size: var(--font-size-2xs);
-	}
+.or {
+	color: var(--color-text-light);
+	font-size: var(--font-size-2xs);
+}
+
+.add {
+	color: var(--color-primary);
+	font-weight: var(--font-weight-bold);
+}
+
+.activeField {
+	font-weight: var(--font-weight-bold);
+	color: var(--color-ndv-droppable-parameter);
 }
 
 .active {
-	pointer-events: none;
-
-	.or,
-	.addButton {
-		opacity: 0;
+	.activeField {
+		color: var(--color-success);
 	}
 }
 
@@ -228,6 +239,11 @@ function getIssues(index: number): string[] {
 		min-height: 15vh;
 	}
 
+	.droppable .dropArea {
+		flex-direction: row;
+		gap: 0.5ch;
+	}
+
 	.content {
 		gap: var(--spacing-s);
 	}
@@ -235,9 +251,5 @@ function getIssues(index: number): string[] {
 
 .icon {
 	font-size: var(--font-size-2xl);
-}
-
-.addButton {
-	padding: 0;
 }
 </style>

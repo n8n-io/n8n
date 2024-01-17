@@ -47,6 +47,7 @@
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
 				:is-single-line="isSingleLine"
+				:is-assignment="isAssignment"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -550,6 +551,9 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isSingleLine: {
+			type: Boolean,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {

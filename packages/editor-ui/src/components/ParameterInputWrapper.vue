@@ -7,6 +7,7 @@
 			:model-value="modelValue"
 			:path="path"
 			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
 			:droppable="droppable"
 			:active-drop="activeDrop"
 			:force-show-expression="forceShowExpression"
@@ -86,6 +87,9 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isSingleLine: {
+			type: Boolean,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
