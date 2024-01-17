@@ -31,7 +31,6 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',

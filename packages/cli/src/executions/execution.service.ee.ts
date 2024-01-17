@@ -1,9 +1,9 @@
-import { ExecutionService } from './execution.service';
+import type { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.request';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
-import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
+import type { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export class EnterpriseExecutionsService {
 	constructor(
