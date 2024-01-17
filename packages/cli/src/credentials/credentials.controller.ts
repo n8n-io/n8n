@@ -27,7 +27,7 @@ credentialsController.get(
 	'/',
 	listQueryMiddleware,
 	ResponseHelper.send(async (req: ListQuery.Request) => {
-		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
+		return await CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 
@@ -105,7 +105,7 @@ credentialsController.post(
 			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return CredentialsService.test(req.user, mergedCredentials);
+		return await CredentialsService.test(req.user, mergedCredentials);
 	}),
 );
 

@@ -50,8 +50,8 @@ export class NodeTypesController {
 
 		const nodeTypes: INodeTypeDescription[] = [];
 
-		const promises = nodeInfos.map(async ({ name, version }) =>
-			populateTranslation(name, version, nodeTypes),
+		const promises = nodeInfos.map(
+			async ({ name, version }) => await populateTranslation(name, version, nodeTypes),
 		);
 
 		await Promise.all(promises);

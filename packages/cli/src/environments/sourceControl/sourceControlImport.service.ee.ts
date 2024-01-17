@@ -186,7 +186,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVariablesFromDb(): Promise<Variables[]> {
-		return this.variablesService.getAllCached();
+		return await this.variablesService.getAllCached();
 	}
 
 	public async getRemoteTagsAndMappingsFromFile(): Promise<{

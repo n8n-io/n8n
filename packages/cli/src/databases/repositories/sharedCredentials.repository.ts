@@ -25,7 +25,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	async findByCredentialIds(credentialIds: string[]) {
-		return this.find({
+		return await this.find({
 			relations: ['credentials', 'role', 'user'],
 			where: {
 				credentialsId: In(credentialIds),
@@ -34,7 +34,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	async makeOwnerOfAllCredentials(user: User, role: Role) {
-		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
+		return await this.update({ userId: Not(user.id), roleId: role.id }, { user });
 	}
 
 	/**
@@ -58,11 +58,11 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		// If credential sharing is not enabled, get only credentials owned by this user
 		if (roleId) where.roleId = roleId;
 
-		return this.find({ where });
+		return await this.find({ where });
 	}
 
 	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
-		return transaction.delete(SharedCredentials, {
+		return await transaction.delete(SharedCredentials, {
 			user,
 			credentialsId: In(sharedCredentialsIds),
 		});

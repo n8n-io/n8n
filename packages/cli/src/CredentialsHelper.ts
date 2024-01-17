@@ -121,7 +121,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
 
-				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
+				return await credentialType.authenticate(
+					credentials,
+					requestOptions as IHttpRequestOptions,
+				);
 			}
 
 			if (typeof credentialType.authenticate === 'object') {

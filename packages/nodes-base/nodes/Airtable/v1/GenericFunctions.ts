@@ -59,7 +59,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**

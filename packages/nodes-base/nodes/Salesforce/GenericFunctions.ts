@@ -79,7 +79,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export async function salesforceApiRequest(

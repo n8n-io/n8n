@@ -345,8 +345,9 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		void Worker.jobQueue.process(flags.concurrency, async (job) =>
-			this.runJob(job, this.nodeTypes),
+		void Worker.jobQueue.process(
+			flags.concurrency,
+			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 
 		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {

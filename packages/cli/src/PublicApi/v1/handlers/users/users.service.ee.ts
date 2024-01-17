@@ -15,7 +15,7 @@ export async function getUser(data: {
 	withIdentifier: string;
 	includeRole?: boolean;
 }): Promise<User | null> {
-	return Container.get(UserRepository).findOne({
+	return await Container.get(UserRepository).findOne({
 		where: {
 			...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
 			...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),

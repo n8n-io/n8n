@@ -1431,7 +1431,7 @@ return 0;`,
 				}
 				return [newItems];
 			} else if (operation === 'summarize') {
-				return summarize.execute.call(this, items);
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
