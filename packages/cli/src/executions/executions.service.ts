@@ -78,7 +78,7 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
-		return Container.get(WorkflowSharingService).getSharedWorkflowIds(user, ['owner']);
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, ['owner']);
 	}
 
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
@@ -342,7 +342,7 @@ export class ExecutionsService {
 			}
 		}
 
-		return Container.get(ExecutionRepository).deleteExecutionsByFilter(
+		return await Container.get(ExecutionRepository).deleteExecutionsByFilter(
 			requestFilters,
 			sharedWorkflowIds,
 			{

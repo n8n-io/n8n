@@ -9,23 +9,23 @@ import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 export class ExecutionsController {
 	@Get('/')
 	async getExecutionsList(req: ExecutionRequest.GetAll) {
-		return ExecutionsService.getExecutionsList(req);
+		return await ExecutionsService.getExecutionsList(req);
 	}
 
 	@Get('/:id')
 	async getExecution(req: ExecutionRequest.Get) {
 		return isSharingEnabled()
-			? EnterpriseExecutionsService.getExecution(req)
-			: ExecutionsService.getExecution(req);
+			? await EnterpriseExecutionsService.getExecution(req)
+			: await ExecutionsService.getExecution(req);
 	}
 
 	@Post('/:id/retry')
 	async retryExecution(req: ExecutionRequest.Retry) {
-		return ExecutionsService.retryExecution(req);
+		return await ExecutionsService.retryExecution(req);
 	}
 
 	@Post('/delete')
 	async deleteExecutions(req: ExecutionRequest.Delete) {
-		return ExecutionsService.deleteExecutions(req);
+		return await ExecutionsService.deleteExecutions(req);
 	}
 }

@@ -34,7 +34,7 @@ export async function doesNotExist(dir: string) {
 
 export async function toBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
-	return new Promise<Buffer>((resolve, reject) => {
+	return await new Promise<Buffer>((resolve, reject) => {
 		body
 			.once('error', (cause) => {
 				if ('code' in cause && cause.code === 'Z_DATA_ERROR')

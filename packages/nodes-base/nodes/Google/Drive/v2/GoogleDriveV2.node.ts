@@ -22,6 +22,6 @@ export class GoogleDriveV2 implements INodeType {
 	methods = { listSearch };
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

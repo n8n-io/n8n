@@ -89,7 +89,7 @@ export class ActiveWorkflowRunner {
 	}
 
 	async getAllWorkflowActivationErrors() {
-		return this.activationErrorsService.getAll();
+		return await this.activationErrorsService.getAll();
 	}
 
 	/**
@@ -305,7 +305,7 @@ export class ActiveWorkflowRunner {
 		};
 
 		const workflowRunner = new WorkflowRunner();
-		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		return await workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	/**

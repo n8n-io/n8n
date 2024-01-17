@@ -59,8 +59,8 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error initializing DB', error),
+		await Db.init().catch(
+			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
 		);
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
@@ -71,8 +71,9 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
-		await Db.migrate().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error running database migrations', error),
+		await Db.migrate().catch(
+			async (error: Error) =>
+				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
 		const dbType = config.getEnv('database.type');

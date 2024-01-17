@@ -1058,7 +1058,7 @@ export class Workflow {
 			webhookData,
 		);
 
-		return webhookFn.call(thisArgs);
+		return await webhookFn.call(thisArgs);
 	}
 
 	/**
@@ -1143,7 +1143,7 @@ export class Workflow {
 			return triggerResponse;
 		}
 		// In all other modes simply start the trigger
-		return nodeType.trigger.call(triggerFunctions);
+		return await nodeType.trigger.call(triggerFunctions);
 	}
 
 	/**
@@ -1172,7 +1172,7 @@ export class Workflow {
 			});
 		}
 
-		return nodeType.poll.call(pollFunctions);
+		return await nodeType.poll.call(pollFunctions);
 	}
 
 	/**
@@ -1208,7 +1208,9 @@ export class Workflow {
 			webhookData,
 			closeFunctions,
 		);
-		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
+		return nodeType instanceof Node
+			? await nodeType.webhook(context)
+			: await nodeType.webhook.call(context);
 	}
 
 	/**
@@ -1322,7 +1324,7 @@ export class Workflow {
 					: await nodeType.execute.call(context);
 
 			const closeFunctionsResults = await Promise.allSettled(
-				closeFunctions.map(async (fn) => fn()),
+				closeFunctions.map(async (fn) => await fn()),
 			);
 
 			const closingErrors = closeFunctionsResults

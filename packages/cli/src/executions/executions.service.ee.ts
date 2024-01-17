@@ -14,7 +14,7 @@ export class EnterpriseExecutionsService extends ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows
-		return Container.get(WorkflowSharingService).getSharedWorkflowIds(user);
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user);
 	}
 
 	static async getExecution(

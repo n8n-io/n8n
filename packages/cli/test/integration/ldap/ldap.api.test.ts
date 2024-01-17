@@ -93,7 +93,7 @@ const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<L
 		}),
 		loadOnStartup: true,
 	});
-	return jsonParse(ldapConfig);
+	return await jsonParse(ldapConfig);
 };
 
 test('Member role should not be able to access ldap routes', async () => {

@@ -182,7 +182,7 @@ export class LoadNodesAndCredentials {
 			'node_modules',
 			packageName,
 		);
-		return this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 
 	async unloadPackage(packageName: string) {
