@@ -17,7 +17,7 @@ describe('Become creator CTA', () => {
 		getBecomeTemplateCreatorCta().should('not.exist');
 	});
 
-	it('should show the CTA', () => {
+	it('should show the CTA if the user is eligible', () => {
 		interceptCtaRequestWithResponse(true).as('cta');
 		cy.visit(WorkflowsPage.url);
 
