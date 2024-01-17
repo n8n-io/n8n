@@ -3,7 +3,7 @@ import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 
 export const executionFilterToQueryFilter = (
-	filter: ExecutionFilterType,
+	filter: Partial<ExecutionFilterType>,
 ): ExecutionsQueryFilter => {
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {

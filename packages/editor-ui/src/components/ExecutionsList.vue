@@ -7,33 +7,33 @@
 					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
 						v-else
-						v-model="autoRefresh"
+						:model-value="executionsStore.autoRefresh"
 						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
-						@update:modelValue="handleAutoRefreshToggle"
+						@update:model-value="handleAutoRefreshToggle"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
 					<ExecutionFilter
 						v-show="!isMounting"
 						:workflows="workflows"
-						@filterChanged="onFilterChanged"
+						@filter-changed="onFilterChanged"
 					/>
 				</div>
 			</div>
 
 			<el-checkbox
-				v-if="allVisibleSelected && finishedExecutionsCount > 0"
+				v-if="allVisibleSelected && executionsStore.executionsCount > 0"
 				:class="$style.selectAll"
 				:label="
 					i18n.baseText('executionsList.selectAll', {
-						adjustToNumber: finishedExecutionsCount,
-						interpolate: { executionNum: finishedExecutionsCount },
+						adjustToNumber: executionsStore.executionsCount,
+						interpolate: { executionNum: `${executionsStore.executionsCount}` },
 					})
 				"
 				:model-value="allExistingSelected"
 				data-test-id="select-all-executions-checkbox"
-				@update:modelValue="handleCheckAllExistingChange"
+				@update:model-value="handleCheckAllExistingChange"
 			/>
 
 			<div v-if="isMounting">
@@ -47,10 +47,10 @@
 						<th>
 							<el-checkbox
 								:model-value="allVisibleSelected"
-								:disabled="finishedExecutionsCount < 1"
+								:disabled="executionsStore.executionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
-								@update:modelValue="handleCheckAllVisibleChange"
+								@update:model-value="handleCheckAllVisibleChange"
 							/>
 						</th>
 						<th>{{ i18n.baseText('executionsList.name') }}</th>
@@ -65,7 +65,7 @@
 				</thead>
 				<tbody>
 					<tr
-						v-for="execution in combinedExecutions"
+						v-for="execution in executionsStore.filteredExecutions"
 						:key="execution.id"
 						:class="getRowClass(execution)"
 					>
@@ -75,13 +75,13 @@
 								:model-value="selectedItems[execution.id] || allExistingSelected"
 								label=""
 								data-test-id="select-execution-checkbox"
-								@update:modelValue="handleCheckboxChanged(execution.id)"
+								@update:model-value="handleCheckboxChanged(execution.id)"
 							/>
 						</td>
 						<td>
 							<span @click.stop="displayExecution(execution)"
 								><a href="#" :class="$style.link">{{
-									execution.workflowName || i18n.baseText('executionsList.unsavedWorkflow')
+									execution.workflowName || getExecutionWorkflowName(execution)
 								}}</a></span
 							>
 						</td>
@@ -224,7 +224,7 @@
 			</table>
 
 			<div
-				v-if="!combinedExecutions.length && !isMounting && !isDataLoading"
+				v-if="!executionsStore.filteredExecutions.length && !isMounting && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
@@ -232,7 +232,8 @@
 			</div>
 			<div
 				v-else-if="
-					finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated
+					executionsStore.executionsCount > executionsStore.executions.length ||
+					executionsStore.executionsCountEstimated
 				"
 				:class="$style.loadMore"
 			>
@@ -240,13 +241,13 @@
 					icon="sync"
 					:title="i18n.baseText('executionsList.loadMore')"
 					:label="i18n.baseText('executionsList.loadMore')"
-					:loading="isDataLoading"
+					:loading="executionsStore.loading"
 					data-test-id="load-more-button"
 					@click="loadMore()"
 				/>
 			</div>
 			<div
-				v-else-if="!isMounting && !isDataLoading"
+				v-else-if="!isMounting && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-all-loaded"
 			>
@@ -262,7 +263,7 @@
 				{{
 					i18n.baseText('executionsList.selected', {
 						adjustToNumber: numSelected,
-						interpolate: { numSelected },
+						interpolate: { numSelected: `${numSelected}` },
 					})
 				}}
 			</span>
@@ -294,22 +295,18 @@ import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type {
-	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
-	IExecutionsListResponse,
 	IWorkflowShortResponse,
 	ExecutionFilterType,
-	ExecutionsQueryFilter,
 } from '@/Interface';
-import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
-import { range as _range } from 'lodash-es';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { setPageTitle } from '@/utils/htmlUtils';
-import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRoute } from 'vue-router';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export default defineComponent({
 	name: 'ExecutionsList',
@@ -318,12 +315,6 @@ export default defineComponent({
 		ExecutionFilter,
 	},
 	mixins: [executionHelpers],
-	props: {
-		autoRefreshEnabled: {
-			type: Boolean,
-			default: true,
-		},
-	},
 	setup() {
 		const i18n = useI18n();
 		const telemetry = useTelemetry();
@@ -348,14 +339,9 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
-
-			isDataLoading: false,
-
-			requestItemsPerRequest: 10,
 
 			selectedItems: {} as { [key: string]: boolean },
 
@@ -366,11 +352,10 @@ export default defineComponent({
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
-		void this.handleAutoRefreshToggle();
+		void this.executionsStore.initialize();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
-		this.autoRefresh = this.autoRefreshEnabled;
 		await this.loadWorkflows();
 
 		void this.externalHooks.run('executionsList.openDialog');
@@ -379,46 +364,17 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
-		this.autoRefresh = false;
-		this.stopAutoRefreshInterval();
+		this.executionsStore.terminate();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
-		activeExecutions(): IExecutionsCurrentSummaryExtended[] {
-			return this.workflowsStore.activeExecutions;
-		},
-		combinedExecutions(): IExecutionsSummary[] {
-			const returnData: IExecutionsSummary[] = [];
-
-			if (['all', 'running'].includes(this.filter.status)) {
-				returnData.push(...this.activeExecutions);
-			}
-			if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
-				returnData.push(...this.finishedExecutions);
-			}
-
-			return returnData.filter(
-				(execution) =>
-					this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
-			);
-		},
+		...mapStores(useUIStore, useWorkflowsStore, useExecutionsStore),
 		numSelected(): number {
 			if (this.allExistingSelected) {
-				return this.finishedExecutionsCount;
+				return this.executionsStore.executionsCount;
 			}
 
 			return Object.keys(this.selectedItems).length;
-		},
-		workflowFilterCurrent(): ExecutionsQueryFilter {
-			const filter: ExecutionsQueryFilter = {};
-			if (this.filter.workflowId !== 'all') {
-				filter.workflowId = this.filter.workflowId;
-			}
-			return filter;
-		},
-		workflowFilterPast(): ExecutionsQueryFilter {
-			return executionFilterToQueryFilter(this.filter);
 		},
 		pageTitle() {
 			return this.i18n.baseText('executionsList.workflowExecutions');
@@ -435,9 +391,12 @@ export default defineComponent({
 			});
 			window.open(route.href, '_blank');
 		},
-		async handleAutoRefreshToggle() {
-			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
-			void this.startAutoRefreshInterval();
+		async handleAutoRefreshToggle(value: boolean) {
+			if (value) {
+				await this.executionsStore.startAutoRefreshInterval();
+			} else {
+				this.executionsStore.stopAutoRefreshInterval();
+			}
 		},
 		handleCheckAllExistingChange() {
 			this.allExistingSelected = !this.allExistingSelected;
@@ -465,10 +424,11 @@ export default defineComponent({
 				};
 			}
 			this.allVisibleSelected =
-				Object.keys(this.selectedItems).length === this.combinedExecutions.length;
+				Object.keys(this.selectedItems).length === this.executionsStore.filteredExecutions.length;
 			this.allExistingSelected =
-				Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
+				Object.keys(this.selectedItems).length === this.executionsStore.executionsCount;
 		},
+		// @TODO
 		async handleDeleteSelected() {
 			const deleteExecutions = await this.confirm(
 				this.i18n.baseText('executionsList.confirmMessage.message', {
@@ -486,21 +446,18 @@ export default defineComponent({
 				return;
 			}
 
-			this.isDataLoading = true;
-
 			const sendData: IExecutionDeleteFilter = {};
 			if (this.allExistingSelected) {
-				sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
+				sendData.deleteBefore = this.executionsStore.executions[0].startedAt as Date;
 			} else {
 				sendData.ids = Object.keys(this.selectedItems);
 			}
 
-			sendData.filters = this.workflowFilterPast;
+			sendData.filters = this.executionsStore.pastExecutionsFilters;
 
 			try {
 				await this.workflowsStore.deleteExecutions(sendData);
 			} catch (error) {
-				this.isDataLoading = false;
 				this.showError(
 					error,
 					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
@@ -508,7 +465,6 @@ export default defineComponent({
 
 				return;
 			}
-			this.isDataLoading = false;
 
 			this.showMessage({
 				title: this.i18n.baseText('executionsList.showMessage.handleDeleteSelected.title'),
@@ -523,8 +479,8 @@ export default defineComponent({
 			this.allExistingSelected = false;
 			this.selectedItems = {};
 		},
-		async onFilterChanged(filter: ExecutionFilterType) {
-			this.filter = filter;
+		async onFilterChanged(filters: ExecutionFilterType) {
+			this.executionsStore.setFilters(filters);
 			await this.refreshData();
 			this.handleClearSelection();
 			this.isMounting = false;
@@ -548,178 +504,52 @@ export default defineComponent({
 				await this.deleteExecution(commandData.execution);
 			}
 		},
+		getExecutionWorkflowName(execution: IExecutionsSummary): string {
+			return (
+				this.getWorkflowName(execution.workflowId ?? '') ||
+				this.i18n.baseText('executionsList.unsavedWorkflow')
+			);
+		},
 		getWorkflowName(workflowId: string): string | undefined {
 			return this.workflows.find((data) => data.id === workflowId)?.name;
 		},
+		// @TODO
 		async loadActiveExecutions(): Promise<void> {
-			const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)
-				? await this.workflowsStore.getCurrentExecutions(this.workflowFilterCurrent)
-				: [];
-			for (const activeExecution of activeExecutions) {
-				if (activeExecution.workflowId && !activeExecution.workflowName) {
-					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-				}
+			if (isEmpty(this.executionsStore.currentExecutionsFilters.metadata)) {
+				await this.executionsStore.fetchCurrentExecutions();
 			}
-
-			this.workflowsStore.activeExecutions = activeExecutions;
-			this.workflowsStore.addToCurrentExecutions(activeExecutions);
-		},
-		async loadAutoRefresh(): Promise<void> {
-			const filter: ExecutionsQueryFilter = this.workflowFilterPast;
-			// We cannot use firstId here as some executions finish out of order. Let's say
-			// You have execution ids 500 to 505 running.
-			// Suppose 504 finishes before 500, 501, 502 and 503.
-			// iF you use firstId, filtering id >= 504 you won't
-			// ever get ids 500, 501, 502 and 503 when they finish
-			const promises = [this.workflowsStore.getPastExecutions(filter, this.requestItemsPerRequest)];
-			if (isEmpty(filter.metadata)) {
-				promises.push(this.workflowsStore.getCurrentExecutions({}));
-			}
-
-			const results = await Promise.all(promises);
-
-			for (const activeExecution of results[1]) {
-				if (
-					activeExecution.workflowId !== undefined &&
-					activeExecution.workflowName === undefined
-				) {
-					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-				}
-			}
-
-			this.workflowsStore.activeExecutions = results[1];
-
-			// execution IDs are typed as string, int conversion is necessary so we can order.
-			const alreadyPresentExecutions = [...this.finishedExecutions];
-			const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
-				parseInt(exec.id, 10),
-			);
-			let lastId = 0;
-			const gaps = [] as number[];
-
-			const pastExecutions = results[0] || { results: [], count: 0, estimated: false };
-
-			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
-				const currentItem = pastExecutions.results[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && !isNaN(currentId)) {
-					// We are doing this iteration to detect possible gaps.
-					// The gaps are used to remove executions that finished
-					// and were deleted from database but were displaying
-					// in this list while running.
-					if (currentId - lastId > 1) {
-						// We have some gaps.
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
-					}
-				}
-				lastId = parseInt(currentItem.id, 10) || 0;
-
-				// Check new results from end to start
-				// Add new items accordingly.
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-				if (executionIndex !== -1) {
-					// Execution that we received is already present.
-
-					if (
-						alreadyPresentExecutions[executionIndex].finished === false &&
-						currentItem.finished === true
-					) {
-						// Concurrency stuff. This might happen if the execution finishes
-						// prior to saving all information to database. Somewhat rare but
-						// With auto refresh and several executions, it happens sometimes.
-						// So we replace the execution data so it displays correctly.
-						alreadyPresentExecutions[executionIndex] = currentItem;
-					}
-
-					continue;
-				}
-
-				// Find the correct position to place this newcomer
-				let j;
-				for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
-					if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
-						alreadyPresentExecutions.splice(j + 1, 0, currentItem);
-						break;
-					}
-				}
-				if (j === -1) {
-					alreadyPresentExecutions.unshift(currentItem);
-				}
-			}
-			const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
-				(execution) =>
-					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
-			);
-			this.finishedExecutionsCount = pastExecutions.count;
-			this.finishedExecutionsCountEstimated = pastExecutions.estimated;
-
-			this.finishedExecutions = alreadyPresentExecutionsFiltered;
-			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
-
-			this.adjustSelectionAfterMoreItemsLoaded();
 		},
 		async loadFinishedExecutions(): Promise<void> {
-			if (this.filter.status === 'running') {
-				this.finishedExecutions = [];
-				this.finishedExecutionsCount = 0;
-				this.finishedExecutionsCountEstimated = false;
+			if (this.executionsStore.filters.status === 'running') {
 				return;
 			}
-			const data = await this.workflowsStore.getPastExecutions(
-				this.workflowFilterPast,
-				this.requestItemsPerRequest,
-			);
-			this.finishedExecutions = data.results;
-			this.finishedExecutionsCount = data.count;
-			this.finishedExecutionsCountEstimated = data.estimated;
 
-			this.workflowsStore.addToCurrentExecutions(data.results);
+			await this.executionsStore.fetchPastExecutions();
 
-			if (this.finishedExecutions.length === 0) {
+			if (this.executionsStore.executions.length === 0) {
 				this.handleClearSelection();
 			}
 		},
 		async loadMore() {
-			if (this.filter.status === 'running') {
+			if (this.executionsStore.filters.status === 'running') {
 				return;
 			}
 
-			this.isDataLoading = true;
-
-			const filter = this.workflowFilterPast;
 			let lastId: string | undefined;
-
-			if (this.finishedExecutions.length !== 0) {
-				const lastItem = this.finishedExecutions.slice(-1)[0];
+			if (this.executionsStore.executions.length !== 0) {
+				const lastItem = this.executionsStore.executions.slice(-1)[0];
 				lastId = lastItem.id;
 			}
 
-			let data: IExecutionsListResponse;
 			try {
-				data = await this.workflowsStore.getPastExecutions(
-					filter,
-					this.requestItemsPerRequest,
+				await this.executionsStore.fetchPastExecutions(
+					this.executionsStore.pastExecutionsFilters,
 					lastId,
 				);
 			} catch (error) {
-				this.isDataLoading = false;
 				this.showError(error, this.i18n.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
-
-			data.results = data.results.map((execution) => {
-				// @ts-ignore
-				return { ...execution, mode: execution.mode };
-			});
-
-			this.finishedExecutions.push(...data.results);
-			this.finishedExecutionsCount = data.count;
-			this.finishedExecutionsCountEstimated = data.estimated;
-
-			this.isDataLoading = false;
-
-			this.workflowsStore.addToCurrentExecutions(data.results);
 
 			this.adjustSelectionAfterMoreItemsLoaded();
 		},
@@ -748,8 +578,6 @@ export default defineComponent({
 			}
 		},
 		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
-			this.isDataLoading = true;
-
 			try {
 				const retrySuccessful = await this.workflowsStore.retryExecution(
 					execution.id,
@@ -767,50 +595,22 @@ export default defineComponent({
 						type: 'error',
 					});
 				}
-
-				this.isDataLoading = false;
 			} catch (error) {
 				this.showError(error, this.i18n.baseText('executionsList.showError.retryExecution.title'));
-
-				this.isDataLoading = false;
 			}
 		},
 		async refreshData() {
-			this.isDataLoading = true;
-
 			try {
 				await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
 			} catch (error) {
 				this.showError(error, this.i18n.baseText('executionsList.showError.refreshData.title'));
 			}
-
-			this.isDataLoading = false;
-		},
-		getStatus(execution: IExecutionsSummary): ExecutionStatus {
-			if (execution.status) {
-				return execution.status;
-			} else {
-				// this should not happen but just in case
-				let status: ExecutionStatus = 'unknown';
-				if (execution.waitTill) {
-					status = 'waiting';
-				} else if (execution.stoppedAt === undefined) {
-					status = 'running';
-				} else if (execution.finished) {
-					status = 'success';
-				} else if (execution.stoppedAt !== null) {
-					status = 'failed';
-				} else {
-					status = 'unknown';
-				}
-				return status;
-			}
 		},
 		getRowClass(execution: IExecutionsSummary): string {
-			return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
+			return [this.$style.execRow, this.$style[execution.status ?? '']].join(' ');
 		},
 		getStatusText(entry: IExecutionsSummary): string {
-			const status = this.getStatus(entry);
+			const status = entry.status;
 			let text = '';
 
 			if (status === 'waiting') {
@@ -834,14 +634,14 @@ export default defineComponent({
 			return text;
 		},
 		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
-			const status = this.getStatus(entry);
+			const status = entry.status;
 			let path = '';
 
 			if (status === 'waiting') {
 				path = 'executionsList.statusWaiting';
 			} else if (status === 'canceled') {
 				path = 'executionsList.statusCanceled';
-			} else if (['crashed', 'failed', 'success'].includes(status)) {
+			} else if (['crashed', 'failed', 'success'].includes(status ?? '')) {
 				if (!entry.stoppedAt) {
 					path = 'executionsList.statusTextWithoutTime';
 				} else {
@@ -858,7 +658,7 @@ export default defineComponent({
 			return path;
 		},
 		getStatusTooltipText(entry: IExecutionsSummary): string {
-			const status = this.getStatus(entry);
+			const status = entry.status;
 			let text = '';
 
 			if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
@@ -904,7 +704,6 @@ export default defineComponent({
 			);
 		},
 		async deleteExecution(execution: IExecutionsSummary) {
-			this.isDataLoading = true;
 			try {
 				await this.workflowsStore.deleteExecutions({ ids: [execution.id] });
 				await this.refreshData();
@@ -919,7 +718,6 @@ export default defineComponent({
 					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
 			}
-			this.isDataLoading = true;
 		},
 		isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
 			if (!execution.waitTill) {
@@ -928,10 +726,10 @@ export default defineComponent({
 			return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
 		},
 		isRunning(execution: IExecutionsSummary): boolean {
-			return this.getStatus(execution) === 'running';
+			return execution.status === 'running';
 		},
 		selectAllVisibleExecutions() {
-			this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+			this.executionsStore.filteredExecutions.forEach((execution: IExecutionsSummary) => {
 				this.selectedItems = { ...this.selectedItems, [execution.id]: true };
 			});
 		},
@@ -941,23 +739,11 @@ export default defineComponent({
 				this.selectAllVisibleExecutions();
 			}
 		},
-		async startAutoRefreshInterval() {
-			if (this.autoRefresh && this.route.name === VIEWS.EXECUTIONS) {
-				await this.loadAutoRefresh();
-				this.autoRefreshTimeout = setTimeout(() => {
-					void this.startAutoRefreshInterval();
-				}, 4 * 1000); // refresh data every 4 secs
-			}
-		},
-		stopAutoRefreshInterval() {
-			clearTimeout(this.autoRefreshTimeout);
-			this.autoRefreshTimeout = undefined;
-		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
-				this.stopAutoRefreshInterval();
+				this.executionsStore.stopAutoRefreshInterval();
 			} else {
-				void this.startAutoRefreshInterval();
+				void this.executionsStore.startAutoRefreshInterval();
 			}
 		},
 	},
