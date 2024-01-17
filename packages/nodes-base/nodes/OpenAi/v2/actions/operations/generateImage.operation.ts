@@ -16,11 +16,11 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for image generation',
 		options: [
 			{
-				name: 'DALL-E 2',
+				name: 'DALL-E-2',
 				value: 'dall-e-2',
 			},
 			{
-				name: 'DALL-E 3',
+				name: 'DALL-E-3',
 				value: 'dall-e-3',
 			},
 		],

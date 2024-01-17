@@ -9,6 +9,7 @@ import * as translateRecording from './translateRecording.operation';
 import * as uploadFile from './uploadFile.operation';
 import * as deleteFile from './deleteFile.operation';
 import * as listFiles from './listFiles.operation';
+import * as messageModel from './messageModel.operation';
 
 export {
 	generateImage,
@@ -20,6 +21,7 @@ export {
 	uploadFile,
 	deleteFile,
 	listFiles,
+	messageModel,
 };
 
 export const description: INodeProperties[] = [
@@ -32,4 +34,5 @@ export const description: INodeProperties[] = [
 	...uploadFile.description,
 	...deleteFile.description,
 	...listFiles.description,
+	...messageModel.description,
 ];

@@ -11,7 +11,8 @@ type OpenAiType =
 	| 'translateRecording'
 	| 'uploadFile'
 	| 'deleteFile'
-	| 'listFiles';
+	| 'listFiles'
+	| 'messageModel';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
