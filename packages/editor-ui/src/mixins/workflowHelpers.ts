@@ -168,6 +168,13 @@ export function resolveParameter(
 		nodeConnection,
 	);
 
+	if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
+		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
+		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
+		const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
+		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
+	}
+
 	let runExecutionData: IRunExecutionData;
 	if (!executionData?.data) {
 		runExecutionData = {

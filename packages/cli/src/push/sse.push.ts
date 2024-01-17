@@ -4,6 +4,7 @@ import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
 import type { User } from '@db/entities/User';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 type Connection = { req: PushRequest; res: PushResponse };
 
@@ -13,8 +14,9 @@ export class SSEPush extends AbstractPush<Connection> {
 
 	readonly connections: Record<string, Connection> = {};
 
-	constructor(logger: Logger) {
-		super(logger);
+	constructor(logger: Logger, multiMainSetup: MultiMainSetup) {
+		super(logger, multiMainSetup);
+
 		this.channel.on('disconnect', (channel, { req }) => {
 			this.remove(req?.query?.sessionId);
 		});
@@ -25,12 +27,12 @@ export class SSEPush extends AbstractPush<Connection> {
 		this.channel.addClient(connection.req, connection.res);
 	}
 
-	protected close({ res }: Connection): void {
+	protected close({ res }: Connection) {
 		res.end();
 		this.channel.removeClient(res);
 	}
 
-	protected sendToOne(connection: Connection, data: string): void {
+	protected sendToOneConnection(connection: Connection, data: string) {
 		this.channel.send(data, [connection.res]);
 	}
 }

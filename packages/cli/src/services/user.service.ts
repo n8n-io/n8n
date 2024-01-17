@@ -270,7 +270,7 @@ export class UserService {
 		const usersInvited = await this.sendEmails(
 			owner,
 			Object.fromEntries(createdUsers),
-			toCreateUsers[0].role, // same role for all invited users
+			attributes[0].role, // same role for all invited users
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };

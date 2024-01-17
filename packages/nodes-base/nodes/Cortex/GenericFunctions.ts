@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 export async function cortexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

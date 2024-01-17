@@ -2,15 +2,12 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
 	JsonObject,
-	ExecutionStatus,
 	ExecutionError,
 	INode,
 	IRunExecutionData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
-import type { FindOperator } from 'typeorm';
-import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -24,31 +21,18 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from '@/requests';
+import type { ExecutionRequest } from './execution.request';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
+import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-export interface IGetExecutionsQueryFilter {
-	id?: FindOperator<string> | string;
-	finished?: boolean;
-	mode?: string;
-	retryOf?: string;
-	retrySuccessId?: string;
-	status?: ExecutionStatus[];
-	workflowId?: string;
-	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
-	startedAfter?: string;
-	startedBefore?: string;
-}
 
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -193,14 +177,10 @@ export class ExecutionsService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
-			where: {
-				id: executionId,
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: false,
-		});
+		const execution = await Container.get(ExecutionRepository).findIfShared(
+			executionId,
+			sharedWorkflowIds,
+		);
 
 		if (!execution) {
 			Container.get(Logger).info(
@@ -225,13 +205,10 @@ export class ExecutionsService {
 		if (!sharedWorkflowIds.length) return false;
 
 		const { id: executionId } = req.params;
-		const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-		});
+		const execution = (await Container.get(ExecutionRepository).findIfShared(
+			executionId,
+			sharedWorkflowIds,
+		)) as unknown as IExecutionResponse;
 
 		if (!execution) {
 			Container.get(Logger).info(
@@ -281,7 +258,7 @@ export class ExecutionsService {
 		if (req.body.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
-			const workflowId = execution.workflowData.id as string;
+			const workflowId = execution.workflowData.id;
 			const workflowData = (await Container.get(WorkflowRepository).findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;
@@ -296,7 +273,7 @@ export class ExecutionsService {
 			data.workflowData = workflowData;
 			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
-				id: workflowData.id as string,
+				id: workflowData.id,
 				name: workflowData.name,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,

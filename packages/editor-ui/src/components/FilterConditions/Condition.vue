@@ -32,6 +32,7 @@ interface Props {
 	issues?: string[];
 	fixedLeftValue?: boolean;
 	canRemove?: boolean;
+	readOnly?: boolean;
 	index?: number;
 }
 
@@ -39,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
 	issues: () => [],
 	canRemove: true,
 	fixedLeftValue: false,
+	readOnly: false,
 });
 
 const emit = defineEmits<{
@@ -190,7 +192,7 @@ const onBlur = (): void => {
 		data-test-id="filter-condition"
 	>
 		<n8n-icon-button
-			v-if="canRemove"
+			v-if="canRemove && !readOnly"
 			type="tertiary"
 			text
 			size="mini"
@@ -227,6 +229,7 @@ const onBlur = (): void => {
 						:value="condition.leftValue"
 						:path="`${path}.left`"
 						:class="[$style.input, $style.inputLeft]"
+						:is-read-only="readOnly"
 						data-test-id="filter-condition-left"
 						@update="onLeftValueChange"
 						@blur="onBlur"
@@ -234,6 +237,7 @@ const onBlur = (): void => {
 					<OperatorSelect
 						:class="$style.select"
 						:selected="`${operator.type}:${operator.operation}`"
+						:read-only="readOnly"
 						@operatorChange="onOperatorChange"
 					></OperatorSelect>
 					<ParameterInputFull
@@ -248,6 +252,7 @@ const onBlur = (): void => {
 						:value="condition.rightValue"
 						:path="`${path}.right`"
 						:class="[$style.input, $style.inputRight]"
+						:is-read-only="readOnly"
 						data-test-id="filter-condition-right"
 						@update="onRightValueChange"
 						@blur="onBlur"

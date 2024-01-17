@@ -169,7 +169,7 @@ describe('Data pinning', () => {
 });
 
 function setExpressionOnStringValueInSet(expression: string) {
-	cy.get('button').contains('Execute node').click();
+	cy.get('button').contains('Test step').click();
 	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
 	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();

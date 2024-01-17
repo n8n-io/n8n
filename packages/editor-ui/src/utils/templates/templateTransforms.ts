@@ -1,8 +1,4 @@
-import type {
-	ITemplatesWorkflowFull,
-	IWorkflowTemplateNode,
-	IWorkflowTemplateNodeCredentials,
-} from '@/Interface';
+import type { IWorkflowTemplateNode, IWorkflowTemplateNodeCredentials } from '@/Interface';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';
@@ -43,8 +39,12 @@ export const keyFromCredentialTypeAndName = (
  * different versions of n8n may have different credential formats.
  */
 export const normalizeTemplateNodeCredentials = (
-	credentials: IWorkflowTemplateNodeCredentials,
+	credentials?: IWorkflowTemplateNodeCredentials,
 ): NormalizedTemplateNodeCredentials => {
+	if (!credentials) {
+		return {};
+	}
+
 	return Object.fromEntries(
 		Object.entries(credentials).map(([key, value]) => {
 			return typeof value === 'string' ? [key, value] : [key, value.name];
@@ -132,26 +132,4 @@ export const replaceAllTemplateNodeCredentials = (
 			credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
 		};
 	});
-};
-
-/**
- * Returns the nodes in the template that require credentials
- * and the required credentials for each node.
- */
-export const getNodesRequiringCredentials = (
-	nodeTypeProvider: NodeTypeProvider,
-	template: ITemplatesWorkflowFull,
-): TemplateNodeWithRequiredCredential[] => {
-	if (!template) {
-		return [];
-	}
-
-	const nodesWithCredentials: TemplateNodeWithRequiredCredential[] = template.workflow.nodes
-		.map((node) => ({
-			node,
-			requiredCredentials: getNodeTypeDisplayableCredentials(nodeTypeProvider, node),
-		}))
-		.filter(({ requiredCredentials }) => requiredCredentials.length > 0);
-
-	return nodesWithCredentials;
 };

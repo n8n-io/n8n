@@ -154,7 +154,6 @@ export default defineComponent({
 							params: { name: routeWorkflowId },
 						});
 					}
-					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 					break;
 				default:

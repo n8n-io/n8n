@@ -63,7 +63,7 @@ export async function request(config: {
 	baseURL: string;
 	endpoint: string;
 	headers?: IDataObject;
-	data?: IDataObject;
+	data?: IDataObject | IDataObject[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -119,7 +119,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: IDataObject | IDataObject[],
 ) {
 	const response = await request({
 		method,

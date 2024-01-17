@@ -1,3 +1,4 @@
+@import '@n8n/chat/css';
 @import 'styles/plugins';
 
 :root {
@@ -170,6 +171,8 @@
 		var(--node-type-background-l)
 	);
 	--node-error-output-color: #991818;
+
+	--chat--spacing: var(--spacing-s);
 }
 
 .clickable {

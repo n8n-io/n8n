@@ -609,6 +609,25 @@ describe('PATCH /workflows/:id', () => {
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
 	});
+
+	test('should update workflow meta', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			...workflow,
+			meta: {
+				templateCredsSetupCompleted: true,
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		const { data: updatedWorkflow } = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(updatedWorkflow.id).toBe(workflow.id);
+		expect(updatedWorkflow.meta).toEqual(payload.meta);
+	});
 });
 
 describe('POST /workflows/run', () => {

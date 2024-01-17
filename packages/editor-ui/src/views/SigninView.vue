@@ -116,7 +116,7 @@ export default defineComponent({
 		},
 		isRedirectSafe() {
 			const redirect = this.getRedirectQueryParameter();
-			return redirect.startsWith('/');
+			return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
 		},
 		getRedirectQueryParameter() {
 			let redirect = '';
@@ -152,6 +152,11 @@ export default defineComponent({
 
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
+					if (redirect.startsWith('http')) {
+						window.location.href = redirect;
+						return;
+					}
+
 					void this.$router.push(redirect);
 					return;
 				}

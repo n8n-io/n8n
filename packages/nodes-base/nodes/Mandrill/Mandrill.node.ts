@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import map from 'lodash/map';
 import isEmpty from 'lodash/isEmpty';

@@ -1,4 +1,9 @@
-import type { CurrentUserResponse, IInviteResponse, IRestApiContext, IRole } from '@/Interface';
+import type {
+	CurrentUserResponse,
+	IInviteResponse,
+	IRestApiContext,
+	InvitableRoleName,
+} from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
@@ -12,7 +17,7 @@ type AcceptInvitationParams = {
 
 export async function inviteUsers(
 	context: IRestApiContext,
-	params: Array<{ email: string; role: IRole }>,
+	params: Array<{ email: string; role: InvitableRoleName }>,
 ) {
 	return makeRestApiRequest<IInviteResponse[]>(context, 'POST', '/invitations', params);
 }

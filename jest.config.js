@@ -31,7 +31,7 @@ const config = {
 	}, {}),
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: process.env.COVERAGE_ENABLED === 'true',
-	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
+	coverageReporters: ['text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
 };
 
