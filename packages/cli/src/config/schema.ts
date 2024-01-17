@@ -1179,7 +1179,7 @@ export const schema = {
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},
