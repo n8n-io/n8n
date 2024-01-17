@@ -470,25 +470,15 @@ export class ActiveWorkflowRunner {
 
 		if (dbWorkflows.length === 0) return;
 
-		this.logger.info(' ================================');
-		this.logger.info('   Start Active Workflows:');
-		this.logger.info(' ================================');
+		if (this.orchestrationService.isLeader) {
+			this.logger.info(' ================================');
+			this.logger.info('   Start Active Workflows:');
+			this.logger.info(' ================================');
+		}
 
 		for (const dbWorkflow of dbWorkflows) {
-			this.logger.info(`   - ${dbWorkflow.display()}`);
-			this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
-				workflowName: dbWorkflow.name,
-				workflowId: dbWorkflow.id,
-			});
-
 			try {
 				await this.add(dbWorkflow.id, activationMode, dbWorkflow);
-
-				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
-					workflowName: dbWorkflow.name,
-					workflowId: dbWorkflow.id,
-				});
-				this.logger.info('     => Started');
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.info(
@@ -588,6 +578,14 @@ export class ActiveWorkflowRunner {
 				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
 			}
 
+			if (shouldAddWebhooks || shouldAddTriggersAndPollers) {
+				this.logger.info(`   - ${dbWorkflow.display()}`);
+				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				});
+			}
+
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
@@ -634,6 +632,14 @@ export class ActiveWorkflowRunner {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+
+			if (shouldAddWebhooks || shouldAddTriggersAndPollers) {
+				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				});
+				this.logger.info('     => Started');
+			}
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -804,7 +810,7 @@ export class ActiveWorkflowRunner {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow "${dbWorkflow.display()}"`);
+			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,
