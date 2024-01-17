@@ -1890,7 +1890,7 @@ export interface IWaitingForExecutionSource {
 }
 
 export interface IWorkflowBase {
-	id?: string;
+	id: string;
 	name: string;
 	active: boolean;
 	createdAt: Date;
@@ -1927,7 +1927,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: {
 			node?: INode;
-			parentWorkflowId?: string;
+			parentWorkflowId: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;
 			loadedWorkflowData?: IWorkflowBase;

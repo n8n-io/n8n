@@ -49,6 +49,7 @@ export class ActiveExecutions {
 				startedAt: new Date(),
 				workflowData: executionData.workflowData,
 				status: executionStatus,
+				workflowId: executionData.workflowData.id,
 			};
 
 			if (executionData.retryOf !== undefined) {

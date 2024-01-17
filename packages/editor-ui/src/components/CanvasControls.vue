@@ -62,13 +62,15 @@ import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useDeviceSupport } from 'n8n-design-system';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
 const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
+const deviceSupport = useDeviceSupport();
 
 const keyDown = (e: KeyboardEvent) => {
-	const isCtrlKeyPressed = e.metaKey || e.ctrlKey;
+	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
 	if ((e.key === '=' || e.key === '+') && !isCtrlKeyPressed) {
 		zoomIn();
 	} else if ((e.key === '_' || e.key === '-') && !isCtrlKeyPressed) {

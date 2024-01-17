@@ -81,7 +81,6 @@ export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'upd
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: string;
 	tags?: TagEntity[];
 }
 
@@ -119,18 +118,18 @@ export interface IExecutionBase {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
-	workflowId?: string; // To be able to filter executions easily //
+	workflowId: string;
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
+	waitTill?: Date | null;
 }
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
-	waitTill?: Date | null;
-	workflowData?: IWorkflowBase;
+	workflowData: IWorkflowBase;
 }
 
 /**
@@ -148,7 +147,6 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
-	waitTill?: Date | null;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
@@ -162,9 +160,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: string;
 	data: string;
-	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
-	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {

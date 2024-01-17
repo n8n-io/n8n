@@ -87,6 +87,8 @@ export class MemoryMotorhead implements INodeType {
 			apiKey: credentials.apiKey as string,
 			memoryKey: 'chat_history',
 			returnMessages: true,
+			inputKey: 'input',
+			outputKey: 'output',
 		});
 
 		await memory.init();

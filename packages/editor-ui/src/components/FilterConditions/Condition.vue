@@ -33,6 +33,7 @@ interface Props {
 	issues?: string[];
 	fixedLeftValue?: boolean;
 	canRemove?: boolean;
+	readOnly?: boolean;
 	index?: number;
 }
 
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	issues: () => [],
 	canRemove: true,
 	fixedLeftValue: false,
+	readOnly: false,
 });
 
 const emit = defineEmits<{
@@ -191,7 +193,7 @@ const onBlur = (): void => {
 		data-test-id="filter-condition"
 	>
 		<n8n-icon-button
-			v-if="canRemove"
+			v-if="canRemove && !readOnly"
 			type="tertiary"
 			text
 			size="mini"

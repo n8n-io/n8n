@@ -7,6 +7,7 @@ import {
 	addWhereClauses,
 	addSortRules,
 	replaceEmptyStringsByNulls,
+	escapeSqlIdentifier,
 } from '../../v2/helpers/utils';
 
 const mySqlMockNode: INode = {
@@ -146,5 +147,31 @@ describe('Test MySql V2, replaceEmptyStringsByNulls', () => {
 		const replacedData = replaceEmptyStringsByNulls(data);
 		expect(replacedData).toBeDefined();
 		expect(replacedData).toEqual([{ json: { id: 1, name: '' } }]);
+	});
+});
+
+describe('Test MySql V2, escapeSqlIdentifier', () => {
+	it('should escape fully qualified identifier', () => {
+		const input = 'db_name.tbl_name.col_name';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`tbl_name`.`col_name`');
+	});
+
+	it('should escape table name only', () => {
+		const input = 'tbl_name';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`tbl_name`');
+	});
+
+	it('should escape fully qualified identifier with backticks', () => {
+		const input = '`db_name`.`tbl_name`.`col_name`';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`tbl_name`.`col_name`');
+	});
+
+	it('should escape identifier with dots', () => {
+		const input = '`db_name`.`some.dotted.tbl_name`';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`some.dotted.tbl_name`');
 	});
 });

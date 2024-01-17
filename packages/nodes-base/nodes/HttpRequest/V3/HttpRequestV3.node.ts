@@ -1259,38 +1259,22 @@ export class HttpRequestV3 implements INodeType {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 				if (genericCredentialType === 'httpBasicAuth') {
-					try {
-						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
-					} catch {}
+					httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
 				} else if (genericCredentialType === 'httpDigestAuth') {
-					try {
-						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
-					} catch {}
+					httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
 				} else if (genericCredentialType === 'httpHeaderAuth') {
-					try {
-						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
-					} catch {}
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
 				} else if (genericCredentialType === 'httpQueryAuth') {
-					try {
-						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
-					} catch {}
+					httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
 				} else if (genericCredentialType === 'httpCustomAuth') {
-					try {
-						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
-					} catch {}
+					httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
 				} else if (genericCredentialType === 'oAuth1Api') {
-					try {
-						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
-					} catch {}
+					oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
 				} else if (genericCredentialType === 'oAuth2Api') {
-					try {
-						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
-					} catch {}
+					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				}
 			} else if (authentication === 'predefinedCredentialType') {
-				try {
-					nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-				} catch {}
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
@@ -1786,7 +1770,8 @@ export class HttpRequestV3 implements INodeType {
 
 			// eslint-disable-next-line prefer-const
 			for (let [index, response] of Object.entries(responses)) {
-				delete response.request;
+				if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
+
 				if (this.getMode() === 'manual' && index === '0') {
 					// For manual executions save the first response in the context
 					// so that we can use it in the frontend and so make it easier for

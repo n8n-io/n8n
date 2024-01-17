@@ -33,7 +33,6 @@ module.exports = {
 		'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 		'@typescript-eslint/no-unused-expressions': 'warn',
 		'@typescript-eslint/no-unused-vars': 'warn',
-		'@typescript-eslint/no-use-before-define': 'warn',
 		'@typescript-eslint/no-var-requires': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',

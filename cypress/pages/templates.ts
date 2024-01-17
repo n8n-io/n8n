@@ -7,6 +7,14 @@ export class TemplatesPage extends BasePage {
 		useTemplateButton: () => cy.getByTestId('use-template-button'),
 		templateCards: () => cy.getByTestId('template-card'),
 		firstTemplateCard: () => this.getters.templateCards().first(),
+		allCategoriesFilter: () => cy.getByTestId('template-filter-all-categories'),
+		searchInput: () => cy.getByTestId('template-search-input'),
+		categoryFilters: () => cy.get('[data-test-id^=template-filter]'),
+		categoryFilter: (category: string) => cy.getByTestId(`template-filter-${category}`),
+		collectionCountLabel: () => cy.getByTestId('collection-count-label'),
+		templateCountLabel: () => cy.getByTestId('template-count-label'),
+		templatesLoadingContainer: () => cy.getByTestId('templates-loading-container'),
+		expandCategoriesButton: () => cy.getByTestId('expand-categories-button'),
 	};
 
 	actions = {

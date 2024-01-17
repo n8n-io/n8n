@@ -7,7 +7,6 @@ import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '@/auth/jwt';
-import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
@@ -111,7 +110,7 @@ export class PasswordResetController {
 			return;
 		}
 
-		if (isLdapEnabled() && ldapIdentity) {
+		if (this.license.isLdapEnabled() && ldapIdentity) {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 

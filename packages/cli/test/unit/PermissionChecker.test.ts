@@ -1,15 +1,20 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { INodeTypes, WorkflowSettings } from 'n8n-workflow';
+import type { WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { generateNanoId } from '@/databases/utils/generators';
+import { License } from '@/License';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { OwnershipService } from '@/services/ownership.service';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import { mockInstance } from '../shared/mocking';
 import {
@@ -17,18 +22,13 @@ import {
 	randomName,
 	randomPositiveDigit,
 } from '../integration/shared/random';
+import { LicenseMocker } from '../integration/shared/license';
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from './Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { getCredentialOwnerRole, getWorkflowOwnerRole } from '../integration/shared/db/roles';
 import { createOwner, createUser } from '../integration/shared/db/users';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { LicenseMocker } from '../integration/shared/license';
-import { License } from '@/License';
-import { generateNanoId } from '@/databases/utils/generators';
 
 export const toTargetCallErrorMsg = (subworkflowId: string) =>
 	`Target workflow ID ${subworkflowId} may not be called`;
@@ -71,24 +71,26 @@ export function createSubworkflow({
 	});
 }
 
-let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
+const mockNodeTypes = mockInstance(NodeTypes);
 mockInstance(LoadNodesAndCredentials, {
 	loadedNodes: mockNodeTypesData(['start', 'actionNetwork']),
 });
 
+let permissionChecker: PermissionChecker;
+
 beforeAll(async () => {
 	await testDb.init();
-
-	mockNodeTypes = Container.get(NodeTypes);
 
 	credentialOwnerRole = await getCredentialOwnerRole();
 	workflowOwnerRole = await getWorkflowOwnerRole();
 
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+
+	permissionChecker = Container.get(PermissionChecker);
 });
 
 describe('check()', () => {
@@ -121,7 +123,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => PermissionChecker.check(workflow, userId)).not.toThrow();
+		expect(async () => permissionChecker.check(workflow, userId)).not.toThrow();
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
@@ -151,7 +153,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => permissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should allow if workflow creds are valid subset', async () => {
@@ -198,7 +200,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => permissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {
@@ -254,7 +256,7 @@ describe('check()', () => {
 
 		const workflow = new Workflow(workflowDetails);
 
-		await expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
+		await expect(permissionChecker.check(workflow, member.id)).rejects.toThrow();
 	});
 });
 
@@ -278,7 +280,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 
 			ownershipService.getWorkflowOwnerCached.mockResolvedValue(new User());
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
 
@@ -299,12 +301,12 @@ describe('checkSubworkflowExecutePolicy()', () => {
 			ownershipService.getWorkflowOwnerCached.mockResolvedValueOnce(firstUser); // parent workflow
 			ownershipService.getWorkflowOwnerCached.mockResolvedValueOnce(secondUser); // subworkflow
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
 
 			try {
-				await PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
+				await permissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
 			} catch (error) {
 				if (error instanceof SubworkflowOperationError) {
 					expect(error.description).toBe(
@@ -326,7 +328,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 				callerIds: `123,456,bcdef,  ${parentWorkflow.id}`,
 			});
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
 		});
@@ -339,7 +341,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 				callerIds: 'xyz',
 			});
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).rejects.toThrow();
 		});
@@ -351,7 +353,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 			const subworkflow = createSubworkflow({ policy: 'any' });
 			ownershipService.getWorkflowOwnerCached.mockResolvedValue(new User());
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
 		});
@@ -367,7 +369,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 
 			const subworkflow = createSubworkflow({ policy: 'workflowsFromSameOwner' });
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
 
 			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
 		});
@@ -382,7 +384,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 
 			const subworkflow = createSubworkflow({ policy: 'workflowsFromSameOwner' });
 
-			const check = PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
+			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
 		});
