@@ -51,8 +51,6 @@ export class License {
 			return;
 		}
 
-		await this.orchestrationService.init();
-
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
 		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
@@ -123,7 +121,7 @@ export class License {
 				| boolean
 				| undefined;
 
-			this.orchestrationService.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+			this.orchestrationService.setMultiMainSetupLicensed(isMultiMainLicensed ?? false);
 
 			if (
 				this.orchestrationService.isMultiMainSetupEnabled &&

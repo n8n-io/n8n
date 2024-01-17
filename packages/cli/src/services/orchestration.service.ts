@@ -19,14 +19,20 @@ export class OrchestrationService extends EventEmitter {
 		super();
 	}
 
-	isInitialized = false;
+	protected isInitialized = false;
+
+	private isMultiMainSetupLicensed = false;
+
+	setMultiMainSetupLicensed(newState: boolean) {
+		this.isMultiMainSetupLicensed = newState;
+	}
 
 	get isMultiMainSetupEnabled() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
 			config.getEnv('multiMainSetup.enabled') &&
 			config.getEnv('generic.instanceType') === 'main' &&
-			this.multiMainSetup.isLicensed
+			this.isMultiMainSetupLicensed
 		);
 	}
 

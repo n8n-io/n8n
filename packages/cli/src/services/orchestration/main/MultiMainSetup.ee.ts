@@ -20,12 +20,6 @@ export class MultiMainSetup extends EventEmitter {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	isLicensed = false;
-
-	setLicensed(newState: boolean) {
-		this.isLicensed = newState;
-	}
-
 	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
 
 	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');

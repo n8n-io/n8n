@@ -213,20 +213,18 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
 
 		const orchestrationService = Container.get(OrchestrationService);
 
 		await orchestrationService.init();
 
 		await Container.get(OrchestrationHandlerMainService).init();
-
-		/**
-		 * @TODO Move to service
-		 */
-		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
 
 		orchestrationService.on('leadershipChange', async () => {
 			if (orchestrationService.isLeader) {
