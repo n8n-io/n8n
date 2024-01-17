@@ -5,7 +5,7 @@ import { STORES } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useStorage } from '@/composables/useStorage';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { getUserCtas } from '@/api/ctas';
+import { getBecomeCreatorCta } from '@/api/ctas';
 
 const LOCAL_STORAGE_KEY = 'BECOME_TEMPLATE_CREATOR_CTA_DISMISSED_AT';
 const RESHOW_DISMISSED_AFTER_DAYS = 30;
@@ -41,10 +41,10 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 		dismissedAt.value = DateTime.now().toISO();
 	};
 
-	const fetchUserCtas = async () => {
-		const userCtas = await getUserCtas(rootStore.getRestApiContext);
+	const fetchBecomeCreatorCta = async () => {
+		const becomeCreatorCta = await getBecomeCreatorCta(rootStore.getRestApiContext);
 
-		ctaMeetsCriteria.value = userCtas.becomeCreator;
+		ctaMeetsCriteria.value = becomeCreatorCta;
 	};
 
 	const fetchUserCtasIfNeeded = async () => {
@@ -52,7 +52,7 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 			return;
 		}
 
-		await fetchUserCtas();
+		await fetchBecomeCreatorCta();
 	};
 
 	const startMonitoringCta = () => {

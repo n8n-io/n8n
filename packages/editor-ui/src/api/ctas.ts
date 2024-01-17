@@ -1,12 +1,8 @@
 import type { IRestApiContext } from '@/Interface';
 import { get } from '@/utils/apiUtils';
 
-export type UserCtas = {
-	becomeCreator: boolean;
-};
-
-export async function getUserCtas(context: IRestApiContext): Promise<UserCtas> {
-	const response = await get(context.baseUrl, '/cta');
+export async function getBecomeCreatorCta(context: IRestApiContext): Promise<boolean> {
+	const response = await get(context.baseUrl, '/cta/become-creator');
 
 	return response;
 }
