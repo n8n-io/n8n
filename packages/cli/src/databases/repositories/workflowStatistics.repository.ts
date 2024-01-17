@@ -103,7 +103,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
-		const numWorkflows = await this.createQueryBuilder('workflow_statistics')
+		return await this.createQueryBuilder('workflow_statistics')
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = workflow_statistics.workflowId')
 			.innerJoin(
 				SharedWorkflow,
@@ -117,7 +117,5 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			.andWhere('workflow_statistics.count >= 5')
 			.andWhere('role.name = :roleName', { roleName: 'owner' })
 			.getCount();
-
-		return numWorkflows;
 	}
 }

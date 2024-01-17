@@ -38,11 +38,12 @@ describe('CtaService', () => {
 				const workflows = await createManyWorkflows(numWorkflows, { active: true }, user);
 
 				await Promise.all(
-					workflows.map(async (workflow) =>
-						createWorkflowStatisticsItem(workflow.id, {
-							count: numExecutions,
-							name: StatisticsNames.productionSuccess,
-						}),
+					workflows.map(
+						async (workflow) =>
+							await createWorkflowStatisticsItem(workflow.id, {
+								count: numExecutions,
+								name: StatisticsNames.productionSuccess,
+							}),
 					),
 				);
 
