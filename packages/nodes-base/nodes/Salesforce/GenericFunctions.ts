@@ -29,7 +29,7 @@ function getOptions(
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
 		json: true,
 	};
 
