@@ -96,6 +96,11 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			description: 'How to select the fields you want to include in your output items',
 			default: 'all',
+			displayOptions: {
+				show: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
 			options: [
 				{
 					name: 'All Input Fields',
@@ -106,6 +111,50 @@ const versionDescription: INodeTypeDescription = {
 					name: 'No Input Fields',
 					value: INCLUDE.NONE,
 					description: 'Include only the fields specified above',
+				},
+				{
+					name: 'Selected Input Fields',
+					value: INCLUDE.SELECTED,
+					description: 'Also include the fields listed in the parameter “Fields to Include”',
+				},
+				{
+					name: 'All Input Fields Except',
+					value: INCLUDE.EXCEPT,
+					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
+				},
+			],
+		},
+		{
+			displayName: 'Keep Only Set Fields',
+			name: 'keepOnlySetFields',
+			type: 'boolean',
+			default: false,
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+			description:
+				'When switched on, only the fields set in Fields do Set are passed to the output',
+			displayOptions: {
+				hide: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Include in Output',
+			name: 'include',
+			type: 'options',
+			description: 'How to select the fields you want to include in your output items',
+			default: 'all',
+			displayOptions: {
+				hide: {
+					'@version': [3, 3.1, 3.2],
+					'/keepOnlySetFields': [true],
+				},
+			},
+			options: [
+				{
+					name: 'All Input Fields',
+					value: INCLUDE.ALL,
+					description: 'Also include all unchanged fields from the input',
 				},
 				{
 					name: 'Selected Input Fields',
@@ -232,11 +281,12 @@ export class SetV2 implements INodeType {
 		}
 
 		for (let i = 0; i < items.length; i++) {
-			const include = this.getNodeParameter('include', i) as IncludeMods;
+			const keepOnlySetFields = this.getNodeParameter('keepOnlySetFields', i, false) as boolean;
+			const include = this.getNodeParameter('include', i, 'all') as IncludeMods;
 			const options = this.getNodeParameter('options', i, {});
 			const node = this.getNode();
 
-			options.include = include;
+			options.include = keepOnlySetFields ? 'none' : include;
 
 			const newItem = await setNode[mode].execute.call(
 				this,
