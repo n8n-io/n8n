@@ -2341,7 +2341,7 @@
 	"filter.operator.gt": "is greater than",
 	"filter.operator.lt": "is less than",
 	"filter.operator.gte": "is greater than or equal to",
-	"filter.operator.lte": "is less than or equal it",
+	"filter.operator.lte": "is less than or equal to",
 	"filter.operator.after": "is after",
 	"filter.operator.before": "is before",
 	"filter.operator.afterOrEquals": "is after or equal to",
