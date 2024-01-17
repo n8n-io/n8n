@@ -47,7 +47,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
@@ -72,7 +72,7 @@ export class ActiveWorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionsService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -80,7 +80,7 @@ export class ActiveWorkflowRunner {
 	) {}
 
 	async init() {
-		await this.multiMainSetup.init();
+		await this.orchestrationService.init();
 
 		await this.addActiveWorkflows('init');
 
@@ -571,13 +571,13 @@ export class ActiveWorkflowRunner {
 		 * again, and the new leader should take over the triggers and pollers that stopped
 		 * running when the former leader became unresponsive.
 		 */
-		if (this.multiMainSetup.isEnabled) {
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			if (activationMode !== 'leadershipChange') {
-				shouldAddWebhooks = this.multiMainSetup.isLeader;
-				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+				shouldAddWebhooks = this.orchestrationService.isLeader;
+				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
 			} else {
 				shouldAddWebhooks = false;
-				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
 			}
 		}
 

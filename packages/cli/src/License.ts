@@ -16,7 +16,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
 
 type FeatureReturnType = Partial<
@@ -36,7 +36,7 @@ export class License {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
@@ -51,7 +51,7 @@ export class License {
 			return;
 		}
 
-		await this.multiMainSetup.init();
+		await this.orchestrationService.init();
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -123,16 +123,19 @@ export class License {
 				| boolean
 				| undefined;
 
-			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+			this.orchestrationService.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
 
-			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+			if (
+				this.orchestrationService.isMultiMainSetupEnabled &&
+				this.orchestrationService.isFollower
+			) {
 				this.logger.debug(
 					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
 				return;
 			}
 
-			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
 				this.logger.debug(
 					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
 				);

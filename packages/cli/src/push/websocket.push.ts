@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
 import type { User } from '@db/entities/User';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -11,8 +11,8 @@ function heartbeat(this: WebSocket) {
 
 @Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
-	constructor(logger: Logger, multiMainSetup: MultiMainSetup) {
-		super(logger, multiMainSetup);
+	constructor(logger: Logger, orchestrationService: OrchestrationService) {
+		super(logger, orchestrationService);
 
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);
