@@ -3624,7 +3624,7 @@ export default defineComponent({
 			});
 
 			setTimeout(() => {
-				this.addPinDataConnections(this.workflowsStore.pinData);
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
