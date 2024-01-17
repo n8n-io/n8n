@@ -109,7 +109,7 @@
     "@rudderstack/rudder-sdk-node": "1.0.6",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
-    "axios": "1.6.2",
+    "axios": "1.6.5",
     "basic-auth": "2.0.1",
     "bcryptjs": "2.4.3",
     "bull": "4.12.1",
