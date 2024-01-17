@@ -4,7 +4,7 @@ import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { ExecutionRequest } from '@/requests';
+import { ExecutionRequest } from '@/executions/execution.request';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
