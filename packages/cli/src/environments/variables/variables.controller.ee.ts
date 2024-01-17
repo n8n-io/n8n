@@ -23,7 +23,7 @@ export class VariablesController {
 	@Get('/')
 	@RequireGlobalScope('variable:list')
 	async getVariables() {
-		return this.variablesService.getAllCached();
+		return await this.variablesService.getAllCached();
 	}
 
 	@Post('/')

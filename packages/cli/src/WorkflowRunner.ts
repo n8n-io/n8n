@@ -417,14 +417,15 @@ export class WorkflowRunner {
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.remove(executionId, fullRunData);
 				})
-				.catch(async (error) =>
-					this.processError(
-						error,
-						new Date(),
-						data.executionMode,
-						executionId,
-						additionalData.hooks,
-					),
+				.catch(
+					async (error) =>
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							additionalData.hooks,
+						),
 				);
 		} catch (error) {
 			await this.processError(

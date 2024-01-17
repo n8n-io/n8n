@@ -46,7 +46,7 @@ export class TestWebhookRegistrationsService {
 	}
 
 	async get(key: string) {
-		return this.cacheService.getHashValue<TestWebhookRegistration>(this.cacheKey, key);
+		return await this.cacheService.getHashValue<TestWebhookRegistration>(this.cacheKey, key);
 	}
 
 	async getAllKeys() {

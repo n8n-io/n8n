@@ -332,7 +332,7 @@ export class EmailReadImapV1 implements INodeType {
 					.getPartData(message, attachmentPart)
 					.then(async (partData) => {
 						// Return it in the format n8n expects
-						return this.helpers.prepareBinaryData(
+						return await this.helpers.prepareBinaryData(
 							partData as Buffer,
 							attachmentPart.disposition.params.filename as string,
 						);
@@ -341,7 +341,7 @@ export class EmailReadImapV1 implements INodeType {
 				attachmentPromises.push(attachmentPromise);
 			}
 
-			return Promise.all(attachmentPromises);
+			return await Promise.all(attachmentPromises);
 		};
 
 		// Returns all the new unseen messages
@@ -588,7 +588,7 @@ export class EmailReadImapV1 implements INodeType {
 
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
-			return imapConnect(config).then(async (conn) => {
+			return await imapConnect(config).then(async (conn) => {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {

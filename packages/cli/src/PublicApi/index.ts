@@ -144,7 +144,7 @@ export const loadPublicApiVersions = async (
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+			return await createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);
 

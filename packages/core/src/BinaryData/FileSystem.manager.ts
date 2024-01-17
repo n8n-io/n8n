@@ -61,13 +61,13 @@ export class FileSystemManager implements BinaryData.Manager {
 			throw new FileNotFoundError(filePath);
 		}
 
-		return fs.readFile(filePath);
+		return await fs.readFile(filePath);
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
 		const filePath = this.resolvePath(`${fileId}.metadata`);
 
-		return jsonParse(await fs.readFile(filePath, { encoding: 'utf-8' }));
+		return await jsonParse(await fs.readFile(filePath, { encoding: 'utf-8' }));
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {

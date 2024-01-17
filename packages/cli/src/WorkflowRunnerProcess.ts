@@ -276,7 +276,7 @@ class WorkflowRunnerProcess {
 				this.data.executionMode,
 				this.data.executionData,
 			);
-			return this.workflowExecute.processRunExecutionData(this.workflow);
+			return await this.workflowExecute.processRunExecutionData(this.workflow);
 		}
 		if (
 			this.data.runData === undefined ||
@@ -289,7 +289,7 @@ class WorkflowRunnerProcess {
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(
+			return await this.workflowExecute.run(
 				this.workflow,
 				startNode,
 				this.data.destinationNode,
@@ -298,7 +298,7 @@ class WorkflowRunnerProcess {
 		}
 		// Execute only the nodes between start and destination nodes
 		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-		return this.workflowExecute.runPartialWorkflow(
+		return await this.workflowExecute.runPartialWorkflow(
 			this.workflow,
 			this.data.runData,
 			this.data.startNodes,
@@ -383,7 +383,7 @@ class WorkflowRunnerProcess {
  * @param {*} data The data
  */
 async function sendToParentProcess(type: string, data: any): Promise<void> {
-	return new Promise((resolve, reject) => {
+	return await new Promise((resolve, reject) => {
 		process.send!(
 			{
 				type,
