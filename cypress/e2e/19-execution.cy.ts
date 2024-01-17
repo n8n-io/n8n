@@ -411,7 +411,7 @@ describe('Execution', () => {
 				.should('have.class', 'has-run');
 		});
 
-		it.only('when connecting pinned node by output drag and drop', () => {
+		it('when connecting pinned node by output drag and drop', () => {
 			cy.drag(
 				workflowPage.getters.getEndpointSelector('output', SCHEDULE_TRIGGER_NODE_NAME),
 				[-200, -300],
