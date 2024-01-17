@@ -1,3 +1,44 @@
+# [1.25.0](https://github.com/n8n-io/n8n/compare/n8n@1.24.0...n8n@1.25.0) (2024-01-17)
+
+
+### Bug Fixes
+
+* Add fallback resolver for langchain modules ([#8308](https://github.com/n8n-io/n8n/issues/8308)) ([851060d](https://github.com/n8n-io/n8n/commit/851060dd3f38245da6e09c04ec0b12b24b63dca4))
+* **API:** Fix manual chat trigger execution ([#8300](https://github.com/n8n-io/n8n/issues/8300)) ([884396e](https://github.com/n8n-io/n8n/commit/884396ea0d9f4a8d7987daf2b674f080056dd1d1))
+* **AwsS3 Node:** Return confirmation of success after upload ([#8312](https://github.com/n8n-io/n8n/issues/8312)) ([c921665](https://github.com/n8n-io/n8n/commit/c921665f9abe19d9e8831062c1e7673d4d1ea694))
+* **core:** Account for immediate confirmation request during test webhook creation ([#8329](https://github.com/n8n-io/n8n/issues/8329)) ([5fbd797](https://github.com/n8n-io/n8n/commit/5fbd7971e04640be3f877b3aa22d4aee61c1d40a))
+* **core:** Ensure waiting executions account for workflow timezone ([#8340](https://github.com/n8n-io/n8n/issues/8340)) ([3734c89](https://github.com/n8n-io/n8n/commit/3734c89cf64514489831b5339d722c89b300cc54))
+* **core:** Parse any readable stream response instead of only IncomingMessage ([#8359](https://github.com/n8n-io/n8n/issues/8359)) ([eb1320f](https://github.com/n8n-io/n8n/commit/eb1320fd7a4a67cd16de10c4174c7bcf2c177b06))
+* **core:** Prevent invalid compressed responses from making executions stuck forever ([#8315](https://github.com/n8n-io/n8n/issues/8315)) ([0776814](https://github.com/n8n-io/n8n/commit/0776814ed8c520326a6447dcd7b6c53fda933054))
+* **core:** Prevent issues with missing or mismatching encryption key ([#8332](https://github.com/n8n-io/n8n/issues/8332)) ([d4c93b1](https://github.com/n8n-io/n8n/commit/d4c93b16071081002b4bd316be0921bc7867dd82))
+* **core:** Prevent NodeErrors from being wrapped multiple times ([#8301](https://github.com/n8n-io/n8n/issues/8301)) ([b267bf0](https://github.com/n8n-io/n8n/commit/b267bf07e365d8bb82a9847fb3c490437dc1010e))
+* **core:** Replace all `moment` imports with `moment-timezone` ([#8337](https://github.com/n8n-io/n8n/issues/8337)) ([52a2e25](https://github.com/n8n-io/n8n/commit/52a2e25a25e9a009a536d8a371d9404e75d756f4))
+* **core:** Report when waitTill is invalid and handle it  ([#8356](https://github.com/n8n-io/n8n/issues/8356)) ([d5455d7](https://github.com/n8n-io/n8n/commit/d5455d7accb193078b05a0f52386cf9303b6a00f))
+* **editor:** Add read only mode to filter component ([#8285](https://github.com/n8n-io/n8n/issues/8285)) ([dcc76f3](https://github.com/n8n-io/n8n/commit/dcc76f348075b6e05e3f38bb9694d25ac9a5646b))
+* **editor:** Capture indexed access expressions when building completions ([#8331](https://github.com/n8n-io/n8n/issues/8331)) ([159b328](https://github.com/n8n-io/n8n/commit/159b328587f3c57c73ae77c2a0c5d5c6ecc330aa))
+* **editor:** Fix issue with synchronization table on LDAP not loading data ([#8327](https://github.com/n8n-io/n8n/issues/8327)) ([6b92d49](https://github.com/n8n-io/n8n/commit/6b92d49ea58b8e5797e4e938444b161a63137638))
+* **editor:** Properly set colors for connections and labels on nodes with pinned data ([#8209](https://github.com/n8n-io/n8n/issues/8209)) ([3b8ccb9](https://github.com/n8n-io/n8n/commit/3b8ccb9fb903036a7d6e4b33f6b5a8933576e9e6))
+* Fix node graph telemetry with default values ([#8297](https://github.com/n8n-io/n8n/issues/8297)) ([93b969a](https://github.com/n8n-io/n8n/commit/93b969a327e0770d9a0e81a95a5185b0fc12ebc6))
+* **Google Drive Node:** Fix issue preventing service account from downloading files ([#7642](https://github.com/n8n-io/n8n/issues/7642)) ([cf7131d](https://github.com/n8n-io/n8n/commit/cf7131d766dfc7aec2c973525653ffec1ced03c1))
+* **HTTP Request Node:** Delete `response.request` only when it's a valid circular references ([#8293](https://github.com/n8n-io/n8n/issues/8293)) ([05c43fa](https://github.com/n8n-io/n8n/commit/05c43faa2d7582a8ce58b9bb3338c00253ad3281))
+* **Microsoft SQL Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#8334](https://github.com/n8n-io/n8n/issues/8334)) ([bb2be8d](https://github.com/n8n-io/n8n/commit/bb2be8d70580896321641a49a3044165763eb9e1))
+* **Ollama Model Node:** Use a simpler credentials test ([#8318](https://github.com/n8n-io/n8n/issues/8318)) ([63b738a](https://github.com/n8n-io/n8n/commit/63b738a542429934b3838bfc814ea2a4c51675c7))
+* **OpenAI Node:** Load correct models for operation ([#8313](https://github.com/n8n-io/n8n/issues/8313)) ([a6a5372](https://github.com/n8n-io/n8n/commit/a6a5372b5f8e48e98788c4e3750ac4b63e91a96f))
+* Properly output saml validation errors ([#8284](https://github.com/n8n-io/n8n/issues/8284)) ([8c7f399](https://github.com/n8n-io/n8n/commit/8c7f39907fa82fa37af4436511d4a2daaff13015))
+* **Salesforce Node:** Upgrade to API version 59 ([#8346](https://github.com/n8n-io/n8n/issues/8346)) ([b51cbb3](https://github.com/n8n-io/n8n/commit/b51cbb325e03fd42be6dca99819d4cc7c4c1574b))
+* **Supabase Node:** Pagination for get all rows ([#8311](https://github.com/n8n-io/n8n/issues/8311)) ([e080476](https://github.com/n8n-io/n8n/commit/e0804768e84aefe9d66ab683080f67bb15a1cb58))
+* **Venafi TLS Protect Cloud Node:** Remove parameter `Application Server Type` ([#8325](https://github.com/n8n-io/n8n/issues/8325)) ([e3cedf7](https://github.com/n8n-io/n8n/commit/e3cedf7db038a70c9d48bb7c665b1be4beb872a9))
+* **Venafi TLS Protect Cloud Trigger Node:** Handle new webhook payload format  ([#8326](https://github.com/n8n-io/n8n/issues/8326)) ([057d7d0](https://github.com/n8n-io/n8n/commit/057d7d031828ea8b6e779ca535ccd50d91bfa0cc))
+
+
+### Features
+
+* **core:** Implement inter-main communication for test webhooks in multi-main setup ([#8267](https://github.com/n8n-io/n8n/issues/8267)) ([1a0e285](https://github.com/n8n-io/n8n/commit/1a0e28555385f682aa335115c4d72e671c0bdc85))
+* **editor:** Add new `/templates/search` endpoint ([#8227](https://github.com/n8n-io/n8n/issues/8227)) ([4277e92](https://github.com/n8n-io/n8n/commit/4277e92ec07671a679b0d9ab6e691ef9208585bd))
+* Implement Chat Memory Manager node ([#8127](https://github.com/n8n-io/n8n/issues/8127)) ([464be93](https://github.com/n8n-io/n8n/commit/464be9332354620b2f1890136abf95dfdb71fd2e))
+
+
+
 # [1.24.0](https://github.com/n8n-io/n8n/compare/n8n@1.23.0...n8n@1.24.0) (2024-01-10)
 
 
