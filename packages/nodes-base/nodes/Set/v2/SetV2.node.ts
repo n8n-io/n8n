@@ -44,7 +44,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Edit item fields one by one',
 				},
 				{
-					name: 'JSON Output',
+					name: 'JSON',
 					value: 'raw',
 					description: 'Customize item output with JSON',
 					action: 'Customize item output with JSON',
