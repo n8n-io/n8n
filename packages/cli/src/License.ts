@@ -59,13 +59,13 @@ export class License {
 		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
 		const saveCertStr = isMainInstance
-			? async (value: TLicenseBlock) => this.saveCertStr(value)
+			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
 		const onFeatureChange = isMainInstance
-			? async (features: TFeatures) => this.onFeatureChange(features)
+			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
-			? async () => this.collectUsageMetrics()
+			? async () => await this.collectUsageMetrics()
 			: async () => [];
 
 		try {
@@ -78,7 +78,7 @@ export class License {
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
-				loadCertStr: async () => this.loadCertStr(),
+				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,

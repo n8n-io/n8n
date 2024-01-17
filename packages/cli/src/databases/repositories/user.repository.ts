@@ -11,7 +11,7 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async findManybyIds(userIds: string[]) {
-		return this.find({
+		return await this.find({
 			where: { id: In(userIds) },
 			relations: ['globalRole'],
 		});
@@ -22,11 +22,11 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async getByIds(transaction: EntityManager, ids: string[]) {
-		return transaction.find(User, { where: { id: In(ids) } });
+		return await transaction.find(User, { where: { id: In(ids) } });
 	}
 
 	async findManyByEmail(emails: string[]) {
-		return this.find({
+		return await this.find({
 			where: { email: In(emails) },
 			relations: ['globalRole'],
 			select: ['email', 'password', 'id'],
@@ -34,11 +34,11 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async deleteMany(userIds: string[]) {
-		return this.delete({ id: In(userIds) });
+		return await this.delete({ id: In(userIds) });
 	}
 
 	async findNonShellUser(email: string) {
-		return this.findOne({
+		return await this.findOne({
 			where: {
 				email,
 				password: Not(IsNull()),

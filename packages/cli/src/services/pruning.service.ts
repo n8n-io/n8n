@@ -74,7 +74,7 @@ export class PruningService {
 		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
 		this.softDeletionInterval = setInterval(
-			async () => this.softDeleteOnPruningCycle(),
+			async () => await this.softDeleteOnPruningCycle(),
 			this.rates.softDeletion,
 		);
 

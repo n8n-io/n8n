@@ -68,6 +68,7 @@ import { saveExecutionProgress } from './executionLifecycleHooks/saveExecutionPr
 import { WorkflowStaticDataService } from './workflows/workflowStaticData.service';
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
+import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -194,7 +195,11 @@ export function executeErrorWorkflow(
 			Container.get(OwnershipService)
 				.getWorkflowOwnerCached(workflowId)
 				.then((user) => {
-					void WorkflowHelpers.executeErrorWorkflow(errorWorkflow, workflowErrorData, user);
+					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
+						errorWorkflow,
+						workflowErrorData,
+						user,
+					);
 				})
 				.catch((error: Error) => {
 					ErrorReporter.error(error);
@@ -218,7 +223,11 @@ export function executeErrorWorkflow(
 			void Container.get(OwnershipService)
 				.getWorkflowOwnerCached(workflowId)
 				.then((user) => {
-					void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
+					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
+						workflowId,
+						workflowErrorData,
+						user,
+					);
 				});
 		}
 	}

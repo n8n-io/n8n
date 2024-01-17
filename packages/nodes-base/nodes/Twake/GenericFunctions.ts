@@ -29,5 +29,5 @@ export async function twakeApiRequest(
 	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
 	// }
 
-	return this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
 }

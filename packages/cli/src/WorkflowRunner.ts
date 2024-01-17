@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
+import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { WorkflowExecute } from 'n8n-core';
 
@@ -29,6 +27,7 @@ import { fork } from 'child_process';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IExecutionResponse,
@@ -38,7 +37,6 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
-
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -47,10 +45,9 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { Container } from 'typedi';
-import { InternalHooks } from './InternalHooks';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { Logger } from './Logger';
+import { InternalHooks } from '@/InternalHooks';
+import { Logger } from '@/Logger';
+import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 
 export class WorkflowRunner {
 	logger: Logger;
@@ -269,7 +266,8 @@ export class WorkflowRunner {
 	): Promise<string> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData =
+				await Container.get(WorkflowStaticDataService).getStaticDataById(workflowId);
 		}
 
 		const nodeTypes = Container.get(NodeTypes);
@@ -419,14 +417,15 @@ export class WorkflowRunner {
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.remove(executionId, fullRunData);
 				})
-				.catch(async (error) =>
-					this.processError(
-						error,
-						new Date(),
-						data.executionMode,
-						executionId,
-						additionalData.hooks,
-					),
+				.catch(
+					async (error) =>
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							additionalData.hooks,
+						),
 				);
 		} catch (error) {
 			await this.processError(
@@ -672,7 +671,8 @@ export class WorkflowRunner {
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData =
+				await Container.get(WorkflowStaticDataService).getStaticDataById(workflowId);
 		}
 
 		data.restartExecutionId = restartExecutionId;

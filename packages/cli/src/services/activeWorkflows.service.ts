@@ -47,6 +47,6 @@ export class ActiveWorkflowsService {
 			throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		return this.activationErrorsService.get(workflowId);
+		return await this.activationErrorsService.get(workflowId);
 	}
 }

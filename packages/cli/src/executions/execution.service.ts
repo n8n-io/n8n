@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
@@ -8,24 +9,21 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
+
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
-import type { User } from '@db/entities/User';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
-	IExecutionsListResponse,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest } from './execution.request';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
-import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -70,21 +68,18 @@ const schemaGetExecutionsQueryFilter = {
 const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
 
 @Service()
-export class ExecutionsService {
-	/**
-	 * Function to get the workflow Ids for a User
-	 * Overridden in EE version to ignore roles
-	 */
-	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
-		// Get all workflows using owner role
-		return getSharedWorkflowIds(user, ['owner']);
-	}
+export class ExecutionService {
+	constructor(
+		private readonly logger: Logger,
+		private readonly queue: Queue,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
-	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
+	async getExecutionsList(req: ExecutionRequest.GetAll, sharedWorkflowIds: string[]) {
 		if (sharedWorkflowIds.length === 0) {
-			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
 			return {
 				count: 0,
 				estimated: false,
@@ -106,7 +101,7 @@ export class ExecutionsService {
 					}
 				}
 			} catch (error) {
-				Container.get(Logger).error('Failed to parse filter', {
+				this.logger.error('Failed to parse filter', {
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
@@ -117,7 +112,7 @@ export class ExecutionsService {
 		// safeguard against querying workflowIds not shared with the user
 		const workflowId = filter?.workflowId?.toString();
 		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
-			Container.get(Logger).verbose(
+			this.logger.verbose(
 				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
 			);
 			return {
@@ -134,26 +129,21 @@ export class ExecutionsService {
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const queue = Container.get(Queue);
-			const currentJobs = await queue.getJobs(['active', 'waiting']);
+			const currentJobs = await this.queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
 
 		// We may have manual executions even with queue so we must account for these.
-		executingWorkflowIds.push(
-			...Container.get(ActiveExecutions)
-				.getActiveExecutions()
-				.map(({ id }) => id),
-		);
+		executingWorkflowIds.push(...this.activeExecutions.getActiveExecutions().map(({ id }) => id));
 
-		const { count, estimated } = await Container.get(ExecutionRepository).countExecutions(
+		const { count, estimated } = await this.executionRepository.countExecutions(
 			filter,
 			sharedWorkflowIds,
 			executingWorkflowIds,
 			req.user.hasGlobalScope('workflow:list'),
 		);
 
-		const formattedExecutions = await Container.get(ExecutionRepository).searchExecutions(
+		const formattedExecutions = await this.executionRepository.searchExecutions(
 			filter,
 			limit,
 			executingWorkflowIds,
@@ -170,26 +160,20 @@ export class ExecutionsService {
 		};
 	}
 
-	static async getExecution(
+	async getExecution(
 		req: ExecutionRequest.Get,
+		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await Container.get(ExecutionRepository).findIfShared(
-			executionId,
-			sharedWorkflowIds,
-		);
+		const execution = await this.executionRepository.findIfShared(executionId, sharedWorkflowIds);
 
 		if (!execution) {
-			Container.get(Logger).info(
-				'Attempt to read execution was blocked due to insufficient permissions',
-				{
-					userId: req.user.id,
-					executionId,
-				},
-			);
+			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
+				userId: req.user.id,
+				executionId,
+			});
 			return undefined;
 		}
 
@@ -200,18 +184,17 @@ export class ExecutionsService {
 		return execution;
 	}
 
-	static async retryExecution(req: ExecutionRequest.Retry): Promise<boolean> {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
+	async retryExecution(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
 		if (!sharedWorkflowIds.length) return false;
 
 		const { id: executionId } = req.params;
-		const execution = (await Container.get(ExecutionRepository).findIfShared(
+		const execution = (await this.executionRepository.findIfShared(
 			executionId,
 			sharedWorkflowIds,
 		)) as unknown as IExecutionResponse;
 
 		if (!execution) {
-			Container.get(Logger).info(
+			this.logger.info(
 				'Attempt to retry an execution was blocked due to insufficient permissions',
 				{
 					userId: req.user.id,
@@ -259,7 +242,7 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id;
-			const workflowData = (await Container.get(WorkflowRepository).findOneBy({
+			const workflowData = (await this.workflowRepository.findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;
 
@@ -271,14 +254,14 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = Container.get(NodeTypes);
+
 			const workflowInstance = new Workflow({
 				id: workflowData.id,
 				name: workflowData.name,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 				active: false,
-				nodeTypes,
+				nodeTypes: this.nodeTypes,
 				staticData: undefined,
 				settings: workflowData.settings,
 			});
@@ -288,14 +271,11 @@ export class ExecutionsService {
 				// Find the data of the last executed node in the new workflow
 				const node = workflowInstance.getNode(stack.node.name);
 				if (node === null) {
-					Container.get(Logger).error(
-						'Failed to retry an execution because a node could not be found',
-						{
-							userId: req.user.id,
-							executionId,
-							nodeName: stack.node.name,
-						},
-					);
+					this.logger.error('Failed to retry an execution because a node could not be found', {
+						userId: req.user.id,
+						executionId,
+						nodeName: stack.node.name,
+					});
 					throw new WorkflowOperationError(
 						`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
 					);
@@ -309,8 +289,7 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData =
-			await Container.get(ActiveExecutions).getPostExecutePromise(retriedExecutionId);
+		const executionData = await this.activeExecutions.getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
 			throw new ApplicationError('The retry did not start for an unknown reason.');
@@ -319,8 +298,7 @@ export class ExecutionsService {
 		return !!executionData.finished;
 	}
 
-	static async deleteExecutions(req: ExecutionRequest.Delete): Promise<void> {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
+	async deleteExecutions(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -341,7 +319,7 @@ export class ExecutionsService {
 			}
 		}
 
-		return Container.get(ExecutionRepository).deleteExecutionsByFilter(
+		return await this.executionRepository.deleteExecutionsByFilter(
 			requestFilters,
 			sharedWorkflowIds,
 			{
@@ -357,7 +335,7 @@ export class ExecutionsService {
 		workflowData: IWorkflowDb,
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
-	): Promise<void> {
+	) {
 		const saveDataErrorExecutionDisabled =
 			workflowData?.settings?.saveDataErrorExecution === 'none';
 
@@ -419,6 +397,6 @@ export class ExecutionsService {
 			status: 'error',
 		};
 
-		await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+		await this.executionRepository.createNewExecution(fullExecutionData);
 	}
 }

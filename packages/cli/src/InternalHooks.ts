@@ -56,11 +56,13 @@ export class InternalHooks {
 		eventsService: EventsService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
-			this.onFirstProductionWorkflowSuccess(metrics),
+		eventsService.on(
+			'telemetry.onFirstProductionWorkflowSuccess',
+			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on('telemetry.onFirstWorkflowDataLoad', async (metrics) =>
-			this.onFirstWorkflowDataLoad(metrics),
+		eventsService.on(
+			'telemetry.onFirstWorkflowDataLoad',
+			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
 	}
 
@@ -88,7 +90,7 @@ export class InternalHooks {
 			license_tenant_id: diagnosticInfo.licenseTenantId,
 		};
 
-		return Promise.all([
+		return await Promise.all([
 			this.telemetry.identify(info),
 			this.telemetry.track('Instance started', {
 				...info,
@@ -98,7 +100,7 @@ export class InternalHooks {
 	}
 
 	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
-		return this.telemetry.track('Session started', { session_id: sessionId });
+		return await this.telemetry.track('Session started', { session_id: sessionId });
 	}
 
 	async onPersonalizationSurveySubmitted(
@@ -111,7 +113,7 @@ export class InternalHooks {
 			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
 		});
 
-		return this.telemetry.track(
+		return await this.telemetry.track(
 			'User responded to personalization questions',
 			personalizationSurveyData,
 		);
@@ -459,7 +461,7 @@ export class InternalHooks {
 			user_id_list: userList,
 		};
 
-		return this.telemetry.track('User updated workflow sharing', properties);
+		return await this.telemetry.track('User updated workflow sharing', properties);
 	}
 
 	async onN8nStop(): Promise<void> {
@@ -469,7 +471,7 @@ export class InternalHooks {
 			}, 3000);
 		});
 
-		return Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
+		return await Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
 	}
 
 	async onUserDeletion(userDeletionData: {
@@ -554,42 +556,42 @@ export class InternalHooks {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved user', userRetrievedData);
+		return await this.telemetry.track('User retrieved user', userRetrievedData);
 	}
 
 	async onUserRetrievedAllUsers(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved all users', userRetrievedData);
+		return await this.telemetry.track('User retrieved all users', userRetrievedData);
 	}
 
 	async onUserRetrievedExecution(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved execution', userRetrievedData);
+		return await this.telemetry.track('User retrieved execution', userRetrievedData);
 	}
 
 	async onUserRetrievedAllExecutions(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved all executions', userRetrievedData);
+		return await this.telemetry.track('User retrieved all executions', userRetrievedData);
 	}
 
 	async onUserRetrievedWorkflow(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved workflow', userRetrievedData);
+		return await this.telemetry.track('User retrieved workflow', userRetrievedData);
 	}
 
 	async onUserRetrievedAllWorkflows(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User retrieved all workflows', userRetrievedData);
+		return await this.telemetry.track('User retrieved all workflows', userRetrievedData);
 	}
 
 	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
@@ -649,7 +651,7 @@ export class InternalHooks {
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track(
+		return await this.telemetry.track(
 			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
@@ -661,7 +663,7 @@ export class InternalHooks {
 		method: string;
 		api_version: string;
 	}): Promise<void> {
-		return this.telemetry.track('User invoked API', userInvokedApiData);
+		return await this.telemetry.track('User invoked API', userInvokedApiData);
 	}
 
 	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
@@ -709,7 +711,7 @@ export class InternalHooks {
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
+		return await this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
 	}
 
 	async onUserSignup(
@@ -963,7 +965,7 @@ export class InternalHooks {
 		users_synced: number;
 		error: string;
 	}): Promise<void> {
-		return this.telemetry.track('Ldap general sync finished', data);
+		return await this.telemetry.track('Ldap general sync finished', data);
 	}
 
 	async onUserUpdatedLdapSettings(data: {
@@ -980,15 +982,15 @@ export class InternalHooks {
 		loginLabel: string;
 		loginEnabled: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('Ldap general sync finished', data);
+		return await this.telemetry.track('Ldap general sync finished', data);
 	}
 
 	async onLdapLoginSyncFailed(data: { error: string }): Promise<void> {
-		return this.telemetry.track('Ldap login sync failed', data);
+		return await this.telemetry.track('Ldap login sync failed', data);
 	}
 
 	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
-		return this.telemetry.track('User login failed since ldap disabled', data);
+		return await this.telemetry.track('User login failed since ldap disabled', data);
 	}
 
 	/*
@@ -998,7 +1000,7 @@ export class InternalHooks {
 		user_id: string;
 		workflow_id: string;
 	}): Promise<void> {
-		return this.telemetry.track('Workflow first prod success', data);
+		return await this.telemetry.track('Workflow first prod success', data);
 	}
 
 	async onFirstWorkflowDataLoad(data: {
@@ -1009,7 +1011,7 @@ export class InternalHooks {
 		credential_type?: string;
 		credential_id?: string;
 	}): Promise<void> {
-		return this.telemetry.track('Workflow first data fetched', data);
+		return await this.telemetry.track('Workflow first data fetched', data);
 	}
 
 	/**
@@ -1023,11 +1025,11 @@ export class InternalHooks {
 	 * Audit
 	 */
 	async onAuditGeneratedViaCli() {
-		return this.telemetry.track('Instance generated security audit via CLI command');
+		return await this.telemetry.track('Instance generated security audit via CLI command');
 	}
 
 	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
-		return this.telemetry.track('User created variable', createData);
+		return await this.telemetry.track('User created variable', createData);
 	}
 
 	async onSourceControlSettingsUpdated(data: {
@@ -1036,7 +1038,7 @@ export class InternalHooks {
 		repo_type: 'github' | 'gitlab' | 'other';
 		connected: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User updated source control settings', data);
+		return await this.telemetry.track('User updated source control settings', data);
 	}
 
 	async onSourceControlUserStartedPullUI(data: {
@@ -1044,11 +1046,11 @@ export class InternalHooks {
 		workflow_conflicts: number;
 		cred_conflicts: number;
 	}): Promise<void> {
-		return this.telemetry.track('User started pull via UI', data);
+		return await this.telemetry.track('User started pull via UI', data);
 	}
 
 	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
-		return this.telemetry.track('User finished pull via UI', {
+		return await this.telemetry.track('User finished pull via UI', {
 			workflow_updates: data.workflow_updates,
 		});
 	}
@@ -1057,7 +1059,7 @@ export class InternalHooks {
 		workflow_updates: number;
 		forced: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User pulled via API', data);
+		return await this.telemetry.track('User pulled via API', data);
 	}
 
 	async onSourceControlUserStartedPushUI(data: {
@@ -1067,7 +1069,7 @@ export class InternalHooks {
 		creds_eligible_with_conflicts: number;
 		variables_eligible: number;
 	}): Promise<void> {
-		return this.telemetry.track('User started push via UI', data);
+		return await this.telemetry.track('User started push via UI', data);
 	}
 
 	async onSourceControlUserFinishedPushUI(data: {
@@ -1076,7 +1078,7 @@ export class InternalHooks {
 		creds_pushed: number;
 		variables_pushed: number;
 	}): Promise<void> {
-		return this.telemetry.track('User finished push via UI', data);
+		return await this.telemetry.track('User finished push via UI', data);
 	}
 
 	async onExternalSecretsProviderSettingsSaved(saveData: {
@@ -1086,6 +1088,6 @@ export class InternalHooks {
 		is_new: boolean;
 		error_message?: string | undefined;
 	}): Promise<void> {
-		return this.telemetry.track('User updated external secrets settings', saveData);
+		return await this.telemetry.track('User updated external secrets settings', saveData);
 	}
 }
