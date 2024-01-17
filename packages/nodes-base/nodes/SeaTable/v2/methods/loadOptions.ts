@@ -187,7 +187,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 				convert_keys: false,
 			},
 		);
-		let rows = sqlResult.results as IRow[];
+		const rows = sqlResult.results as IRow[];
 
 		for (const row of rows) {
 			returnData.push({
