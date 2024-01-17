@@ -226,7 +226,7 @@ export class Start extends BaseCommand {
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		orchestrationService.on('leadershipChange', async () => {
+		orchestrationService.multiMainSetup.addListener('leadershipChange', async () => {
 			if (orchestrationService.isLeader) {
 				this.logger.debug('[Leadership change] Clearing all activation errors...');
 
@@ -360,7 +360,7 @@ export class Start extends BaseCommand {
 
 			await orchestrationService.init();
 
-			orchestrationService.on('leadershipChange', async () => {
+			orchestrationService.multiMainSetup.addListener('leadershipChange', async () => {
 				if (orchestrationService.isLeader) {
 					if (this.pruningService.isPruningEnabled()) {
 						this.pruningService.startPruning();
