@@ -279,7 +279,7 @@ export class Server extends AbstractServer {
 			controllers.push(MFAController);
 		}
 
-		if (this.frontendService) {
+		if (!config.getEnv('endpoints.disableUi')) {
 			const { CtaController } = await import('@/controllers/cta.controller');
 			controllers.push(CtaController);
 		}
