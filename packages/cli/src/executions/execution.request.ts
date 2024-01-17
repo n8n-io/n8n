@@ -1,5 +1,6 @@
 import type { IExecutionDeleteFilter } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParam {
@@ -27,3 +28,11 @@ export declare namespace ExecutionRequest {
 
 	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAllCurrent>;
 }
+
+export type ActiveExecutionsQueryFilter = {
+	workflowId?: string;
+
+	status?: ExecutionStatus;
+
+	finished?: boolean;
+};
