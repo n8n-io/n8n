@@ -119,7 +119,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		const executionIds = await this.executionRepository.getIdsSince(date);
 
-		return this.executionDataRepository.findByExecutionIds(executionIds);
+		return await this.executionDataRepository.findByExecutionIds(executionIds);
 	}
 
 	/**

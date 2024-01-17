@@ -47,7 +47,7 @@ test('should report filesystem interaction nodes', async () => {
 			],
 		});
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);

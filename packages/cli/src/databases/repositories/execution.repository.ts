@@ -251,7 +251,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
+		return await Promise.all([
+			this.delete(ids.executionId),
+			this.binaryDataService.deleteMany([ids]),
+		]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {
@@ -438,7 +441,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getIdsSince(date: Date) {
-		return this.find({
+		return await this.find({
 			select: ['id'],
 			where: {
 				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
@@ -474,7 +477,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const [timeBasedWhere, countBasedWhere] = toPrune;
 
-		return this.createQueryBuilder()
+		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
 			.where({
@@ -516,7 +519,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async deleteByIds(executionIds: string[]) {
-		return this.delete({ id: In(executionIds) });
+		return await this.delete({ id: In(executionIds) });
 	}
 
 	async getWaitingExecutions() {
@@ -534,7 +537,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
 		}
 
-		return this.findMultipleExecutions({
+		return await this.findMultipleExecutions({
 			select: ['id', 'waitTill'],
 			where,
 			order: {
@@ -606,7 +609,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where = { ...where, workflowId: In(params.workflowIds) };
 		}
 
-		return this.findMultipleExecutions(
+		return await this.findMultipleExecutions(
 			{
 				select: [
 					'id',
@@ -636,7 +639,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		workflowIds: string[],
 		includeData?: boolean,
 	): Promise<IExecutionBase | undefined> {
-		return this.findSingleExecution(id, {
+		return await this.findSingleExecution(id, {
 			where: {
 				workflowId: In(workflowIds),
 			},
@@ -646,7 +649,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
-		return this.findSingleExecution(executionId, {
+		return await this.findSingleExecution(executionId, {
 			where: {
 				workflowId: In(sharedWorkflowIds),
 			},

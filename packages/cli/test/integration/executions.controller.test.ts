@@ -17,7 +17,7 @@ let owner: User;
 
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
-	return createSuccessfulExecution(workflow);
+	return await createSuccessfulExecution(workflow);
 };
 
 beforeEach(async () => {

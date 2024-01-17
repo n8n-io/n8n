@@ -94,13 +94,13 @@ export async function getValue(client: RedisClientType, keyName: string, type?: 
 	}
 
 	if (type === 'string') {
-		return client.get(keyName);
+		return await client.get(keyName);
 	} else if (type === 'hash') {
-		return client.hGetAll(keyName);
+		return await client.hGetAll(keyName);
 	} else if (type === 'list') {
-		return client.lRange(keyName, 0, -1);
+		return await client.lRange(keyName, 0, -1);
 	} else if (type === 'sets') {
-		return client.sMembers(keyName);
+		return await client.sMembers(keyName);
 	}
 }
 

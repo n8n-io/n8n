@@ -35,7 +35,7 @@ export type CredentialsGetSharedOptions =
 
 export class CredentialsService {
 	static async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
-		return Container.get(CredentialsRepository).findOne({
+		return await Container.get(CredentialsRepository).findOne({
 			relations: options?.relations,
 			where,
 		});
@@ -94,7 +94,7 @@ export class CredentialsService {
 			}
 		}
 
-		return Container.get(SharedCredentialsRepository).findOne({ where, relations });
+		return await Container.get(SharedCredentialsRepository).findOne({ where, relations });
 	}
 
 	static async prepareCreateData(
@@ -180,7 +180,7 @@ export class CredentialsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+		return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 	}
 
 	static async save(
@@ -231,7 +231,7 @@ export class CredentialsService {
 		credentials: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
 		const helper = Container.get(CredentialsHelper);
-		return helper.testCredentials(user, credentials.type, credentials);
+		return await helper.testCredentials(user, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.

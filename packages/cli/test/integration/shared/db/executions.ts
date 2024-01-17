@@ -10,8 +10,8 @@ export async function createManyExecutions(
 	workflow: WorkflowEntity,
 	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
 ) {
-	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow));
-	return Promise.all(executionsRequests);
+	const executionsRequests = [...Array(amount)].map(async (_) => await callback(workflow));
+	return await Promise.all(executionsRequests);
 }
 
 /**
@@ -47,23 +47,29 @@ export async function createExecution(
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true, status: 'success' }, workflow);
+	return await createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
+	return await createExecution(
+		{ finished: false, stoppedAt: new Date(), status: 'failed' },
+		workflow,
+	);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
+	return await createExecution(
+		{ finished: false, waitTill: new Date(), status: 'waiting' },
+		workflow,
+	);
 }
 
 export async function getAllExecutions() {
-	return Container.get(ExecutionRepository).find();
+	return await Container.get(ExecutionRepository).find();
 }

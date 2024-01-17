@@ -7,12 +7,12 @@ export function isStream(maybeStream: unknown): maybeStream is Stream {
 }
 
 export async function parseXml<T>(xml: string): Promise<T> {
-	return parseStringPromise(xml, {
+	return await (parseStringPromise(xml, {
 		explicitArray: false,
 		ignoreAttrs: true,
 		tagNameProcessors: [firstCharLowerCase],
 		valueProcessors: [parseNumbers, parseBooleans],
-	}) as Promise<T>;
+	}) as Promise<T>);
 }
 
 export function writeBlockedMessage(filename: string) {

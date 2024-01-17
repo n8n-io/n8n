@@ -55,17 +55,17 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 			roleId: role?.id,
 		}),
 	);
-	return Container.get(SharedCredentialsRepository).save(newSharedCredentials);
+	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 }
 
 export function affixRoleToSaveCredential(role: Role) {
 	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		saveCredential(credentialPayload, { user, role });
+		await saveCredential(credentialPayload, { user, role });
 }
 
 export async function getAllCredentials() {
-	return Container.get(CredentialsRepository).find();
+	return await Container.get(CredentialsRepository).find();
 }
 
 export const getCredentialById = async (id: string) =>
-	Container.get(CredentialsRepository).findOneBy({ id });
+	await Container.get(CredentialsRepository).findOneBy({ id });

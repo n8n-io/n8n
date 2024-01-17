@@ -71,7 +71,7 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
+		return await Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
 	}
 
 	async catch(error: Error): Promise<void> {
