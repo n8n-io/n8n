@@ -18,7 +18,7 @@ export class VariablesService {
 	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
 			async refreshFn() {
-				return Container.get(VariablesService).findAll();
+				return await Container.get(VariablesService).findAll();
 			},
 		});
 		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
@@ -49,7 +49,7 @@ export class VariablesService {
 	}
 
 	async findAll(): Promise<Variables[]> {
-		return this.variablesRepository.find();
+		return await this.variablesRepository.find();
 	}
 
 	validateVariable(variable: Omit<Variables, 'id'>): void {

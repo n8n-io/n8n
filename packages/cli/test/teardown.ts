@@ -17,7 +17,9 @@ export default async () => {
 		.filter(({ Database: dbName }) => dbName.startsWith(testDbPrefix))
 		.map(({ Database: dbName }) => dbName);
 
-	const promises = databases.map(async (dbName) => connection.query(`DROP DATABASE ${dbName};`));
+	const promises = databases.map(
+		async (dbName) => await connection.query(`DROP DATABASE ${dbName};`),
+	);
 	await Promise.all(promises);
 	await connection.destroy();
 };

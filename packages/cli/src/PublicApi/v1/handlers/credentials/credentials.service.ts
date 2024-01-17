@@ -14,7 +14,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
-	return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
@@ -22,7 +22,7 @@ export async function getSharedCredentials(
 	credentialId: string,
 	relations?: string[],
 ): Promise<SharedCredentials | null> {
-	return Container.get(SharedCredentialsRepository).findOne({
+	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
 			userId,
 			credentialsId: credentialId,
@@ -64,7 +64,7 @@ export async function saveCredential(
 
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-	return Db.transaction(async (transactionManager) => {
+	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
@@ -85,7 +85,7 @@ export async function saveCredential(
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
-	return Container.get(CredentialsRepository).remove(credentials);
+	return await Container.get(CredentialsRepository).remove(credentials);
 }
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {

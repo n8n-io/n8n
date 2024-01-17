@@ -59,7 +59,7 @@ export const VectorStoreQdrant = createVectorStoreNode({
 			collectionName: collection,
 		};
 
-		return QdrantVectorStore.fromExistingCollection(embeddings, config);
+		return await QdrantVectorStore.fromExistingCollection(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('qdrantCollection', itemIndex, '', {

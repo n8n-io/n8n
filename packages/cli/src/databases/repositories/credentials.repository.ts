@@ -20,11 +20,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			credentialsId: credentialId,
 			userId: Not(In(userIds)),
 		};
-		return transaction.delete(SharedCredentials, conditions);
+		return await transaction.delete(SharedCredentials, conditions);
 	}
 
 	async findStartingWith(credentialName: string) {
-		return this.find({
+		return await this.find({
 			select: ['name'],
 			where: { name: Like(`${credentialName}%`) },
 		});
@@ -37,7 +37,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return this.find(findManyOptions);
+		return await this.find(findManyOptions);
 	}
 
 	private toFindManyOptions(listQueryOptions?: ListQuery.Options) {
@@ -84,6 +84,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.relations = ['shared', 'shared.user', 'shared.role'];
 		}
 
-		return this.find(findManyOptions);
+		return await this.find(findManyOptions);
 	}
 }

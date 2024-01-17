@@ -209,8 +209,9 @@ export class Server extends AbstractServer {
 				order: { createdAt: 'ASC' },
 				where: {},
 			})
-			.then(async (workflow) =>
-				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			.then(
+				async (workflow) =>
+					await Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
 
 		Container.get(CollaborationService);

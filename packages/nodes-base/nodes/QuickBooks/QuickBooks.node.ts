@@ -145,39 +145,39 @@ export class QuickBooks implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'customer');
+				return await loadResource.call(this, 'customer');
 			},
 
 			async getCustomFields(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'preferences');
+				return await loadResource.call(this, 'preferences');
 			},
 
 			async getDepartments(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'department');
+				return await loadResource.call(this, 'department');
 			},
 
 			async getItems(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'item');
+				return await loadResource.call(this, 'item');
 			},
 
 			async getMemos(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'CreditMemo');
+				return await loadResource.call(this, 'CreditMemo');
 			},
 
 			async getPurchases(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'purchase');
+				return await loadResource.call(this, 'purchase');
 			},
 
 			async getTaxCodeRefs(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'TaxCode');
+				return await loadResource.call(this, 'TaxCode');
 			},
 
 			async getTerms(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'Term');
+				return await loadResource.call(this, 'Term');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'vendor');
+				return await loadResource.call(this, 'vendor');
 			},
 		},
 	};

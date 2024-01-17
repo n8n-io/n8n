@@ -28,7 +28,7 @@ export class UserService {
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
-		return this.userRepository.update(userId, data);
+		return await this.userRepository.update(userId, data);
 	}
 
 	getManager() {
@@ -38,7 +38,7 @@ export class UserService {
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
 		const { settings } = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
-		return this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
+		return await this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
 	}
 
 	generatePasswordResetToken(user: User, expiresIn = '20m') {
@@ -156,7 +156,7 @@ export class UserService {
 			resolve(publicUser);
 		});
 
-		return Promise.race([fetchPromise, timeoutPromise]);
+		return await Promise.race([fetchPromise, timeoutPromise]);
 	}
 
 	private async sendEmails(
@@ -166,7 +166,7 @@ export class UserService {
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
-		return Promise.all(
+		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
 				const invitedUser: UserRequest.InviteResponse = {
@@ -246,18 +246,19 @@ export class UserService {
 		);
 
 		try {
-			await this.getManager().transaction(async (transactionManager) =>
-				Promise.all(
-					toCreateUsers.map(async ({ email, role }) => {
-						const newUser = Object.assign(new User(), {
-							email,
-							globalRole: role === 'member' ? memberRole : adminRole,
-						});
-						const savedUser = await transactionManager.save<User>(newUser);
-						createdUsers.set(email, savedUser.id);
-						return savedUser;
-					}),
-				),
+			await this.getManager().transaction(
+				async (transactionManager) =>
+					await Promise.all(
+						toCreateUsers.map(async ({ email, role }) => {
+							const newUser = Object.assign(new User(), {
+								email,
+								globalRole: role === 'member' ? memberRole : adminRole,
+							});
+							const savedUser = await transactionManager.save<User>(newUser);
+							createdUsers.set(email, savedUser.id);
+							return savedUser;
+						}),
+					),
 			);
 		} catch (error) {
 			ErrorReporter.error(error);

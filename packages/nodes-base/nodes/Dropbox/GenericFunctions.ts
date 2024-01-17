@@ -85,7 +85,7 @@ export async function dropboxpiRequestAllItems(
 }
 
 export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
-	return dropboxApiRequest.call(
+	return await dropboxApiRequest.call(
 		this,
 		'POST',
 		'https://api.dropboxapi.com/2/users/get_current_account',

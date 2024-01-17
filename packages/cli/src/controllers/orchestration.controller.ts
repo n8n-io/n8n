@@ -20,20 +20,20 @@ export class OrchestrationController {
 	async getWorkersStatus(req: OrchestrationRequest.Get) {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 		const id = req.params.id;
-		return this.orchestrationService.getWorkerStatus(id);
+		return await this.orchestrationService.getWorkerStatus(id);
 	}
 
 	@RequireGlobalScope('orchestration:read')
 	@Post('/worker/status')
 	async getWorkersStatusAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return this.orchestrationService.getWorkerStatus();
+		return await this.orchestrationService.getWorkerStatus();
 	}
 
 	@RequireGlobalScope('orchestration:list')
 	@Post('/worker/ids')
 	async getWorkerIdsAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return this.orchestrationService.getWorkerIds();
+		return await this.orchestrationService.getWorkerIds();
 	}
 }

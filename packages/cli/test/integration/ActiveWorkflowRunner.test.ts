@@ -23,14 +23,14 @@ import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { ExecutionsService } from '@/executions/executions.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
 mockInstance(SecretsHelper);
-mockInstance(ExecutionsService);
+mockInstance(ExecutionService);
 mockInstance(WorkflowService);
 
 const webhookService = mockInstance(WebhookService);

@@ -173,7 +173,7 @@ describe('CommunityPackagesService', () => {
 
 			mocked(exec).mockImplementation(erroringExecMock);
 
-			const call = async () => communityPackagesService.executeNpmCommand('ls');
+			const call = async () => await communityPackagesService.executeNpmCommand('ls');
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 

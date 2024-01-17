@@ -104,6 +104,6 @@ export class MultiMainSetup extends EventEmitter {
 	}
 
 	async fetchLeaderKey() {
-		return this.redisPublisher.get(this.leaderKey);
+		return await this.redisPublisher.get(this.leaderKey);
 	}
 }

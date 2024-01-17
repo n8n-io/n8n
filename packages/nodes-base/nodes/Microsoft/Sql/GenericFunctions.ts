@@ -67,10 +67,10 @@ export async function executeQueryQueue(
 	tables: ITables,
 	buildQueryQueue: (data: OperationInputData) => Array<Promise<object>>,
 ): Promise<any[]> {
-	return Promise.all(
+	return await Promise.all(
 		Object.keys(tables).map(async (table) => {
 			const columnsResults = Object.keys(tables[table]).map(async (columnString) => {
-				return Promise.all(
+				return await Promise.all(
 					buildQueryQueue({
 						table,
 						columnString,
@@ -78,7 +78,7 @@ export async function executeQueryQueue(
 					}),
 				);
 			});
-			return Promise.all(columnsResults);
+			return await Promise.all(columnsResults);
 		}),
 	);
 }
@@ -121,7 +121,7 @@ const escapeTableName = (table: string) => {
 };
 
 export async function insertOperation(tables: ITables, pool: mssql.ConnectionPool) {
-	return executeQueryQueue(
+	return await executeQueryQueue(
 		tables,
 		({ table, columnString, items }: OperationInputData): Array<Promise<object>> => {
 			return chunk(items, 1000).map(async (insertValues) => {
@@ -141,14 +141,14 @@ export async function insertOperation(tables: ITables, pool: mssql.ConnectionPoo
 					columnString,
 				)}) VALUES ${valuesPlaceholder.join(', ')};`;
 
-				return request.query(query);
+				return await request.query(query);
 			});
 		},
 	);
 }
 
 export async function updateOperation(tables: ITables, pool: mssql.ConnectionPool) {
-	return executeQueryQueue(
+	return await executeQueryQueue(
 		tables,
 		({ table, columnString, items }: OperationInputData): Array<Promise<object>> => {
 			return items.map(async (item) => {
@@ -168,7 +168,7 @@ export async function updateOperation(tables: ITables, pool: mssql.ConnectionPoo
 					', ',
 				)} WHERE ${condition};`;
 
-				return request.query(query);
+				return await request.query(query);
 			});
 		},
 	);
@@ -197,11 +197,11 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 						table,
 					)} WHERE [${deleteKey}] IN (${valuesPlaceholder.join(', ')});`;
 
-					return request.query(query);
+					return await request.query(query);
 				});
-				return Promise.all(queryQueue);
+				return await Promise.all(queryQueue);
 			});
-			return Promise.all(deleteKeyResults);
+			return await Promise.all(deleteKeyResults);
 		}),
 	);
 

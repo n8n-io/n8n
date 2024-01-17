@@ -51,7 +51,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Container.get(RoleService).findGlobalMemberRole();
+	return await Container.get(RoleService).findGlobalMemberRole();
 };
 
 /**
@@ -101,7 +101,7 @@ export const escapeFilter = (filter: string): string => {
 export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
-	return Container.get(AuthIdentityRepository).findOne({
+	return await Container.get(AuthIdentityRepository).findOne({
 		relations: ['user', 'user.globalRole'],
 		where: {
 			providerId: idAttributeValue,
@@ -111,7 +111,7 @@ export const getAuthIdentityByLdapId = async (
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-	return Container.get(UserRepository).findOne({
+	return await Container.get(UserRepository).findOne({
 		where: { email },
 		relations: ['globalRole'],
 	});
@@ -190,10 +190,10 @@ export const processUsers = async (
 	toDisableUsers: string[],
 ): Promise<void> => {
 	await Db.transaction(async (transactionManager) => {
-		return Promise.all([
+		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
 				const authIdentity = AuthIdentity.create(await transactionManager.save(user), ldapId);
-				return transactionManager.save(authIdentity);
+				return await transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
 				const authIdentity = await transactionManager.findOneBy(AuthIdentity, {
@@ -240,7 +240,7 @@ export const getLdapSynchronizations = async (
 	perPage: number,
 ): Promise<AuthProviderSyncHistory[]> => {
 	const _page = Math.abs(page);
-	return Container.get(AuthProviderSyncHistoryRepository).find({
+	return await Container.get(AuthProviderSyncHistoryRepository).find({
 		where: { providerType: 'ldap' },
 		order: { id: 'DESC' },
 		take: perPage,
@@ -267,7 +267,7 @@ export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
 };
 
 export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
-	return Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId));
+	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId));
 };
 
 export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>, ldapId: string) => {
@@ -288,5 +288,5 @@ export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Part
 };
 
 export const deleteAllLdapIdentities = async () => {
-	return Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
+	return await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
 };

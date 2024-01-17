@@ -23,7 +23,7 @@ export async function rocketchatApiRequest(
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
 export function validateJSON(json: string | undefined): any {
