@@ -1,15 +1,16 @@
 import Container from 'typedi';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as testDb from './shared/testDb';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { mockInstance } from '../shared/mocking';
-import { createOwner } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { mock } from 'jest-mock-extended';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { WorkflowService } from '@/workflows/workflow.service';
+
+import * as testDb from '../shared/testDb';
+import { mockInstance } from '../../shared/mocking';
+import { createOwner } from '../shared/db/users';
+import { createWorkflow } from '../shared/db/workflows';
 
 let workflowService: WorkflowService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
@@ -33,8 +34,6 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		multiMainSetup,
-		mock(),
-		mock(),
 		mock(),
 		activeWorkflowRunner,
 	);

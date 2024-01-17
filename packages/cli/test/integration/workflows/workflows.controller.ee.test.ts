@@ -3,24 +3,28 @@ import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-
-import { mockInstance } from '../shared/mocking';
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
-import { makeWorkflow } from './shared/utils/';
-import { randomCredentialPayload } from './shared/random';
-import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
-import { createUser } from './shared/db/users';
-import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
-import type { Role } from '@/databases/entities/Role';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import { Push } from '@/push';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+
+import { mockInstance } from '../../shared/mocking';
+import * as utils from '../shared/utils/';
+import * as testDb from '../shared/testDb';
+import type { SaveCredentialFunction } from '../shared/types';
+import { makeWorkflow } from '../shared/utils/';
+import { randomCredentialPayload } from '../shared/random';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import {
+	getCredentialOwnerRole,
+	getGlobalMemberRole,
+	getGlobalOwnerRole,
+} from '../shared/db/roles';
+import { createUser } from '../shared/db/users';
+import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -31,7 +35,7 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
 mockInstance(Push);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
@@ -60,8 +64,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	activeWorkflowRunnerLike.add.mockReset();
-	activeWorkflowRunnerLike.remove.mockReset();
+	activeWorkflowRunner.add.mockReset();
+	activeWorkflowRunner.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 });
@@ -988,7 +992,8 @@ describe('getSharedWorkflowIds', () => {
 		owner.globalRole = await getGlobalOwnerRole();
 		const workflow1 = await createWorkflow({}, member);
 		const workflow2 = await createWorkflow({}, anotherMember);
-		const sharedWorkflowIds = await getSharedWorkflowIds(owner);
+		const sharedWorkflowIds =
+			await Container.get(WorkflowSharingService).getSharedWorkflowIds(owner);
 		expect(sharedWorkflowIds).toHaveLength(2);
 		expect(sharedWorkflowIds).toContain(workflow1.id);
 		expect(sharedWorkflowIds).toContain(workflow2.id);
@@ -1001,7 +1006,8 @@ describe('getSharedWorkflowIds', () => {
 		const workflow3 = await createWorkflow({}, anotherMember);
 		await shareWorkflowWithUsers(workflow1, [member]);
 		await shareWorkflowWithUsers(workflow3, [member]);
-		const sharedWorkflowIds = await getSharedWorkflowIds(member);
+		const sharedWorkflowIds =
+			await Container.get(WorkflowSharingService).getSharedWorkflowIds(member);
 		expect(sharedWorkflowIds).toHaveLength(2);
 		expect(sharedWorkflowIds).toContain(workflow1.id);
 		expect(sharedWorkflowIds).toContain(workflow3.id);
@@ -1130,7 +1136,7 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunnerLike.add).toBeCalled();
+		expect(activeWorkflowRunner.add).toBeCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -1152,8 +1158,8 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunnerLike.add).not.toBeCalled();
-		expect(activeWorkflowRunnerLike.remove).toBeCalled();
+		expect(activeWorkflowRunner.add).not.toBeCalled();
+		expect(activeWorkflowRunner.remove).toBeCalled();
 
 		const {
 			data: { id, versionId, active },
