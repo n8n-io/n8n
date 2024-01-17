@@ -8,8 +8,6 @@ import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 const WorkflowsPage = new WorkflowsPageClass();
 
 describe('Become creator CTA', () => {
-	beforeEach(() => {});
-
 	it('should not show the CTA if user is not eligible', () => {
 		interceptCtaRequestWithResponse(false).as('cta');
 		cy.visit(WorkflowsPage.url);
