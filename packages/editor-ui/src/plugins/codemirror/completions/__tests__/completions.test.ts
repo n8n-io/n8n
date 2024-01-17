@@ -197,6 +197,17 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
+	describe('indexed access completions', () => {
+		test('should return string completions for indexed access that resolves to string literal: {{ "abc"[0].| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce('a');
+
+			expect(completions('{{ "abc"[0].| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
+			);
+		});
+	});
+
 	describe('complex expression completions', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
