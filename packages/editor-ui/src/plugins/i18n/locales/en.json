@@ -30,6 +30,7 @@
 	},
 	"generic.any": "Any",
 	"generic.cancel": "Cancel",
+	"generic.close": "Close",
 	"generic.confirm": "Confirm",
 	"generic.deleteWorkflowError": "Problem deleting workflow",
 	"generic.filtersApplied": "Filters are currently applied.",
@@ -2371,5 +2372,8 @@
 	"templateSetup.continue.button": "Continue",
 	"templateSetup.credential.description": "The credential you select will be used in the {0} node of the workflow template. | The credential you select will be used in the {0} nodes of the workflow template.",
 	"templateSetup.continue.button.fillRemaining": "Fill remaining credentials to continue",
-	"setupCredentialsModal.title": "Set up template"
+	"setupCredentialsModal.title": "Set up template",
+	"becomeCreator.text": "Share your workflows with 40k+ users, unlock perks, and shine as a featured template creator!",
+	"becomeCreator.buttonText": "Become a creator",
+	"becomeCreator.closeButtonTitle": "Close"
 }
