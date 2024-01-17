@@ -15,7 +15,7 @@ import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
-import isbot from 'isbot';
+import { isbot } from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
 
 import {
