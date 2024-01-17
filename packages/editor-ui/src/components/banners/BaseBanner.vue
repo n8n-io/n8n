@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
+import { computed, useSlots } from 'vue';
 import type { BannerName } from 'n8n-workflow';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const uiStore = useUIStore();
+const slots = useSlots();
 
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
@@ -17,6 +19,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits(['close']);
+
+const hasTrailingContent = computed(() => {
+	return !!slots.trailingContent;
+});
 
 async function onCloseClick() {
 	await uiStore.dismissBanner(props.name);
@@ -27,11 +33,11 @@ async function onCloseClick() {
 	<n8n-callout
 		:theme="props.theme"
 		:icon="props.customIcon"
-		iconSize="medium"
-		:roundCorners="false"
+		icon-size="medium"
+		:round-corners="false"
 		:data-test-id="`banners-${props.name}`"
 	>
-		<div :class="$style.mainContent">
+		<div :class="[$style.mainContent, !hasTrailingContent ? $style.keepSpace : '']">
 			<slot name="mainContent" />
 		</div>
 		<template #trailingContent>
@@ -55,6 +61,10 @@ async function onCloseClick() {
 .mainContent {
 	display: flex;
 	gap: var(--spacing-4xs);
+}
+
+.keepSpace {
+	padding: 5px 0;
 }
 .trailingContent {
 	display: flex;

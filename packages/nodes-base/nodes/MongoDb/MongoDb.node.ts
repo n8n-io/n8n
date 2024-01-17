@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -17,11 +17,13 @@ import type {
 	UpdateOptions,
 	Sort,
 } from 'mongodb';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
+	connectMongoClient,
 	prepareFields,
 	prepareItems,
 	stringifyObjectIDs,
@@ -73,13 +75,15 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString);
+					const client = await connectMongoClient(connectionString, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-						throw new Error(`Database "${database}" does not exist`);
+						throw new ApplicationError(`Database "${database}" does not exist`, {
+							level: 'warning',
+						});
 					}
 					await client.close();
 				} catch (error) {
@@ -97,12 +101,10 @@ export class MongoDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const { database, connectionString } = validateAndResolveMongoCredentials(
-			this,
-			await this.getCredentials('mongoDb'),
-		);
+		const credentials = await this.getCredentials('mongoDb');
+		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
 
-		const client: MongoClient = await MongoClient.connect(connectionString);
+		const client = await connectMongoClient(connectionString, credentials);
 
 		const mdb = client.db(database);
 
@@ -365,9 +367,11 @@ export class MongoDb implements INodeType {
 
 		stringifyObjectIDs(responseData);
 
+		const itemData = generatePairedItemData(items.length);
+
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);

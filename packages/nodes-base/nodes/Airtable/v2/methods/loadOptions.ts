@@ -20,7 +20,9 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	});
 
 	if (!tableData) {
-		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
+			level: 'warning',
+		});
 	}
 
 	const result: INodePropertyOptions[] = [];
@@ -79,7 +81,9 @@ export async function getAttachmentColumns(
 	});
 
 	if (!tableData) {
-		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
+			level: 'warning',
+		});
 	}
 
 	const result: INodePropertyOptions[] = [];

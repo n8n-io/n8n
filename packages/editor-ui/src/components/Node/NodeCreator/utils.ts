@@ -4,10 +4,14 @@ import type {
 	SubcategorizedNodeTypes,
 	SimplifiedNodeType,
 	INodeCreateElement,
+	SectionCreateElement,
 } from '@/Interface';
-import { CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
+import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
-import { sublimeSearch } from '@/utils';
+
+import { sublimeSearch } from '@/utils/sortUtils';
+import { i18n } from '@/plugins/i18n';
+import type { NodeViewItemSection } from './viewsData';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -31,12 +35,16 @@ export function transformNodeType(
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
+	const WHITE_LISTED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
-		// Only Core Nodes subcategories are valid, others are uncategorized
-		const isCoreNodesCategory = item.codex?.categories?.includes(CORE_NODES_CATEGORY);
-		const subcategories = isCoreNodesCategory
-			? item?.codex?.subcategories?.[CORE_NODES_CATEGORY] ?? []
-			: [DEFAULT_SUBCATEGORY];
+		// Only some subcategories are allowed
+		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
+
+		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
+			if (item.codex?.categories?.includes(category)) {
+				subcategories = item.codex?.subcategories?.[category] ?? [];
+			}
+		});
 
 		subcategories.forEach((subcategory: string) => {
 			if (!acc[subcategory]) {
@@ -51,7 +59,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 
 export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
-		if (a.type !== 'node' || b.type !== 'node') return -1;
+		if (a.type !== 'node' || b.type !== 'node') return 0;
 		const displayNameA = a.properties?.displayName?.toLowerCase() || a.key;
 		const displayNameB = b.properties?.displayName?.toLowerCase() || b.key;
 
@@ -64,10 +72,49 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 	const result = (
 		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 2 },
+			{ key: 'properties.displayName', weight: 1.3 },
 			{ key: 'properties.codex.alias', weight: 1 },
 		]) || []
 	).map(({ item }) => item);
+
+	return result;
+}
+
+export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
+	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
+}
+
+export function groupItemsInSections(
+	items: INodeCreateElement[],
+	sections: NodeViewItemSection[],
+): INodeCreateElement[] {
+	const itemsBySection = items.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
+		const section = sections.find((s) => s.items.includes(item.key));
+		const key = section?.key ?? 'other';
+		acc[key] = [...(acc[key] ?? []), item];
+		return acc;
+	}, {});
+
+	const result: SectionCreateElement[] = sections
+		.map(
+			(section): SectionCreateElement => ({
+				type: 'section',
+				key: section.key,
+				title: section.title,
+				children: sortNodeCreateElements(itemsBySection[section.key] ?? []),
+			}),
+		)
+		.concat({
+			type: 'section',
+			key: 'other',
+			title: i18n.baseText('nodeCreator.sectionNames.other'),
+			children: sortNodeCreateElements(itemsBySection.other ?? []),
+		})
+		.filter((section) => section.children.length > 0);
+
+	if (result.length <= 1) {
+		return items;
+	}
 
 	return result;
 }

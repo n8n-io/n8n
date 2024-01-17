@@ -9,11 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
-
-import moment from 'moment';
-import { fileSearch, folderSearch } from './v1/SearchFunctions';
+import moment from 'moment-timezone';
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';
+import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
+import { fileSearch, folderSearch } from './v2/methods/listSearch';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -429,7 +428,12 @@ export class GoogleDriveTrigger implements INodeType {
 		const event = this.getNodeParameter('event') as string;
 		const webhookData = this.getWorkflowStaticData('node');
 		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const qs: IDataObject = {};
+		const qs: IDataObject = {
+			includeItemsFromAllDrives: true,
+			supportsAllDrives: true,
+			spaces: 'appDataFolder, drive',
+			corpora: 'allDrives',
+		};
 
 		const now = moment().utc().format();
 

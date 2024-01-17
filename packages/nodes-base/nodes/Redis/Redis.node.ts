@@ -1,6 +1,6 @@
+import util from 'util';
 import type {
 	IExecuteFunctions,
-	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -14,8 +14,6 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 import redis from 'redis';
-
-import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -665,6 +663,10 @@ export class Redis implements INodeType {
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
+			} else if (type === 'sets') {
+				const clientSadd = util.promisify(client.sadd).bind(client);
+				//@ts-ignore
+				await clientSadd(keyName, value);
 			}
 
 			if (expire) {
@@ -754,17 +756,8 @@ export class Redis implements INodeType {
 									continue;
 								}
 
-								const promises: {
-									[key: string]: GenericValue;
-								} = {};
-
 								for (const keyName of keys) {
-									promises[keyName] = await getValue(client, keyName);
-								}
-
-								for (const keyName of keys) {
-									// eslint-disable-next-line @typescript-eslint/await-thenable
-									item.json[keyName] = await promises[keyName];
+									item.json[keyName] = await getValue(client, keyName);
 								}
 								returnItems.push(item);
 							} else if (operation === 'set') {

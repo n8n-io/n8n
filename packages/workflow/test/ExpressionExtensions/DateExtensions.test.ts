@@ -3,7 +3,10 @@
  */
 
 import { DateTime } from 'luxon';
-import { evaluate, getLocalISOString, TEST_TIMEZONE } from './Helpers';
+import { getGlobalState } from '@/GlobalState';
+import { evaluate, getLocalISOString } from './Helpers';
+
+const { defaultTimezone } = getGlobalState();
 
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
@@ -16,17 +19,17 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("week") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
-				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }),
+				DateTime.local(2023, 1, 16, { zone: defaultTimezone }),
 			);
 
 			expect(evaluate('={{ new Date(2023, 0, 20).beginningOf("week") }}')).toEqual(
-				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }).toJSDate(),
+				DateTime.local(2023, 1, 16, { zone: defaultTimezone }).toJSDate(),
 			);
 		});
 
 		test('.beginningOf("week") should work correctly on a string', () => {
 			const evaluatedDate = evaluate('={{ "2023-01-30".toDate().beginningOf("week") }}');
-			const expectedDate = DateTime.local(2023, 1, 23, { zone: TEST_TIMEZONE }).toJSDate();
+			const expectedDate = DateTime.local(2023, 1, 23, { zone: defaultTimezone }).toJSDate();
 
 			if (evaluatedDate && evaluatedDate instanceof Date) {
 				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
@@ -35,7 +38,7 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("month") should work correctly on a string', () => {
 			const evaluatedDate = evaluate('={{ "2023-06-16".toDate().beginningOf("month") }}');
-			const expectedDate = DateTime.local(2023, 6, 1, { zone: TEST_TIMEZONE }).toJSDate();
+			const expectedDate = DateTime.local(2023, 6, 1, { zone: defaultTimezone }).toJSDate();
 
 			if (evaluatedDate && evaluatedDate instanceof Date) {
 				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
@@ -44,7 +47,7 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("year") should work correctly on a string', () => {
 			const evaluatedDate = evaluate('={{ "2023-01-30".toDate().beginningOf("year") }}');
-			const expectedDate = DateTime.local(2023, 1, 1, { zone: TEST_TIMEZONE }).toJSDate();
+			const expectedDate = DateTime.local(2023, 1, 1, { zone: defaultTimezone }).toJSDate();
 
 			if (evaluatedDate && evaluatedDate instanceof Date) {
 				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
@@ -53,10 +56,10 @@ describe('Data Transformation Functions', () => {
 
 		test('.endOfMonth() should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
-				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }),
+				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: defaultTimezone }),
 			);
 			expect(evaluate('={{ new Date(2023, 0, 16).endOfMonth() }}')).toEqual(
-				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }).toJSDate(),
+				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: defaultTimezone }).toJSDate(),
 			);
 		});
 

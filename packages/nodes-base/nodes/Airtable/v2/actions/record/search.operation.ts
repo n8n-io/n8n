@@ -4,7 +4,7 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
@@ -205,8 +205,10 @@ export async function execute(
 			json: flattenOutput(record as IDataObject),
 		}));
 
+		const itemData = generatePairedItemData(items.length);
+
 		returnData = this.helpers.constructExecutionMetaData(returnData, {
-			itemData: { item: 0 },
+			itemData,
 		});
 	} catch (error) {
 		if (this.continueOnFail()) {

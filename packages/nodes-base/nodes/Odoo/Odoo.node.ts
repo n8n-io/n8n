@@ -14,6 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
 import {
 	contactDescription,
 	contactOperations,
@@ -39,7 +40,6 @@ import {
 	processNameValueFields,
 } from './GenericFunctions';
 
-import { capitalCase } from 'change-case';
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Odoo',

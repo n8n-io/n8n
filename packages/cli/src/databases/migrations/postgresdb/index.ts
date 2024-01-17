@@ -47,6 +47,10 @@ import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColu
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
+import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
+import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
+import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -97,4 +101,8 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowHistoryTable1692967111175,
 	DisallowOrphanExecutions1693554410387,
 	ExecutionSoftDelete1693491613982,
+	AddWorkflowMetadata1695128658538,
+	MigrateToTimestampTz1694091729095,
+	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	AddGlobalAdminRole1700571993961,
 ];

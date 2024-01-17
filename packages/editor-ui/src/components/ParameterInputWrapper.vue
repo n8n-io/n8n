@@ -1,23 +1,24 @@
 <template>
-	<div data-test-id="parameter-input">
-		<parameter-input
+	<div :class="$style.parameterInput" data-test-id="parameter-input">
+		<ParameterInput
 			ref="param"
-			:inputSize="inputSize"
+			:input-size="inputSize"
 			:parameter="parameter"
-			:modelValue="modelValue"
+			:model-value="modelValue"
 			:path="path"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:droppable="droppable"
-			:activeDrop="activeDrop"
-			:forceShowExpression="forceShowExpression"
-			:hideIssues="hideIssues"
-			:documentationUrl="documentationUrl"
-			:errorHighlight="errorHighlight"
-			:isForCredential="isForCredential"
-			:eventSource="eventSource"
-			:expressionEvaluated="expressionValueComputed"
-			:additionalExpressionData="resolvedAdditionalExpressionData"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="expressionValueComputed"
+			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
+			:is-single-line="isSingleLine"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -26,20 +27,20 @@
 			@textInput="onTextInput"
 			@update="onValueChanged"
 		/>
-		<input-hint
-			v-if="expressionOutput"
-			:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
-			data-test-id="parameter-expression-preview"
-			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-			:hint="expressionOutput"
-			:singleLine="true"
-		/>
-		<input-hint
-			v-else-if="parameterHint"
-			:class="$style.hint"
-			:renderHTML="true"
-			:hint="parameterHint"
-		/>
+		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
+			<div>
+				<InputHint
+					v-if="expressionOutput"
+					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
+					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
+					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+					:hint="expressionOutput"
+					:single-line="true"
+				/>
+				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
+			</div>
+			<slot v-if="$slots.options" name="options" />
+		</div>
 	</div>
 </template>
 
@@ -61,26 +62,30 @@ import type {
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
-	name: 'parameter-input-wrapper',
-	mixins: [workflowHelpers],
+	name: 'ParameterInputWrapper',
 	components: {
 		ParameterInput,
 		InputHint,
 	},
+	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
 		isReadOnly: {
+			type: Boolean,
+		},
+		isSingleLine: {
 			type: Boolean,
 		},
 		parameter: {
@@ -103,6 +108,10 @@ export default defineComponent({
 		},
 		hint: {
 			type: String,
+			required: false,
+		},
+		hideHint: {
+			type: Boolean,
 			required: false,
 		},
 		inputSize: {
@@ -162,7 +171,7 @@ export default defineComponent({
 			if (this.isValueExpression) {
 				return undefined;
 			}
-			if (this.selectedRLMode && this.selectedRLMode.hint) {
+			if (this.selectedRLMode?.hint) {
 				return this.selectedRLMode.hint;
 			}
 
@@ -251,8 +260,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.hint {
-	margin-top: var(--spacing-4xs);
+.parameterInput {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 }
 
 .hovering {

@@ -3,18 +3,26 @@ import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import {
+	getAdminPanelLoginCode,
+	getCurrentPlan,
+	getCurrentUsage,
+	fetchSuggestedTemplates,
+} from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, SUGGESTED_TEMPLATES_FLAG, STORES } from '@/constants';
+import { hasPermission } from '@/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
+	initialized: false,
 	data: null,
 	usage: null,
 	loadingPlan: false,
 };
 
-export const useCloudPlanStore = defineStore('cloudPlan', () => {
+export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
@@ -51,17 +59,45 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const getOwnerCurrentPlan = async () => {
+	const hasCloudPlan = computed(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		const hasCloudPlan =
-			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
+	});
+
+	const getUserCloudAccount = async () => {
+		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
+		try {
+			if (hasPermission(['instanceOwner'])) {
+				await usersStore.fetchUserCloudAccount();
+				if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
+					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+				}
+			}
+		} catch (error) {
+			throw new Error(error.message);
+		}
+	};
+
+	const getAutoLoginCode = async (): Promise<{ code: string }> => {
+		return getAdminPanelLoginCode(rootStore.getRestApiContext);
+	};
+
+	const getOwnerCurrentPlan = async () => {
+		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
 		let plan;
 		try {
 			plan = await getCurrentPlan(rootStore.getRestApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
+
+			if (userIsTrialing.value) {
+				if (trialExpired.value) {
+					useUIStore().pushBannerToStack('TRIAL_OVER');
+				} else {
+					useUIStore().pushBannerToStack('TRIAL');
+				}
+			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);
@@ -113,11 +149,65 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 			if (!userIsTrialing.value) return;
 			await getInstanceCurrentUsage();
 			startPollingInstanceUsageData();
-		} catch {}
+		} catch (e) {
+			throw new Error(e.message);
+		}
+	};
+
+	const fetchUserCloudAccount = async () => {
+		try {
+			await getUserCloudAccount();
+		} catch (e) {
+			throw new Error(e.message);
+		}
+	};
+
+	const redirectToDashboard = async () => {
+		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+		const { code } = await getAutoLoginCode();
+		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
+	};
+
+	const loadSuggestedTemplates = async () => {
+		try {
+			const additionalTemplates = await fetchSuggestedTemplates(rootStore.getRestApiContext);
+			if (additionalTemplates.sections && additionalTemplates.sections.length > 0) {
+				useUIStore().setSuggestedTemplates(additionalTemplates);
+			}
+		} catch (error) {
+			console.warn('Error checking for lead enrichment templates:', error);
+		}
+	};
+
+	const initialize = async () => {
+		if (state.initialized) {
+			return;
+		}
+
+		try {
+			await checkForCloudPlanData();
+		} catch (error) {
+			console.warn('Error checking for cloud plan data:', error);
+		}
+
+		try {
+			await fetchUserCloudAccount();
+		} catch (error) {
+			console.warn('Error fetching user cloud account:', error);
+		}
+
+		const localStorageFlag = localStorage.getItem(SUGGESTED_TEMPLATES_FLAG);
+		// Don't show if users already opted in
+		if (localStorageFlag !== 'false' && hasPermission(['instanceOwner'])) {
+			await loadSuggestedTemplates();
+		}
+
+		state.initialized = true;
 	};
 
 	return {
 		state,
+		initialize,
 		getOwnerCurrentPlan,
 		getInstanceCurrentUsage,
 		usageLeft,
@@ -129,5 +219,8 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		allExecutionsUsed,
 		reset,
 		checkForCloudPlanData,
+		fetchUserCloudAccount,
+		getAutoLoginCode,
+		redirectToDashboard,
 	};
 });

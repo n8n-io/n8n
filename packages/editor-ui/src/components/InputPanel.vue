@@ -1,25 +1,28 @@
 <template>
 	<RunData
-		:nodeUi="currentNode"
-		:runIndex="runIndex"
-		:linkedRuns="linkedRuns"
-		:canLinkRuns="canLinkRuns"
-		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
-		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
-		:isExecuting="isExecutingPrevious"
-		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
-		:sessionId="sessionId"
-		:overrideOutputs="connectedCurrentNodeOutputs"
-		:mappingEnabled="!readOnly"
-		:distanceFromActive="currentNodeDepth"
-		:isProductionExecutionPreview="isProductionExecutionPreview"
-		paneType="input"
+		:node="currentNode"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="!mappedNode && canLinkRuns"
+		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
+		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:is-executing="isExecutingPrevious"
+		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
+		:session-id="sessionId"
+		:override-outputs="connectedCurrentNodeOutputs"
+		:mapping-enabled="isMappingEnabled"
+		:distance-from-active="currentNodeDepth"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		pane-type="input"
+		data-test-id="ndv-input-panel"
+		@activatePane="activatePane"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
-		data-test-id="ndv-input-panel"
+		@search="$emit('search', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -27,20 +30,20 @@
 					v-if="parentNodes.length"
 					teleported
 					size="small"
-					:modelValue="currentNodeName"
-					@update:modelValue="onSelect"
+					:model-value="currentNodeName"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
 					data-test-id="ndv-input-select"
+					@update:modelValue="onInputNodeChange"
 				>
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
 					<n8n-option
 						v-for="node of parentNodes"
-						:value="node.name"
 						:key="node.name"
+						:value="node.name"
 						class="node-option"
 						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
 						data-test-id="ndv-input-option"
@@ -55,11 +58,43 @@
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<n8n-radio-buttons
+					v-if="isActiveNodeConfig && !readOnly"
+					:options="inputModes"
+					:model-value="inputMode"
+					@update:modelValue="onInputModeChange"
+				/>
 			</div>
 		</template>
-
+		<template v-if="isMappingMode" #before-data>
+			<!--
+						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
+						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
+				-->
+			<component :is="'style'">button.linkRun { display: none }</component>
+			<div :class="$style.mappedNode">
+				<n8n-select
+					:model-value="mappedNode"
+					size="small"
+					teleported
+					@update:modelValue="onMappedNodeSelected"
+					@click.stop
+				>
+					<template #prepend>{{ $locale.baseText('ndv.input.previousNode') }}</template>
+					<n8n-option
+						v-for="nodeName in rootNodesParents"
+						:key="nodeName"
+						:label="nodeName"
+						:value="nodeName"
+					/>
+				</n8n-select>
+			</div>
+		</template>
 		<template #node-not-run>
-			<div :class="$style.noOutputData" v-if="parentNodes.length">
+			<div
+				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
+				:class="$style.noOutputData"
+			>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('ndv.input.noOutputData.title')
 				}}</n8n-text>
@@ -76,18 +111,18 @@
 					<NodeExecuteButton
 						type="secondary"
 						:transparent="true"
-						:nodeName="currentNodeName"
+						:node-name="isActiveNodeConfig ? rootNode : currentNodeName"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
-						@execute="onNodeExecute"
-						telemetrySource="inputs"
+						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
+						@execute="onNodeExecute"
 					/>
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
 			</div>
-			<div :class="$style.notConnected" v-else>
+			<div v-else :class="$style.notConnected">
 				<div>
 					<WireMeUp />
 				</div>
@@ -130,7 +165,14 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
-import type { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IConnectedNode,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -145,16 +187,19 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
+type MappingMode = 'debugging' | 'mapping';
+
 export default defineComponent({
 	name: 'InputPanel',
-	mixins: [workflowHelpers],
 	components: { RunData, NodeExecuteButton, WireMeUp },
+	mixins: [workflowHelpers],
 	props: {
 		currentNodeName: {
 			type: String,
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -173,11 +218,21 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		isPaneActive: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
 			showDraggableHintWithDelay: false,
 			draggableHintShown: false,
+			inputMode: 'debugging' as MappingMode,
+			mappedNode: null as string | null,
+			inputModes: [
+				{ value: 'mapping', label: this.$locale.baseText('ndv.input.mapping') },
+				{ value: 'debugging', label: this.$locale.baseText('ndv.input.debugging') },
+			],
 		};
 	},
 	computed: {
@@ -187,6 +242,9 @@ export default defineComponent({
 		},
 		isUserOnboarded(): boolean {
 			return this.ndvStore.isMappingOnboarded;
+		},
+		isMappingMode(): boolean {
+			return this.isActiveNodeConfig && this.inputMode === 'mapping';
 		},
 		showDraggableHint(): boolean {
 			const toIgnore = [
@@ -201,23 +259,59 @@ export default defineComponent({
 
 			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
+		isActiveNodeConfig(): boolean {
+			let inputs = this.activeNodeType?.inputs ?? [];
+			let outputs = this.activeNodeType?.outputs ?? [];
+			if (this.activeNode !== null && this.currentWorkflow !== null) {
+				const node = this.currentWorkflow.getNode(this.activeNode.name);
+				inputs = NodeHelpers.getNodeInputs(this.currentWorkflow, node!, this.activeNodeType!);
+				outputs = NodeHelpers.getNodeOutputs(this.currentWorkflow, node!, this.activeNodeType!);
+			} else {
+				// If we can not figure out the node type we set no outputs
+				if (!Array.isArray(inputs)) {
+					inputs = [] as ConnectionTypes[];
+				}
+				if (!Array.isArray(outputs)) {
+					outputs = [] as ConnectionTypes[];
+				}
+			}
+
+			if (
+				inputs.length === 0 ||
+				(inputs.every((input) => this.filterOutConnectionType(input, NodeConnectionType.Main)) &&
+					outputs.find((output) => this.filterOutConnectionType(output, NodeConnectionType.Main)))
+			) {
+				return true;
+			}
+
+			return false;
+		},
+		isMappingEnabled(): boolean {
+			if (this.readOnly) return false;
+
+			// Mapping is only enabled in mapping mode for config nodes and if node to map is selected
+			if (this.isActiveNodeConfig) return this.isMappingMode && this.mappedNode !== null;
+
+			return true;
+		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
 				return false;
 			}
 			const triggeredNode = this.workflowsStore.executedNode;
 			const executingNode = this.workflowsStore.executingNode;
+
 			if (
 				this.activeNode &&
 				triggeredNode === this.activeNode.name &&
-				this.activeNode.name !== executingNode
+				!this.workflowsStore.isNodeExecuting(this.activeNode.name)
 			) {
 				return true;
 			}
 
-			if (executingNode || triggeredNode) {
+			if (executingNode.length || triggeredNode) {
 				return !!this.parentNodes.find(
-					(node) => node.name === executingNode || node.name === triggeredNode,
+					(node) => this.workflowsStore.isNodeExecuting(node.name) || node.name === triggeredNode,
 				);
 			}
 			return false;
@@ -231,7 +325,31 @@ export default defineComponent({
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+
+		rootNode(): string {
+			const workflow = this.currentWorkflow;
+			const rootNodes = workflow.getChildNodes(this.activeNode.name, 'ALL_NON_MAIN');
+
+			return rootNodes[0];
+		},
+		rootNodesParents(): string[] {
+			const workflow = this.currentWorkflow;
+			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')].reverse();
+
+			return parentNodes;
+		},
 		currentNode(): INodeUi | null {
+			if (this.isActiveNodeConfig) {
+				// if we're mapping node we want to show the output of the mapped node
+				if (this.mappedNode) {
+					return this.workflowsStore.getNodeByName(this.mappedNode);
+				}
+
+				// in debugging mode data does get set manually and is only for debugging
+				// so we want to force the node to be the active node to make sure we show the correct data
+				return this.activeNode;
+			}
+
 			return this.workflowsStore.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
@@ -271,14 +389,61 @@ export default defineComponent({
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
 	},
+	watch: {
+		inputMode: {
+			handler(val) {
+				this.onRunIndexChange(-1);
+				if (val === 'mapping') {
+					this.onUnlinkRun();
+					this.mappedNode = this.rootNodesParents[0];
+				}
+			},
+			immediate: true,
+		},
+		showDraggableHint(curr: boolean, prev: boolean) {
+			if (curr && !prev) {
+				setTimeout(() => {
+					if (this.draggableHintShown) {
+						return;
+					}
+					this.showDraggableHintWithDelay = this.showDraggableHint;
+					if (this.showDraggableHintWithDelay) {
+						this.draggableHintShown = true;
+
+						this.$telemetry.track('User viewed data mapping tooltip', {
+							type: 'unexecuted input pane',
+						});
+					}
+				}, 1000);
+			} else if (!curr) {
+				this.showDraggableHintWithDelay = false;
+			}
+		},
+	},
 	methods: {
+		filterOutConnectionType(
+			item: ConnectionTypes | INodeOutputConfiguration,
+			type: ConnectionTypes,
+		) {
+			if (!item) return false;
+
+			return typeof item === 'string' ? item !== type : item.type !== type;
+		},
+		onInputModeChange(val: MappingMode) {
+			this.inputMode = val;
+		},
+		onMappedNodeSelected(val: string) {
+			this.mappedNode = val;
+
+			this.onRunIndexChange(0);
+			this.onUnlinkRun();
+		},
 		getMultipleNodesText(nodeName?: string): string {
 			if (
 				!nodeName ||
 				!this.isMultiInputNode ||
 				!this.activeNode ||
-				this.activeNodeType === null ||
-				this.activeNodeType.inputNames === undefined
+				this.activeNodeType?.inputNames === undefined
 			)
 				return '';
 
@@ -292,10 +457,7 @@ export default defineComponent({
 
 			// Match connected input indexes to their names specified by active node
 			const connectedInputs = connectedInputIndexes.map(
-				(inputIndex) =>
-					this.activeNodeType &&
-					this.activeNodeType.inputNames &&
-					this.activeNodeType.inputNames[inputIndex],
+				(inputIndex) => this.activeNodeType?.inputNames?.[inputIndex],
 			);
 
 			if (connectedInputs.length === 0) return '';
@@ -323,9 +485,9 @@ export default defineComponent({
 		onUnlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onSelect(value: string) {
+		onInputNodeChange(value: string) {
 			const index = this.parentNodes.findIndex((node) => node.name === value) + 1;
-			this.$emit('select', value, index);
+			this.$emit('changeInputNode', value, index);
 		},
 		onConnectionHelpClick() {
 			if (this.activeNode) {
@@ -345,41 +507,30 @@ export default defineComponent({
 			}
 			return truncated;
 		},
-	},
-	watch: {
-		showDraggableHint(curr: boolean, prev: boolean) {
-			if (curr && !prev) {
-				setTimeout(() => {
-					if (this.draggableHintShown) {
-						return;
-					}
-					this.showDraggableHintWithDelay = this.showDraggableHint;
-					if (this.showDraggableHintWithDelay) {
-						this.draggableHintShown = true;
-
-						this.$telemetry.track('User viewed data mapping tooltip', {
-							type: 'unexecuted input pane',
-						});
-					}
-				}, 1000);
-			} else if (!curr) {
-				this.showDraggableHintWithDelay = false;
-			}
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
+.mappedNode {
+	width: max-content;
+	padding: 0 var(--spacing-s) var(--spacing-s);
+}
 .titleSection {
 	display: flex;
 	max-width: 300px;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-2xs);
 	}
 }
-
+.inputModeTab {
+	margin-left: auto;
+}
 .noOutputData {
 	max-width: 180px;
 

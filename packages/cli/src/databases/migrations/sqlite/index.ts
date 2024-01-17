@@ -45,6 +45,9 @@ import { AddMfaColumns1690000000030 } from './1690000000040-AddMfaColumns';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftDelete';
+import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
+import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -93,6 +96,9 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowHistoryTable1692967111175,
 	DisallowOrphanExecutions1693554410387,
 	ExecutionSoftDelete1693491613982,
+	AddWorkflowMetadata1695128658538,
+	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	AddGlobalAdminRole1700571993961,
 ];
 
 export { sqliteMigrations };

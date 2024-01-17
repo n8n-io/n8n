@@ -3,9 +3,10 @@ import type {
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 import { isEqual, isNull, merge } from 'lodash';
 
@@ -83,18 +84,18 @@ export function updateDisplayOptions(
 
 export function processJsonInput<T>(jsonData: T, inputName?: string) {
 	let values;
-	const input = `'${inputName}' ` || '';
+	const input = inputName ? `'${inputName}' ` : '';
 
 	if (typeof jsonData === 'string') {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new Error(`Input ${input}must contain a valid JSON`);
+			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new Error(`Input ${input}must contain a valid JSON`);
+		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;
@@ -290,4 +291,38 @@ export function flattenObject(data: IDataObject) {
 		}
 	}
 	return returnData;
+}
+
+/**
+ * Capitalizes the first letter of a string
+ *
+ * @param {string} string The string to capitalize
+ */
+export function capitalize(str: string): string {
+	if (!str) return str;
+
+	const chars = str.split('');
+	chars[0] = chars[0].toUpperCase();
+
+	return chars.join('');
+}
+
+export function generatePairedItemData(length: number): IPairedItemData[] {
+	return Array.from({ length }, (_, item) => ({
+		item,
+	}));
+}
+
+/**
+ * Output Paired Item Data Array
+ *
+ * @param {number | IPairedItemData | IPairedItemData[] | undefined} pairedItem
+ */
+export function preparePairedItemDataArray(
+	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
+): IPairedItemData[] {
+	if (pairedItem === undefined) return [];
+	if (typeof pairedItem === 'number') return [{ item: pairedItem }];
+	if (Array.isArray(pairedItem)) return pairedItem;
+	return [pairedItem];
 }

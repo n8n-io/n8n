@@ -1,5 +1,5 @@
 import nock from 'nock';
-import { getWorkflowFilenames, initBinaryDataManager, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname);
 
@@ -11,7 +11,7 @@ describe('Test S3 V2 Node', () => {
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
 
-			await initBinaryDataManager();
+			await initBinaryDataService();
 
 			nock.disableNetConnect();
 			mock = nock('https://bucket.s3.eu-central-1.amazonaws.com');

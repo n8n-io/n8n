@@ -1,11 +1,12 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
-import type { FindOptionsWhere } from 'typeorm';
-import { Credentials, UserSettings } from 'n8n-core';
-import * as Db from '@/Db';
+import { Credentials } from 'n8n-core';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import Container from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 export class ExportCredentialsCommand extends BaseCommand {
 	static description = 'Export credentials';
@@ -105,27 +106,22 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<ICredentialsDb> = {};
-		if (flags.id) {
-			findQuery.id = flags.id;
-		}
-
-		const credentials: ICredentialsDb[] = await Db.collections.Credentials.findBy(findQuery);
+		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).findBy(
+			flags.id ? { id: flags.id } : {},
+		);
 
 		if (flags.decrypted) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
-
 			for (let i = 0; i < credentials.length; i++) {
 				const { name, type, nodesAccess, data } = credentials[i];
 				const id = credentials[i].id;
 				const credential = new Credentials({ id, name }, type, nodesAccess, data);
-				const plainData = credential.getData(encryptionKey);
+				const plainData = credential.getData();
 				(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 			}
 		}
 
 		if (credentials.length === 0) {
-			throw new Error('No credentials found with specified filters.');
+			throw new ApplicationError('No credentials found with specified filters');
 		}
 
 		if (flags.separate) {

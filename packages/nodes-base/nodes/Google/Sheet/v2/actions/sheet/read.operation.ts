@@ -5,7 +5,6 @@ import {
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import type {
 	ILookupValues,
 	RangeDetectionOptions,
@@ -13,6 +12,8 @@ import type {
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
+
+import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -79,8 +80,8 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...dataLocationOnSheet,
-			...outputFormatting,
+			dataLocationOnSheet,
+			outputFormatting,
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',
@@ -110,60 +111,93 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0, {});
-	const outputFormattingOption =
-		((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
+	const items = this.getInputData();
+	const nodeVersion = this.getNode().typeVersion;
+	let length = 1;
 
-	const dataLocationOnSheetOptions =
-		((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
-
-	if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
-		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
+	if (nodeVersion > 4.1) {
+		length = items.length;
 	}
 
-	const range = getRangeString(sheetName, dataLocationOnSheetOptions);
+	const returnData: INodeExecutionData[] = [];
 
-	const valueRenderMode = (outputFormattingOption.general ||
-		'UNFORMATTED_VALUE') as ValueRenderOption;
-	const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
+	for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+		const options = this.getNodeParameter('options', itemIndex, {});
+		const outputFormattingOption =
+			((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
 
-	const sheetData = (await sheet.getData(
-		range,
-		valueRenderMode,
-		dateTimeRenderOption,
-	)) as SheetRangeData;
+		const dataLocationOnSheetOptions =
+			((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
 
-	if (sheetData === undefined || sheetData.length === 0) {
-		return [];
-	}
-
-	const { data, headerRow, firstDataRow } = prepareSheetData(sheetData, dataLocationOnSheetOptions);
-
-	let returnData = [];
-
-	const lookupValues = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
-
-	if (lookupValues.length) {
-		const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
-
-		const items = this.getInputData();
-		for (let i = 1; i < items.length; i++) {
-			const itemLookupValues = this.getNodeParameter('filtersUI.values', i, []) as ILookupValues[];
-			if (itemLookupValues.length) {
-				lookupValues.push(...itemLookupValues);
-			}
+		if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
+			dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 		}
 
-		returnData = await sheet.lookupValues(
-			data as string[][],
-			headerRow,
-			firstDataRow,
-			lookupValues,
-			returnAllMatches,
+		const range = getRangeString(sheetName, dataLocationOnSheetOptions);
+
+		const valueRenderMode = (outputFormattingOption.general ||
+			'UNFORMATTED_VALUE') as ValueRenderOption;
+		const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
+
+		const sheetData = (await sheet.getData(
+			range,
+			valueRenderMode,
+			dateTimeRenderOption,
+		)) as SheetRangeData;
+
+		if (sheetData === undefined || sheetData.length === 0) {
+			return [];
+		}
+
+		const { data, headerRow, firstDataRow } = prepareSheetData(
+			sheetData,
+			dataLocationOnSheetOptions,
 		);
-	} else {
-		returnData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+
+		let responseData = [];
+
+		const lookupValues = this.getNodeParameter(
+			'filtersUI.values',
+			itemIndex,
+			[],
+		) as ILookupValues[];
+
+		if (lookupValues.length) {
+			const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+
+			if (nodeVersion <= 4.1) {
+				for (let i = 1; i < items.length; i++) {
+					const itemLookupValues = this.getNodeParameter(
+						'filtersUI.values',
+						i,
+						[],
+					) as ILookupValues[];
+					if (itemLookupValues.length) {
+						lookupValues.push(...itemLookupValues);
+					}
+				}
+			}
+
+			responseData = await sheet.lookupValues(
+				data as string[][],
+				headerRow,
+				firstDataRow,
+				lookupValues,
+				returnAllMatches,
+			);
+		} else {
+			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+		}
+
+		returnData.push(
+			...responseData.map((item, index) => {
+				return {
+					json: item,
+					pairedItem: { item: itemIndex },
+				};
+			}),
+		);
 	}
 
-	return this.helpers.returnJsonArray(returnData);
+	return returnData;
 }

@@ -11,7 +11,7 @@ $custom-font-light: var(--color-text-light);
 $custom-font-very-light: var(--color-text-light);
 
 $custom-expression-text: var(--color-secondary);
-$custom-expression-background: var(--color-background-lighter);
+$custom-expression-background: var(--color-background-light);
 
 // Badge
 $badge-danger-color: var(--color-danger);
@@ -65,6 +65,13 @@ $tag-text-color: var(--color-text-dark);
 $tag-close-background-color: var(--color-text-light);
 $tag-close-background-hover-color: var(--color-text-dark);
 
+// nodes
+$node-background-default: var(--color-background-xlight);
+$node-background-executing: var(--color-primary-tint-3);
+$node-background-executing-other: #ede9ff;
+// TODO: Define that differently
+$node-background-type-other: #ede9ff;
+
 // Node creator
 $node-creator-width: 385px;
 $node-creator-text-color: var(--color-text-dark);
@@ -93,7 +100,7 @@ $drawer-background-color: var(--color-background-xlight);
 // updates-panel
 $updates-panel-info-url-color: $color-primary;
 $updates-panel-border: var(--border-base);
-$updates-panel-dark-background-color: var(--color-background-lighter);
+$updates-panel-dark-background-color: var(--color-background-light);
 $updates-panel-description-text-color: var(--color-text-base);
 $updates-panel-text-color: var(--color-text-dark);
 
@@ -109,3 +116,7 @@ $version-card-box-shadow-color: hsla(
 	var(--color-background-dark-l),
 	0.07
 );
+
+// supplemental node types
+$supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory
+	ai_outputParser ai_tool ai_retriever ai_textSplitter ai_vectorRetriever ai_vectorStore;

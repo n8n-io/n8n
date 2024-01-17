@@ -14,8 +14,10 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['databasePage'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [
@@ -161,9 +163,11 @@ export const databasePageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['create'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
@@ -502,8 +506,10 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'@version': [2],
 								type: ['files'],
+							},
+							hide: {
+								'@version': [1],
 							},
 						},
 						default: {},
@@ -969,8 +975,10 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'@version': [2],
 								type: ['files'],
+							},
+							hide: {
+								'@version': [1],
 							},
 						},
 						default: {},
@@ -1097,9 +1105,11 @@ export const databasePageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		description: 'The Notion Database Page to get',
@@ -1110,9 +1120,11 @@ export const databasePageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,
@@ -1254,9 +1266,11 @@ export const databasePageFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'@version': [2],
 						'/resource': ['databasePage'],
 						'/operation': ['getAll'],
+					},
+					hide: {
+						'@version': [1],
 					},
 				},
 				default: false,

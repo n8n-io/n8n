@@ -1,24 +1,28 @@
+import path from 'path';
+import type { IWorkflowBase } from 'n8n-workflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 	});
 
-	// replace workflow json 'Read Binary File' node's filePath to local file
-	const workflow = Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json');
-	const node = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
-	node.parameters.filePath = path.join(__dirname, 'spreadsheet.csv');
+	const loadWorkflow = (fileName: string, csvName: string) => {
+		const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
+			`nodes/SpreadsheetFile/test/${fileName}`,
+		);
+		const node = workflow.nodes.find((n) => n.name === 'Read Binary File');
+		node!.parameters.fileSelector = path.join(__dirname, csvName);
+		return workflow;
+	};
 
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'execute workflow.json',
 			input: {
-				workflowData: workflow,
+				workflowData: loadWorkflow('workflow.json', 'spreadsheet.csv'),
 			},
 			output: {
 				nodeData: {
@@ -78,6 +82,7 @@ describe('Execute Spreadsheet File Node', () => {
 							},
 						],
 					],
+					'Read CSV with Row Limit': [[{ json: { A: '1', B: '2', C: '3' } }]],
 					'Write To File CSV': [
 						[
 							{
@@ -102,7 +107,7 @@ describe('Execute Spreadsheet File Node', () => {
 								binary: {
 									data: {
 										mimeType: 'text/html',
-										fileType: 'text',
+										fileType: 'html',
 										fileExtension: 'html',
 										data: 'PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0iQSIgaWQ9InNqcy1BMSI+QTwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJCIiBpZD0ic2pzLUIxIj5CPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9IkMiIGlkPSJzanMtQzEiPkM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iMSIgaWQ9InNqcy1BMiI+MTwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSIyIiBpZD0ic2pzLUIyIj4yPC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjMiIGlkPSJzanMtQzIiPjM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iNCIgaWQ9InNqcy1BMyI+NDwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSI1IiBpZD0ic2pzLUIzIj41PC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjYiIGlkPSJzanMtQzMiPjY8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==',
 										fileName: 'spreadsheet.html',
@@ -145,6 +150,46 @@ describe('Execute Spreadsheet File Node', () => {
 								},
 							},
 						],
+					],
+				},
+			},
+		},
+		{
+			description: 'execute workflow.bom.json',
+			input: {
+				workflowData: loadWorkflow('workflow.bom.json', 'bom.csv'),
+			},
+			output: {
+				nodeData: {
+					'Edit with BOM included': [[{ json: { X: null } }]],
+					'Edit with BOM excluded': [[{ json: { X: '1' } }]],
+				},
+			},
+		},
+		{
+			description: 'execute includeempty.json',
+			input: {
+				workflowData: loadWorkflow('workflow.empty.json', 'includeempty.csv'),
+			},
+			output: {
+				nodeData: {
+					'Include Empty': [[{ json: { A: '1', B: '', C: '3' } }]],
+					'Ignore Empty': [[{ json: { A: '1', C: '3' } }]],
+				},
+			},
+		},
+		{
+			description: 'execute utf8.json',
+			input: {
+				workflowData: loadWorkflow('workflow.utf8.json', 'utf8.csv'),
+			},
+			output: {
+				nodeData: {
+					'Parse UTF8 v1': [
+						[{ json: { A: 1, B: '株式会社', C: 3 } }, { json: { A: 4, B: 5, C: '🐛' } }],
+					],
+					'Parse UTF8 v2': [
+						[{ json: { A: '1', B: '株式会社', C: '3' } }, { json: { A: '4', B: '5', C: '🐛' } }],
 					],
 				},
 			},

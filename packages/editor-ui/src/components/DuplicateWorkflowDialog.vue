@@ -1,46 +1,46 @@
 <template>
 	<Modal
 		:name="modalName"
-		:eventBus="modalBus"
-		@enter="save"
+		:event-bus="modalBus"
 		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		width="420px"
+		@enter="save"
 	>
 		<template #content>
 			<div :class="$style.content">
 				<n8n-input
-					v-model="name"
 					ref="nameInput"
+					v-model="name"
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
 					v-if="settingsStore.areTagsEnabled"
+					ref="dropdown"
 					v-model="currentTagIds"
-					:createEnabled="true"
-					:eventBus="dropdownBus"
+					:create-enabled="true"
+					:event-bus="dropdownBus"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
-					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<n8n-button
-					@click="save"
 					:loading="isSaving"
 					:label="$locale.baseText('duplicateWorkflowDialog.save')"
 					float="right"
+					@click="save"
 				/>
 				<n8n-button
 					type="secondary"
-					@click="close"
 					:disabled="isSaving"
 					:label="$locale.baseText('duplicateWorkflowDialog.cancel')"
 					float="right"
+					@click="close"
 				/>
 			</div>
 		</template>
@@ -52,7 +52,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -62,12 +62,12 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCredentialsStore } from '@/stores';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
-	mixins: [workflowHelpers],
 	components: { TagsDropdown, Modal },
+	mixins: [workflowHelpers],
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
 		return {
@@ -122,7 +122,7 @@ export default defineComponent({
 		},
 		focusOnNameInput() {
 			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
-			if (inputRef && inputRef.focus) {
+			if (inputRef?.focus) {
 				inputRef.focus();
 			}
 		},

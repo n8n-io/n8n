@@ -40,9 +40,9 @@ const airtableTypesMap: TypesMap = {
 	boolean: ['checkbox'],
 	dateTime: ['dateTime', 'date'],
 	time: [],
-	object: ['multipleAttachments'],
+	object: [],
 	options: ['singleSelect'],
-	array: ['multipleSelects'],
+	array: ['multipleSelects', 'multipleAttachments'],
 };
 
 function mapForeignType(foreignType: string, typesMap: TypesMap): FieldType {
@@ -78,7 +78,9 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 	});
 
 	if (!tableData) {
-		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
+			level: 'warning',
+		});
 	}
 
 	const fields: ResourceMapperField[] = [];

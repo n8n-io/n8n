@@ -11,6 +11,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
+import { snakeCase } from 'change-case';
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
@@ -18,10 +21,6 @@ import {
 	getTaskFields,
 	getWorkspaces,
 } from './GenericFunctions';
-
-import moment from 'moment-timezone';
-
-import { snakeCase } from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {

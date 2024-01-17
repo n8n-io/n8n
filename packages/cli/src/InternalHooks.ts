@@ -13,7 +13,6 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import type {
 	IDiagnosticInfo,
-	IInternalHooksClass,
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
@@ -27,10 +26,10 @@ import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { ExecutionRepository } from '@db/repositories';
 import { RoleService } from './services/role.service';
 import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
 import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
+import { InstanceSettings } from 'n8n-core';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -49,23 +48,13 @@ function userToPayload(user: User): {
 }
 
 @Service()
-export class InternalHooks implements IInternalHooksClass {
-	private instanceId: string;
-
-	public get telemetryInstanceId(): string {
-		return this.instanceId;
-	}
-
-	public get telemetryInstance(): Telemetry {
-		return this.telemetry;
-	}
-
+export class InternalHooks {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
-		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
 			this.onFirstProductionWorkflowSuccess(metrics),
@@ -75,9 +64,7 @@ export class InternalHooks implements IInternalHooksClass {
 		);
 	}
 
-	async init(instanceId: string) {
-		this.instanceId = instanceId;
-		this.telemetry.setInstanceId(instanceId);
+	async init() {
 		await this.telemetry.init();
 	}
 
@@ -97,6 +84,8 @@ export class InternalHooks implements IInternalHooksClass {
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
 			saml_enabled: diagnosticInfo.saml_enabled,
+			license_plan_name: diagnosticInfo.licensePlanName,
+			license_tenant_id: diagnosticInfo.licenseTenantId,
 		};
 
 		return Promise.all([
@@ -264,15 +253,10 @@ export class InternalHooks implements IInternalHooksClass {
 				workflowName: (data as IWorkflowBase).name,
 			};
 		}
-		void Promise.all([
-			this.executionRepository.updateExistingExecution(executionId, {
-				status: 'running',
-			}),
-			eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.started',
-				payload,
-			}),
-		]);
+		void eventBus.sendWorkflowEvent({
+			eventName: 'n8n.workflow.started',
+			payload,
+		});
 	}
 
 	async onWorkflowCrashed(
@@ -513,6 +497,7 @@ export class InternalHooks implements IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 		email_sent: boolean;
+		invitee_role: string;
 	}): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
@@ -522,13 +507,26 @@ export class InternalHooks implements IInternalHooksClass {
 					targetUserId: userInviteData.target_user_id,
 				},
 			}),
+
 			this.telemetry.track('User invited new user', {
 				user_id: userInviteData.user.id,
 				target_user_id: userInviteData.target_user_id,
 				public_api: userInviteData.public_api,
 				email_sent: userInviteData.email_sent,
+				invitee_role: userInviteData.invitee_role,
 			}),
 		]);
+	}
+
+	async onUserRoleChange(userRoleChangeData: {
+		user: User;
+		target_user_id: string;
+		public_api: boolean;
+		target_user_new_role: string;
+	}) {
+		const { user, ...rest } = userRoleChangeData;
+
+		void this.telemetry.track('User changed role', { user_id: user.id, ...rest });
 	}
 
 	async onUserReinvite(userReinviteData: {
@@ -811,7 +809,7 @@ export class InternalHooks implements IInternalHooksClass {
 				user_id: userCreatedCredentialsData.user.id,
 				credential_type: userCreatedCredentialsData.credential_type,
 				credential_id: userCreatedCredentialsData.credential_id,
-				instance_id: this.instanceId,
+				instance_id: this.instanceSettings.instanceId,
 			}),
 		]);
 	}
@@ -845,7 +843,7 @@ export class InternalHooks implements IInternalHooksClass {
 				user_id_sharer: userSharedCredentialsData.user_id_sharer,
 				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
 				sharees_removed: userSharedCredentialsData.sharees_removed,
-				instance_id: this.instanceId,
+				instance_id: this.instanceSettings.instanceId,
 			}),
 		]);
 	}

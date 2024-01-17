@@ -67,7 +67,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { computed } from 'vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -114,7 +114,7 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 };
 </script>
 

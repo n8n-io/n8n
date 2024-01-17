@@ -1,15 +1,15 @@
 <template>
 	<div
+		ref="codeNodeEditorContainer"
 		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
-		ref="codeNodeEditorContainer"
 	>
 		<el-tabs
-			type="card"
+			v-if="aiEnabled"
 			ref="tabs"
 			v-model="activeTab"
-			v-if="aiEnabled"
+			type="card"
 			:before-leave="onBeforeTabLeave"
 		>
 			<el-tab-pane
@@ -17,7 +17,11 @@
 				name="code"
 				data-test-id="code-node-tab-code"
 			>
-				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
+				<div
+					ref="codeNodeEditor"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+				/>
+				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
@@ -26,16 +30,19 @@
 			>
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
 				<AskAI
-					@replaceCode="onReplaceCode"
-					:has-changes="hasChanges"
 					:key="activeTab"
+					:has-changes="hasChanges"
+					@replaceCode="onReplaceCode"
 					@started-loading="isLoadingAIResponse = true"
 					@finished-loading="isLoadingAIResponse = false"
 				/>
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
+		<div v-else :class="$style.fillHeight">
+			<div ref="codeNodeEditor" :class="['ph-no-capture', $style.fillHeight]" />
+			<slot name="suffix" />
+		</div>
 	</div>
 </template>
 
@@ -52,7 +59,6 @@ import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
@@ -60,7 +66,8 @@ import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore, usePostHog } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { CODE_PLACEHOLDERS } from './constants';
@@ -68,22 +75,28 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 import AskAI from './AskAI/AskAI.vue';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export default defineComponent({
-	name: 'code-node-editor',
-	mixins: [linterExtension, completerExtension, workflowHelpers],
+	name: 'CodeNodeEditor',
 	components: {
 		AskAI,
 	},
+	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
 		aiButtonEnabled: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
 		mode: {
 			type: String as PropType<CodeExecutionMode>,
 			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
+			required: true,
 		},
 		language: {
 			type: String as PropType<CodeNodeEditorLanguage>,
@@ -94,8 +107,13 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		rows: {
+			type: Number,
+			default: 4,
+		},
 		modelValue: {
 			type: String,
+			required: true,
 		},
 	},
 	setup() {
@@ -150,7 +168,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useRootStore, usePostHog),
+		...mapStores(useRootStore, usePostHog, useSettingsStore),
 		aiEnabled(): boolean {
 			const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
 				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
@@ -168,14 +186,78 @@ export default defineComponent({
 		// eslint-disable-next-line vue/return-in-computed-property
 		languageExtensions(): [LanguageSupport, ...Extension[]] {
 			switch (this.language) {
-				case 'json':
-					return [json()];
 				case 'javaScript':
 					return [javascript(), this.autocompletionExtension('javaScript')];
 				case 'python':
 					return [python(), this.autocompletionExtension('python')];
 			}
 		},
+	},
+	beforeUnmount() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
+	},
+	mounted() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
+
+		const { isReadOnly, language } = this;
+		const extensions: Extension[] = [
+			...readOnlyEditorExtensions,
+			EditorState.readOnly.of(isReadOnly),
+			EditorView.editable.of(!isReadOnly),
+			codeNodeEditorTheme({
+				isReadOnly,
+				maxHeight: this.fillParent ? '100%' : '40vh',
+				minHeight: '20vh',
+				rows: this.rows,
+			}),
+		];
+
+		if (!isReadOnly) {
+			const linter = this.createLinter(language);
+			if (linter) {
+				extensions.push(this.linterCompartment.of(linter));
+			}
+
+			extensions.push(
+				...writableEditorExtensions,
+				EditorView.domEventHandlers({
+					focus: () => {
+						this.isEditorFocused = true;
+					},
+					blur: () => {
+						this.isEditorFocused = false;
+					},
+				}),
+
+				EditorView.updateListener.of((viewUpdate) => {
+					if (!viewUpdate.docChanged) return;
+
+					this.trackCompletion(viewUpdate);
+
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
+					this.hasChanges = true;
+				}),
+			);
+		}
+
+		const [languageSupport, ...otherExtensions] = this.languageExtensions;
+		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
+
+		const state = EditorState.create({
+			doc: this.modelValue ?? this.placeholder,
+			extensions,
+		});
+
+		this.editor = new EditorView({
+			parent: this.$refs.codeNodeEditor as HTMLDivElement,
+			state,
+		});
+
+		// empty on first load, default param value
+		if (!this.modelValue) {
+			this.refreshPlaceholder();
+			this.$emit('update:modelValue', this.placeholder);
+		}
 	},
 	methods: {
 		getCurrentEditorContent() {
@@ -304,67 +386,6 @@ export default defineComponent({
 			} catch {}
 		},
 	},
-	beforeUnmount() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
-	},
-	mounted() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		const { isReadOnly, language } = this;
-		const extensions: Extension[] = [
-			...readOnlyEditorExtensions,
-			EditorState.readOnly.of(isReadOnly),
-			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({ isReadOnly }),
-		];
-
-		if (!isReadOnly) {
-			const linter = this.createLinter(language);
-			if (linter) {
-				extensions.push(this.linterCompartment.of(linter));
-			}
-
-			extensions.push(
-				...writableEditorExtensions,
-				EditorView.domEventHandlers({
-					focus: () => {
-						this.isEditorFocused = true;
-					},
-					blur: () => {
-						this.isEditorFocused = false;
-					},
-				}),
-
-				EditorView.updateListener.of((viewUpdate) => {
-					if (!viewUpdate.docChanged) return;
-
-					this.trackCompletion(viewUpdate);
-
-					this.$emit('update:modelValue', this.editor?.state.doc.toString());
-					this.hasChanges = true;
-				}),
-			);
-		}
-
-		const [languageSupport, ...otherExtensions] = this.languageExtensions;
-		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
-
-		const state = EditorState.create({
-			doc: this.modelValue ?? this.placeholder,
-			extensions,
-		});
-
-		this.editor = new EditorView({
-			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state,
-		});
-
-		// empty on first load, default param value
-		if (!this.modelValue) {
-			this.refreshPlaceholder();
-			this.$emit('update:modelValue', this.placeholder);
-		}
-	},
 });
 </script>
 
@@ -379,15 +400,9 @@ export default defineComponent({
 <style lang="scss" module>
 .code-node-editor-container {
 	position: relative;
-
-	& > div {
-		height: 100%;
-	}
 }
 
-.ask-ai-button {
-	position: absolute;
-	top: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+.fillHeight {
+	height: 100%;
 }
 </style>

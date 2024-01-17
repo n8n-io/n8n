@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import { mockInstance } from '../../integration/shared/utils/';
-import { WebhookRepository } from '@/databases/repositories';
-import { CacheService } from '@/services/cache.service';
+import { WebhookRepository } from '@db/repositories/webhook.repository';
+import { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/services/webhook.service';
-import { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import { WebhookEntity } from '@db/entities/WebhookEntity';
+import { mockInstance } from '../../shared/mocking';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {
@@ -147,30 +147,6 @@ describe('WebhookService', () => {
 			const returnedMethods = await webhookService.getWebhookMethods('user/profile');
 
 			expect(returnedMethods).toEqual([]);
-		});
-	});
-
-	describe('deleteInstanceWebhooks()', () => {
-		test('should delete all webhooks of the instance', async () => {
-			const mockInstanceWebhooks = [
-				createWebhook('PUT', 'users'),
-				createWebhook('GET', 'user/:id'),
-				createWebhook('POST', ':var'),
-			];
-
-			webhookRepository.find.mockResolvedValue(mockInstanceWebhooks);
-
-			await webhookService.deleteInstanceWebhooks();
-
-			expect(webhookRepository.remove).toHaveBeenCalledWith(mockInstanceWebhooks);
-		});
-
-		test('should not delete any webhooks if none found', async () => {
-			webhookRepository.find.mockResolvedValue([]);
-
-			await webhookService.deleteInstanceWebhooks();
-
-			expect(webhookRepository.remove).toHaveBeenCalledWith([]);
 		});
 	});
 

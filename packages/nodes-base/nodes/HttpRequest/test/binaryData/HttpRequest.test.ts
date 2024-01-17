@@ -4,7 +4,7 @@ import {
 	equalityTest,
 	workflowToTests,
 	getWorkflowFilenames,
-	initBinaryDataManager,
+	initBinaryDataService,
 } from '@test/nodes/Helpers';
 
 describe('Test Binary Data Download', () => {
@@ -14,7 +14,7 @@ describe('Test Binary Data Download', () => {
 	const baseUrl = 'https://dummy.domain';
 
 	beforeAll(async () => {
-		await initBinaryDataManager();
+		await initBinaryDataService();
 
 		nock.disableNetConnect();
 

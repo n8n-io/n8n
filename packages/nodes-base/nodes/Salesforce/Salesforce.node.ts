@@ -2854,7 +2854,7 @@ export class Salesforce implements INodeType {
 							Name: name,
 							ParentId: parentId,
 						};
-						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+						if (items[i].binary?.[binaryPropertyName]) {
 							body.Body = items[i].binary![binaryPropertyName].data;
 							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 						} else {
@@ -2887,7 +2887,7 @@ export class Salesforce implements INodeType {
 						const body: IAttachment = {};
 						if (updateFields.binaryPropertyName !== undefined) {
 							const binaryPropertyName = updateFields.binaryPropertyName as string;
-							if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							if (items[i].binary?.[binaryPropertyName]) {
 								body.Body = items[i].binary![binaryPropertyName].data;
 								body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 							} else {

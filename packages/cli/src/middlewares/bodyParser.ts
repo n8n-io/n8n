@@ -1,11 +1,13 @@
 import getRawBody from 'raw-body';
+import { type Readable } from 'stream';
+import { createGunzip, createInflate } from 'zlib';
 import type { Request, RequestHandler } from 'express';
 import { parse as parseQueryString } from 'querystring';
 import { Parser as XmlParser } from 'xml2js';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
-import { UnprocessableRequestError } from '@/ResponseHelper';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const xmlParser = new XmlParser({
 	async: true,
@@ -20,8 +22,21 @@ export const rawBodyReader: RequestHandler = async (req, res, next) => {
 
 	req.readRawBody = async () => {
 		if (!req.rawBody) {
-			req.rawBody = await getRawBody(req, {
-				length: req.headers['content-length'],
+			let stream: Readable = req;
+			let contentLength: string | undefined;
+			const contentEncoding = req.headers['content-encoding'];
+			switch (contentEncoding) {
+				case 'gzip':
+					stream = req.pipe(createGunzip());
+					break;
+				case 'deflate':
+					stream = req.pipe(createInflate());
+					break;
+				default:
+					contentLength = req.headers['content-length'];
+			}
+			req.rawBody = await getRawBody(stream, {
+				length: contentLength,
 				limit: `${String(payloadSizeMax)}mb`,
 			});
 			req._body = true;

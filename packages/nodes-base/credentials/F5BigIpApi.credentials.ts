@@ -9,6 +9,12 @@ export class F5BigIpApi implements ICredentialType {
 
 	icon = 'file:icons/F5.svg';
 
+	httpRequestNode = {
+		name: 'F5 Big-IP',
+		docsUrl: 'https://clouddocs.f5.com/api/',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

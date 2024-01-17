@@ -44,7 +44,7 @@ export const baseCompletions = defineComponent({
 
 		/**
 		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
-		 * $jmespath $('nodeName')` in both modes.
+		 * $jmespath $ifEmpt $('nodeName')` in both modes.
 		 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
 		 */
 		baseCompletions(context: CompletionContext): CompletionResult | null {
@@ -57,6 +57,10 @@ export const baseCompletions = defineComponent({
 				{
 					label: `${prefix}execution`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
+				},
+				{
+					label: `${prefix}ifEmpty()`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$ifEmpty'),
 				},
 				{ label: `${prefix}input`, info: this.$locale.baseText('codeNodeEditor.completer.$input') },
 				{

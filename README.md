@@ -2,7 +2,7 @@
 
 # n8n - Workflow automation tool
 
-n8n is an extendable workflow automation tool. With a [fair-code](http://faircode.io) distribution model, n8n
+n8n is an extendable workflow automation tool. With a [fair-code](https://faircode.io) distribution model, n8n
 will always have visible source code, be available to self-host, and allow you to add your own custom
 functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect
 anything to everything.
@@ -54,6 +54,15 @@ While n8n cloud and n8n are the same in terms of features, n8n cloud provides ce
 - Managed OAuth for authentication
 - Easily upgrading to the newer n8n versions
 
+## Build with LangChain and AI in n8n (beta)
+
+With n8n's LangChain nodes you can build AI-powered functionality within your workflows. The LangChain nodes are configurable, meaning you can choose your preferred agent, LLM, memory, and so on. Alongside the LangChain nodes, you can connect any n8n node as normal: this means you can integrate your LangChain logic with other data sources and services.
+
+Learn more in the [documentation](https://docs.n8n.io/langchain/).
+
+- [LangChain nodes package](https://www.npmjs.com/package/@n8n/n8n-nodes-langchain)
+- [Chatbot package](https://www.npmjs.com/package/@n8n/chat)
+
 ## Support
 
 If you have problems or questions go to our forum, we will then try to help you asap:
@@ -85,7 +94,7 @@ development environment ready in minutes.
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under the
+n8n is [fair-code](https://faircode.io) distributed under the
 [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) and the
 [**n8n Enterprise License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE_EE.md).
 

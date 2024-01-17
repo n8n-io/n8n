@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { UserRepository } from '@db/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';

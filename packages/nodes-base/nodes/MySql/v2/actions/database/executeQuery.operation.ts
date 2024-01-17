@@ -8,11 +8,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

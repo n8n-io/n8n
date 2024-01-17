@@ -35,6 +35,11 @@ on:
         description: 'URL to call after Docker Image got built successfully.'
         required: false
         default: ''
+      include-arm64:
+        description: 'Include ARM64 support'
+        type: boolean
+        required: true
+        default: false
 
 jobs:
   build:
@@ -73,8 +78,10 @@ jobs:
         uses: docker/build-push-action@v4.1.1
         with:
           context: .
+          build-args: |
+            N8N_RELEASE_TYPE=nightly
           file: ./docker/images/n8n-custom/Dockerfile
-          platforms: linux/amd64
+          platforms: ${{ github.event.inputs.include-arm64 == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           provenance: false
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}

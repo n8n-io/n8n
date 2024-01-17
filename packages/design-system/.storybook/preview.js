@@ -46,10 +46,6 @@ export const parameters = {
 				value: 'var(--color-background-light)',
 			},
 			{
-				name: '--color-background-lighter',
-				value: 'var(--color-background-lighter)',
-			},
-			{
 				name: '--color-background-xlight',
 				value: 'var(--color-background-xlight)',
 			},
@@ -66,7 +62,7 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
+			order: ['Docs', 'Styleguide', ['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'], 'Atoms', 'Modules'],
 		},
 	},
 };

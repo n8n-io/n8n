@@ -1,10 +1,12 @@
 import { ElNotification as Notification } from 'element-plus';
 import type { NotificationInstance, NotificationOptions, MessageBoxState } from 'element-plus';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
+import { VIEWS } from '@/constants';
 
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
@@ -16,20 +18,18 @@ const stickyNotificationQueue: NotificationInstance[] = [];
 export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
-	function showMessage(
-		messageData: Omit<NotificationOptions, 'message'> & { message?: string },
-		track = true,
-	) {
+	function showMessage(messageData: NotificationOptions, track = true) {
 		messageData = { ...messageDefaults, ...messageData };
-		messageData.message = messageData.message
-			? sanitizeHtml(messageData.message)
-			: messageData.message;
+		messageData.message =
+			typeof messageData.message === 'string'
+				? sanitizeHtml(messageData.message)
+				: messageData.message;
 
-		// @TODO Check if still working
-		const notification = Notification(messageData as NotificationOptions);
+		const notification = Notification(messageData);
 
 		if (messageData.duration === 0) {
 			stickyNotificationQueue.push(notification);
@@ -49,7 +49,7 @@ export function useToast() {
 
 	function showToast(config: {
 		title: string;
-		message: string;
+		message: NotificationOptions['message'];
 		onClick?: () => void;
 		onClose?: () => void;
 		duration?: number;
@@ -158,11 +158,30 @@ export function useToast() {
 		stickyNotificationQueue.length = 0;
 	}
 
+	// Pick up and display notifications for the given list of views
+	function showNotificationForViews(views: VIEWS[]) {
+		const notifications: NotificationOptions[] = [];
+		views.forEach((view) => {
+			notifications.push(...uiStore.getNotificationsForView(view));
+		});
+		if (notifications.length) {
+			notifications.forEach(async (notification) => {
+				// Notifications show on top of each other without this timeout
+				setTimeout(() => {
+					showMessage(notification);
+				}, 5);
+			});
+			// Clear the queue once all notifications are shown
+			uiStore.setNotificationsForView(VIEWS.WORKFLOW, []);
+		}
+	}
+
 	return {
 		showMessage,
 		showToast,
 		showError,
 		showAlert,
 		clearAllStickyNotifications,
+		showNotificationForViews,
 	};
 }

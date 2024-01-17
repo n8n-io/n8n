@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { couponFields, couponOperations } from './CouponDescription';
 
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -26,8 +27,6 @@ import { userFields, userOperations } from './UserDescription';
 // 	orderOperations,
 // 	orderFields,
 // } from './OrderDescription';
-
-import moment from 'moment';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {

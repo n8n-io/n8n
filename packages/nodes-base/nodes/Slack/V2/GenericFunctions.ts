@@ -64,6 +64,7 @@ export async function slackApiRequest(
 				{
 					description:
 						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
+					level: 'warning',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
@@ -72,6 +73,7 @@ export async function slackApiRequest(
 				'Your Slack credential is missing required Oauth Scopes',
 				{
 					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+					level: 'warning',
 				},
 			);
 		}
@@ -129,9 +131,12 @@ export async function slackApiRequestAllItems(
 	return returnData;
 }
 
-export function getMessageContent(this: IExecuteFunctions | ILoadOptionsFunctions, i: number) {
-	const nodeVersion = this.getNode().typeVersion;
-
+export function getMessageContent(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	i: number,
+	nodeVersion: number,
+	instanceId?: string,
+) {
 	const includeLinkToWorkflow = this.getNodeParameter(
 		'otherOptions.includeLinkToWorkflow',
 		i,
@@ -139,7 +144,9 @@ export function getMessageContent(this: IExecuteFunctions | ILoadOptionsFunction
 	) as IDataObject;
 
 	const { id } = this.getWorkflow();
-	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n&utm_medium=slackNode|n8n workflow>_`;
+	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		'n8n-nodes-base.slack',
+	)}${instanceId ? '_' + instanceId : ''}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;
 
 	let content: IDataObject = {};

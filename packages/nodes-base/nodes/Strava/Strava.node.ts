@@ -6,11 +6,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
 import { activityFields, activityOperations } from './ActivityDescription';
-
-import moment from 'moment';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {

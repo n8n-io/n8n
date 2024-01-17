@@ -1,7 +1,7 @@
 <template>
-	<div :class="[$style.wrapper, !this.uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
+	<div :class="[$style.wrapper, !uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
 		<div :class="$style.container">
-			<aside :class="$style.aside" v-if="$slots.aside">
+			<aside v-if="$slots.aside" :class="$style.aside">
 				<slot name="aside" />
 			</aside>
 			<main :class="$style.content">
@@ -37,7 +37,6 @@ export default defineComponent({
 	max-width: 1280px;
 	justify-content: center;
 	box-sizing: border-box;
-	background: var(--color-gray-light);
 	padding: var(--spacing-l) var(--spacing-l) 0;
 	@media (min-width: 1200px) {
 		padding: var(--spacing-2xl) var(--spacing-2xl) 0;

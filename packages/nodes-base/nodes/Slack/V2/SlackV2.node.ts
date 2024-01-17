@@ -17,6 +17,7 @@ import type {
 
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';
@@ -30,8 +31,6 @@ import {
 	validateJSON,
 	getMessageContent,
 } from './GenericFunctions';
-
-import moment from 'moment';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -321,6 +320,9 @@ export class SlackV2 implements INodeType {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		const nodeVersion = this.getNode().typeVersion;
+		const instanceId = this.getInstanceId();
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -768,7 +770,7 @@ export class SlackV2 implements INodeType {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						const content = getMessageContent.call(this, i);
+						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 
 						const body: IDataObject = {
 							channel: target,
@@ -1059,7 +1061,7 @@ export class SlackV2 implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -1169,6 +1171,11 @@ export class SlackV2 implements INodeType {
 					if (operation === 'getPresence') {
 						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
+					}
+					if (operation === 'getProfile') {
+						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
+						responseData = await slackApiRequest.call(this, 'GET', '/users.profile.get', {}, qs);
+						responseData = responseData.profile;
 					}
 					if (operation === 'updateProfile') {
 						const options = this.getNodeParameter('options', i);

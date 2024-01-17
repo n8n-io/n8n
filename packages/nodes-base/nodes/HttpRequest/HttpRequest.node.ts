@@ -10,7 +10,7 @@ export class HttpRequest extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'HTTP Request',
 			name: 'httpRequest',
-			icon: 'fa:at',
+			icon: 'file:httprequest.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 			description: 'Makes an HTTP request and returns the response data',

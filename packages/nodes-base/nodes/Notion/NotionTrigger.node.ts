@@ -6,9 +6,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { notionApiRequest, simplifyObjects } from './GenericFunctions';
 
-import moment from 'moment';
 import { getDatabases } from './SearchFunctions';
 
 export class NotionTrigger implements INodeType {

@@ -1,6 +1,7 @@
-import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
-import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
+import { NDV, WorkflowPage } from '../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -41,7 +42,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
-	it('should change input', () => {
+	it('should change input and go back to canvas', () => {
 		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input ${uuid()}`);
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
@@ -49,6 +50,9 @@ describe('NDV', () => {
 		ndv.getters.inputOption().last().click();
 		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist');
 		ndv.getters.inputDataContainer().should('contain', 'start');
+		ndv.getters.backToCanvas().click();
+		ndv.getters.container().should('not.be.visible');
+		cy.shouldNotHaveConsoleErrors();
 	});
 
 	it('should show correct validation state for resource locator params', () => {
@@ -67,10 +71,10 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		// cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 0);
+		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
 		cy.get('.has-issues').should('have.length', 2);
@@ -296,15 +300,15 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression('fieldId');
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
-		getPopper().should('not.be.visible');
 
-		ndv.getters.parameterInputIssues('remoteOptions').realHover();
-		getVisiblePopper().should('include.text', `node doesn't exist`);
+		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false});
+		// Remote options dropdown should not be visible
+		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
 
 	it('should retrieve remote options when non-required params throw errors', () => {
@@ -314,9 +318,9 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression('otherField');
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
@@ -345,5 +349,264 @@ describe('NDV', () => {
 
 		ndv.actions.close();
 		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
+
+	it('should not push NDV header out with a lot of code in Code node editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.getters.parameterInput('jsCode').get('.cm-content').type('{selectall}').type('{backspace}');
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
+
+	it('should allow editing code in fullscreen in the Code node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.actions.openCodeEditorFullscreen();
+
+		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
+		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
+		cy.wait(200);
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
+	});
+
+	it('should not retrieve remote options when a parameter value changes', () => {
+		cy.intercept('/rest/dynamic-node-parameters/options?**', cy.spy().as('fetchParameterOptions'));
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+		// Type something into the field
+		ndv.actions.typeIntoParameterInput('otherField', 'test');
+		// Should call the endpoint only once (on mount), not for every keystroke
+		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
+	});
+
+	describe('floating nodes', () => {
+		function getFloatingNodeByPosition(
+			position: 'inputMain' | 'outputMain' | 'outputSub' | 'inputSub',
+		) {
+			return cy.get(`[data-node-placement=${position}]`);
+		}
+		beforeEach(() => {
+			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
+			workflowPage.getters.canvasNodes().first().dblclick();
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('exist');
+		});
+
+		it('should traverse floating nodes with mouse', () => {
+			// Traverse 4 connected node forwards
+			Array.from(Array(4).keys()).forEach((i) => {
+				getFloatingNodeByPosition('outputMain').click({ force: true });
+				ndv.getters.nodeNameContainer().should('contain', `Node ${i + 1}`);
+				getFloatingNodeByPosition('inputMain').should('exist');
+				getFloatingNodeByPosition('outputMain').should('exist');
+				ndv.actions.close();
+				workflowPage.getters.selectedNodes().should('have.length', 1);
+				workflowPage.getters
+					.selectedNodes()
+					.first()
+					.should('contain', `Node ${i + 1}`);
+				workflowPage.getters.selectedNodes().first().dblclick();
+			});
+
+			getFloatingNodeByPosition('outputMain').click({ force: true });
+			ndv.getters.nodeNameContainer().should('contain', 'Chain');
+			getFloatingNodeByPosition('inputSub').should('exist');
+			getFloatingNodeByPosition('inputSub').click({ force: true });
+			ndv.getters.nodeNameContainer().should('contain', 'Model');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('exist');
+			ndv.actions.close();
+			workflowPage.getters.selectedNodes().should('have.length', 1);
+			workflowPage.getters.selectedNodes().first().should('contain', 'Model');
+			workflowPage.getters.selectedNodes().first().dblclick();
+			getFloatingNodeByPosition('outputSub').click({ force: true });
+			ndv.getters.nodeNameContainer().should('contain', 'Chain');
+
+			// Traverse 4 connected node backwards
+			Array.from(Array(4).keys()).forEach((i) => {
+				getFloatingNodeByPosition('inputMain').click({ force: true });
+				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - i}`);
+				getFloatingNodeByPosition('outputMain').should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+			});
+			getFloatingNodeByPosition('inputMain').click({ force: true });
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('not.exist');
+			ndv.actions.close();
+			workflowPage.getters.selectedNodes().should('have.length', 1);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+		});
+
+		it('should traverse floating nodes with mouse', () => {
+			// Traverse 4 connected node forwards
+			Array.from(Array(4).keys()).forEach((i) => {
+				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight']);
+				ndv.getters.nodeNameContainer().should('contain', `Node ${i + 1}`);
+				getFloatingNodeByPosition('inputMain').should('exist');
+				getFloatingNodeByPosition('outputMain').should('exist');
+				ndv.actions.close();
+				workflowPage.getters.selectedNodes().should('have.length', 1);
+				workflowPage.getters
+					.selectedNodes()
+					.first()
+					.should('contain', `Node ${i + 1}`);
+				workflowPage.getters.selectedNodes().first().dblclick();
+			});
+
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowRight']);
+			ndv.getters.nodeNameContainer().should('contain', 'Chain');
+			getFloatingNodeByPosition('inputSub').should('exist');
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowDown']);
+			ndv.getters.nodeNameContainer().should('contain', 'Model');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('outputMain').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('exist');
+			ndv.actions.close();
+			workflowPage.getters.selectedNodes().should('have.length', 1);
+			workflowPage.getters.selectedNodes().first().should('contain', 'Model');
+			workflowPage.getters.selectedNodes().first().dblclick();
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowUp']);
+			ndv.getters.nodeNameContainer().should('contain', 'Chain');
+
+			// Traverse 4 connected node backwards
+			Array.from(Array(4).keys()).forEach((i) => {
+				cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft']);
+				ndv.getters.nodeNameContainer().should('contain', `Node ${4 - i}`);
+				getFloatingNodeByPosition('outputMain').should('exist');
+				getFloatingNodeByPosition('inputMain').should('exist');
+			});
+			cy.realPress(['ShiftLeft', 'Meta', 'AltLeft', 'ArrowLeft']);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			getFloatingNodeByPosition('inputMain').should('not.exist');
+			getFloatingNodeByPosition('inputSub').should('not.exist');
+			getFloatingNodeByPosition('outputSub').should('not.exist');
+			ndv.actions.close();
+			workflowPage.getters.selectedNodes().should('have.length', 1);
+			workflowPage.getters
+				.selectedNodes()
+				.first()
+				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+		});
+	});
+
+	it('should show node name and version in settings', () => {
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
+
+		workflowPage.actions.openNode('Edit Fields (old)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.2)');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Edit Fields (latest)');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.2 (Latest)');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Function');
+		ndv.actions.openSettings();
+		ndv.getters.nodeVersion().should('have.text', 'Function node version 1 (Deprecated)');
+		ndv.actions.close();
+	});
+
+	it('Should render xml and html tags as strings and can search', () => {
+		cy.createFixtureWorkflow('Test_workflow_xml_output.json', `test`);
+
+		workflowPage.actions.executeWorkflow();
+
+		workflowPage.actions.openNode('Edit Fields');
+
+		ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
+
+		ndv.getters
+			.outputTableRow(1)
+			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?> <library>');
+
+		cy.document().trigger('keyup', { key: '/' });
+		ndv.getters.searchInput().filter(':focus').type('<lib');
+
+		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
+
+		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(1).click();
+
+		ndv.getters.outputDataContainer().find('.json-data').should('exist');
+		ndv.getters
+			.outputDataContainer()
+			.should(
+				'have.text',
+				'[{"body": "<?xml version="1.0" encoding="UTF-8"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
+			);
+		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
+
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
+		ndv.getters
+			.outputDataContainer()
+			.findChildByTestId('run-data-schema-item')
+			.find('> span')
+			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
+	});
+
+	it('should properly show node execution indicator', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code');
+		workflowPage.actions.openNode('Code');
+		// Should not show run info before execution
+		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
+		ndv.getters.nodeRunErrorIndicator().should('not.exist');
+		ndv.getters.nodeExecuteButton().click();
+		ndv.getters.nodeRunSuccessIndicator().should('exist');
+	});
+
+	it('should properly show node execution indicator for multiple nodes', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code');
+		workflowPage.actions.openNode('Code');
+		ndv.actions.typeIntoParameterInput('jsCode', 'testets');
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.executeWorkflow();
+		// Manual tigger node should show success indicator
+		workflowPage.actions.openNode('When clicking "Test Workflow"');
+		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		// Code node should show error
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.openNode('Code');
+		ndv.getters.nodeRunErrorIndicator().should('exist');
+	});
+
+	it('Should handle mismatched option attributes', () => {
+		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
+			keepNdvOpen: true,
+			action: 'Create a new entry',
+		});
+		// Add some attributes in Create operation
+		cy.getByTestId('parameter-item').contains('Add Attributes').click();
+		ndv.actions.changeNodeOperation('Update');
+		// Attributes should be empty after operation change
+		cy.getByTestId('parameter-item').contains('Currently no items exist').should('exist');
+	});
+
+	it('Should keep RLC values after operation change', () => {
+		const TEST_DOC_ID = '1111';
+		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', {
+			keepNdvOpen: true,
+			action: 'Append row in sheet',
+		});
+		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
+		ndv.actions.changeNodeOperation('Update Row');
+		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
 	});
 });

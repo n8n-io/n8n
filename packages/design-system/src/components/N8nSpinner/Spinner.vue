@@ -6,7 +6,7 @@
 			<div></div>
 			<div></div>
 		</div>
-		<n8n-icon v-else icon="spinner" :size="size" spin />
+		<N8nIcon v-else icon="spinner" :size="size" spin />
 	</span>
 </template>
 
@@ -16,7 +16,7 @@ import N8nIcon from '../N8nIcon';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-spinner',
+	name: 'N8nSpinner',
 	components: {
 		N8nIcon,
 	},

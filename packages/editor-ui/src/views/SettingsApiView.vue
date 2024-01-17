@@ -32,7 +32,7 @@
 			</p>
 			<n8n-card class="mb-4xs" :class="$style.card">
 				<span :class="$style.delete">
-					<n8n-link @click="showDeleteModal" :bold="true">
+					<n8n-link :bold="true" @click="showDeleteModal">
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
@@ -42,7 +42,7 @@
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
-						:redactValue="true"
+						:redact-value="true"
 						@copy="onCopy"
 					/>
 				</div>
@@ -54,7 +54,7 @@
 					}}
 				</n8n-text>
 				{{ ' ' }}
-				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
+				<n8n-link :to="apiDocsURL" :new-window="true" size="small">
 					{{
 						$locale.baseText(
 							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
@@ -64,15 +64,16 @@
 			</div>
 		</div>
 		<n8n-action-box
-			v-else-if="isTrialing"
+			v-else-if="!isPublicApiEnabled && isTrialing"
+			data-test-id="public-api-upgrade-cta"
 			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
 			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
-			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			:button-text="$locale.baseText('settings.api.trial.upgradePlan.cta')"
 			@click:button="onUpgrade"
 		/>
 		<n8n-action-box
 			v-else-if="mounted && !isLoadingCloudPlans"
-			:buttonText="
+			:button-text="
 				$locale.baseText(
 					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
 				)
@@ -86,7 +87,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IUser } from '@/Interface';
-import { useToast, useMessage } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
@@ -119,6 +121,8 @@ export default defineComponent({
 		};
 	},
 	mounted() {
+		if (!this.isPublicApiEnabled) return;
+
 		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
@@ -139,10 +143,13 @@ export default defineComponent({
 		isLoadingCloudPlans(): boolean {
 			return this.cloudPlanStore.state.loadingPlan;
 		},
+		isPublicApiEnabled(): boolean {
+			return this.settingsStore.isPublicApiEnabled;
+		},
 	},
 	methods: {
 		onUpgrade() {
-			this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+			void this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(

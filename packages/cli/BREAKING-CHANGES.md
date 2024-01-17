@@ -2,6 +2,95 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.24.0
+
+### What changed?
+
+The flag `N8N_CACHE_ENABLED` was removed. The cache is now always enabled.
+
+Additionally, expressions in credentials now follow the paired item, so if you have multiple input items, n8n will try to pair the matching row to fill in the credential details.
+
+In the Monday.com Node, due to API changes, the data structure of entries in `column_values` array has changed
+
+### When is action necessary?
+
+If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
+
+In regards to credentials, if you use expression in credentials, you might want to revisit them. Previously, n8n would stick to the first item only, but now it will try to match the proper paired item.
+
+If you are using the Monday.com node and refering to `column_values` property, check in table below if you are using any of the affected properties of its entries.
+
+| Resource   | Operation           | Previous        | New                 |
+| ---------- | ------------------- | --------------- | ------------------- |
+| Board      | Get                 | owner           | owners              |
+| Board      | Get All             | owner           | owners              |
+| Board Item | Get                 | title           | column.title        |
+| Board Item | Get All             | title           | column.title        |
+| Board Item | Get By Column Value | title           | column.title        |
+| Board Item | Get                 | additional_info | column.settings_str |
+| Board Item | Get All             | additional_info | column.settings_str |
+| Board Item | Get By Column Value | additional_info | column.settings_str |
+
+\*column.settings_str is not a complete equivalent additional_info
+
+## 1.22.0
+
+### What changed?
+
+Hash algorithm `ripemd160` is dropped from `.hash()` expressions.
+`sha3` hash algorithm now returns a valid sha3-512 has, unlike the previous implementation that returned a `Keccak` hash instead.
+
+### When is action necessary?
+
+If you are using `.hash` helpers in expressions with hash algorithm `ripemd160`, you need to switch to one of the other supported algorithms.
+
+## 1.15.0
+
+### What changed?
+
+Until now, in main mode, n8n used to deregister webhooks at shutdown and reregister them at startup. Queue mode and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` skipped webhook deregistration.
+
+As from now, in both main and queue modes, n8n no longer deregisters webhooks at startup and shutdown, and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` is removed. n8n assumes that third-party services will retry unhandled webhook requests.
+
+### When is action necessary?
+
+If using the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN`, note that it no longer has effect and can be removed from your settings.
+
+## 1.9.0
+
+### What changed?
+
+In nodes, `this.helpers.getBinaryStream()` is now async.
+
+### When is action necessary?
+
+If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
+
+Example:
+
+```typescript
+const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
+const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
+```
+
+### What changed?
+
+The env vars `N8N_BINARY_DATA_TTL` and `EXECUTIONS_DATA_PRUNE_TIMEOUT` no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.
+
+### When is action necessary?
+
+If using these flags, remove them from your settings and be mindful of the new behavior.
+
+## 1.6.0
+
+### What changed?
+
+The env var `N8N_PERSISTED_BINARY_DATA_TTL` no longer has any effect and can be removed. This legacy flag was originally introduced to support ephemeral executions (see [details](https://github.com/n8n-io/n8n/pull/7046)), which are no longer supported.
+
+### When is action necessary?
+
+If using this flag, remove it from your settings.
+
 ## 1.5.0
 
 ### What changed?

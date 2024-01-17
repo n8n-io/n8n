@@ -2,7 +2,7 @@
 
 # n8n - Workflow automation tool
 
-n8n is an extendable workflow automation tool. With a [fair-code](http://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
+n8n is an extendable workflow automation tool. With a [fair-code](https://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
@@ -63,7 +63,7 @@ You can then access n8n by opening:
 
 To be able to use webhooks which all triggers of external services like Github
 rely on n8n has to be reachable from the web. To make that easy n8n has a
-special tunnel service (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)) which redirects requests from our servers to your local
+special tunnel service (uses this code: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)) which redirects requests from our servers to your local
 n8n instance.
 
 To use it simply start n8n with `--tunnel`
@@ -82,6 +82,7 @@ docker run -it --rm \
 The workflow data gets by default saved in an SQLite database in the user
 folder (`/home/node/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
+Note that the folder needs to be writable by user with UID/GID 1000.
 
 ```bash
 docker run -it --rm \
@@ -257,6 +258,6 @@ Before you upgrade to the latest version make sure to check here if there are an
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
+n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
 Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).

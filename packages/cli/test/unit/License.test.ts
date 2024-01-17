@@ -1,7 +1,12 @@
 import { LicenseManager } from '@n8n_io/license-sdk';
+import { InstanceSettings } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import { License } from '@/License';
+import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
+import { mockInstance } from '../shared/mocking';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -21,21 +26,48 @@ describe('License', () => {
 	});
 
 	let license: License;
+	const logger = mockInstance(Logger);
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
+	mockInstance(MultiMainSetup);
 
 	beforeEach(async () => {
-		license = new License();
-		await license.init(MOCK_INSTANCE_ID);
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
+		await license.init();
 	});
 
 	test('initializes license manager', async () => {
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: false,
+			renewOnInit: true,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
-			logger: expect.anything(),
+			logger,
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			collectUsageMetrics: expect.any(Function),
+			server: MOCK_SERVER_URL,
+			tenantId: 1,
+		});
+	});
+
+	test('initializes license manager for worker', async () => {
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
+		await license.init('worker');
+		expect(LicenseManager).toHaveBeenCalledWith({
+			autoRenewEnabled: false,
+			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: true,
+			renewOnInit: false,
+			deviceFingerprint: expect.any(Function),
+			productIdentifier: `n8n-${N8N_VERSION}`,
+			logger,
+			loadCertStr: expect.any(Function),
+			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			collectUsageMetrics: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -53,20 +85,20 @@ describe('License', () => {
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
 	});
 
-	test('check if feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check if sharing feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if sharing feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check fetching entitlements', async () => {
-		await license.getCurrentEntitlements();
+	test('check fetching entitlements', () => {
+		license.getCurrentEntitlements();
 
 		expect(LicenseManager.prototype.getCurrentEntitlements).toHaveBeenCalled();
 	});
@@ -78,7 +110,7 @@ describe('License', () => {
 	});
 
 	test('check management jwt', async () => {
-		await license.getManagementJwt();
+		license.getManagementJwt();
 
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});

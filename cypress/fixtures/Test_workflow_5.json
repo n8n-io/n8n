@@ -40,7 +40,7 @@
     {
       "parameters": {},
       "id": "ef63cdc5-50bc-4525-9873-7e7f7589a60e",
-      "name": "When clicking \"Execute Workflow\"",
+      "name": "When clicking \"Test Workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
@@ -50,7 +50,6 @@
     },
     {
       "parameters": {
-        "operation": "sort",
         "sortFieldsUi": {
           "sortField": [
             {
@@ -61,9 +60,9 @@
         "options": {}
       },
       "id": "555a150c-d735-4331-b628-c1f1cfed2da1",
-      "name": "Item Lists",
-      "type": "n8n-nodes-base.itemLists",
-      "typeVersion": 2,
+      "name": "Sort",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
       "position": [
         -280,
         580
@@ -182,7 +181,7 @@
       "main": [
         [
           {
-            "node": "Item Lists",
+            "node": "Sort",
             "type": "main",
             "index": 0
           }
@@ -200,7 +199,7 @@
         ]
       ]
     },
-    "When clicking \"Execute Workflow\"": {
+    "When clicking \"Test Workflow\"": {
       "main": [
         [
           {
@@ -216,7 +215,7 @@
         ]
       ]
     },
-    "Item Lists": {
+    "Sort": {
       "main": [
         [
           {

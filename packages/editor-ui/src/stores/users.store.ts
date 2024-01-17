@@ -1,17 +1,14 @@
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
-	getInviteLink,
 	getPasswordResetLink,
 	getUsers,
-	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
-	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
-	signup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -19,9 +16,11 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
+	updateGlobalRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
+	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
@@ -29,9 +28,11 @@ import type {
 	IUser,
 	IUserResponse,
 	IUsersState,
+	CurrentUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
+import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -39,19 +40,21 @@ import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
+import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
+import { useRBACStore } from '@/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
+import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
-const isDefaultUser = (user: IUserResponse | null) =>
-	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
-
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
-
-const isInstanceOwner = (user: IUserResponse | null) =>
-	Boolean(user?.globalRole?.name === ROLE.Owner);
+const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
+const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
+		initialized: false,
 		currentUserId: null,
 		users: {},
+		currentUserCloudInfo: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
@@ -78,28 +81,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		globalRoleName(): IRole {
 			return this.currentUser?.globalRole?.name ?? 'default';
 		},
-		canUserDeleteTags(): boolean {
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
-		},
-		canUserActivateLicense(): boolean {
-			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
-		},
-		canUserAccessSidebarUserInfo() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, currentUser);
-			}
-			return false;
-		},
-		showUMSetupWarning() {
-			if (this.currentUser) {
-				const currentUser: IUser = this.currentUser;
-				return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
-			}
-			return false;
-		},
 		personalizedNodeTypes(): string[] {
-			const user = this.currentUser as IUser | null;
+			const user = this.currentUser;
 			if (!user) {
 				return [];
 			}
@@ -119,6 +102,29 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			try {
+				await this.loginWithCookie();
+				this.initialized = true;
+			} catch (e) {}
+		},
+		setCurrentUser(user: CurrentUserResponse) {
+			this.addUsers([user]);
+			this.currentUserId = user.id;
+
+			const defaultScopes: Scope[] = [];
+			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
+			usePostHog().init(user.featureFlags);
+		},
+		unsetCurrentUser() {
+			this.currentUserId = null;
+			this.currentUserCloudInfo = null;
+			useRBACStore().setGlobalScopes([]);
+		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
 				const prevUser = this.users[userResponse.id] || {};
@@ -133,7 +139,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {
@@ -166,10 +172,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
 		async loginWithCreds(params: {
 			email: string;
@@ -183,18 +186,15 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 
-			this.addUsers([user]);
-			this.currentUserId = user.id;
-
-			usePostHog().init(user.featureFlags);
+			this.setCurrentUser(user);
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
-			this.currentUserId = null;
+			this.unsetCurrentUser();
 			useCloudPlanStore().reset();
 			usePostHog().reset();
-			await useUIStore().dismissAllBanners();
+			useUIStore().clearBannerStack();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -206,10 +206,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await setupOwner(rootStore.getRestApiContext, params);
 			const settingsStore = useSettingsStore();
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+				this.setCurrentUser(user);
 				settingsStore.stopShowingSetupPage();
-				usePostHog().init(user.featureFlags);
 			}
 		},
 		async validateSignupToken(params: {
@@ -219,7 +217,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return validateSignupToken(rootStore.getRestApiContext, params);
 		},
-		async signup(params: {
+		async acceptInvitation(params: {
 			inviteeId: string;
 			inviterId: string;
 			firstName: string;
@@ -227,11 +225,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await signup(rootStore.getRestApiContext, params);
+			const user = await acceptInvitation(rootStore.getRestApiContext, params);
 			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
-				usePostHog().init(user.featureFlags);
+				this.setCurrentUser(user);
 			}
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
@@ -307,19 +303,26 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
+		async inviteUsers(
+			params: Array<{ email: string; role: InvitableRoleName }>,
+		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
+			this.addUsers(
+				users.map(({ user }, index) => ({
+					isPending: true,
+					globalRole: { name: params[index].role },
+					...user,
+				})),
+			);
 			return users;
 		},
-		async reinviteUser(params: { id: string }): Promise<void> {
+		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			await reinvite(rootStore.getRestApiContext, params);
-		},
-		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
-			const rootStore = useRootStore();
-			return getInviteLink(rootStore.getRestApiContext, params);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
+			if (!invitationResponse[0].user.emailSent) {
+				throw Error(invitationResponse[0].error);
+			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
@@ -364,6 +367,24 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (currentUser) {
 				currentUser.mfaEnabled = false;
 			}
+		},
+		async fetchUserCloudAccount() {
+			let cloudUser: Cloud.UserAccount | null = null;
+			try {
+				cloudUser = await getCloudUserInfo(useRootStore().getRestApiContext);
+				this.currentUserCloudInfo = cloudUser;
+			} catch (error) {
+				throw new Error(error);
+			}
+		},
+		async confirmEmail() {
+			await confirmEmail(useRootStore().getRestApiContext);
+		},
+
+		async updateGlobalRole({ id, newRoleName }: UpdateGlobalRolePayload) {
+			const rootStore = useRootStore();
+			await updateGlobalRole(rootStore.getRestApiContext, { id, newRoleName });
+			await this.fetchUsers();
 		},
 	},
 });

@@ -1,37 +1,18 @@
-import { UserSettings } from 'n8n-core';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
+import type { Class } from 'n8n-core';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { entities } from '@db/entities';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { Role } from '@db/entities/Role';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { ICredentialsDb } from '@/Interfaces';
-import { DB_INITIALIZATION_TIMEOUT } from './constants';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import type { CollectionName, CredentialPayload, PostgresSchemaSection } from './types';
-import type { ExecutionData } from '@db/entities/ExecutionData';
-import { generateNanoId } from '@db/utils/generators';
-import { RoleService } from '@/services/role.service';
-import { VariablesService } from '@/environments/variables/variables.service';
-import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
-import { separate } from '@/utils';
 
-import { randomPassword } from '@/Ldap/helpers';
-import { TOTPService } from '@/Mfa/totp.service';
-import { MfaService } from '@/Mfa/mfa.service';
+import { DB_INITIALIZATION_TIMEOUT } from './constants';
+import { randomString } from './random';
+import type { PostgresSchemaSection } from './types';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -106,466 +87,41 @@ export async function terminate() {
 	await Db.close();
 }
 
+// Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
+const repositories = [
+	'AuthIdentity',
+	'AuthProviderSyncHistory',
+	'Credentials',
+	'EventDestinations',
+	'ExecutionData',
+	'ExecutionMetadata',
+	'Execution',
+	'InstalledNodes',
+	'InstalledPackages',
+	'Role',
+	'Settings',
+	'SharedCredentials',
+	'SharedWorkflow',
+	'Tag',
+	'User',
+	'Variables',
+	'Webhook',
+	'Workflow',
+	'WorkflowHistory',
+	'WorkflowStatistics',
+	'WorkflowTagMapping',
+] as const;
+
 /**
  * Truncate specific DB tables in a test DB.
  */
-export async function truncate(collections: CollectionName[]) {
-	const [tag, rest] = separate(collections, (c) => c === 'Tag');
-
-	if (tag) {
-		await Container.get(TagRepository).delete({});
-		await Container.get(WorkflowTagMappingRepository).delete({});
+export async function truncate(names: Array<(typeof repositories)[number]>) {
+	for (const name of names) {
+		const RepositoryClass: Class<Repository<object>> = (
+			await import(`@db/repositories/${name.charAt(0).toLowerCase() + name.slice(1)}.repository`)
+		)[`${name}Repository`];
+		await Container.get(RepositoryClass).delete({});
 	}
-
-	for (const collection of rest) {
-		await Db.collections[collection].delete({});
-	}
-}
-
-// ----------------------------------
-//        credential creation
-// ----------------------------------
-
-/**
- * Save a credential to the test DB, sharing it with a user.
- */
-export async function saveCredential(
-	credentialPayload: CredentialPayload,
-	{ user, role }: { user: User; role: Role },
-) {
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, credentialPayload);
-
-	const encryptedData = await encryptCredentialData(newCredential);
-
-	Object.assign(newCredential, encryptedData);
-
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
-
-	savedCredential.data = newCredential.data;
-
-	await Db.collections.SharedCredentials.save({
-		user,
-		credentials: savedCredential,
-		role,
-	});
-
-	return savedCredential;
-}
-
-export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleService).findCredentialUserRole();
-	const newSharedCredentials = users.map((user) =>
-		Db.collections.SharedCredentials.create({
-			userId: user.id,
-			credentialsId: credential.id,
-			roleId: role?.id,
-		}),
-	);
-	return Db.collections.SharedCredentials.save(newSharedCredentials);
-}
-
-export function affixRoleToSaveCredential(role: Role) {
-	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		saveCredential(credentialPayload, { user, role });
-}
-
-// ----------------------------------
-//           user creation
-// ----------------------------------
-
-/**
- * Store a user in the DB, defaulting to a `member`.
- */
-export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	const user: Partial<User> = {
-		email: email ?? randomEmail(),
-		password: await hashPassword(password ?? randomValidPassword()),
-		firstName: firstName ?? randomName(),
-		lastName: lastName ?? randomName(),
-		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
-		globalRole,
-		...rest,
-	};
-
-	return Db.collections.User.save(user);
-}
-
-export async function createLdapUser(attributes: Partial<User>, ldapId: string): Promise<User> {
-	const user = await createUser(attributes);
-	await Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId, 'ldap'));
-	return user;
-}
-
-export async function createUserWithMfaEnabled(
-	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
-) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
-	const email = randomEmail();
-	const password = randomPassword();
-
-	const toptService = new TOTPService();
-
-	const secret = toptService.generateSecret();
-
-	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
-
-	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
-
-	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
-		secret,
-		recoveryCodes,
-	);
-
-	return {
-		user: await createUser({
-			mfaEnabled: true,
-			password,
-			email,
-			mfaSecret: encryptedSecret,
-			mfaRecoveryCodes: encryptedRecoveryCodes,
-		}),
-		rawPassword: password,
-		rawSecret: secret,
-		rawRecoveryCodes: recoveryCodes,
-	};
-}
-
-export async function createOwner() {
-	return createUser({ globalRole: await getGlobalOwnerRole() });
-}
-
-export async function createMember() {
-	return createUser({ globalRole: await getGlobalMemberRole() });
-}
-
-export async function createUserShell(globalRole: Role): Promise<User> {
-	if (globalRole.scope !== 'global') {
-		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
-	}
-
-	const shell: Partial<User> = { globalRoleId: globalRole.id };
-
-	if (globalRole.name !== 'owner') {
-		shell.email = randomEmail();
-	}
-
-	return Db.collections.User.save(shell);
-}
-
-/**
- * Create many users in the DB, defaulting to a `member`.
- */
-export async function createManyUsers(
-	amount: number,
-	attributes: Partial<User> = {},
-): Promise<User[]> {
-	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	if (!globalRole) {
-		globalRole = await getGlobalMemberRole();
-	}
-
-	const users = await Promise.all(
-		[...Array(amount)].map(async () =>
-			Db.collections.User.create({
-				email: email ?? randomEmail(),
-				password: await hashPassword(password ?? randomValidPassword()),
-				firstName: firstName ?? randomName(),
-				lastName: lastName ?? randomName(),
-				globalRole,
-				...rest,
-			}),
-		),
-	);
-
-	return Db.collections.User.save(users);
-}
-
-export async function addApiKey(user: User): Promise<User> {
-	user.apiKey = randomApiKey();
-	return Db.collections.User.save(user);
-}
-
-// ----------------------------------
-//          role fetchers
-// ----------------------------------
-
-export async function getGlobalOwnerRole() {
-	return Container.get(RoleService).findGlobalOwnerRole();
-}
-
-export async function getGlobalMemberRole() {
-	return Container.get(RoleService).findGlobalMemberRole();
-}
-
-export async function getWorkflowOwnerRole() {
-	return Container.get(RoleService).findWorkflowOwnerRole();
-}
-
-export async function getWorkflowEditorRole() {
-	return Container.get(RoleService).findWorkflowEditorRole();
-}
-
-export async function getCredentialOwnerRole() {
-	return Container.get(RoleService).findCredentialOwnerRole();
-}
-
-export async function getAllRoles() {
-	return Promise.all([
-		getGlobalOwnerRole(),
-		getGlobalMemberRole(),
-		getWorkflowOwnerRole(),
-		getCredentialOwnerRole(),
-	]);
-}
-
-export const getAllUsers = async () =>
-	Db.collections.User.find({
-		relations: ['globalRole', 'authIdentities'],
-	});
-
-export const getLdapIdentities = async () =>
-	Db.collections.AuthIdentity.find({
-		where: { providerType: 'ldap' },
-		relations: ['user'],
-	});
-
-// ----------------------------------
-//          Execution helpers
-// ----------------------------------
-
-export async function createManyExecutions(
-	amount: number,
-	workflow: WorkflowEntity,
-	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
-) {
-	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow));
-	return Promise.all(executionsRequests);
-}
-
-/**
- * Store a execution in the DB and assign it to a workflow.
- */
-async function createExecution(
-	attributes: Partial<ExecutionEntity & ExecutionData>,
-	workflow: WorkflowEntity,
-) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
-
-	const execution = await Db.collections.Execution.save({
-		finished: finished ?? true,
-		mode: mode ?? 'manual',
-		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowId: workflow.id }),
-		stoppedAt: stoppedAt ?? new Date(),
-		waitTill: waitTill ?? null,
-		status,
-	});
-
-	await Db.collections.ExecutionData.save({
-		data: data ?? '[]',
-		workflowData: workflow ?? {},
-		executionId: execution.id,
-	});
-
-	return execution;
-}
-
-/**
- * Store a successful execution in the DB and assign it to a workflow.
- */
-export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true, status: 'success' }, workflow);
-}
-
-/**
- * Store an error execution in the DB and assign it to a workflow.
- */
-export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
-}
-
-/**
- * Store a waiting execution in the DB and assign it to a workflow.
- */
-export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
-}
-
-// ----------------------------------
-//          Tags
-// ----------------------------------
-
-export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: WorkflowEntity) {
-	const { name } = attributes;
-
-	const tag = await Container.get(TagRepository).save({
-		id: generateNanoId(),
-		name: name ?? randomName(),
-		...attributes,
-	});
-
-	if (workflow) {
-		const mappingRepository = Container.get(WorkflowTagMappingRepository);
-
-		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
-
-		await mappingRepository.save(mapping);
-	}
-
-	return tag;
-}
-
-// ----------------------------------
-//          Workflow helpers
-// ----------------------------------
-
-export async function createManyWorkflows(
-	amount: number,
-	attributes: Partial<WorkflowEntity> = {},
-	user?: User,
-) {
-	const workflowRequests = [...Array(amount)].map(async (_) => createWorkflow(attributes, user));
-	return Promise.all(workflowRequests);
-}
-
-/**
- * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
- * @param attributes workflow attributes
- * @param user user to assign the workflow to
- */
-export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
-	const { active, name, nodes, connections } = attributes;
-
-	const workflowEntity = Db.collections.Workflow.create({
-		active: active ?? false,
-		name: name ?? 'test workflow',
-		nodes: nodes ?? [
-			{
-				id: 'uuid-1234',
-				name: 'Start',
-				parameters: {},
-				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-			},
-		],
-		connections: connections ?? {},
-		...attributes,
-	});
-
-	const workflow = await Db.collections.Workflow.save(workflowEntity);
-
-	if (user) {
-		await Db.collections.SharedWorkflow.save({
-			user,
-			workflow,
-			role: await getWorkflowOwnerRole(),
-		});
-	}
-	return workflow;
-}
-
-export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
-	const role = await getWorkflowEditorRole();
-	const sharedWorkflows = users.map((user) => ({
-		user,
-		workflow,
-		role,
-	}));
-	return Db.collections.SharedWorkflow.save(sharedWorkflows);
-}
-
-/**
- * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
- * @param user user to assign the workflow to
- */
-export async function createWorkflowWithTrigger(
-	attributes: Partial<WorkflowEntity> = {},
-	user?: User,
-) {
-	const workflow = await createWorkflow(
-		{
-			nodes: [
-				{
-					id: 'uuid-1',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-				{
-					id: 'uuid-2',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
-					typeVersion: 1,
-					position: [500, 300],
-				},
-				{
-					id: 'uuid-3',
-					parameters: { options: {} },
-					name: 'Set',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					position: [780, 300],
-				},
-			],
-			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
-			...attributes,
-		},
-		user,
-	);
-
-	return workflow;
-}
-
-export async function getAllWorkflows() {
-	return Db.collections.Workflow.find();
-}
-
-// ----------------------------------
-//        workflow sharing
-// ----------------------------------
-
-export async function getWorkflowSharing(workflow: WorkflowEntity) {
-	return Db.collections.SharedWorkflow.findBy({
-		workflowId: workflow.id,
-	});
-}
-
-// ----------------------------------
-//             variables
-// ----------------------------------
-
-export async function createVariable(key: string, value: string) {
-	const result = await Db.collections.Variables.save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-export async function getVariableByKey(key: string) {
-	return Db.collections.Variables.findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-export async function getVariableById(id: string) {
-	return Db.collections.Variables.findOne({
-		where: {
-			id,
-		},
-	});
 }
 
 // ----------------------------------
@@ -622,18 +178,3 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 	synchronize: false,
 	logging: false,
 });
-
-// ----------------------------------
-//            encryption
-// ----------------------------------
-
-async function encryptCredentialData(credential: CredentialsEntity) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
-	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
-
-	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
-
-	return coreCredential.getDataToSave() as ICredentialsDb;
-}

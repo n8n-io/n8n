@@ -3,7 +3,7 @@ import {
 	IF_NODE_NAME,
 	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage, NDV, WorkflowExecutionsTab } from '../pages';
 
@@ -12,14 +12,11 @@ const ndv = new NDV();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Debug', () => {
+	beforeEach(() => {
+		cy.enableFeature('debugInEditor');
+	});
+
 	it('should be able to debug executions', () => {
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: { ...res.body.data, enterprise: { debugInEditor: true } },
-				});
-			});
-		}).as('loadSettings');
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
 		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
@@ -35,7 +32,7 @@ describe('Debug', () => {
 		ndv.actions.typeIntoParameterInput('url', 'https://foo.bar');
 		ndv.actions.close();
 
-		workflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 		workflowPage.actions.executeWorkflow();
@@ -47,6 +44,7 @@ describe('Debug', () => {
 		cy.wait(['@getExecutions', '@getCurrentExecutions']);
 
 		executionsTab.getters.executionDebugButton().should('have.text', 'Debug in editor').click();
+		cy.url().should('include', '/debug');
 		cy.get('.el-notification').contains('Execution data imported').should('be.visible');
 		cy.get('.matching-pinned-nodes-confirmation').should('not.exist');
 
@@ -56,6 +54,8 @@ describe('Debug', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
+
 		workflowPage.actions.executeWorkflow();
 
 		cy.wait(['@postWorkflowRun']);
@@ -87,6 +87,7 @@ describe('Debug', () => {
 		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
 		confirmDialog.find('li').should('have.length', 2);
 		confirmDialog.get('.btn--confirm').click();
+		cy.url().should('include', '/debug');
 
 		workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon');
 		workflowPage.getters
@@ -101,9 +102,10 @@ describe('Debug', () => {
 		confirmDialog.find('li').should('have.length', 1);
 		confirmDialog.get('.btn--confirm').click();
 
-		workflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		workflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		workflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
 
 		executionsTab.actions.switchToExecutionsTab();
 		cy.wait(['@getExecutions', '@getCurrentExecutions']);
@@ -112,6 +114,8 @@ describe('Debug', () => {
 		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
 		confirmDialog.find('li').should('have.length', 1);
 		confirmDialog.get('.btn--confirm').click();
+		cy.url().should('include', '/debug');
+
 		workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -119,7 +123,10 @@ describe('Debug', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
+
 		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.deleteNode(IF_NODE_NAME);
 
 		executionsTab.actions.switchToExecutionsTab();
@@ -128,5 +135,6 @@ describe('Debug', () => {
 		cy.wait(['@getExecution']);
 		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 		cy.get('.el-notification').contains("Some execution data wasn't imported").should('be.visible');
+		cy.url().should('include', '/debug');
 	});
 });

@@ -224,7 +224,7 @@ export class PostgresTrigger implements INodeType {
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 		// initialize and connect to database
-		const { db, pgp } = await initDB.call(this);
+		const { db } = await initDB.call(this);
 		const connection = await db.connect({ direct: true });
 
 		// prepare and set up listener
@@ -284,7 +284,7 @@ export class PostgresTrigger implements INodeType {
 					`Postgres Trigger Error: ${(error as Error).message}`,
 				);
 			} finally {
-				pgp.end();
+				await db.$pool.end();
 			}
 		};
 
@@ -307,7 +307,7 @@ export class PostgresTrigger implements INodeType {
 							})(),
 						),
 					);
-				}, 30000);
+				}, 60000);
 				connection.client.on('notification', async (data: IDataObject) => {
 					if (data.payload) {
 						try {

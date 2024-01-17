@@ -75,7 +75,27 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: ['image', 'pdf'],
+						resource: ['image'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a pdf',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['pdf'],
 					},
 				},
 			},
@@ -162,12 +182,12 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['pdf', 'image'],

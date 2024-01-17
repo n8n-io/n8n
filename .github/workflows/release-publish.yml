@@ -36,10 +36,14 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Dry-run publishing
+        run: pnpm publish -r --no-git-checks --dry-run
+
       - name: Publish to NPM
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           node scripts/trim-fe-packageJson.js
+          sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
           npm dist-tag rm n8n rc
 

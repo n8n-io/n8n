@@ -13,7 +13,7 @@
 			</div>
 		</template>
 		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
+			<div ref="cardActions" :class="$style.cardActions">
 				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
 					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
 						{{ $locale.baseText('workflowActivator.active') }}
@@ -25,9 +25,8 @@
 
 				<el-switch
 					class="mr-s"
-					:disabled="!isInstanceOwner"
-					:modelValue="nodeParameters.enabled"
-					@update:modelValue="onEnabledSwitched($event, destination.id)"
+					:disabled="readonly"
+					:model-value="nodeParameters.enabled"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -35,8 +34,8 @@
 					"
 					active-color="#13ce66"
 					inactive-color="#8899AA"
-					element-loading-spinner="el-icon-loading"
 					data-test-id="workflow-activate-switch"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 				>
 				</el-switch>
 
@@ -49,7 +48,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -64,18 +63,18 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
+	components: {},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
 		};
 	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
-	components: {},
 	props: {
 		eventBus: {
 			type: Object as PropType<EventBus>,
@@ -85,7 +84,7 @@ export default defineComponent({
 			required: true,
 			default: deepCopy(defaultMessageEventBusDestinationOptions),
 		},
-		isInstanceOwner: Boolean,
+		readonly: Boolean,
 	},
 	mounted() {
 		this.nodeParameters = Object.assign(
@@ -106,6 +105,12 @@ export default defineComponent({
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
 			];
+			if (!this.readonly) {
+				actions.push({
+					label: this.$locale.baseText('workflows.item.delete'),
+					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
+				});
+			}
 			return actions;
 		},
 		typeLabelName(): BaseTextKey {

@@ -10,6 +10,7 @@ import type {
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Write Binary File',
 		name: 'writeBinaryFile',
 		icon: 'fa:file-export',
@@ -91,7 +92,7 @@ export class WriteBinaryFile implements INodeType {
 
 				let fileContent: Buffer | Readable;
 				if (binaryData.id) {
-					fileContent = this.helpers.getBinaryStream(binaryData.id);
+					fileContent = await this.helpers.getBinaryStream(binaryData.id);
 				} else {
 					fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 				}

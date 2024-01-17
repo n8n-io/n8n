@@ -1,22 +1,24 @@
 <template>
-	<span @click.stop.prevent :class="$style.container" data-test-id="action-toggle">
-		<el-dropdown
+	<span :class="$style.container" data-test-id="action-toggle" @click.stop.prevent>
+		<ElDropdown
 			:placement="placement"
 			:size="size"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
-			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<n8n-icon
-					:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
-					:size="iconSize"
-				/>
-			</span>
+			<slot>
+				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
+					<N8nIcon
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+						:size="iconSize"
+					/>
+				</span>
+			</slot>
 
 			<template #dropdown>
-				<el-dropdown-menu data-test-id="action-toggle-dropdown">
-					<el-dropdown-item
+				<ElDropdownMenu data-test-id="action-toggle-dropdown">
+					<ElDropdownItem
 						v-for="action in actions"
 						:key="action.value"
 						:command="action.value"
@@ -25,17 +27,17 @@
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
-							<n8n-icon
+							<N8nIcon
 								v-if="action.type === 'external-link'"
 								icon="external-link-alt"
 								size="xsmall"
 								color="text-base"
 							/>
 						</div>
-					</el-dropdown-item>
-				</el-dropdown-menu>
+					</ElDropdownItem>
+				</ElDropdownMenu>
 			</template>
-		</el-dropdown>
+		</ElDropdown>
 	</span>
 </template>
 
@@ -47,7 +49,7 @@ import N8nIcon from '../N8nIcon';
 import type { UserAction } from '@/types';
 
 export default defineComponent({
-	name: 'n8n-action-toggle',
+	name: 'N8nActionToggle',
 	components: {
 		ElDropdown,
 		ElDropdownMenu,

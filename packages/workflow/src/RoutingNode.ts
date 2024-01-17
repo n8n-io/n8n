@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -35,11 +36,17 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 	PostReceiveAction,
+	JsonObject,
+	CloseFunction,
 } from './Interfaces';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+
 import * as NodeHelpers from './NodeHelpers';
 
 import type { Workflow } from './Workflow';
+import type { NodeError } from './errors/abstract/node.error';
+
+import { NodeOperationError } from './errors/node-operation.error';
+import { NodeApiError } from './errors/node-api.error';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -77,6 +84,7 @@ export class RoutingNode {
 		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
+		abortSignal?: AbortSignal,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
@@ -87,6 +95,7 @@ export class RoutingNode {
 		if (nodeType.description.credentials?.length) {
 			credentialType = nodeType.description.credentials[0].name;
 		}
+		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
 			this.runExecutionData,
@@ -97,6 +106,8 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
+			closeFunctions,
+			abortSignal,
 		);
 
 		let credentials: ICredentialDataDecryptedObject | undefined;
@@ -121,8 +132,9 @@ export class RoutingNode {
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
+			let thisArgs: IExecuteSingleFunctions | undefined;
 			try {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+				thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
 					this.runExecutionData,
 					runIndex,
@@ -133,6 +145,7 @@ export class RoutingNode {
 					this.additionalData,
 					executeData,
 					this.mode,
+					abortSignal,
 				);
 				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {
@@ -209,17 +222,30 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
-				if (get(this.node, 'continueOnFail', false)) {
-					returnData.push({ json: {}, error: error.message });
+				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
+					returnData.push({ json: {}, error: error as NodeError });
 					continue;
 				}
-				if (error instanceof NodeApiError) error = error.cause;
-				throw new NodeApiError(this.node, error, {
+
+				interface AxiosError extends NodeError {
+					isAxiosError: boolean;
+					description: string | undefined;
+					response?: { status: number };
+				}
+
+				let routingError = error as AxiosError;
+
+				if (error instanceof NodeApiError && error.cause) routingError = error.cause as AxiosError;
+
+				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
 					itemIndex: i,
-					message: error?.message,
-					description: error?.description,
-					httpCode: error.isAxiosError && error.response && String(error.response?.status),
+					message: routingError?.message,
+					description: routingError?.description,
+					httpCode:
+						routingError.isAxiosError && routingError.response
+							? String(routingError.response?.status)
+							: 'none',
 				});
 			}
 		}
@@ -275,7 +301,7 @@ export class RoutingNode {
 					});
 				});
 			} catch (error) {
-				throw new NodeOperationError(this.node, error, {
+				throw new NodeOperationError(this.node, error as Error, {
 					runIndex,
 					itemIndex,
 					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
@@ -701,7 +727,6 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
-				this.additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,

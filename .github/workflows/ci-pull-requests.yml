@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - uses: pnpm/action-setup@v2.4.0
 
@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     needs: install
     with:
-      ref: ${{ github.event.pull_request.head.ref }}
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge
       cacheKey: ${{ github.sha }}-base:18-test-lint
 
   lint:
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - uses: pnpm/action-setup@v2.4.0
 

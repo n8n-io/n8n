@@ -1,0 +1,98 @@
+{
+  "name": "My workflow 21",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "operation": "update",
+        "calendarId": {
+          "__rl": true,
+          "value": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAACLtRvGAAA=",
+          "mode": "list",
+          "cachedResultName": "Foo Calendar"
+        },
+        "updateFields": {
+          "color": "lightOrange",
+          "isDefaultCalendar": false,
+          "name": "Foo"
+        }
+      },
+      "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+      "name": "Microsoft Outlook",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        360
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iXJCki7i5Vz0bdks",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Microsoft Outlook": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('b834447b-6848-4af9-8390-d2259ce46b74')/calendars/$entity",
+          "id": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAACLtRvGAAA=",
+          "name": "Foo",
+          "color": "lightOrange",
+          "hexColor": "#fcab73",
+          "isDefaultCalendar": false,
+          "changeKey": "WX+A3vy5K0qqTyPHso1JgAABVtwYKA==",
+          "canShare": true,
+          "canViewPrivateItems": true,
+          "canEdit": true,
+          "allowedOnlineMeetingProviders": [
+            "teamsForBusiness"
+          ],
+          "defaultOnlineMeetingProvider": "teamsForBusiness",
+          "isTallyingResponses": false,
+          "isRemovable": true,
+          "owner": {
+            "name": "User Name",
+            "address": "test@mail.com"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f8e68e5f-8c26-4c1f-b11b-8b4e4aeaa61f",
+  "id": "1CYHzBXQw1nfPGtB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

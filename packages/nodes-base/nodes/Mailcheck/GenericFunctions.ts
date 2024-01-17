@@ -1,5 +1,7 @@
 import type { OptionsWithUri } from 'request';
 
+import { ApplicationError } from 'n8n-workflow';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -44,8 +46,9 @@ export async function mailCheckApiRequest(
 	} catch (error) {
 		if (error.response?.body?.message) {
 			// Try to return the error prettier
-			throw new Error(
+			throw new ApplicationError(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
+				{ level: 'warning' },
 			);
 		}
 		throw error;

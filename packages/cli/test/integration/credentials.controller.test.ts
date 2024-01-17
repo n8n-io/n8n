@@ -1,13 +1,15 @@
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
-import { randomCredentialPayload as payload } from './shared/random';
-
-import type { Credentials } from '@/requests';
+import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
+import * as testDb from './shared/testDb';
+import { setupTestServer } from './shared/utils/';
+import { randomCredentialPayload as payload } from './shared/random';
+import { saveCredential } from './shared/db/credentials';
+import { createMember, createOwner } from './shared/db/users';
+import { getCredentialOwnerRole } from './shared/db/roles';
 
 const { any } = expect;
 
-const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
 let member: User;
@@ -15,19 +17,19 @@ let member: User;
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
 
-	owner = await testDb.createOwner();
-	member = await testDb.createMember();
+	owner = await createOwner();
+	member = await createMember();
 });
 
-type GetAllResponse = { body: { data: Credentials.WithOwnedByAndSharedWith[] } };
+type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
 
 describe('GET /credentials', () => {
 	describe('should return', () => {
 		test('all credentials for owner', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			const { id: id1 } = await testDb.saveCredential(payload(), { user: owner, role });
-			const { id: id2 } = await testDb.saveCredential(payload(), { user: member, role });
+			const { id: id1 } = await saveCredential(payload(), { user: owner, role });
+			const { id: id2 } = await saveCredential(payload(), { user: member, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -38,20 +40,20 @@ describe('GET /credentials', () => {
 
 			response.body.data.forEach(validateCredential);
 
-			const savedIds = [id1, id2];
-			const returnedIds = response.body.data.map((c) => c.id);
+			const savedIds = [id1, id2].sort();
+			const returnedIds = response.body.data.map((c) => c.id).sort();
 
 			expect(savedIds).toEqual(returnedIds);
 		});
 
 		test('only own credentials for member', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
 			const firstMember = member;
-			const secondMember = await testDb.createMember();
+			const secondMember = await createMember();
 
-			const c1 = await testDb.saveCredential(payload(), { user: firstMember, role });
-			const c2 = await testDb.saveCredential(payload(), { user: secondMember, role });
+			const c1 = await saveCredential(payload(), { user: firstMember, role });
+			const c2 = await saveCredential(payload(), { user: secondMember, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(firstMember)
@@ -70,8 +72,8 @@ describe('GET /credentials', () => {
 
 	describe('filter', () => {
 		test('should filter credentials by field: name - full match', async () => {
-			const role = await testDb.getCredentialOwnerRole();
-			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+			const role = await getCredentialOwnerRole();
+			const savedCred = await saveCredential(payload(), { user: owner, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -95,8 +97,8 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: name - partial match', async () => {
-			const role = await testDb.getCredentialOwnerRole();
-			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+			const role = await getCredentialOwnerRole();
+			const savedCred = await saveCredential(payload(), { user: owner, role });
 
 			const partialName = savedCred.name.slice(3);
 
@@ -122,9 +124,9 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: type - full match', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -148,9 +150,9 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: type - partial match', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role });
 
 			const partialType = savedCred.type.slice(3);
 
@@ -178,10 +180,10 @@ describe('GET /credentials', () => {
 
 	describe('select', () => {
 		test('should select credential field: id', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			await testDb.saveCredential(payload(), { user: owner, role });
-			await testDb.saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -195,10 +197,10 @@ describe('GET /credentials', () => {
 		});
 
 		test('should select credential field: name', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			await testDb.saveCredential(payload(), { user: owner, role });
-			await testDb.saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -212,10 +214,10 @@ describe('GET /credentials', () => {
 		});
 
 		test('should select credential field: type', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			await testDb.saveCredential(payload(), { user: owner, role });
-			await testDb.saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -231,10 +233,10 @@ describe('GET /credentials', () => {
 
 	describe('take', () => {
 		test('should return n credentials or less, without skip', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			await testDb.saveCredential(payload(), { user: owner, role });
-			await testDb.saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
 
 			const response = await testServer
 				.authAgentFor(owner)
@@ -258,10 +260,10 @@ describe('GET /credentials', () => {
 		});
 
 		test('should return n credentials or less, with skip', async () => {
-			const role = await testDb.getCredentialOwnerRole();
+			const role = await getCredentialOwnerRole();
 
-			await testDb.saveCredential(payload(), { user: owner, role });
-			await testDb.saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role });
 
 			const response = await testServer
 				.authAgentFor(owner)
@@ -276,7 +278,7 @@ describe('GET /credentials', () => {
 	});
 });
 
-function validateCredential(credential: Credentials.WithOwnedByAndSharedWith) {
+function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');

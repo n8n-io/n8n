@@ -4,12 +4,12 @@
 
 // based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
 
-const SEQUENTIAL_BONUS = 30; // bonus for adjacent matches
+const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
 const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
 const CAMEL_BONUS = 30; // bonus if match is uppercase and prev is lower
 const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
 
-const LEADING_LETTER_PENALTY = -15; // penalty applied for every letter in str before the first match
+const LEADING_LETTER_PENALTY = -20; // penalty applied for every letter in str before the first match
 const MAX_LEADING_LETTER_PENALTY = -200; // maximum penalty for leading letters
 const UNMATCHED_LETTER_PENALTY = -5;
 
@@ -203,10 +203,11 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 
 	const segments = prop.split('.');
 
-	let result: any = obj;
+	let result = obj;
 	let i = 0;
 	while (result && i < segments.length) {
-		result = result[segments[i]];
+		const key = segments[i] as keyof T;
+		result = result[key] as T;
 		i++;
 	}
 	return result;

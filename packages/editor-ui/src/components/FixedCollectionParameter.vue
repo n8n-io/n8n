@@ -1,5 +1,5 @@
 <template>
-	<div @keydown.stop class="fixed-collection-parameter">
+	<div class="fixed-collection-parameter" @keydown.stop>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			<n8n-text size="small">{{
 				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
@@ -24,38 +24,44 @@
 					:key="property.name + index"
 					class="parameter-item"
 				>
-					<div class="parameter-item-wrapper">
-						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
+						<div v-if="!isReadOnly" class="delete-option">
+							<n8n-icon-button
+								type="tertiary"
+								text
+								size="mini"
 								icon="trash"
-								class="reset-icon clickable"
 								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 								@click="deleteOption(property.name, index)"
-							/>
-							<div v-if="sortable" class="sort-icon">
-								<font-awesome-icon
-									v-if="index !== 0"
-									icon="angle-up"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-									@click="moveOptionUp(property.name, index)"
-								/>
-								<font-awesome-icon
-									v-if="index !== mutableValues[property.name].length - 1"
-									icon="angle-down"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-									@click="moveOptionDown(property.name, index)"
-								/>
-							</div>
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== 0"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-up"
+								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+								@click="moveOptionUp(property.name, index)"
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== mutableValues[property.name].length - 1"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-down"
+								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+								@click="moveOptionDown(property.name, index)"
+							></n8n-icon-button>
 						</div>
 						<Suspense>
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="property.values"
-								:nodeValues="nodeValues"
+								:node-values="nodeValues"
 								:path="getPropertyPath(property.name, index)"
-								:hideDelete="true"
-								:isReadOnly="isReadOnly"
+								:hide-delete="true"
+								:is-read-only="isReadOnly"
 								@valueChanged="valueChanged"
 							/>
 						</Suspense>
@@ -64,42 +70,44 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option" v-if="!isReadOnly">
-						<font-awesome-icon
+					<div v-if="!isReadOnly" class="delete-option">
+						<n8n-icon-button
+							type="tertiary"
+							text
+							size="mini"
 							icon="trash"
-							class="reset-icon clickable"
 							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"
-						/>
+						></n8n-icon-button>
 					</div>
-					<parameter-input-list
+					<ParameterInputList
 						:parameters="property.values"
-						:nodeValues="nodeValues"
+						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
-						:isReadOnly="isReadOnly"
+						:is-read-only="isReadOnly"
 						class="parameter-item"
+						:hide-delete="true"
 						@valueChanged="valueChanged"
-						:hideDelete="true"
 					/>
 				</div>
 			</div>
 		</div>
 
-		<div v-if="parameterOptions.length > 0 && !isReadOnly">
+		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
 			<n8n-button
 				v-if="parameter.options.length === 1"
 				type="tertiary"
 				block
-				@click="optionSelected(parameter.options[0].name)"
 				:label="getPlaceholderText"
+				@click="optionSelected(parameter.options[0].name)"
 			/>
 			<div v-else class="add-option">
 				<n8n-select
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@update:modelValue="optionSelected"
 					filterable
+					@update:modelValue="optionSelected"
 				>
 					<n8n-option
 						v-for="item in parameterOptions"
@@ -132,6 +140,9 @@ const ParameterInputList = defineAsyncComponent(async () => import('./ParameterI
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',
+	components: {
+		ParameterInputList,
+	},
 	props: {
 		nodeValues: {
 			type: Object as PropType<Record<string, INodeParameters[]>>,
@@ -154,25 +165,11 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	components: {
-		ParameterInputList,
-	},
 	data() {
 		return {
 			selectedOption: undefined,
 			mutableValues: {} as Record<string, INodeParameters[]>,
 		};
-	},
-	watch: {
-		values: {
-			handler(newValues: Record<string, INodeParameters[]>) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
 	},
 	computed: {
 		getPlaceholderText(): string {
@@ -209,6 +206,17 @@ export default defineComponent({
 		sortable(): boolean {
 			return !!this.parameter.typeOptions?.sortable;
 		},
+	},
+	watch: {
+		values: {
+			handler(newValues: Record<string, INodeParameters[]>) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
 	},
 	methods: {
 		deleteOption(optionName: string, index?: number) {
@@ -344,9 +352,36 @@ export default defineComponent({
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	:deep(.button) {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
+	.delete-option {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.controls {
+		:deep(.button) {
+			font-weight: var(--font-weight-normal);
+			--button-font-color: var(--color-text-dark);
+			--button-border-color: var(--color-foreground-base);
+			--button-background-color: var(--color-background-base);
+
+			--button-hover-font-color: var(--color-text-dark);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
+
+			--button-active-font-color: var(--color-text-dark);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
+
+			--button-focus-font-color: var(--color-text-dark);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
+		}
 	}
 }
 
@@ -354,19 +389,8 @@ export default defineComponent({
 	margin: var(--spacing-xs) 0;
 }
 
-.delete-option {
-	display: none;
-	position: absolute;
-	z-index: 999;
-	color: #f56c6c;
-	left: 0;
-	top: 0.5em;
-	width: 15px;
-	height: 100%;
-}
-
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
-	display: block;
+	opacity: 1;
 }
 
 .parameter-item {
@@ -375,8 +399,6 @@ export default defineComponent({
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			border-top: 1px dashed #999;
-
 			.delete-option {
 				top: 14px;
 			}
@@ -384,14 +406,11 @@ export default defineComponent({
 	}
 }
 
-.no-items-exist {
-	margin: var(--spacing-xs) 0;
+.border-top-dashed {
+	border-top: 1px dashed #999;
 }
 
-.sort-icon {
-	display: flex;
-	flex-direction: column;
-	margin-left: 1px;
-	margin-top: 0.5em;
+.no-items-exist {
+	margin: var(--spacing-xs) 0;
 }
 </style>

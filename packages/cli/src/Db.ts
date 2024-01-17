@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import type { IDatabaseCollections } from '@/Interfaces';
 
@@ -87,7 +86,7 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	switch (dbType) {
 		case 'postgresdb':
-			let ssl: TlsOptions | undefined;
+			let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
 
 			if (!isPostgresRunningLocally()) {
 				const sslCa = config.getEnv('database.postgresdb.ssl.ca');
@@ -104,6 +103,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 						rejectUnauthorized: sslRejectUnauthorized,
 					};
 				}
+
 			}
 
 			return {
@@ -124,7 +124,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 			return getSqliteConnectionOptions();
 
 		default:
-			throw new Error(`The database "${dbType}" is currently not supported!`);
+			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
 }
 

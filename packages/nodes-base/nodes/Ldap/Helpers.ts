@@ -39,6 +39,11 @@ export async function createLdapClient(
 		}
 	}
 
+	if (credentials.timeout) {
+		// Convert seconds to milliseconds
+		ldapOptions.timeout = (credentials.timeout as number) * 1000;
+	}
+
 	if (nodeDebug) {
 		Logger.info(
 			`[${nodeType} | ${nodeName}] - LDAP Options: ${JSON.stringify(ldapOptions, null, 2)}`,

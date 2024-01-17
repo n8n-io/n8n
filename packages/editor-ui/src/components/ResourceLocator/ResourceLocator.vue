@@ -1,23 +1,23 @@
 <template>
 	<div
-		class="resource-locator"
 		ref="container"
+		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
-		<resource-locator-dropdown
+		<ResourceLocatorDropdown
 			ref="dropdown"
-			:modelValue="modelValue ? modelValue.value : ''"
+			v-on-click-outside="hideResourceDropdown"
+			:model-value="modelValue ? modelValue.value : ''"
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
-			:filterRequired="requiresSearchFilter"
+			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
-			:hasMore="currentQueryHasMore"
-			:errorView="currentQueryError"
+			:has-more="currentQueryHasMore"
+			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
-			v-on-click-outside="hideResourceDropdown"
 			@update:modelValue="onListItemSelected"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDebounced"
@@ -27,7 +27,7 @@
 					<n8n-text color="text-dark" align="center" tag="div">
 						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
-					<n8n-text size="small" color="text-base" v-if="hasCredential || credentialsNotSet">
+					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
 						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a v-if="credentialsNotSet" @click="createNewCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
@@ -46,18 +46,19 @@
 			>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
-						:modelValue="selectedMode"
+						:model-value="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
-						@update:modelValue="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
+						@update:modelValue="onModeSelected"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
 							:key="mode.name"
 							:value="mode.name"
+							:label="getModeLabel(mode)"
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
@@ -65,17 +66,17 @@
 									: ''
 							"
 						>
-							{{ getModeLabel(mode.name) || mode.displayName }}
+							{{ getModeLabel(mode) }}
 						</n8n-option>
 					</n8n-select>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-					<draggable-target
+					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -89,24 +90,24 @@
 							>
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
-									:modelValue="expressionDisplayValue"
+									ref="input"
+									:model-value="expressionDisplayValue"
 									:path="path"
-									isForRecordLocator
+									is-single-line
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
-									ref="input"
 								/>
 								<n8n-input
 									v-else
+									ref="input"
 									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
-									:modelValue="valueToDisplay"
+									:model-value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
 									:placeholder="inputPlaceholder"
 									type="text"
-									ref="input"
 									data-test-id="rlc-input"
 									@update:modelValue="onInputChange"
 									@focus="onInputFocus"
@@ -125,8 +126,8 @@
 								</n8n-input>
 							</div>
 						</template>
-					</draggable-target>
-					<parameter-issues
+					</DraggableTarget>
+					<ParameterIssues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
@@ -138,15 +139,27 @@
 					</div>
 				</div>
 			</div>
-		</resource-locator-dropdown>
+		</ResourceLocatorDropdown>
 	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import DraggableTarget from '@/components/DraggableTarget.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import stringify from 'fast-json-stable-stringify';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
-	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeListSearchItems,
@@ -156,29 +169,11 @@ import type {
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import DraggableTarget from '@/components/DraggableTarget.vue';
-import ParameterIssues from '@/components/ParameterIssues.vue';
-import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
-import stringify from 'fast-json-stable-stringify';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import {
-	getAppNameFromNodeName,
-	isResourceLocatorValue,
-	hasOnlyListMode,
-	getMainAuthField,
-} from '@/utils';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { EventBus } from 'n8n-design-system/utils';
+import { defineComponent } from 'vue';
+import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -188,14 +183,14 @@ interface IResourceLocatorQuery {
 }
 
 export default defineComponent({
-	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
+	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
+	mixins: [workflowHelpers],
 	props: {
 		parameter: {
 			type: Object as PropType<INodeProperties>,
@@ -272,6 +267,11 @@ export default defineComponent({
 			width: 0,
 		};
 	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
 		appName(): string {
@@ -302,7 +302,7 @@ export default defineComponent({
 			if (!node) {
 				return false;
 			}
-			return !!(node && node.credentials && Object.keys(node.credentials).length === 1);
+			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
 			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
@@ -349,7 +349,7 @@ export default defineComponent({
 		},
 		urlValue(): string | null {
 			if (this.isListMode && typeof this.modelValue === 'object') {
-				return (this.modelValue && this.modelValue.cachedResultUrl) || null;
+				return this.modelValue?.cachedResultUrl || null;
 			}
 
 			if (this.selectedMode === 'url') {
@@ -393,7 +393,7 @@ export default defineComponent({
 			const cacheKeys = { ...this.currentRequestParams };
 			cacheKeys.parameters = Object.keys(this.node ? this.node.parameters : {}).reduce(
 				(accu: INodeParameters, param) => {
-					if (param !== this.parameter.name && this.node && this.node.parameters) {
+					if (param !== this.parameter.name && this.node?.parameters) {
 						accu[param] = this.node.parameters[param];
 					}
 
@@ -417,7 +417,7 @@ export default defineComponent({
 			);
 		},
 		currentQueryHasMore(): boolean {
-			return !!(this.currentResponse && this.currentResponse.nextPageToken);
+			return !!this.currentResponse?.nextPageToken;
 		},
 		currentQueryLoading(): boolean {
 			if (this.requiresSearchFilter && this.searchFilter === '') {
@@ -448,14 +448,13 @@ export default defineComponent({
 			}
 		},
 		isValueExpression(newValue: boolean) {
-			if (newValue === true) {
+			if (newValue) {
 				this.switchFromListMode();
 			}
 		},
 		currentMode(mode: INodePropertyMode) {
 			if (
-				mode.extractValue &&
-				mode.extractValue.regex &&
+				mode.extractValue?.regex &&
 				isResourceLocatorValue(this.modelValue) &&
 				this.modelValue.__regex !== mode.extractValue.regex
 			) {
@@ -545,7 +544,7 @@ export default defineComponent({
 		},
 		openCredential(): void {
 			const node = this.ndvStore.activeNode;
-			if (!node || !node.credentials) {
+			if (!node?.credentials) {
 				return;
 			}
 			const credentialKey = Object.keys(node.credentials)[0];
@@ -573,22 +572,22 @@ export default defineComponent({
 			}
 			return null;
 		},
-		getModeLabel(name: string): string | null {
-			if (name === 'id' || name === 'url' || name === 'list') {
-				return this.$locale.baseText(`resourceLocator.mode.${name}`);
+		getModeLabel(mode: INodePropertyMode): string | null {
+			if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
+				return this.$locale.baseText(`resourceLocator.mode.${mode.name}`);
 			}
 
-			return null;
+			return mode.displayName;
 		},
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };
 			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
-				if (resource && resource.name) {
+				if (resource?.name) {
 					params.cachedResultName = resource.name;
 				}
 
-				if (resource && resource.url) {
+				if (resource?.url) {
 					params.cachedResultUrl = resource.url;
 				}
 			}
@@ -597,7 +596,7 @@ export default defineComponent({
 		onModeSelected(value: string): void {
 			if (typeof this.modelValue !== 'object') {
 				this.$emit('update:modelValue', { __rl: true, value: this.modelValue, mode: value });
-			} else if (value === 'url' && this.modelValue && this.modelValue.cachedResultUrl) {
+			} else if (value === 'url' && this.modelValue?.cachedResultUrl) {
 				this.$emit('update:modelValue', {
 					__rl: true,
 					mode: value,
@@ -620,9 +619,9 @@ export default defineComponent({
 			this.$telemetry.track(event, {
 				instance_id: this.rootStore.instanceId,
 				workflow_id: this.workflowsStore.workflowId,
-				node_type: this.node && this.node.type,
-				resource: this.node && this.node.parameters && this.node.parameters.resource,
-				operation: this.node && this.node.parameters && this.node.parameters.operation,
+				node_type: this.node?.type,
+				resource: this.node?.parameters && this.node.parameters.resource,
+				operation: this.node?.parameters && this.node.parameters.operation,
 				field_name: this.parameter.name,
 				...params,
 			});
@@ -642,7 +641,10 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced(this.loadResources, {
+				debounceTime: 1000,
+				trailing: true,
+			});
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -688,9 +690,6 @@ export default defineComponent({
 				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
 					| string
 					| undefined;
-				const searchList = this.getPropertyArgument(this.currentMode, 'searchList') as
-					| ILoadOptions
-					| undefined;
 
 				const requestParams: IResourceLocatorReqParams = {
 					nodeTypeAndVersion: {
@@ -699,7 +698,6 @@ export default defineComponent({
 					},
 					path: this.path,
 					methodName: loadOptionsMethod,
-					searchList,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
 					...(params.filter ? { filter: params.filter } : {}),

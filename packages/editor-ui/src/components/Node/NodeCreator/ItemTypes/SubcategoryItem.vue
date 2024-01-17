@@ -2,12 +2,18 @@
 	<n8n-node-creator-node
 		:class="$style.subCategory"
 		:title="i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
-		:isTrigger="false"
+		:is-trigger="false"
 		:description="i18n.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
-		:showActionArrow="true"
+		:show-action-arrow="true"
 	>
 		<template #icon>
-			<n8n-node-icon type="icon" :name="item.icon" :circle="false" :showTooltip="false" />
+			<n8n-node-icon
+				type="icon"
+				:name="item.icon"
+				:circle="false"
+				:show-tooltip="false"
+				v-bind="item.iconProps"
+			/>
 		</template>
 	</n8n-node-creator-node>
 </template>
@@ -16,7 +22,7 @@
 import type { SubcategoryItemProps } from '@/Interface';
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 export interface Props {
 	item: SubcategoryItemProps;

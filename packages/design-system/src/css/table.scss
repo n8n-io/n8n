@@ -489,7 +489,7 @@
 		& .el-table__body {
 			& tr.el-table__row--striped {
 				td {
-					background: #fafafa;
+					background: var.$table-row-striped-background-color;
 				}
 
 				&.current-row td {

@@ -5,10 +5,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-import { googleApiRequest } from '../../transport';
-
 import { v4 as uuid } from 'uuid';
+import { googleApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

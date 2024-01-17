@@ -1,8 +1,6 @@
 import { Container } from 'typedi';
-import { randomBytes } from 'crypto';
-import { existsSync } from 'fs';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
+import { type INode } from 'n8n-workflow';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
@@ -12,14 +10,16 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { mockNodeTypesData } from '../../../unit/Helpers';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { mockInstance } from '../../../shared/mocking';
+import { ExecutionsService } from '@/executions/executions.service';
 
-export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
 
 // ----------------------------------
@@ -29,7 +29,11 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+export async function initActiveWorkflowRunner() {
+	mockInstance(MultiMainSetup);
+
+	mockInstance(ExecutionsService);
+	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	await workflowRunner.init();
 	return workflowRunner;
@@ -72,24 +76,16 @@ export async function initNodeTypes() {
 }
 
 /**
- * Initialize a BinaryManager for test runs.
+ * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryManager() {
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	await BinaryDataManager.init(binaryDataConfig);
-}
-
-/**
- * Initialize a user settings config file if non-existent.
- */
-// TODO: this should be mocked
-export async function initEncryptionKey() {
-	const settingsPath = UserSettings.getUserSettingsPath();
-
-	if (!existsSync(settingsPath)) {
-		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		await UserSettings.writeUserSettings(userSettings, settingsPath);
-	}
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({
+		mode,
+		availableModes: [mode],
+		localStoragePath: '',
+	});
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 /**
@@ -116,7 +112,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneByOrFail({
+	const { value } = await Container.get(SettingsRepository).findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -126,7 +122,7 @@ export async function isInstanceOwnerSetUp() {
 export const setInstanceOwnerSetUp = async (value: boolean) => {
 	config.set('userManagement.isInstanceOwnerSetUp', value);
 
-	await Db.collections.Settings.update(
+	await Container.get(SettingsRepository).update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(value) },
 	);
@@ -176,3 +172,15 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export function setSchedulerAsLoadedNode() {
+	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+
+	Object.assign(nodesAndCredentials, {
+		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
+			addTrigger: true,
+		}),
+		known: { nodes: {}, credentials: {} },
+		types: { nodes: [], credentials: [] },
+	});
+}

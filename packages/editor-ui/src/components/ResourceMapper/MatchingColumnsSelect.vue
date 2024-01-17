@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 
 interface Props {
@@ -34,18 +34,21 @@ const {
 	pluralFieldWordCapitalized,
 } = useNodeSpecificationValues(props.typeOptions);
 
+const initialValue = computed<string | string[]>(() => {
+	return resourceMapperTypeOptions.value?.multiKeyMatch === true
+		? props.initialValue
+		: props.initialValue[0];
+});
+
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const state = reactive({
-	selected: props.initialValue as string[] | string,
+	selected: initialValue.value,
 });
 
 watch(
 	() => props.initialValue,
 	() => {
-		state.selected =
-			resourceMapperTypeOptions.value?.multiKeyMatch === true
-				? props.initialValue
-				: props.initialValue[0];
+		state.selected = initialValue.value;
 	},
 );
 
@@ -56,7 +59,7 @@ const emit = defineEmits<{
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return (field.canBeUsedToMatch || field.defaultMatch) && field.display !== false;
+		return (field.canBeUsedToMatch || field.defaultMatch) && field.display;
 	});
 });
 
@@ -167,24 +170,24 @@ defineExpose({
 		<n8n-input-label
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
-			:tooltipText="fieldTooltip"
+			:tooltip-text="fieldTooltip"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>
 			<template #options>
-				<parameter-options
+				<ParameterOptions
 					:parameter="parameter"
-					:customActions="parameterActions"
+					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
-					:loadingMessage="fetchingFieldsLabel"
+					:loading-message="fetchingFieldsLabel"
 					@update:modelValue="onParameterActionSelected"
 				/>
 			</template>
 			<n8n-select
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
-				:modelValue="state.selected"
+				:model-value="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
 				:teleported="teleported"

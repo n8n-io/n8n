@@ -1,5 +1,11 @@
 <template>
-	<a v-if="version" :href="version.documentationUrl" target="_blank" :class="$style.card">
+	<a
+		v-if="version"
+		:href="version.documentationUrl"
+		target="_blank"
+		:class="$style.card"
+		data-test-id="version-card"
+	>
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
@@ -24,20 +30,20 @@
 			</div>
 		</div>
 		<div
-			:class="$style.divider"
 			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
 		></div>
 		<div>
 			<div
 				v-if="version.description"
-				v-html="version.description"
 				:class="$style.description"
+				v-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
-					:nodeType="node"
+					:node-type="node"
 					:title="$options.nodeName(node)"
 				/>
 			</div>
@@ -52,8 +58,7 @@ import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import type { IVersionNode } from '@/Interface';
-import type { IVersion } from '@/Interface';
+import type { IVersionNode, IVersion } from '@/Interface';
 
 export default defineComponent({
 	name: 'VersionCard',

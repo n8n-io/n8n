@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
@@ -20,8 +20,8 @@
 						size="large"
 						block
 						:disabled="disabled"
-						@click="addWorkflow"
 						data-test-id="resources-list-add"
+						@click="addWorkflow"
 					>
 						{{ $locale.baseText(`workflows.add`) }}
 					</n8n-button>
@@ -32,53 +32,68 @@
 			</n8n-tooltip>
 		</template>
 		<template #default="{ data, updateItemSize }">
-			<workflow-card
+			<WorkflowCard
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data"
+				:read-only="readOnlyEnv"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
-				:readOnly="readOnlyEnv"
+			/>
+		</template>
+		<template #postListContent>
+			<SuggestedTemplatesSection
+				v-for="(section, key) in suggestedTemplates?.sections"
+				:key="key"
+				:section="section"
+				:title="
+					$locale.baseText('suggestedTemplates.sectionTitle', {
+						interpolate: { sectionName: section.name.toLocaleLowerCase() },
+					})
+				"
 			/>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						$locale.baseText(
-							currentUser.firstName
-								? 'workflows.empty.heading'
-								: 'workflows.empty.heading.userNotSetup',
-							{ interpolate: { name: currentUser.firstName } },
-						)
-					}}
-				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
-			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					@click="addWorkflow"
-					data-test-id="new-workflow-card"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+			<SuggestedTemplatesPage v-if="suggestedTemplates" />
+			<div v-else>
+				<div class="text-center mt-s">
+					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							$locale.baseText(
+								currentUser.firstName
+									? 'workflows.empty.heading'
+									: 'workflows.empty.heading.userNotSetup',
+								{ interpolate: { name: currentUser.firstName } },
+							)
+						}}
+					</n8n-heading>
+					<n8n-text size="large" color="text-base">
+						{{
+							$locale.baseText(
+								readOnlyEnv
+									? 'workflows.empty.description.readOnlyEnv'
+									: 'workflows.empty.description',
+							)
+						}}
 					</n8n-text>
-				</n8n-card>
+				</div>
+				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+					<n8n-card
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-card"
+						@click="addWorkflow"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+						<n8n-text size="large" class="mt-xs" color="text-base">
+							{{ $locale.baseText('workflows.empty.startFromScratch') }}
+						</n8n-text>
+					</n8n-card>
+				</div>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
-			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
+			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -88,8 +103,8 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:modelValue="filters.tags"
-					:createEnabled="false"
+					:model-value="filters.tags"
+					:create-enabled="false"
 					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
@@ -101,18 +116,23 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
+				<n8n-select
+					data-test-id="status-dropdown"
+					:model-value="filters.status"
+					@update:modelValue="setKeyValue('status', $event)"
+				>
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
 						:label="option.label"
 						:value="option.value"
+						data-test-id="status"
 					>
 					</n8n-option>
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
@@ -122,6 +142,8 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
+import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
+import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -129,7 +151,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
+import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -141,11 +163,12 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
-	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
+		SuggestedTemplatesPage,
+		SuggestedTemplatesSection,
 	},
 	data() {
 		return {
@@ -153,7 +176,7 @@ const WorkflowsView = defineComponent({
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				status: StatusFilter.ALL,
+				status: StatusFilter.ALL as string | boolean,
 				tags: [] as string[],
 			},
 			sourceControlStoreUnsubscribe: () => {},
@@ -167,7 +190,11 @@ const WorkflowsView = defineComponent({
 			useWorkflowsStore,
 			useCredentialsStore,
 			useSourceControlStore,
+			useTagsStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -193,6 +220,30 @@ const WorkflowsView = defineComponent({
 				},
 			];
 		},
+		suggestedTemplates() {
+			return this.uiStore.suggestedTemplates;
+		},
+	},
+	watch: {
+		'filters.tags'() {
+			this.sendFiltersTelemetry('tags');
+		},
+	},
+	mounted() {
+		this.setFiltersFromQueryString();
+
+		void this.usersStore.showPersonalizationSurvey();
+
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
 		addWorkflow() {
@@ -221,6 +272,8 @@ const WorkflowsView = defineComponent({
 			filters: { tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
+			this.saveFiltersOnQueryString();
+
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
@@ -243,25 +296,77 @@ const WorkflowsView = defineComponent({
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
-	},
-	watch: {
-		'filters.tags'() {
-			this.sendFiltersTelemetry('tags');
-		},
-	},
-	mounted() {
-		void this.usersStore.showPersonalizationSurvey();
+		saveFiltersOnQueryString() {
+			const query: { [key: string]: string } = {};
 
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
+			if (this.filters.search) {
+				query.search = this.filters.search;
 			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
+
+			if (typeof this.filters.status !== 'string') {
+				query.status = this.filters.status.toString();
+			}
+
+			if (this.filters.tags.length) {
+				query.tags = this.filters.tags.join(',');
+			}
+
+			if (this.filters.ownedBy) {
+				query.ownedBy = this.filters.ownedBy;
+			}
+
+			if (this.filters.sharedWith) {
+				query.sharedWith = this.filters.sharedWith;
+			}
+
+			void this.$router.replace({
+				name: VIEWS.WORKFLOWS,
+				query,
+			});
+		},
+		isValidUserId(userId: string) {
+			return Object.keys(this.usersStore.users).includes(userId);
+		},
+		setFiltersFromQueryString() {
+			const { tags, status, search, ownedBy, sharedWith } = this.$route.query;
+
+			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+
+			if (ownedBy && typeof ownedBy === 'string' && this.isValidUserId(ownedBy)) {
+				filtersToApply.ownedBy = ownedBy;
+			}
+
+			if (sharedWith && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
+				filtersToApply.sharedWith = sharedWith;
+			}
+
+			if (search && typeof search === 'string') {
+				filtersToApply.search = search;
+			}
+
+			if (tags && typeof tags === 'string') {
+				const currentTags = this.tagsStore.allTags.map((tag) => tag.id);
+				const savedTags = tags.split(',').filter((tag) => currentTags.includes(tag));
+				if (savedTags.length) {
+					filtersToApply.tags = savedTags;
+				}
+			}
+
+			if (
+				status &&
+				typeof status === 'string' &&
+				[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
+			) {
+				filtersToApply.status = status === 'true';
+			}
+
+			if (Object.keys(filtersToApply).length) {
+				this.filters = {
+					...this.filters,
+					...filtersToApply,
+				};
+			}
+		},
 	},
 });
 

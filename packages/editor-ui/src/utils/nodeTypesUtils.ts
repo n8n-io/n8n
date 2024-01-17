@@ -1,20 +1,5 @@
-import type { INodeCredentialDescription } from 'n8n-workflow';
-import { MAIN_AUTH_FIELD_NAME } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	CORE_NODES_CATEGORY,
-	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
-	TEMPLATES_NODES_FILTER,
-	MAPPING_PARAMS,
-} from '@/constants';
 import type {
-	INodeUi,
-	ITemplatesNode,
-	NodeAuthenticationOption,
-	INodeUpdatePropertiesInformation,
-} from '@/Interface';
-import type {
+	INodeCredentialDescription,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
@@ -24,7 +9,23 @@ import type {
 	INodePropertyCollection,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+import {
+	MAIN_AUTH_FIELD_NAME,
+	CORE_NODES_CATEGORY,
+	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
+	TEMPLATES_NODES_FILTER,
+	MAPPING_PARAMS,
+} from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type {
+	INodeUi,
+	ITemplatesNode,
+	NodeAuthenticationOption,
+	INodeUpdatePropertiesInformation,
+} from '@/Interface';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isJsonKeyObject } from '@/utils/typesUtils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { i18n as locale } from '@/plugins/i18n';
 
@@ -35,7 +36,7 @@ import { i18n as locale } from '@/plugins/i18n';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 export function getAppNameFromCredType(name: string) {
@@ -123,7 +124,7 @@ export const isRequiredCredential = (
 	nodeType: INodeTypeDescription | null,
 	credential: INodeCredentialDescription,
 ): boolean => {
-	if (!credential.displayOptions || !credential.displayOptions.show) {
+	if (!credential.displayOptions?.show) {
 		return true;
 	}
 	const mainAuthField = getMainAuthField(nodeType);
@@ -164,7 +165,7 @@ const findAlternativeAuthField = (
 ): INodeProperties | null => {
 	const dependentAuthFieldValues: { [fieldName: string]: string[] } = {};
 	nodeType.credentials?.forEach((cred) => {
-		if (cred.displayOptions && cred.displayOptions.show) {
+		if (cred.displayOptions?.show) {
 			for (const fieldName in cred.displayOptions.show) {
 				dependentAuthFieldValues[fieldName] = (dependentAuthFieldValues[fieldName] || []).concat(
 					(cred.displayOptions.show[fieldName] || []).map((val) => (val ? val.toString() : '')),
@@ -292,11 +293,7 @@ export const isAuthRelatedParameter = (
 ): boolean => {
 	let isRelated = false;
 	authFields.forEach((prop) => {
-		if (
-			prop.displayOptions &&
-			prop.displayOptions.show &&
-			parameter.name in prop.displayOptions.show
-		) {
+		if (prop.displayOptions?.show && parameter.name in prop.displayOptions.show) {
 			isRelated = true;
 			return;
 		}
@@ -309,9 +306,9 @@ export const getNodeAuthFields = (
 	nodeVersion?: number,
 ): INodeProperties[] => {
 	const authFields: INodeProperties[] = [];
-	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+	if (nodeType?.credentials && nodeType.credentials.length > 0) {
 		nodeType.credentials.forEach((cred) => {
-			if (cred.displayOptions && cred.displayOptions.show) {
+			if (cred.displayOptions?.show) {
 				Object.keys(cred.displayOptions.show).forEach((option) => {
 					const nodeFieldsForName = nodeType.properties.filter((prop) => prop.name === option);
 					if (nodeFieldsForName) {
@@ -346,12 +343,7 @@ export const getCredentialsRelatedFields = (
 	credentialType: INodeCredentialDescription | null,
 ): INodeProperties[] => {
 	let fields: INodeProperties[] = [];
-	if (
-		nodeType &&
-		credentialType &&
-		credentialType.displayOptions &&
-		credentialType.displayOptions.show
-	) {
+	if (nodeType && credentialType?.displayOptions?.show) {
 		Object.keys(credentialType.displayOptions.show).forEach((option) => {
 			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
 		});
@@ -385,7 +377,7 @@ export const isNodeParameterRequired = (
 	nodeType: INodeTypeDescription,
 	parameter: INodeProperties,
 ): boolean => {
-	if (!parameter.displayOptions || !parameter.displayOptions.show) {
+	if (!parameter.displayOptions?.show) {
 		return true;
 	}
 	// If parameter itself contains 'none'?

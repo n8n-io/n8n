@@ -25,3 +25,4 @@ CHANGELOG-*.md
 .env
 .env.local.with.aws
 dump.rdb
+packages/cli/oclif.manifest.json

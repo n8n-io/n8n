@@ -5,7 +5,7 @@ import type {
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -42,8 +42,9 @@ async function getToken(
 		const responseObject = await this.helpers.request(options);
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
-		throw new Error(
+		throw new ApplicationError(
 			'Authentication Failed for Form.io. Please provide valid credentails/ endpoint details',
+			{ level: 'warning' },
 		);
 	}
 }

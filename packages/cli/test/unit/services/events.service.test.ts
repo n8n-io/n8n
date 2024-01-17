@@ -1,5 +1,4 @@
-import type { IRun, WorkflowExecuteMode, ILogger } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -12,11 +11,11 @@ import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories';
+import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
 
@@ -36,13 +35,13 @@ describe('EventsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	LoggerProxy.init(mock<ILogger>());
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
 	const eventsService = new EventsService(
+		mock(),
 		new WorkflowStatisticsRepository(dataSource),
 		ownershipService,
 	);

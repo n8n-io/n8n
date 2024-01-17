@@ -3,7 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	CODE_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 	IF_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 } from './../constants';
@@ -25,24 +25,27 @@ describe('Canvas Actions', () => {
 	});
 
 	it('should connect and disconnect a simple node', () => {
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
 		cy.get('.jtk-connector').should('have.length', 1);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
 		// Change connection from Set to Set1
 		cy.draganddrop(
-			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`),
+			WorkflowPage.getters.getEndpointSelector('input', EDIT_FIELDS_SET_NODE_NAME),
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
 		);
 
 		WorkflowPage.getters
-			.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`)
+			.canvasNodeInputEndpointByName(`${EDIT_FIELDS_SET_NODE_NAME}1`)
 			.should('have.class', 'jtk-endpoint-connected');
 
 		cy.get('.jtk-connector').should('have.length', 1);
 		// Disconnect Set1
-		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100]);
+		cy.drag(
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
+			[-200, 100],
+		);
 		cy.get('.jtk-connector').should('have.length', 0);
 	});
 
@@ -117,16 +120,21 @@ describe('Canvas Actions', () => {
 	it('should add node between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.actions.addNodeBetweenNodes(CODE_NODE_NAME, SET_NODE_NAME, HTTP_REQUEST_NODE_NAME);
+		WorkflowPage.actions.addNodeBetweenNodes(
+			CODE_NODE_NAME,
+			EDIT_FIELDS_SET_NODE_NAME,
+			HTTP_REQUEST_NODE_NAME,
+		);
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 		// And last node should be pushed to the right
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 860px; top: 220px;');
+			.should('have.css', 'left', '860px')
+			.should('have.css', 'top', '220px');
 	});
 
 	it('should delete connections by pressing the delete button', () => {
@@ -155,21 +163,29 @@ describe('Canvas Actions', () => {
 			.find('[data-test-id="execute-node-button"]')
 			.click({ force: true });
 		WorkflowPage.getters.successToast().should('contain', 'Node executed successfully');
+		WorkflowPage.actions.executeNode(CODE_NODE_NAME);
+		WorkflowPage.getters.successToast().should('contain', 'Node executed successfully');
 	});
 
 	it('should copy selected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.selectAll();
+
 		WorkflowPage.actions.hitCopy();
+		WorkflowPage.getters.successToast().should('contain', 'Copied!');
+
+		WorkflowPage.actions.copyNode(CODE_NODE_NAME);
 		WorkflowPage.getters.successToast().should('contain', 'Copied!');
 	});
 
-	it('should select all nodes', () => {
+	it('should select/deselect all nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.selectAll();
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
+		WorkflowPage.actions.deselectAll();
+		WorkflowPage.getters.selectedNodes().should('have.length', 0);
 	});
 
 	it('should select nodes using arrow keys', () => {
@@ -190,5 +206,30 @@ describe('Canvas Actions', () => {
 		cy.wait(500);
 		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
+	});
+
+	it('should not break lasso selection when dragging node action buttons', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.findChildByTestId('execute-node-button')
+			.as('executeNodeButton');
+		cy.drag('@executeNodeButton', [200, 200]);
+		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+	});
+
+	it('should not break lasso selection with multiple clicks on node action buttons', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+		WorkflowPage.getters.canvasNodes().last().as('lastNode');
+		cy.get('@lastNode').findChildByTestId('execute-node-button').as('executeNodeButton');
+		for (let i = 0; i < 20; i++) {
+			cy.get('@lastNode').realHover();
+			cy.get('@executeNodeButton').should('be.visible');
+			cy.get('@executeNodeButton').realTouch();
+			cy.getByTestId('execute-workflow-button').realHover();
+			WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+		}
 	});
 });

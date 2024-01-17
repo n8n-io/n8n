@@ -1,22 +1,22 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 function onUpdatePlanClick() {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" name="TRIAL_OVER">
+	<BaseBanner custom-icon="info-circle" theme="warning" name="TRIAL_OVER">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem" size="small">{{
+			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
 			}}</n8n-button>
 		</template>
-	</base-banner>
+	</BaseBanner>
 </template>

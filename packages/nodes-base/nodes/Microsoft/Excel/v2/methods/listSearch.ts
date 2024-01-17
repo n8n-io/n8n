@@ -69,7 +69,7 @@ export async function getWorksheetsList(
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 	const workbookId = workbookRLC.value as string;
-	let workbookURL = workbookRLC.cachedResultUrl as string;
+	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
@@ -91,7 +91,9 @@ export async function getWorksheetsList(
 		results: (response.value as IDataObject[]).map((worksheet: IDataObject) => ({
 			name: worksheet.name as string,
 			value: worksheet.id as string,
-			url: `${workbookURL}&activeCell=${encodeURIComponent(worksheet.name as string)}!A1`,
+			url: workbookURL
+				? `${workbookURL}&activeCell=${encodeURIComponent(worksheet.name as string)}!A1`
+				: undefined,
 		})),
 	};
 }
@@ -101,7 +103,7 @@ export async function getWorksheetTables(
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 	const workbookId = workbookRLC.value as string;
-	let workbookURL = workbookRLC.cachedResultUrl as string;
+	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
@@ -138,9 +140,12 @@ export async function getWorksheetTables(
 
 		const [sheetName, sheetRange] = address.split('!' as string);
 
-		const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName as string)}${
-			sheetRange ? '!' + (sheetRange as string) : ''
-		}`;
+		let url;
+		if (workbookURL) {
+			url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName as string)}${
+				sheetRange ? '!' + (sheetRange as string) : ''
+			}`;
+		}
 
 		results.push({ name, value, url });
 	}

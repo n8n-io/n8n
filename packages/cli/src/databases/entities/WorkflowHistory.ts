@@ -1,11 +1,11 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import { jsonColumnType } from './AbstractEntity';
+import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import { IConnections } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
-export class WorkflowHistory {
+export class WorkflowHistory extends WithTimestamps {
 	@PrimaryColumn()
 	versionId: string;
 

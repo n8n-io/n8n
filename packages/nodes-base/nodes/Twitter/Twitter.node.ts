@@ -8,12 +8,12 @@ import { TwitterV2 } from './V2/TwitterV2.node';
 export class Twitter extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Twitter',
+			displayName: 'X (Formerly Twitter)',
 			name: 'twitter',
-			icon: 'file:twitter.svg',
+			icon: 'file:x.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Twitter API',
+			description: 'Consume the X API',
 			defaultVersion: 2,
 		};
 

@@ -5,9 +5,11 @@ import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import { ROLE } from '@/utils/userUtils';
+import { hasPermission } from '@/rbac/permissions';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -25,6 +27,12 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+
+const canUserActivateLicense = computed(() =>
+	hasPermission(['role'], {
+		role: [ROLE.Owner],
+	}),
+);
 
 const showActivationSuccess = () => {
 	toast.showMessage({
@@ -77,7 +85,7 @@ onMounted(async () => {
 		}
 	}
 	try {
-		if (!route.query.key && usageStore.canUserActivateLicense) {
+		if (!route.query.key && canUserActivateLicense.value) {
 			await usageStore.refreshLicenseManagementToken();
 		} else {
 			await usageStore.getLicenseInfo();
@@ -103,7 +111,7 @@ const onAddActivationKey = () => {
 };
 
 const onViewPlans = () => {
-	uiStore.goToUpgrade('usage_page', 'open');
+	void uiStore.goToUpgrade('usage_page', 'open');
 	sendUsageTelemetry('view_plans');
 };
 
@@ -133,7 +141,7 @@ const openPricingPage = () => {
 			:class="$style.actionBox"
 			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
 			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
-			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
+			:button-text="locale.baseText('settings.usageAndPlan.button.plans')"
 			@click:button="openPricingPage"
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
@@ -182,20 +190,20 @@ const openPricingPage = () => {
 
 			<div :class="$style.buttons">
 				<n8n-button
+					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
-					@click="onAddActivationKey"
-					v-if="usageStore.canUserActivateLicense"
 					type="tertiary"
 					size="large"
+					@click="onAddActivationKey"
 				>
-					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
 				</n8n-button>
-				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
+				<n8n-button v-if="usageStore.managementToken" size="large" @click="onManagePlan">
 					<a :href="managePlanUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
 				</n8n-button>
-				<n8n-button v-else @click="onViewPlans" size="large">
+				<n8n-button v-else size="large" @click.prevent="onViewPlans">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
@@ -203,13 +211,13 @@ const openPricingPage = () => {
 			</div>
 
 			<el-dialog
+				v-model="activationKeyModal"
 				width="480px"
 				top="0"
-				@closed="onDialogClosed"
-				@opened="onDialogOpened"
-				v-model="activationKeyModal"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
+				@closed="onDialogClosed"
+				@opened="onDialogOpened"
 			>
 				<template #default>
 					<n8n-input
@@ -219,7 +227,7 @@ const openPricingPage = () => {
 					/>
 				</template>
 				<template #footer>
-					<n8n-button @click="activationKeyModal = false" type="secondary">
+					<n8n-button type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</n8n-button>
 					<n8n-button @click="onLicenseActivation">
@@ -232,7 +240,7 @@ const openPricingPage = () => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .center > div {
 	justify-content: center;
@@ -262,7 +270,7 @@ const openPricingPage = () => {
 	margin: 0 0 var(--spacing-xs);
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-light-grey);
+	border: 1px solid var(--color-foreground-base);
 	white-space: nowrap;
 
 	.count {
@@ -318,13 +326,6 @@ const openPricingPage = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
-}
-
-.buttonTertiary {
-	&,
-	&:hover {
-		background: transparent;
-	}
 }
 </style>
 

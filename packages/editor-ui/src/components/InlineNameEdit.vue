@@ -5,10 +5,10 @@
 		</span>
 		<div
 			v-else
+			v-on-click-outside="disableNameEdit"
 			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
-			v-on-click-outside="disableNameEdit"
 		>
 			<div v-if="!isNameEdit">
 				<span>{{ modelValue }}</span>
@@ -16,16 +16,16 @@
 			</div>
 			<div v-else :class="$style.nameInput">
 				<n8n-input
-					:modelValue="modelValue"
-					size="xlarge"
 					ref="nameInput"
+					:model-value="modelValue"
+					size="xlarge"
+					:maxlength="64"
 					@update:modelValue="onNameEdit"
 					@change="disableNameEdit"
-					:maxlength="64"
 				/>
 			</div>
 		</div>
-		<div :class="$style.subtitle" v-if="!isNameEdit && subtitle">
+		<div v-if="!isNameEdit && subtitle" :class="$style.subtitle">
 			{{ subtitle }}
 		</div>
 	</div>
@@ -33,7 +33,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'InlineNameEdit',

@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<div>
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
-			<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
+			<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
 				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
 					<template #content>
 						<span> {{ $locale.baseText('settings.users.invite.tooltip') }} </span>
@@ -11,9 +11,9 @@
 						<n8n-button
 							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
 							:label="$locale.baseText('settings.users.invite')"
-							@click="onInvite"
 							size="large"
 							data-test-id="settings-users-invite-button"
+							@click="onInvite"
 						/>
 					</div>
 				</n8n-tooltip>
@@ -29,30 +29,57 @@
 						uiStore.contextBasedTranslationKeys.users.settings.unavailable.description,
 					)
 				"
-				:buttonText="
+				:button-text="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
 				"
 				@click:button="goToUpgrade"
 			/>
 		</div>
+		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+			<i18n-t keypath="settings.users.advancedPermissions.warning">
+				<template #link>
+					<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+						{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+					</n8n-link>
+				</template>
+			</i18n-t>
+		</n8n-notice>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			:class="$style.usersContainer"
 			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
+			:class="$style.usersContainer"
 		>
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
-				:currentUserId="usersStore.currentUserId"
-				:isSamlLoginEnabled="ssoStore.isSamlLoginEnabled"
+				:current-user-id="usersStore.currentUserId"
+				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
 				@delete="onDelete"
 				@reinvite="onReinvite"
 				@copyInviteLink="onCopyInviteLink"
 				@copyPasswordResetLink="onCopyPasswordResetLink"
 				@allowSSOManualLogin="onAllowSSOManualLogin"
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
-			/>
+			>
+				<template #actions="{ user }">
+					<n8n-select
+						v-if="user.id !== usersStore.currentUserId"
+						:model-value="user?.globalRole?.name || 'member'"
+						:disabled="!canUpdateRole"
+						data-test-id="user-role-select"
+						@update:modelValue="onRoleChange(user, $event)"
+					>
+						<n8n-option
+							v-for="role in userRoles"
+							:key="role.value"
+							:value="role.value"
+							:label="role.label"
+							:disabled="role.disabled"
+						/>
+					</n8n-select>
+				</template>
+			</n8n-users-list>
 		</div>
 	</div>
 </template>
@@ -62,25 +89,30 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IUser, IUserListAction } from '@/Interface';
-import { useToast } from '@/composables';
-import { copyPaste } from '@/mixins/copyPaste';
+import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
+import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { hasPermission } from '@/rbac/permissions';
+import { ROLE } from '@/utils/userUtils';
+import { useClipboard } from '@/composables/useClipboard';
+import type { UpdateGlobalRolePayload } from '@/api/users';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
-	mixins: [copyPaste],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
 	async mounted() {
-		if (!this.usersStore.showUMSetupWarning) {
+		if (!this.showUMSetupWarning) {
 			await this.usersStore.fetchUsers();
 		}
 	},
@@ -88,6 +120,9 @@ export default defineComponent({
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		showUMSetupWarning() {
+			return hasPermission(['defaultUser']);
 		},
 		usersListActions(): IUserListAction[] {
 			return [
@@ -108,11 +143,18 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
 					value: 'delete',
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
-					guard: () => this.settingsStore.isBelowUserQuota,
+					guard: (user) =>
+						hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
+						this.settingsStore.isBelowUserQuota &&
+						!user.isPendingUser &&
+						user.id !== this.usersStore.currentUserId,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
@@ -128,6 +170,27 @@ export default defineComponent({
 				},
 			];
 		},
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
+		},
+		userRoles(): Array<{ value: IRole; label: string; disabled?: boolean }> {
+			return [
+				{
+					value: ROLE.Member,
+					label: this.$locale.baseText('auth.roles.member'),
+				},
+				{
+					value: ROLE.Admin,
+					label: this.$locale.baseText('auth.roles.admin'),
+					disabled: !this.isAdvancedPermissionsEnabled,
+				},
+			];
+		},
+		canUpdateRole(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+		},
 	},
 	methods: {
 		redirectToSetup() {
@@ -137,22 +200,27 @@ export default defineComponent({
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
 		},
 		async onDelete(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				this.uiStore.openDeleteUserModal(userId);
 			}
 		},
 		async onReinvite(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
-			if (user) {
+			const user = this.usersStore.getUserById(userId);
+			if (user?.email && user?.globalRole) {
+				if (!['admin', 'member'].includes(user.globalRole.name)) {
+					throw new Error('Invalid role name on reinvite');
+				}
 				try {
-					await this.usersStore.reinviteUser({ id: user.id });
-
+					await this.usersStore.reinviteUser({
+						email: user.email,
+						role: user.globalRole.name as InvitableRoleName,
+					});
 					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
 						message: this.$locale.baseText('settings.users.emailSentTo', {
-							interpolate: { email: user.email || '' },
+							interpolate: { email: user.email ?? '' },
 						}),
 					});
 				} catch (e) {
@@ -161,9 +229,9 @@ export default defineComponent({
 			}
 		},
 		async onCopyInviteLink(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 
 				this.showToast({
 					type: 'success',
@@ -173,10 +241,10 @@ export default defineComponent({
 			}
 		},
 		async onCopyPasswordResetLink(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
-				this.copyToClipboard(url.link);
+				void this.clipboard.copy(url.link);
 
 				this.showToast({
 					type: 'success',
@@ -186,7 +254,7 @@ export default defineComponent({
 			}
 		},
 		async onAllowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				if (!user.settings) {
 					user.settings = {};
@@ -202,7 +270,7 @@ export default defineComponent({
 			}
 		},
 		async onDisallowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user?.settings) {
 				user.settings.allowSSOManualLogin = false;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);
@@ -214,7 +282,13 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+		},
+		goToUpgradeAdvancedPermissions() {
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
+		},
+		async onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
+			await this.usersStore.updateGlobalRole({ id: user.id, newRoleName });
 		},
 	},
 });

@@ -2,10 +2,12 @@
 import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { hasPermission } from '@/rbac/permissions';
+import { useToast } from '@/composables/useToast';
+import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
 import { sourceControlEventBus } from '@/event-bus/source-control';
@@ -21,9 +23,7 @@ const responseStatuses = {
 const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
-const message = useMessage();
 const toast = useToast();
 const i18n = useI18n();
 
@@ -33,8 +33,11 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
-const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
-const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
+const sourceControlAvailable = computed(
+	() =>
+		sourceControlStore.isEnterpriseSourceControlEnabled &&
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
+);
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
@@ -122,7 +125,7 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="sourceControlStore.isEnterpriseSourceControlEnabled && isInstanceOwner"
+		v-if="sourceControlAvailable"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
@@ -204,10 +207,6 @@ const goToSourceControlSetup = async () => {
 
 	&:empty {
 		display: none;
-	}
-
-	span {
-		color: var(--color-text-base);
 	}
 
 	button {
