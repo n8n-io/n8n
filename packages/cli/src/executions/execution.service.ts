@@ -319,10 +319,14 @@ export class ExecutionService {
 			}
 		}
 
-		return this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
-		});
+		return await this.executionRepository.deleteExecutionsByFilter(
+			requestFilters,
+			sharedWorkflowIds,
+			{
+				deleteBefore,
+				ids,
+			},
+		);
 	}
 
 	async createErrorExecution(

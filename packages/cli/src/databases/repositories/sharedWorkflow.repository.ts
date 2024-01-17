@@ -20,7 +20,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		if (!user.hasGlobalScope('workflow:read')) {
 			where.userId = user.id;
 		}
-		return this.exist({ where });
+		return await this.exist({ where });
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {
@@ -34,7 +34,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async findByWorkflowIds(workflowIds: string[]) {
-		return this.find({
+		return await this.find({
 			relations: ['role', 'user'],
 			where: {
 				role: {
@@ -68,11 +68,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 		if (extraRelations) relations.push(...extraRelations);
 
-		return this.findOne({ relations, where });
+		return await this.findOne({ relations, where });
 	}
 
 	async makeOwnerOfAllWorkflows(user: User, role: Role) {
-		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
+		return await this.update({ userId: Not(user.id), roleId: role.id }, { user });
 	}
 
 	async getSharing(
@@ -90,7 +90,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where.userId = user.id;
 		}
 
-		return this.findOne({ where, relations });
+		return await this.findOne({ where, relations });
 	}
 
 	async getSharedWorkflows(
@@ -100,7 +100,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			workflowIds?: string[];
 		},
 	): Promise<SharedWorkflow[]> {
-		return this.find({
+		return await this.find({
 			where: {
 				...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
 				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
@@ -123,11 +123,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			return acc;
 		}, []);
 
-		return transaction.save(newSharedWorkflows);
+		return await transaction.save(newSharedWorkflows);
 	}
 
 	async findWithFields(workflowIds: string[], { fields }: { fields: string[] }) {
-		return this.find({
+		return await this.find({
 			where: {
 				workflowId: In(workflowIds),
 			},
@@ -136,7 +136,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
-		return transaction.delete(SharedWorkflow, {
+		return await transaction.delete(SharedWorkflow, {
 			user,
 			workflowId: In(sharedWorkflowIds),
 		});

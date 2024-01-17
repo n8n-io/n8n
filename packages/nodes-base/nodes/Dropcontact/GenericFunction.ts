@@ -34,7 +34,7 @@ export async function dropcontactApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

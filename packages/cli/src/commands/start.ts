@@ -174,7 +174,7 @@ export class Start extends BaseCommand {
 					);
 				}
 				streams.push(createWriteStream(destFile, 'utf-8'));
-				return pipeline(streams);
+				return await pipeline(streams);
 			}
 		};
 

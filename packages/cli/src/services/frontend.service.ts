@@ -49,7 +49,7 @@ export class FrontendService {
 		private readonly urlService: UrlService,
 		private readonly internalHooks: InternalHooks,
 	) {
-		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
+		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 
 		this.initSettings();

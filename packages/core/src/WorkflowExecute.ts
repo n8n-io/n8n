@@ -308,7 +308,7 @@ export class WorkflowExecute {
 			return;
 		}
 
-		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
+		return await this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
 	moveNodeMetadata(): void {
@@ -1657,14 +1657,19 @@ export class WorkflowExecute {
 			})()
 				.then(async () => {
 					if (this.status === 'canceled' && executionError === undefined) {
-						return this.processSuccessExecution(
+						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
 							new WorkflowOperationError('Workflow has been canceled or timed out!'),
 							closeFunction,
 						);
 					}
-					return this.processSuccessExecution(startedAt, workflow, executionError, closeFunction);
+					return await this.processSuccessExecution(
+						startedAt,
+						workflow,
+						executionError,
+						closeFunction,
+					);
 				})
 				.catch(async (error) => {
 					const fullRunData = this.getFullRunData(startedAt);
@@ -1708,7 +1713,7 @@ export class WorkflowExecute {
 					return fullRunData;
 				});
 
-			return returnPromise.then(resolve);
+			return await returnPromise.then(resolve);
 		});
 	}
 

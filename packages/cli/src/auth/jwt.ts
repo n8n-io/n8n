@@ -80,7 +80,7 @@ export async function resolveJwt(token: string): Promise<User> {
 	const jwtPayload: JwtPayload = Container.get(JwtService).verify(token, {
 		algorithms: ['HS256'],
 	});
-	return resolveJwtContent(jwtPayload);
+	return await resolveJwtContent(jwtPayload);
 }
 
 export async function issueCookie(res: Response, user: User): Promise<void> {

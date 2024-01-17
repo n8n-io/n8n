@@ -415,6 +415,6 @@ export class ChainSummarizationV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return await this.prepareOutputData(returnData);
 	}
 }
