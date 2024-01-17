@@ -279,6 +279,11 @@ export class Server extends AbstractServer {
 			controllers.push(MFAController);
 		}
 
+		if (this.frontendService) {
+			const { CtaController } = await import('@/controllers/cta.controller');
+			controllers.push(CtaController);
+		}
+
 		controllers.forEach((controller) => registerController(app, controller));
 	}
 
