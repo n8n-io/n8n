@@ -2855,10 +2855,7 @@ const getRequestHelperFunctions = (
 
 				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
 
-				if (
-					newResponse.body?.constructor.name === 'IncomingMessage' &&
-					paginationOptions.binaryResult !== true
-				) {
+				if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
 					const data = await this.helpers
 						.binaryToBuffer(newResponse.body as Buffer | Readable)
 						.then((body) => body.toString());
@@ -2954,10 +2951,7 @@ const getRequestHelperFunctions = (
 						// configured to stop on 404 response codes. For that reason we have to throw here
 						// now an error manually if the response code is not a success one.
 						let data = tempResponseData.body;
-						if (
-							data?.constructor.name === 'IncomingMessage' &&
-							paginationOptions.binaryResult !== true
-						) {
+						if (data instanceof Readable && paginationOptions.binaryResult !== true) {
 							data = await this.helpers
 								.binaryToBuffer(tempResponseData.body as Buffer | Readable)
 								.then((body) => body.toString());
