@@ -1,5 +1,3 @@
-import { useStorage } from '@/composables/useStorage';
-import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
 	IRunDataDisplayMode,
@@ -8,7 +6,9 @@ import type {
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
-import type { INodeIssues, IRunData } from 'n8n-workflow';
+import { useStorage } from '@/composables/useStorage';
+import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
+import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
@@ -56,7 +56,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			const workflowsStore = useWorkflowsStore();
 			return workflowsStore.getNodeByName(this.activeNodeName || '');
 		},
-		ndvInputData(): IRunData[] {
+		ndvInputData(): INodeExecutionData[] {
 			const workflowsStore = useWorkflowsStore();
 			const executionData = workflowsStore.getWorkflowExecution;
 			const inputNodeName: string | undefined = this.input.nodeName;

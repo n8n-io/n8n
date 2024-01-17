@@ -1,28 +1,29 @@
 <script setup lang="ts">
-import {
-	type AssignmentCollectionValue,
-	type AssignmentValue,
-	type INode,
-	type INodeProperties,
-} from 'n8n-workflow';
-import { useI18n } from '@/composables/useI18n';
-import { computed, reactive, watch } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
-import DropArea from '../DropArea/DropArea.vue';
-import Assignment from './Assignment.vue';
-import { v4 as uuid } from 'uuid';
-import { resolveParameter } from '@/mixins/workflowHelpers';
-import { isObject } from 'lodash-es';
 import { useDebounce } from '@/composables/useDebounce';
+import { useI18n } from '@/composables/useI18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import type {
+	AssignmentCollectionValue,
+	AssignmentValue,
+	INode,
+	INodeProperties,
+} from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import { computed, reactive, watch } from 'vue';
+import DropArea from '../DropArea/DropArea.vue';
+import ParameterOptions from '../ParameterOptions.vue';
+import Assignment from './Assignment.vue';
+import { inputDataToAssignments, nameFromExpression, typeFromExpression } from './utils';
 
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
 	path: string;
 	node: INode | null;
+	isReadOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { isReadOnly: false });
 
 const emit = defineEmits<{
 	(
@@ -49,6 +50,21 @@ const issues = computed(() => {
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
 const activeDragField = computed(() => nameFromExpression(ndvStore.draggableData));
+const inputData = computed(() => ndvStore.ndvInputData[0]?.json);
+const actions = computed(() => {
+	return [
+		{
+			label: i18n.baseText('assignment.addAll'),
+			value: 'addAll',
+			disabled: !inputData.value,
+		},
+		{
+			label: i18n.baseText('assignment.clearAll'),
+			value: 'clearAll',
+			disabled: state.paramValue.assignments.length === 0,
+		},
+	];
+});
 
 watch(state.paramValue, (value) => {
 	void callDebounced(
@@ -58,33 +74,6 @@ watch(state.paramValue, (value) => {
 		{ debounceTime: 1000 },
 	);
 });
-
-function nameFromExpression(expression: string): string {
-	return (
-		expression
-			.replace(/^{{\s*|\s*}}$/g, '')
-			.split('.')
-			.pop() ?? 'name'
-	);
-}
-
-function inferAssignmentType(value: unknown): string {
-	if (typeof value === 'boolean') return 'boolean';
-	if (typeof value === 'number') return 'number';
-	if (typeof value === 'string') return 'string';
-	if (Array.isArray(value)) return 'array';
-	if (isObject(value)) return 'object';
-	return 'string';
-}
-
-function typeFromExpression(expression: string): string {
-	try {
-		const resolved = resolveParameter(`=${expression}`);
-		return inferAssignmentType(resolved);
-	} catch (error) {
-		return 'string';
-	}
-}
 
 function addAssignment(): void {
 	state.paramValue.assignments.push({ id: uuid(), name: '', value: '', type: 'string' });
@@ -110,6 +99,15 @@ function onAssignmentRemove(index: number): void {
 function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
 }
+
+function optionSelected(action: 'clearAll' | 'addAll') {
+	if (action === 'clearAll') {
+		state.paramValue.assignments = [];
+	} else {
+		const newAssignments = inputDataToAssignments(inputData.value);
+		state.paramValue.assignments = state.paramValue.assignments.concat(newAssignments);
+	}
+}
 </script>
 
 <template>
@@ -121,10 +119,19 @@ function getIssues(index: number): string[] {
 			:label="parameter.displayName"
 			:show-expression-selector="false"
 			size="small"
-			show-options
 			underline
 			color="text-dark"
 		>
+			<template #options>
+				<ParameterOptions
+					:parameter="parameter"
+					:value="value"
+					:custom-actions="actions"
+					:is-read-only="isReadOnly"
+					:show-expression-selector="false"
+					@update:model-value="optionSelected"
+				/>
+			</template>
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.assignments">
@@ -135,6 +142,7 @@ function getIssues(index: number): string[] {
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						:class="$style.assignment"
+						:is-read-only="isReadOnly"
 						@update:model-value="(value) => onAssignmentUpdate(index, value)"
 						@remove="() => onAssignmentRemove(index)"
 					>
@@ -142,6 +150,7 @@ function getIssues(index: number): string[] {
 				</div>
 			</div>
 			<div
+				v-if="!isReadOnly"
 				:class="$style.dropAreaWrapper"
 				data-test-id="assignment-collection-drop-area"
 				@click="addAssignment"

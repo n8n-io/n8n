@@ -6,6 +6,7 @@ import { computed } from 'vue';
 
 interface Props {
 	modelValue: string;
+	isReadOnly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -30,6 +31,7 @@ const onTypeChange = (type: string): void => {
 		data-test-id="assignment-type-select"
 		size="small"
 		:model-value="modelValue"
+		:disabled="isReadOnly"
 		@update:model-value="onTypeChange"
 	>
 		<template #prefix>

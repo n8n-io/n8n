@@ -12,6 +12,7 @@ interface Props {
 	modelValue: AssignmentValue;
 	issues: string[];
 	hideType?: boolean;
+	isReadOnly?: boolean;
 	index?: number;
 }
 
@@ -82,6 +83,7 @@ const onBlur = (): void => {
 		data-test-id="assignment"
 	>
 		<n8n-icon-button
+			v-if="!isReadOnly"
 			type="tertiary"
 			text
 			size="mini"
@@ -98,6 +100,7 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					is-single-line
+					:is-read-only="isReadOnly"
 					:parameter="nameParameter"
 					:value="assignment.name"
 					:path="`${path}.name`"
@@ -110,6 +113,7 @@ const onBlur = (): void => {
 				<TypeSelect
 					:class="$style.select"
 					:model-value="assignment.type ?? 'string'"
+					:is-read-only="isReadOnly"
 					@update:model-value="onAssignmentTypeChange"
 				>
 				</TypeSelect>
@@ -122,6 +126,7 @@ const onBlur = (): void => {
 					hide-hint
 					is-single-line
 					is-assignment
+					:is-read-only="isReadOnly"
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="valueParameter"
 					:value="assignment.value"

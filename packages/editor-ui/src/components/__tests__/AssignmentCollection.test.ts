@@ -67,7 +67,7 @@ describe('AssignmentCollection.vue', () => {
 		expect(getByTestId('assignment-collection-fields')).toBeInTheDocument();
 		expect(getByTestId('assignment-collection-fields')).toHaveClass('empty');
 		expect(getByTestId('assignment-collection-drop-area')).toHaveTextContent(
-			'Drag Input Fields Here',
+			'Drag input fields here',
 		);
 		expect(queryByTestId('assignment')).not.toBeInTheDocument();
 	});
@@ -75,8 +75,8 @@ describe('AssignmentCollection.vue', () => {
 	it('can add and remove assignments', async () => {
 		const { getByTestId, findAllByTestId } = renderComponent();
 
-		await userEvent.click(getByTestId('assignment-collection-add'));
-		await userEvent.click(getByTestId('assignment-collection-add'));
+		await userEvent.click(getByTestId('assignment-collection-drop-area'));
+		await userEvent.click(getByTestId('assignment-collection-drop-area'));
 
 		let assignments = await findAllByTestId('assignment');
 

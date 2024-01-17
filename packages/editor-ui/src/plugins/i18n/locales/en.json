@@ -2368,6 +2368,8 @@
 	"assignment.dropField": "Drop here to add the field",
 	"assignment.or": "or",
 	"assignment.add": "Add Field",
+	"assignment.addAll": "Add All",
+	"assignment.clearAll": "Clear All",
 	"templateSetup.title": "Set up '{name}' template",
 	"templateSetup.instructions": "You need {0} account to setup this template",
 	"templateSetup.skip": "Skip",
