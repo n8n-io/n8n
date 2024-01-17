@@ -131,8 +131,8 @@ export const setupTestServer = ({
 						break;
 
 					case 'executions':
-						const { executionsController } = await import('@/executions/executions.controller');
-						app.use(`/${REST_PATH_SEGMENT}/executions`, executionsController);
+						const { ExecutionsController } = await import('@/executions/executions.controller');
+						registerController(app, ExecutionsController);
 						break;
 
 					case 'variables':
@@ -170,10 +170,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { handleLdapInit } = await import('@/Ldap/helpers');
-						const { LdapController } = await import('@/controllers/ldap.controller');
+						const { LdapService } = await import('@/Ldap/ldap.service');
+						const { LdapController } = await import('@/Ldap/ldap.controller');
 						testServer.license.enable('feat:ldap');
-						await handleLdapInit();
+						await Container.get(LdapService).init();
 						registerController(app, LdapController);
 						break;
 

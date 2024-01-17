@@ -10,6 +10,13 @@ const workflowPage = new WorkflowPage();
 const templateWorkflowPage = new TemplateWorkflowPage();
 
 describe('Templates', () => {
+	beforeEach(() => {
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
+		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');
+		cy.intercept('GET', '**/api/templates/workflows/*', { fixture: 'templates_search/test_template_preview.json' }).as('singleTemplateRequest');
+		cy.intercept('GET', '**/api/workflows/templates/*', { fixture: 'templates_search/test_template_import.json' }).as('singleTemplateRequest');
+	});
+
 	it('can open onboarding flow', () => {
 		templatesPage.actions.openOnboardingFlow(1234, OnboardingWorkflow.name, OnboardingWorkflow);
 		cy.url().then(($url) => {
@@ -37,10 +44,9 @@ describe('Templates', () => {
 
 	it('should save template id with the workflow', () => {
 		cy.visit(templatesPage.url);
-		cy.intercept('GET', '**/api/templates/**').as('loadApi');
 		cy.get('.el-skeleton.n8n-loading').should('not.exist');
 		templatesPage.getters.firstTemplateCard().should('exist');
-		cy.wait('@loadApi');
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
 		templatesPage.getters.firstTemplateCard().click();
 		cy.url().should('include', '/templates/');
 
@@ -66,5 +72,68 @@ describe('Templates', () => {
 		templateWorkflowPage.actions.openTemplate(WorkflowTemplate);
 
 		templateWorkflowPage.getters.description().find('img').should('have.length', 1);
+	});
+
+
+	it('renders search elements correctly', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.searchInput().should('exist');
+		templatesPage.getters.allCategoriesFilter().should('exist');
+		templatesPage.getters.categoryFilters().should('have.length.greaterThan', 1);
+		templatesPage.getters.templateCards().should('have.length.greaterThan', 0);
+	});
+
+	it('can filter templates by category', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.expandCategoriesButton().click();
+		templatesPage.getters.categoryFilter('sales').should('exist');
+		let initialTemplateCount = 0;
+		let initialCollectionCount = 0;
+
+		templatesPage.getters.templateCountLabel().then(($el) => {
+			initialTemplateCount = parseInt($el.text().replace(/\D/g, ''), 10);
+			templatesPage.getters.collectionCountLabel().then(($el) => {
+				initialCollectionCount = parseInt($el.text().replace(/\D/g, ''), 10);
+
+				templatesPage.getters.categoryFilter('sales').click();
+				templatesPage.getters.templatesLoadingContainer().should('not.exist');
+
+				// Should have less templates and collections after selecting a category
+				templatesPage.getters.templateCountLabel().should(($el) => {
+					expect(parseInt($el.text().replace(/\D/g, ''), 10)).to.be.lessThan(initialTemplateCount);
+				});
+				templatesPage.getters.collectionCountLabel().should(($el) => {
+					expect(parseInt($el.text().replace(/\D/g, ''), 10)).to.be.lessThan(initialCollectionCount);
+				});
+			});
+		});
+	});
+
+	it('should preserve search query in URL', () => {
+		cy.visit(templatesPage.url);
+		templatesPage.getters.templatesLoadingContainer().should('not.exist');
+		templatesPage.getters.expandCategoriesButton().click();
+		templatesPage.getters.categoryFilter('sales').should('exist');
+		templatesPage.getters.categoryFilter('sales').click();
+		templatesPage.getters.searchInput().type('auto');
+
+		cy.url().should('include', '?categories=');
+		cy.url().should('include', '&search=');
+
+		cy.reload();
+
+		// Should preserve search query in URL
+		cy.url().should('include', '?categories=');
+		cy.url().should('include', '&search=');
+
+		// Sales category should still be selected
+		templatesPage.getters.categoryFilter('sales').find('label').should('have.class', 'is-checked');
+		// Search input should still have the search query
+		templatesPage.getters.searchInput().should('have.value', 'auto');
+		// Sales checkbox should be pushed to the top
+		templatesPage.getters.categoryFilters().eq(1).then(($el) => {
+			expect($el.text()).to.equal('Sales');
+		});
 	});
 });
