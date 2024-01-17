@@ -248,17 +248,20 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 			const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
 
-			let file = binaryData.data;
+			let fileBase64;
 			if (binaryData.id) {
 				const chunkSize = 256 * 1024;
-				const buffer = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
-				file = await this.helpers.binaryToBuffer(buffer).then((body) => body.toString());
+				const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+				const buffer = await this.helpers.binaryToBuffer(stream);
+				fileBase64 = buffer.toString('base64');
+			} else {
+				fileBase64 = binaryData.data;
 			}
 
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				name: binaryData.fileName,
-				contentBytes: file,
+				contentBytes: fileBase64,
 			};
 		});
 	}
