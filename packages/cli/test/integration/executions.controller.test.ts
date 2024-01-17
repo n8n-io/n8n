@@ -1,4 +1,5 @@
 import type { User } from '@db/entities/User';
+import { Push } from '@/push';
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
@@ -9,6 +10,7 @@ import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
 
 mockInstance(EnterpriseExecutionsService);
 
+mockInstance(Push);
 let testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;
