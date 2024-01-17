@@ -1287,7 +1287,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions-current',
+				'/executions/current',
 				sendData,
 			);
 		},
@@ -1355,7 +1355,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
-				`/executions-current/${executionId}/stop`,
+				`/executions/current/${executionId}/stop`,
 			);
 		},
 

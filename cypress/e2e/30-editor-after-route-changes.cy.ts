@@ -136,7 +136,7 @@ describe('Editor actions should work', () => {
 
 	it('after switching between Editor and Executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+		cy.intercept('GET', '/rest/executions/current?filter=*').as('getCurrentExecutions');
 
 		executionsTab.actions.switchToExecutionsTab();
 		cy.wait(['@getExecutions', '@getCurrentExecutions']);
@@ -149,7 +149,7 @@ describe('Editor actions should work', () => {
 	it('after switching between Editor and Debug', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+		cy.intercept('GET', '/rest/executions/current?filter=*').as('getCurrentExecutions');
 		cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
 
 		editWorkflowAndDeactivate();
