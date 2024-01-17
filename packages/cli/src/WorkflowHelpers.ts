@@ -1,52 +1,22 @@
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
 import { Container } from 'typedi';
-
+import { v4 as uuid } from 'uuid';
 import type {
 	IDataObject,
-	IExecuteData,
 	INode,
 	INodeCredentialsDetails,
 	IRun,
-	IRunExecutionData,
 	ITaskData,
 	NodeApiError,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
-} from 'n8n-workflow';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	NodeOperationError,
-	SubworkflowOperationError,
 	Workflow,
+	NodeOperationError,
 } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
-import omit from 'lodash/omit';
-import type {
-	ExecutionPayload,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
-import { NodeTypes } from '@/NodeTypes';
-import { WorkflowRunner } from '@/WorkflowRunner';
-import config from '@/config';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { User } from '@db/entities/User';
-import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { UserService } from './services/user.service';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { RoleNames } from '@db/entities/Role';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { RoleRepository } from '@db/repositories/role.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { RoleService } from './services/role.service';
-import { VariablesService } from './environments/variables/variables.service.ee';
-import { Logger } from './Logger';
 
-const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,
@@ -97,7 +67,6 @@ export function generateFailedExecutionFromError(
 
 /**
  * Returns the data of the last executed node
- *
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
 	const { runData, pinData = {} } = inputData.data.resultData;
@@ -131,168 +100,6 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 	}
 
 	return lastNodeRunData;
-}
-
-/**
- * Executes the error workflow
- *
- * @param {string} workflowId The id of the error workflow
- * @param {IWorkflowErrorData} workflowErrorData The error data
- */
-export async function executeErrorWorkflow(
-	workflowId: string,
-	workflowErrorData: IWorkflowErrorData,
-	runningUser: User,
-): Promise<void> {
-	const logger = Container.get(Logger);
-	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
-	try {
-		const workflowData = await Container.get(WorkflowRepository).findOneBy({ id: workflowId });
-
-		if (workflowData === null) {
-			// The error workflow could not be found
-			logger.error(
-				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
-				{ workflowId },
-			);
-			return;
-		}
-
-		const executionMode = 'error';
-		const nodeTypes = Container.get(NodeTypes);
-
-		const workflowInstance = new Workflow({
-			id: workflowId,
-			name: workflowData.name,
-			nodeTypes,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		try {
-			const failedNode = workflowErrorData.execution?.lastNodeExecuted
-				? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
-				: undefined;
-			await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
-				workflowInstance,
-				workflowErrorData.workflow.id!,
-				failedNode ?? undefined,
-			);
-		} catch (error) {
-			const initialNode = workflowInstance.getStartNode();
-			if (initialNode) {
-				const errorWorkflowPermissionError = new SubworkflowOperationError(
-					`Another workflow: (ID ${workflowErrorData.workflow.id}) tried to invoke this workflow to handle errors.`,
-					"Unfortunately current permissions do not allow this. Please check that this workflow's settings allow it to be called by others",
-				);
-
-				// Create a fake execution and save it to DB.
-				const fakeExecution = generateFailedExecutionFromError(
-					'error',
-					errorWorkflowPermissionError,
-					initialNode,
-				);
-
-				const fullExecutionData: ExecutionPayload = {
-					data: fakeExecution.data,
-					mode: fakeExecution.mode,
-					finished: false,
-					startedAt: new Date(),
-					stoppedAt: new Date(),
-					workflowData,
-					waitTill: null,
-					status: fakeExecution.status,
-					workflowId: workflowData.id,
-				};
-
-				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
-			}
-			logger.info('Error workflow execution blocked due to subworkflow settings', {
-				erroredWorkflowId: workflowErrorData.workflow.id,
-				errorWorkflowId: workflowId,
-			});
-			return;
-		}
-
-		let node: INode;
-		let workflowStartNode: INode | undefined;
-		for (const nodeName of Object.keys(workflowInstance.nodes)) {
-			node = workflowInstance.nodes[nodeName];
-			if (node.type === ERROR_TRIGGER_TYPE) {
-				workflowStartNode = node;
-			}
-		}
-
-		if (workflowStartNode === undefined) {
-			logger.error(
-				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
-			);
-			return;
-		}
-
-		// Can execute without webhook so go on
-
-		// Initialize the data of the webhook node
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: workflowStartNode,
-			data: {
-				main: [
-					[
-						{
-							json: workflowErrorData,
-						},
-					],
-				],
-			},
-			source: null,
-		});
-
-		const runExecutionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
-
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode,
-			executionData: runExecutionData,
-			workflowData,
-			userId: runningUser.id,
-		};
-
-		const workflowRunner = new WorkflowRunner();
-		await workflowRunner.run(runData);
-	} catch (error) {
-		ErrorReporter.error(error);
-		logger.error(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
-			{ workflowId: workflowErrorData.workflow.id },
-		);
-	}
-}
-
-/**
- * Returns the static data of workflow
- */
-export async function getStaticDataById(workflowId: string) {
-	const workflowData = await Container.get(WorkflowRepository).findOne({
-		select: ['staticData'],
-		where: { id: workflowId },
-	});
-	return workflowData?.staticData ?? {};
 }
 
 /**
@@ -414,164 +221,6 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	}
 	/* eslint-enable no-await-in-loop */
 	return workflow;
-}
-
-/**
- * Get the IDs of the workflows that have been shared with the user.
- * Returns all IDs if user has the 'workflow:read' scope.
- */
-export async function getSharedWorkflowIds(user: User, roleNames?: RoleNames[]): Promise<string[]> {
-	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (!user.hasGlobalScope('workflow:read')) {
-		where.userId = user.id;
-	}
-	if (roleNames?.length) {
-		const roleIds = await Container.get(RoleRepository).getIdsInScopeWorkflowByNames(roleNames);
-
-		where.roleId = In(roleIds);
-	}
-	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
-}
-/**
- * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
- * If user does, set flag in its settings.
- */
-export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
-	let belowThreshold = true;
-	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
-
-	const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-	const ownedWorkflowsIds = await Container.get(SharedWorkflowRepository)
-		.find({
-			where: {
-				userId: user.id,
-				roleId: workflowOwnerRole?.id,
-			},
-			select: ['workflowId'],
-		})
-		.then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
-
-	if (ownedWorkflowsIds.length > 15) {
-		belowThreshold = false;
-	} else {
-		// just fetch workflows' nodes to keep memory footprint low
-		const workflows = await Container.get(WorkflowRepository).find({
-			where: { id: In(ownedWorkflowsIds) },
-			select: ['nodes'],
-		});
-
-		// valid workflow: 2+ nodes without start node
-		const validWorkflowCount = workflows.reduce((counter, workflow) => {
-			if (counter <= 2 && workflow.nodes.length > 2) {
-				const nodes = workflow.nodes.filter((node) => !skippedTypes.includes(node.type));
-				if (nodes.length >= 2) {
-					return counter + 1;
-				}
-			}
-			return counter;
-		}, 0);
-
-		// more than 2 valid workflows required
-		belowThreshold = validWorkflowCount <= 2;
-	}
-
-	// user is above threshold --> set flag in settings
-	if (!belowThreshold) {
-		void Container.get(UserService).updateSettings(user.id, { isOnboarded: true });
-	}
-
-	return belowThreshold;
-}
-
-/** Get all nodes in a workflow where the node credential is not accessible to the user. */
-export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
-	if (!workflow.nodes) {
-		return [];
-	}
-	return workflow.nodes.filter((node) => {
-		if (!node.credentials) return false;
-
-		const allUsedCredentials = Object.values(node.credentials);
-
-		const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-		return allUsedCredentialIds.some(
-			(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-		);
-	});
-}
-
-export function validateWorkflowCredentialUsage(
-	newWorkflowVersion: WorkflowEntity,
-	previousWorkflowVersion: WorkflowEntity,
-	credentialsUserHasAccessTo: CredentialsEntity[],
-) {
-	/**
-	 * We only need to check nodes that use credentials the current user cannot access,
-	 * since these can be 2 possibilities:
-	 * - Same ID already exist: it's a read only node and therefore cannot be changed
-	 * - It's a new node which indicates tampering and therefore must fail saving
-	 */
-
-	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
-
-	const nodesWithCredentialsUserDoesNotHaveAccessTo = getNodesWithInaccessibleCreds(
-		newWorkflowVersion,
-		allowedCredentialIds,
-	);
-
-	// If there are no nodes with credentials the user does not have access to we can skip the rest
-	if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
-		return newWorkflowVersion;
-	}
-
-	const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
-
-	// If it's a new node we can't allow it to be saved
-	// since it uses creds the node doesn't have access
-	const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
-		!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
-
-	const logger = Container.get(Logger);
-	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
-		if (isTamperingAttempt(node.id)) {
-			logger.verbose('Blocked workflow update due to tampering attempt', {
-				nodeType: node.type,
-				nodeName: node.name,
-				nodeId: node.id,
-				nodeCredentials: node.credentials,
-			});
-			// Node is new, so this is probably a tampering attempt. Throw an error
-			throw new NodeOperationError(
-				node,
-				`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
-			);
-		}
-		// Replace the node with the previous version of the node
-		// Since it cannot be modified (read only node)
-		const nodeIdx = newWorkflowVersion.nodes.findIndex(
-			(newWorkflowNode) => newWorkflowNode.id === node.id,
-		);
-
-		logger.debug('Replacing node with previous version when saving updated workflow', {
-			nodeType: node.type,
-			nodeName: node.name,
-			nodeId: node.id,
-		});
-		const previousNodeVersion = previousWorkflowVersion.nodes.find(
-			(previousNode) => previousNode.id === node.id,
-		);
-		// Allow changing only name, position and disabled status for read-only nodes
-		Object.assign(
-			newWorkflowVersion.nodes[nodeIdx],
-			omit(previousNodeVersion, ['name', 'position', 'disabled']),
-		);
-	});
-
-	return newWorkflowVersion;
 }
 
 export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {

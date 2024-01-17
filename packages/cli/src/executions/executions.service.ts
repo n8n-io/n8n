@@ -1,3 +1,4 @@
+import { Container, Service } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
@@ -8,6 +9,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
+
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -22,10 +24,8 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest } from './execution.request';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
-import { Container, Service } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -33,6 +33,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -77,7 +78,7 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
-		return getSharedWorkflowIds(user, ['owner']);
+		return Container.get(WorkflowSharingService).getSharedWorkflowIds(user, ['owner']);
 	}
 
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
