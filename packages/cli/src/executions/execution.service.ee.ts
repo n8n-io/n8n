@@ -1,10 +1,12 @@
-import type { ExecutionService } from './execution.service';
+import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.request';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
-import type { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
+import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Service } from 'typedi';
 
+@Service()
 export class EnterpriseExecutionsService {
 	constructor(
 		private readonly executionService: ExecutionService,
