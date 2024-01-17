@@ -226,7 +226,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
 
 		// // Handle attachments
-		message.attachments = attachments.map((attachment) => {
+		message.attachments = attachments.map(async (attachment) => {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 
 			if (items[index].binary === undefined) {
@@ -248,10 +248,17 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 			const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
 
+			let file = binaryData.data;
+			if (binaryData.id) {
+				const chunkSize = 256 * 1024;
+				const buffer = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+				file = await this.helpers.binaryToBuffer(buffer).then((body) => body.toString());
+			}
+
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				name: binaryData.fileName,
-				contentBytes: binaryData.data,
+				contentBytes: file,
 			};
 		});
 	}
