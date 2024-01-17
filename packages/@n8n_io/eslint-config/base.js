@@ -336,6 +336,11 @@ const config = (module.exports = {
 			},
 		],
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+		 */
+		'@typescript-eslint/return-await': ['error', 'always'],
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------

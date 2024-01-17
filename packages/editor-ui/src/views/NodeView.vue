@@ -386,11 +386,15 @@ interface AddNodeOptions {
 	name?: string;
 }
 
-const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
-const CanvasControls = defineAsyncComponent(async () => import('@/components/CanvasControls.vue'));
+const NodeCreation = defineAsyncComponent(
+	async () => await import('@/components/Node/NodeCreation.vue'),
+);
+const CanvasControls = defineAsyncComponent(
+	async () => await import('@/components/CanvasControls.vue'),
+);
 const SetupWorkflowCredentialsButton = defineAsyncComponent(
 	async () =>
-		import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
 
 export default defineComponent({
@@ -2030,7 +2034,7 @@ export default defineComponent({
 					}
 				}
 
-				return this.importWorkflowData(workflowData!, 'paste', false);
+				return await this.importWorkflowData(workflowData!, 'paste', false);
 			}
 		},
 

@@ -16,14 +16,14 @@ function stringifyArray(arr: number[]) {
 }
 
 export async function testHealthEndpoint(apiEndpoint: string) {
-	return get(apiEndpoint, '/health');
+	return await get(apiEndpoint, '/health');
 }
 
 export async function getCategories(
 	apiEndpoint: string,
 	headers?: IDataObject,
 ): Promise<{ categories: ITemplatesCategory[] }> {
-	return get(apiEndpoint, '/templates/categories', undefined, headers);
+	return await get(apiEndpoint, '/templates/categories', undefined, headers);
 }
 
 export async function getCollections(
@@ -31,7 +31,7 @@ export async function getCollections(
 	query: ITemplatesQuery,
 	headers?: IDataObject,
 ): Promise<{ collections: ITemplatesCollection[] }> {
-	return get(
+	return await get(
 		apiEndpoint,
 		'/templates/collections',
 		{ category: stringifyArray(query.categories || []), search: query.search },
@@ -48,7 +48,7 @@ export async function getWorkflows(
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
 }> {
-	return get(
+	return await get(
 		apiEndpoint,
 		'/templates/search',
 		{
@@ -66,7 +66,7 @@ export async function getCollectionById(
 	collectionId: string,
 	headers?: IDataObject,
 ): Promise<{ collection: ITemplatesCollectionResponse }> {
-	return get(apiEndpoint, `/templates/collections/${collectionId}`, undefined, headers);
+	return await get(apiEndpoint, `/templates/collections/${collectionId}`, undefined, headers);
 }
 
 export async function getTemplateById(
@@ -74,7 +74,7 @@ export async function getTemplateById(
 	templateId: string,
 	headers?: IDataObject,
 ): Promise<{ workflow: ITemplatesWorkflowResponse }> {
-	return get(apiEndpoint, `/templates/workflows/${templateId}`, undefined, headers);
+	return await get(apiEndpoint, `/templates/workflows/${templateId}`, undefined, headers);
 }
 
 export async function getWorkflowTemplate(
@@ -82,5 +82,5 @@ export async function getWorkflowTemplate(
 	templateId: string,
 	headers?: IDataObject,
 ): Promise<IWorkflowTemplate> {
-	return get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
+	return await get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
 }

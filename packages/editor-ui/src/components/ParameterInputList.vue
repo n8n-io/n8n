@@ -172,9 +172,11 @@ import { get, set } from 'lodash-es';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
-	async () => import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
+const CollectionParameter = defineAsyncComponent(
+	async () => await import('./CollectionParameter.vue'),
+);
 
 export default defineComponent({
 	name: 'ParameterInputList',

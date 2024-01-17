@@ -3,7 +3,7 @@ import type { LoadPreviousSessionResponse, SendMessageResponse } from '@n8n/chat
 export function createFetchResponse<T>(data: T) {
 	return async () =>
 		({
-			json: async () => new Promise<T>((resolve) => resolve(data)),
+			json: async () => await new Promise<T>((resolve) => resolve(data)),
 		}) as Response;
 }
 
