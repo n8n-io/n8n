@@ -102,7 +102,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		}
 	}
 
-	async queryNumWorkflowsUserHasWith5OrMoreProdExecs(userId: User['id']): Promise<number> {
+	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
 		const numWorkflows = await this.createQueryBuilder('workflow_statistics')
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = workflow_statistics.workflowId')
 			.innerJoin(

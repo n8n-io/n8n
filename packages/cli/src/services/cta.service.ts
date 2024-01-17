@@ -9,7 +9,9 @@ export class CtaService {
 	async getBecomeCreatorCta(userId: User['id']) {
 		// There need to be at least 3 workflows with at least 5 executions
 		const numWfsWithOver5ProdExecutions =
-			await this.workflowStatisticsRepository.queryNumWorkflowsUserHasWith5OrMoreProdExecs(userId);
+			await this.workflowStatisticsRepository.queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(
+				userId,
+			);
 
 		return numWfsWithOver5ProdExecutions >= 3;
 	}
