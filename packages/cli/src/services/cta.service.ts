@@ -2,10 +2,6 @@ import { Service } from 'typedi';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflowStatistics.repository';
 import type { User } from '@/databases/entities/User';
 
-export type UserCtas = {
-	becomeCreator: boolean;
-};
-
 @Service()
 export class CtaService {
 	constructor(private readonly workflowStatisticsRepository: WorkflowStatisticsRepository) {}

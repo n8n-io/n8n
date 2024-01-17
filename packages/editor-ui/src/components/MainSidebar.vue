@@ -637,4 +637,3 @@ export default defineComponent({
 	}
 }
 </style>
-@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore

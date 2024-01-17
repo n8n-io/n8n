@@ -33,7 +33,7 @@ describe('CtaService', () => {
 			[false, 3, 4],
 			[true, 3, 5],
 		])(
-			'should return %p if user has %d active workflows with %d executions',
+			'should return %p if user has %d active workflows with %d successful production executions',
 			async (expected, numWorkflows, numExecutions) => {
 				const workflows = await createManyWorkflows(numWorkflows, { active: true }, user);
 

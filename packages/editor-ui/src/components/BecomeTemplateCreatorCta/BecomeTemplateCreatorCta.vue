@@ -26,13 +26,15 @@ const store = useBecomeTemplateCreatorStore();
 			</button>
 		</div>
 
-		<a :class="$style.becomeButtonLink" href="https://creators.n8n.io/hub" target="_blank">
-			<n8n-button
-				:label="i18n.baseText('becomeCreator.buttonText')"
-				size="xmini"
-				type="secondary"
-			/>
-		</a>
+		<n8n-button
+			:class="$style.becomeCreatorButton"
+			:label="i18n.baseText('becomeCreator.buttonText')"
+			size="xmini"
+			type="secondary"
+			element="a"
+			href="https://creators.n8n.io/hub"
+			target="_blank"
+		/>
 	</div>
 </template>
 
@@ -66,13 +68,11 @@ const store = useBecomeTemplateCreatorStore();
 	width: var(--spacing-2xs);
 	height: var(--spacing-2xs);
 	border: none;
-	color: #909398;
+	color: var(--color-text-light);
 	background-color: transparent;
 }
 
-.becomeButtonLink {
-	display: flex;
-	flex-direction: column;
+.becomeCreatorButton {
 	margin: var(--spacing-s);
 }
 </style>
