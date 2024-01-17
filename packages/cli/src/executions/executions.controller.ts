@@ -3,7 +3,7 @@ import { ExecutionService } from './execution.service';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 @Authorized()
 @RestController('/executions')
@@ -11,13 +11,14 @@ export class ExecutionsController {
 	constructor(
 		private readonly executionService: ExecutionService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	@Get('/')
 	async getExecutionsList(req: ExecutionRequest.GetAll) {
 		const sharedWorkflowIds = isSharingEnabled()
-			? await getSharedWorkflowIds(req.user)
-			: await getSharedWorkflowIds(req.user, ['owner']);
+			? await this.workflowSharingService.getSharedWorkflowIds(req.user)
+			: await this.workflowSharingService.getSharedWorkflowIds(req.user, ['owner']);
 
 		return this.executionService.getExecutionsList(req, sharedWorkflowIds);
 	}
@@ -25,8 +26,8 @@ export class ExecutionsController {
 	@Get('/:id')
 	async getExecution(req: ExecutionRequest.Get) {
 		const sharedWorkflowIds = isSharingEnabled()
-			? await getSharedWorkflowIds(req.user)
-			: await getSharedWorkflowIds(req.user, ['owner']);
+			? await this.workflowSharingService.getSharedWorkflowIds(req.user)
+			: await this.workflowSharingService.getSharedWorkflowIds(req.user, ['owner']);
 
 		return isSharingEnabled()
 			? this.enterpriseExecutionService.getExecution(req, sharedWorkflowIds)
@@ -36,8 +37,8 @@ export class ExecutionsController {
 	@Post('/:id/retry')
 	async retryExecution(req: ExecutionRequest.Retry) {
 		const sharedWorkflowIds = isSharingEnabled()
-			? await getSharedWorkflowIds(req.user)
-			: await getSharedWorkflowIds(req.user, ['owner']);
+			? await this.workflowSharingService.getSharedWorkflowIds(req.user)
+			: await this.workflowSharingService.getSharedWorkflowIds(req.user, ['owner']);
 
 		return this.executionService.retryExecution(req, sharedWorkflowIds);
 	}
@@ -45,8 +46,8 @@ export class ExecutionsController {
 	@Post('/delete')
 	async deleteExecutions(req: ExecutionRequest.Delete) {
 		const sharedWorkflowIds = isSharingEnabled()
-			? await getSharedWorkflowIds(req.user)
-			: await getSharedWorkflowIds(req.user, ['owner']);
+			? await this.workflowSharingService.getSharedWorkflowIds(req.user)
+			: await this.workflowSharingService.getSharedWorkflowIds(req.user, ['owner']);
 
 		return this.executionService.deleteExecutions(req, sharedWorkflowIds);
 	}
