@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,7 +9,6 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
-import { URL } from 'url';
 import { generatePairedItemData } from '../../utils/utilities';
 
 // Utility function

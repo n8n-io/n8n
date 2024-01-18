@@ -96,7 +96,7 @@ export async function haloPSAApiRequest(
 		return result;
 	} catch (error) {
 		const message = (error as JsonObject).message as string;
-		if (method === 'DELETE' || 'GET' || ('UPDATE' && message)) {
+		if (method === 'DELETE' || method === 'GET' || (method === 'UPDATE' && message)) {
 			let newErrorMessage;
 			if (message.includes('400')) {
 				console.log(message);
@@ -106,11 +106,10 @@ export async function haloPSAApiRequest(
 				}`;
 			}
 			if (message.includes('403')) {
-				(
-					error as JsonObject
-				).message = `You don\'t have permissions to ${method.toLowerCase()} ${resource
-					.split('/')[1]
-					.toLowerCase()}.`;
+				(error as JsonObject).message =
+					`You don\'t have permissions to ${method.toLowerCase()} ${resource
+						.split('/')[1]
+						.toLowerCase()}.`;
 			}
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);

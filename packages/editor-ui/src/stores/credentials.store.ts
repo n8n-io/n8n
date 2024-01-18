@@ -6,7 +6,7 @@ import type {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-} from '../Interface';
+} from '@/Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -40,6 +40,8 @@ import { useUsersStore } from './users.store';
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
 const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth', 'oAuth1Api'];
+
+export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 	state: (): ICredentialsState => ({
@@ -130,9 +132,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getNodesWithAccess() {
 			return (credentialTypeName: string) => {
 				const nodeTypesStore = useNodeTypesStore();
-				const allLatestNodeTypes: INodeTypeDescription[] = nodeTypesStore.allLatestNodeTypes;
+				const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
@@ -190,6 +192,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 				return this.getCredentialOwnerName(credential);
 			};
+		},
+		httpOnlyCredentialTypes(): ICredentialType[] {
+			return this.allCredentialTypes.filter((credentialType) => credentialType.httpRequestNode);
 		},
 	},
 	actions: {
@@ -252,7 +257,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			id: string;
 		}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
 			const rootStore = useRootStore();
-			return getCredentialData(rootStore.getRestApiContext, id);
+			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
 		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
@@ -298,14 +303,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 						credentialId: credential.id,
 						ownedBy: data.ownedBy,
 					});
-
-					const usersStore = useUsersStore();
-					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						await this.setCredentialSharedWith({
-							credentialId: credential.id,
-							sharedWith: data.sharedWith,
-						});
-					}
 				}
 			} else {
 				this.upsertCredential(credential);
@@ -323,15 +320,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async oAuth2Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		async oAuth1Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		async testCredential(data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 			const rootStore = useRootStore();
-			return testCredential(rootStore.getRestApiContext, { credentials: data });
+			return await testCredential(rootStore.getRestApiContext, { credentials: data });
 		},
 		async getNewCredentialName(params: { credentialTypeName: string }): Promise<string> {
 			try {
@@ -360,7 +357,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				ownedBy: payload.ownedBy,
 			};
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string }) {
+		async setCredentialSharedWith(payload: {
+			sharedWith: IUser[];
+			credentialId: string;
+		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
@@ -371,6 +371,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					sharedWith: payload.sharedWith,
 				};
 			}
+			return this.credentials[payload.credentialId];
 		},
 		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
 			this.credentials[payload.credentialId] = {
@@ -391,9 +392,53 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/credential-translation', {
-				credentialType,
-			});
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/credential-translation',
+				{
+					credentialType,
+				},
+			);
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForCredentialChanges = (opts: {
+	store: CredentialsStore;
+	onCredentialCreated?: (credential: ICredentialsResponse) => void;
+	onCredentialUpdated?: (credential: ICredentialsResponse) => void;
+	onCredentialDeleted?: (credentialId: string) => void;
+}) => {
+	const { store, onCredentialCreated, onCredentialDeleted, onCredentialUpdated } = opts;
+	const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
+
+	return store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async (returnValue) => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'createNewCredential':
+					const createdCredential = returnValue as ICredentialsResponse;
+					onCredentialCreated?.(createdCredential);
+					break;
+
+				case 'updateCredential':
+					const updatedCredential = returnValue as ICredentialsResponse;
+					onCredentialUpdated?.(updatedCredential);
+					break;
+
+				case 'deleteCredential':
+					const credentialId = args[0].id;
+					onCredentialDeleted?.(credentialId);
+					break;
+			}
+		});
+	});
+};

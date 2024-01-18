@@ -6,7 +6,7 @@ import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash/remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
@@ -19,6 +19,7 @@ import {
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
 import { inTest } from '@/constants';
+import { Logger } from '@/Logger';
 import Container from 'typedi';
 
 interface MessageEventBusLogWriterConstructorOptions {
@@ -48,7 +49,13 @@ export class MessageEventBusLogWriter {
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
+	private readonly logger: Logger;
+
 	private _worker: Worker | undefined;
+
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
 
 	public get worker(): Worker | undefined {
 		return this._worker;
@@ -136,7 +143,7 @@ export class MessageEventBusLogWriter {
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
-				LoggerProxy.error('Event Bus Log Writer thread error, attempting to restart...', error);
+				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', error);
 				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;
@@ -235,7 +242,7 @@ export class MessageEventBusLogWriter {
 							}
 						}
 					} catch (error) {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
@@ -243,7 +250,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return results;
@@ -308,7 +315,7 @@ export class MessageEventBusLogWriter {
 							if (msg !== null) messages.push(msg);
 						}
 					} catch {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}`,
 						);
 					}
@@ -316,7 +323,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return messages;

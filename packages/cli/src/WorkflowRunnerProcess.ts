@@ -17,7 +17,6 @@ import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
-	ILogger,
 	INode,
 	INodeExecutionData,
 	IRun,
@@ -30,7 +29,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy,
 	Workflow,
 	WorkflowHooks,
 	WorkflowOperationError,
@@ -46,7 +44,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 
 import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -63,7 +61,7 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 
-	logger: ILogger;
+	logger: Logger;
 
 	startedAt = new Date();
 
@@ -85,19 +83,20 @@ class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
+
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
 		await initErrorHandling();
 
-		const logger = (this.logger = getLogger());
-		LoggerProxy.init(logger);
-
 		this.data = inputData;
 		const { userId } = inputData;
 
-		logger.verbose('Initializing n8n sub-process', {
+		this.logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
 			workflowId: this.data.workflowData.id,
 		});
@@ -107,10 +106,8 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
-
 		const nodeTypes = Container.get(NodeTypes);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
@@ -145,7 +142,7 @@ class WorkflowRunnerProcess {
 			pinData: this.data.pinData,
 		});
 		try {
-			await PermissionChecker.check(this.workflow, userId);
+			await Container.get(PermissionChecker).check(this.workflow, userId);
 		} catch (error) {
 			const caughtError = error as NodeOperationError;
 			const failedExecutionData = generateFailedExecutionFromError(
@@ -181,7 +178,7 @@ class WorkflowRunnerProcess {
 		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 			executionId: inputData.executionId,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
@@ -200,16 +197,16 @@ class WorkflowRunnerProcess {
 		additionalData.executeWorkflow = async (
 			workflowInfo: IExecuteWorkflowInfo,
 			additionalData: IWorkflowExecuteAdditionalData,
-			options?: {
-				parentWorkflowId?: string;
+			options: {
+				parentWorkflowId: string;
 				inputData?: INodeExecutionData[];
 				parentWorkflowSettings?: IWorkflowSettings;
 			},
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				options?.parentWorkflowId,
-				options?.parentWorkflowSettings,
+				options.parentWorkflowId,
+				options.parentWorkflowSettings,
 			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
@@ -279,7 +276,7 @@ class WorkflowRunnerProcess {
 				this.data.executionMode,
 				this.data.executionData,
 			);
-			return this.workflowExecute.processRunExecutionData(this.workflow);
+			return await this.workflowExecute.processRunExecutionData(this.workflow);
 		}
 		if (
 			this.data.runData === undefined ||
@@ -292,7 +289,7 @@ class WorkflowRunnerProcess {
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(
+			return await this.workflowExecute.run(
 				this.workflow,
 				startNode,
 				this.data.destinationNode,
@@ -301,7 +298,7 @@ class WorkflowRunnerProcess {
 		}
 		// Execute only the nodes between start and destination nodes
 		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-		return this.workflowExecute.runPartialWorkflow(
+		return await this.workflowExecute.runPartialWorkflow(
 			this.workflow,
 			this.data.runData,
 			this.data.startNodes,
@@ -312,9 +309,7 @@ class WorkflowRunnerProcess {
 
 	/**
 	 * Sends hook data to the parent process that it executes them
-	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
 		try {
 			await sendToParentProcess('processHook', {
@@ -387,9 +382,8 @@ class WorkflowRunnerProcess {
  * @param {string} type The type of data to send
  * @param {*} data The data
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
-	return new Promise((resolve, reject) => {
+	return await new Promise((resolve, reject) => {
 		process.send!(
 			{
 				type,

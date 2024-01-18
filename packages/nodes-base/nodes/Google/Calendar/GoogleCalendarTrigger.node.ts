@@ -7,9 +7,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
-import { getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	encodeURIComponentOnce,
+	getCalendars,
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
 
 export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -132,7 +137,9 @@ export class GoogleCalendarTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
 		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
-		const calendarId = this.getNodeParameter('calendarId', '', { extractValue: true }) as string;
+		const calendarId = encodeURIComponentOnce(
+			this.getNodeParameter('calendarId', '', { extractValue: true }) as string,
+		);
 		const webhookData = this.getWorkflowStaticData('node');
 		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
 

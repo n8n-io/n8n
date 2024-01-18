@@ -1,12 +1,11 @@
-import Vue from 'vue';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
-import { useExternalSecretsStore } from '@/stores';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { defineComponent } from 'vue';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
-export const secretsCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const secretsCompletions = defineComponent({
 	methods: {
 		/**
 		 * Complete `$secrets.` to `$secrets.providerName` and `$secrets.providerName.secretName`.

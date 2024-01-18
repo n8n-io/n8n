@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { UserAction } from 'n8n-design-system';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
@@ -40,6 +40,9 @@ const i18n = useI18n();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 const observer = ref<IntersectionObserver | null>(null);
+
+const getActions = (index: number) =>
+	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
 
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
@@ -102,14 +105,14 @@ const onItemMounted = ({
 </script>
 
 <template>
-	<ul :class="$style.list" ref="listElement" data-test-id="workflow-history-list">
-		<workflow-history-list-item
+	<ul ref="listElement" :class="$style.list" data-test-id="workflow-history-list">
+		<WorkflowHistoryListItem
 			v-for="(item, index) in props.items"
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:isActive="item.versionId === props.activeItem?.versionId"
-			:actions="props.actions"
+			:is-active="item.versionId === props.activeItem?.versionId"
+			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"

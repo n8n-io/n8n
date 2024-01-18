@@ -18,18 +18,24 @@
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
-					<img :src="logoPath" :class="$style.icon" alt="n8n" />
+					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
 			</template>
 
 			<template #beforeLowerMenu>
+				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
 				<ExecutionsUsage
-					:cloud-plan-data="currentPlanAndUsageData"
 					v-if="fullyExpanded && userIsTrialing"
+					:cloud-plan-data="currentPlanAndUsageData"
 			/></template>
 			<template #menuSuffix>
 				<div>
-					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+					<div
+						v-if="hasVersionUpdates"
+						data-test-id="version-updates-panel-button"
+						:class="$style.updates"
+						@click="openUpdatesPanel"
+					>
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
@@ -45,7 +51,7 @@
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
-			<template #footer v-if="showUserArea">
+			<template v-if="showUserArea" #footer>
 				<div :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
@@ -57,8 +63,8 @@
 						>
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:firstName="usersStore.currentUser.firstName"
-									:lastName="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser.firstName"
+									:last-name="usersStore.currentUser.lastName"
 									size="small"
 								/>
 							</div>
@@ -99,29 +105,27 @@
 import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { useMessage } from '@/composables';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { workflowRun } from '@/mixins/workflowRun';
-
+import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
-import { debounceHelper } from '@/mixins/debounce';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useWorkflowsStore,
-	useRootStore,
-	useVersionsStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-} from '@/stores/';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
+import { hasPermission } from '@/rbac/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -129,13 +133,17 @@ export default defineComponent({
 		GiftNotificationIcon,
 		ExecutionsUsage,
 		MainSidebarSourceControl,
+		BecomeTemplateCreatorCta,
 	},
-	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props) {
+	mixins: [userHelpers],
+	setup(props, ctx) {
+		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
+
 		return {
+			externalHooks,
+			callDebounced,
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
 		};
 	},
 	data() {
@@ -154,6 +162,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useCloudPlanStore,
 			useSourceControlStore,
+			useBecomeTemplateCreatorStore,
 		),
 		logoPath(): string {
 			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
@@ -177,7 +186,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
+			return hasPermission(['authenticated']);
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -219,10 +228,8 @@ export default defineComponent({
 				for (const item of injectedItems) {
 					items.push({
 						id: item.id,
-						// @ts-ignore
-						icon: item.properties ? item.properties.icon : '',
-						// @ts-ignore
-						label: item.properties ? item.properties.title : '',
+						icon: item.icon || '',
+						label: item.label || '',
 						position: item.position,
 						type: item.properties?.href ? 'link' : 'regular',
 						properties: item.properties,
@@ -264,6 +271,14 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},
 				{
+					id: 'cloud-admin',
+					type: 'link',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'home',
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+				},
+				{
 					id: 'settings',
 					icon: 'cog',
 					label: this.$locale.baseText('settings'),
@@ -293,7 +308,7 @@ export default defineComponent({
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
 							type: 'link',
 							properties: {
-								href: 'https://docs.n8n.io',
+								href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 								newWindow: true,
 							},
 						},
@@ -303,7 +318,7 @@ export default defineComponent({
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
 							type: 'link',
 							properties: {
-								href: 'https://community.n8n.io',
+								href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 								newWindow: true,
 							},
 						},
@@ -341,10 +356,12 @@ export default defineComponent({
 			};
 		},
 	},
-	mounted() {
+	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.externalHooks.run('mainSidebar.mounted', {
+				userRef: this.$refs.user as Element,
+			});
 		}
 
 		void this.$nextTick(() => {
@@ -356,11 +373,14 @@ export default defineComponent({
 
 			this.fullyExpanded = !this.isCollapsed;
 		});
+
+		this.becomeTemplateCreatorStore.startMonitoringCta();
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);
 	},
 	beforeUnmount() {
+		this.becomeTemplateCreatorStore.stopMonitoringCta();
 		window.removeEventListener('resize', this.onResize);
 	},
 	methods: {
@@ -402,31 +422,31 @@ export default defineComponent({
 		async handleSelect(key: string) {
 			switch (key) {
 				case 'workflows': {
-					if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.WORKFLOWS) {
 						this.goToRoute({ name: VIEWS.WORKFLOWS });
 					}
 					break;
 				}
 				case 'templates': {
-					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
+					if (this.$router.currentRoute.value.name !== VIEWS.TEMPLATES) {
 						this.goToRoute({ name: VIEWS.TEMPLATES });
 					}
 					break;
 				}
 				case 'credentials': {
-					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.CREDENTIALS) {
 						this.goToRoute({ name: VIEWS.CREDENTIALS });
 					}
 					break;
 				}
 				case 'variables': {
-					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+					if (this.$router.currentRoute.value.name !== VIEWS.VARIABLES) {
 						this.goToRoute({ name: VIEWS.VARIABLES });
 					}
 					break;
 				}
 				case 'executions': {
-					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
+					if (this.$router.currentRoute.value.name !== VIEWS.EXECUTIONS) {
 						this.goToRoute({ name: VIEWS.EXECUTIONS });
 					}
 					break;
@@ -435,7 +455,7 @@ export default defineComponent({
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
 						const route = this.$router.resolve({ name: defaultRoute });
-						if (this.$router.currentRoute.name !== defaultRoute) {
+						if (this.$router.currentRoute.value.name !== defaultRoute) {
 							this.goToRoute(route.path);
 						}
 					}
@@ -444,6 +464,10 @@ export default defineComponent({
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);
+					break;
+				}
+				case 'cloud-admin': {
+					void this.cloudPlanStore.redirectToDashboard();
 					break;
 				}
 				case 'quickstart':
@@ -474,7 +498,7 @@ export default defineComponent({
 
 			let defaultSettingsRoute = null;
 			for (const route of settingsRoutes) {
-				if (this.canUserAccessRouteByName(route)) {
+				if (this.canUserAccessRouteByName(route.toString())) {
 					defaultSettingsRoute = route;
 					break;
 				}
@@ -483,7 +507,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);
 		},
 		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

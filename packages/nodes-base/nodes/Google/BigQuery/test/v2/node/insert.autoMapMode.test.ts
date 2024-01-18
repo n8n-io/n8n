@@ -1,11 +1,10 @@
 import type { INodeTypes } from 'n8n-workflow';
 
+import nock from 'nock';
+import * as transport from '../../../v2/transport';
 import { setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import nock from 'nock';
-
-import * as transport from '../../../v2/transport';
 
 jest.mock('../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../v2/transport');
@@ -79,6 +78,6 @@ describe('Test Google BigQuery V2, insert auto map', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

@@ -2,9 +2,12 @@ import Container from 'typedi';
 import { RedisService } from './redis.service';
 import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
 import config from '@/config';
+import { EventEmitter } from 'node:events';
 
-export abstract class OrchestrationService {
-	protected initialized = false;
+export abstract class OrchestrationService extends EventEmitter {
+	protected isInitialized = false;
+
+	protected queueModeId: string;
 
 	redisPublisher: RedisServicePubSubPublisher;
 
@@ -27,24 +30,26 @@ export abstract class OrchestrationService {
 	}
 
 	constructor() {
+		super();
 		this.redisService = Container.get(RedisService);
+		this.queueModeId = config.getEnv('redis.queueModeId');
 	}
 
 	sanityCheck(): boolean {
-		return this.initialized && this.isQueueMode;
+		return this.isInitialized && this.isQueueMode;
 	}
 
 	async init() {
 		await this.initPublisher();
-		this.initialized = true;
+		this.isInitialized = true;
 	}
 
 	async shutdown() {
 		await this.redisPublisher?.destroy();
-		this.initialized = false;
+		this.isInitialized = false;
 	}
 
-	private async initPublisher() {
+	protected async initPublisher() {
 		this.redisPublisher = await this.redisService.getPubSubPublisher();
 	}
 }

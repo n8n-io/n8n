@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
 
     steps:
       - uses: actions/checkout@v3.5.3
@@ -44,11 +44,12 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
-      cacheKey:  ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+      cacheKey: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+      collectCoverage: true
 
   lint:
     name: Lint changes
@@ -56,7 +57,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.5]
+        node-version: [18.x, 20.x]
     steps:
       - uses: actions/checkout@v3.5.3
         with:
@@ -95,6 +96,6 @@ jobs:
         if: failure()
         with:
           status: ${{ job.status }}
-          channel: '#updates-build-alerts'
+          channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Master branch (build or test or lint) failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

@@ -2,13 +2,13 @@
 	<Modal
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="true"
 	>
 		<template #content>
@@ -109,12 +109,12 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								v-model="workflowSettings.callerIds"
-								@update:modelValue="onCallerIdsInput"
 								data-test-id="workflow-caller-policy-workflow-ids"
+								@update:modelValue="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -279,10 +279,10 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:modelValue="workflowSettings.executionTimeout > -1"
-								@update:modelValue="toggleTimeout"
+								:model-value="workflowSettings.executionTimeout > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
+								@update:modelValue="toggleTimeout"
 							></el-switch>
 						</div>
 					</el-col>
@@ -304,9 +304,9 @@
 						<el-col :span="4">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.hours"
-								@update:modelValue="(value) => setTimeout('hours', value)"
+								:model-value="timeoutHMS.hours"
 								:min="0"
+								@update:modelValue="(value) => setTimeout('hours', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -314,7 +314,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.minutes"
+								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('minutes', value)"
@@ -325,7 +325,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.seconds"
+								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
 								@update:modelValue="(value) => setTimeout('seconds', value)"
@@ -355,9 +355,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
 	IUser,
@@ -381,15 +379,21 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
-	mixins: [externalHooks, genericHelpers],
 	components: {
 		Modal,
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 		};
 	},
@@ -454,9 +458,13 @@ export default defineComponent({
 			useRootStore,
 			useUsersStore,
 			useSettingsStore,
+			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},
@@ -478,6 +486,9 @@ export default defineComponent({
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
+		},
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(this.currentUser, this.workflow);
 		},
 	},
 	async mounted() {
@@ -556,7 +567,7 @@ export default defineComponent({
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+		void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 			dialogVisible: true,
 		});
 		this.$telemetry.track('User opened workflow settings', {
@@ -571,7 +582,7 @@ export default defineComponent({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
 		},
@@ -584,8 +595,6 @@ export default defineComponent({
 			};
 		},
 		async loadWorkflowCallerPolicyOptions() {
-			const currentUserIsOwner = this.workflow.ownedBy?.id === this.currentUser?.id;
-
 			this.workflowCallerPolicyOptions = [
 				{
 					key: 'none',
@@ -597,7 +606,7 @@ export default defineComponent({
 						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
 						{
 							interpolate: {
-								owner: currentUserIsOwner
+								owner: this.workflowPermissions.isOwner
 									? this.$locale.baseText(
 											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
 									  )
@@ -849,7 +858,7 @@ export default defineComponent({
 
 			this.closeDialog();
 
-			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

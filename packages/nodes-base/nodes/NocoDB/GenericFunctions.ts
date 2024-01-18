@@ -16,6 +16,7 @@ interface IAttachment {
 	title: string;
 	mimetype: string;
 	size: number;
+	signedUrl?: string;
 }
 
 /**
@@ -42,12 +43,15 @@ export async function apiRequest(
 
 	query = query || {};
 
+	if (!uri) {
+		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
+	}
+
 	const options: OptionsWithUri = {
 		method,
 		body,
 		qs: query,
-		uri:
-			uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
+		uri,
 		json: true,
 	};
 
@@ -59,7 +63,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -109,11 +113,14 @@ export async function downloadRecordAttachments(
 		const element: INodeExecutionData = { json: {}, binary: {} };
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
+			let attachments = record[fieldName] as IAttachment[];
+			if (typeof attachments === 'string') {
+				attachments = jsonParse<IAttachment[]>(record[fieldName] as string);
+			}
 			if (record[fieldName]) {
-				for (const [index, attachment] of jsonParse<IAttachment[]>(
-					record[fieldName] as string,
-				).entries()) {
-					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
+				for (const [index, attachment] of attachments.entries()) {
+					const attachmentUrl = attachment.signedUrl || attachment.url;
+					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
 						json: false,
 						encoding: null,
 					});

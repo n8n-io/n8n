@@ -1,18 +1,19 @@
 import { Container } from 'typedi';
 import { Cipher } from 'n8n-core';
-import { SettingsRepository } from '@/databases/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import type { ExternalSecretsSettings } from '@/Interfaces';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
 import { InternalHooks } from '@/InternalHooks';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 import {
 	DummyProvider,
 	ErrorProvider,
 	FailedProvider,
 	MockProviders,
 } from '../../shared/ExternalSecrets/utils';
+import { mock } from 'jest-mock-extended';
 
 describe('External Secrets Manager', () => {
 	const connectedDate = '2023-08-01T12:32:29.000Z';
@@ -48,7 +49,7 @@ describe('External Secrets Manager', () => {
 		});
 		license.isExternalSecretsEnabled.mockReturnValue(true);
 		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
-		manager = new ExternalSecretsManager(settingsRepo, license, providersMock, cipher);
+		manager = new ExternalSecretsManager(mock(), settingsRepo, license, providersMock, cipher);
 	});
 
 	afterEach(() => {
@@ -66,7 +67,7 @@ describe('External Secrets Manager', () => {
 		mockProvidersInstance.setProviders({
 			dummy: ErrorProvider,
 		});
-		expect(async () => manager!.init()).not.toThrow();
+		expect(async () => await manager!.init()).not.toThrow();
 	});
 
 	test('should not throw errors during shutdown', async () => {

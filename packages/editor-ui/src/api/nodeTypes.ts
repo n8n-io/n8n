@@ -1,16 +1,7 @@
 import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { DynamicNodeParameters, INodeTranslationHeaders, IRestApiContext } from '@/Interface';
 import type {
-	INodeTranslationHeaders,
-	IResourceLocatorReqParams,
-	IRestApiContext,
-	ResourceMapperReqParams,
-} from '@/Interface';
-import type {
-	IDataObject,
-	ILoadOptions,
-	INodeCredentials,
 	INodeListSearchResult,
-	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
@@ -26,50 +17,43 @@ export async function getNodeTypes(baseUrl: string) {
 export async function getNodeTranslationHeaders(
 	context: IRestApiContext,
 ): Promise<INodeTranslationHeaders | undefined> {
-	return makeRestApiRequest(context, 'GET', '/node-translation-headers');
+	return await makeRestApiRequest(context, 'GET', '/node-translation-headers');
 }
 
 export async function getNodesInformation(
 	context: IRestApiContext,
 	nodeInfos: INodeTypeNameVersion[],
 ): Promise<INodeTypeDescription[]> {
-	return makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos });
+	return await makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos });
 }
 
 export async function getNodeParameterOptions(
 	context: IRestApiContext,
-	sendData: {
-		nodeTypeAndVersion: INodeTypeNameVersion;
-		path: string;
-		methodName?: string;
-		loadOptions?: ILoadOptions;
-		currentNodeParameters: INodeParameters;
-		credentials?: INodeCredentials;
-	},
+	sendData: DynamicNodeParameters.OptionsRequest,
 ): Promise<INodePropertyOptions[]> {
-	return makeRestApiRequest(context, 'GET', '/node-parameter-options', sendData);
+	return await makeRestApiRequest(context, 'GET', '/dynamic-node-parameters/options', sendData);
 }
 
 export async function getResourceLocatorResults(
 	context: IRestApiContext,
-	sendData: IResourceLocatorReqParams,
+	sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
 ): Promise<INodeListSearchResult> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'GET',
-		'/nodes-list-search',
-		sendData as unknown as IDataObject,
+		'/dynamic-node-parameters/resource-locator-results',
+		sendData,
 	);
 }
 
 export async function getResourceMapperFields(
 	context: IRestApiContext,
-	sendData: ResourceMapperReqParams,
+	sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
 ): Promise<ResourceMapperFields> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'GET',
-		'/get-mapping-fields',
-		sendData as unknown as IDataObject,
+		'/dynamic-node-parameters/resource-mapper-fields',
+		sendData,
 	);
 }

@@ -9,11 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 import { postFields, postOperations } from './PostDescription';
-
-import moment from 'moment-timezone';
 
 export class Ghost implements INodeType {
 	description: INodeTypeDescription = {

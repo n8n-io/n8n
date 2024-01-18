@@ -10,3 +10,5 @@ window.ResizeObserver =
 		observe: vi.fn(),
 		unobserve: vi.fn(),
 	}));
+
+Element.prototype.scrollIntoView = vi.fn();

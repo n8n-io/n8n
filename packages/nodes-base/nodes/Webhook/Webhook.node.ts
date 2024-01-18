@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
+import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -10,8 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
-import { pipeline } from 'stream/promises';
-import { createWriteStream } from 'fs';
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
 import isbot from 'isbot';
@@ -38,13 +39,14 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
 		defaults: {
 			name: 'Webhook',
 		},
+		supportsCORS: true,
 		triggerPanel: {
 			header: '',
 			executionsHelp: {
@@ -97,7 +99,7 @@ export class Webhook extends Node {
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
 			ignoreBots: boolean;
-			rawBody: Buffer;
+			rawBody: boolean;
 			responseData?: string;
 		};
 		const req = context.getRequestObject();
@@ -117,11 +119,22 @@ export class Webhook extends Node {
 		}
 
 		if (options.binaryData) {
-			return this.handleBinaryData(context);
+			return await this.handleBinaryData(context);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
+			return await this.handleFormData(context);
+		}
+
+		const nodeVersion = context.getNode().typeVersion;
+		if (nodeVersion > 1 && !req.body && !options.rawBody) {
+			try {
+				return await this.handleBinaryData(context);
+			} catch (error) {}
+		}
+
+		if (options.rawBody && !req.rawBody) {
+			await req.readRawBody();
 		}
 
 		const response: INodeExecutionData = {
@@ -134,7 +147,7 @@ export class Webhook extends Node {
 			binary: options.rawBody
 				? {
 						data: {
-							data: req.rawBody.toString(BINARY_ENCODING),
+							data: (req.rawBody ?? '').toString(BINARY_ENCODING),
 							mimeType: req.contentType ?? 'application/json',
 						},
 				  }
@@ -204,7 +217,6 @@ export class Webhook extends Node {
 		const { data, files } = req.body;
 
 		const returnItem: INodeExecutionData = {
-			binary: {},
 			json: {
 				headers: req.headers,
 				params: req.params,
@@ -213,7 +225,12 @@ export class Webhook extends Node {
 			},
 		};
 
+		if (files && Object.keys(files).length) {
+			returnItem.binary = {};
+		}
+
 		let count = 0;
+
 		for (const key of Object.keys(files)) {
 			const processFiles: MultiPartFormData.File[] = [];
 			let multiFile = false;
@@ -246,6 +263,7 @@ export class Webhook extends Node {
 				count += 1;
 			}
 		}
+
 		return { workflowData: [[returnItem]] };
 	}
 
@@ -260,7 +278,6 @@ export class Webhook extends Node {
 			await pipeline(req, createWriteStream(binaryFile.path));
 
 			const returnItem: INodeExecutionData = {
-				binary: {},
 				json: {
 					headers: req.headers,
 					params: req.params,
@@ -269,13 +286,17 @@ export class Webhook extends Node {
 				},
 			};
 
-			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			const fileName = req.contentDisposition?.filename ?? uuid();
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-				binaryFile.path,
-				fileName,
-				req.contentType ?? 'application/octet-stream',
-			);
+			const stats = await stat(binaryFile.path);
+			if (stats.size) {
+				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const fileName = req.contentDisposition?.filename ?? uuid();
+				const binaryData = await context.nodeHelpers.copyBinaryFile(
+					binaryFile.path,
+					fileName,
+					req.contentType ?? 'application/octet-stream',
+				);
+				returnItem.binary = { [binaryPropertyName]: binaryData };
+			}
 
 			return { workflowData: [[returnItem]] };
 		} catch (error) {

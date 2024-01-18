@@ -1,9 +1,8 @@
-import { WebhookRepository } from '@/databases/repositories';
+import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
-import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import { CacheService } from '@/services/cache/cache.service';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import type { DeepPartial } from 'typeorm';
 
 type Method = NonNullable<IHttpRequestMethods>;
 
@@ -44,7 +43,7 @@ export class WebhookService {
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
 	private async findStaticWebhook(method: Method, path: string) {
-		return this.webhookRepository.findOneBy({ webhookPath: path, method });
+		return await this.webhookRepository.findOneBy({ webhookPath: path, method });
 	}
 
 	/**
@@ -88,39 +87,33 @@ export class WebhookService {
 	}
 
 	async findWebhook(method: Method, path: string) {
-		return this.findCached(method, path);
+		return await this.findCached(method, path);
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
 		void this.cacheService.set(webhook.cacheKey, webhook);
 
-		return this.webhookRepository.insert(webhook);
+		return await this.webhookRepository.insert(webhook);
 	}
 
-	createWebhook(data: DeepPartial<WebhookEntity>) {
+	createWebhook(data: Partial<WebhookEntity>) {
 		return this.webhookRepository.create(data);
 	}
 
 	async deleteWorkflowWebhooks(workflowId: string) {
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
 
-		return this.deleteWebhooks(webhooks);
-	}
-
-	async deleteInstanceWebhooks() {
-		const webhooks = await this.webhookRepository.find();
-
-		return this.deleteWebhooks(webhooks);
+		return await this.deleteWebhooks(webhooks);
 	}
 
 	private async deleteWebhooks(webhooks: WebhookEntity[]) {
 		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
 
-		return this.webhookRepository.remove(webhooks);
+		return await this.webhookRepository.remove(webhooks);
 	}
 
 	async getWebhookMethods(path: string) {
-		return this.webhookRepository
+		return await this.webhookRepository
 			.find({ select: ['method'], where: { webhookPath: path } })
 			.then((rows) => rows.map((r) => r.method));
 	}

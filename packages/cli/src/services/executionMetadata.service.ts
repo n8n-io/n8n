@@ -1,6 +1,6 @@
-import { ExecutionMetadataRepository } from '@/databases/repositories';
 import { Service } from 'typedi';
-import type { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
+import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 
 @Service()
 export class ExecutionMetadataService {
@@ -19,6 +19,6 @@ export class ExecutionMetadataService {
 			});
 		}
 
-		return this.executionMetadataRepository.save(metadataRows);
+		return await this.executionMetadataRepository.save(metadataRows);
 	}
 }

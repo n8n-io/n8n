@@ -1,11 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IWebhookFunctions,
+import {
+	ApplicationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type IWebhookFunctions,
 } from 'n8n-workflow';
 import { BASE_URL } from './constants';
 
@@ -43,7 +44,10 @@ export async function lonescaleApiRequest(
 		if (error.response) {
 			const errorMessage =
 				error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Autopilot error response [${error.statusCode}]: ${errorMessage}`);
+			throw new ApplicationError(
+				`Autopilot error response [${error.statusCode}]: ${errorMessage}`,
+				{ level: 'warning' },
+			);
 		}
 		throw error;
 	}

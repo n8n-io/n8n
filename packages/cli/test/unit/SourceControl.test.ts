@@ -15,11 +15,10 @@ import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 } from '@/environments/sourceControl/constants';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 import { constants as fsConstants, accessSync } from 'fs';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
 import type { SourceControlPreferences } from '@/environments/sourceControl/types/sourceControlPreferences';
+import { mockInstance } from '../shared/mocking';
 
 const pushResult: SourceControlledFile[] = [
 	{
@@ -151,9 +150,11 @@ const pullResult: SourceControlledFile[] = [
 	},
 ];
 
+const license = mockInstance(License);
+
 beforeAll(async () => {
-	LoggerProxy.init(getLogger());
-	Container.get(License).isSourceControlLicensed = () => true;
+	jest.resetAllMocks();
+	license.isSourceControlLicensed.mockReturnValue(true);
 	Container.get(SourceControlPreferencesService).getPreferences = () => ({
 		branchName: 'main',
 		connected: true,
@@ -206,10 +207,6 @@ describe('Source Control', () => {
 		expect(sourceControlFoldersExistCheck([gitFolder, sshFolder], true)).toBe(true);
 		expect(accessSync(sshFolder, fsConstants.F_OK)).toBeUndefined();
 		expect(accessSync(gitFolder, fsConstants.F_OK)).toBeUndefined();
-	});
-
-	it('should check if source control is licensed', async () => {
-		expect(Container.get(License).isSourceControlLicensed()).toBe(true);
 	});
 
 	it('should get repo type from url', async () => {

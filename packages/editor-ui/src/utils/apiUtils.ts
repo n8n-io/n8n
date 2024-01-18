@@ -1,12 +1,7 @@
 import type { AxiosRequestConfig, Method } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
-import type {
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IRestApiContext,
-	IWorkflowDb,
-} from '@/Interface';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
 export const NO_NETWORK_ERROR_CODE = 999;
@@ -48,12 +43,28 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const legacyParamSerializer = (params: Record<string, any>) =>
+	Object.keys(params)
+		.filter((key) => params[key] !== undefined)
+		.map((key) => {
+			if (Array.isArray(params[key])) {
+				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+			}
+			if (typeof params[key] === 'object') {
+				params[key] = JSON.stringify(params[key]);
+			}
+			return `${key}=${encodeURIComponent(params[key])}`;
+		})
+		.join('&');
+
+export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
 	headers?: IDataObject;
-	data?: IDataObject;
+	data?: IDataObject | IDataObject[];
+	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
@@ -67,12 +78,13 @@ async function request(config: {
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {
-		options.withCredentials = true;
+		options.withCredentials = options.withCredentials ?? true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
-	} else {
+	} else if (data) {
 		options.params = data;
+		options.paramsSerializer = legacyParamSerializer;
 	}
 
 	try {
@@ -103,11 +115,11 @@ async function request(config: {
 	}
 }
 
-export async function makeRestApiRequest(
+export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: IDataObject | IDataObject[],
 ) {
 	const response = await request({
 		method,
@@ -118,7 +130,7 @@ export async function makeRestApiRequest(
 	});
 
 	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
-	return response.data;
+	return response.data as T;
 }
 
 export async function get(
@@ -127,7 +139,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -136,7 +148,7 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**
@@ -150,7 +162,7 @@ export function unflattenExecutionData(
 	// Unflatten the data
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
-		workflowData: fullExecutionData.workflowData as IWorkflowDb,
+		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),
 	};
 

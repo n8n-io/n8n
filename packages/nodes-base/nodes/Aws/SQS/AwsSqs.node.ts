@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,11 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { URL } from 'url';
-
-import { awsApiRequestSOAP } from '../GenericFunctions';
-
 import { pascalCase } from 'change-case';
+import { awsApiRequestSOAP } from '../GenericFunctions';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {

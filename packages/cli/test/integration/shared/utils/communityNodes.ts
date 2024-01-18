@@ -3,7 +3,8 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 
 import { randomName } from '../random';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '../constants';
-import { InstalledNodesRepository, InstalledPackagesRepository } from '@/databases/repositories';
+import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
+import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import Container from 'typedi';
 
 export const mockPackageName = () => NODE_PACKAGE_PREFIX + randomName();

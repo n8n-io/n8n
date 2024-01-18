@@ -123,7 +123,7 @@ export async function appWebhookSubscriptionCreate(
 	appId: string,
 	subscription: CreateFacebookAppWebhookSubscription,
 ) {
-	return facebookAppApiRequest.call(this, 'POST', `/${appId}/subscriptions`, {
+	return await facebookAppApiRequest.call(this, 'POST', `/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { ...subscription },
 	});
@@ -134,7 +134,7 @@ export async function appWebhookSubscriptionDelete(
 	appId: string,
 	object: string,
 ) {
-	return facebookAppApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
+	return await facebookAppApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { object },
 	});
@@ -159,7 +159,7 @@ export async function facebookEntityDetail(
 	entityId: string,
 	fields = 'id,name,access_token',
 ): Promise<any> {
-	return facebookApiRequest.call(this, 'GET', `/${entityId}`, {}, { fields });
+	return await facebookApiRequest.call(this, 'GET', `/${entityId}`, {}, { fields });
 }
 
 export async function facebookPageApiRequest(
@@ -197,7 +197,7 @@ export async function installAppOnPage(
 	pageId: string,
 	fields: string,
 ) {
-	return facebookPageApiRequest.call(
+	return await facebookPageApiRequest.call(
 		this,
 		'POST',
 		`/${pageId}/subscribed_apps`,

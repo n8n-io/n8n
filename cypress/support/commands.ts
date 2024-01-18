@@ -1,6 +1,12 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import {
+	BACKEND_BASE_URL,
+	INSTANCE_ADMIN,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	N8N_AUTH_COOKIE,
+} from '../constants';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -16,8 +22,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
-
 	workflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.actions.zoomToFit();
 });
 
 Cypress.Commands.add(
@@ -33,7 +39,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
 	if (waitForIntercepts) {
-		cy.wait(['@loadSettings']);
+		cy.wait(['@loadSettings', '@loadNodeTypes']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
@@ -51,6 +57,10 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
+Cypress.Commands.add('signinAsOwner', () => {
+	cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+});
+
 Cypress.Commands.add('signout', () => {
 	cy.request('POST', `${BACKEND_BASE_URL}/rest/logout`);
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
@@ -66,8 +76,15 @@ const setFeature = (feature: string, enabled: boolean) =>
 		enabled,
 	});
 
+const setQueueMode = (enabled: boolean) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/queue-mode`, {
+		enabled,
+	});
+
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
-Cypress.Commands.add('disableFeature', (feature): string => setFeature(feature, false));
+Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, false));
+Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
+Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
@@ -153,6 +170,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).trigger('mousedown');
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
 			cy.get(droppableSelector).realMouseUp();
@@ -160,4 +178,26 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).realMouseUp();
 			}
 		});
+});
+
+Cypress.Commands.add('push', (type, data) => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/push`, {
+		type,
+		data,
+	});
+});
+
+Cypress.Commands.add('shouldNotHaveConsoleErrors', () => {
+	cy.window().then((win) => {
+		const spy = cy.spy(win.console, 'error');
+		cy.wrap(spy).should('not.have.been.called');
+	});
+});
+
+Cypress.Commands.add('resetDatabase', () => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
+		owner: INSTANCE_OWNER,
+		members: INSTANCE_MEMBERS,
+		admin: INSTANCE_ADMIN,
+	});
 });

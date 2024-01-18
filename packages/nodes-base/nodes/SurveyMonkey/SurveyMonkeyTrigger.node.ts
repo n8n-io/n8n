@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -14,8 +15,6 @@ import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 
 import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
-
-import { createHmac } from 'crypto';
 
 export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -492,7 +491,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			return {};
 		}
 
-		return new Promise((resolve, _reject) => {
+		return await new Promise((resolve, _reject) => {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {

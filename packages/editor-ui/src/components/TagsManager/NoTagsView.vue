@@ -3,8 +3,10 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">
-					{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+				<div class="mb-s">
+					<n8n-heading size="large">
+						{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+					</n8n-heading>
 				</div>
 				<div class="description">
 					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
@@ -45,12 +47,6 @@ $--footer-spacing: 45px;
 .icon {
 	font-size: 36px;
 	line-height: 14px;
-}
-
-.headline {
-	font-size: 17.6px;
-	color: black;
-	margin-bottom: 12px;
 }
 
 .description {

@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type { BinaryFileType, JsonObject } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -77,7 +78,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+			throw new ApplicationError(options.errorMessage);
 		}
 
 		throw error;
@@ -88,7 +89,7 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -106,7 +107,7 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 

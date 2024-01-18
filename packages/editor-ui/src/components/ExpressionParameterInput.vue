@@ -1,45 +1,39 @@
 <template>
 	<div
-		:class="$style['expression-parameter-input']"
 		v-on-click-outside="onBlur"
+		:class="$style['expression-parameter-input']"
 		@keydown.tab="onBlur"
 	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
-			<div
-				:class="[
-					$style['prepend-section'],
-					'el-input-group__prepend',
-					{ [$style['squared']]: isForRecordLocator },
-				]"
-			>
+			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
 				<ExpressionFunctionIcon />
 			</div>
 			<InlineExpressionEditorInput
-				:modelValue="modelValue"
-				:isReadOnly="isReadOnly"
-				:targetItem="hoveringItem"
-				:isSingleLine="isForRecordLocator"
-				:additionalData="additionalExpressionData"
+				ref="inlineInput"
+				:model-value="modelValue"
+				:is-read-only="isReadOnly"
+				:target-item="hoveringItem"
+				:is-single-line="isSingleLine"
+				:additional-data="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
-				ref="inlineInput"
 			/>
 			<n8n-icon
 				v-if="!isDragging"
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
-				@click="$emit('modalOpenerClick')"
 				data-test-id="expander"
+				@click="$emit('modalOpenerClick')"
 			/>
 		</div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -69,12 +63,6 @@ export default defineComponent({
 		InlineExpressionEditorOutput,
 		ExpressionFunctionIcon,
 	},
-	data() {
-		return {
-			isFocused: false,
-			segments: [] as Segment[],
-		};
-	},
 	props: {
 		path: {
 			type: String,
@@ -86,7 +74,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isForRecordLocator: {
+		isSingleLine: {
 			type: Boolean,
 			default: false,
 		},
@@ -94,6 +82,12 @@ export default defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
+	},
+	data() {
+		return {
+			isFocused: false,
+			segments: [] as Segment[],
+		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
@@ -164,6 +158,10 @@ export default defineComponent({
 .expression-parameter-input {
 	position: relative;
 
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
+
 	.all-sections {
 		height: 30px;
 		display: flex;
@@ -178,22 +176,26 @@ export default defineComponent({
 		width: 22px;
 		text-align: center;
 	}
-
-	.squared {
-		border-radius: 0;
-	}
 }
 
 .expression-editor-modal-opener {
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	background-color: white;
+	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
 	border: var(--border-base);
 	border-top-left-radius: var(--border-radius-base);
-	border-bottom-right-radius: var(--border-radius-base);
+	border-bottom-right-radius: var(--input-border-bottom-right-radius, var(--border-radius-base));
+	border-right-color: var(
+		--input-border-right-color,
+		var(--input-border-color, var(--border-color-base))
+	);
+	border-bottom-color: var(
+		--input-border-bottom-color,
+		var(--input-border-color, var(--border-color-base))
+	);
 	cursor: pointer;
 
 	svg {
@@ -219,6 +221,6 @@ export default defineComponent({
 .focused > .expression-editor-modal-opener {
 	border-color: var(--color-secondary);
 	border-bottom-right-radius: 0;
-	background-color: white;
+	background-color: var(--color-code-background);
 }
 </style>

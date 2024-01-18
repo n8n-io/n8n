@@ -1,7 +1,5 @@
 import { WorkflowPage, NDV } from '../pages';
-import { v4 as uuid } from 'uuid';
-import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
-import { META_KEY } from '../constants';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -13,10 +11,7 @@ describe('n8n Form Trigger', () => {
 
 	it("add node by clicking on 'On form submission'", () => {
 		workflowPage.getters.canvasPlusButton().click();
-		cy.get('#node-view-root > div:nth-child(2) > div > div > aside ')
-			.find('span')
-			.contains('On form submission')
-			.click();
+		workflowPage.getters.nodeCreatorNodeItems().contains('On form submission').click();
 		ndv.getters.parameterInput('formTitle').type('Test Form');
 		ndv.getters.parameterInput('formDescription').type('Test Form Description');
 		ndv.getters.parameterInput('fieldLabel').type('Test Field 1');
@@ -76,12 +71,25 @@ describe('n8n Form Trigger', () => {
 		)
 			.find('input')
 			.type('Option 2');
-		//add optionall submitted message
-		cy.get('.param-options > .button').click();
-		cy.get('.indent > .parameter-item')
-			.find('input')
+
+		//add optional submitted message
+		cy.get('.param-options').click();
+		cy.contains('span', 'Text to Show')
+			.should('exist')
+			.parent()
+			.parent()
+			.next()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.children()
+			.first()
 			.clear()
 			.type('Your test form was successfully submitted');
+
 		ndv.getters.backToCanvas().click();
 		workflowPage.getters.nodeIssuesByName('n8n Form Trigger').should('not.exist');
 	});

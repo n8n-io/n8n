@@ -1,42 +1,16 @@
-import type { ILogger, LogTypes } from './Interfaces';
+import type { Logger } from './Interfaces';
 
-let logger: ILogger | undefined;
+const noOp = () => {};
+export let error: Logger['error'] = noOp;
+export let warn: Logger['warn'] = noOp;
+export let info: Logger['info'] = noOp;
+export let debug: Logger['debug'] = noOp;
+export let verbose: Logger['verbose'] = noOp;
 
-export function init<L extends ILogger>(loggerInstance: L) {
-	logger = loggerInstance;
-	return loggerInstance;
-}
-
-export function getInstance(): ILogger {
-	if (logger === undefined) {
-		throw new Error('LoggerProxy not initialized');
-	}
-
-	return logger;
-}
-
-export function log(type: LogTypes, message: string, meta: object = {}) {
-	getInstance().log(type, message, meta);
-}
-
-// Convenience methods below
-
-export function debug(message: string, meta: object = {}) {
-	getInstance().debug(message, meta);
-}
-
-export function info(message: string, meta: object = {}) {
-	getInstance().info(message, meta);
-}
-
-export function error(message: string, meta: object = {}) {
-	getInstance().error(message, meta);
-}
-
-export function verbose(message: string, meta: object = {}) {
-	getInstance().verbose(message, meta);
-}
-
-export function warn(message: string, meta: object = {}) {
-	getInstance().warn(message, meta);
-}
+export const init = (logger: Logger) => {
+	error = (message, meta) => logger.error(message, meta);
+	warn = (message, meta) => logger.warn(message, meta);
+	info = (message, meta) => logger.info(message, meta);
+	debug = (message, meta) => logger.debug(message, meta);
+	verbose = (message, meta) => logger.verbose(message, meta);
+};

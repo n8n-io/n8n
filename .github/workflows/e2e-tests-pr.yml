@@ -6,6 +6,10 @@ on:
     branch:
       - 'master'
 
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-e2e-tests:
     name: E2E [Electron/Node 18]

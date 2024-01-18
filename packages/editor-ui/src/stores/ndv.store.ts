@@ -1,3 +1,4 @@
+import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
@@ -45,10 +46,10 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			isDragging: false,
 			type: '',
 			data: '',
-			canDrop: false,
+			activeTargetId: null,
 			stickyPosition: null,
 		},
-		isMappingOnboarded: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
+		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -93,7 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return this.draggable.data;
 		},
 		canDraggableDrop(): boolean {
-			return this.draggable.canDrop;
+			return this.draggable.activeTargetId !== null;
 		},
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
@@ -137,6 +138,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			}
 
 			return null;
+		},
+		isNDVOpen(): boolean {
+			return this.activeNodeName !== null;
 		},
 	},
 	actions: {
@@ -190,7 +194,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: true,
 				type,
 				data,
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
@@ -199,15 +203,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
-				canDrop: false,
+				activeTargetId: null,
 				stickyPosition: null,
 			};
 		},
 		setDraggableStickyPos(position: XYPosition | null): void {
 			this.draggable.stickyPosition = position;
 		},
-		setDraggableCanDrop(canDrop: boolean): void {
-			this.draggable.canDrop = canDrop;
+		setDraggableTargetId(id: string | null): void {
+			this.draggable.activeTargetId = id;
 		},
 		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
 			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };
@@ -227,7 +231,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		disableMappingHint(store = true) {
 			this.isMappingOnboarded = true;
 			if (store) {
-				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
 			}
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {

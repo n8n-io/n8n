@@ -6,9 +6,8 @@ import type {
 	INodeParameters,
 } from 'n8n-workflow';
 
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
-
 import { get } from 'lodash';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';

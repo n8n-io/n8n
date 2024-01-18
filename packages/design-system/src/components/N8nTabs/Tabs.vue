@@ -1,21 +1,21 @@
 <template>
 	<div :class="['n8n-tabs', $style.container]">
-		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
-			<n8n-icon icon="chevron-left" size="small" />
+		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+			<N8nIcon icon="chevron-left" size="small" />
 		</div>
-		<div :class="$style.next" v-if="canScrollRight" @click="scrollRight">
-			<n8n-icon icon="chevron-right" size="small" />
+		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+			<N8nIcon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div
 				v-for="option in options"
-				:key="option.value"
 				:id="option.value"
+				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
-						<div v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
 					</template>
 					<a
 						v-if="option.href"
@@ -27,7 +27,7 @@
 						<div>
 							{{ option.label }}
 							<span :class="$style.external"
-								><n8n-icon icon="external-link-alt" size="small"
+								><N8nIcon icon="external-link-alt" size="small"
 							/></span>
 						</div>
 					</a>
@@ -35,9 +35,10 @@
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
 				</n8n-tooltip>
@@ -64,6 +65,23 @@ export default defineComponent({
 	name: 'N8nTabs',
 	components: {
 		N8nIcon,
+	},
+	props: {
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		options: {
+			type: Array as PropType<N8nTabOptions[]>,
+			default: (): N8nTabOptions[] => [],
+		},
+	},
+	data() {
+		return {
+			scrollPosition: 0,
+			canScrollRight: false,
+			resizeObserver: null as ResizeObserver | null,
+		};
 	},
 	mounted() {
 		const container = this.$refs.tabs as HTMLDivElement | undefined;
@@ -92,23 +110,6 @@ export default defineComponent({
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
 		}
-	},
-	data() {
-		return {
-			scrollPosition: 0,
-			canScrollRight: false,
-			resizeObserver: null as ResizeObserver | null,
-		};
-	},
-	props: {
-		modelValue: {
-			type: String,
-			default: '',
-		},
-		options: {
-			type: Array as PropType<N8nTabOptions[]>,
-			default: (): N8nTabOptions[] => [],
-		},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {

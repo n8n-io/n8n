@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
+import { Service } from 'typedi';
 import { CronJob } from 'cron';
 
 import type {
@@ -14,62 +13,64 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, toCronExpression, WorkflowActivationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	LoggerProxy as Logger,
+	toCronExpression,
+	WorkflowActivationError,
+	WorkflowDeactivationError,
+} from 'n8n-workflow';
 
 import type { IWorkflowData } from './Interfaces';
 
+@Service()
 export class ActiveWorkflows {
-	private workflowData: {
-		[key: string]: IWorkflowData;
-	} = {};
+	private activeWorkflows: { [workflowId: string]: IWorkflowData } = {};
 
 	/**
-	 * Returns if the workflow is active
-	 *
-	 * @param {string} id The id of the workflow to check
+	 * Returns if the workflow is active in memory.
 	 */
-	isActive(id: string): boolean {
-		return this.workflowData.hasOwnProperty(id);
+	isActive(workflowId: string) {
+		return this.activeWorkflows.hasOwnProperty(workflowId);
 	}
 
 	/**
-	 * Returns the ids of the currently active workflows
-	 *
+	 * Returns the IDs of the currently active workflows in memory.
 	 */
-	allActiveWorkflows(): string[] {
-		return Object.keys(this.workflowData);
+	allActiveWorkflows() {
+		return Object.keys(this.activeWorkflows);
 	}
 
 	/**
-	 * Returns the Workflow data for the workflow with
-	 * the given id if it is currently active
-	 *
+	 * Returns the workflow data for the given ID if currently active in memory.
 	 */
-	get(id: string): IWorkflowData | undefined {
-		return this.workflowData[id];
+	get(workflowId: string) {
+		return this.activeWorkflows[workflowId];
 	}
 
 	/**
 	 * Makes a workflow active
 	 *
-	 * @param {string} id The id of the workflow to activate
+	 * @param {string} workflowId The id of the workflow to activate
 	 * @param {Workflow} workflow The workflow to activate
 	 * @param {IWorkflowExecuteAdditionalData} additionalData The additional data which is needed to run workflows
 	 */
 	async add(
-		id: string,
+		workflowId: string,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
-	): Promise<void> {
-		this.workflowData[id] = {};
+	) {
+		this.activeWorkflows[workflowId] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
 		let triggerResponse: ITriggerResponse | undefined;
-		this.workflowData[id].triggerResponses = [];
+
+		this.activeWorkflows[workflowId].triggerResponses = [];
+
 		for (const triggerNode of triggerNodes) {
 			try {
 				triggerResponse = await workflow.runTrigger(
@@ -82,46 +83,49 @@ export class ActiveWorkflows {
 				if (triggerResponse !== undefined) {
 					// If a response was given save it
 
-					this.workflowData[id].triggerResponses!.push(triggerResponse);
+					this.activeWorkflows[workflowId].triggerResponses!.push(triggerResponse);
 				}
-			} catch (error) {
+			} catch (e) {
+				const error = e instanceof Error ? e : new Error(`${e}`);
+
 				throw new WorkflowActivationError(
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					`There was a problem activating the workflow: "${error.message}"`,
-					{ cause: error as Error, node: triggerNode },
+					{ cause: error, node: triggerNode },
 				);
 			}
 		}
 
-		const pollNodes = workflow.getPollNodes();
-		if (pollNodes.length) {
-			this.workflowData[id].pollResponses = [];
-			for (const pollNode of pollNodes) {
-				try {
-					this.workflowData[id].pollResponses!.push(
-						await this.activatePolling(
-							pollNode,
-							workflow,
-							additionalData,
-							getPollFunctions,
-							mode,
-							activation,
-						),
-					);
-				} catch (error) {
-					throw new WorkflowActivationError(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						`There was a problem activating the workflow: "${error.message}"`,
-						{ cause: error as Error, node: pollNode },
-					);
-				}
+		const pollingNodes = workflow.getPollNodes();
+
+		if (pollingNodes.length === 0) return;
+
+		this.activeWorkflows[workflowId].pollResponses = [];
+
+		for (const pollNode of pollingNodes) {
+			try {
+				this.activeWorkflows[workflowId].pollResponses!.push(
+					await this.activatePolling(
+						pollNode,
+						workflow,
+						additionalData,
+						getPollFunctions,
+						mode,
+						activation,
+					),
+				);
+			} catch (e) {
+				const error = e instanceof Error ? e : new Error(`${e}`);
+
+				throw new WorkflowActivationError(
+					`There was a problem activating the workflow: "${error.message}"`,
+					{ cause: error, node: pollNode },
+				);
 			}
 		}
 	}
 
 	/**
 	 * Activates polling for the given node
-	 *
 	 */
 	async activatePolling(
 		node: INode,
@@ -159,7 +163,7 @@ export class ActiveWorkflows {
 				if (testingTrigger) {
 					throw error;
 				}
-				pollFunctions.__emitError(error);
+				pollFunctions.__emitError(error as Error);
 			}
 		};
 
@@ -174,7 +178,9 @@ export class ActiveWorkflows {
 		for (const cronTime of cronTimes) {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new Error('The polling interval is too short. It has to be at least a minute!');
+				throw new ApplicationError(
+					'The polling interval is too short. It has to be at least a minute!',
+				);
 			}
 
 			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
@@ -193,59 +199,49 @@ export class ActiveWorkflows {
 	}
 
 	/**
-	 * Makes a workflow inactive
-	 *
-	 * @param {string} id The id of the workflow to deactivate
+	 * Makes a workflow inactive in memory.
 	 */
-	async remove(id: string): Promise<boolean> {
-		if (!this.isActive(id)) {
-			// Workflow is currently not registered
-			Logger.warn(
-				`The workflow with the id "${id}" is currently not active and can so not be removed`,
-			);
+	async remove(workflowId: string) {
+		if (!this.isActive(workflowId)) {
+			Logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
 			return false;
 		}
 
-		const workflowData = this.workflowData[id];
+		const w = this.activeWorkflows[workflowId];
 
-		if (workflowData.triggerResponses) {
-			for (const triggerResponse of workflowData.triggerResponses) {
-				if (triggerResponse.closeFunction) {
-					try {
-						await triggerResponse.closeFunction();
-					} catch (error) {
-						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
-							{
-								workflowId: id,
-							},
-						);
-					}
-				}
-			}
-		}
+		w.triggerResponses?.forEach(async (r) => await this.close(r, workflowId, 'trigger'));
+		w.pollResponses?.forEach(async (r) => await this.close(r, workflowId, 'poller'));
 
-		if (workflowData.pollResponses) {
-			for (const pollResponse of workflowData.pollResponses) {
-				if (pollResponse.closeFunction) {
-					try {
-						await pollResponse.closeFunction();
-					} catch (error) {
-						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
-							{
-								workflowId: id,
-							},
-						);
-					}
-				}
-			}
-		}
-
-		delete this.workflowData[id];
+		delete this.activeWorkflows[workflowId];
 
 		return true;
+	}
+
+	async removeAllTriggerAndPollerBasedWorkflows() {
+		for (const workflowId of Object.keys(this.activeWorkflows)) {
+			const w = this.activeWorkflows[workflowId];
+
+			w.triggerResponses?.forEach(async (r) => await this.close(r, workflowId, 'trigger'));
+			w.pollResponses?.forEach(async (r) => await this.close(r, workflowId, 'poller'));
+		}
+	}
+
+	private async close(
+		response: ITriggerResponse | IPollResponse,
+		workflowId: string,
+		target: 'trigger' | 'poller',
+	) {
+		if (!response.closeFunction) return;
+
+		try {
+			await response.closeFunction();
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			throw new WorkflowDeactivationError(
+				`Failed to deactivate ${target} of workflow ID "${workflowId}": "${error.message}"`,
+				{ cause: error, workflowId },
+			);
+		}
 	}
 }

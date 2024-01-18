@@ -1,6 +1,5 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
-
 import nock from 'nock';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
@@ -47,6 +46,6 @@ describe('Test MicrosoftExcelV2, worksheet => readRows', () => {
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData, nodeTypes));
 	}
 });

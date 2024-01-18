@@ -24,7 +24,8 @@ import type {
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isJsonKeyObject } from '@/utils/typesUtils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { i18n as locale } from '@/plugins/i18n';
 

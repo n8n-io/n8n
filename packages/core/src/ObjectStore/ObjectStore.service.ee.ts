@@ -5,19 +5,20 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ApplicationError, LoggerProxy as Logger } from 'n8n-workflow';
 
-import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type {
 	Bucket,
 	ConfigSchemaCredentials,
 	ListPage,
+	MetadataResponseHeaders,
 	RawListPage,
 	RequestOptions,
 } from './types';
 import type { Readable } from 'stream';
-import type { BinaryData } from '..';
+import type { BinaryData } from '../BinaryData/types';
 
 @Service()
 export class ObjectStoreService {
@@ -64,7 +65,7 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
-		return this.request('HEAD', this.host, this.bucket.name);
+		return await this.request('HEAD', this.host, this.bucket.name);
 	}
 
 	/**
@@ -73,7 +74,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		if (this.isReadOnly) return this.blockWrite(filename);
+		if (this.isReadOnly) return await this.blockWrite(filename);
 
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
@@ -85,7 +86,7 @@ export class ObjectStoreService {
 
 		const path = `/${this.bucket.name}/${filename}`;
 
-		return this.request('PUT', this.host, path, { headers, body: buffer });
+		return await this.request('PUT', this.host, path, { headers, body: buffer });
 	}
 
 	/**
@@ -115,19 +116,11 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
 	async getMetadata(fileId: string) {
-		type Response = {
-			headers: {
-				'content-length': string;
-				'content-type'?: string;
-				'x-amz-meta-filename'?: string;
-			} & BinaryData.PreWriteMetadata;
-		};
-
 		const path = `${this.bucket.name}/${fileId}`;
 
-		const response: Response = await this.request('HEAD', this.host, path);
+		const response = await this.request('HEAD', this.host, path);
 
-		return response.headers;
+		return response.headers as MetadataResponseHeaders;
 	}
 
 	/**
@@ -138,7 +131,7 @@ export class ObjectStoreService {
 	async deleteOne(fileId: string) {
 		const path = `${this.bucket.name}/${fileId}`;
 
-		return this.request('DELETE', this.host, path);
+		return await this.request('DELETE', this.host, path);
 	}
 
 	/**
@@ -163,7 +156,7 @@ export class ObjectStoreService {
 
 		const path = `${this.bucket.name}/?delete`;
 
-		return this.request('POST', this.host, path, { headers, body });
+		return await this.request('POST', this.host, path, { headers, body });
 	}
 
 	/**
@@ -239,10 +232,16 @@ export class ObjectStoreService {
 
 		this.logger.warn(logMessage);
 
-		return { status: 403, statusText: 'Forbidden', data: logMessage, headers: {}, config: {} };
+		return {
+			status: 403,
+			statusText: 'Forbidden',
+			data: logMessage,
+			headers: {},
+			config: {} as InternalAxiosRequestConfig,
+		};
 	}
 
-	private async request(
+	private async request<T>(
 		method: Method,
 		host: string,
 		rawPath = '',
@@ -275,7 +274,7 @@ export class ObjectStoreService {
 		try {
 			this.logger.debug('Sending request to S3', { config });
 
-			return await axios.request<unknown>(config);
+			return await axios.request<T>(config);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 
@@ -283,7 +282,7 @@ export class ObjectStoreService {
 
 			this.logger.error(message, { config });
 
-			throw new Error(message, { cause: { error, details: config } });
+			throw new ApplicationError(message, { cause: error, extra: { config } });
 		}
 	}
 }

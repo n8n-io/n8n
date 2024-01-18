@@ -1,7 +1,7 @@
 <template>
 	<div
-		:class="['executions-sidebar', $style.container]"
 		ref="container"
+		:class="['executions-sidebar', $style.container]"
 		data-test-id="executions-sidebar"
 	>
 		<div :class="$style.heading">
@@ -11,17 +11,17 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				:modelValue="autoRefresh"
-				@update:modelValue="$emit('update:autoRefresh', $event)"
+				:model-value="autoRefresh"
 				data-test-id="auto-refresh-checkbox"
+				@update:modelValue="$emit('update:autoRefresh', $event)"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<execution-filter popover-placement="left-start" @filterChanged="onFilterChanged" />
+			<ExecutionFilter popover-placement="left-start" @filterChanged="onFilterChanged" />
 		</div>
 		<div
-			:class="$style.executionList"
 			ref="executionList"
+			:class="$style.executionList"
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
@@ -33,19 +33,19 @@
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
 			</div>
-			<execution-card
+			<ExecutionCard
 				v-else-if="temporaryExecution"
-				:execution="temporaryExecution"
 				:ref="`execution-${temporaryExecution.id}`"
+				:execution="temporaryExecution"
 				:data-test-id="`execution-details-${temporaryExecution.id}`"
-				:showGap="true"
+				:show-gap="true"
 				@retryExecution="onRetryExecution"
 			/>
-			<execution-card
+			<ExecutionCard
 				v-for="execution in executions"
 				:key="execution.id"
-				:execution="execution"
 				:ref="`execution-${execution.id}`"
+				:execution="execution"
 				:data-test-id="`execution-details-${execution.id}`"
 				@retryExecution="onRetryExecution"
 			/>
@@ -54,7 +54,7 @@
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
-			<executions-info-accordion :initiallyExpanded="false" />
+			<ExecutionsInfoAccordion :initially-expanded="false" />
 		</div>
 	</div>
 </template>
@@ -76,7 +76,7 @@ import type { ExecutionFilterType } from '@/Interface';
 type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
 
 export default defineComponent({
-	name: 'executions-sidebar',
+	name: 'ExecutionsSidebar',
 	components: {
 		ExecutionCard,
 		ExecutionsInfoAccordion,
@@ -120,10 +120,6 @@ export default defineComponent({
 				this.$router.go(-1);
 			}
 		},
-		'workflowsStore.activeWorkflowExecution'() {
-			this.checkListSize();
-			this.scrollToActiveCard();
-		},
 	},
 	mounted() {
 		// On larger screens, we need to load more then first page of executions
@@ -145,7 +141,7 @@ export default defineComponent({
 				}
 			}
 		},
-		onRetryExecution(payload: Object) {
+		onRetryExecution(payload: object) {
 			this.$emit('retryExecution', payload);
 		},
 		onRefresh(): void {
@@ -204,6 +200,8 @@ export default defineComponent({
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 }
 
@@ -228,7 +226,7 @@ export default defineComponent({
 }
 
 .executionList {
-	height: calc(100% - 10.5em);
+	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;

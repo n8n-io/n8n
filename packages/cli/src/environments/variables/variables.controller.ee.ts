@@ -1,77 +1,85 @@
-import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
-
-import * as ResponseHelper from '@/ResponseHelper';
-import type { VariablesRequest } from '@/requests';
+import { VariablesRequest } from '@/requests';
 import {
-	VariablesLicenseError,
-	EEVariablesService,
-	VariablesValidationError,
-} from './variables.service.ee';
-import { isVariablesEnabled } from './enviromentHelpers';
-import Container from 'typedi';
+	Authorized,
+	Delete,
+	Get,
+	Licensed,
+	Patch,
+	Post,
+	RequireGlobalScope,
+	RestController,
+} from '@/decorators';
+import { VariablesService } from './variables.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export const EEVariablesController = express.Router();
+@Authorized()
+@RestController('/variables')
+export class VariablesController {
+	constructor(private readonly variablesService: VariablesService) {}
 
-/**
- * Initialize Logger if needed
- */
-EEVariablesController.use((req, res, next) => {
-	if (!isVariablesEnabled()) {
-		next('router');
-		return;
+	@Get('/')
+	@RequireGlobalScope('variable:list')
+	async getVariables() {
+		return await this.variablesService.getAllCached();
 	}
 
-	next();
-});
-
-EEVariablesController.post(
-	'/',
-	ResponseHelper.send(async (req: VariablesRequest.Create) => {
-		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.AuthError('Unauthorized');
-		}
+	@Post('/')
+	@Licensed('feat:variables')
+	@RequireGlobalScope('variable:create')
+	async createVariable(req: VariablesRequest.Create) {
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await Container.get(EEVariablesService).create(variable);
+			return await this.variablesService.create(variable);
 		} catch (error) {
-			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
-			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+			if (error instanceof VariableCountLimitReachedError) {
+				throw new BadRequestError(error.message);
+			} else if (error instanceof VariableValidationError) {
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}
-	}),
-);
+	}
 
-EEVariablesController.patch(
-	'/:id(\\w+)',
-	ResponseHelper.send(async (req: VariablesRequest.Update) => {
+	@Get('/:id')
+	@RequireGlobalScope('variable:read')
+	async getVariable(req: VariablesRequest.Get) {
 		const id = req.params.id;
-		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				id,
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.AuthError('Unauthorized');
+		const variable = await this.variablesService.getCached(id);
+		if (variable === null) {
+			throw new NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
+		return variable;
+	}
+
+	@Patch('/:id')
+	@Licensed('feat:variables')
+	@RequireGlobalScope('variable:update')
+	async updateVariable(req: VariablesRequest.Update) {
+		const id = req.params.id;
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await Container.get(EEVariablesService).update(id, variable);
+			return await this.variablesService.update(id, variable);
 		} catch (error) {
-			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
-			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+			if (error instanceof VariableCountLimitReachedError) {
+				throw new BadRequestError(error.message);
+			} else if (error instanceof VariableValidationError) {
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}
-	}),
-);
+	}
+
+	@Delete('/:id(\\w+)')
+	@RequireGlobalScope('variable:delete')
+	async deleteVariable(req: VariablesRequest.Delete) {
+		const id = req.params.id;
+		await this.variablesService.delete(id);
+
+		return true;
+	}
+}

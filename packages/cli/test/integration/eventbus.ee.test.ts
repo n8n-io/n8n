@@ -3,8 +3,6 @@ import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 import type { SuperAgentTest } from 'supertest';
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type {
@@ -26,6 +24,10 @@ import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAu
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
+
+import * as utils from './shared/utils';
+import { getGlobalOwnerRole } from './shared/db/roles';
+import { createUser } from './shared/db/users';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -83,8 +85,8 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	globalOwnerRole = await getGlobalOwnerRole();
+	owner = await createUser({ globalRole: globalOwnerRole });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
@@ -112,7 +114,6 @@ test('should have logwriter log messages', async () => {
 	});
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		eventBus.logWriter.worker?.once('message', async (msg: { command: string; data: any }) => {
 			expect(msg.command).toBe('appendMessageToLog');
 			expect(msg.data).toBe(true);

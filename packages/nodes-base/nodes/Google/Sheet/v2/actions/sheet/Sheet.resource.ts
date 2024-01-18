@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 import * as append from './append.operation';
 import * as appendOrUpdate from './appendOrUpdate.operation';
 import * as clear from './clear.operation';
@@ -7,7 +8,6 @@ import * as del from './delete.operation';
 import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
-import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 
 export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 
@@ -60,10 +60,10 @@ export const descriptions: INodeProperties[] = [
 				action: 'Delete rows or columns from sheet',
 			},
 			{
-				name: 'Get Many Rows',
+				name: 'Get Row(s)',
 				value: 'read',
-				description: 'Retrieves all the rows in a sheet',
-				action: 'Get many rows in sheet',
+				description: 'Retrieve one or more rows from a sheet',
+				action: 'Get row(s) in sheet',
 			},
 			{
 				name: 'Update Row',
@@ -183,6 +183,12 @@ export const descriptions: INodeProperties[] = [
 						},
 					},
 				],
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'Sheet1',
 			},
 		],
 		displayOptions: {

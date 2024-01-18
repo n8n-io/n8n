@@ -1,10 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 
-import type { PgpDatabase } from '../../v2/helpers/interfaces';
-import { configureQueryRunner } from '../../v2/helpers/utils';
-
 import pgPromise from 'pg-promise';
 import { mock } from 'jest-mock-extended';
+import type { PgpDatabase } from '../../v2/helpers/interfaces';
+import { configureQueryRunner } from '../../v2/helpers/utils';
 
 const node: INode = {
 	id: '1',

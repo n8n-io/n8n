@@ -1,10 +1,8 @@
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository } from '@db/repositories/tag.repository';
 import { Service } from 'typedi';
 import { validateEntity } from '@/GenericHelpers';
-import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
-import type { TagEntity } from '@/databases/entities/TagEntity';
-import type { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
-import type { UpsertOptions } from 'typeorm/repository/UpsertOptions';
+import type { ITagWithCountDb } from '@/Interfaces';
+import type { TagEntity } from '@db/entities/TagEntity';
 import { ExternalHooks } from '@/ExternalHooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
@@ -33,7 +31,7 @@ export class TagService {
 
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
-		return savedTag;
+		return await savedTag;
 	}
 
 	async delete(id: string) {
@@ -43,19 +41,7 @@ export class TagService {
 
 		await this.externalHooks.run('tag.afterDelete', [id]);
 
-		return deleteResult;
-	}
-
-	async findOne(options: FindOneOptions<TagEntity>) {
-		return this.tagRepository.findOne(options);
-	}
-
-	async findMany(options: FindManyOptions<TagEntity>) {
-		return this.tagRepository.find(options);
-	}
-
-	async upsert(tag: TagEntity, options: UpsertOptions<TagEntity>) {
-		return this.tagRepository.upsert(tag, options);
+		return await deleteResult;
 	}
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
@@ -73,9 +59,9 @@ export class TagService {
 			}) as GetAllResult<T>;
 		}
 
-		return this.tagRepository.find({
+		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
-		}) as Promise<GetAllResult<T>>;
+		}) as Promise<GetAllResult<T>>);
 	}
 
 	/**
@@ -88,70 +74,5 @@ export class TagService {
 		}, {});
 
 		return requestOrder.map((tagId) => tagMap[tagId]);
-	}
-
-	/**
-	 * Set tag IDs to use existing tags, creates a new tag if no matching tag could be found
-	 */
-	async setTagsForImport(
-		transactionManager: EntityManager,
-		workflow: IWorkflowToImport,
-		tags: TagEntity[],
-	) {
-		if (!this.hasTags(workflow)) return;
-
-		const workflowTags = workflow.tags;
-		const tagLookupPromises = [];
-		for (let i = 0; i < workflowTags.length; i++) {
-			if (workflowTags[i]?.name) {
-				const lookupPromise = this.findOrCreateTag(transactionManager, workflowTags[i], tags).then(
-					(tag) => {
-						workflowTags[i] = {
-							id: tag.id,
-							name: tag.name,
-						};
-					},
-				);
-				tagLookupPromises.push(lookupPromise);
-			}
-		}
-
-		await Promise.all(tagLookupPromises);
-	}
-
-	private hasTags(workflow: IWorkflowToImport) {
-		return 'tags' in workflow && Array.isArray(workflow.tags) && workflow.tags.length > 0;
-	}
-
-	private async findOrCreateTag(
-		transactionManager: EntityManager,
-		importTag: ITagToImport,
-		tagsEntities: TagEntity[],
-	) {
-		// Assume tag is identical if createdAt date is the same to preserve a changed tag name
-		const identicalMatch = tagsEntities.find(
-			(existingTag) =>
-				existingTag.id === importTag.id &&
-				existingTag.createdAt &&
-				importTag.createdAt &&
-				existingTag.createdAt.getTime() === new Date(importTag.createdAt).getTime(),
-		);
-		if (identicalMatch) {
-			return identicalMatch;
-		}
-
-		const nameMatch = tagsEntities.find((existingTag) => existingTag.name === importTag.name);
-		if (nameMatch) {
-			return nameMatch;
-		}
-
-		const created = await this.txCreateTag(transactionManager, importTag.name);
-		tagsEntities.push(created);
-		return created;
-	}
-
-	private async txCreateTag(transactionManager: EntityManager, name: string) {
-		const tag = this.tagRepository.create({ name: name.trim() });
-		return transactionManager.save<TagEntity>(tag);
 	}
 }

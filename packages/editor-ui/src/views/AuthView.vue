@@ -10,7 +10,7 @@
 			<n8n-form-box
 				v-bind="form"
 				data-test-id="auth-form"
-				:buttonLoading="formLoading"
+				:button-loading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
 				@update="onUpdate"

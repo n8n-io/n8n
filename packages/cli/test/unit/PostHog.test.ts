@@ -2,7 +2,7 @@ import { PostHog } from 'posthog-node';
 import { InstanceSettings } from 'n8n-core';
 import { PostHogClient } from '@/posthog';
 import config from '@/config';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 jest.mock('posthog-node');
 

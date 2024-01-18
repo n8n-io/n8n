@@ -23,6 +23,9 @@ export async function venafiApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);
+	const credentials = await this.getCredentials('venafiTlsProtectCloudApi');
+
+	const region = credentials.region ?? 'cloud';
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -32,7 +35,7 @@ export async function venafiApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://api.venafi.cloud${resource}`,
+		uri: `https://api.venafi.${region}${resource}`,
 		json: true,
 	};
 
@@ -118,7 +121,7 @@ export async function encryptPassphrase(
 	let encryptedKeyStorePass = '';
 
 	const promise = async () => {
-		return new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
@@ -139,5 +142,5 @@ export async function encryptPassphrase(
 			});
 		});
 	};
-	return promise();
+	return await promise();
 }

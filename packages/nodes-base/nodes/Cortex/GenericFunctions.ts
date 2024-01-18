@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 export async function cortexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -39,7 +39,7 @@ export async function cortexApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 }
 
 export function getEntityLabel(entity: IDataObject): string {

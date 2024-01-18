@@ -325,7 +325,7 @@ export namespace BrevoWebhookApi {
 			options,
 		)) as string;
 
-		return jsonParse(webhooks);
+		return await jsonParse(webhooks);
 	};
 
 	export const createWebHook = async (
@@ -355,7 +355,7 @@ export namespace BrevoWebhookApi {
 			options,
 		);
 
-		return jsonParse(webhookId as string);
+		return await jsonParse(webhookId as string);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {
@@ -371,6 +371,6 @@ export namespace BrevoWebhookApi {
 			body,
 		};
 
-		return ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
+		return await ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
 	};
 }

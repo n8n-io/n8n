@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { UserRepository } from '@db/repositories';
+import { UserRepository } from '@db/repositories/user.repository';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
@@ -15,7 +15,7 @@ export async function getUser(data: {
 	withIdentifier: string;
 	includeRole?: boolean;
 }): Promise<User | null> {
-	return Container.get(UserRepository).findOne({
+	return await Container.get(UserRepository).findOne({
 		where: {
 			...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
 			...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),

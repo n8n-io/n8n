@@ -8,14 +8,13 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
+import omit from 'lodash/omit';
 import type {
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
 	SalesAccounts,
 	ViewsResponse,
 } from './types';
-
-import omit from 'lodash/omit';
 
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -111,7 +110,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);

@@ -1,3 +1,4 @@
+import { URLSearchParams } from 'url';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -9,12 +10,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { URLSearchParams } from 'url';
-
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
+import { nextCloudApiRequest } from './GenericFunctions';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -351,7 +350,7 @@ export class NextCloud implements INodeType {
 					'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -362,7 +361,7 @@ export class NextCloud implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -385,7 +384,7 @@ export class NextCloud implements INodeType {
 					'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryDataUpload',
 				type: 'boolean',
 				default: false,
@@ -413,7 +412,7 @@ export class NextCloud implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -426,8 +425,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 
 			// ----------------------------------

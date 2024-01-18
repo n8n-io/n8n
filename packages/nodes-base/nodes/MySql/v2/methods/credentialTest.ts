@@ -5,9 +5,8 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { createPool } from '../transport';
-
 import { Client } from 'ssh2';
+import { createPool } from '../transport';
 
 export async function mysqlConnectionTest(
 	this: ICredentialTestFunctions,

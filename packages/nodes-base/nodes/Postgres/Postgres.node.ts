@@ -13,6 +13,7 @@ export class Postgres extends VersionedNodeType {
 			group: ['input'],
 			defaultVersion: 2.3,
 			description: 'Get, add and update data in Postgres',
+			parameterPane: 'wide',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

@@ -64,7 +64,7 @@ export async function handleMatrixCall(
 ): Promise<any> {
 	if (resource === 'account') {
 		if (operation === 'me') {
-			return matrixApiRequest.call(this, 'GET', '/account/whoami');
+			return await matrixApiRequest.call(this, 'GET', '/account/whoami');
 		}
 	} else if (resource === 'room') {
 		if (operation === 'create') {
@@ -78,20 +78,20 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
+			return await matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
 		} else if (operation === 'leave') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
 		} else if (operation === 'invite') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
 				user_id: userId,
 			};
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
@@ -100,7 +100,7 @@ export async function handleMatrixCall(
 				user_id: userId,
 				reason,
 			};
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
 		}
 	} else if (resource === 'message') {
 		if (operation === 'create') {
@@ -119,7 +119,7 @@ export async function handleMatrixCall(
 				body.body = fallbackText;
 			}
 			const messageId = uuid();
-			return matrixApiRequest.call(
+			return await matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,
@@ -181,7 +181,7 @@ export async function handleMatrixCall(
 		if (operation === 'get') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const eventId = this.getNodeParameter('eventId', index) as string;
-			return matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
+			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
 	} else if (resource === 'media') {
 		if (operation === 'upload') {
@@ -225,7 +225,7 @@ export async function handleMatrixCall(
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();
-			return matrixApiRequest.call(
+			return await matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,

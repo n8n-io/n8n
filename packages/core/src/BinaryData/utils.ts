@@ -23,9 +23,24 @@ export async function assertDir(dir: string) {
 	}
 }
 
+export async function doesNotExist(dir: string) {
+	try {
+		await fs.access(dir);
+		return false;
+	} catch {
+		return true;
+	}
+}
+
 export async function toBuffer(body: Buffer | Readable) {
-	return new Promise<Buffer>((resolve) => {
-		if (Buffer.isBuffer(body)) resolve(body);
-		else body.pipe(concatStream(resolve));
+	if (Buffer.isBuffer(body)) return body;
+	return await new Promise<Buffer>((resolve, reject) => {
+		body
+			.once('error', (cause) => {
+				if ('code' in cause && cause.code === 'Z_DATA_ERROR')
+					reject(new Error('Failed to decompress response', { cause }));
+				else reject(cause);
+			})
+			.pipe(concatStream(resolve));
 	});
 }

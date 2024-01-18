@@ -1,15 +1,29 @@
 import { BasePage } from './base';
-import { WorkflowPage } from './workflow';
 
-const workflowPage = new WorkflowPage();
 export class TemplatesPage extends BasePage {
 	url = '/templates';
 
 	getters = {
+		useTemplateButton: () => cy.getByTestId('use-template-button'),
+		templateCards: () => cy.getByTestId('template-card'),
+		firstTemplateCard: () => this.getters.templateCards().first(),
+		allCategoriesFilter: () => cy.getByTestId('template-filter-all-categories'),
+		searchInput: () => cy.getByTestId('template-search-input'),
+		categoryFilters: () => cy.get('[data-test-id^=template-filter]'),
+		categoryFilter: (category: string) => cy.getByTestId(`template-filter-${category}`),
+		collectionCountLabel: () => cy.getByTestId('collection-count-label'),
+		templateCountLabel: () => cy.getByTestId('template-count-label'),
+		templatesLoadingContainer: () => cy.getByTestId('templates-loading-container'),
+		expandCategoriesButton: () => cy.getByTestId('expand-categories-button'),
 	};
 
 	actions = {
-		openOnboardingFlow: (id: number, name: string , workflow: object) => {
+		openSingleTemplateView: (templateId: number) => {
+			cy.visit(`${this.url}/${templateId}`);
+			cy.waitForLoad();
+		},
+
+		openOnboardingFlow: (id: number, name: string, workflow: object) => {
 			const apiResponse = {
 				id,
 				name,
@@ -43,8 +57,7 @@ export class TemplatesPage extends BasePage {
 			cy.visit(`/workflows/templates/${id}`);
 
 			cy.wait('@getTemplate');
-			cy.wait( '@getWorkflow');
-		}
-	}
+			cy.wait('@getWorkflow');
+		},
+	};
 }
-

@@ -15,16 +15,18 @@ import config from '@/config';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import { InstalledNodesRepository, InstalledPackagesRepository } from '@/databases/repositories';
-import { InstalledNodes } from '@/databases/entities/InstalledNodes';
+import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
+import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
+import { mockInstance } from '../../shared/mocking';
 import {
 	COMMUNITY_NODE_VERSION,
 	COMMUNITY_PACKAGE_VERSION,
 } from '../../integration/shared/constants';
 import { randomName } from '../../integration/shared/random';
-import { mockInstance, mockPackageName, mockPackagePair } from '../../integration/shared/utils';
+import { mockPackageName, mockPackagePair } from '../../integration/shared/utils';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -171,7 +173,7 @@ describe('CommunityPackagesService', () => {
 
 			mocked(exec).mockImplementation(erroringExecMock);
 
-			const call = async () => communityPackagesService.executeNpmCommand('ls');
+			const call = async () => await communityPackagesService.executeNpmCommand('ls');
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 

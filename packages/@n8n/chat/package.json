@@ -1,0 +1,60 @@
+{
+  "name": "@n8n/chat",
+  "version": "0.7.0",
+  "scripts": {
+    "dev": "pnpm run storybook",
+    "build": "pnpm type-check && pnpm build:vite && pnpm run build:individual && npm run build:prepare",
+    "build:full": "pnpm type-check && pnpm build:vite && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
+    "build:vite": "vite build",
+    "build:vite:full": "INCLUDE_VUE=true vite build",
+    "build:individual": "unbuild",
+    "build:prepare": "node scripts/postbuild.js",
+    "build:pack": "node scripts/pack.js",
+    "preview": "vite preview",
+    "test:dev": "vitest",
+    "test": "vitest run --coverage",
+    "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
+    "lint": "eslint . --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
+    "format": "prettier --write src/",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build:storybook": "storybook build",
+    "release": "pnpm run build:full && cd dist && pnpm publish"
+  },
+  "main": "./chat.umd.js",
+  "module": "./chat.es.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "require": "./index.js"
+    },
+    "./style.css": {
+      "import": "./style.css",
+      "require": "./style.css"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
+    }
+  },
+  "dependencies": {
+    "highlight.js": "^11.8.0",
+    "uuid": "^8.3.2",
+    "vue": "^3.3.4",
+    "vue-markdown-render": "^2.0.1"
+  },
+  "devDependencies": {
+    "@iconify-json/mdi": "^1.1.54",
+    "shelljs": "^0.8.5",
+    "unbuild": "^2.0.0",
+    "unplugin-icons": "^0.17.0",
+    "vite-plugin-dts": "^3.6.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io"
+}

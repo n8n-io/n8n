@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@/Interface';
-import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
+import { activateLicenseKey, getLicense, renewLicense, requestLicenseTrial } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -84,12 +84,29 @@ export const useUsageStore = defineStore('usage', () => {
 		}
 	};
 
+	const requestEnterpriseLicenseTrial = async () => {
+		if (!usersStore.currentUser) {
+			throw new Error('User is not logged in');
+		}
+
+		const data = await requestLicenseTrial({
+			licenseType: 'enterprise',
+			firstName: usersStore.currentUser.firstName ?? '',
+			lastName: usersStore.currentUser.lastName ?? '',
+			email: usersStore.currentUser.email ?? '',
+			instanceUrl: window.location.origin,
+		});
+
+		return data;
+	};
+
 	return {
 		setLoading,
 		getLicenseInfo,
 		setData,
 		activateLicense,
 		refreshLicenseManagementToken,
+		requestEnterpriseLicenseTrial,
 		planName,
 		planId,
 		executionLimit,
@@ -111,7 +128,6 @@ export const useUsageStore = defineStore('usage', () => {
 			() =>
 				`${subscriptionAppUrl.value}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
 		),
-		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
 		telemetryPayload: computed<UsageTelemetry>(() => ({
 			instance_id: instanceId.value,

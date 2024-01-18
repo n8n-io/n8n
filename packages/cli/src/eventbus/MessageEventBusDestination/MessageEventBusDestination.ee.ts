@@ -1,17 +1,13 @@
 import { v4 as uuid } from 'uuid';
-import type { INodeCredentials } from 'n8n-workflow';
-import {
-	LoggerProxy,
-	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import * as Db from '@/Db';
+import { Container } from 'typedi';
+import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { Logger } from '@/Logger';
 import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import type { EventMessageTypes } from '../EventMessageClasses';
-import type { DeleteResult, InsertResult } from 'typeorm';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -19,6 +15,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	readonly id: string;
 
 	readonly eventBusInstance: MessageEventBus;
+
+	protected readonly logger: Logger;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -33,6 +31,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	anonymizeAuditMessages: boolean;
 
 	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationOptions) {
+		this.logger = Container.get(Logger);
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
@@ -41,7 +40,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.subscribedEvents = options.subscribedEvents ?? [];
 		this.anonymizeAuditMessages = options.anonymizeAuditMessages ?? false;
 		if (options.credentials) this.credentials = options.credentials;
-		LoggerProxy.debug(`${this.__type}(${this.id}) event destination constructed`);
+		this.logger.debug(`${this.__type}(${this.id}) event destination constructed`);
 	}
 
 	startListening() {
@@ -55,7 +54,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 					await this.receiveFromEventBus({ msg, confirmCallback });
 				},
 			);
-			LoggerProxy.debug(`${this.id} listener started`);
+			this.logger.debug(`${this.id} listener started`);
 		}
 	}
 
@@ -92,7 +91,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			id: this.getId(),
 			destination: this.serialize(),
 		};
-		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(data, {
+		const dbResult = await Container.get(EventDestinationsRepository).upsert(data, {
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
 		});
@@ -100,11 +99,11 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	}
 
 	async deleteFromDb() {
-		return MessageEventBusDestination.deleteFromDb(this.getId());
+		return await MessageEventBusDestination.deleteFromDb(this.getId());
 	}
 
-	static async deleteFromDb(id: string): Promise<DeleteResult> {
-		const dbResult = await Db.collections.EventDestinations.delete({ id });
+	static async deleteFromDb(id: string) {
+		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
 		return dbResult;
 	}
 

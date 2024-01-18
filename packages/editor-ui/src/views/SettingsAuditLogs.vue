@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables';
-import { useUIStore, useAuditLogsStore } from '@/stores';
+import { useI18n } from '@/composables/useI18n';
+import { useAuditLogsStore } from '@/stores/auditLogs.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const locale = useI18n();
 const uiStore = useUIStore();
@@ -25,7 +26,7 @@ const goToUpgrade = () => {
 			data-test-id="audit-logs-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.auditLogs.actionBox.description')"
-			:buttonText="locale.baseText('settings.auditLogs.actionBox.buttonText')"
+			:button-text="locale.baseText('settings.auditLogs.actionBox.buttonText')"
 			@click:button="goToUpgrade"
 		>
 			<template #heading>

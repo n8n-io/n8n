@@ -1,8 +1,7 @@
 import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-
 import * as amqplib from 'amqplib';
+import { formatPrivateKey } from '@utils/utilities';
 
 export async function rabbitmqConnect(
 	this: IExecuteFunctions | ITriggerFunctions,
@@ -37,7 +36,7 @@ export async function rabbitmqConnect(
 		}
 	}
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			const connection = await amqplib.connect(credentialData, optsData);
 
@@ -74,9 +73,22 @@ export async function rabbitmqConnectQueue(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertQueue(queue, options);
+
+			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
+				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
+					async (binding: IDataObject) => {
+						await channel.bindQueue(
+							queue,
+							binding.exchange as string,
+							binding.routingKey as string,
+						);
+					},
+				);
+			}
+
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -92,7 +104,7 @@ export async function rabbitmqConnectExchange(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertExchange(exchange, type, options);
 			resolve(channel);

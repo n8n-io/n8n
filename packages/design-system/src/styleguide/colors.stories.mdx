@@ -2,7 +2,7 @@ import { Meta, Story, Canvas } from '@storybook/addon-docs';
 import ColorCircles from './ColorCircles.vue';
 
 <Meta
-	title="Styleguide/Colors"
+	title="Styleguide/Colors Tokens"
 	parameters={{
 		design: {
 			type: 'figma',
@@ -31,7 +31,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="secondary">
 		{{
-			template: `<color-circles :colors="['--color-secondary', '--color-secondary-tint-1', '--color-secondary-tint-2', '--color-secondary-tint-3', '--color-secondary-tint-4']" />`,
+			template: `<color-circles :colors="['--color-secondary-shade-1', '--color-secondary', '--color-secondary-tint-1', '--color-secondary-tint-3']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -44,7 +44,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="success">
 		{{
-			template: `<color-circles :colors="['--color-success', '--color-success-tint-1', '--color-success-tint-2', '--color-success-light']" />`,
+			template: `<color-circles :colors="['--color-success-shade-1', '--color-success', '--color-success-light',  '--color-success-light-2', '--color-success-tint-1', '--color-success-tint-2']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -57,7 +57,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="warning">
 		{{
-			template: `<color-circles :colors="['--color-warning', '--color-warning-tint-1', '--color-warning-tint-2']" />`,
+			template: `<color-circles :colors="['--color-warning-shade-1', '--color-warning', '--color-warning-tint-1', '--color-warning-tint-2']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -70,33 +70,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="danger">
 		{{
-			template: `<color-circles :colors="['--color-danger', '--color-danger-tint-1', '--color-danger-tint-2']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Info
-
-<Canvas>
-	<Story name="info">
-		{{
-			template: `<color-circles :colors="['--color-info', '--color-info-tint-1', '--color-info-tint-2']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Neutral
-
-<Canvas>
-	<Story name="neutral">
-		{{
-			template: `<color-circles :colors="['--color-neutral']" />`,
+			template: `<color-circles :colors="['--color-danger-shade-1', '--color-danger', '--color-danger-tint-1', '--color-danger-tint-2']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -109,7 +83,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="text">
 		{{
-			template: `<color-circles :colors="['--color-text-dark', '--color-text-base', '--color-text-light', '--color-text-lighter', '--color-text-xlight']" />`,
+			template: `<color-circles :colors="['--color-text-dark', '--color-text-base', '--color-text-light', '--color-text-lighter', '--color-text-xlight', '--color-text-danger']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -135,55 +109,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="background">
 		{{
-			template: `<color-circles :colors="['--color-background-dark', '--color-background-base', '--color-background-light', '--color-background-lighter', '--color-background-xlight']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Canvas
-
-<Canvas>
-	<Story name="canvas">
-		{{
-			template: `<color-circles :colors="['--color-canvas-background', '--color-canvas-dot']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-<Canvas>
-	<Story name="avatar">
-		{{
-			template: `<color-circles :colors="['--color-avatar-accent-1', '--color-avatar-accent-2']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-<Canvas>
-	<Story name="json">
-		{{
-			template: `<color-circles :colors="['--color-json-default', '--color-json-null', '--color-json-boolean', '--color-json-number', '--color-json-string', '--color-json-key', '--color-json-brackets', '--color-json-brackets-hover', '--color-json-line', '--color-json-highlight']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Sticky
-
-<Canvas>
-	<Story name="sticky">
-		{{
-			template: `<color-circles :colors="['--color-sticky-default-background', '--color-sticky-default-border']" />`,
+			template: `<color-circles :colors="['--color-background-dark', '--color-background-medium', '--color-background-base', '--color-background-light', '--color-background-xlight']" />`,
 			components: {
 				ColorCircles,
 			},

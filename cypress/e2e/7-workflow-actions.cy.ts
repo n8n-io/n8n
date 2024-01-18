@@ -4,6 +4,8 @@ import {
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
@@ -100,6 +102,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
+		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');
@@ -273,5 +276,21 @@ describe('Workflow Actions', () => {
 
 		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+	});
+});
+
+describe('Menu entry Push To Git', () => {
+	it('should not show up in the menu for members', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('not.exist');
+	});
+
+	it('should show up for owners', () => {
+		cy.signin(INSTANCE_OWNER);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('exist');
 	});
 });

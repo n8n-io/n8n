@@ -3,17 +3,15 @@ import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
@@ -24,6 +22,8 @@ import type {
 	IResult,
 	IWorkflowExecutionProgress,
 } from '../types/commands.types';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 
 const re = /\d+/;
 
@@ -120,7 +120,7 @@ export class ExecuteBatch extends BaseCommand {
 		const activeExecutionsInstance = Container.get(ActiveExecutions);
 		const stopPromises = activeExecutionsInstance
 			.getActiveExecutions()
-			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
+			.map(async (execution) => await activeExecutionsInstance.stopExecution(execution.id));
 
 		await Promise.allSettled(stopPromises);
 
@@ -276,9 +276,9 @@ export class ExecuteBatch extends BaseCommand {
 			ExecuteBatch.githubWorkflow = true;
 		}
 
-		ExecuteBatch.instanceOwner = await getInstanceOwner();
+		ExecuteBatch.instanceOwner = await Container.get(OwnershipService).getInstanceOwner();
 
-		const query = Db.collections.Workflow.createQueryBuilder('workflows');
+		const query = Container.get(WorkflowRepository).createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
 			query.andWhere('workflows.id in (:...ids)', { ids });
@@ -410,7 +410,7 @@ export class ExecuteBatch extends BaseCommand {
 			this.initializeLogs();
 		}
 
-		return new Promise(async (res) => {
+		return await new Promise(async (res) => {
 			const promisesArray = [];
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
@@ -486,7 +486,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new Error('Wrong execution status - cannot proceed');
+								throw new ApplicationError('Wrong execution status - cannot proceed');
 							}
 						});
 					}
@@ -623,7 +623,7 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
-		return new Promise(async (resolve) => {
+		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.

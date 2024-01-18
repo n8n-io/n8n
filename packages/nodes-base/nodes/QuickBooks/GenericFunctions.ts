@@ -9,14 +9,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
-
 import { capitalCase } from 'change-case';
 
 import omit from 'lodash/omit';
 import pickBy from 'lodash/pickBy';
 
 import type { OptionsWithUri } from 'request';
+import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
 import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
@@ -170,7 +169,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;

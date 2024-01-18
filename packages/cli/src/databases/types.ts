@@ -22,11 +22,7 @@ export interface MigrationContext {
 		tableName(name: string): string;
 		indexName(name: string): string;
 	};
-	runQuery<T>(
-		sql: string,
-		unsafeParameters?: ObjectLiteral,
-		nativeParameters?: ObjectLiteral,
-	): Promise<T>;
+	runQuery<T>(sql: string, namedParameters?: ObjectLiteral): Promise<T>;
 	runInBatches<T>(
 		query: string,
 		operation: (results: T[]) => Promise<void>,
@@ -63,3 +59,5 @@ export interface Migration extends Function {
 }
 
 export type InsertResult = Array<{ insertId: number }>;
+
+export { QueryFailedError } from 'typeorm/error/QueryFailedError';

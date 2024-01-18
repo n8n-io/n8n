@@ -1,8 +1,11 @@
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 
-export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
-	return new Promise((resolve, reject) => {
+export const retry = async (
+	assertion: () => ReturnType<typeof expect>,
+	{ interval = 20, timeout = 1000 } = {},
+) => {
+	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
 		const tryAgain = () => {
@@ -19,13 +22,16 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 	});
 };
 
-export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
+export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	settings: {
 		allowedModules: {},
 		communityNodesEnabled: false,
 		defaultLocale: '',
+		endpointForm: '',
+		endpointFormTest: '',
+		endpointFormWaiting: '',
 		endpointWebhook: '',
 		endpointWebhookTest: '',
 		enterprise: {

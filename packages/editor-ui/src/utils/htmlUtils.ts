@@ -33,13 +33,6 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function getStyleTokenValue(name: string, cssVariable = false): string {
-	if (cssVariable) return `var(${name})`;
-
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
-}
-
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }
@@ -64,7 +57,7 @@ export const capitalizeFirstLetter = (text: string): string => {
 };
 
 export const getBannerRowHeight = async (): Promise<number> => {
-	return new Promise((resolve) => {
+	return await new Promise((resolve) => {
 		setTimeout(() => {
 			resolve(document.getElementById('banners')?.clientHeight ?? 0);
 		}, 0);

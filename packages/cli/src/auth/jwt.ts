@@ -1,14 +1,16 @@
-import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import * as Db from '@/Db';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
-import * as ResponseHelper from '@/ResponseHelper';
 import { License } from '@/License';
 import { Container } from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
+import { JwtService } from '@/services/jwt.service';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { ApplicationError } from 'n8n-workflow';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -26,7 +28,7 @@ export function issueJWT(user: User): JwtToken {
 		!user.isOwner &&
 		!isWithinUsersLimit
 	) {
-		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')
@@ -34,7 +36,7 @@ export function issueJWT(user: User): JwtToken {
 			.digest('hex');
 	}
 
-	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
+	const signedToken = Container.get(JwtService).sign(payload, {
 		expiresIn: expiresIn / 1000 /* in seconds */,
 	});
 
@@ -44,38 +46,41 @@ export function issueJWT(user: User): JwtToken {
 	};
 }
 
+export const createPasswordSha = (user: User) =>
+	createHash('sha256')
+		.update(user.password.slice(user.password.length / 2))
+		.digest('hex');
+
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOne({
+	const user = await Container.get(UserRepository).findOne({
 		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
 	let passwordHash = null;
 	if (user?.password) {
-		passwordHash = createHash('sha256')
-			.update(user.password.slice(user.password.length / 2))
-			.digest('hex');
+		passwordHash = createPasswordSha(user);
 	}
 
 	// currently only LDAP users during synchronization
 	// can be set to disabled
 	if (user?.disabled) {
-		throw new ResponseHelper.AuthError('Unauthorized');
+		throw new AuthError('Unauthorized');
 	}
 
 	if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
 		// When owner hasn't been set up, the default user
 		// won't have email nor password (both equals null)
-		throw new Error('Invalid token content');
+		throw new ApplicationError('Invalid token content');
 	}
 	return user;
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+	const jwtPayload: JwtPayload = Container.get(JwtService).verify(token, {
 		algorithms: ['HS256'],
-	}) as JwtPayload;
-	return resolveJwtContent(jwtPayload);
+	});
+	return await resolveJwtContent(jwtPayload);
 }
 
 export async function issueCookie(res: Response, user: User): Promise<void> {

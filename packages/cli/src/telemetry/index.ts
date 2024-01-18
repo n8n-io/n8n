@@ -1,16 +1,17 @@
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
+import { Container, Service } from 'typedi';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
-import Container, { Service } from 'typedi';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
-import { InstanceSettings } from 'n8n-core';
+import { RoleRepository } from '@/databases/repositories/role.repository';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -38,9 +39,11 @@ export class Telemetry {
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	constructor(
+		private readonly logger: Logger,
 		private postHog: PostHogClient,
 		private license: License,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async init() {
@@ -50,15 +53,12 @@ export class Telemetry {
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
-				const logger = getLogger();
-				LoggerProxy.init(logger);
-				logger.warn('Diagnostics backend config is invalid');
+				this.logger.warn('Diagnostics backend config is invalid');
 				return;
 			}
 
 			const logLevel = config.getEnv('logs.level');
 
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			this.rudderStack = new RudderStack(key, url, { logLevel });
 
@@ -97,7 +97,7 @@ export class Telemetry {
 					...this.executionCountsBuffer[workflowId],
 				});
 
-				return promise;
+				return await promise;
 			});
 
 		this.executionCountsBuffer = {};
@@ -110,13 +110,14 @@ export class Telemetry {
 		const pulsePacket = {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
-			usage: await LicenseService.getActiveTriggerCount(),
+			usage: await this.workflowRepository.getActiveTriggerCount(),
+			role_count: await Container.get(RoleRepository).countUsersByRole(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
-		return Promise.all(allPromises);
+		return await Promise.all(allPromises);
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
@@ -154,7 +155,7 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
-		return new Promise<void>(async (resolve) => {
+		return await new Promise<void>(async (resolve) => {
 			await this.postHog.stop();
 
 			if (this.rudderStack) {
@@ -169,7 +170,7 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
@@ -190,7 +191,7 @@ export class Telemetry {
 		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
 	): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
 				const updatedProperties: ITelemetryTrackProperties = {

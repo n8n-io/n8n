@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { wrapData } from '../../utils/utilities';
 import { apiRequest } from './GenericFunctions';
 
 import { boardFields, boardOperations } from './BoardDescription';
@@ -22,7 +23,6 @@ import { checklistFields, checklistOperations } from './ChecklistDescription';
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
 
 import { listFields, listOperations } from './ListDescription';
-import { wrapData } from '../../utils/utilities';
 
 // https://wekan.github.io/api/v4.41/
 

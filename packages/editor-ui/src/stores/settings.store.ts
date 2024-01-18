@@ -20,20 +20,25 @@ import type {
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
-	ILogLevel,
+	LogLevel,
 	IN8nUISettings,
 	ITelemetrySettings,
 	WorkflowSettings,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
+import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
+		initialized: false,
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
@@ -69,7 +74,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise[feature];
+			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise?.[feature];
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
@@ -111,10 +116,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.deployment?.type.startsWith('desktop_');
 		},
 		isCloudDeployment(): boolean {
-			if (!this.settings.deployment) {
-				return false;
-			}
-			return this.settings.deployment.type === 'cloud';
+			return this.settings.deployment?.type === 'cloud';
 		},
 		isSmtpSetup(): boolean {
 			return this.userManagement.smtpSetup;
@@ -129,7 +131,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
-		logLevel(): ILogLevel {
+		logLevel(): LogLevel {
 			return this.settings.logLevel;
 		},
 		isTelemetryEnabled(): boolean {
@@ -170,6 +172,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isQueueModeEnabled(): boolean {
 			return this.settings.executionMode === 'queue';
 		},
+		isWorkerViewAvailable(): boolean {
+			return !!this.settings.enterprise?.workerView;
+		},
 		workflowCallerPolicyDefaultOption(): WorkflowSettings.CallerPolicy {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
@@ -190,6 +195,33 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			const { showToast } = useToast();
+			try {
+				await this.getSettings();
+
+				ExpressionEvaluatorProxy.setEvaluator(this.settings.expressions.evaluator);
+
+				// Re-compute title since settings are now available
+				useTitleChange().titleReset();
+
+				this.initialized = true;
+			} catch (e) {
+				showToast({
+					title: i18n.baseText('startupError'),
+					message: i18n.baseText('startupError.message'),
+					type: 'error',
+					duration: 0,
+					dangerouslyUseHTMLString: true,
+				});
+
+				throw e;
+			}
+		},
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
 			this.userManagement = settings.userManagement;
@@ -231,6 +263,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
 			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
+			rootStore.setEndpointForm(settings.endpointForm);
+			rootStore.setEndpointFormTest(settings.endpointFormTest);
+			rootStore.setEndpointFormWaiting(settings.endpointFormWaiting);
 			rootStore.setEndpointWebhook(settings.endpointWebhook);
 			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
 			rootStore.setTimezone(settings.timezone);
@@ -328,23 +363,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.getRestApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.getRestApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			this.saveDataErrorExecution = newValue;
@@ -357,9 +392,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
 		},
 	},
 });
-
-export { useUsersStore };

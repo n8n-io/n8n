@@ -27,8 +27,5 @@
 			}
 		]
 	},
-	"subcategories": {
-		"Core Nodes": ["Helpers"]
-	},
 	"alias": ["SMTP"]
 }

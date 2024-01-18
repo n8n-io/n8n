@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../utils/utilities';
 import {
 	getFieldsObject,
 	quickbaseApiRequest,
@@ -23,7 +24,6 @@ import { fileFields, fileOperations } from './FileDescription';
 import { recordFields, recordOperations } from './RecordDescription';
 
 import { reportFields, reportOperations } from './ReportDescription';
-import { generatePairedItemData } from '../../utils/utilities';
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {

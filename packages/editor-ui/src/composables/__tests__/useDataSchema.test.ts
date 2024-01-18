@@ -1,5 +1,5 @@
 import jp from 'jsonpath';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
 import type { Schema } from '@/Interface';
 
 describe('useDataSchema', () => {
@@ -284,7 +284,7 @@ describe('useDataSchema', () => {
 
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John'] };
-			const schema = getSchema(input) as Schema;
+			const schema = getSchema(input);
 			const pathData = jp.query(
 				input,
 				`$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
@@ -297,7 +297,7 @@ describe('useDataSchema', () => {
 				{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] },
 				{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
 			];
-			const schema = getSchema(input) as Schema;
+			const schema = getSchema(input);
 			const pathData = jp.query(
 				input,
 				`$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
@@ -307,7 +307,7 @@ describe('useDataSchema', () => {
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1, 2]];
-			const schema = getSchema(input) as Schema;
+			const schema = getSchema(input);
 			const pathData = jp.query(
 				input,
 				`$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
@@ -322,7 +322,7 @@ describe('useDataSchema', () => {
 					{ name: 'Joe', age: 33 },
 				],
 			];
-			const schema = getSchema(input) as Schema;
+			const schema = getSchema(input);
 			const pathData = jp.query(
 				input,
 				`$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
@@ -339,7 +339,7 @@ describe('useDataSchema', () => {
 					],
 				},
 			];
-			const schema = getSchema(input) as Schema;
+			const schema = getSchema(input);
 			const pathData = jp.query(
 				input,
 				`$${

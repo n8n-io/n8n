@@ -1,9 +1,9 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@/composables/useStorage';
 
-import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
@@ -13,9 +13,10 @@ import {
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const workflowActivate = defineComponent({
-	mixins: [externalHooks, workflowHelpers],
+	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -32,7 +33,7 @@ export const workflowActivate = defineComponent({
 	methods: {
 		async activateCurrentWorkflow(telemetrySource?: string) {
 			const workflowId = this.workflowsStore.workflowId;
-			return this.updateWorkflowActivation(workflowId, true, telemetrySource);
+			return await this.updateWorkflowActivation(workflowId, true, telemetrySource);
 		},
 		async updateWorkflowActivation(
 			workflowId: string | undefined,
@@ -40,7 +41,7 @@ export const workflowActivate = defineComponent({
 			telemetrySource?: string,
 		) {
 			this.updatingWorkflowActivation = true;
-			const nodesIssuesExist = this.workflowsStore.nodesIssuesExist as boolean;
+			const nodesIssuesExist = this.workflowsStore.nodesIssuesExist;
 
 			let currWorkflowId: string | undefined = workflowId;
 			if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -49,7 +50,7 @@ export const workflowActivate = defineComponent({
 					this.updatingWorkflowActivation = false;
 					return;
 				}
-				currWorkflowId = this.workflowsStore.workflowId as string;
+				currWorkflowId = this.workflowsStore.workflowId;
 			}
 			const isCurrentWorkflow = currWorkflowId === this.workflowsStore.workflowId;
 
@@ -63,7 +64,7 @@ export const workflowActivate = defineComponent({
 				ndv_input: telemetrySource === 'ndv',
 			};
 			this.$telemetry.track('User set workflow active status', telemetryPayload);
-			void this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 			try {
 				if (isWorkflowActive && newActiveState) {
@@ -76,7 +77,7 @@ export const workflowActivate = defineComponent({
 					return;
 				}
 
-				if (isCurrentWorkflow && nodesIssuesExist && newActiveState === true) {
+				if (isCurrentWorkflow && nodesIssuesExist && newActiveState) {
 					this.showMessage({
 						title: this.$locale.baseText(
 							'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
@@ -96,7 +97,7 @@ export const workflowActivate = defineComponent({
 					!this.uiStore.stateIsDirty,
 				);
 			} catch (error) {
-				const newStateName = newActiveState === true ? 'activated' : 'deactivated';
+				const newStateName = newActiveState ? 'activated' : 'deactivated';
 				this.showError(
 					error,
 					this.$locale.baseText('workflowActivator.showError.title', {
@@ -110,7 +111,7 @@ export const workflowActivate = defineComponent({
 			const activationEventName = isCurrentWorkflow
 				? 'workflow.activeChangeCurrent'
 				: 'workflow.activeChange';
-			void this.$externalHooks().run(activationEventName, {
+			void useExternalHooks().run(activationEventName, {
 				workflowId: currWorkflowId,
 				active: newActiveState,
 			});
@@ -119,10 +120,7 @@ export const workflowActivate = defineComponent({
 			this.updatingWorkflowActivation = false;
 
 			if (isCurrentWorkflow) {
-				if (
-					newActiveState &&
-					window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true'
-				) {
+				if (newActiveState && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 					this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 				} else {
 					await this.settingsStore.fetchPromptsData();

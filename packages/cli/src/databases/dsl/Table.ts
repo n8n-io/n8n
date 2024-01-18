@@ -1,7 +1,8 @@
-import type { TableForeignKeyOptions, TableIndexOptions } from 'typeorm';
-import { Table, QueryRunner, TableColumn } from 'typeorm';
+import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from 'typeorm';
+import { Table, TableColumn } from 'typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
+import { ApplicationError } from 'n8n-workflow';
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
@@ -61,7 +62,7 @@ export class CreateTable extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { columns, tableName: name, prefix, indices, foreignKeys } = this;
-		return queryRunner.createTable(
+		return await queryRunner.createTable(
 			new Table({
 				name: `${prefix}${name}`,
 				columns: columns.map((c) => c.toOptions(driver)),
@@ -77,7 +78,7 @@ export class CreateTable extends TableOperation {
 export class DropTable extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName: name, prefix } = this;
-		return queryRunner.dropTable(`${prefix}${name}`, true);
+		return await queryRunner.dropTable(`${prefix}${name}`, true);
 	}
 }
 
@@ -94,7 +95,7 @@ export class AddColumns extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { tableName, prefix, columns } = this;
-		return queryRunner.addColumns(
+		return await queryRunner.addColumns(
 			`${prefix}${tableName}`,
 			columns.map((c) => new TableColumn(c.toOptions(driver))),
 		);
@@ -113,7 +114,7 @@ export class DropColumns extends TableOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnNames } = this;
-		return queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
+		return await queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
 	}
 }
 
@@ -131,11 +132,11 @@ class ModifyNotNull extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnName, isNullable } = this;
 		const table = await queryRunner.getTable(`${prefix}${tableName}`);
-		if (!table) throw new Error(`No table found with the name ${tableName}`);
+		if (!table) throw new ApplicationError('No table found', { extra: { tableName } });
 		const oldColumn = table.findColumnByName(columnName)!;
 		const newColumn = oldColumn.clone();
 		newColumn.isNullable = isNullable;
-		return queryRunner.changeColumn(table, oldColumn, newColumn);
+		return await queryRunner.changeColumn(table, oldColumn, newColumn);
 	}
 }
 

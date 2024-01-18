@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { IDataObject, MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 export async function saveDestinationToDb(
@@ -12,12 +12,12 @@ export async function saveDestinationToDb(
 			...destination,
 			subscribedEvents,
 		};
-		return makeRestApiRequest(context, 'POST', '/eventbus/destination', data);
+		return await makeRestApiRequest(context, 'POST', '/eventbus/destination', data);
 	}
 }
 
 export async function deleteDestinationFromDb(context: IRestApiContext, destinationId: string) {
-	return makeRestApiRequest(context, 'DELETE', `/eventbus/destination?id=${destinationId}`);
+	return await makeRestApiRequest(context, 'DELETE', `/eventbus/destination?id=${destinationId}`);
 }
 
 export async function sendTestMessageToDestination(
@@ -28,27 +28,27 @@ export async function sendTestMessageToDestination(
 		const data: IDataObject = {
 			...destination,
 		};
-		return makeRestApiRequest(context, 'GET', '/eventbus/testmessage', data);
+		return await makeRestApiRequest(context, 'GET', '/eventbus/testmessage', data);
 	}
 }
 
 export async function getEventNamesFromBackend(context: IRestApiContext): Promise<string[]> {
-	return makeRestApiRequest(context, 'GET', '/eventbus/eventnames');
+	return await makeRestApiRequest(context, 'GET', '/eventbus/eventnames');
 }
 
 export async function getDestinationsFromBackend(
 	context: IRestApiContext,
 ): Promise<MessageEventBusDestinationOptions[]> {
-	return makeRestApiRequest(context, 'GET', '/eventbus/destination');
+	return await makeRestApiRequest(context, 'GET', '/eventbus/destination');
 }
 
 export async function getExecutionEvents(context: IRestApiContext, executionId: string) {
-	return makeRestApiRequest(context, 'GET', `/eventbus/execution/${executionId}`);
+	return await makeRestApiRequest(context, 'GET', `/eventbus/execution/${executionId}`);
 }
 
 export async function recoverExecutionDataFromEvents(
 	context: IRestApiContext,
 	executionId: string,
 ) {
-	return makeRestApiRequest(context, 'GET', `/eventbus/execution-recover/${executionId}`);
+	return await makeRestApiRequest(context, 'GET', `/eventbus/execution-recover/${executionId}`);
 }

@@ -17,7 +17,6 @@ export class PostHogClient {
 			return;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { PostHog } = await import('posthog-node');
 		this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'), {
 			host: config.getEnv('diagnostics.config.posthog.apiHost'),
@@ -50,7 +49,7 @@ export class PostHogClient {
 
 		// cannot use local evaluation because that requires PostHog personal api key with org-wide
 		// https://github.com/PostHog/posthog/issues/4849
-		return this.postHog.getAllFlags(fullId, {
+		return await this.postHog.getAllFlags(fullId, {
 			personProperties: {
 				created_at_timestamp: user.createdAt.getTime().toString(),
 			},

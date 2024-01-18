@@ -21,162 +21,36 @@ $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 $color-white: var(--color-foreground-xlight);
 $color-black: var(--color-foreground-dark);
 
-$color-primary-light-1: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	4%
-);
-$color-primary-light-2: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	8%
-);
-$color-primary-light-3: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	12%
-);
-$color-primary-light-4: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	16%
-);
-$color-primary-light-5: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	20%
-);
-$color-primary-light-6: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	24%
-);
-$color-primary-light-7: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	28%
-);
-$color-primary-light-8: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	32%
-);
-$color-primary-light-9: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	36%
-);
-$color-primary-light: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	30%
-);
-$color-primary-lighter: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	34%
-);
+$color-primary-light-1: var(--color-primary);
+$color-primary-light-2: var(--prim-color-primary-tint-100); // ! TODO Token should be used here
+$color-primary-light-3: var(--prim-color-primary-tint-100); // ! TODO Token should be used here
+$color-primary-light-4: var(--color-primary-tint-1);
+$color-primary-light-5: var(--color-primary-tint-1);
+$color-primary-light-6: var(--color-primary-tint-2);
+$color-primary-light-9: var(--color-primary-tint-3);
+$color-primary-light: var(--color-primary-tint-3);
+$color-primary-lighter: var(--color-primary-tint-3);
 
-$color-primary-shade-1: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	-(10)
-);
+$color-success-light-1: var(--color-success);
+$color-success-light: var(--color-success-light);
+$color-success-lighter: var(--color-success-tint-1);
 
-$color-success-light-1: function.lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	4%
-);
-$color-success-light-3: function.lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	12%
-);
-$color-success-light-5: function.lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	20%
-);
-$color-success-light: function.lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	41%
-);
-$color-success-lighter: function.lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	48%
-);
+$color-warning-light-1: var(--color-warning);
+$color-warning-light-3: var(--color-warning-tint-1);
+$color-warning-light-5: var(--color-warning-tint-1);
+$color-warning-light: var(--color-warning-tint-2);
+$color-warning-lighter: var(--color-warning-tint-2);
 
-$color-warning-light-1: function.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	4%
-);
-$color-warning-light-3: function.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	12%
-);
-$color-warning-light-5: function.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	20%
-);
-$color-warning-light: function.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	34%
-);
-$color-warning-lighter: function.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	40%
-);
-
-$color-danger-light-1: function.lightness(--color-danger-h, --color-danger-s, --color-danger-l, 4%);
-$color-danger-light-3: function.lightness(
-	--color-danger-h,
-	--color-danger-s,
-	--color-danger-l,
-	12%
-);
-$color-danger-light-5: function.lightness(
-	--color-danger-h,
-	--color-danger-s,
-	--color-danger-l,
-	20%
-);
-$color-danger-light: function.lightness(--color-danger-h, --color-danger-s, --color-danger-l, 24%);
+$color-danger-light-1: var(--color-danger);
+$color-danger-light-3: var(--prim-color-alt-c-tint-150); // ! TODO Token should be used here
+$color-danger-light-5: var(--prim-color-alt-c-tint-150); // ! TODO Token should be used here
+$color-danger-light: var(--color-danger-tint-1);
 $color-danger-lighter: var(--color-danger-tint-2);
 
-$color-info-light-1: function.lightness(--color-info-h, --color-info-s, --color-info-l, 4%);
-$color-info-light-3: function.lightness(--color-info-h, --color-info-s, --color-info-l, 12%);
-$color-info-light-5: function.lightness(--color-info-h, --color-info-s, --color-info-l, 20%);
-$color-info-lighter: function.lightness(--color-info-h, --color-info-s, --color-info-l, 39%);
+$color-info-light-1: var(-color-info);
+$color-info-light-3: var(--prim-gray-320); // ! TODO Token should be used here
+$color-info-light-5: var(--prim-gray-200); // ! TODO Token should be used here
+$color-info-lighter: var(--color-info-tint-2);
 
 // Background
 /// color|1|Background Color|4
@@ -184,8 +58,9 @@ $background-color-base: var(--color-background-base);
 
 /* Link
 -------------------------- */
-$link-color: $color-primary-light-2;
-$link-hover-color: var(--color-primary);
+$link-color: var(--color-primary);
+$link-color-hover: var(--color-primary-shade-1);
+$link-color-active: var(--color-primary-shade-1);
 
 /* Border
 -------------------------- */
@@ -200,15 +75,11 @@ $focus-outline-width: 2px;
 /* Box shadow
 -------------------------- */
 /// boxShadow|1|Shadow|1
-$box-shadow-base:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.04);
+$box-shadow-base: var(--box-shadow-base);
 // boxShadow|1|Shadow|1
-$box-shadow-dark:
-	0 2px 4px rgba(0, 0, 0, 0.12),
-	0 0 6px rgba(0, 0, 0, 0.12);
+$box-shadow-dark: var(--box-shadow-dark);
 /// boxShadow|1|Shadow|1
-$box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+$box-shadow-light: var(--box-shadow-light);
 
 /* Fill
 -------------------------- */
@@ -234,7 +105,7 @@ $font-size-extra-small: var(--font-size-2xs);
 $font-weight-primary: var(--font-weight-regular);
 /// fontLineHeight|1|Line Height|2
 $font-line-height-primary: 24px;
-$font-color-disabled-base: #bbb;
+$font-color-disabled-base: var(--color-text-light);
 
 /* z-index
 -------------------------- */
@@ -264,12 +135,12 @@ $checkbox-input-width: 14px;
 /// borderRadius||Border|2
 $checkbox-border-radius: var(--border-radius-small);
 /// color||Color|0
-$checkbox-background-color: $color-white;
+$checkbox-background-color: var(--color-background-xlight);
 $checkbox-input-border: var(--border-base);
 
 /// color||Color|0
 $checkbox-disabled-border-color: var(--border-color-base);
-$checkbox-disabled-input-fill: #edf2fc;
+$checkbox-disabled-input-fill: var(--color-background-base);
 $checkbox-disabled-icon-color: var(--color-text-lighter);
 
 $checkbox-disabled-checked-input-fill: var(--border-color-light);
@@ -310,7 +181,7 @@ $checkbox-bordered-mini-height: 28px;
 /// color||Color|0
 $checkbox-button-checked-background-color: var(--color-primary);
 /// color||Color|0
-$checkbox-button-checked-font-color: $color-white;
+$checkbox-button-checked-font-color: var(--color-text-xlight);
 /// color||Color|0
 $checkbox-button-checked-border-color: var(--color-primary);
 
@@ -327,12 +198,12 @@ $radio-input-width: 14px;
 /// borderRadius||Border|2
 $radio-input-border-radius: $border-radius-circle;
 /// color||Color|0
-$radio-input-background-color: $color-white;
+$radio-input-background-color: var(--color-background-xlight);
 $radio-input-border: var(--border-base);
 /// color||Color|0
 $radio-input-border-color: var(--border-color-base);
 /// color||Color|0
-$radio-icon-color: $color-white;
+$radio-icon-color: var(--color-text-xlight);
 
 $radio-disabled-input-border-color: $disabled-border-base;
 $radio-disabled-input-fill: $disabled-fill-base;
@@ -347,7 +218,7 @@ $radio-checked-font-color: var(--color-primary);
 /// color||Color|0
 $radio-checked-input-border-color: var(--color-primary);
 /// color||Color|0
-$radio-checked-input-background-color: $color-white;
+$radio-checked-input-background-color: var(--color-background-xlight);
 /// color||Color|0
 $radio-checked-icon-color: var(--color-primary);
 
@@ -373,7 +244,7 @@ $radio-button-font-size: $font-size-base;
 /// color||Color|0
 $radio-button-checked-background-color: var(--color-primary);
 /// color||Color|0
-$radio-button-checked-font-color: $color-white;
+$radio-button-checked-font-color: var(--color-background-xlight);
 /// color||Color|0
 $radio-button-checked-border-color: var(--color-primary);
 $radio-button-disabled-checked-fill: var(--border-color-light);
@@ -395,7 +266,7 @@ $select-input-font-size: 14px;
 
 $select-option-color: var(--color-text-dark);
 $select-option-disabled-color: var(--color-text-lighter);
-$select-option-disabled-background: $color-white;
+$select-option-disabled-background: var(--color-background-xlight);
 /// height||Other|4
 $select-option-height: 34px;
 $select-option-hover-background: $background-color-base;
@@ -468,7 +339,7 @@ $messagebox-danger-color: var(--color-danger);
 -------------------------- */
 $message-shadow: $box-shadow-base;
 $message-min-width: 380px;
-$message-background-color: #edf2fc;
+$message-background-color: var(--color-background-base);
 $message-padding: 16px 16px 16px 20px;
 /// color||Color|0
 $message-close-icon-color: var(--color-text-lighter);
@@ -528,8 +399,16 @@ $input-placeholder-color: var(--input-placeholder-color, var(--color-text-light)
 $input-focus-border: var(--input-focus-border-color, var(--color-secondary));
 $input-border-color: var(--input-border-color, var(--border-color-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
-$input-border-width: var(--border-width-base);
+$input-border-width: var(--input-border-width, var(--border-width-base));
 $input-border: $input-border-color $input-border-style $input-border-width;
+$input-border-right-color: var(
+	--input-border-right-color,
+	var(--input-border-color, var(--border-color-base))
+);
+$input-border-bottom-color: var(
+	--input-border-bottom-color,
+	var(--input-border-color, var(--border-color-base))
+);
 
 $input-font-size: var(--input-font-size, var(--font-size-s));
 /// color||Color|0
@@ -539,6 +418,23 @@ $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 /// borderRadius||Border|2
+$input-border-radius: var(--input-border-radius, var(--border-radius-base));
+$input-border-top-left-radius: var(
+	--input-border-top-left-radius,
+	var(--input-border-radius, var(--border-radius-base))
+);
+$input-border-top-right-radius: var(
+	--input-border-top-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-left-radius: var(
+	--input-border-bottom-left-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-right-radius: var(
+	--input-border-bottom-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
 $input-border-radius: var(--input-border-radius, var(--border-radius-base));
 $input-border-color-hover: $border-color-hover;
 /// color||Color|0
@@ -585,7 +481,7 @@ $cascader-menu-shadow: $box-shadow-light;
 $cascader-node-background-hover: $background-color-base;
 $cascader-node-color-disabled: var(--color-text-lighter);
 $cascader-color-empty: var(--color-text-lighter);
-$cascader-tag-background: #f0f2f5;
+$cascader-tag-background: var(--color-background-base);
 
 /* Group
 -------------------------- */
@@ -599,7 +495,7 @@ $group-title-width: 66px;
 /* Tab
 -------------------------- */
 $tab-font-size: $font-size-base;
-$tab-border-line: 1px solid #e4e4e4;
+$tab-border-line: 1px solid var(--color-foreground-base);
 $tab-header-color-active: var(--color-text-light);
 $tab-header-color-hover: var(--color-text-dark);
 $tab-header-color: var(--color-text-dark);
@@ -612,13 +508,9 @@ $tab-vertical-header-count-fill: var(--color-text-light);
 /* Button
 -------------------------- */
 $button-font-size: var(--button-font-size, var(--font-size-s));
-
 $button-padding-vertical: var(--button-padding-vertical, var(--spacing-xs));
 $button-padding-horizontal: var(--button-padding-horizontal, var(--spacing-m));
-
 $button-border-radius: var(--button-border-radius, 4px);
-
-$button-border-color: var(--button-border-color, var(--color-primary));
 
 /// fontSize||Font|1
 $button-medium-font-size: $font-size-base;
@@ -644,42 +536,91 @@ $button-mini-padding-vertical: 7px;
 /// padding||Spacing|3
 $button-mini-padding-horizontal: 15px;
 
-$button-font-color: var(--button-color, var(--color-text-xlight));
-$button-background-color: var(--button-background-color, var(--color-primary));
+// All buttons colors (defaults to primary buttons style).
+// Default
+$button-font-color: var(--button-font-color, var(--color-button-primary-font));
+$button-border-color: var(--button-border-color, var(--color-button-primary-border));
+$button-background-color: var(--button-background-color, var(--color-button-primary-background));
 
-$button-active-color: var(--button-active-color, var(--color-text-xlight));
-$button-active-border-color: var(--button-active-border-color, var(--color-primary-shade-1));
-$button-active-background-color: var(
-	--button-active-background-color,
-	var(--color-primary-shade-1)
+// Hover
+$button-hover-font-color: var(--button-hover-font-color, var(--color-button-primary-font));
+$button-hover-border-color: var(
+	--button-hover-border-color,
+	var(--color-button-primary-hover-active-border)
+);
+$button-hover-background-color: var(
+	--button-hover-background-color,
+	var(--color-button-primary-hover-active-background)
 );
 
-$button-focus-outline-color: var(--button-focus-outline-color, var(--color-primary-tint-1));
+// Active
+$button-active-font-color: var(--button-active-font-color, var(--color-button-primary-font));
+$button-active-border-color: var(
+	--button-active-border-color,
+	var(--color-button-primary-hover-active-border)
+);
+$button-active-background-color: var(
+	--button-active-background-color,
+	var(--color-button-primary-hover-active-background)
+);
 
-$button-hover-color: var(--button-hover-color, var(--color-text-xlight));
-$button-hover-border-color: var(--button-hover-border-color, var(--color-primary-shade-1));
-$button-hover-background-color: var(--button-hover-background-color, var(--color-primary-shade-1));
+// Focus
+$button-focus-font-color: var(--button-focus-font-color, var(--color-button-primary-font));
+$button-focus-border-color: var(--button-focus-border-color, var(--color-button-primary-border));
+$button-focus-background-color: var(
+	--button-focus-background-color,
+	var(--color-button-primary-background)
+);
+$button-focus-outline-color: var(
+	--button-focus-outline-color,
+	var(--color-button-primary-focus-outline)
+);
+
+// Disabled
+$button-disabled-font-color: var(
+	--button-disabled-font-color,
+	var(--color-button-primary-disabled-font)
+);
+$button-disabled-border-color: var(
+	--button-disabled-border-color,
+	var(--color-button-primary-disabled-border)
+);
+$button-disabled-background-color: var(
+	--button-disabled-background-color,
+	var(--color-button-primary-disabled-background)
+);
+
+// Loading
+$button-loading-font-color: var(--button-loading-font-color, var(--color-button-primary-font));
+$button-loading-border-color: var(
+	--button-loading-border-color,
+	var(--color-button-primary-border)
+);
+$button-loading-background-color: var(
+	--button-loading-background-color,
+	var(--color-button-primary-background)
+);
 
 /// color||Color|0
-$button-default-font-color: var(--color-text-dark);
+$button-default-font-color: var(--color-text-dark); // ! Actually used by checkbox
 /// color||Color|0
-$button-default-background-color: $color-white;
+$button-default-background-color: $color-white; // ! Actually used by checkbox
 /// color||Color|0
-$button-default-border-color: var(--border-color-base);
+// $button-default-border-color: var(--border-color-base); // ! Never used
 
 /// color||Color|0
-$button-disabled-font-color: var(--button-disabled-color, var(--color-text-dark));
+// $button-disabled-font-color: var(--button-disabled-color, var(--color-text-dark));
 /// color||Color|0
-$button-disabled-background-color: var(--button-disabled-background-color, var(--color-light-grey));
+// $button-disabled-background-color: var(--button-disabled-background-color, var(--color-light-grey));
 /// color||Color|0
-$button-disabled-border-color: var(--button-disabled-border-color, var(--color-light-grey));
+// $button-disabled-border-color: var(--button-disabled-border-color, var(--color-light-grey));
 
 /// color||Color|0
-$button-primary-border-color: var(--color-primary);
+$button-primary-border-color: $button-border-color; // var(--color-primary);
 /// color||Color|0
-$button-primary-font-color: $color-white;
+$button-primary-font-color: $button-font-color; // $color-white;
 /// color||Color|0
-$button-primary-background-color: var(--color-primary);
+$button-primary-background-color: $button-background-color; // var(--color-primary);
 /// color||Color|0
 $button-success-border-color: var(--color-success);
 /// color||Color|0
@@ -715,10 +656,11 @@ $cascader-height: 200px;
 
 /* Switch
 -------------------------- */
+$switch-toggle-color: var(--color-switch-toggle);
 /// color||Color|0
-$switch-on-color: #13ce66;
+$switch-on-color: var(--color-switch-active-background);
 /// color||Color|0
-$switch-off-color: var(--color-text-light);
+$switch-off-color: var(--color-switch-background);
 /// fontSize||Font|1
 $switch-font-size: $font-size-base;
 $switch-core-border-radius: 10px;
@@ -749,8 +691,9 @@ $table-font-color: var(--color-text-dark);
 /// color||Color|0
 $table-header-font-color: var(--color-text-light);
 /// color||Color|0
-$table-row-hover-background-color: $background-color-base;
+$table-row-hover-background-color: var(--color-table-row-hover-background);
 $table-current-row-background-color: $color-primary-light-9;
+$table-row-striped-background-color: var(--color-table-row-even-background);
 /// color||Color|0
 $table-header-background-color: $color-white;
 $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
@@ -780,7 +723,7 @@ $pagination-hover-color: var(--color-primary);
 /* Popup
 -------------------------- */
 /// color||Color|0
-$popup-modal-background-color: hsla(247, 14%, 30%, 0.75);
+$popup-modal-background-color: var(--color-dialog-overlay-background);
 /// opacity||Other|1
 $popup-modal-opacity: 0.65;
 
@@ -804,13 +747,13 @@ $popover-title-font-color: var(--color-text-dark);
 /* Tooltip
 -------------------------- */
 /// color|1|Color|0
-$tooltip-fill: var(--color-text-dark);
+$tooltip-fill: var(--color-background-dark);
 /// color|1|Color|0
 $tooltip-color: $color-white;
 /// fontSize||Font|1
 $tooltip-font-size: 12px;
 /// color||Color|0
-$tooltip-border-color: var(--color-text-dark);
+$tooltip-border-color: var(--color-background-dark);
 $tooltip-arrow-size: 6px;
 /// padding||Spacing|3
 $tooltip-padding: 10px;
@@ -844,8 +787,8 @@ $tree-expand-icon-color: var(--color-text-lighter);
 /* Dropdown
 -------------------------- */
 $dropdown-menu-box-shadow: $box-shadow-light;
-$dropdown-menuItem-hover-fill: $color-primary-light-9;
-$dropdown-menuItem-hover-color: $link-color;
+$dropdown-menuItem-hover-fill: var(--color-action-dropdown-item-active-background);
+$dropdown-menuItem-hover-color: var(--color-text-dark);
 
 /* Badge
 -------------------------- */
@@ -934,7 +877,7 @@ $datepicker-off-font-color: var(--color-text-lighter);
 $datepicker-header-font-color: var(--color-text-dark);
 $datepicker-icon-color: var(--color-text-dark);
 $datepicker-border-color: $disabled-border-base;
-$datepicker-inner-border-color: #e4e4e4;
+$datepicker-inner-border-color: var(--color-foreground-base);
 /// color||Color|0
 $datepicker-inrange-background-color: var(--border-color-light);
 /// color||Color|0
@@ -948,7 +891,7 @@ $datepicker-cell-hover-color: var(--color-foreground-xlight);
 /* Loading
 --------------------------*/
 /// height||Other|4
-$loading-spinner-size: 42px;
+$loading-spinner-size: 24px;
 /// height||Other|4
 $loading-fullscreen-spinner-size: 50px;
 
@@ -1074,7 +1017,7 @@ $link-info-font-color: var(--color-info);
 /// border||Other|4
 $calendar-border: $table-border;
 /// color||Other|4
-$calendar-selected-background-color: #f2f8fe;
+$calendar-selected-background-color: var(--color-background-base);
 $calendar-cell-width: 85px;
 
 /* Form
@@ -1087,7 +1030,7 @@ $form-label-font-size: $font-size-base;
 /// color||Color|0
 $avatar-font-color: var(--color-text-xlight);
 /// color||Color|0
-$avatar-background-color: #c0c4cc;
+$avatar-background-color: var(--color-foreground-dark);
 /// fontSize||Font Size|1
 $avatar-text-font-size: 14px;
 /// fontSize||Font Size|1

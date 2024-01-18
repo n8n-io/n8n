@@ -97,12 +97,12 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			:active="activeItemId === category"
 			:count="actionCount"
 			:expanded="expanded"
-			:isTrigger="isTriggerCategory"
+			:is-trigger="isTriggerCategory"
 			data-keyboard-nav-type="category"
 			:data-keyboard-nav-id="category"
 			@click="toggleExpanded"
 		>
-			<span :class="$style.mouseOverTooltip" v-if="mouseOverTooltip">
+			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
@@ -111,7 +111,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 				</n8n-tooltip>
 			</span>
 		</CategoryItem>
-		<div :class="$style.contentSlot" v-if="expanded && actionCount > 0 && $slots.default">
+		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
@@ -119,7 +119,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			v-if="expanded"
 			v-bind="$attrs"
 			:elements="elements"
-			:isTrigger="isTriggerCategory"
+			:is-trigger="isTriggerCategory"
 		>
 			<template #default> </template>
 			<template #empty>
@@ -133,6 +133,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
+	color: var(--color-foreground-xdark);
 	&:hover {
 		color: var(--color-primary);
 	}

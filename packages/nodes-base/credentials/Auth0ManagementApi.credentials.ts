@@ -16,6 +16,12 @@ export class Auth0ManagementApi implements ICredentialType {
 
 	icon = 'file:icons/Auth0.svg';
 
+	httpRequestNode = {
+		name: 'Auth0',
+		docsUrl: 'https://auth0.com/docs/api/management/v2',
+		apiBaseUrlPlaceholder: 'https://your-tenant.auth0.com/api/v2/users/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',

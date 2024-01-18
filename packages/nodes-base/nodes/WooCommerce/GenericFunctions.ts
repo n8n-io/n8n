@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { OptionsWithUri } from 'request';
 
 import type {
@@ -9,13 +10,10 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
-
-import { createHash } from 'crypto';
-
 import { snakeCase } from 'change-case';
 
 import omit from 'lodash/omit';
+import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
 export async function woocommerceApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -41,7 +39,7 @@ export async function woocommerceApiRequest(
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
 export async function woocommerceApiRequestAllItems(

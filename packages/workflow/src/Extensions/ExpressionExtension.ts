@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { DateTime } from 'luxon';
-import { ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
 import type { Config as EsprimaConfig } from 'esprima-next';

@@ -166,6 +166,34 @@ describe('Execute Spreadsheet File Node', () => {
 				},
 			},
 		},
+		{
+			description: 'execute includeempty.json',
+			input: {
+				workflowData: loadWorkflow('workflow.empty.json', 'includeempty.csv'),
+			},
+			output: {
+				nodeData: {
+					'Include Empty': [[{ json: { A: '1', B: '', C: '3' } }]],
+					'Ignore Empty': [[{ json: { A: '1', C: '3' } }]],
+				},
+			},
+		},
+		{
+			description: 'execute utf8.json',
+			input: {
+				workflowData: loadWorkflow('workflow.utf8.json', 'utf8.csv'),
+			},
+			output: {
+				nodeData: {
+					'Parse UTF8 v1': [
+						[{ json: { A: 1, B: '株式会社', C: 3 } }, { json: { A: 4, B: 5, C: '🐛' } }],
+					],
+					'Parse UTF8 v2': [
+						[{ json: { A: '1', B: '株式会社', C: '3' } }, { json: { A: '4', B: '5', C: '🐛' } }],
+					],
+				},
+			},
+		},
 	];
 
 	const nodeTypes = Helpers.setup(tests);

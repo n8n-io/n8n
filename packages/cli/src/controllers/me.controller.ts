@@ -1,33 +1,37 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
+import { Response } from 'express';
+import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
-import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
-import { BadRequestError } from '@/ResponseHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
-import { Response } from 'express';
-import { ILogger } from 'n8n-workflow';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { PublicUser } from '@/Interfaces';
-import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized()
 @RestController('/me')
 export class MeController {
 	constructor(
-		private readonly logger: ILogger,
-		private readonly externalHooks: IExternalHooksClass,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly userService: UserService,
+		private readonly passwordUtility: PasswordUtility,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -71,8 +75,13 @@ export class MeController {
 			}
 		}
 
+		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+
 		await this.userService.update(userId, payload);
-		const user = await this.userService.findOneOrFail({ where: { id: userId } });
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['globalRole'],
+		});
 
 		this.logger.info('User updated successfully', { userId });
 
@@ -116,16 +125,19 @@ export class MeController {
 			throw new BadRequestError('Requesting user not set up.');
 		}
 
-		const isCurrentPwCorrect = await compareHash(currentPassword, req.user.password);
+		const isCurrentPwCorrect = await this.passwordUtility.compare(
+			currentPassword,
+			req.user.password,
+		);
 		if (!isCurrentPwCorrect) {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const validPassword = validatePassword(newPassword);
+		const validPassword = this.passwordUtility.validate(newPassword);
 
-		req.user.password = await hashPassword(validPassword);
+		req.user.password = await this.passwordUtility.hash(validPassword);
 
-		const user = await this.userService.save(req.user);
+		const user = await this.userRepository.save(req.user);
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
@@ -157,7 +169,7 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userService.save({
+		await this.userRepository.save({
 			id: req.user.id,
 			// @ts-ignore
 			personalizationAnswers,
@@ -220,9 +232,10 @@ export class MeController {
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userService.findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
+			relations: ['globalRole'],
 		});
 
 		return user.settings;

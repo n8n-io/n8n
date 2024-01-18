@@ -10,9 +10,11 @@ import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { RoleService } from '@/services/role.service';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
-	return Db.collections.Credentials.findOneBy({ id: credentialId });
+	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
@@ -20,7 +22,7 @@ export async function getSharedCredentials(
 	credentialId: string,
 	relations?: string[],
 ): Promise<SharedCredentials | null> {
-	return Db.collections.SharedCredentials.findOne({
+	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
 			userId,
 			credentialsId: credentialId,
@@ -62,7 +64,7 @@ export async function saveCredential(
 
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-	return Db.transaction(async (transactionManager) => {
+	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
@@ -83,7 +85,7 @@ export async function saveCredential(
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
-	return Db.collections.Credentials.remove(credentials);
+	return await Container.get(CredentialsRepository).remove(credentials);
 }
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {

@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '../../../utils/utilities';
 import {
 	parseJsonParameter,
 	validateEntry,
@@ -14,7 +15,6 @@ import {
 	resolveRawData,
 } from './helpers/utils';
 import type { SetField, SetNodeOptions } from './helpers/interfaces';
-import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -139,11 +139,9 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Value',
 						name: 'objectValue',
-						type: 'string',
+						type: 'json',
 						default: '={}',
 						typeOptions: {
-							editor: 'json',
-							editorLanguage: 'json',
 							rows: 2,
 						},
 						displayOptions: {

@@ -1,43 +1,44 @@
 <template>
-	<div @keydown.stop class="collection-parameter">
+	<div class="collection-parameter" @keydown.stop>
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<Suspense>
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="getProperties"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="path"
-					:hideDelete="hideDelete"
+					:hide-delete="hideDelete"
 					:indent="true"
-					:isReadOnly="isReadOnly"
+					:is-read-only="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
-					v-if="parameter.options.length === 1"
+					v-if="(parameter.options ?? []).length === 1"
 					type="tertiary"
 					block
-					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
+					@click="optionSelected((parameter.options ?? [])[0].name)"
 				/>
 				<div v-else class="add-option">
 					<n8n-select
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@update:modelValue="optionSelected"
 						filterable
+						@update:modelValue="optionSelected"
 					>
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+							:label="getParameterOptionLabel(item)"
 							:value="item.name"
+							data-test-id="collection-parameter-option"
 						>
 						</n8n-option>
 					</n8n-select>
@@ -47,159 +48,168 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import type { INodeUi, IUpdateInformation } from '@/Interface';
+<script lang="ts" setup>
+import { ref, computed, defineAsyncComponent } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useI18n } from '@/composables/useI18n';
+const ParameterInputList = defineAsyncComponent(
+	async () => await import('./ParameterInputList.vue'),
+);
 
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+const selectedOption = ref<string | undefined>(undefined);
+export interface Props {
+	hideDelete?: boolean;
+	nodeValues: INodeParameters;
+	parameter: INodeProperties;
+	path: string;
+	values: INodeProperties;
+	isReadOnly?: boolean;
+}
+const emit = defineEmits<{
+	(event: 'valueChanged', value: IUpdateInformation): void;
+}>();
+const props = defineProps<Props>();
+const ndvStore = useNDVStore();
+const i18n = useI18n();
+const nodeHelpers = useNodeHelpers();
 
-export default defineComponent({
-	name: 'CollectionParameter',
-	mixins: [nodeHelpers],
-	props: [
-		'hideDelete', // boolean
-		'nodeValues', // NodeParameters
-		'parameter', // INodeProperties
-		'path', // string
-		'values', // NodeParameters
-		'isReadOnly', // boolean
-	],
-	components: {
-		ParameterInputList,
-	},
-	data() {
-		return {
-			selectedOption: undefined,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		getPlaceholderText(): string {
-			const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
-			return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
-		},
-		getProperties(): INodeProperties[] {
-			const returnProperties = [];
-			let tempProperties;
-			for (const name of this.propertyNames) {
-				tempProperties = this.getOptionProperties(name);
-				if (tempProperties !== undefined) {
-					returnProperties.push(...tempProperties);
-				}
-			}
-			return returnProperties;
-		},
-		// Returns all the options which should be displayed
-		filteredOptions(): Array<INodePropertyOptions | INodeProperties> {
-			return (this.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter(
-				(option) => {
-					return this.displayNodeParameter(option as INodeProperties);
-				},
-			);
-		},
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		// Returns all the options which did not get added already
-		parameterOptions(): Array<INodePropertyOptions | INodeProperties> {
-			return (this.filteredOptions as Array<INodePropertyOptions | INodeProperties>).filter(
-				(option) => {
-					return !this.propertyNames.includes(option.name);
-				},
-			);
-		},
-		propertyNames(): string[] {
-			if (this.values) {
-				return Object.keys(this.values);
-			}
-			return [];
-		},
-	},
-	methods: {
-		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
-		},
-		getOptionProperties(optionName: string): INodeProperties[] {
-			const properties: INodeProperties[] = [];
-			for (const option of this.parameter.options) {
-				if (option.name === optionName) {
-					properties.push(option);
-				}
-			}
-
-			return properties;
-		},
-		displayNodeParameter(parameter: INodeProperties) {
-			if (parameter.displayOptions === undefined) {
-				// If it is not defined no need to do a proper check
-				return true;
-			}
-			return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
-		},
-		optionSelected(optionName: string) {
-			const options = this.getOptionProperties(optionName);
-			if (options.length === 0) {
-				return;
-			}
-
-			const option = options[0];
-			const name = `${this.path}.${option.name}`;
-
-			let parameterData;
-
-			if (option.typeOptions !== undefined && option.typeOptions.multipleValues === true) {
-				// Multiple values are allowed
-
-				let newValue;
-				if (option.type === 'fixedCollection') {
-					// The "fixedCollection" entries are different as they save values
-					// in an object and then underneath there is an array. So initialize
-					// them differently.
-					newValue = get(this.nodeValues, `${this.path}.${optionName}`, {});
-				} else {
-					// Everything else saves them directly as an array.
-					newValue = get(this.nodeValues, `${this.path}.${optionName}`, []);
-					newValue.push(deepCopy(option.default));
-				}
-
-				parameterData = {
-					name,
-					value: newValue,
-				};
-			} else {
-				// Add a new option
-				parameterData = {
-					name,
-					value: deepCopy(option.default),
-				};
-			}
-
-			this.$emit('valueChanged', parameterData);
-			this.selectedOption = undefined;
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
-		},
-	},
+const getPlaceholderText = computed(() => {
+	return (
+		i18n.nodeText().placeholder(props.parameter, props.path) ??
+		i18n.baseText('collectionParameter.choose')
+	);
 });
+
+function isNodePropertyCollection(
+	object: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): object is INodePropertyCollection {
+	return 'values' in object;
+}
+
+function getParameterOptionLabel(
+	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): string {
+	if (isNodePropertyCollection(item)) {
+		return i18n.nodeText().collectionOptionDisplayName(props.parameter, item, props.path);
+	}
+
+	return 'displayName' in item ? item.displayName : item.name;
+}
+
+function displayNodeParameter(parameter: INodeProperties) {
+	if (parameter.displayOptions === undefined) {
+		// If it is not defined no need to do a proper check
+		return true;
+	}
+	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
+}
+
+function getOptionProperties(optionName: string) {
+	const properties = [];
+	for (const option of props.parameter.options ?? []) {
+		if (option.name === optionName) {
+			properties.push(option);
+		}
+	}
+
+	return properties;
+}
+const propertyNames = computed<string[]>(() => {
+	if (props.values) {
+		return Object.keys(props.values);
+	}
+	return [];
+});
+const getProperties = computed(() => {
+	const returnProperties = [];
+	let tempProperties;
+	for (const name of propertyNames.value) {
+		tempProperties = getOptionProperties(name);
+		if (tempProperties !== undefined) {
+			returnProperties.push(...tempProperties);
+		}
+	}
+	return returnProperties;
+});
+const filteredOptions = computed<Array<INodePropertyOptions | INodeProperties>>(() => {
+	return (props.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter(
+		(option) => {
+			return displayNodeParameter(option as INodeProperties);
+		},
+	);
+});
+const parameterOptions = computed(() => {
+	return filteredOptions.value.filter((option) => {
+		return !propertyNames.value.includes(option.name);
+	});
+});
+
+function optionSelected(optionName: string) {
+	const options = getOptionProperties(optionName);
+	if (options.length === 0) {
+		return;
+	}
+
+	const option = options[0];
+	const name = `${props.path}.${option.name}`;
+
+	let parameterData;
+
+	if (
+		'typeOptions' in option &&
+		option.typeOptions !== undefined &&
+		option.typeOptions.multipleValues === true
+	) {
+		// Multiple values are allowed
+		let newValue;
+		if (option.type === 'fixedCollection') {
+			// The "fixedCollection" entries are different as they save values
+			// in an object and then underneath there is an array. So initialize
+			// them differently.
+			const retrievedObjectValue = get(props.nodeValues, `${props.path}.${optionName}`, {});
+			newValue = retrievedObjectValue;
+		} else {
+			// Everything else saves them directly as an array.
+			const retrievedArrayValue = get(props.nodeValues, `${props.path}.${optionName}`, []) as Array<
+				typeof option.default
+			>;
+			if (Array.isArray(retrievedArrayValue)) {
+				newValue = retrievedArrayValue;
+				newValue.push(deepCopy(option.default));
+			}
+		}
+
+		parameterData = {
+			name,
+			value: newValue,
+		};
+	} else {
+		// Add a new option
+		parameterData = {
+			name,
+			value: 'default' in option ? deepCopy(option.default) : null,
+		};
+	}
+
+	emit('valueChanged', parameterData);
+	selectedOption.value = undefined;
+}
+function valueChanged(parameterData: IUpdateInformation) {
+	emit('valueChanged', parameterData);
+}
 </script>
 
 <style lang="scss">
@@ -210,7 +220,28 @@ export default defineComponent({
 		margin-top: var(--spacing-xs);
 
 		.button {
+			color: var(--color-text-dark);
+			font-weight: var(--font-weight-normal);
+			--button-border-color: var(--color-foreground-base);
 			--button-background-color: var(--color-background-base);
+
+			--button-hover-font-color: var(--color-button-secondary-font);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
+
+			--button-active-font-color: var(--color-button-secondary-font);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
+
+			--button-focus-font-color: var(--color-button-secondary-font);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
 		}
 	}
 
