@@ -97,7 +97,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 			filter,
 		};
 
-		return PineconeStore.fromExistingIndex(embeddings, config);
+		return await PineconeStore.fromExistingIndex(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {

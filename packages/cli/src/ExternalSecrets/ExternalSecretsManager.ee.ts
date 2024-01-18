@@ -48,10 +48,13 @@ export class ExternalSecretsManager {
 					this.initialized = true;
 					resolve();
 					this.initializingPromise = undefined;
-					this.updateInterval = setInterval(async () => this.updateSecrets(), updateIntervalTime());
+					this.updateInterval = setInterval(
+						async () => await this.updateSecrets(),
+						updateIntervalTime(),
+					);
 				});
 			}
-			return this.initializingPromise;
+			return await this.initializingPromise;
 		}
 	}
 
@@ -107,8 +110,8 @@ export class ExternalSecretsManager {
 		}
 		const providers: Array<SecretsProvider | null> = (
 			await Promise.allSettled(
-				Object.entries(settings).map(async ([name, providerSettings]) =>
-					this.initProvider(name, providerSettings),
+				Object.entries(settings).map(
+					async ([name, providerSettings]) => await this.initProvider(name, providerSettings),
 				),
 			)
 		).map((i) => (i.status === 'rejected' ? null : i.value));

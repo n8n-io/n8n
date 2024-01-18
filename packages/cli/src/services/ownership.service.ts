@@ -74,7 +74,7 @@ export class OwnershipService {
 	async getInstanceOwner() {
 		const globalOwnerRole = await this.roleService.findGlobalOwnerRole();
 
-		return this.userRepository.findOneOrFail({
+		return await this.userRepository.findOneOrFail({
 			where: { globalRoleId: globalOwnerRole.id },
 			relations: ['globalRole'],
 		});

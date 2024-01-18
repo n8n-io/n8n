@@ -34,7 +34,7 @@ export async function asanaApiRequest(
 	};
 
 	const credentialType = authenticationMethod === 'accessToken' ? 'asanaApi' : 'asanaOAuth2Api';
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function asanaApiRequestAllItems(

@@ -209,8 +209,9 @@ export class Server extends AbstractServer {
 				order: { createdAt: 'ASC' },
 				where: {},
 			})
-			.then(async (workflow) =>
-				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			.then(
+				async (workflow) =>
+					await Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
 
 		Container.get(CollaborationService);
@@ -277,6 +278,11 @@ export class Server extends AbstractServer {
 
 		if (isMfaFeatureEnabled()) {
 			controllers.push(MFAController);
+		}
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			const { CtaController } = await import('@/controllers/cta.controller');
+			controllers.push(CtaController);
 		}
 
 		controllers.forEach((controller) => registerController(app, controller));

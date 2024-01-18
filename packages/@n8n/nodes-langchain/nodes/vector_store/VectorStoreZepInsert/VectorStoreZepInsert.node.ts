@@ -139,6 +139,6 @@ export class VectorStoreZepInsert implements INodeType {
 
 		await ZepVectorStore.fromDocuments(processedDocuments, embeddings, zepConfig);
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

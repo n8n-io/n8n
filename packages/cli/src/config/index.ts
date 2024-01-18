@@ -14,7 +14,6 @@ if (inE2ETests) {
 	process.env.N8N_AI_ENABLED = 'true';
 } else if (inTest) {
 	process.env.N8N_LOG_LEVEL = 'silent';
-	process.env.N8N_ENCRYPTION_KEY = 'test_key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
