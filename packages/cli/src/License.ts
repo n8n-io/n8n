@@ -12,15 +12,12 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { UserRepository } from './databases/repositories/user.repository';
-import { CredentialsRepository } from './databases/repositories/credentials.repository';
-import { UsageMetricsRepository } from './databases/repositories/usageMetrics.repository';
+import { UsageMetricsService } from './services/usageMetrics.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -41,10 +38,7 @@ export class License {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly userRepository: UserRepository,
-		private readonly credentialsRepository: CredentialsRepository,
-		private readonly usageMetricsRepository: UsageMetricsRepository,
+		private readonly usageMetricsService: UsageMetricsService,
 	) {}
 
 	async init(instanceType: N8nInstanceType = 'main') {
@@ -71,7 +65,7 @@ export class License {
 			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
-			? async () => await this.collectUsageMetrics()
+			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 
 		try {
@@ -97,26 +91,6 @@ export class License {
 				this.logger.error('Could not initialize license manager sdk', e);
 			}
 		}
-	}
-
-	async collectUsageMetrics() {
-		const {
-			activeWorkflows,
-			totalWorkflows,
-			enabledUsers,
-			totalCredentials,
-			productionExecutions,
-			manualExecutions,
-		} = await this.usageMetricsRepository.getLicenseRenewalMetrics();
-
-		return [
-			{ name: 'activeWorkflows', value: activeWorkflows },
-			{ name: 'totalWorkflows', value: totalWorkflows },
-			{ name: 'enabledUsers', value: enabledUsers },
-			{ name: 'totalCredentials', value: totalCredentials },
-			{ name: 'productionExecutions', value: productionExecutions },
-			{ name: 'manualExecutions', value: manualExecutions },
-		];
 	}
 
 	async loadCertStr(): Promise<TLicenseBlock> {
