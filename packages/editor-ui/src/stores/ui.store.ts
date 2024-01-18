@@ -44,7 +44,6 @@ import type {
 	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
-	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
 	IUser,

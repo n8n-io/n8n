@@ -118,7 +118,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
