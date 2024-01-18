@@ -1114,6 +1114,12 @@ export class WorkflowExecute {
 												item.error = undefined;
 											} else if (item.json.error && Object.keys(item.json).length === 1) {
 												errorData = item.json.error;
+											} else if (
+												item.json.error &&
+												item.json.message &&
+												Object.keys(item.json).length === 2
+											) {
+												errorData = item.json.error;
 											}
 
 											if (errorData) {
