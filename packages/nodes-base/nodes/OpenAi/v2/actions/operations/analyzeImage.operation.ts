@@ -7,7 +7,6 @@ import {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
-import get from 'lodash/get';
 
 const properties: INodeProperties[] = [
 	// {
@@ -170,7 +169,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((propertyName) => propertyName.trim());
 
 		for (const propertyName of binaryPropertyName) {
-			const binaryData = get(this.getInputData(i)[0].binary, propertyName);
+			const binaryData = this.helpers.assertBinaryData(i, propertyName);
+
+			let fileBase64;
+			if (binaryData.id) {
+				const chunkSize = 256 * 1024;
+				const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+				const buffer = await this.helpers.binaryToBuffer(stream);
+				fileBase64 = buffer.toString('base64');
+			} else {
+				fileBase64 = binaryData.data;
+			}
 
 			if (!binaryData) {
 				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -179,7 +188,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			content.push({
 				type: 'image_url',
 				image_url: {
-					url: `data:${binaryData.mimeType};base64,${binaryData.data}`,
+					url: `data:${binaryData.mimeType};base64,${fileBase64}`,
 					detail,
 				},
 			});
