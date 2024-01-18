@@ -820,6 +820,7 @@
 	"ndv.title.renameNode": "Rename node",
 	"ndv.pinData.pin.title": "Pin data",
 	"ndv.pinData.pin.description": "Node will always output this data instead of executing.",
+	"ndv.pinData.pin.binary": "Pin Data is disabled as this node's output contains binary data.",
 	"ndv.pinData.pin.link": "More info",
 	"ndv.pinData.pin.multipleRuns.title": "Run #{index} was pinned",
 	"ndv.pinData.pin.multipleRuns.description": "This run will be outputted each time the node is run.",

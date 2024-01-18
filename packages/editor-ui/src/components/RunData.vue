@@ -71,7 +71,7 @@
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
-					v-if="canPinData && rawInputData.length"
+					v-if="rawInputData.length"
 					v-show="!editMode.enabled"
 					placement="bottom-end"
 					:visible="
@@ -80,8 +80,11 @@
 							: undefined
 					"
 				>
-					<template v-if="!isControlledPinDataTooltip" #content>
-						<div :class="$style.tooltipContainer">
+					<template #content>
+						<div v-if="binaryData?.length" :class="$style.tooltipContainer">
+							{{ $locale.baseText('ndv.pinData.pin.binary') }}
+						</div>
+						<div v-else-if="!isControlledPinDataTooltip" :class="$style.tooltipContainer">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
@@ -91,9 +94,7 @@
 								</n8n-link>
 							</n8n-text>
 						</div>
-					</template>
-					<template v-else #content>
-						<div :class="$style.tooltipContainer">
+						<div v-else :class="$style.tooltipContainer">
 							{{ $locale.baseText('node.discovery.pinData.ndv') }}
 						</div>
 					</template>
@@ -106,7 +107,8 @@
 							editMode.enabled ||
 							(rawInputData.length === 0 && !pinnedData.hasData.value) ||
 							isReadOnlyRoute ||
-							readOnlyEnv
+							readOnlyEnv ||
+							binaryData?.length
 						"
 						data-test-id="ndv-pin-data"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
