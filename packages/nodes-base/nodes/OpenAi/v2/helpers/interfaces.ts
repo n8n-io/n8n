@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export type ChatCompletion = {
 	id: string;
 	object: string;
@@ -16,4 +18,23 @@ export type ChatCompletion = {
 		total_tokens: number;
 	};
 	system_fingerprint: string;
+};
+
+export type ThreadMessage = {
+	id: string;
+	object: string;
+	created_at: number;
+	thread_id: string;
+	role: string;
+	content: Array<{
+		type: string;
+		text: {
+			value: string;
+			annotations: string[];
+		};
+	}>;
+	file_ids: string[];
+	assistant_id: string;
+	run_id: string;
+	metadata: IDataObject;
 };

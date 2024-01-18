@@ -7,6 +7,7 @@ import type {
 import { sleep, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
+import type { ThreadMessage } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -44,6 +45,13 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -192,7 +200,22 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const { data } = await apiRequest.call(this, 'GET', `/threads/${theradId}/messages`, { headers });
+	let data = (
+		await apiRequest.call(this, 'GET', `/threads/${theradId}/messages`, {
+			headers,
+		})
+	).data;
+
+	const simplify = this.getNodeParameter('simplify', i) as boolean;
+
+	if (simplify) {
+		data = (data as ThreadMessage[]).map((message) => ({
+			id: message.id,
+			thread_id: message.thread_id,
+			role: message.role,
+			...message.content[0],
+		}));
+	}
 
 	if (options.deleteThread) {
 		await apiRequest.call(this, 'DELETE', `/threads/${theradId}`, { headers });
@@ -200,7 +223,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: options.returnEntireThread ? { data } : data[0],
+			json: options.returnEntireThread ? { thread: data } : data[0],
 			pairedItem: { item: i },
 		},
 	];
