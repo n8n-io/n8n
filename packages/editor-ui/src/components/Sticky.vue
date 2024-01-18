@@ -328,8 +328,10 @@ export default defineComponent({
 			}
 		},
 		onContextMenu(e: MouseEvent): void {
-			if (this.node) {
+			if (this.node && !this.isActive) {
 				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			} else {
+				e.stopPropagation();
 			}
 		},
 	},
