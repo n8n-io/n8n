@@ -29,10 +29,10 @@ export async function createManyCredentials(
 	amount: number,
 	attributes: Partial<CredentialsEntity> = emptyAttributes,
 ) {
-	return Promise.all(
+	return await Promise.all(
 		Array(amount)
 			.fill(0)
-			.map(async () => createCredentials(attributes)),
+			.map(async () => await createCredentials(attributes)),
 	);
 }
 
@@ -40,7 +40,7 @@ export async function createCredentials(attributes: Partial<CredentialsEntity> =
 	const credentialsRepository = Container.get(CredentialsRepository);
 	const entity = credentialsRepository.create(attributes);
 
-	return credentialsRepository.save(entity);
+	return await credentialsRepository.save(entity);
 }
 
 /**
