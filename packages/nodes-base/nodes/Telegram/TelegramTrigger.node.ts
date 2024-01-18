@@ -17,7 +17,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -228,13 +229,16 @@ export class TelegramTrigger implements INodeType {
 		const bodyData = this.getBodyData() as IEvent;
 		const headerData = this.getHeaderData();
 
-		const secret = getSecretToken.call(this);
-		if (secret !== headerData['x-telegram-bot-api-secret-token']) {
-			const res = this.getResponseObject();
-			res.status(403).json({ message: 'Provided secret is not valid' });
-			return {
-				noWebhookResponse: true,
-			};
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion > 1) {
+			const secret = getSecretToken.call(this);
+			if (secret !== headerData['x-telegram-bot-api-secret-token']) {
+				const res = this.getResponseObject();
+				res.status(403).json({ message: 'Provided secret is not valid' });
+				return {
+					noWebhookResponse: true,
+				};
+			}
 		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
