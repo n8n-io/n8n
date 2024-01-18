@@ -1,6 +1,4 @@
-import { EventEmitter } from 'node:events';
 import { Service } from 'typedi';
-
 import { Logger } from '@/Logger';
 import config from '@/config';
 import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
@@ -10,14 +8,12 @@ import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
 
 @Service()
-export class OrchestrationService extends EventEmitter {
+export class OrchestrationService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisService: RedisService,
 		readonly multiMainSetup: MultiMainSetup,
-	) {
-		super();
-	}
+	) {}
 
 	protected isInitialized = false;
 
