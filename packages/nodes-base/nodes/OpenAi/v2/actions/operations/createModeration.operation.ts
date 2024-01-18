@@ -58,7 +58,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		model,
 	};
 
-	const { results } = await apiRequest.call(this, 'POST', '/moderations', body);
+	const { results } = await apiRequest.call(this, 'POST', '/moderations', { body });
 
 	if (!results) return [];
 

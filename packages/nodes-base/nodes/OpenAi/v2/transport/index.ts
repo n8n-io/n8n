@@ -1,29 +1,37 @@
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+type RequestParameters = {
+	headers?: IDataObject;
+	body?: IDataObject | string;
+	qs?: IDataObject;
+	uri?: string;
+	option?: IDataObject;
+};
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body?: IDataObject | string,
-	query?: IDataObject,
-	uri?: string,
-	option: IDataObject = {},
-	headers: IDataObject = {},
+	parameters?: RequestParameters,
+	// body?: IDataObject | string,
+	// query?: IDataObject,
+	// uri?: string,
+	// option: IDataObject = {},
+	// headers: IDataObject = {},
 ) {
-	query = query || {};
+	const { body, qs, uri, option, headers } = parameters ?? {};
 
 	const options = {
 		headers,
 		method,
 		body,
-		qs: query,
+		qs,
 		uri: uri ?? `https://api.openai.com/v1${endpoint}`,
 		json: true,
 	};
 
-	if (Object.keys(option).length !== 0) {
+	if (option && Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'openAiApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'openAiApi', options);
 }

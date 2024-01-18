@@ -69,3 +69,38 @@ export async function modelCompletionSearch(
 		};
 	}
 }
+
+export async function assistantSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { data } = await apiRequest.call(this, 'GET', '/assistants', {
+		headers: {
+			'OpenAI-Beta': 'assistants=v1',
+		},
+	});
+
+	if (filter) {
+		const results: INodeListSearchItems[] = [];
+
+		for (const assistant of data || []) {
+			if ((assistant.name as string)?.toLowerCase().includes(filter.toLowerCase())) {
+				results.push({
+					name: assistant.name as string,
+					value: assistant.id as string,
+				});
+			}
+		}
+
+		return {
+			results,
+		};
+	} else {
+		return {
+			results: (data || []).map((assistant: IDataObject) => ({
+				name: assistant.name as string,
+				value: assistant.id as string,
+			})),
+		};
+	}
+}

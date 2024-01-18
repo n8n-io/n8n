@@ -12,7 +12,8 @@ type OpenAiType =
 	| 'uploadFile'
 	| 'deleteFile'
 	| 'listFiles'
-	| 'messageModel';
+	| 'messageModel'
+	| 'messageAssistant';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];

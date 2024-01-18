@@ -10,6 +10,7 @@ import * as uploadFile from './uploadFile.operation';
 import * as deleteFile from './deleteFile.operation';
 import * as listFiles from './listFiles.operation';
 import * as messageModel from './messageModel.operation';
+import * as messageAssistant from './messageAssistant.operation';
 
 export {
 	generateImage,
@@ -22,6 +23,7 @@ export {
 	deleteFile,
 	listFiles,
 	messageModel,
+	messageAssistant,
 };
 
 export const description: INodeProperties[] = [
@@ -35,4 +37,5 @@ export const description: INodeProperties[] = [
 	...deleteFile.description,
 	...listFiles.description,
 	...messageModel.description,
+	...messageAssistant.description,
 ];

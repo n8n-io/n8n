@@ -36,12 +36,13 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Message a Model',
 					value: 'messageModel',
 					action: 'Message a model',
-					description: 'Send a prompts to a model',
+					description: 'Send messages to a model',
 				},
 				{
 					name: 'Message an Assistant',
 					value: 'messageAssistant',
 					action: 'Message an assistant',
+					description: 'Send messages to an assistant',
 				},
 				{
 					name: 'Upload a File',

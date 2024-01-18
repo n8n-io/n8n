@@ -81,18 +81,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		contentType: binaryData.mimeType,
 	});
 
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		'/audio/translations',
-		undefined,
-		undefined,
-		undefined,
-		{ formData },
-		{
+	const response = await apiRequest.call(this, 'POST', '/audio/translations', {
+		option: { formData },
+		headers: {
 			'Content-Type': 'multipart/form-data',
 		},
-	);
+	});
 
 	return [
 		{

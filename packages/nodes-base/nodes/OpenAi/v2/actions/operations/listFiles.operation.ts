@@ -53,7 +53,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		qs.purpose = options.purpose as string;
 	}
 
-	const { data } = await apiRequest.call(this, 'GET', '/files', undefined, qs);
+	const { data } = await apiRequest.call(this, 'GET', '/files', { qs });
 
 	return (data || []).map((file: IDataObject) => ({
 		json: file,

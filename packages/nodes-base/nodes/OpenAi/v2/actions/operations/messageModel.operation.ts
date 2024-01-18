@@ -52,7 +52,7 @@ const properties: INodeProperties[] = [
 						displayName: 'Text',
 						name: 'content',
 						type: 'string',
-						description: 'The content of the message to send to the model',
+						description: 'The content of the message to be send',
 						default: '',
 						typeOptions: {
 							rows: 2,
@@ -207,12 +207,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...options,
 	};
 
-	const response = (await apiRequest.call(
-		this,
-		'POST',
-		'/chat/completions',
+	const response = (await apiRequest.call(this, 'POST', '/chat/completions', {
 		body,
-	)) as ChatCompletion;
+	})) as ChatCompletion;
 
 	if (response_format) {
 		response.choices = response.choices.map((choice) => {

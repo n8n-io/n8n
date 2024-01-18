@@ -154,20 +154,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		speed,
 	};
 
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		'/audio/speech',
-		body,
-		undefined,
-		undefined,
-		{
-			useStream: true,
-			returnFullResponse: true,
-			encoding: 'arraybuffer',
-			json: false,
-		},
-	);
+	const option = {
+		useStream: true,
+		returnFullResponse: true,
+		encoding: 'arraybuffer',
+		json: false,
+	};
+
+	const response = await apiRequest.call(this, 'POST', '/audio/speech', { body, option });
 
 	const binaryData = await this.helpers.prepareBinaryData(
 		response,

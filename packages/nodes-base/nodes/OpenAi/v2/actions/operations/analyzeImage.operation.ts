@@ -197,7 +197,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		max_tokens: (options.maxTokens as number) || 300,
 	};
 
-	let response = await apiRequest.call(this, 'POST', '/chat/completions', body);
+	let response = await apiRequest.call(this, 'POST', '/chat/completions', { body });
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
