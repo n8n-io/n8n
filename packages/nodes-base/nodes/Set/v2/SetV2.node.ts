@@ -129,9 +129,8 @@ const versionDescription: INodeTypeDescription = {
 			name: 'keepOnlySetFields',
 			type: 'boolean',
 			default: false,
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description:
-				'When switched on, only the fields set in Fields do Set are passed to the output',
+				"Whether to pass to the output only the fields set in 'Fields to Set' (and discard all the other input fields)",
 			displayOptions: {
 				hide: {
 					'@version': [3, 3.1, 3.2],
