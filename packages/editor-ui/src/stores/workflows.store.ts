@@ -366,14 +366,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns a workflow from a given URL
 		async getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
 				url,
 			});
 		},
 
 		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
 				`/active-workflows/error/${id}`,
@@ -1237,7 +1237,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				`/executions/${id}/retry`,
@@ -1248,7 +1248,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Deletes executions
 		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/executions/delete',
@@ -1273,7 +1273,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
 		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
@@ -1284,7 +1284,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
 				'/executions-current',
@@ -1308,7 +1308,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			sendData.active = false;
 
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows',
@@ -1323,7 +1323,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			forceSave = false,
 		): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'PATCH',
 				`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
@@ -1333,7 +1333,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows/run',
@@ -1343,7 +1343,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'DELETE',
 				`/test-webhook/${workflowId}`,
@@ -1352,7 +1352,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				`/executions-current/${executionId}/stop`,
@@ -1384,7 +1384,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
-			return getExecutionData(rootStore.getRestApiContext, executionId);
+			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
 		deleteExecution(execution: IExecutionsSummary): void {
@@ -1402,7 +1402,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns all the available timezones
 		async getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/eventbus/execution/' + id,
+			);
 		},
 		// Binary data
 		getBinaryUrl(

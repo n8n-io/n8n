@@ -904,7 +904,7 @@ export const workflowHelpers = defineComponent({
 			const currentWorkflow = id || this.$route.params.name;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-				return this.saveAsNewWorkflow({ name, tags }, redirect);
+				return await this.saveAsNewWorkflow({ name, tags }, redirect);
 			}
 
 			// Workflow exists already so update it
@@ -983,7 +983,7 @@ export const workflowHelpers = defineComponent({
 					);
 
 					if (overwrite === MODAL_CONFIRM) {
-						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
+						return await this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
