@@ -11,16 +11,24 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		super(UsageMetrics, dataSource.manager);
 	}
 
-	async getLicenseRenewalMetrics() {
+	get fullPrefix() {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
+		const pgSchema = config.getEnv('database.postgresdb.schema');
+
+		if (pgSchema !== 'public') return [pgSchema, tablePrefix].join('.');
+
+		return tablePrefix;
+	}
+
+	async getLicenseRenewalMetrics() {
 		type Row = {
-			enabled_user_count: number;
-			active_workflow_count: number;
-			total_workflow_count: number;
-			total_credentials_count: number;
-			production_executions_count: number;
-			manual_executions_count: number;
+			enabled_user_count: string | number;
+			active_workflow_count: string | number;
+			total_workflow_count: string | number;
+			total_credentials_count: string | number;
+			production_executions_count: string | number;
+			manual_executions_count: string | number;
 		};
 
 		const [
@@ -34,21 +42,24 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 			},
 		] = (await this.query(`
 			SELECT
-				(SELECT COUNT(*) FROM ${tablePrefix}user WHERE disabled = false) AS enabled_user_count,
-				(SELECT COUNT(*) FROM ${tablePrefix}workflow_entity WHERE active = true) AS active_workflow_count,
-				(SELECT COUNT(*) FROM ${tablePrefix}workflow_entity) AS total_workflow_count,
-				(SELECT COUNT(*) FROM ${tablePrefix}credentials_entity) AS total_credentials_count,
-				(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE mode != 'manual') AS production_executions_count,
-				(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE mode = 'manual') AS manual_executions_count;
+				(SELECT COUNT(*) FROM ${this.fullPrefix}user WHERE disabled = false) AS enabled_user_count,
+				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity WHERE active = true) AS active_workflow_count,
+				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity) AS total_workflow_count,
+				(SELECT COUNT(*) FROM ${this.fullPrefix}credentials_entity) AS total_credentials_count,
+				(SELECT COUNT(*) FROM ${this.fullPrefix}execution_entity WHERE mode != 'manual') AS production_executions_count,
+				(SELECT COUNT(*) FROM ${this.fullPrefix}execution_entity WHERE mode = 'manual') AS manual_executions_count;
 		`)) as Row[];
 
+		const toNumber = (value: string | number) =>
+			typeof value === 'number' ? value : parseInt(value, 10);
+
 		return {
-			enabledUsers,
-			activeWorkflows,
-			totalWorkflows,
-			totalCredentials,
-			productionExecutions,
-			manualExecutions,
+			enabledUsers: toNumber(enabledUsers),
+			activeWorkflows: toNumber(activeWorkflows),
+			totalWorkflows: toNumber(totalWorkflows),
+			totalCredentials: toNumber(totalCredentials),
+			productionExecutions: toNumber(productionExecutions),
+			manualExecutions: toNumber(manualExecutions),
 		};
 	}
 }
