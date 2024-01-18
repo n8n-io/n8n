@@ -176,7 +176,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
-		sidebarMenuItems: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
@@ -527,10 +526,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		resetSelectedNodes(): void {
 			this.selectedNodes = [];
-		},
-		addSidebarMenuItems(menuItems: IMenuItem[]) {
-			const updated = this.sidebarMenuItems.concat(menuItems);
-			this.sidebarMenuItems = updated;
 		},
 		setCurlCommand(payload: { name: string; command: string }): void {
 			this.modals[payload.name] = {
