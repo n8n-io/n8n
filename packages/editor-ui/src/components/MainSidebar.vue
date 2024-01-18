@@ -23,6 +23,7 @@
 			</template>
 
 			<template #beforeLowerMenu>
+				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
 				<ExecutionsUsage
 					v-if="fullyExpanded && userIsTrialing"
 					:cloud-plan-data="currentPlanAndUsageData"
@@ -119,10 +120,12 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -130,6 +133,7 @@ export default defineComponent({
 		GiftNotificationIcon,
 		ExecutionsUsage,
 		MainSidebarSourceControl,
+		BecomeTemplateCreatorCta,
 	},
 	mixins: [userHelpers],
 	setup(props, ctx) {
@@ -158,6 +162,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useCloudPlanStore,
 			useSourceControlStore,
+			useBecomeTemplateCreatorStore,
 		),
 		logoPath(): string {
 			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
@@ -368,11 +373,14 @@ export default defineComponent({
 
 			this.fullyExpanded = !this.isCollapsed;
 		});
+
+		this.becomeTemplateCreatorStore.startMonitoringCta();
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);
 	},
 	beforeUnmount() {
+		this.becomeTemplateCreatorStore.stopMonitoringCta();
 		window.removeEventListener('resize', this.onResize);
 	},
 	methods: {

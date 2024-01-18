@@ -102,8 +102,9 @@ export class UsersController {
 		const users = await this.userRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) =>
-				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			users.map(
+				async (u) =>
+					await this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
 			),
 		);
 

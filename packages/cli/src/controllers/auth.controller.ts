@@ -102,7 +102,7 @@ export class AuthController {
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
 		void this.internalHooks.onUserLoginFailed({
 			user: email,
@@ -150,7 +150,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+		return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 	}
 
 	/**

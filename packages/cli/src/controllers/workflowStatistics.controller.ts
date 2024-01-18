@@ -49,12 +49,12 @@ export class WorkflowStatisticsController {
 
 	@Get('/:id/counts/')
 	async getCounts(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<number>> {
-		return this.getData(req.params.id, 'count', 0);
+		return await this.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
 	async getTimes(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<Date | null>> {
-		return this.getData(req.params.id, 'latestEvent', null);
+		return await this.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')
