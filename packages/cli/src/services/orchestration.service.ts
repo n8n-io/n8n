@@ -55,7 +55,11 @@ export class OrchestrationService {
 
 		await this.initPublisher();
 
-		if (this.isMultiMainSetupEnabled) await this.multiMainSetup.init();
+		if (this.isMultiMainSetupEnabled) {
+			await this.multiMainSetup.init();
+		} else {
+			config.set('multiMainSetup.instanceType', 'leader');
+		}
 
 		this.isInitialized = true;
 	}
