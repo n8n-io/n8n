@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { apiRequest, getImageBySize } from './GenericFunctions';
+import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 
 import type { IEvent } from './IEvent';
 
@@ -188,9 +188,12 @@ export class TelegramTrigger implements INodeType {
 
 				const endpoint = 'setWebhook';
 
+				const secret_token = getSecretToken.call(this);
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
+					secret_token,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
@@ -216,6 +219,14 @@ export class TelegramTrigger implements INodeType {
 		const credentials = await this.getCredentials('telegramApi');
 
 		const bodyData = this.getBodyData() as IEvent;
+		const headerData = this.getHeaderData();
+		console.log(headerData);
+
+		const secret = getSecretToken.call(this);
+		if (secret !== headerData['x-telegram-bot-api-secret-token']) {
+			console.log('secret INVALID:', secret, headerData['x-telegram-bot-api-secret-token']);
+			return {};
+		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
