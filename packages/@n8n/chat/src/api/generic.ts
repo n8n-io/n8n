@@ -16,7 +16,7 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		},
 	});
 
-	return await ((await response.json()) as Promise<T>);
+	return (await response.json()) as T;
 }
 
 export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {
