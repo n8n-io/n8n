@@ -12,11 +12,6 @@ export async function apiRequest(
 	method: string,
 	endpoint: string,
 	parameters?: RequestParameters,
-	// body?: IDataObject | string,
-	// query?: IDataObject,
-	// uri?: string,
-	// option: IDataObject = {},
-	// headers: IDataObject = {},
 ) {
 	const { body, qs, uri, option, headers } = parameters ?? {};
 
