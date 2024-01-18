@@ -20,6 +20,7 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { UserRepository } from './databases/repositories/user.repository';
 import { CredentialsRepository } from './databases/repositories/credentials.repository';
+import { UsageMetricsRepository } from './databases/repositories/usageMetrics.repository';
 
 type FeatureReturnType = Partial<
 	{
@@ -43,6 +44,7 @@ export class License {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly usageMetricsRepository: UsageMetricsRepository,
 	) {}
 
 	async init(instanceType: N8nInstanceType = 'main') {
@@ -98,22 +100,14 @@ export class License {
 	}
 
 	async collectUsageMetrics() {
-		const [
+		const {
 			activeWorkflows,
 			totalWorkflows,
 			enabledUsers,
 			totalCredentials,
 			productionExecutions,
 			manualExecutions,
-		] = await Promise.all([
-			this.workflowRepository.count({ where: { active: true } }),
-			this.workflowRepository.count(),
-			this.userRepository.count({ where: { disabled: false } }),
-			this.credentialsRepository.count(),
-			// TODO: Implement the remaining async tasks here
-			Promise.resolve(-1), // Placeholder for productionExecutions
-			Promise.resolve(-1), // Placeholder for manualExecutions
-		]);
+		} = await this.usageMetricsRepository.getLicenseRenewalMetrics();
 
 		return [
 			{ name: 'activeWorkflows', value: activeWorkflows },

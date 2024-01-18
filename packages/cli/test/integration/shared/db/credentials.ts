@@ -18,6 +18,31 @@ async function encryptCredentialData(credential: CredentialsEntity) {
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
 
+const emptyAttributes = {
+	name: 'test',
+	type: 'test',
+	data: '',
+	nodesAccess: [],
+};
+
+export async function createManyCredentials(
+	amount: number,
+	attributes: Partial<CredentialsEntity> = emptyAttributes,
+) {
+	return Promise.all(
+		Array(amount)
+			.fill(0)
+			.map(async () => createCredentials(attributes)),
+	);
+}
+
+export async function createCredentials(attributes: Partial<CredentialsEntity> = emptyAttributes) {
+	const credentialsRepository = Container.get(CredentialsRepository);
+	const entity = credentialsRepository.create(attributes);
+
+	return credentialsRepository.save(entity);
+}
+
 /**
  * Save a credential to the test DB, sharing it with a user.
  */
