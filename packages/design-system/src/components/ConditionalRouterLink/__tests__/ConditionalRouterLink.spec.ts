@@ -1,7 +1,7 @@
 import { render } from '@testing-library/vue';
-import CondtionalRouterLink from '../CondtionalRouterLink.vue';
 import { beforeAll, describe } from 'vitest';
 import { createRouter, createWebHistory } from 'vue-router';
+import CondtionalRouterLink from '../CondtionalRouterLink.vue';
 
 const slots = {
 	default: 'Button',
@@ -15,14 +15,14 @@ const router = createRouter({
 			name: 'home',
 			redirect: '/home',
 		},
-	], // Define necessary routes or leave empty if not testing routing
+	],
 });
 
 describe('CondtionalRouterLink', () => {
 	beforeAll(async () => {
-		await router.push('/'); // Set the initial route if necessary
+		await router.push('/');
 
-		await router.isReady(); // Wait for the router to be ready
+		await router.isReady();
 	});
 
 	it("renders router-link when 'to' prop is passed", () => {
