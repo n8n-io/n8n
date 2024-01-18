@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
-import { listSearch } from './methods';
+import { listSearch, loadOptions } from './methods';
 
 export class OpenAiV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -21,9 +21,10 @@ export class OpenAiV2 implements INodeType {
 
 	methods = {
 		listSearch,
+		loadOptions,
 	};
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

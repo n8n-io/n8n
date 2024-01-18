@@ -1,10 +1,10 @@
-import {
-	type INodeProperties,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	sleep,
-	NodeOperationError,
+import type {
+	INodeProperties,
+	IExecuteFunctions,
+	INodeExecutionData,
+	IDataObject,
 } from 'n8n-workflow';
+import { sleep, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
 
@@ -13,6 +13,8 @@ const properties: INodeProperties[] = [
 		displayName: 'Assistant',
 		name: 'assistantId',
 		type: 'resourceLocator',
+		description:
+			'Assistant to respond to the message. You can add, modify or remove assistants in the <a href="https://platform.openai.com/playground?mode=assistant" target="_blank">playground</a>.',
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
@@ -51,6 +53,31 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Files',
+				name: 'files',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options
+				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description:
+					'Files that the message should use. There can be a maximum of 10 files attached to a message. Useful for tools like retrieval and code_interpreter that can access and use files.',
+				typeOptions: {
+					loadOptionsMethod: 'getAssistantFiles',
+				},
+				default: [],
+			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				placeholder: 'e.g. {"issue_type": "order_problem", "priority": "high"}',
+				type: 'json',
+				default: '={}',
+				typeOptions: {
+					rows: 2,
+				},
+				validateType: 'object',
+			},
+			{
 				displayName: 'Thread ID',
 				name: 'threadId',
 				type: 'string',
@@ -76,6 +103,13 @@ const properties: INodeProperties[] = [
 					minValue: 1000,
 				},
 			},
+			{
+				displayName: 'Delete Thread',
+				name: 'deleteThread',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to delete the thread after the assistant has responded',
+			},
 		],
 	},
 ];
@@ -93,17 +127,26 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const content = this.getNodeParameter('content', i) as string;
 	const options = this.getNodeParameter('options', i);
 
-	let theradId = options.threadId as string;
-
 	const headers = {
 		'OpenAI-Beta': 'assistants=v1',
 	};
+
+	const file_ids = options.files as string[];
+
+	let metadata = options.metadata as IDataObject;
+	if (typeof metadata === 'string') {
+		metadata = jsonParse(metadata as string);
+	}
+
+	let theradId = options.threadId as string;
 
 	let runId;
 	if (theradId) {
 		const body = {
 			role: 'user',
 			content,
+			file_ids,
+			metadata,
 		};
 
 		await apiRequest.call(this, 'POST', `/threads/${theradId}/messages`, { body, headers });
@@ -118,7 +161,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const body = {
 			assistant_id,
 			thread: {
-				messages: [{ role: 'user', content }],
+				messages: [{ role: 'user', content, file_ids, metadata }],
 			},
 		};
 
@@ -150,6 +193,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	const { data } = await apiRequest.call(this, 'GET', `/threads/${theradId}/messages`, { headers });
+
+	if (options.deleteThread) {
+		await apiRequest.call(this, 'DELETE', `/threads/${theradId}`, { headers });
+	}
 
 	return [
 		{
