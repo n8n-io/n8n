@@ -44,7 +44,7 @@ export class TelegramTrigger implements INodeType {
 			{
 				displayName:
 					'Due to Telegram API limitations, you can use just one Telegram trigger for each bot at a time',
-				name: 'facebookLeadAdsNotice',
+				name: 'telegramTriggerNotice',
 				type: 'notice',
 				default: '',
 			},
