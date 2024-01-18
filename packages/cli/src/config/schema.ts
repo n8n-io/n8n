@@ -1143,12 +1143,6 @@ export const schema = {
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
-				disableSessionRecording: {
-					doc: 'Disable posthog session recording',
-					format: Boolean,
-					default: true,
-					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
-				},
 			},
 			sentry: {
 				dsn: {
