@@ -220,12 +220,14 @@ export class TelegramTrigger implements INodeType {
 
 		const bodyData = this.getBodyData() as IEvent;
 		const headerData = this.getHeaderData();
-		console.log(headerData);
 
 		const secret = getSecretToken.call(this);
 		if (secret !== headerData['x-telegram-bot-api-secret-token']) {
-			console.log('secret INVALID:', secret, headerData['x-telegram-bot-api-secret-token']);
-			return {};
+			const res = this.getResponseObject();
+			res.status(403).json({ message: 'Provided secret is not valid' });
+			return {
+				noWebhookResponse: true,
+			};
 		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
