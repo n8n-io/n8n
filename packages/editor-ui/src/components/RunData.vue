@@ -70,50 +70,29 @@
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
-				<n8n-tooltip
-					v-if="rawInputData.length"
-					v-show="!editMode.enabled"
-					placement="bottom-end"
-					:visible="
+
+				<RunDataPinButton
+					v-if="rawInputData.length && !editMode.enabled"
+					:is-tooltip-visible="
 						isControlledPinDataTooltip
 							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
 							: undefined
 					"
-				>
-					<template #content>
-						<div v-if="binaryData?.length" :class="$style.tooltipContainer">
-							{{ $locale.baseText('ndv.pinData.pin.binary') }}
-						</div>
-						<div v-else-if="!isControlledPinDataTooltip" :class="$style.tooltipContainer">
-							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
-							<n8n-text size="small" tag="p">
-								{{ $locale.baseText('ndv.pinData.pin.description') }}
-
-								<n8n-link :to="dataPinningDocsUrl" size="small">
-									{{ $locale.baseText('ndv.pinData.pin.link') }}
-								</n8n-link>
-							</n8n-text>
-						</div>
-						<div v-else :class="$style.tooltipContainer">
-							{{ $locale.baseText('node.discovery.pinData.ndv') }}
-						</div>
-					</template>
-					<n8n-icon-button
-						:class="['ml-2xs', $style.pinDataButton]"
-						type="tertiary"
-						:active="pinnedData.hasData.value"
-						icon="thumbtack"
-						:disabled="
-							editMode.enabled ||
-							(rawInputData.length === 0 && !pinnedData.hasData.value) ||
-							isReadOnlyRoute ||
-							readOnlyEnv ||
-							binaryData?.length
-						"
-						data-test-id="ndv-pin-data"
-						@click="onTogglePinData({ source: 'pin-icon-click' })"
-					/>
-				</n8n-tooltip>
+					:disabled="
+						editMode.enabled ||
+						(rawInputData.length === 0 && !pinnedData.hasData.value) ||
+						isReadOnlyRoute ||
+						readOnlyEnv ||
+						!!binaryData?.length
+					"
+					:tooltip-contents-visibility="{
+						binaryDataTooltipContent: !!binaryData?.length,
+						controlledPinDataTooltipContent: !isControlledPinDataTooltip,
+					}"
+					:data-pinning-docs-url="dataPinningDocsUrl"
+					:pinned-data="pinnedData"
+					@toggle-pin-data="onTogglePinData({ source: 'pin-icon-click' })"
+				/>
 
 				<div v-show="editMode.enabled" :class="$style.editModeActions">
 					<n8n-button
@@ -623,6 +602,7 @@ import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
 const RunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -651,6 +631,7 @@ export default defineComponent({
 		RunDataSchema,
 		RunDataHtml,
 		RunDataSearch,
+		RunDataPinButton,
 	},
 	props: {
 		node: {
@@ -1727,12 +1708,6 @@ export default defineComponent({
 }
 .tooltipContain {
 	max-width: 240px;
-}
-
-.pinDataButton {
-	svg {
-		transition: transform 0.3s ease;
-	}
 }
 
 .spinner {
