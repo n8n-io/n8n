@@ -559,11 +559,11 @@ export async function loadLanguage(language?: string) {
 	if (!language) return;
 
 	if (i18nInstance.global.locale === language) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
@@ -576,7 +576,7 @@ export async function loadLanguage(language?: string) {
 
 	loadedLanguages.push(language);
 
-	return setLanguage(language);
+	return await setLanguage(language);
 }
 
 /**
