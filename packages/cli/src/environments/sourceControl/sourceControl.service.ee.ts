@@ -171,7 +171,7 @@ export class SourceControlService {
 			await this.initGitService();
 		}
 		await this.gitService.fetch();
-		return this.gitService.getBranches();
+		return await this.gitService.getBranches();
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
@@ -182,7 +182,7 @@ export class SourceControlService {
 			branchName: branch,
 			connected: branch?.length > 0,
 		});
-		return this.gitService.setBranch(branch);
+		return await this.gitService.setBranch(branch);
 	}
 
 	// will reset the branch to the remote branch and pull

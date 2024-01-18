@@ -622,11 +622,17 @@ import { isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
-const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
-const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
-const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
-const RunDataHtml = defineAsyncComponent(async () => import('@/components/RunDataHtml.vue'));
-const RunDataSearch = defineAsyncComponent(async () => import('@/components/RunDataSearch.vue'));
+const RunDataTable = defineAsyncComponent(
+	async () => await import('@/components/RunDataTable.vue'),
+);
+const RunDataJson = defineAsyncComponent(async () => await import('@/components/RunDataJson.vue'));
+const RunDataSchema = defineAsyncComponent(
+	async () => await import('@/components/RunDataSchema.vue'),
+);
+const RunDataHtml = defineAsyncComponent(async () => await import('@/components/RunDataHtml.vue'));
+const RunDataSearch = defineAsyncComponent(
+	async () => await import('@/components/RunDataSearch.vue'),
+);
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -1399,7 +1405,7 @@ export default defineComponent({
 				return;
 			} else {
 				const bufferString = 'data:' + mimeType + ';base64,' + data;
-				const blob = await fetch(bufferString).then(async (d) => d.blob());
+				const blob = await fetch(bufferString).then(async (d) => await d.blob());
 				saveAs(blob, fileName);
 			}
 		},

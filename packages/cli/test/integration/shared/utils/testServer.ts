@@ -38,7 +38,7 @@ function prefix(pathSegment: string) {
 
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
-		return request;
+		return await request;
 	};
 }
 

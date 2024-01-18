@@ -1,41 +1,38 @@
-import type { User } from '@db/entities/User';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { ExecutionsService } from './executions.service';
+import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.request';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
 import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
-import Container from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Service } from 'typedi';
 
-export class EnterpriseExecutionsService extends ExecutionsService {
-	/**
-	 * Function to get the workflow Ids for a User regardless of role
-	 */
-	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
-		// Get all workflows
-		return getSharedWorkflowIds(user);
-	}
+@Service()
+export class EnterpriseExecutionsService {
+	constructor(
+		private readonly executionService: ExecutionService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
+	) {}
 
-	static async getExecution(
+	async getExecution(
 		req: ExecutionRequest.Get,
+		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
-		const execution = await super.getExecution(req);
+		const execution = await this.executionService.getExecution(req, sharedWorkflowIds);
 
 		if (!execution) return;
 
 		const relations = ['shared', 'shared.user', 'shared.role'];
 
-		const workflow = (await Container.get(WorkflowRepository).get(
+		const workflow = (await this.workflowRepository.get(
 			{ id: execution.workflowId },
 			{ relations },
 		)) as WorkflowWithSharingsAndCredentials;
+
 		if (!workflow) return;
 
-		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
-
-		enterpriseWorkflowService.addOwnerAndSharings(workflow);
-		await enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
+		this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+		await this.enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
 
 		execution.workflowData = {
 			...execution.workflowData,

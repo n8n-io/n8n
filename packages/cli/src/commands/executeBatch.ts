@@ -120,7 +120,7 @@ export class ExecuteBatch extends BaseCommand {
 		const activeExecutionsInstance = Container.get(ActiveExecutions);
 		const stopPromises = activeExecutionsInstance
 			.getActiveExecutions()
-			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
+			.map(async (execution) => await activeExecutionsInstance.stopExecution(execution.id));
 
 		await Promise.allSettled(stopPromises);
 
@@ -410,7 +410,7 @@ export class ExecuteBatch extends BaseCommand {
 			this.initializeLogs();
 		}
 
-		return new Promise(async (res) => {
+		return await new Promise(async (res) => {
 			const promisesArray = [];
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
@@ -623,7 +623,7 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
-		return new Promise(async (resolve) => {
+		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.
