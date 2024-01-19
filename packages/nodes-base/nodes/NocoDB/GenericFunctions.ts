@@ -7,6 +7,7 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
 	IPollFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
@@ -106,11 +107,15 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IDataObject[],
 	fieldNames: string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			let attachments = record[fieldName] as IAttachment[];
