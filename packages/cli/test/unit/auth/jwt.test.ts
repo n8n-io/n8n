@@ -17,7 +17,7 @@ describe('jwt.issueJWT', () => {
 	const jwtService = Container.get(JwtService);
 
 	describe('when not setting userManagement.jwtSessionDuration', () => {
-		it('should default to expire in 168 hours', () => {
+		it('should default to expire in 7 days', () => {
 			const defaultInSeconds = 7 * Time.days.toSeconds;
 			const mockUser = mock<User>({ password: 'passwordHash' });
 			const { token, expiresInSeconds } = issueJWT(mockUser);
