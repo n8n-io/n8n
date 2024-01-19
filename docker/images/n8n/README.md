@@ -45,7 +45,7 @@ docker run -it --rm \
  --name n8n \
  -p 5678:5678 \
  -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n
+ docker.n8n.io/n8nio/n8n -e DOCKER_USERNAME=your_actual_docker_username -e DOCKER_PASSWORD=your_actual_docker_password
 ```
 
 You can then access n8n by opening:
