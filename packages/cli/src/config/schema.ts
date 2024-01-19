@@ -762,11 +762,12 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
-		jwtDuration: {
-			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+		// TODO: Is it ok to add units here?
+		jwtSessionDurationHours: {
+			doc: 'Set a specific expiration date for the JWTs.',
 			format: Number,
 			default: 168,
-			env: 'N8N_USER_MANAGEMENT_JWT_DURATION',
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
 		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
