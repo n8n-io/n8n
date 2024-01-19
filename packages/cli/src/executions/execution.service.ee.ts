@@ -14,11 +14,11 @@ export class EnterpriseExecutionsService {
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 	) {}
 
-	async getExecution(
+	async findOne(
 		req: ExecutionRequest.Get,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
-		const execution = await this.executionService.getExecution(req, sharedWorkflowIds);
+		const execution = await this.executionService.findOne(req, sharedWorkflowIds);
 
 		if (!execution) return;
 

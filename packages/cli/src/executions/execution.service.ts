@@ -78,7 +78,7 @@ export class ExecutionService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async getExecutionsList(req: ExecutionRequest.GetAll, sharedWorkflowIds: string[]) {
+	async findMany(req: ExecutionRequest.GetMany, sharedWorkflowIds: string[]) {
 		// parse incoming filter object and remove non-valid fields
 		let filter: IGetExecutionsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
@@ -152,7 +152,7 @@ export class ExecutionService {
 		};
 	}
 
-	async getExecution(
+	async findOne(
 		req: ExecutionRequest.Get,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
@@ -176,7 +176,7 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retryExecution(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
+	async retry(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
 		const { id: executionId } = req.params;
 		const execution = (await this.executionRepository.findIfShared(
 			executionId,
@@ -288,7 +288,7 @@ export class ExecutionService {
 		return !!executionData.finished;
 	}
 
-	async deleteExecutions(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
+	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
 		let requestFilters;
 		if (requestFiltersRaw) {

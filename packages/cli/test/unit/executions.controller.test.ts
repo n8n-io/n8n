@@ -21,7 +21,7 @@ describe('ExecutionsController', () => {
 		it('should call getQueueModeExecutions in queue mode', async () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('queue');
 			const controller = new ExecutionsController(mock(), mock(), mock(), activeExecutionService);
-			await controller.getActiveExecutions(req);
+			await controller.getActive(req);
 			expect(activeExecutionService.findManyInQueueMode).toHaveBeenCalled();
 			expect(activeExecutionService.findManyInRegularMode).not.toHaveBeenCalled();
 		});
@@ -29,7 +29,7 @@ describe('ExecutionsController', () => {
 		it('should call getRegularModeExecutions in regular mode', async () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('regular');
 			const controller = new ExecutionsController(mock(), mock(), mock(), activeExecutionService);
-			await controller.getActiveExecutions(req);
+			await controller.getActive(req);
 			expect(activeExecutionService.findManyInQueueMode).not.toHaveBeenCalled();
 			expect(activeExecutionService.findManyInRegularMode).toHaveBeenCalled();
 		});
@@ -42,7 +42,7 @@ describe('ExecutionsController', () => {
 		it('should 404 when execution is not found or inaccessible for user', async () => {
 			activeExecutionService.findOne.mockResolvedValue(undefined);
 			const controller = new ExecutionsController(mock(), mock(), mock(), activeExecutionService);
-			await expect(controller.stopExecution(req)).rejects.toThrow(NotFoundError);
+			await expect(controller.stop(req)).rejects.toThrow(NotFoundError);
 			expect(activeExecutionService.findOne).toHaveBeenCalledWith(req.user, '123');
 		});
 
@@ -50,7 +50,7 @@ describe('ExecutionsController', () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('queue');
 			activeExecutionService.findOne.mockResolvedValue(execution);
 			const controller = new ExecutionsController(mock(), mock(), mock(), activeExecutionService);
-			await controller.stopExecution(req);
+			await controller.stop(req);
 			expect(activeExecutionService.stopExecutionInQueueMode).toHaveBeenCalled();
 			expect(activeExecutionService.stopExecutionInRegularMode).not.toHaveBeenCalled();
 		});
@@ -59,7 +59,7 @@ describe('ExecutionsController', () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('regular');
 			activeExecutionService.findOne.mockResolvedValue(execution);
 			const controller = new ExecutionsController(mock(), mock(), mock(), activeExecutionService);
-			await controller.stopExecution(req);
+			await controller.stop(req);
 			expect(activeExecutionService.stopExecutionInRegularMode).toHaveBeenCalled();
 			expect(activeExecutionService.stopExecutionInQueueMode).not.toHaveBeenCalled();
 		});

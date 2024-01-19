@@ -40,6 +40,7 @@ export class ActiveExecutionService {
 
 		return activeExecutions.map((execution) => {
 			if (!execution.status) {
+				// @tech-debt Status should never be nullish
 				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 			}
 

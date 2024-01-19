@@ -30,45 +30,45 @@ export class ExecutionsController {
 	}
 
 	@Get('/')
-	async getExecutionsList(req: ExecutionRequest.GetAll) {
+	async getMany(req: ExecutionRequest.GetMany) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) return { count: 0, estimated: false, results: [] };
 
-		return await this.executionService.getExecutionsList(req, workflowIds);
+		return await this.executionService.findMany(req, workflowIds);
 	}
 
 	@Get('/:id')
-	async getExecution(req: ExecutionRequest.Get) {
+	async getOne(req: ExecutionRequest.Get) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
 		return isSharingEnabled()
-			? await this.enterpriseExecutionService.getExecution(req, workflowIds)
-			: await this.executionService.getExecution(req, workflowIds);
+			? await this.enterpriseExecutionService.findOne(req, workflowIds)
+			: await this.executionService.findOne(req, workflowIds);
 	}
 
 	@Post('/:id/retry')
-	async retryExecution(req: ExecutionRequest.Retry) {
+	async retry(req: ExecutionRequest.Retry) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.retryExecution(req, workflowIds);
+		return await this.executionService.retry(req, workflowIds);
 	}
 
 	@Post('/delete')
-	async deleteExecutions(req: ExecutionRequest.Delete) {
+	async delete(req: ExecutionRequest.Delete) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.deleteExecutions(req, workflowIds);
+		return await this.executionService.delete(req, workflowIds);
 	}
 
 	@Get('/active')
-	async getActiveExecutions(req: ExecutionRequest.GetAllActive) {
+	async getActive(req: ExecutionRequest.GetAllActive) {
 		const filter = req.query.filter?.length ? jsonParse<GetAllActiveFilter>(req.query.filter) : {};
 
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
@@ -79,7 +79,7 @@ export class ExecutionsController {
 	}
 
 	@Post('/active/:id/stop')
-	async stopExecution(req: ExecutionRequest.Stop) {
+	async stop(req: ExecutionRequest.Stop) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
