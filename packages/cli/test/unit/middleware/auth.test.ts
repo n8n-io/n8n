@@ -41,7 +41,6 @@ describe('refreshExpiringCookie', () => {
 		expect(res.cookie).not.toHaveBeenCalled();
 	});
 
-	// TODO: structure tests
 	describe('with N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS=-1', () => {
 		it('does not refresh the cookie, ever', async () => {
 			config.set('userManagement.jwtSessionDurationHours', 1);
