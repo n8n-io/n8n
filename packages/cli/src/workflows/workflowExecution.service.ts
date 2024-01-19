@@ -47,7 +47,7 @@ export class WorkflowExecutionService {
 		user: User,
 		sessionId?: string,
 	) {
-		const pinnedTrigger = this.findPinnedTrigger(workflowData, startNodes, pinData);
+		const pinnedTrigger = this.selectPinnedActivatorStarter(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
@@ -243,44 +243,64 @@ export class WorkflowExecutionService {
 	}
 
 	/**
-	 * Find the pinned trigger to execute the workflow from, if any.
+	 * Select the pinned activator node to use as starter for a manual execution.
 	 *
-	 * - In a full execution, select the _first_ pinned trigger.
-	 * - In a partial execution,
-	 *   - select the _first_ pinned trigger that leads to the executed node,
-	 *   - else select the executed pinned trigger.
+	 * In a full manual execution, select the pinned activator that was first added
+	 * to the workflow, prioritizing `n8n-nodes-base.webhook` over other activators.
+	 *
+	 * In a partial manual execution, if the executed node has parent nodes among the
+	 * pinned activators, select the pinned activator that was first added to the workflow,
+	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
+	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	private findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
 
-		const isTrigger = (nodeTypeName: string) =>
-			['trigger', 'webhook'].some((suffix) => nodeTypeName.toLowerCase().includes(suffix));
+		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
 
-		const pinnedTriggers = workflow.nodes.filter(
-			(node) => !node.disabled && pinData[node.name] && isTrigger(node.type),
-		);
+		if (allPinnedActivators.length === 0) return null;
 
-		if (pinnedTriggers.length === 0) return null;
+		const [firstPinnedActivator] = allPinnedActivators;
 
-		if (startNodes?.length === 0) return pinnedTriggers[0]; // full execution
+		// full manual execution
 
-		const [startNodeName] = startNodes;
+		if (startNodes?.length === 0) return firstPinnedActivator ?? null;
 
-		const parentNames = new Workflow({
+		// partial manual execution
+
+		/**
+		 * If the partial manual execution has 2+ start nodes, we search only the zeroth
+		 * start node's parents for a pinned activator. If we had 2+ start nodes without
+		 * a common ancestor and so if we end up finding multiple pinned activators, we
+		 * would still need to return one to comply with existing usage.
+		 */
+		const [firstStartNodeName] = startNodes;
+
+		const parentNodeNames = new Workflow({
 			nodes: workflow.nodes,
 			connections: workflow.connections,
 			active: workflow.active,
 			nodeTypes: this.nodeTypes,
-		}).getParentNodes(startNodeName);
+		}).getParentNodes(firstStartNodeName);
 
-		let checkNodeName = '';
+		if (parentNodeNames.length > 0) {
+			const parentNodeName = parentNodeNames.find((p) => p === firstPinnedActivator.name);
 
-		if (parentNames.length === 0) {
-			checkNodeName = startNodeName;
-		} else {
-			checkNodeName = parentNames.find((pn) => pn === pinnedTriggers[0].name) as string;
+			return allPinnedActivators.find((pa) => pa.name === parentNodeName) ?? null;
 		}
 
-		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
+		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
+	}
+
+	private findAllPinnedActivators(workflow: IWorkflowDb, pinData?: IPinData) {
+		return workflow.nodes
+			.filter(
+				(node) =>
+					!node.disabled &&
+					pinData?.[node.name] &&
+					['trigger', 'webhook'].some((suffix) => node.type.toLowerCase().endsWith(suffix)) &&
+					node.type !== 'n8n-nodes-base.respondToWebhook',
+			)
+			.sort((a) => (a.type.endsWith('webhook') ? -1 : 1));
 	}
 }
