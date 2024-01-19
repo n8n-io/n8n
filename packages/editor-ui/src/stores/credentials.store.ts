@@ -257,7 +257,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			id: string;
 		}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
 			const rootStore = useRootStore();
-			return getCredentialData(rootStore.getRestApiContext, id);
+			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
 		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
@@ -320,15 +320,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async oAuth2Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		async oAuth1Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		async testCredential(data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 			const rootStore = useRootStore();
-			return testCredential(rootStore.getRestApiContext, { credentials: data });
+			return await testCredential(rootStore.getRestApiContext, { credentials: data });
 		},
 		async getNewCredentialName(params: { credentialTypeName: string }): Promise<string> {
 			try {
@@ -392,9 +392,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/credential-translation', {
-				credentialType,
-			});
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/credential-translation',
+				{
+					credentialType,
+				},
+			);
 		},
 	},
 });
