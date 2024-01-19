@@ -29,6 +29,7 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -599,7 +600,8 @@ export class MergeV2 implements INodeType {
 					returnData.push.apply(returnData, this.getInputData(1));
 				}
 				if (output === 'empty') {
-					returnData.push({ json: {} });
+					const itemData = generatePairedItemData(this.getInputData(0).length);
+					returnData.push({ json: {}, pairedItem: itemData });
 				}
 			}
 		}

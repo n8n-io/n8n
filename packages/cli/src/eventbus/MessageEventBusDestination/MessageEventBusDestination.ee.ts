@@ -99,7 +99,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	}
 
 	async deleteFromDb() {
-		return MessageEventBusDestination.deleteFromDb(this.getId());
+		return await MessageEventBusDestination.deleteFromDb(this.getId());
 	}
 
 	static async deleteFromDb(id: string) {

@@ -54,7 +54,7 @@ if (!inTest) {
 }
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
-	return connection.transaction(fn);
+	return await connection.transaction(fn);
 }
 
 export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {

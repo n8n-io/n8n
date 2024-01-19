@@ -603,6 +603,7 @@ export const enum STORES {
 	RBAC = 'rbac',
 	COLLABORATION = 'collaboration',
 	PUSH = 'push',
+	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 }
 
 export const enum SignInType {

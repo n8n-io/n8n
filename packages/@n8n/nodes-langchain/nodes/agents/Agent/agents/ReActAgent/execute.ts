@@ -94,5 +94,5 @@ export async function reActAgentAgentExecute(
 		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

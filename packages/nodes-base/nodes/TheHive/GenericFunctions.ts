@@ -42,7 +42,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions

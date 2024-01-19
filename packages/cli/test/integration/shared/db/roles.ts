@@ -2,31 +2,31 @@ import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
 
 export async function getGlobalOwnerRole() {
-	return Container.get(RoleService).findGlobalOwnerRole();
+	return await Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Container.get(RoleService).findGlobalMemberRole();
+	return await Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getGlobalAdminRole() {
-	return Container.get(RoleService).findGlobalAdminRole();
+	return await Container.get(RoleService).findGlobalAdminRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Container.get(RoleService).findWorkflowOwnerRole();
+	return await Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Container.get(RoleService).findWorkflowEditorRole();
+	return await Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Container.get(RoleService).findCredentialOwnerRole();
+	return await Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {
-	return Promise.all([
+	return await Promise.all([
 		getGlobalOwnerRole(),
 		getGlobalMemberRole(),
 		getWorkflowOwnerRole(),

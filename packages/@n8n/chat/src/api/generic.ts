@@ -16,7 +16,7 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		},
 	});
 
-	return (await response.json()) as Promise<T>;
+	return (await response.json()) as T;
 }
 
 export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {
@@ -27,11 +27,11 @@ export async function get<T>(url: string, query: object = {}, options: RequestIn
 		).toString()}`;
 	}
 
-	return authenticatedFetch<T>(resolvedUrl, { ...options, method: 'GET' });
+	return await authenticatedFetch<T>(resolvedUrl, { ...options, method: 'GET' });
 }
 
 export async function post<T>(url: string, body: object = {}, options: RequestInit = {}) {
-	return authenticatedFetch<T>(url, {
+	return await authenticatedFetch<T>(url, {
 		...options,
 		method: 'POST',
 		body: JSON.stringify(body),
@@ -39,7 +39,7 @@ export async function post<T>(url: string, body: object = {}, options: RequestIn
 }
 
 export async function put<T>(url: string, body: object = {}, options: RequestInit = {}) {
-	return authenticatedFetch<T>(url, {
+	return await authenticatedFetch<T>(url, {
 		...options,
 		method: 'PUT',
 		body: JSON.stringify(body),
@@ -47,7 +47,7 @@ export async function put<T>(url: string, body: object = {}, options: RequestIni
 }
 
 export async function patch<T>(url: string, body: object = {}, options: RequestInit = {}) {
-	return authenticatedFetch<T>(url, {
+	return await authenticatedFetch<T>(url, {
 		...options,
 		method: 'PATCH',
 		body: JSON.stringify(body),
@@ -55,7 +55,7 @@ export async function patch<T>(url: string, body: object = {}, options: RequestI
 }
 
 export async function del<T>(url: string, body: object = {}, options: RequestInit = {}) {
-	return authenticatedFetch<T>(url, {
+	return await authenticatedFetch<T>(url, {
 		...options,
 		method: 'DELETE',
 		body: JSON.stringify(body),

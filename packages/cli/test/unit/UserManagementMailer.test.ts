@@ -22,7 +22,7 @@ describe('UserManagementMailer', () => {
 		test('not be called when SMTP not set up', async () => {
 			const userManagementMailer = new UserManagementMailer();
 			// NodeMailer.verifyConnection gets called only explicitly
-			await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
+			await expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
 
 			expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 		});
@@ -34,7 +34,7 @@ describe('UserManagementMailer', () => {
 
 			const userManagementMailer = new UserManagementMailer();
 			// NodeMailer.verifyConnection gets called only explicitly
-			expect(async () => userManagementMailer.verifyConnection()).not.toThrow();
+			expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
 		});
 	});
 });

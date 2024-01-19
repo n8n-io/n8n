@@ -101,7 +101,7 @@ export class TestWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		return new Promise(async (resolve, reject) => {
+		return await new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
 				const executionId = await WebhookHelpers.executeWebhook(
@@ -229,7 +229,10 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), TEST_WEBHOOK_TIMEOUT);
+		const timeout = setTimeout(
+			async () => await this.cancelWebhook(workflow.id),
+			TEST_WEBHOOK_TIMEOUT,
+		);
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
