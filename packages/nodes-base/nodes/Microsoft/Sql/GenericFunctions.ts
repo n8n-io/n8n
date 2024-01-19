@@ -120,11 +120,34 @@ const escapeTableName = (table: string) => {
 	}
 };
 
+const MSSQL_PARAMETER_LIMIT = 2100;
+
+export function mssqlChunk(rows: IDataObject[]): IDataObject[][] {
+	const chunked: IDataObject[][] = [[]];
+	let currentParamCount = 0;
+
+	for (const row of rows) {
+		const rowValues = Object.values(row);
+		const valueCount = rowValues.length;
+
+		if (currentParamCount + valueCount >= MSSQL_PARAMETER_LIMIT) {
+			chunked.push([]);
+			currentParamCount = 0;
+		}
+
+		chunked[chunked.length - 1].push(row);
+
+		currentParamCount += valueCount;
+	}
+
+	return chunked;
+}
+
 export async function insertOperation(tables: ITables, pool: mssql.ConnectionPool) {
 	return await executeQueryQueue(
 		tables,
 		({ table, columnString, items }: OperationInputData): Array<Promise<object>> => {
-			return chunk(items, 1000).map(async (insertValues) => {
+			return mssqlChunk(items).map(async (insertValues) => {
 				const request = pool.request();
 
 				const valuesPlaceholder = [];
