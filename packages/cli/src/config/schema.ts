@@ -768,6 +768,12 @@ export const schema = {
 			default: 168,
 			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
 		},
+		jwtRefreshTimeoutHours: {
+			doc: '',
+			format: Number,
+			default: 0,
+			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
+		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
