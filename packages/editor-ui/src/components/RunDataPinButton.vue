@@ -1,37 +1,42 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { usePinnedData } from '@/composables/usePinnedData';
+
+const locale = useI18n();
 
 type Props = {
 	tooltipContentsVisibility: {
 		binaryDataTooltipContent: boolean;
-		controlledPinDataTooltipContent: boolean;
+		pinDataDiscoveryTooltipContent: boolean;
 	};
 	dataPinningDocsUrl: string;
 	pinnedData: ReturnType<typeof usePinnedData>;
 	isTooltipVisible?: boolean;
-	disabled?: boolean;
+	disabled: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), {
-	isTooltipVisible: undefined,
-	disabled: false,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	(event: 'togglePinData'): void;
 }>();
 
-const locale = useI18n();
+const visible = computed(() =>
+	props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent ? true : undefined,
+);
 </script>
 
 <template>
-	<n8n-tooltip v-show="true" placement="bottom-end" :visible="props.isTooltipVisible">
+	<n8n-tooltip v-show="true" placement="bottom-end" :visible="visible">
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
 			</div>
-			<div v-else-if="props.tooltipContentsVisibility.controlledPinDataTooltipContent">
+			<div v-else-if="props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent">
+				{{ locale.baseText('node.discovery.pinData.ndv') }}
+			</div>
+			<div v-else>
 				<strong>{{ locale.baseText('ndv.pinData.pin.title') }}</strong>
 				<n8n-text size="small" tag="p">
 					{{ locale.baseText('ndv.pinData.pin.description') }}
@@ -40,9 +45,6 @@ const locale = useI18n();
 						{{ locale.baseText('ndv.pinData.pin.link') }}
 					</n8n-link>
 				</n8n-text>
-			</div>
-			<div v-else>
-				{{ locale.baseText('node.discovery.pinData.ndv') }}
 			</div>
 		</template>
 		<n8n-icon-button

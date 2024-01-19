@@ -73,21 +73,16 @@
 
 				<RunDataPinButton
 					v-if="rawInputData.length && !editMode.enabled"
-					:is-tooltip-visible="
-						isControlledPinDataTooltip
-							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
-							: undefined
-					"
 					:disabled="
-						editMode.enabled ||
-						(rawInputData.length === 0 && !pinnedData.hasData.value) ||
+						(!rawInputData.length && !pinnedData.hasData.value) ||
 						isReadOnlyRoute ||
 						readOnlyEnv ||
 						!!binaryData?.length
 					"
 					:tooltip-contents-visibility="{
 						binaryDataTooltipContent: !!binaryData?.length,
-						controlledPinDataTooltipContent: !isControlledPinDataTooltip,
+						pinDataDiscoveryTooltipContent:
+							isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible,
 					}"
 					:data-pinning-docs-url="dataPinningDocsUrl"
 					:pinned-data="pinnedData"
