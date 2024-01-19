@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style['content']">
+	<div :class="$style['content']" ref="nodeViewRootRef">
 		<div
 			id="node-view-root"
 			class="node-view-root do-not-select"
@@ -468,6 +468,7 @@ export default defineComponent({
 		}
 	},
 	setup(props, ctx) {
+		const nodeViewRootRef = ref(null);
 		const nodeViewRef = ref(null);
 		const onMouseMoveEnd = ref(null);
 
@@ -482,7 +483,7 @@ export default defineComponent({
 		const pinnedData = usePinnedData(activeNode);
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
-		const canvasPanning = useCanvasPanning(nodeViewRef, { onMouseMoveEnd });
+		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 
 		return {
 			locale,
@@ -494,6 +495,7 @@ export default defineComponent({
 			pinnedData,
 			deviceSupport,
 			canvasPanning,
+			nodeViewRootRef,
 			nodeViewRef,
 			onMouseMoveEnd,
 			callDebounced,

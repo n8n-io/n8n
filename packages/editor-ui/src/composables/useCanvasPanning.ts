@@ -52,7 +52,7 @@ export function useCanvasPanning(
 	 * @param moveButtonPressed Whether the middle mouse button is pressed
 	 */
 	function onMouseDown(e: MouseEvent, moveButtonPressed: boolean) {
-		if (!deviceSupport.isCtrlKeyPressed(e) && !moveButtonPressed) {
+		if (!(deviceSupport.isCtrlKeyPressed(e) || moveButtonPressed)) {
 			// We only care about it when the ctrl key is pressed at the same time.
 			// So we exit when it is not pressed.
 			return;
@@ -104,7 +104,7 @@ export function useCanvasPanning(
 	 */
 	function onMouseMove(e: MouseEvent) {
 		const element = unref(elementRef);
-		if (e.target && !(e.target === element)) {
+		if (e.target && !(element === e.target || element?.contains(e.target as Node))) {
 			return;
 		}
 
