@@ -31,6 +31,16 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 			manual_executions_count: string | number;
 		};
 
+		const isMySql = config.getEnv('database.type') === 'mysqldb';
+
+		const toTableName = (name: string) =>
+			isMySql ? `\`${this.fullPrefix}${name}\`` : `"${this.fullPrefix}${name}"`;
+
+		const userTable = toTableName('user');
+		const workflowTable = toTableName('workflow_entity');
+		const credentialTable = toTableName('credentials_entity');
+		const workflowStatsTable = toTableName('workflow_statistics');
+
 		const [
 			{
 				enabled_user_count: enabledUsers,
@@ -42,12 +52,12 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 			},
 		] = (await this.query(`
 			SELECT
-				(SELECT COUNT(*) FROM ${this.fullPrefix}user WHERE disabled = false) AS enabled_user_count,
-				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity WHERE active = true) AS active_workflow_count,
-				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity) AS total_workflow_count,
-				(SELECT COUNT(*) FROM ${this.fullPrefix}credentials_entity) AS total_credentials_count,
-				(SELECT SUM(count) FROM ${this.fullPrefix}workflow_statistics WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
-				(SELECT SUM(count) FROM ${this.fullPrefix}workflow_statistics WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
+				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
+				(SELECT COUNT(*) FROM ${workflowTable} WHERE active = true) AS active_workflow_count,
+				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
+				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
+				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
+				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
 		const toNumber = (value: string | number) =>
