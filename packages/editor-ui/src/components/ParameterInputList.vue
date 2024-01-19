@@ -102,6 +102,7 @@
 				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 				:path="getPath(parameter.name)"
 				:node="node"
+				:read-only="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
 			<div
@@ -168,13 +169,14 @@ import {
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
-import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
-	async () => import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
+const CollectionParameter = defineAsyncComponent(
+	async () => await import('./CollectionParameter.vue'),
+);
 
 export default defineComponent({
 	name: 'ParameterInputList',
@@ -476,14 +478,16 @@ export default defineComponent({
 				this.$emit('activate');
 			}
 		},
+		/**
+		 * Handles default node button parameter type actions
+		 * @param parameter
+		 */
 		onButtonAction(parameter: INodeProperties) {
 			const action: string | undefined = parameter.typeOptions?.action;
 
 			switch (action) {
-				case 'openChat':
-					this.ndvStore.setActiveNodeName(null);
-					nodeViewEventBus.emit('openChat');
-					break;
+				default:
+					return;
 			}
 		},
 		isNodeAuthField(name: string): boolean {

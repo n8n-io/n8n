@@ -7,7 +7,7 @@ export async function setWorkflowSharedWith(
 	id: string,
 	data: IShareWorkflowsPayload,
 ): Promise<IWorkflowsShareResponse> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'PUT',
 		`/workflows/${id}/share`,

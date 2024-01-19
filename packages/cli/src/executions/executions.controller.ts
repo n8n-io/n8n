@@ -1,59 +1,53 @@
-import express from 'express';
-import type {
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
-} from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
-import type { ExecutionRequest } from '@/requests';
-import { EEExecutionsController } from './executions.controller.ee';
-import { ExecutionsService } from './executions.service';
+import { ExecutionRequest } from './execution.request';
+import { ExecutionService } from './execution.service';
+import { Authorized, Get, Post, RestController } from '@/decorators';
+import { EnterpriseExecutionsService } from './execution.service.ee';
+import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import type { User } from '@/databases/entities/User';
 
-export const executionsController = express.Router();
-executionsController.use('/', EEExecutionsController);
+@Authorized()
+@RestController('/executions')
+export class ExecutionsController {
+	constructor(
+		private readonly executionService: ExecutionService,
+		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
+		private readonly workflowSharingService: WorkflowSharingService,
+	) {}
 
-/**
- * GET /executions
- */
-executionsController.get(
-	'/',
-	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		return ExecutionsService.getExecutionsList(req);
-	}),
-);
+	private async getAccessibleWorkflowIds(user: User) {
+		return isSharingEnabled()
+			? await this.workflowSharingService.getSharedWorkflowIds(user)
+			: await this.workflowSharingService.getSharedWorkflowIds(user, ['owner']);
+	}
 
-/**
- * GET /executions/:id
- */
-executionsController.get(
-	'/:id(\\d+)',
-	ResponseHelper.send(
-		async (
-			req: ExecutionRequest.Get,
-		): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-			return ExecutionsService.getExecution(req);
-		},
-	),
-);
+	@Get('/')
+	async getExecutionsList(req: ExecutionRequest.GetAll) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
-/**
- * POST /executions/:id/retry
- */
-executionsController.post(
-	'/:id/retry',
-	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
-		return ExecutionsService.retryExecution(req);
-	}),
-);
+		return await this.executionService.getExecutionsList(req, workflowIds);
+	}
 
-/**
- * POST /executions/delete
- * INFORMATION: We use POST instead of DELETE to not run into any issues with the query data
- * getting too long
- */
-executionsController.post(
-	'/delete',
-	ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
-		await ExecutionsService.deleteExecutions(req);
-	}),
-);
+	@Get('/:id')
+	async getExecution(req: ExecutionRequest.Get) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		return isSharingEnabled()
+			? await this.enterpriseExecutionService.getExecution(req, workflowIds)
+			: await this.executionService.getExecution(req, workflowIds);
+	}
+
+	@Post('/:id/retry')
+	async retryExecution(req: ExecutionRequest.Retry) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		return await this.executionService.retryExecution(req, workflowIds);
+	}
+
+	@Post('/delete')
+	async deleteExecutions(req: ExecutionRequest.Delete) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		return await this.executionService.deleteExecutions(req, workflowIds);
+	}
+}

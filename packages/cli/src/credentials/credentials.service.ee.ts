@@ -43,7 +43,7 @@ export class EECredentialsService extends CredentialsService {
 			where.userId = user.id;
 		}
 
-		return Container.get(SharedCredentialsRepository).findOne({
+		return await Container.get(SharedCredentialsRepository).findOne({
 			where,
 			relations,
 		});
@@ -79,6 +79,6 @@ export class EECredentialsService extends CredentialsService {
 				}),
 			);
 
-		return transaction.save(newSharedCredentials);
+		return await transaction.save(newSharedCredentials);
 	}
 }

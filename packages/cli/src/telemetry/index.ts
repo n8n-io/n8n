@@ -97,7 +97,7 @@ export class Telemetry {
 					...this.executionCountsBuffer[workflowId],
 				});
 
-				return promise;
+				return await promise;
 			});
 
 		this.executionCountsBuffer = {};
@@ -117,7 +117,7 @@ export class Telemetry {
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
-		return Promise.all(allPromises);
+		return await Promise.all(allPromises);
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
@@ -155,7 +155,7 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
-		return new Promise<void>(async (resolve) => {
+		return await new Promise<void>(async (resolve) => {
 			await this.postHog.stop();
 
 			if (this.rudderStack) {
@@ -170,7 +170,7 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
@@ -191,7 +191,7 @@ export class Telemetry {
 		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
 	): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
 				const updatedProperties: ITelemetryTrackProperties = {

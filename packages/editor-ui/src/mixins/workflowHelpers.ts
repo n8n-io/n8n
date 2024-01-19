@@ -168,6 +168,13 @@ export function resolveParameter(
 		nodeConnection,
 	);
 
+	if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
+		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
+		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
+		const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
+		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
+	}
+
 	let runExecutionData: IRunExecutionData;
 	if (!executionData?.data) {
 		runExecutionData = {
@@ -897,7 +904,7 @@ export const workflowHelpers = defineComponent({
 			const currentWorkflow = id || this.$route.params.name;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-				return this.saveAsNewWorkflow({ name, tags }, redirect);
+				return await this.saveAsNewWorkflow({ name, tags }, redirect);
 			}
 
 			// Workflow exists already so update it
@@ -976,7 +983,7 @@ export const workflowHelpers = defineComponent({
 					);
 
 					if (overwrite === MODAL_CONFIRM) {
-						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
+						return await this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;

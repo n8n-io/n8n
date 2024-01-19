@@ -8,7 +8,7 @@ import type {
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -177,10 +177,12 @@ export async function execute(
 		const onConflict = 'ON DUPLICATE KEY UPDATE';
 
 		const columns = Object.keys(item);
-		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 		const placeholder = `${columns.map(() => '?').join(',')}`;
 
-		const insertQuery = `INSERT INTO \`${table}\`(${escapedColumns}) VALUES(${placeholder})`;
+		const insertQuery = `INSERT INTO ${escapeSqlIdentifier(
+			table,
+		)}(${escapedColumns}) VALUES(${placeholder})`;
 
 		const values = Object.values(item) as QueryValues;
 
@@ -189,7 +191,7 @@ export async function execute(
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
-			updates.push(`\`${column}\` = ?`);
+			updates.push(`${escapeSqlIdentifier(column)} = ?`);
 			values.push(item[column] as string);
 		}
 

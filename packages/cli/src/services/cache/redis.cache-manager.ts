@@ -39,6 +39,7 @@ export interface RedisStore extends Store {
 	hvals<T>(key: string): Promise<T[]>;
 	hexists(key: string, field: string): Promise<boolean>;
 	hdel(key: string, field: string): Promise<number>;
+	expire(key: string, ttlSeconds: number): Promise<void>;
 }
 
 function builder(
@@ -55,6 +56,9 @@ function builder(
 			const val = await redisCache.get(key);
 			if (val === undefined || val === null) return undefined;
 			else return jsonParse<T>(val);
+		},
+		async expire(key: string, ttlSeconds: number) {
+			await redisCache.expire(key, ttlSeconds);
 		},
 		async set(key, value, ttl) {
 			// eslint-disable-next-line @typescript-eslint/no-throw-literal, @typescript-eslint/restrict-template-expressions
@@ -84,7 +88,7 @@ function builder(
 				);
 		},
 		mget: async (...args) =>
-			redisCache
+			await redisCache
 				.mget(args)
 				.then((results) =>
 					results.map((result) =>
@@ -97,8 +101,8 @@ function builder(
 		async del(key) {
 			await redisCache.del(key);
 		},
-		ttl: async (key) => redisCache.pttl(key),
-		keys: async (pattern = '*') => keys(pattern),
+		ttl: async (key) => await redisCache.pttl(key),
+		keys: async (pattern = '*') => await keys(pattern),
 		reset,
 		isCacheable,
 		get client() {
@@ -133,7 +137,7 @@ function builder(
 			await redisCache.hset(key, fieldValueRecord);
 		},
 		async hkeys(key: string) {
-			return redisCache.hkeys(key);
+			return await redisCache.hkeys(key);
 		},
 		async hvals<T>(key: string): Promise<T[]> {
 			const values = await redisCache.hvals(key);
@@ -143,7 +147,7 @@ function builder(
 			return (await redisCache.hexists(key, field)) === 1;
 		},
 		async hdel(key: string, field: string) {
-			return redisCache.hdel(key, field);
+			return await redisCache.hdel(key, field);
 		},
 	} as RedisStore;
 }
@@ -152,7 +156,7 @@ export function redisStoreUsingClient(redisCache: Redis | Cluster, options?: Con
 	const reset = async () => {
 		await redisCache.flushdb();
 	};
-	const keys = async (pattern: string) => redisCache.keys(pattern);
+	const keys = async (pattern: string) => await redisCache.keys(pattern);
 
 	return builder(redisCache, reset, keys, options);
 }

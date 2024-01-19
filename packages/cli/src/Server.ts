@@ -28,7 +28,6 @@ import history from 'connect-history-api-fallback';
 
 import config from '@/config';
 import { Queue } from '@/Queue';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { WorkflowsController } from '@/workflows/workflows.controller';
 import {
@@ -39,7 +38,8 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper, ExecutionRequest } from '@/requests';
+import type { CurlHelper } from '@/requests';
+import type { ExecutionRequest } from '@/executions/execution.request';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -56,7 +56,7 @@ import { TranslationController } from '@/controllers/translation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
-import { executionsController } from '@/executions/executions.controller';
+import { ExecutionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite, IDiagnosticInfo, IExecutionsStopData } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -70,7 +70,7 @@ import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
+import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -102,6 +102,7 @@ import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { WorkflowSharingService } from './workflows/workflowSharing.service';
 
 const exec = promisify(callbackExec);
 
@@ -208,8 +209,9 @@ export class Server extends AbstractServer {
 				order: { createdAt: 'ASC' },
 				where: {},
 			})
-			.then(async (workflow) =>
-				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			.then(
+				async (workflow) =>
+					await Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
 
 		Container.get(CollaborationService);
@@ -247,6 +249,7 @@ export class Server extends AbstractServer {
 			RoleController,
 			ActiveWorkflowsController,
 			WorkflowsController,
+			ExecutionsController,
 		];
 
 		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
@@ -255,7 +258,9 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapController } = await require('@/controllers/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service');
+			const { LdapController } = await require('@/Ldap/ldap.controller');
+			await Container.get(LdapService).init();
 			controllers.push(LdapController);
 		}
 
@@ -273,6 +278,11 @@ export class Server extends AbstractServer {
 
 		if (isMfaFeatureEnabled()) {
 			controllers.push(MFAController);
+		}
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			const { CtaController } = await import('@/controllers/cta.controller');
+			controllers.push(CtaController);
 		}
 
 		controllers.forEach((controller) => registerController(app, controller));
@@ -351,8 +361,6 @@ export class Server extends AbstractServer {
 			await Container.get(Queue).init();
 		}
 
-		await handleLdapInit();
-
 		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
@@ -398,12 +406,6 @@ export class Server extends AbstractServer {
 		);
 
 		// ----------------------------------------
-		// Executions
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/executions`, executionsController);
-
-		// ----------------------------------------
 		// Executing Workflows
 		// ----------------------------------------
 
@@ -440,7 +442,9 @@ export class Server extends AbstractServer {
 							},
 						};
 
-						const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+						const sharedWorkflowIds = await Container.get(
+							WorkflowSharingService,
+						).getSharedWorkflowIds(req.user);
 
 						if (!sharedWorkflowIds.length) return [];
 
@@ -488,7 +492,9 @@ export class Server extends AbstractServer {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+					const sharedWorkflowIds = await Container.get(
+						WorkflowSharingService,
+					).getSharedWorkflowIds(req.user);
 
 					for (const data of executingWorkflows) {
 						if (
@@ -521,7 +527,9 @@ export class Server extends AbstractServer {
 			ResponseHelper.send(async (req: ExecutionRequest.Stop): Promise<IExecutionsStopData> => {
 				const { id: executionId } = req.params;
 
-				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+				const sharedWorkflowIds = await Container.get(WorkflowSharingService).getSharedWorkflowIds(
+					req.user,
+				);
 
 				if (!sharedWorkflowIds.length) {
 					throw new NotFoundError('Execution not found');

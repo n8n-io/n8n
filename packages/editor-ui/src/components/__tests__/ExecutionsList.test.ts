@@ -16,6 +16,7 @@ vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 	}),
+	RouterLink: vi.fn(),
 }));
 
 let pinia: ReturnType<typeof createTestingPinia>;

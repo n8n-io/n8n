@@ -762,6 +762,12 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
+		jwtDuration: {
+			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+			format: Number,
+			default: 168,
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION',
+		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
@@ -1136,12 +1142,6 @@ export const schema = {
 					format: String,
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
-				},
-				disableSessionRecording: {
-					doc: 'Disable posthog session recording',
-					format: Boolean,
-					default: true,
-					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
 				},
 			},
 			sentry: {

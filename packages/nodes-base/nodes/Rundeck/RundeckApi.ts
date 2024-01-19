@@ -67,10 +67,10 @@ export class RundeckApi {
 			query.filter = filter;
 		}
 
-		return this.request('POST', `/api/14/job/${jobId}/run`, body, query);
+		return await this.request('POST', `/api/14/job/${jobId}/run`, body, query);
 	}
 
 	async getJobMetadata(jobId: string): Promise<IDataObject> {
-		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
+		return await this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
 }

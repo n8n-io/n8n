@@ -101,5 +101,5 @@ export async function sqlAgentAgentExecute(
 		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

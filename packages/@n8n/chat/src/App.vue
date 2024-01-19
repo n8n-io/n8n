@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { Chat, ChatWindow } from '@/components';
 import { computed, onMounted } from 'vue';
 import hljs from 'highlight.js/lib/core';
 import hljsXML from 'highlight.js/lib/languages/xml';
 import hljsJavascript from 'highlight.js/lib/languages/javascript';
-import { useOptions } from '@/composables';
+import { Chat, ChatWindow } from '@n8n/chat/components';
+import { useOptions } from '@n8n/chat/composables';
 
 defineProps({});
 

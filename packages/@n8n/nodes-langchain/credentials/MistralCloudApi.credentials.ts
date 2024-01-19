@@ -10,7 +10,7 @@ export class MistralCloudApi implements ICredentialType {
 
 	displayName = 'Mistral Cloud API';
 
-	documentationUrl = 'mistralCloud';
+	documentationUrl = 'mistral';
 
 	properties: INodeProperties[] = [
 		{

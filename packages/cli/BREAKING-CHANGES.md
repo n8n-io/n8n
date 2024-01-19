@@ -10,11 +10,28 @@ The flag `N8N_CACHE_ENABLED` was removed. The cache is now always enabled.
 
 Additionally, expressions in credentials now follow the paired item, so if you have multiple input items, n8n will try to pair the matching row to fill in the credential details.
 
+In the Monday.com Node, due to API changes, the data structure of entries in `column_values` array has changed
+
 ### When is action necessary?
 
 If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
 
 In regards to credentials, if you use expression in credentials, you might want to revisit them. Previously, n8n would stick to the first item only, but now it will try to match the proper paired item.
+
+If you are using the Monday.com node and refering to `column_values` property, check in table below if you are using any of the affected properties of its entries.
+
+| Resource   | Operation           | Previous        | New                 |
+| ---------- | ------------------- | --------------- | ------------------- |
+| Board      | Get                 | owner           | owners              |
+| Board      | Get All             | owner           | owners              |
+| Board Item | Get                 | title           | column.title        |
+| Board Item | Get All             | title           | column.title        |
+| Board Item | Get By Column Value | title           | column.title        |
+| Board Item | Get                 | additional_info | column.settings_str |
+| Board Item | Get All             | additional_info | column.settings_str |
+| Board Item | Get By Column Value | additional_info | column.settings_str |
+
+\*column.settings_str is not a complete equivalent additional_info
 
 ## 1.22.0
 
