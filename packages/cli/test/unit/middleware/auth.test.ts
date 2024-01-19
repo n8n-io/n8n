@@ -108,6 +108,7 @@ describe('refreshExpiringCookie', () => {
 	});
 
 	describe('with N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS=50', () => {
+		const jwtSessionDurationHours = 51;
 		let token: string;
 		let req: AuthenticatedRequest;
 		let res: Response;
@@ -115,7 +116,7 @@ describe('refreshExpiringCookie', () => {
 
 		// ARRANGE
 		beforeEach(() => {
-			config.set('userManagement.jwtSessionDurationHours', 51);
+			config.set('userManagement.jwtSessionDurationHours', jwtSessionDurationHours);
 			config.set('userManagement.jwtRefreshTimeoutHours', 50);
 
 			token = issueJWT(mockUser).token;
@@ -151,6 +152,11 @@ describe('refreshExpiringCookie', () => {
 			// ASSERT
 			expect(next).toHaveBeenCalledTimes(1);
 			expect(res.cookie).toHaveBeenCalledTimes(1);
+			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, expect.any(String), {
+				httpOnly: true,
+				maxAge: jwtSessionDurationHours * Time.hours.toMilliseconds,
+				sameSite: 'lax',
+			});
 		});
 	});
 });
