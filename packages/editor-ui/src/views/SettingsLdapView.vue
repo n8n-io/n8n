@@ -79,7 +79,7 @@
 					:data="dataTable"
 					:cell-style="cellClassStyle"
 					style="width: 100%"
-					height="250"
+					max-height="250"
 				>
 					<ElTableColumn
 						prop="status"
@@ -110,10 +110,7 @@
 						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
 					}}</template>
 					<template #append>
-						<InfiniteLoading
-							force-use-infinite-wrapper=".el-table__body-wrapper"
-							@infinite="getLdapSynchronizations"
-						>
+						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
 						</InfiniteLoading>
 					</template>
 				</ElTable>

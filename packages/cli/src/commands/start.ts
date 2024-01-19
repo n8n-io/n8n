@@ -30,6 +30,7 @@ import { UrlService } from '@/services/url.service';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { WaitTracker } from '@/WaitTracker';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -98,6 +99,8 @@ export class Start extends BaseCommand {
 		try {
 			// Stop with trying to activate workflows that could not be activated
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
+
+			Container.get(WaitTracker).shutdown();
 
 			await this.externalHooks?.run('n8n.stop', []);
 

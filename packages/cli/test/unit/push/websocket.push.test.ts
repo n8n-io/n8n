@@ -65,7 +65,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.send('executionRecovered', data, sessionId1);
+		webSocketPush.sendToOneSession('executionRecovered', data, sessionId1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(
 			JSON.stringify({
@@ -91,7 +91,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.broadcast('executionRecovered', data);
+		webSocketPush.sendToAllSessions('executionRecovered', data);
 
 		const expectedMsg = JSON.stringify({
 			type: 'executionRecovered',

@@ -103,6 +103,8 @@ export class MemoryXata implements INodeType {
 			}),
 			memoryKey: 'chat_history',
 			returnMessages: true,
+			inputKey: 'input',
+			outputKey: 'output',
 		});
 		return {
 			response: logWrapper(memory, this),
