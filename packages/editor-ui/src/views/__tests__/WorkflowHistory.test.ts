@@ -33,6 +33,7 @@ vi.mock('vue-router', () => {
 			replace,
 			resolve,
 		}),
+		RouterLink: vi.fn(),
 	};
 });
 
