@@ -769,7 +769,7 @@ export const schema = {
 			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
 		},
 		jwtRefreshTimeoutHours: {
-			doc: '',
+			doc: 'How long before the JWT expires to automatically refresh it. 0 means 25% of N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. -1 means it will never refresh, which forces users to login again after the defined period in N8N_USER_MANAGEMENT_JWT_DURATION_HOURS.',
 			format: Number,
 			default: 0,
 			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
