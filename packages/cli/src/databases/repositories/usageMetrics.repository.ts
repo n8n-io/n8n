@@ -21,7 +21,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 
 		const pgSchema = config.getEnv('database.postgresdb.schema');
 
-		if (pgSchema !== 'public') tableName = [pgSchema, tablePrefix].join('.');
+		if (pgSchema !== 'public') tableName = [pgSchema, tablePrefix + name].join('.');
 
 		return tableName;
 	}
@@ -40,6 +40,8 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		const workflowTable = this.toTableName('workflow_entity');
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
+
+		console.log('userTable', userTable);
 
 		const [
 			{
