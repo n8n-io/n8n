@@ -20,9 +20,9 @@ export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
 
 	static examples = [
-		'$ n8n import:credentials --input=file.json',
+		'$ n8n import:CREDENTIALS --input=file.json',
 		'$ n8n import:credentials --separate --input=backups/latest/',
-		'$ n8n import:credentials --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'$ n8n import:CREDENTIALS --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'$ n8n import:credentials --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 	];
 
