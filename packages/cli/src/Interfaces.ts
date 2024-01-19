@@ -667,7 +667,6 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 
 export interface JwtToken {
 	token: string;
-	// TODO: is it ok to rename this?
 	expiresInSeconds: number;
 }
 
