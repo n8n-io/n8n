@@ -68,9 +68,6 @@ config.validate({
 });
 const userManagement = config.get('userManagement');
 if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
-	// Can't use the logger here, because it depends on the config.
-	// I could validate it in `Start.init()`, but that feels like the wrong seperation of concerns
-	// I could also do it in `refreshExpiringCookie`, but that would then print the message on every request.
 	console.warn(
 		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
 	);
