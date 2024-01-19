@@ -20,6 +20,61 @@ export class ActiveExecutionService {
 		private readonly waitTracker: WaitTracker,
 	) {}
 
+	async findOne(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.executionRepository.findIfAccessible(executionId, accessibleWorkflowIds);
+	}
+
+	private toSummary(execution: IExecutionsCurrentSummary | IExecutionBase): ExecutionSummary {
+		return {
+			id: execution.id,
+			workflowId: execution.workflowId ?? '',
+			mode: execution.mode,
+			retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
+			startedAt: new Date(execution.startedAt),
+			status: execution.status,
+			stoppedAt: 'stoppedAt' in execution ? execution.stoppedAt : undefined,
+		};
+	}
+
+	// ----------------------------------
+	//           regular mode
+	// ----------------------------------
+
+	async findManyInRegularMode(
+		filter: GetManyActiveFilter,
+		accessibleWorkflowIds: string[],
+	): Promise<ExecutionSummary[]> {
+		return this.activeExecutions
+			.getActiveExecutions()
+			.filter(({ workflowId }) => {
+				if (filter.workflowId && filter.workflowId !== workflowId) return false;
+				if (workflowId && !accessibleWorkflowIds.includes(workflowId)) return false;
+				return true;
+			})
+			.map((execution) => this.toSummary(execution))
+			.sort((a, b) => Number(b.id) - Number(a.id));
+	}
+
+	async stopExecutionInRegularMode(execution: IExecutionBase) {
+		const result = await this.activeExecutions.stopExecution(execution.id);
+
+		if (result) {
+			return {
+				mode: result.mode,
+				startedAt: new Date(result.startedAt),
+				stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+				finished: result.finished,
+				status: result.status,
+			};
+		}
+
+		return await this.waitTracker.stopExecution(execution.id);
+	}
+
+	// ----------------------------------
+	//           queue mode
+	// ----------------------------------
+
 	async findManyInQueueMode(filter: GetManyActiveFilter, accessibleWorkflowIds: string[]) {
 		const activeManualExecutionIds = this.activeExecutions
 			.getActiveExecutions()
@@ -46,25 +101,6 @@ export class ActiveExecutionService {
 
 			return this.toSummary(execution);
 		});
-	}
-
-	async findManyInRegularMode(
-		filter: GetManyActiveFilter,
-		accessibleWorkflowIds: string[],
-	): Promise<ExecutionSummary[]> {
-		return this.activeExecutions
-			.getActiveExecutions()
-			.filter(({ workflowId }) => {
-				if (filter.workflowId && filter.workflowId !== workflowId) return false;
-				if (workflowId && !accessibleWorkflowIds.includes(workflowId)) return false;
-				return true;
-			})
-			.map((execution) => this.toSummary(execution))
-			.sort((a, b) => Number(b.id) - Number(a.id));
-	}
-
-	async findOne(executionId: string, accessibleWorkflowIds: string[]) {
-		return await this.executionRepository.findIfAccessible(executionId, accessibleWorkflowIds);
 	}
 
 	async stopExecutionInQueueMode(execution: IExecutionBase): Promise<IExecutionsStopData> {
@@ -101,34 +137,6 @@ export class ActiveExecutionService {
 			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
 			finished: execution.finished,
 			status: execution.status,
-		};
-	}
-
-	async stopExecutionInRegularMode(execution: IExecutionBase) {
-		const result = await this.activeExecutions.stopExecution(execution.id);
-
-		if (result) {
-			return {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
-				finished: result.finished,
-				status: result.status,
-			};
-		}
-
-		return await this.waitTracker.stopExecution(execution.id);
-	}
-
-	private toSummary(execution: IExecutionsCurrentSummary | IExecutionBase): ExecutionSummary {
-		return {
-			id: execution.id,
-			workflowId: execution.workflowId ?? '',
-			mode: execution.mode,
-			retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
-			startedAt: new Date(execution.startedAt),
-			status: execution.status,
-			stoppedAt: 'stoppedAt' in execution ? execution.stoppedAt : undefined,
 		};
 	}
 }
