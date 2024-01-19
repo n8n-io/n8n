@@ -1,26 +1,14 @@
 import { Service } from 'typedi';
-import { In, Not, type FindOptionsWhere } from 'typeorm';
-import type { ExecutionStatus, IExecutionsSummary } from 'n8n-workflow';
-
 import { ActiveExecutions } from '@/ActiveExecutions';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { User } from '@db/entities/User';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { getStatusUsingPreviousExecutionStatusMethod } from '@/executions/executionHelpers';
-import type { IExecutionBase, IExecutionsStopData } from '@/Interfaces';
+import { Logger } from '@/Logger';
 import { Queue } from '@/Queue';
 import { WaitTracker } from '@/WaitTracker';
-import { Logger } from '@/Logger';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { getStatusUsingPreviousExecutionStatusMethod } from '@/executions/executionHelpers';
 
-export interface ActiveExecutionsQueryFilter {
-	workflowId?: string;
-
-	status?: ExecutionStatus;
-
-	finished?: boolean;
-}
+import type { ExecutionSummary } from 'n8n-workflow';
+import type { IExecutionBase, InMemoryExecutionSummary, StopExecutionResult } from '@/Interfaces';
+import type { GetAllActiveFilter } from './execution.types';
 
 @Service()
 export class ActiveExecutionService {
@@ -30,128 +18,58 @@ export class ActiveExecutionService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly waitTracker: WaitTracker,
-		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
-	async getQueueModeExecutions(user: User, filter: ActiveExecutionsQueryFilter) {
-		const currentJobs = await this.queue.getJobs(['active', 'waiting']);
+	async findManyInQueueMode(filter: GetAllActiveFilter, accessibleWorkflowIds: string[]) {
+		const activeManualExecutionIds = this.activeExecutions
+			.getActiveExecutions()
+			.map((execution) => execution.id);
 
-		const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
+		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const activeProductionExecutionIds = activeJobs.map((job) => job.data.executionId);
 
-		const currentlyRunningManualExecutions = this.activeExecutions.getActiveExecutions();
-		const manualExecutionIds = currentlyRunningManualExecutions.map((execution) => execution.id);
+		const activeExecutionIds = activeProductionExecutionIds.concat(activeManualExecutionIds);
 
-		const currentlyRunningExecutionIds = currentlyRunningQueueIds.concat(manualExecutionIds);
+		if (activeExecutionIds.length === 0) return [];
 
-		if (!currentlyRunningExecutionIds.length) return [];
+		const activeExecutions = await this.executionRepository.getManyActive(
+			activeExecutionIds,
+			accessibleWorkflowIds,
+			filter,
+		);
 
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user);
-		if (!sharedWorkflowIds.length) return [];
-
-		const where: FindOptionsWhere<ExecutionEntity> = {
-			id: In(currentlyRunningExecutionIds),
-			status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
-		};
-
-		if (filter) {
-			const { workflowId, status, finished } = filter;
-			if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-				where.workflowId = workflowId;
-			} else {
-				where.workflowId = In(sharedWorkflowIds);
-			}
-			if (status) {
-				// @ts-ignore
-				where.status = In(status);
-			}
-			if (finished !== undefined) {
-				where.finished = finished;
-			}
-		} else {
-			where.workflowId = In(sharedWorkflowIds);
-		}
-
-		const executions = await this.executionRepository.findMultipleExecutions({
-			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
-			order: { id: 'DESC' },
-			where,
-		});
-
-		if (!executions.length) return [];
-
-		return executions.map((execution) => {
+		return activeExecutions.map((execution) => {
 			if (!execution.status) {
 				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 			}
-			return {
-				id: execution.id,
-				workflowId: execution.workflowId,
-				mode: execution.mode,
-				retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
-				startedAt: new Date(execution.startedAt),
-				status: execution.status ?? null,
-				stoppedAt: execution.stoppedAt ?? null,
-			} as IExecutionsSummary;
+
+			return this.toSummary(execution);
 		});
 	}
 
-	async getRegularModeExecutions(user: User, filter: ActiveExecutionsQueryFilter) {
-		const executingWorkflows = this.activeExecutions.getActiveExecutions();
-
-		const returnData: IExecutionsSummary[] = [];
-
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user);
-
-		for (const data of executingWorkflows) {
-			if (
-				(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-				(data.workflowId !== undefined && !sharedWorkflowIds.includes(data.workflowId))
-			) {
-				continue;
-			}
-
-			returnData.push({
-				id: data.id,
-				workflowId: data.workflowId ?? '',
-				mode: data.mode,
-				retryOf: data.retryOf,
-				startedAt: new Date(data.startedAt),
-				status: data.status,
-			});
-		}
-
-		returnData.sort((a, b) => Number(b.id) - Number(a.id));
-
-		return returnData;
+	async findManyInRegularMode(
+		filter: GetAllActiveFilter,
+		accessibleWorkflowIds: string[],
+	): Promise<ExecutionSummary[]> {
+		return this.activeExecutions
+			.getActiveExecutions()
+			.filter(({ workflowId }) => {
+				if (filter.workflowId && filter.workflowId !== workflowId) return false;
+				if (workflowId && !accessibleWorkflowIds.includes(workflowId)) return false;
+				return true;
+			})
+			.map((execution) => this.toSummary(execution))
+			.sort((a, b) => Number(b.id) - Number(a.id));
 	}
 
-	async findExecution(user: User, executionId: string) {
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user);
-		if (!sharedWorkflowIds.length) {
-			throw new NotFoundError('Execution not found');
-		}
-
-		return await this.executionRepository.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-		});
+	async findOne(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.executionRepository.findIfAccessible(executionId, accessibleWorkflowIds);
 	}
 
-	async stopQueueModeExecution(execution: IExecutionBase): Promise<IExecutionsStopData> {
-		// Manual executions should still be stoppable, so
-		// try notifying the `activeExecutions` to stop it.
+	async stopExecutionInQueueMode(execution: IExecutionBase): Promise<StopExecutionResult> {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
-		if (result === undefined) {
-			// If active execution could not be found check if it is a waiting one
-			try {
-				return await this.waitTracker.stopExecution(execution.id);
-			} catch (error) {
-				// Ignore, if it errors as then it is probably a currently running
-				// execution
-			}
-		} else {
+		if (result) {
 			return {
 				mode: result.mode,
 				startedAt: new Date(result.startedAt),
@@ -161,9 +79,12 @@ export class ActiveExecutionService {
 			};
 		}
 
-		const currentJobs = await this.queue.getJobs(['active', 'waiting']);
+		try {
+			return await this.waitTracker.stopExecution(execution.id);
+		} catch {}
 
-		const job = currentJobs.find(({ data }) => data.executionId === execution.id);
+		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
 
 		if (!job) {
 			this.logger.debug('Could not stop job because it is no longer in queue', {
@@ -182,16 +103,11 @@ export class ActiveExecutionService {
 		};
 	}
 
-	async stopRegularModeExecution(execution: IExecutionBase) {
-		// Stop the execution and wait till it is done and we got the data
+	async stopExecutionInRegularMode(execution: IExecutionBase) {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
-		let returnData: IExecutionsStopData;
-		if (result === undefined) {
-			// If active execution could not be found check if it is a waiting one
-			returnData = await this.waitTracker.stopExecution(execution.id);
-		} else {
-			returnData = {
+		if (result) {
+			return {
 				mode: result.mode,
 				startedAt: new Date(result.startedAt),
 				stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
@@ -200,6 +116,18 @@ export class ActiveExecutionService {
 			};
 		}
 
-		return returnData;
+		return await this.waitTracker.stopExecution(execution.id);
+	}
+
+	private toSummary(execution: InMemoryExecutionSummary | IExecutionBase): ExecutionSummary {
+		return {
+			id: execution.id,
+			workflowId: execution.workflowId ?? '',
+			mode: execution.mode,
+			retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
+			startedAt: new Date(execution.startedAt),
+			status: execution.status,
+			stoppedAt: 'stoppedAt' in execution ? execution.stoppedAt : undefined,
+		};
 	}
 }

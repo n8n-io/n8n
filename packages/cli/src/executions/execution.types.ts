@@ -1,6 +1,5 @@
-import type { IExecutionDeleteFilter } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParam {
@@ -10,29 +9,29 @@ export declare namespace ExecutionRequest {
 			lastId: string;
 			firstId: string;
 		};
+	}
 
-		type GetAllCurrent = {
-			filter: string; // '{ workflowId: string }'
-		};
+	interface DeleteFilter {
+		deleteBefore?: Date;
+		filters?: IDataObject;
+		ids?: string[];
 	}
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAll>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
 
-	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
+	type Delete = AuthenticatedRequest<{}, {}, DeleteFilter>;
 
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<{ id: string }>;
 
-	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAllCurrent>;
+	type GetAllActive = AuthenticatedRequest<{}, {}, {}, { filter?: string }>;
 }
 
-export type ActiveExecutionsQueryFilter = {
+export type GetAllActiveFilter = {
 	workflowId?: string;
-
 	status?: ExecutionStatus;
-
 	finished?: boolean;
 };

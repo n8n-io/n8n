@@ -39,7 +39,7 @@ describe('ActiveExecutionsService', () => {
 			workflowSharingService.getSharedWorkflowIds.calledWith(user).mockResolvedValue(['w1', 'w2']);
 			executionRepository.findMultipleExecutions.mockResolvedValue([]);
 
-			const result = await service.getQueueModeExecutions(user, {});
+			const result = await service.findManyInQueueMode(user, {});
 
 			expect(result).toEqual([]);
 			expect(queue.getJobs).toHaveBeenCalledWith(['active', 'waiting']);
