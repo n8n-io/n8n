@@ -258,6 +258,8 @@ export class WorkflowExecutionService {
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
 
+		if (allPinnedActivators.length === 0) return null;
+
 		const [firstPinnedActivator] = allPinnedActivators;
 
 		// full manual execution
