@@ -1229,33 +1229,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.activeExecutions = newActiveExecutions;
 		},
 
-		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-			let sendData;
-			if (loadWorkflow === true) {
-				sendData = {
-					loadWorkflow: true,
-				};
-			}
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/${id}/retry`,
-				sendData,
-			);
-		},
-
-		// Deletes executions
-		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/executions/delete',
-				sendData as unknown as IDataObject,
-			);
-		},
-
 		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 		async getPastExecutions(
 			filter: IDataObject,
@@ -1347,15 +1320,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				rootStore.getRestApiContext,
 				'DELETE',
 				`/test-webhook/${workflowId}`,
-			);
-		},
-
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions-current/${executionId}/stop`,
 			);
 		},
 

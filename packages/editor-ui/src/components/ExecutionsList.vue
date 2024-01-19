@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.execListWrapper">
+	<div :class="['executions-list', $style.execListWrapper]">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
@@ -63,164 +63,20 @@
 						<th></th>
 					</tr>
 				</thead>
-				<tbody>
-					<tr
+				<TransitionGroup tag="tbody" name="fade">
+					<ExecutionsGlobalListItem
 						v-for="execution in executionsStore.filteredExecutions"
 						:key="execution.id"
-						:class="getRowClass(execution)"
-					>
-						<td>
-							<el-checkbox
-								v-if="execution.stoppedAt !== undefined && execution.id"
-								:model-value="selectedItems[execution.id] || allExistingSelected"
-								label=""
-								data-test-id="select-execution-checkbox"
-								@update:model-value="handleCheckboxChanged(execution.id)"
-							/>
-						</td>
-						<td>
-							<span @click.stop="displayExecution(execution)"
-								><a href="#" :class="$style.link">{{
-									execution.workflowName || getExecutionWorkflowName(execution)
-								}}</a></span
-							>
-						</td>
-						<td>
-							<span>{{ formatDate(execution.startedAt) }}</span>
-						</td>
-						<td>
-							<div :class="$style.statusColumn">
-								<span v-if="isRunning(execution)" :class="$style.spinner">
-									<font-awesome-icon icon="spinner" spin />
-								</span>
-								<i18n-t
-									v-if="!isWaitTillIndefinite(execution)"
-									tag="span"
-									:keypath="getStatusTextTranslationPath(execution)"
-								>
-									<template #status>
-										<span :class="$style.status">{{ getStatusText(execution) }}</span>
-									</template>
-									<template #time>
-										<span v-if="execution.waitTill">{{ formatDate(execution.waitTill) }}</span>
-										<span
-											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
-										>
-											{{
-												i18n.displayTimer(
-													new Date(execution.stoppedAt).getTime() -
-														new Date(execution.startedAt).getTime(),
-													true,
-												)
-											}}
-										</span>
-										<ExecutionTime v-else :start-time="execution.startedAt" />
-									</template>
-								</i18n-t>
-								<n8n-tooltip v-else placement="top">
-									<template #content>
-										<span>{{ getStatusTooltipText(execution) }}</span>
-									</template>
-									<span :class="$style.status">{{ getStatusText(execution) }}</span>
-								</n8n-tooltip>
-							</div>
-						</td>
-						<td>
-							<span v-if="execution.id">#{{ execution.id }}</span>
-							<span v-if="execution.retryOf">
-								<br />
-								<small>
-									({{ i18n.baseText('executionsList.retryOf') }} #{{ execution.retryOf }})
-								</small>
-							</span>
-							<span v-else-if="execution.retrySuccessId">
-								<br />
-								<small>
-									({{ i18n.baseText('executionsList.successRetry') }} #{{
-										execution.retrySuccessId
-									}})
-								</small>
-							</span>
-						</td>
-						<td>
-							<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
-								<template #content>
-									<span>{{ i18n.baseText('executionsList.test') }}</span>
-								</template>
-								<font-awesome-icon icon="flask" />
-							</n8n-tooltip>
-						</td>
-						<td>
-							<div :class="$style.buttonCell">
-								<n8n-button
-									v-if="execution.stoppedAt !== undefined && execution.id"
-									size="small"
-									outline
-									:label="i18n.baseText('executionsList.view')"
-									@click.stop="displayExecution(execution)"
-								/>
-							</div>
-						</td>
-						<td>
-							<div :class="$style.buttonCell">
-								<n8n-button
-									v-if="execution.stoppedAt === undefined || execution.waitTill"
-									size="small"
-									outline
-									:label="i18n.baseText('executionsList.stop')"
-									:loading="stoppingExecutions.includes(execution.id)"
-									@click.stop="stopExecution(execution.id)"
-								/>
-							</div>
-						</td>
-						<td>
-							<el-dropdown
-								v-if="!isRunning(execution)"
-								trigger="click"
-								@command="handleActionItemClick"
-							>
-								<span class="retry-button">
-									<n8n-icon-button
-										text
-										type="tertiary"
-										size="mini"
-										:title="i18n.baseText('executionsList.retryExecution')"
-										icon="ellipsis-v"
-									/>
-								</span>
-								<template #dropdown>
-									<el-dropdown-menu
-										:class="{
-											[$style.actions]: true,
-											[$style.deleteOnly]: !isExecutionRetriable(execution),
-										}"
-									>
-										<el-dropdown-item
-											v-if="isExecutionRetriable(execution)"
-											:class="$style.retryAction"
-											:command="{ command: 'currentlySaved', execution }"
-										>
-											{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-										</el-dropdown-item>
-										<el-dropdown-item
-											v-if="isExecutionRetriable(execution)"
-											:class="$style.retryAction"
-											:command="{ command: 'original', execution }"
-										>
-											{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
-										</el-dropdown-item>
-										<el-dropdown-item
-											:class="$style.deleteAction"
-											:command="{ command: 'delete', execution }"
-										>
-											{{ i18n.baseText('generic.delete') }}
-										</el-dropdown-item>
-									</el-dropdown-menu>
-								</template>
-							</el-dropdown>
-						</td>
-					</tr>
-				</tbody>
+						:execution="execution"
+						:workflow-name="getExecutionWorkflowName(execution)"
+						:selected="selectedItems[execution.id] || allExistingSelected"
+						@stop="stopExecution"
+						@delete="deleteExecution"
+						@select="selectExecution"
+						@retry-saved="retrySavedExecution"
+						@retry-original="retryOriginalExecution"
+					/>
+				</TransitionGroup>
 			</table>
 
 			<div
@@ -286,19 +142,15 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
+import ExecutionsGlobalListItem from '@/components/executions/global/ListItem.vue';
+import { MODAL_CONFIRM } from '@/constants';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type {
-	IExecutionDeleteFilter,
-	IWorkflowShortResponse,
-	ExecutionFilterType,
-} from '@/Interface';
+import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -311,8 +163,8 @@ import { useExecutionsStore } from '@/stores/executions.store';
 export default defineComponent({
 	name: 'ExecutionsList',
 	components: {
-		ExecutionTime,
 		ExecutionFilter,
+		ExecutionsGlobalListItem,
 	},
 	mixins: [executionHelpers],
 	setup() {
@@ -345,7 +197,6 @@ export default defineComponent({
 
 			selectedItems: {} as { [key: string]: boolean },
 
-			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
 		};
 	},
@@ -384,13 +235,6 @@ export default defineComponent({
 		closeDialog() {
 			this.$emit('closeModal');
 		},
-		displayExecution(execution: IExecutionsSummary) {
-			const route = this.$router.resolve({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: execution.workflowId, executionId: execution.id },
-			});
-			window.open(route.href, '_blank');
-		},
 		async handleAutoRefreshToggle(value: boolean) {
 			if (value) {
 				await this.executionsStore.startAutoRefreshInterval();
@@ -412,7 +256,8 @@ export default defineComponent({
 				this.selectAllVisibleExecutions();
 			}
 		},
-		handleCheckboxChanged(executionId: string) {
+		selectExecution(execution: IExecutionsSummary) {
+			const executionId = execution.id;
 			if (this.selectedItems[executionId]) {
 				const { [executionId]: removedSelectedItem, ...remainingSelectedItems } =
 					this.selectedItems;
@@ -446,23 +291,20 @@ export default defineComponent({
 				return;
 			}
 
-			const sendData: IExecutionDeleteFilter = {};
-			if (this.allExistingSelected) {
-				sendData.deleteBefore = this.executionsStore.executions[0].startedAt as Date;
-			} else {
-				sendData.ids = Object.keys(this.selectedItems);
-			}
-
-			sendData.filters = this.executionsStore.pastExecutionsFilters;
-
 			try {
-				await this.workflowsStore.deleteExecutions(sendData);
+				await this.executionsStore.deleteExecutions({
+					filters: this.executionsStore.executionsFilters,
+					...(this.allExistingSelected
+						? { deleteBefore: this.executionsStore.executions[0].startedAt as Date }
+						: {
+								ids: Object.keys(this.selectedItems),
+						  }),
+				});
 			} catch (error) {
 				this.showError(
 					error,
 					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
-
 				return;
 			}
 
@@ -472,7 +314,6 @@ export default defineComponent({
 			});
 
 			this.handleClearSelection();
-			await this.refreshData();
 		},
 		handleClearSelection(): void {
 			this.allVisibleSelected = false;
@@ -485,25 +326,6 @@ export default defineComponent({
 			this.handleClearSelection();
 			this.isMounting = false;
 		},
-		async handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
-			if (['currentlySaved', 'original'].includes(commandData.command)) {
-				let loadWorkflow = false;
-				if (commandData.command === 'currentlySaved') {
-					loadWorkflow = true;
-				}
-
-				await this.retryExecution(commandData.execution, loadWorkflow);
-
-				this.telemetry.track('User clicked retry execution button', {
-					workflow_id: this.workflowsStore.workflowId,
-					execution_id: commandData.execution.id,
-					retry_type: loadWorkflow ? 'current' : 'original',
-				});
-			}
-			if (commandData.command === 'delete') {
-				await this.deleteExecution(commandData.execution);
-			}
-		},
 		getExecutionWorkflowName(execution: IExecutionsSummary): string {
 			return (
 				this.getWorkflowName(execution.workflowId ?? '') ||
@@ -513,10 +335,9 @@ export default defineComponent({
 		getWorkflowName(workflowId: string): string | undefined {
 			return this.workflows.find((data) => data.id === workflowId)?.name;
 		},
-		// @TODO
 		async loadActiveExecutions(): Promise<void> {
-			if (isEmpty(this.executionsStore.currentExecutionsFilters.metadata)) {
-				await this.executionsStore.fetchCurrentExecutions();
+			if (isEmpty(this.executionsStore.runningExecutionsFilters.metadata)) {
+				await this.executionsStore.fetchRunningExecutions();
 			}
 		},
 		async loadFinishedExecutions(): Promise<void> {
@@ -543,7 +364,7 @@ export default defineComponent({
 
 			try {
 				await this.executionsStore.fetchPastExecutions(
-					this.executionsStore.pastExecutionsFilters,
+					this.executionsStore.executionsFilters,
 					lastId,
 				);
 			} catch (error) {
@@ -577,9 +398,15 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.loadWorkflows.title'));
 			}
 		},
+		async retrySavedExecution(execution: IExecutionsSummary) {
+			await this.retryExecution(execution, true);
+		},
+		async retryOriginalExecution(execution: IExecutionsSummary) {
+			await this.retryExecution(execution, false);
+		},
 		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
 			try {
-				const retrySuccessful = await this.workflowsStore.retryExecution(
+				const retrySuccessful = await this.executionsStore.retryExecution(
 					execution.id,
 					loadWorkflow,
 				);
@@ -598,6 +425,12 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(error, this.i18n.baseText('executionsList.showError.retryExecution.title'));
 			}
+
+			this.telemetry.track('User clicked retry execution button', {
+				workflow_id: this.workflowsStore.workflowId,
+				execution_id: execution.id,
+				retry_type: loadWorkflow ? 'current' : 'original',
+			});
 		},
 		async refreshData() {
 			try {
@@ -606,85 +439,14 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.refreshData.title'));
 			}
 		},
-		getRowClass(execution: IExecutionsSummary): string {
-			return [this.$style.execRow, this.$style[execution.status ?? '']].join(' ');
-		},
-		getStatusText(entry: IExecutionsSummary): string {
-			const status = entry.status;
-			let text = '';
-
-			if (status === 'waiting') {
-				text = this.i18n.baseText('executionsList.waiting');
-			} else if (status === 'canceled') {
-				text = this.i18n.baseText('executionsList.canceled');
-			} else if (status === 'crashed') {
-				text = this.i18n.baseText('executionsList.error');
-			} else if (status === 'new') {
-				text = this.i18n.baseText('executionsList.running');
-			} else if (status === 'running') {
-				text = this.i18n.baseText('executionsList.running');
-			} else if (status === 'success') {
-				text = this.i18n.baseText('executionsList.succeeded');
-			} else if (status === 'failed') {
-				text = this.i18n.baseText('executionsList.error');
-			} else {
-				text = this.i18n.baseText('executionsList.unknown');
-			}
-
-			return text;
-		},
-		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
-			const status = entry.status;
-			let path = '';
-
-			if (status === 'waiting') {
-				path = 'executionsList.statusWaiting';
-			} else if (status === 'canceled') {
-				path = 'executionsList.statusCanceled';
-			} else if (['crashed', 'failed', 'success'].includes(status ?? '')) {
-				if (!entry.stoppedAt) {
-					path = 'executionsList.statusTextWithoutTime';
-				} else {
-					path = 'executionsList.statusText';
-				}
-			} else if (status === 'new') {
-				path = 'executionsList.statusRunning';
-			} else if (status === 'running') {
-				path = 'executionsList.statusRunning';
-			} else {
-				path = 'executionsList.statusUnknown';
-			}
-
-			return path;
-		},
-		getStatusTooltipText(entry: IExecutionsSummary): string {
-			const status = entry.status;
-			let text = '';
-
-			if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
-				text = this.i18n.baseText(
-					'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
-				);
-			}
-
-			return text;
-		},
-		async stopExecution(activeExecutionId: string) {
+		async stopExecution(execution: IExecutionsSummary) {
 			try {
-				// Add it to the list of currently stopping executions that we
-				// can show the user in the UI that it is in progress
-				this.stoppingExecutions.push(activeExecutionId);
-
-				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
-
-				// Remove it from the list of currently stopping executions
-				const index = this.stoppingExecutions.indexOf(activeExecutionId);
-				this.stoppingExecutions.splice(index, 1);
+				await this.executionsStore.stopCurrentExecution(execution.id);
 
 				this.showMessage({
 					title: this.i18n.baseText('executionsList.showMessage.stopExecution.title'),
 					message: this.i18n.baseText('executionsList.showMessage.stopExecution.message', {
-						interpolate: { activeExecutionId },
+						interpolate: { activeExecutionId: execution.id },
 					}),
 					type: 'success',
 				});
@@ -694,19 +456,9 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
 			}
 		},
-		isExecutionRetriable(execution: IExecutionsSummary): boolean {
-			return (
-				execution.stoppedAt !== undefined &&
-				!execution.finished &&
-				execution.retryOf === undefined &&
-				execution.retrySuccessId === undefined &&
-				!execution.waitTill
-			);
-		},
 		async deleteExecution(execution: IExecutionsSummary) {
 			try {
-				await this.workflowsStore.deleteExecutions({ ids: [execution.id] });
-				await this.refreshData();
+				await this.executionsStore.deleteExecutions({ ids: [execution.id] });
 
 				if (this.allVisibleSelected) {
 					this.selectedItems = {};
@@ -718,15 +470,6 @@ export default defineComponent({
 					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
 			}
-		},
-		isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
-			if (!execution.waitTill) {
-				return false;
-			}
-			return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
-		},
-		isRunning(execution: IExecutionsSummary): boolean {
-			return execution.status === 'running';
 		},
 		selectAllVisibleExecutions() {
 			this.executionsStore.filteredExecutions.forEach((execution: IExecutionsSummary) => {
@@ -802,44 +545,6 @@ export default defineComponent({
 	}
 }
 
-.statusColumn {
-	display: flex;
-	align-items: center;
-}
-
-.spinner {
-	margin-right: var(--spacing-2xs);
-}
-
-.status {
-	line-height: 22.6px;
-	text-align: center;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-
-	.crashed &,
-	.failed & {
-		color: var(--color-danger);
-	}
-
-	.waiting & {
-		color: var(--color-secondary);
-	}
-
-	.success & {
-		font-weight: var(--font-weight-normal);
-	}
-
-	.new &,
-	.running & {
-		color: var(--color-warning);
-	}
-
-	.unknown & {
-		color: var(--color-background-dark);
-	}
-}
-
 .buttonCell {
 	overflow: hidden;
 
@@ -899,57 +604,6 @@ export default defineComponent({
 			}
 		}
 	}
-
-	.execRow {
-		color: var(--color-text-base);
-
-		td:first-child {
-			width: 30px;
-			padding: 0 var(--spacing-s) 0 0;
-
-			/*
-			  This is needed instead of table cell border because they are overlapping the sticky header
-			*/
-			&::before {
-				content: '';
-				display: inline-block;
-				width: var(--spacing-4xs);
-				height: 100%;
-				vertical-align: middle;
-				margin-right: var(--spacing-xs);
-			}
-		}
-
-		&:nth-child(even) td {
-			background: var(--color-table-row-even-background);
-		}
-
-		&:hover td {
-			background: var(--color-table-row-hover-background);
-		}
-
-		&.crashed td:first-child::before,
-		&.failed td:first-child::before {
-			background: var(--execution-card-border-error);
-		}
-
-		&.success td:first-child::before {
-			background: var(--execution-card-border-success);
-		}
-
-		&.new td:first-child::before,
-		&.running td:first-child::before {
-			background: var(--execution-card-border-running);
-		}
-
-		&.waiting td:first-child::before {
-			background: var(--execution-card-border-waiting);
-		}
-
-		&.unknown td:first-child::before {
-			background: var(--execution-card-border-unknown);
-		}
-	}
 }
 
 .loadMore {
@@ -988,10 +642,5 @@ export default defineComponent({
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
-}
-
-.link {
-	color: var(--color-text-base);
-	text-decoration: underline;
 }
 </style>

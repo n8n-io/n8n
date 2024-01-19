@@ -379,6 +379,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -587,6 +588,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useExecutionsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1890,7 +1892,7 @@ export default defineComponent({
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.workflowsStore.stopCurrentExecution(executionId);
+				await this.executionsStore.stopCurrentExecution(executionId);
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);

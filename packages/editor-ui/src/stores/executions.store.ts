@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ExecutionStatus, IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject, IExecutionsSummary } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
+	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IExecutionsStopData,
 } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
@@ -20,10 +22,10 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const itemsPerPage = ref(10);
 
 	const filters = ref<ExecutionFilterType>(getDefaultFilters());
-	const pastExecutionsFilters = computed<ExecutionsQueryFilter>(() =>
+	const executionsFilters = computed<ExecutionsQueryFilter>(() =>
 		executionFilterToQueryFilter(filters.value),
 	);
-	const currentExecutionsFilters = computed<Partial<ExecutionFilterType>>(() => ({
+	const runningExecutionsFilters = computed<Partial<ExecutionFilterType>>(() => ({
 		...(filters.value.workflowId !== 'all' ? { workflowId: filters.value.workflowId } : {}),
 	}));
 
@@ -50,23 +52,41 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return data;
 	});
 
-	const pastExecutions = computed(() => executions.value.filter((e) => e.status !== 'running'));
-	const currentExecutions = computed(() => executions.value.filter((e) => e.status === 'running'));
+	const runningExecutionsById = ref<Record<string, IExecutionsSummary>>({});
+	const runningExecutions = computed(() => {
+		const data = Object.values(runningExecutionsById.value);
+
+		data.sort((a, b) => {
+			if (a.finished === undefined) {
+				return -1;
+			}
+			if (b.finished === undefined) {
+				return 1;
+			}
+			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+		});
+
+		return data;
+	});
 
 	const filteredExecutions = computed(() => {
-		const data: IExecutionsSummary[] = [];
+		return [...runningExecutions.value, ...executions.value].filter((execution) => {
+			let matches = true;
 
-		if (['all', 'running'].includes(filters.value.status)) {
-			data.push(...currentExecutions.value);
-		}
+			if (filters.value.workflowId === 'all') {
+				matches = matches && true;
+			} else {
+				matches = matches && execution.workflowId === filters.value.workflowId;
+			}
 
-		if (['all', 'error', 'success', 'waiting'].includes(filters.value.status)) {
-			data.push(...pastExecutions.value);
-		}
+			if (filters.value.status === 'all') {
+				matches = matches && true;
+			} else {
+				matches = matches && filters.value.status.includes(execution.status as string);
+			}
 
-		return filters.value.workflowId === 'all'
-			? data
-			: data.filter((execution) => execution.workflowId === filters.value.workflowId);
+			return matches;
+		});
 	});
 
 	const executionsByWorkflowId = computed(() =>
@@ -92,6 +112,14 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	function addExecution(execution: IExecutionsSummary) {
 		executionsById.value[execution.id] = {
+			...execution,
+			status: execution.status ?? getExecutionStatus(execution),
+			mode: execution.mode,
+		};
+	}
+
+	function addRunningExecution(execution: IExecutionsSummary) {
+		runningExecutionsById.value[execution.id] = {
 			...execution,
 			status: execution.status ?? getExecutionStatus(execution),
 			mode: execution.mode,
@@ -137,7 +165,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function fetchPastExecutions(
-		filter = pastExecutionsFilters.value,
+		filter = executionsFilters.value,
 		lastId?: string,
 		firstId?: string,
 	) {
@@ -166,7 +194,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	async function fetchCurrentExecutions(filter = currentExecutionsFilters.value) {
+	async function fetchRunningExecutions(filter = runningExecutionsFilters.value) {
 		loading.value = true;
 		try {
 			const data = await makeRestApiRequest<IExecutionsSummary[]>(
@@ -178,7 +206,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 				},
 			);
 
-			data.forEach(addExecution);
+			runningExecutionsById.value = {};
+			data.forEach(addRunningExecution);
 		} catch (e) {
 			throw e;
 		} finally {
@@ -202,9 +231,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 		// Suppose 504 finishes before 500, 501, 502 and 503.
 		// iF you use firstId, filtering id >= 504 you won't
 		// ever get ids 500, 501, 502 and 503 when they finish
-		const promises = [fetchPastExecutions(pastExecutionsFilters.value)];
-		if (isEmpty(pastExecutionsFilters.value.metadata)) {
-			promises.push(fetchCurrentExecutions({}));
+		const promises = [fetchPastExecutions(executionsFilters.value)];
+		if (isEmpty(executionsFilters.value.metadata)) {
+			promises.push(fetchRunningExecutions({}));
 		}
 		await Promise.all(promises);
 
@@ -230,6 +259,49 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
+		return makeRestApiRequest(
+			rootStore.getRestApiContext,
+			'POST',
+			`/executions-current/${executionId}/stop`,
+		);
+	}
+
+	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
+		return makeRestApiRequest(
+			rootStore.getRestApiContext,
+			'POST',
+			`/executions/${id}/retry`,
+			loadWorkflow
+				? {
+						loadWorkflow: true,
+				  }
+				: undefined,
+		);
+	}
+
+	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
+		await makeRestApiRequest(
+			rootStore.getRestApiContext,
+			'POST',
+			'/executions/delete',
+			sendData as unknown as IDataObject,
+		);
+
+		if (sendData.ids) {
+			sendData.ids.forEach(removeExecution);
+		}
+
+		if (sendData.deleteBefore) {
+			const deleteBefore = new Date(sendData.deleteBefore);
+			filteredExecutions.value.forEach((execution) => {
+				if (new Date(execution.startedAt) < deleteBefore) {
+					removeExecution(execution.id);
+				}
+			});
+		}
+	}
+
 	return {
 		loading,
 		executionsById,
@@ -237,8 +309,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsCount,
 		executionsCountEstimated,
 		executionsByWorkflowId,
+		runningExecutions,
 		fetchPastExecutions,
-		fetchCurrentExecutions,
+		fetchRunningExecutions,
 		fetchExecution,
 		getExecutionStatus,
 		autoRefresh,
@@ -249,10 +322,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 		terminate,
 		filters,
 		setFilters,
-		pastExecutionsFilters,
-		currentExecutionsFilters,
-		pastExecutions,
-		currentExecutions,
+		executionsFilters,
+		runningExecutionsFilters,
 		filteredExecutions,
+		stopCurrentExecution,
+		retryExecution,
+		deleteExecutions,
 	};
 });

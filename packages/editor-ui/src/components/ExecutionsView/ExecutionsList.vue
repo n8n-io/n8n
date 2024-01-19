@@ -69,6 +69,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -103,7 +104,14 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useTagsStore,
+			useNodeTypesStore,
+			useSettingsStore,
+			useUIStore,
+			useWorkflowsStore,
+			useExecutionsStore,
+		),
 		hidePreview(): boolean {
 			const activeNotPresent =
 				this.filterApplied && !this.executions.find((ex) => ex.id === this.activeExecution?.id);
@@ -288,7 +296,7 @@ export default defineComponent({
 					this.executions[executionIndex - 1] ||
 					this.executions[0];
 
-				await this.workflowsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
+				await this.executionsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
 				this.workflowsStore.deleteExecution(this.executions[executionIndex]);
 				if (this.temporaryExecution?.id === this.$route.params.executionId) {
 					this.temporaryExecution = null;
@@ -326,10 +334,10 @@ export default defineComponent({
 			});
 		},
 		async onStopExecution(): Promise<void> {
-			const activeExecutionId = this.$route.params.executionId;
+			const activeExecutionId = this.$route.params.executionId as string;
 
 			try {
-				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
+				await this.executionsStore.stopCurrentExecution(activeExecutionId);
 
 				this.showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
@@ -732,7 +740,7 @@ export default defineComponent({
 		},
 		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
 			try {
-				const retrySuccessful = await this.workflowsStore.retryExecution(
+				const retrySuccessful = await this.executionsStore.retryExecution(
 					execution.id,
 					loadWorkflow,
 				);
