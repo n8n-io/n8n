@@ -17,7 +17,8 @@ mockInstance(License);
 jest.useFakeTimers();
 
 describe('refreshExpiringCookie', () => {
-	const oldDuration: number = config.get('userManagement.jwtSessionDurationHours');
+	const oldDuration = config.getEnv('userManagement.jwtSessionDurationHours');
+	const oldTimeout = config.getEnv('userManagement.jwtRefreshTimeoutHours');
 	let mockUser: User;
 
 	beforeEach(() => {
@@ -26,7 +27,7 @@ describe('refreshExpiringCookie', () => {
 
 	afterEach(() => {
 		config.set('userManagement.jwtSessionDuration', oldDuration);
-		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+		config.set('userManagement.jwtRefreshTimeoutHours', oldTimeout);
 	});
 
 	it('does not do anything if the user is not authorized', async () => {
