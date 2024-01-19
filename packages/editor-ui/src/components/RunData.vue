@@ -72,7 +72,7 @@
 				/>
 
 				<RunDataPinButton
-					v-if="rawInputData.length && !editMode.enabled"
+					v-if="(canPinData || !!binaryData?.length) && rawInputData.length && !editMode.enabled"
 					:disabled="
 						(!rawInputData.length && !pinnedData.hasData.value) ||
 						isReadOnlyRoute ||
