@@ -9,6 +9,10 @@ import { issueJWT } from '@/auth/jwt';
 
 import { mockInstance } from '../../shared/mocking';
 
+// TODO: Why do I need to mock the License but not for example the JwtService 🤷
+// A: because of the server not being initialized
+mockInstance(License);
+
 // TODO: is the the right level of testing?
 // Should I mock more or less?
 // Should I write an integration test that checks that a user is actually logged out?
@@ -16,11 +20,6 @@ describe('jwt.issueJWT', () => {
 	const jwtService = Container.get(JwtService);
 
 	describe('when not setting userManagement.jwtSessionDuration', () => {
-		beforeEach(() => {
-			// TODO: Why do I need to mock the License but not for example the JwtService 🤷
-			mockInstance(License);
-		});
-
 		it('should default to expire in 168 hours', () => {
 			const defaultInSeconds = 7 * 24 * 60 * 60;
 			// TODO: is this the right way to create a mock user?
