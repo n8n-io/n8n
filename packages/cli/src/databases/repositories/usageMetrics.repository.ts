@@ -12,7 +12,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 	}
 
 	toTableName(name: string) {
-		let tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		let tableName =
 			config.getEnv('database.type') === 'mysqldb'
@@ -40,8 +40,6 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		const workflowTable = this.toTableName('workflow_entity');
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
-
-		console.log('userTable', userTable);
 
 		const [
 			{
