@@ -478,7 +478,15 @@ export class ActiveWorkflowRunner {
 
 		for (const dbWorkflow of dbWorkflows) {
 			try {
-				await this.add(dbWorkflow.id, activationMode, dbWorkflow);
+				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow);
+
+				if (wasActivated) {
+					this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
+						workflowName: dbWorkflow.name,
+						workflowId: dbWorkflow.id,
+					});
+					this.logger.info('     => Started');
+				}
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.info(
@@ -571,6 +579,8 @@ export class ActiveWorkflowRunner {
 			}
 		}
 
+		const shouldActivate = shouldAddWebhooks || shouldAddTriggersAndPollers;
+
 		try {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
 
@@ -578,7 +588,7 @@ export class ActiveWorkflowRunner {
 				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
 			}
 
-			if (shouldAddWebhooks || shouldAddTriggersAndPollers) {
+			if (shouldActivate) {
 				this.logger.info(`   - ${dbWorkflow.display()}`);
 				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
 					workflowName: dbWorkflow.name,
@@ -632,14 +642,6 @@ export class ActiveWorkflowRunner {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
-
-			if (shouldAddWebhooks || shouldAddTriggersAndPollers) {
-				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
-					workflowName: dbWorkflow.name,
-					workflowId: dbWorkflow.id,
-				});
-				this.logger.info('     => Started');
-			}
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -650,6 +652,8 @@ export class ActiveWorkflowRunner {
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
 		await this.workflowStaticDataService.saveStaticData(workflow);
+
+		return shouldActivate;
 	}
 
 	/**
