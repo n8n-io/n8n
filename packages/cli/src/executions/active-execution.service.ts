@@ -55,7 +55,7 @@ export class ActiveExecutionService {
 			.sort((a, b) => Number(b.id) - Number(a.id));
 	}
 
-	async stopExecutionInRegularMode(execution: IExecutionBase) {
+	async stopOneInRegularMode(execution: IExecutionBase) {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
 		if (result) {
@@ -103,7 +103,7 @@ export class ActiveExecutionService {
 		});
 	}
 
-	async stopExecutionInQueueMode(execution: IExecutionBase): Promise<IExecutionsStopData> {
+	async stopOneInQueueMode(execution: IExecutionBase): Promise<IExecutionsStopData> {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
 		if (result) {

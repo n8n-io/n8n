@@ -89,7 +89,7 @@ export class ExecutionsController {
 		if (!execution) throw new NotFoundError('Execution not found');
 
 		return this.isQueueMode
-			? await this.activeExecutionService.stopExecutionInQueueMode(execution)
-			: await this.activeExecutionService.stopExecutionInRegularMode(execution);
+			? await this.activeExecutionService.stopOneInQueueMode(execution)
+			: await this.activeExecutionService.stopOneInRegularMode(execution);
 	}
 }
