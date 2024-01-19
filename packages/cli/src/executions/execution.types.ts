@@ -11,7 +11,7 @@ export declare namespace ExecutionRequest {
 			firstId: string;
 		};
 
-		type Get = { unflattedResponse: 'true' | 'false' };
+		type GetOne = { unflattedResponse: 'true' | 'false' };
 	}
 
 	namespace BodyParams {
@@ -22,25 +22,26 @@ export declare namespace ExecutionRequest {
 		};
 	}
 
+	namespace RouteParams {
+		type ExecutionId = {
+			id: ExecutionEntity['id'];
+		};
+	}
+
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany>;
 
-	type Get = AuthenticatedRequest<{ id: ExecutionEntity['id'] }, {}, {}, QueryParams.Get>;
+	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
-	type Retry = AuthenticatedRequest<
-		{ id: ExecutionEntity['id'] },
-		{},
-		{ loadWorkflow: boolean },
-		{}
-	>;
+	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
 
-	type Stop = AuthenticatedRequest<{ id: ExecutionEntity['id'] }>;
+	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 
-	type GetAllActive = AuthenticatedRequest<{}, {}, {}, { filter?: string }>;
+	type GetManyActive = AuthenticatedRequest<{}, {}, {}, { filter?: string }>;
 }
 
-export type GetAllActiveFilter = {
+export type GetManyActiveFilter = {
 	workflowId?: string;
 	status?: ExecutionStatus;
 	finished?: boolean;

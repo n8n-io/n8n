@@ -16,7 +16,7 @@ describe('ExecutionsController', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	describe('getActiveExecutions', () => {
-		const req = mock<ExecutionRequest.GetAllActive>({ query: { filter: '{}' } });
+		const req = mock<ExecutionRequest.GetManyActive>({ query: { filter: '{}' } });
 
 		it('should call getQueueModeExecutions in queue mode', async () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('queue');

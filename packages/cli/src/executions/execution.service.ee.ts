@@ -15,7 +15,7 @@ export class EnterpriseExecutionsService {
 	) {}
 
 	async findOne(
-		req: ExecutionRequest.Get,
+		req: ExecutionRequest.GetOne,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		const execution = await this.executionService.findOne(req, sharedWorkflowIds);

@@ -1,4 +1,4 @@
-import type { GetAllActiveFilter } from './execution.types';
+import type { GetManyActiveFilter } from './execution.types';
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
 import { Authorized, Get, Post, RestController } from '@/decorators';
@@ -39,7 +39,7 @@ export class ExecutionsController {
 	}
 
 	@Get('/:id')
-	async getOne(req: ExecutionRequest.Get) {
+	async getOne(req: ExecutionRequest.GetOne) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
@@ -68,8 +68,8 @@ export class ExecutionsController {
 	}
 
 	@Get('/active')
-	async getActive(req: ExecutionRequest.GetAllActive) {
-		const filter = req.query.filter?.length ? jsonParse<GetAllActiveFilter>(req.query.filter) : {};
+	async getActive(req: ExecutionRequest.GetManyActive) {
+		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
 
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 

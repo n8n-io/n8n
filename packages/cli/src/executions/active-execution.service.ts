@@ -8,7 +8,7 @@ import { getStatusUsingPreviousExecutionStatusMethod } from '@/executions/execut
 
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionBase, InMemoryExecutionSummary, StopExecutionResult } from '@/Interfaces';
-import type { GetAllActiveFilter } from './execution.types';
+import type { GetManyActiveFilter } from './execution.types';
 
 @Service()
 export class ActiveExecutionService {
@@ -20,7 +20,7 @@ export class ActiveExecutionService {
 		private readonly waitTracker: WaitTracker,
 	) {}
 
-	async findManyInQueueMode(filter: GetAllActiveFilter, accessibleWorkflowIds: string[]) {
+	async findManyInQueueMode(filter: GetManyActiveFilter, accessibleWorkflowIds: string[]) {
 		const activeManualExecutionIds = this.activeExecutions
 			.getActiveExecutions()
 			.map((execution) => execution.id);
@@ -49,7 +49,7 @@ export class ActiveExecutionService {
 	}
 
 	async findManyInRegularMode(
-		filter: GetAllActiveFilter,
+		filter: GetManyActiveFilter,
 		accessibleWorkflowIds: string[],
 	): Promise<ExecutionSummary[]> {
 		return this.activeExecutions

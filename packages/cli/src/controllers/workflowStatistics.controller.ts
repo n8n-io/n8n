@@ -29,7 +29,7 @@ export class WorkflowStatisticsController {
 	 */
 	// TODO: move this into a new decorator `@ValidateWorkflowPermission`
 	@Middleware()
-	async hasWorkflowAccess(req: ExecutionRequest.Get, res: Response, next: NextFunction) {
+	async hasWorkflowAccess(req: ExecutionRequest.GetOne, res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
 
@@ -48,17 +48,17 @@ export class WorkflowStatisticsController {
 	}
 
 	@Get('/:id/counts/')
-	async getCounts(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<number>> {
+	async getCounts(req: ExecutionRequest.GetOne): Promise<WorkflowStatisticsData<number>> {
 		return await this.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
-	async getTimes(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<Date | null>> {
+	async getTimes(req: ExecutionRequest.GetOne): Promise<WorkflowStatisticsData<Date | null>> {
 		return await this.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')
-	async getDataLoaded(req: ExecutionRequest.Get): Promise<IWorkflowStatisticsDataLoaded> {
+	async getDataLoaded(req: ExecutionRequest.GetOne): Promise<IWorkflowStatisticsDataLoaded> {
 		// Get flag
 		const workflowId = req.params.id;
 

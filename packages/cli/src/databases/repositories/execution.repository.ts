@@ -41,7 +41,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { GetAllActiveFilter } from '@/executions/execution.types';
+import type { GetManyActiveFilter } from '@/executions/execution.types';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -668,7 +668,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async getManyActive(
 		activeExecutionIds: string[],
 		accessibleWorkflowIds: string[],
-		filter?: GetAllActiveFilter,
+		filter?: GetManyActiveFilter,
 	) {
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			id: In(activeExecutionIds),

@@ -153,7 +153,7 @@ export class ExecutionService {
 	}
 
 	async findOne(
-		req: ExecutionRequest.Get,
+		req: ExecutionRequest.GetOne,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
