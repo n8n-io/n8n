@@ -11,14 +11,19 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		super(UsageMetrics, dataSource.manager);
 	}
 
-	get fullPrefix() {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+	toTableName(name: string) {
+		let tablePrefix = config.getEnv('database.tablePrefix');
+
+		let tableName =
+			config.getEnv('database.type') === 'mysqldb'
+				? `\`${tablePrefix}${name}\``
+				: `"${tablePrefix}${name}"`;
 
 		const pgSchema = config.getEnv('database.postgresdb.schema');
 
-		if (pgSchema !== 'public') return [pgSchema, tablePrefix].join('.');
+		if (pgSchema !== 'public') tableName = [pgSchema, tablePrefix].join('.');
 
-		return tablePrefix;
+		return tableName;
 	}
 
 	async getLicenseRenewalMetrics() {
@@ -31,15 +36,10 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 			manual_executions_count: string | number;
 		};
 
-		const isMySql = config.getEnv('database.type') === 'mysqldb';
-
-		const toTableName = (name: string) =>
-			isMySql ? `\`${this.fullPrefix}${name}\`` : `"${this.fullPrefix}${name}"`;
-
-		const userTable = toTableName('user');
-		const workflowTable = toTableName('workflow_entity');
-		const credentialTable = toTableName('credentials_entity');
-		const workflowStatsTable = toTableName('workflow_statistics');
+		const userTable = this.toTableName('user');
+		const workflowTable = this.toTableName('workflow_entity');
+		const credentialTable = this.toTableName('credentials_entity');
+		const workflowStatsTable = this.toTableName('workflow_statistics');
 
 		const [
 			{
