@@ -46,8 +46,8 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity WHERE active = true) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${this.fullPrefix}workflow_entity) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${this.fullPrefix}credentials_entity) AS total_credentials_count,
-				(SELECT SUM(CASE WHEN name IN ('production_success', 'production_error') THEN count ELSE 0 END) FROM ${this.fullPrefix}workflow_statistics) AS production_executions_count,
-  			(SELECT SUM(CASE WHEN name IN ('manual_success', 'manual_error') THEN count ELSE 0 END) FROM ${this.fullPrefix}workflow_statistics) AS manual_executions_count;
+				(SELECT SUM(count) FROM ${this.fullPrefix}workflow_statistics WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
+				(SELECT SUM(count) FROM ${this.fullPrefix}workflow_statistics WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
 		const toNumber = (value: string | number) =>
