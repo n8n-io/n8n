@@ -52,6 +52,15 @@ describe('Workflow.selectPinnedActivatorStarter()', () => {
 		args.nodes = [];
 	});
 
+	it('should return `null` if no pinned activators', () => {
+		const workflow = new Workflow(args);
+		jest.spyOn(workflow, 'findAllPinnedActivators').mockReturnValueOnce([]);
+
+		const node = workflow.selectPinnedActivatorStarter([]);
+
+		expect(node).toBeNull();
+	});
+
 	it('should select webhook node if only choice', () => {
 		args.nodes.push(webhookNode);
 		const workflow = new Workflow(args);

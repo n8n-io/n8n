@@ -1462,6 +1462,8 @@ export class Workflow {
 	selectPinnedActivatorStarter(startNodeNames: string[]) {
 		const allPinnedActivators = this.findAllPinnedActivators();
 
+		if (allPinnedActivators.length === 0) return null;
+
 		const [firstPinnedActivator] = allPinnedActivators;
 
 		// full manual execution
@@ -1486,7 +1488,7 @@ export class Workflow {
 	/**
 	 * Find all pinned nodes that may activate a workflow, prioritizing `n8n-nodes-base.webhook`.
 	 */
-	private findAllPinnedActivators() {
+	findAllPinnedActivators() {
 		return this.nodeNames
 			.reduce<INode[]>((acc, nodeName) => {
 				acc.push(this.nodes[nodeName]);
