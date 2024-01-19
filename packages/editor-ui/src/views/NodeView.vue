@@ -223,7 +223,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
-	NODE_OUTPUT_DEFAULT_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -3629,7 +3628,7 @@ export default defineComponent({
 			});
 
 			setTimeout(() => {
-				this.addPinDataConnections(this.workflowsStore.pinData);
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -3718,70 +3717,6 @@ export default defineComponent({
 			const workflowData = deepCopy(await this.getNodesToSave(nodes));
 			await this.importWorkflowData(workflowData, 'duplicate', false);
 		},
-		getJSPlumbConnection(
-			sourceNodeName: string,
-			sourceOutputIndex: number,
-			targetNodeName: string,
-			targetInputIndex: number,
-			connectionType: ConnectionTypes,
-		): Connection | undefined {
-			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
-			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
-			if (!sourceNode || !targetNode) {
-				return;
-			}
-
-			const sourceId = sourceNode.id;
-			const targetId = targetNode.id;
-
-			const sourceEndpoint = NodeViewUtils.getOutputEndpointUUID(
-				sourceId,
-				connectionType,
-				sourceOutputIndex,
-			);
-			const targetEndpoint = NodeViewUtils.getInputEndpointUUID(
-				targetId,
-				connectionType,
-				targetInputIndex,
-			);
-
-			const sourceNodeType = this.nodeTypesStore.getNodeType(
-				sourceNode.type,
-				sourceNode.typeVersion,
-			);
-			const sourceNodeOutput =
-				sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
-			const sourceNodeOutputName =
-				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
-			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
-
-			// @ts-ignore
-			const connections = this.instance?.getConnections({
-				scope,
-				source: sourceId,
-				target: targetId,
-			}) as Connection[];
-
-			return connections.find((connection: Connection) => {
-				const uuids = connection.getUuids();
-				return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
-			});
-		},
-		getJSPlumbEndpoints(nodeName: string): Endpoint[] {
-			const node = this.workflowsStore.getNodeByName(nodeName);
-			const nodeEl = this.instance.getManagedElement(node?.id);
-
-			const endpoints = this.instance?.getEndpoints(nodeEl);
-			return endpoints;
-		},
-		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
-			const endpoints = this.getJSPlumbEndpoints(nodeName);
-			return endpoints.find(
-				(endpoint: Endpoint) =>
-					// @ts-ignore
-					endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
-			);
-		},
 		getIncomingOutgoingConnections(nodeName: string): {
 			incoming: Connection[];
 			outgoing: Connection[];
@@ -3854,7 +3789,7 @@ export default defineComponent({
 				outgoing.forEach((connection: Connection) => {
 					NodeViewUtils.resetConnection(connection);
 				});
-				const endpoints = this.getJSPlumbEndpoints(sourceNodeName);
+				const endpoints = NodeViewUtils.getJSPlumbEndpoints(sourceNode, this.instance);
 				endpoints.forEach((endpoint: Endpoint) => {
 					if (endpoint.endpoint.type === 'N8nPlus') {
 						(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
@@ -3864,60 +3799,7 @@ export default defineComponent({
 				return;
 			}
 
-			const allNodeConnections = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName);
-
-			const connectionType = Object.keys(allNodeConnections)[0];
-			const nodeConnections = allNodeConnections[connectionType];
-			const outputMap = NodeViewUtils.getOutputSummary(
-				data,
-				nodeConnections || [],
-				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
-			);
-			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
-				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
-					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(
-						(targetInputIndex: string) => {
-							if (targetNodeName) {
-								const connection = this.getJSPlumbConnection(
-									sourceNodeName,
-									parseInt(sourceOutputIndex, 10),
-									targetNodeName,
-									parseInt(targetInputIndex, 10),
-									connectionType as ConnectionTypes,
-								);
-
-								if (connection) {
-									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
-
-									if (output.isArtificialRecoveredEventItem) {
-										NodeViewUtils.recoveredConnection(connection);
-									} else if (!output?.total && !output.isArtificialRecoveredEventItem) {
-										NodeViewUtils.resetConnection(connection);
-									} else {
-										NodeViewUtils.addConnectionOutputSuccess(connection, output);
-									}
-								}
-							}
-
-							const endpoint = this.getPlusEndpoint(
-								sourceNodeName,
-								parseInt(sourceOutputIndex, 10),
-							);
-							if (endpoint?.endpoint) {
-								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
-
-								if (output && output.total > 0) {
-									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(
-										NodeViewUtils.getRunItemsLabel(output),
-									);
-								} else {
-									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
-								}
-							}
-						},
-					);
-				});
-			});
+			this.nodeHelpers.setSuccessOutput(data, sourceNode);
 		},
 		removeNode(nodeName: string, trackHistory = false, trackBulk = true) {
 			if (!this.editAllowedCheck()) {
@@ -4718,6 +4600,13 @@ export default defineComponent({
 					return;
 				}
 
+				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
+				const classNames = ['pinned'];
+
+				if (hasRun) {
+					classNames.push('has-run');
+				}
+
 				// @ts-ignore
 				const connections = this.instance?.getConnections({
 					source: node.id,
@@ -4727,7 +4616,7 @@ export default defineComponent({
 					NodeViewUtils.addConnectionOutputSuccess(connection, {
 						total: pinData[nodeName].length,
 						iterations: 0,
-						classNames: ['pinned'],
+						classNames,
 					});
 				});
 			});
@@ -4840,6 +4729,8 @@ export default defineComponent({
 					});
 				});
 			}
+
+			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
