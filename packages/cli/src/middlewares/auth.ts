@@ -41,7 +41,7 @@ const userManagementJwtAuth = (): RequestHandler => {
 /**
  * middleware to refresh cookie before it expires
  */
-const refreshExpiringCookie: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+export const refreshExpiringCookie = (async (req: AuthenticatedRequest, res, next) => {
 	const cookieAuth = jwtFromRequest(req);
 	if (cookieAuth && req.user) {
 		const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
@@ -51,7 +51,7 @@ const refreshExpiringCookie: RequestHandler = async (req: AuthenticatedRequest, 
 		}
 	}
 	next();
-};
+}) satisfies RequestHandler;
 
 const passportMiddleware = passport.authenticate('jwt', { session: false }) as RequestHandler;
 
