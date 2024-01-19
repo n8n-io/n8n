@@ -715,9 +715,6 @@ export default defineComponent({
 				)
 			);
 		},
-		isManualChatOnly(): boolean {
-			return this.containsChatNodes && this.triggerNodes.length === 1;
-		},
 		isExecutionDisabled(): boolean {
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
