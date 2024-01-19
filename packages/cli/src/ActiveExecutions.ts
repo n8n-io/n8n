@@ -15,7 +15,7 @@ import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
-	InMemoryExecutionSummary,
+	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
@@ -204,8 +204,8 @@ export class ActiveExecutions {
 	 * Returns all the currently active executions
 	 *
 	 */
-	getActiveExecutions(): InMemoryExecutionSummary[] {
-		const returnData: InMemoryExecutionSummary[] = [];
+	getActiveExecutions(): IExecutionsCurrentSummary[] {
+		const returnData: IExecutionsCurrentSummary[] = [];
 
 		let data;
 

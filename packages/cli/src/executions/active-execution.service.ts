@@ -7,7 +7,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { getStatusUsingPreviousExecutionStatusMethod } from '@/executions/executionHelpers';
 
 import type { ExecutionSummary } from 'n8n-workflow';
-import type { IExecutionBase, InMemoryExecutionSummary, StopExecutionResult } from '@/Interfaces';
+import type { IExecutionBase, IExecutionsCurrentSummary, IExecutionsStopData } from '@/Interfaces';
 import type { GetManyActiveFilter } from './execution.types';
 
 @Service()
@@ -67,7 +67,7 @@ export class ActiveExecutionService {
 		return await this.executionRepository.findIfAccessible(executionId, accessibleWorkflowIds);
 	}
 
-	async stopExecutionInQueueMode(execution: IExecutionBase): Promise<StopExecutionResult> {
+	async stopExecutionInQueueMode(execution: IExecutionBase): Promise<IExecutionsStopData> {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
 		if (result) {
@@ -120,7 +120,7 @@ export class ActiveExecutionService {
 		return await this.waitTracker.stopExecution(execution.id);
 	}
 
-	private toSummary(execution: InMemoryExecutionSummary | IExecutionBase): ExecutionSummary {
+	private toSummary(execution: IExecutionsCurrentSummary | IExecutionBase): ExecutionSummary {
 		return {
 			id: execution.id,
 			workflowId: execution.workflowId ?? '',

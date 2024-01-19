@@ -174,7 +174,7 @@ export interface IExecutionsListResponse {
 	estimated: boolean;
 }
 
-export interface StopExecutionResult {
+export interface IExecutionsStopData {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
@@ -182,7 +182,7 @@ export interface StopExecutionResult {
 	status: ExecutionStatus;
 }
 
-export interface InMemoryExecutionSummary {
+export interface IExecutionsCurrentSummary {
 	id: string;
 	retryOf?: string;
 	startedAt: Date;
