@@ -33,12 +33,12 @@ describe('jwt.issueJWT', () => {
 	});
 
 	describe('when setting userManagement.jwtSessionDuration', () => {
-		let oldDuration: number;
-		let testDurationHours = 1;
+		const oldDuration = config.get('userManagement.jwtSessionDurationHours');
+		const testDurationHours = 1;
+		const testDurationSeconds = testDurationHours * Time.hours.toSeconds;
 
 		beforeEach(() => {
 			mockInstance(License);
-			oldDuration = config.get('userManagement.jwtSessionDurationHours');
 			config.set('userManagement.jwtSessionDurationHours', testDurationHours);
 		});
 
@@ -50,12 +50,12 @@ describe('jwt.issueJWT', () => {
 			const mockUser = mock<User>({ password: 'passwordHash' });
 			const { token, expiresInSeconds } = issueJWT(mockUser);
 
-			expect(expiresInSeconds).toBe(testDurationHours * Time.hours.toSeconds);
+			expect(expiresInSeconds).toBe(testDurationSeconds);
 			const decodedToken = jwtService.verify(token);
 			if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 				fail('Expected exp and iat to be defined on decodedToken');
 			}
-			expect(decodedToken.exp - decodedToken.iat).toBe(testDurationHours * Time.hours.toSeconds);
+			expect(decodedToken.exp - decodedToken.iat).toBe(testDurationSeconds);
 		});
 	});
 });
