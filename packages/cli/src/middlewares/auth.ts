@@ -60,7 +60,6 @@ export const refreshExpiringCookie = (async (req: AuthenticatedRequest, res, nex
 	if (cookieAuth && req.user && jwtRefreshTimeoutHours !== -1) {
 		const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
 		if (cookieContents.exp * 1000 - Date.now() < jwtRefreshTimeoutMilliSeconds) {
-			// if cookie expires in < 3 days, renew it.
 			await issueCookie(res, req.user);
 		}
 	}
