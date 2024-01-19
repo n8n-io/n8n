@@ -4,11 +4,20 @@ import { ref, unref } from 'vue';
 import { getMousePosition } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useDeviceSupport } from 'n8n-design-system';
+import { MOUSE_EVENT_BUTTON, MOUSE_EVENT_BUTTONS } from '@/constants';
 
+/**
+ * Composable for handling canvas panning interactions - it facilitates the movement of the
+ * canvas element in response to mouse events
+ *
+ * @param elementRef Ref pointing to the canvas HTML element that will be panned
+ * @param options Optional settings
+ * @param options.onMouseMoveEnd Callback function ref that will be called when the mouse movement ends
+ */
 export function useCanvasPanning(
 	elementRef: Ref<null | HTMLElement>,
 	options: {
-		// To be refactored (unref) when migrating NodeView to composition API
+		// @TODO To be refactored (unref) when migrating NodeView to composition API
 		onMouseMoveEnd?: Ref<null | ((e: MouseEvent) => void)>;
 	} = {},
 ) {
@@ -16,6 +25,11 @@ export function useCanvasPanning(
 	const moveLastPosition = ref([0, 0]);
 	const deviceSupport = useDeviceSupport();
 
+	/**
+	 * Updates the canvas offset position based on the mouse movement
+	 *
+	 * @param e The mouse event
+	 */
 	function panCanvas(e: MouseEvent) {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
 
@@ -26,12 +40,17 @@ export function useCanvasPanning(
 		uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 
 		// Update the last position
-		moveLastPosition.value[0] = x;
-		moveLastPosition.value[1] = y;
+		moveLastPosition.value = [x, y];
 
 		return [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 	}
 
+	/**
+	 * Initiates the panning process when specific conditions are met (middle mouse or ctrl key pressed)
+	 *
+	 * @param e The mouse event
+	 * @param moveButtonPressed Whether the middle mouse button is pressed
+	 */
 	function onMouseDown(e: MouseEvent, moveButtonPressed: boolean) {
 		if (!deviceSupport.isCtrlKeyPressed(e) && !moveButtonPressed) {
 			// We only care about it when the ctrl key is pressed at the same time.
@@ -45,20 +64,24 @@ export function useCanvasPanning(
 		}
 
 		// Prevent moving canvas on anything but middle button
-		if (e.button !== 1) {
+		if (e.button !== MOUSE_EVENT_BUTTON.MIDDLE) {
 			uiStore.nodeViewMoveInProgress = true;
 		}
 
 		const [x, y] = getMousePosition(e);
 
-		moveLastPosition.value[0] = x;
-		moveLastPosition.value[1] = y;
+		moveLastPosition.value = [x, y];
 
 		const element = unref(elementRef);
 		element?.addEventListener('mousemove', onMouseMove);
 	}
 
-	function onMouseUp(e: MouseEvent) {
+	/**
+	 * Ends the panning process and removes the mousemove event listener
+	 *
+	 * @param _ The mouse event
+	 */
+	function onMouseUp(_: MouseEvent) {
 		if (!uiStore.nodeViewMoveInProgress) {
 			// If it is not active return directly.
 			// Else normal node dragging will not work.
@@ -73,8 +96,15 @@ export function useCanvasPanning(
 		// Nothing else to do. Simply leave the node view at the current offset
 	}
 
+	/**
+	 * Handles the actual movement of the canvas during a mouse drag,
+	 * updating the position based on the current mouse position
+	 *
+	 * @param e The mouse event
+	 */
 	function onMouseMove(e: MouseEvent) {
-		if (e.target && !(e.target as HTMLElement).id.includes('node-view')) {
+		const element = unref(elementRef);
+		if (e.target && !(e.target === element)) {
 			return;
 		}
 
@@ -83,11 +113,11 @@ export function useCanvasPanning(
 		}
 
 		// Signal that moving canvas is active if middle button is pressed and mouse is moved
-		if (e.buttons === 4) {
+		if (e.buttons === MOUSE_EVENT_BUTTONS.MIDDLE) {
 			uiStore.nodeViewMoveInProgress = true;
 		}
 
-		if (e.buttons === 0) {
+		if (e.buttons === MOUSE_EVENT_BUTTONS.NONE) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.
