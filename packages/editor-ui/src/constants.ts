@@ -720,7 +720,7 @@ export const MOUSE_EVENT_BUTTON = {
 	SECONDARY: 2,
 	BROWSER_BACK: 3,
 	BROWSER_FORWARD: 4,
-};
+} as const;
 
 /**
  * Mapping for the MouseEvent.buttons property that indicates which buttons are pressed
@@ -736,4 +736,4 @@ export const MOUSE_EVENT_BUTTONS = {
 	MIDDLE: 4,
 	BROWSER_BACK: 8,
 	BROWSER_FORWARD: 16,
-};
+} as const;

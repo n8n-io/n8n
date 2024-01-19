@@ -9,10 +9,6 @@ import { MOUSE_EVENT_BUTTON, MOUSE_EVENT_BUTTONS } from '@/constants';
 /**
  * Composable for handling canvas panning interactions - it facilitates the movement of the
  * canvas element in response to mouse events
- *
- * @param elementRef Ref pointing to the canvas HTML element that will be panned
- * @param options Optional settings
- * @param options.onMouseMoveEnd Callback function ref that will be called when the mouse movement ends
  */
 export function useCanvasPanning(
 	elementRef: Ref<null | HTMLElement>,
@@ -27,8 +23,6 @@ export function useCanvasPanning(
 
 	/**
 	 * Updates the canvas offset position based on the mouse movement
-	 *
-	 * @param e The mouse event
 	 */
 	function panCanvas(e: MouseEvent) {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
@@ -47,9 +41,6 @@ export function useCanvasPanning(
 
 	/**
 	 * Initiates the panning process when specific conditions are met (middle mouse or ctrl key pressed)
-	 *
-	 * @param e The mouse event
-	 * @param moveButtonPressed Whether the middle mouse button is pressed
 	 */
 	function onMouseDown(e: MouseEvent, moveButtonPressed: boolean) {
 		if (!(deviceSupport.isCtrlKeyPressed(e) || moveButtonPressed)) {
@@ -78,8 +69,6 @@ export function useCanvasPanning(
 
 	/**
 	 * Ends the panning process and removes the mousemove event listener
-	 *
-	 * @param _ The mouse event
 	 */
 	function onMouseUp(_: MouseEvent) {
 		if (!uiStore.nodeViewMoveInProgress) {
@@ -99,8 +88,6 @@ export function useCanvasPanning(
 	/**
 	 * Handles the actual movement of the canvas during a mouse drag,
 	 * updating the position based on the current mouse position
-	 *
-	 * @param e The mouse event
 	 */
 	function onMouseMove(e: MouseEvent) {
 		const element = unref(elementRef);
