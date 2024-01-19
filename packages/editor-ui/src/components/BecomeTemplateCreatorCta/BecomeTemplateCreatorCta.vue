@@ -70,6 +70,7 @@ const store = useBecomeTemplateCreatorStore();
 	border: none;
 	color: var(--color-text-light);
 	background-color: transparent;
+	cursor: pointer;
 }
 
 .becomeCreatorButton {

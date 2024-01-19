@@ -118,7 +118,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
@@ -205,38 +204,24 @@ export default defineComponent({
 		},
 		mainMenuItems(): IMenuItem[] {
 			const items: IMenuItem[] = [];
-			const injectedItems = this.uiStore.sidebarMenuItems;
 
 			const workflows: IMenuItem = {
 				id: 'workflows',
 				icon: 'network-wired',
 				label: this.$locale.baseText('mainSidebar.workflows'),
 				position: 'top',
-				activateOnRouteNames: [VIEWS.WORKFLOWS],
+				route: { to: { name: VIEWS.WORKFLOWS } },
+				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
+					? {
+							name: 'lock',
+							tooltip: {
+								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+							},
+					  }
+					: undefined,
 			};
 
-			if (this.sourceControlStore.preferences.branchReadOnly) {
-				workflows.secondaryIcon = {
-					name: 'lock',
-					tooltip: {
-						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-					},
-				};
-			}
-
-			if (injectedItems && injectedItems.length > 0) {
-				for (const item of injectedItems) {
-					items.push({
-						id: item.id,
-						icon: item.icon || '',
-						label: item.label || '',
-						position: item.position,
-						type: item.properties?.href ? 'link' : 'regular',
-						properties: item.properties,
-					} as IMenuItem);
-				}
-			}
-
+			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const regularItems: IMenuItem[] = [
 				workflows,
 				{
@@ -245,7 +230,7 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.templates'),
 					position: 'top',
 					available: this.settingsStore.isTemplatesEnabled,
-					activateOnRouteNames: [VIEWS.TEMPLATES],
+					route: { to: { name: VIEWS.TEMPLATES } },
 				},
 				{
 					id: 'credentials',
@@ -253,7 +238,7 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.credentials'),
 					customIconSize: 'medium',
 					position: 'top',
-					activateOnRouteNames: [VIEWS.CREDENTIALS],
+					route: { to: { name: VIEWS.CREDENTIALS } },
 				},
 				{
 					id: 'variables',
@@ -261,18 +246,17 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
 					position: 'top',
-					activateOnRouteNames: [VIEWS.VARIABLES],
+					route: { to: { name: VIEWS.VARIABLES } },
 				},
 				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'top',
-					activateOnRouteNames: [VIEWS.EXECUTIONS],
+					route: { to: { name: VIEWS.EXECUTIONS } },
 				},
 				{
 					id: 'cloud-admin',
-					type: 'link',
 					position: 'bottom',
 					label: 'Admin Panel',
 					icon: 'home',
@@ -285,6 +269,7 @@ export default defineComponent({
 					position: 'bottom',
 					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
 					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
+					route: { to: defaultSettingsRoute },
 				},
 				{
 					id: 'help',
@@ -296,40 +281,36 @@ export default defineComponent({
 							id: 'quickstart',
 							icon: 'video',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
-							type: 'link',
-							properties: {
+							link: {
 								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
-								newWindow: true,
+								target: '_blank',
 							},
 						},
 						{
 							id: 'docs',
 							icon: 'book',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
-							type: 'link',
-							properties: {
+							link: {
 								href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
-								newWindow: true,
+								target: '_blank',
 							},
 						},
 						{
 							id: 'forum',
 							icon: 'users',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
-							type: 'link',
-							properties: {
+							link: {
 								href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
-								newWindow: true,
+								target: '_blank',
 							},
 						},
 						{
 							id: 'examples',
 							icon: 'graduation-cap',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
-							type: 'link',
-							properties: {
+							link: {
 								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
-								newWindow: true,
+								target: '_blank',
 							},
 						},
 						{
@@ -421,46 +402,6 @@ export default defineComponent({
 		},
 		async handleSelect(key: string) {
 			switch (key) {
-				case 'workflows': {
-					if (this.$router.currentRoute.value.name !== VIEWS.WORKFLOWS) {
-						this.goToRoute({ name: VIEWS.WORKFLOWS });
-					}
-					break;
-				}
-				case 'templates': {
-					if (this.$router.currentRoute.value.name !== VIEWS.TEMPLATES) {
-						this.goToRoute({ name: VIEWS.TEMPLATES });
-					}
-					break;
-				}
-				case 'credentials': {
-					if (this.$router.currentRoute.value.name !== VIEWS.CREDENTIALS) {
-						this.goToRoute({ name: VIEWS.CREDENTIALS });
-					}
-					break;
-				}
-				case 'variables': {
-					if (this.$router.currentRoute.value.name !== VIEWS.VARIABLES) {
-						this.goToRoute({ name: VIEWS.VARIABLES });
-					}
-					break;
-				}
-				case 'executions': {
-					if (this.$router.currentRoute.value.name !== VIEWS.EXECUTIONS) {
-						this.goToRoute({ name: VIEWS.EXECUTIONS });
-					}
-					break;
-				}
-				case 'settings': {
-					const defaultRoute = this.findFirstAccessibleSettingsRoute();
-					if (defaultRoute) {
-						const route = this.$router.resolve({ name: defaultRoute });
-						if (this.$router.currentRoute.value.name !== defaultRoute) {
-							this.goToRoute(route.path);
-						}
-					}
-					break;
-				}
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);
@@ -481,25 +422,18 @@ export default defineComponent({
 					break;
 			}
 		},
-		goToRoute(route: string | { name: string }) {
-			this.$router.push(route).catch((failure) => {
-				console.log(failure);
-				// Catch navigation failures caused by route guards
-				if (!isNavigationFailure(failure)) {
-					console.error(failure);
-				}
-			});
-		},
 		findFirstAccessibleSettingsRoute() {
 			const settingsRoutes = this.$router
 				.getRoutes()
 				.find((route) => route.path === '/settings')!
-				.children.map((route) => route.name || '');
+				.children.map((route) => route.name ?? '');
 
-			let defaultSettingsRoute = null;
+			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
 			for (const route of settingsRoutes) {
 				if (this.canUserAccessRouteByName(route.toString())) {
-					defaultSettingsRoute = route;
+					defaultSettingsRoute = {
+						name: route.toString() as VIEWS,
+					};
 					break;
 				}
 			}
