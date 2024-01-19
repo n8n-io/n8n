@@ -30,7 +30,6 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -82,7 +81,6 @@ export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'upd
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: string;
 	tags?: TagEntity[];
 }
 
@@ -120,18 +118,18 @@ export interface IExecutionBase {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
-	workflowId?: string; // To be able to filter executions easily //
+	workflowId: string;
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
+	waitTill?: Date | null;
 }
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
-	waitTill?: Date | null;
-	workflowData?: IWorkflowBase;
+	workflowData: IWorkflowBase;
 }
 
 /**
@@ -149,7 +147,6 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
-	waitTill?: Date | null;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
@@ -163,9 +160,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: string;
 	data: string;
-	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
-	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -605,8 +600,6 @@ export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }
 
-export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
-
 // ----------------------------------
 //          community nodes
 // ----------------------------------
@@ -745,11 +738,3 @@ export abstract class SecretsProvider {
 }
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';
-
-export type RegisteredWebhook = {
-	sessionId?: string;
-	timeout: NodeJS.Timeout;
-	workflowEntity: IWorkflowDb;
-	workflow: Workflow;
-	destinationNode?: string;
-};

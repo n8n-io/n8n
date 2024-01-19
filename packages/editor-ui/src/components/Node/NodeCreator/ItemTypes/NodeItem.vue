@@ -2,23 +2,24 @@
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<n8n-node-creator-node
 		:draggable="!showActionArrow"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
 		:class="$style.nodeItem"
 		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<div v-if="isSubNode" :class="$style.subNodeBackground"></div>
-			<node-icon :class="$style.nodeIcon" :nodeType="nodeType" />
+			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template #tooltip v-if="isCommunityNode">
+		<template v-if="isCommunityNode" #tooltip>
 			<p
 				:class="$style.communityNodeIcon"
+				@click="onCommunityNodeTooltipClick"
 				v-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
@@ -27,13 +28,12 @@
 						},
 					})
 				"
-				@click="onCommunityNodeTooltipClick"
 			/>
 		</template>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
-			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
-				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
+			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
 			</div>
 		</template>
 	</n8n-node-creator-node>
@@ -57,7 +57,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useActions } from '../composables/useActions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import { useNodeType } from '@/composables/useNodeType';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -74,6 +74,9 @@ const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
 const { getAddedNodesAndConnections } = useActions();
+const { isSubNodeType } = useNodeType({
+	nodeType: props.nodeType,
+});
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
@@ -122,16 +125,6 @@ const displayName = computed<string>(() => {
 		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
-});
-
-const isSubNode = computed<boolean>(() => {
-	if (!props.nodeType.outputs || typeof props.nodeType.outputs === 'string') {
-		return false;
-	}
-	const outputTypes = NodeHelpers.getConnectionTypes(props.nodeType.outputs);
-	return outputTypes
-		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
-		: false;
 });
 
 const isTrigger = computed<boolean>(() => {

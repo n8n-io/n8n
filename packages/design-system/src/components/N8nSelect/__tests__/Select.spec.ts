@@ -26,11 +26,6 @@ describe('components', () => {
 
 		it('should select an option', async () => {
 			const n8nSelectTestComponent = defineComponent({
-				template: `
-					<n8n-select v-model="selected">
-						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
-					</n8n-select>
-				`,
 				setup() {
 					const options = ref(['1', '2', '3']);
 					const selected = ref('');
@@ -40,6 +35,11 @@ describe('components', () => {
 						selected,
 					};
 				},
+				template: `
+					<n8n-select v-model="selected">
+						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
+					</n8n-select>
+				`,
 			});
 
 			const { container } = render(n8nSelectTestComponent, {

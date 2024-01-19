@@ -9,7 +9,7 @@ import { Logger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { LICENSE_FEATURES, inTest } from '@/constants';
+import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
@@ -62,6 +62,12 @@ export abstract class BaseCommand extends Command {
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		// This needs to happen after DB.init() or otherwise DB Connection is not
+		// available via the dependency Container that services depend on.
+		if (inDevelopment || inTest) {
+			this.shutdownService.validate();
+		}
 
 		await this.server?.init();
 

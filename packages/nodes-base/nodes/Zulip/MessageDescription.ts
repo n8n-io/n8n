@@ -249,7 +249,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:updateFile                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'dataBinaryProperty',
 		type: 'string',
 		required: true,
@@ -260,6 +260,6 @@ export const messageFields: INodeProperties[] = [
 				operation: ['updateFile'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 ];

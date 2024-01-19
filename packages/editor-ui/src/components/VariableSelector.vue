@@ -1,24 +1,24 @@
 <template>
-	<div @keydown.stop class="variable-selector-wrapper">
+	<div class="variable-selector-wrapper" @keydown.stop>
 		<div class="input-wrapper">
 			<n8n-input
-				:placeholder="$locale.baseText('variableSelector.variableFilter')"
-				v-model="variableFilter"
 				ref="inputField"
+				v-model="variableFilter"
+				:placeholder="$locale.baseText('variableSelector.variableFilter')"
 				size="small"
 				type="text"
 			></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
-			<variable-selector-item
-				:item="option"
+			<VariableSelectorItem
 				v-for="option in currentResults"
 				:key="option.key"
-				:extendAll="extendAll"
-				:redactValues="redactValues"
+				:item="option"
+				:extend-all="extendAll"
+				:redact-values="redactValues"
 				@itemSelected="forwardItemSelected"
-			></variable-selector-item>
+			></VariableSelectorItem>
 		</div>
 	</div>
 </template>
@@ -56,10 +56,10 @@ const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
 
 export default defineComponent({
 	name: 'VariableSelector',
-	mixins: [workflowHelpers],
 	components: {
 		VariableSelectorItem,
 	},
+	mixins: [workflowHelpers],
 	props: ['path', 'redactValues'],
 	data() {
 		return {

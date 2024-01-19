@@ -2,30 +2,30 @@
 	<n8n-input-label
 		:class="$style.wrapper"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
-		:showTooltip="focused"
-		:showOptions="menuExpanded || focused || forceShowExpression"
-		:optionsPosition="optionsPosition"
+		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
+		:show-tooltip="focused"
+		:show-options="menuExpanded || focused || forceShowExpression"
+		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
 	>
 		<template v-if="displayOptions && optionsPosition === 'top'" #options>
-			<parameter-options
+			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="isReadOnly"
-				:showOptions="displayOptions"
-				:showExpressionSelector="showExpressionSelector"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
 				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<draggable-target
+		<DraggableTarget
 			type="mapping"
 			:disabled="isDropDisabled"
 			:sticky="true"
-			:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+			:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
@@ -43,44 +43,44 @@
 							"
 						/>
 					</template>
-					<parameter-input-wrapper
+					<ParameterInputWrapper
 						ref="param"
 						:parameter="parameter"
-						:modelValue="value"
+						:model-value="value"
 						:path="path"
-						:isReadOnly="isReadOnly"
-						:isSingleLine="isSingleLine"
+						:is-read-only="isReadOnly"
+						:is-single-line="isSingleLine"
 						:droppable="droppable"
-						:activeDrop="activeDrop"
-						:forceShowExpression="forceShowExpression"
+						:active-drop="activeDrop"
+						:force-show-expression="forceShowExpression"
 						:hint="hint"
-						:hideHint="hideHint"
+						:hide-hint="hideHint"
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
+						input-size="small"
 						@update="valueChanged"
 						@textInput="onTextInput"
 						@focus="onFocus"
 						@blur="onBlur"
 						@drop="onDrop"
-						inputSize="small"
 					/>
 				</n8n-tooltip>
 			</template>
-		</draggable-target>
+		</DraggableTarget>
 		<div
 			:class="{
 				[$style.options]: true,
 				[$style.visible]: menuExpanded || focused || forceShowExpression,
 			}"
 		>
-			<parameter-options
+			<ParameterOptions
 				v-if="optionsPosition === 'bottom'"
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="isReadOnly"
-				:showOptions="displayOptions"
-				:showExpressionSelector="showExpressionSelector"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
 				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -117,30 +117,11 @@ import { createEventBus } from 'n8n-design-system/utils';
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default defineComponent({
-	name: 'parameter-input-full',
+	name: 'ParameterInputFull',
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
-	},
-	setup() {
-		const eventBus = createEventBus();
-		const i18n = useI18n();
-
-		return {
-			i18n,
-			eventBus,
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			focused: false,
-			menuExpanded: false,
-			forceShowExpression: false,
-			dataMappingTooltipButtons: [] as IN8nButton[],
-			mappingTooltipEnabled: false,
-		};
 	},
 	props: {
 		displayOptions: {
@@ -186,6 +167,29 @@ export default defineComponent({
 				size: 'small',
 			}),
 		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
+	},
+	setup() {
+		const eventBus = createEventBus();
+		const i18n = useI18n();
+
+		return {
+			i18n,
+			eventBus,
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			focused: false,
+			menuExpanded: false,
+			forceShowExpression: false,
+			dataMappingTooltipButtons: [] as IN8nButton[],
+			mappingTooltipEnabled: false,
+		};
 	},
 	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);

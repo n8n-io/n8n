@@ -1,7 +1,7 @@
 <template>
 	<div
-		:class="$style['expression-parameter-input']"
 		v-on-click-outside="onBlur"
+		:class="$style['expression-parameter-input']"
 		@keydown.tab="onBlur"
 	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
@@ -9,31 +9,31 @@
 				<ExpressionFunctionIcon />
 			</div>
 			<InlineExpressionEditorInput
-				:modelValue="modelValue"
-				:isReadOnly="isReadOnly"
-				:targetItem="hoveringItem"
-				:isSingleLine="isSingleLine"
-				:additionalData="additionalExpressionData"
+				ref="inlineInput"
+				:model-value="modelValue"
+				:is-read-only="isReadOnly"
+				:target-item="hoveringItem"
+				:is-single-line="isSingleLine"
+				:additional-data="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
-				ref="inlineInput"
 			/>
 			<n8n-icon
 				v-if="!isDragging"
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
-				@click="$emit('modalOpenerClick')"
 				data-test-id="expander"
+				@click="$emit('modalOpenerClick')"
 			/>
 		</div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="hoveringItemNumber"
+			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -63,12 +63,6 @@ export default defineComponent({
 		InlineExpressionEditorOutput,
 		ExpressionFunctionIcon,
 	},
-	data() {
-		return {
-			isFocused: false,
-			segments: [] as Segment[],
-		};
-	},
 	props: {
 		path: {
 			type: String,
@@ -88,6 +82,12 @@ export default defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
+	},
+	data() {
+		return {
+			isFocused: false,
+			segments: [] as Segment[],
+		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),

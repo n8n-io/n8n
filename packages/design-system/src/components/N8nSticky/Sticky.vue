@@ -9,51 +9,51 @@
 		:style="styles"
 		@keydown.prevent
 	>
-		<n8n-resize-wrapper
-			:isResizingEnabled="!readOnly"
+		<N8nResizeWrapper
+			:is-resizing-enabled="!readOnly"
 			:height="height"
 			:width="width"
-			:minHeight="minHeight"
-			:minWidth="minWidth"
+			:min-height="minHeight"
+			:min-width="minWidth"
 			:scale="scale"
-			:gridSize="gridSize"
+			:grid-size="gridSize"
 			@resizeend="onResizeEnd"
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
 			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
-				<n8n-markdown
+				<N8nMarkdown
 					theme="sticky"
 					:content="modelValue"
-					:withMultiBreaks="true"
+					:with-multi-breaks="true"
 					@markdown-click="onMarkdownClick"
 				/>
 			</div>
 			<div
 				v-show="editMode"
+				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 				@click.stop
 				@mousedown.stop
 				@mouseup.stop
 				@keydown.esc="onInputBlur"
 				@keydown.stop
-				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 			>
-				<n8n-input
-					:modelValue="modelValue"
+				<N8nInput
+					ref="input"
+					:model-value="modelValue"
 					type="textarea"
 					:rows="5"
 					@blur="onInputBlur"
 					@update:modelValue="onUpdateModelValue"
 					@wheel="onInputScroll"
-					ref="input"
 				/>
 			</div>
 			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-				<n8n-text size="xsmall" aligh="right">
+				<N8nText size="xsmall" aligh="right">
 					<span v-html="t('sticky.markdownHint')"></span>
-				</n8n-text>
+				</N8nText>
 			</div>
-		</n8n-resize-wrapper>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -66,7 +66,13 @@ import Locale from '../../mixins/locale';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-sticky',
+	name: 'N8nSticky',
+	components: {
+		N8nInput,
+		N8nMarkdown,
+		N8nResizeWrapper,
+		N8nText,
+	},
 	mixins: [Locale],
 	props: {
 		modelValue: {
@@ -116,12 +122,6 @@ export default defineComponent({
 			default: 1,
 		},
 	},
-	components: {
-		N8nInput,
-		N8nMarkdown,
-		N8nResizeWrapper,
-		N8nText,
-	},
 	data() {
 		return {
 			isResizing: false,
@@ -150,6 +150,19 @@ export default defineComponent({
 		},
 		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
+		},
+	},
+	watch: {
+		editMode(newMode, prevMode) {
+			setTimeout(() => {
+				if (newMode && !prevMode && this.$refs.input) {
+					const textarea = this.$refs.input as HTMLTextAreaElement;
+					if (this.defaultText === this.modelValue) {
+						textarea.select();
+					}
+					textarea.focus();
+				}
+			}, 100);
 		},
 	},
 	methods: {
@@ -185,19 +198,6 @@ export default defineComponent({
 			if (!event.ctrlKey && !event.metaKey) {
 				event.stopPropagation();
 			}
-		},
-	},
-	watch: {
-		editMode(newMode, prevMode) {
-			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input) {
-					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.modelValue) {
-						textarea.select();
-					}
-					textarea.focus();
-				}
-			}, 100);
 		},
 	},
 });

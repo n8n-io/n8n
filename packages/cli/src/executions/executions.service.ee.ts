@@ -1,20 +1,20 @@
+import Container from 'typedi';
 import type { User } from '@db/entities/User';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { ExecutionsService } from './executions.service';
-import type { ExecutionRequest } from '@/requests';
+import type { ExecutionRequest } from './execution.request';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
 import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
-import Container from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
-export class EEExecutionsService extends ExecutionsService {
+export class EnterpriseExecutionsService extends ExecutionsService {
 	/**
 	 * Function to get the workflow Ids for a User regardless of role
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows
-		return getSharedWorkflowIds(user);
+		return Container.get(WorkflowSharingService).getSharedWorkflowIds(user);
 	}
 
 	static async getExecution(

@@ -22,11 +22,11 @@ const onSSOLogin = async () => {
 			<span>{{ i18n.baseText('sso.login.divider') }}</span>
 		</div>
 		<n8n-button
-			@click="onSSOLogin"
 			size="large"
 			type="primary"
 			outline
 			:label="i18n.baseText('sso.login.button')"
+			@click="onSSOLogin"
 		/>
 	</div>
 </template>

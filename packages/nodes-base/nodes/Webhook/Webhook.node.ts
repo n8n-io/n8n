@@ -99,7 +99,7 @@ export class Webhook extends Node {
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
 			ignoreBots: boolean;
-			rawBody: Buffer;
+			rawBody: boolean;
 			responseData?: string;
 		};
 		const req = context.getRequestObject();
@@ -225,7 +225,7 @@ export class Webhook extends Node {
 			},
 		};
 
-		if (files?.length) {
+		if (files && Object.keys(files).length) {
 			returnItem.binary = {};
 		}
 

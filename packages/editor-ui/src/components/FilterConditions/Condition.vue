@@ -32,6 +32,7 @@ interface Props {
 	issues?: string[];
 	fixedLeftValue?: boolean;
 	canRemove?: boolean;
+	readOnly?: boolean;
 	index?: number;
 }
 
@@ -39,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
 	issues: () => [],
 	canRemove: true,
 	fixedLeftValue: false,
+	readOnly: false,
 });
 
 const emit = defineEmits<{
@@ -190,7 +192,7 @@ const onBlur = (): void => {
 		data-test-id="filter-condition"
 	>
 		<n8n-icon-button
-			v-if="canRemove"
+			v-if="canRemove && !readOnly"
 			type="tertiary"
 			text
 			size="mini"
@@ -216,38 +218,41 @@ const onBlur = (): void => {
 						[$style.medium]: bp === 'medium',
 					}"
 				>
-					<parameter-input-full
+					<ParameterInputFull
 						v-if="!fixedLeftValue"
-						displayOptions
-						hideLabel
-						hideHint
-						isSingleLine
 						:key="leftParameter.type"
+						display-options
+						hide-label
+						hide-hint
+						is-single-line
 						:parameter="leftParameter"
 						:value="condition.leftValue"
 						:path="`${path}.left`"
 						:class="[$style.input, $style.inputLeft]"
+						:is-read-only="readOnly"
 						data-test-id="filter-condition-left"
 						@update="onLeftValueChange"
 						@blur="onBlur"
 					/>
-					<operator-select
+					<OperatorSelect
 						:class="$style.select"
 						:selected="`${operator.type}:${operator.operation}`"
+						:read-only="readOnly"
 						@operatorChange="onOperatorChange"
-					></operator-select>
-					<parameter-input-full
+					></OperatorSelect>
+					<ParameterInputFull
 						v-if="!operator.singleValue"
-						displayOptions
-						hideLabel
-						hideHint
-						isSingleLine
 						:key="rightParameter.type"
-						:optionsPosition="bp === 'default' ? 'top' : 'bottom'"
+						display-options
+						hide-label
+						hide-hint
+						is-single-line
+						:options-position="bp === 'default' ? 'top' : 'bottom'"
 						:parameter="rightParameter"
 						:value="condition.rightValue"
 						:path="`${path}.right`"
 						:class="[$style.input, $style.inputRight]"
+						:is-read-only="readOnly"
 						data-test-id="filter-condition-right"
 						@update="onRightValueChange"
 						@blur="onBlur"
@@ -257,11 +262,11 @@ const onBlur = (): void => {
 		</n8n-resize-observer>
 
 		<div :class="$style.status">
-			<parameter-issues v-if="allIssues.length > 0" :issues="allIssues" />
+			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
 
 			<n8n-tooltip
-				:show-after="500"
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === true"
+				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedTrue') }}
@@ -270,8 +275,8 @@ const onBlur = (): void => {
 			</n8n-tooltip>
 
 			<n8n-tooltip
-				:show-after="500"
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === false"
+				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedFalse') }}
@@ -288,7 +293,6 @@ const onBlur = (): void => {
 	display: flex;
 	align-items: flex-end;
 	gap: var(--spacing-4xs);
-	padding-left: var(--spacing-l);
 
 	&.hasIssues {
 		--input-border-color: var(--color-danger);
@@ -354,7 +358,6 @@ const onBlur = (): void => {
 }
 
 .remove {
-	--button-font-color: var(--color-text-light);
 	position: absolute;
 	left: 0;
 	top: var(--spacing-l);

@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div v-for="size in sizes" class="spacing-group" :key="size">
+		<div v-for="size in sizes" :key="size" class="spacing-group">
 			<div class="spacing-example" :class="`${property[0]}${side ? side[0] : ''}-${size}`">
 				<div class="spacing-box" />
 				<div class="label">{{ property[0] }}{{ side ? side[0] : '' }}-{{ size }}</div>

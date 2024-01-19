@@ -14,11 +14,13 @@ import { License } from '@/License';
 import { badPasswords } from '../shared/testData';
 import { mockInstance } from '../../shared/mocking';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const internalHooks = mockInstance(InternalHooks);
 	const userService = mockInstance(UserService);
+	const userRepository = mockInstance(UserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -47,11 +49,17 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userService.findOneOrFail.mockResolvedValue(user);
+			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.beforeUpdate', [
+				user.id,
+				user.email,
+				reqBody,
+			]);
 
 			expect(userService.update).toHaveBeenCalled();
 
@@ -76,7 +84,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userService.findOneOrFail.mockResolvedValue(user);
+			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
@@ -92,6 +100,28 @@ describe('MeController', () => {
 			expect(updatedUser.lastName).toBe(reqBody.lastName);
 			expect(updatedUser.id).not.toBe('0');
 			expect(updatedUser.globalRoleId).not.toBe('42');
+		});
+
+		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
+			const user = mock<User>({
+				id: '123',
+				password: 'password',
+				authIdentities: [],
+				globalRoleId: '1',
+			});
+			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			userService.findOneOrFail.mockResolvedValue(user);
+
+			externalHooks.run.mockImplementationOnce(async (hookName) => {
+				if (hookName === 'user.profile.beforeUpdate') {
+					throw new BadRequestError('Invalid email address');
+				}
+			});
+
+			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
+				new BadRequestError('Invalid email address'),
+			);
 		});
 	});
 
@@ -138,7 +168,7 @@ describe('MeController', () => {
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 			});
 			const res = mock<Response>();
-			userService.save.calledWith(req.user).mockResolvedValue(req.user);
+			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(req, res);

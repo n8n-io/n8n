@@ -200,8 +200,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		isNodeInOutgoingNodeConnections() {
 			return (firstNode: string, secondNode: string): boolean => {
 				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
-				if (!firstNodeConnections || !firstNodeConnections.main || !firstNodeConnections.main[0])
-					return false;
+				if (!firstNodeConnections?.main?.[0]) return false;
 				const connections = firstNodeConnections.main[0];
 				if (connections.some((node) => node.node === secondNode)) return true;
 				return connections.some((node) =>
@@ -242,7 +241,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			return false;
 		},
-		getPinData(): IPinData | undefined {
+		pinnedWorkflowData(): IPinData | undefined {
 			return this.workflow.pinData;
 		},
 		shouldReplaceInputDataWithPinData(): boolean {
@@ -346,7 +345,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				nodeTypes,
 				settings: this.workflowSettings,
 				// @ts-ignore
-				pinData: this.getPinData,
+				pinData: this.pinnedWorkflowData,
 			});
 
 			return cachedWorkflow;
@@ -694,7 +693,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			const storedPinData = payload.data.map((item) =>
-				isJsonKeyObject(item) ? item : { json: item },
+				isJsonKeyObject(item) ? { json: item.json } : { json: item },
 			);
 
 			this.workflow = {

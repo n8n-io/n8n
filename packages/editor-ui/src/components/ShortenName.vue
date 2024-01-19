@@ -1,6 +1,6 @@
 <template>
 	<span :title="name" :data-test-id="testId">
-		<slot :shortenedName="shortenedName"></slot>
+		<slot :shortened-name="shortenedName"></slot>
 	</span>
 </template>
 

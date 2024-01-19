@@ -2,33 +2,33 @@
 	<div>
 		<NDVFloatingNodes
 			v-if="activeNode"
-			@switchSelectedNode="onSwitchSelectedNode"
 			:root-node="activeNode"
 			type="input"
+			@switchSelectedNode="onSwitchSelectedNode"
 		/>
-		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.outputPanel" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
-				:isResizingEnabled="currentNodePaneType !== 'unknown'"
+				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
-				:minWidth="MIN_PANEL_WIDTH"
-				:gridSize="20"
+				:min-width="MIN_PANEL_WIDTH"
+				:grid-size="20"
+				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
-				:supportedDirections="supportedResizeDirections"
 			>
 				<div :class="$style.dragButtonContainer">
 					<PanelDragButton
-						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-						:canMoveLeft="canMoveLeft"
-						:canMoveRight="canMoveRight"
 						v-if="!hideInputAndOutput && isDraggable"
+						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+						:can-move-left="canMoveLeft"
+						:can-move-right="canMoveRight"
 						@dragstart="onDragStart"
 						@drag="onDrag"
 						@dragend="onDragEnd"
@@ -53,10 +53,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -74,7 +74,6 @@ const initialMainPanelWidth: { [key: string]: number } = {
 
 export default defineComponent({
 	name: 'NDVDraggablePanels',
-	mixins: [debounceHelper],
 	components: {
 		PanelDragButton,
 		NDVFloatingNodes,
@@ -93,6 +92,11 @@ export default defineComponent({
 			type: Object as PropType<INodeTypeDescription>,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
 	},
 	data(): {
 		windowWidth: number;
@@ -343,7 +347,7 @@ export default defineComponent({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				void this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced(this.onResize, { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {

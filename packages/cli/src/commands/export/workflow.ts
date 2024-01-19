@@ -1,8 +1,6 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
-import type { FindOptionsWhere } from 'typeorm';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
@@ -101,13 +99,8 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
-		if (flags.id) {
-			findQuery.id = flags.id;
-		}
-
 		const workflows = await Container.get(WorkflowRepository).find({
-			where: findQuery,
+			where: flags.id ? { id: flags.id } : {},
 			relations: ['tags'],
 		});
 

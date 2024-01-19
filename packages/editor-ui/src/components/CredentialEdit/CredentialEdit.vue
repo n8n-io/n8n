@@ -1,10 +1,10 @@
 <template>
 	<Modal
 		:name="modalName"
-		:customClass="$style.credentialModal"
-		:eventBus="modalBus"
+		:custom-class="$style.credentialModal"
+		:event-bus="modalBus"
 		:loading="loading"
-		:beforeClose="beforeClose"
+		:before-close="beforeClose"
 		width="70%"
 		height="80%"
 	>
@@ -12,15 +12,15 @@
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
+						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:modelValue="credentialName"
+						:model-value="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
-						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
+						@update:modelValue="onNameEdit"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -31,20 +31,20 @@
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
-						@click="deleteCredential"
 						data-test-id="credential-delete-button"
+						@click="deleteCredential"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
-						:isSaving="isSaving || isTesting"
-						:savingLabel="
+						:is-saving="isSaving || isTesting"
+						:saving-label="
 							isTesting
 								? $locale.baseText('credentialEdit.credentialEdit.testing')
 								: $locale.baseText('credentialEdit.credentialEdit.saving')
 						"
-						@click="saveCredential"
 						data-test-id="credential-save-button"
+						@click="saveCredential"
 					/>
 				</div>
 			</div>
@@ -56,28 +56,28 @@
 					<n8n-menu
 						mode="tabs"
 						:items="sidebarItems"
-						:transparentBackground="true"
+						:transparent-background="true"
 						@select="onTabSelect"
 					></n8n-menu>
 				</div>
-				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
+				<div v-if="activeTab === 'connection'" ref="content" :class="$style.mainContent">
 					<CredentialConfig
-						:credentialType="credentialType"
-						:credentialProperties="credentialProperties"
-						:credentialData="credentialData"
-						:credentialId="credentialId"
-						:showValidationWarning="showValidationWarning"
-						:authError="authError"
-						:testedSuccessfully="testedSuccessfully"
-						:isOAuthType="isOAuthType"
-						:isOAuthConnected="isOAuthConnected"
-						:isRetesting="isRetesting"
-						:parentTypes="parentTypes"
-						:requiredPropertiesFilled="requiredPropertiesFilled"
-						:credentialPermissions="credentialPermissions"
+						:credential-type="credentialType"
+						:credential-properties="credentialProperties"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:show-validation-warning="showValidationWarning"
+						:auth-error="authError"
+						:tested-successfully="testedSuccessfully"
+						:is-o-auth-type="isOAuthType"
+						:is-o-auth-connected="isOAuthConnected"
+						:is-retesting="isRetesting"
+						:parent-types="parentTypes"
+						:required-properties-filled="requiredPropertiesFilled"
+						:credential-permissions="credentialPermissions"
 						:mode="mode"
-						:selectedCredential="selectedCredential"
-						:showAuthTypeSelector="requiredCredentials"
+						:selected-credential="selectedCredential"
+						:show-auth-type-selector="requiredCredentials"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
@@ -88,24 +88,24 @@
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
-						:credentialData="credentialData"
-						:credentialId="credentialId"
-						:credentialPermissions="credentialPermissions"
-						:modalBus="modalBus"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:credential-permissions="credentialPermissions"
+						:modal-bus="modalBus"
 						@update:modelValue="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo
-						:nodeAccess="nodeAccess"
-						:nodesWithAccess="nodesWithAccess"
-						:currentCredential="currentCredential"
-						:credentialPermissions="credentialPermissions"
+						:node-access="nodeAccess"
+						:nodes-with-access="nodesWithAccess"
+						:current-credential="currentCredential"
+						:credential-permissions="credentialPermissions"
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
 				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
-					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
+					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
 		</template>

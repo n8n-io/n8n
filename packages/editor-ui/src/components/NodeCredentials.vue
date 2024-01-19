@@ -15,9 +15,9 @@
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
-				<div v-if="readonly || isReadOnlyRoute">
+				<div v-if="readonly">
 					<n8n-input
-						:modelValue="getSelectedName(credentialTypeDescription.name)"
+						:model-value="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
@@ -29,7 +29,9 @@
 					data-test-id="node-credentials-select"
 				>
 					<n8n-select
-						:modelValue="getSelectedId(credentialTypeDescription.name)"
+						:model-value="getSelectedId(credentialTypeDescription.name)"
+						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
+						size="small"
 						@update:modelValue="
 							(value) =>
 								onCredentialSelected(
@@ -39,15 +41,13 @@
 								)
 						"
 						@blur="$emit('blur', 'credentials')"
-						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
-						size="small"
 					>
 						<n8n-option
 							v-for="item in getCredentialOptions(
 								getAllRelatedCredentialTypes(credentialTypeDescription),
 							)"
-							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:key="item.id"
+							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:label="item.name"
 							:value="item.id"
 						>
@@ -57,18 +57,18 @@
 							</div>
 						</n8n-option>
 						<n8n-option
-							data-test-id="node-credentials-select-item-new"
 							:key="NEW_CREDENTIALS_TEXT"
+							data-test-id="node-credentials-select-item-new"
 							:value="NEW_CREDENTIALS_TEXT"
 							:label="NEW_CREDENTIALS_TEXT"
 						>
 						</n8n-option>
 					</n8n-select>
 
-					<div :class="$style.warning" v-if="issues.length && !hideIssues">
+					<div v-if="issues.length && !hideIssues" :class="$style.warning">
 						<n8n-tooltip placement="top">
 							<template #content>
-								<titled-list
+								<TitledList
 									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
 									:items="issues"
 								/>
@@ -78,18 +78,18 @@
 					</div>
 
 					<div
-						:class="$style.edit"
 						v-if="
 							selected[credentialTypeDescription.name] &&
 							isCredentialExisting(credentialTypeDescription.name)
 						"
+						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
 						<font-awesome-icon
 							icon="pen"
-							@click="editCredential(credentialTypeDescription.name)"
 							class="clickable"
 							:title="$locale.baseText('nodeCredentials.updateCredential')"
+							@click="editCredential(credentialTypeDescription.name)"
 						/>
 					</div>
 				</div>
@@ -117,7 +117,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
@@ -144,7 +143,9 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 
 export default defineComponent({
 	name: 'NodeCredentials',
-	mixins: [genericHelpers],
+	components: {
+		TitledList,
+	},
 	props: {
 		readonly: {
 			type: Boolean,
@@ -166,9 +167,6 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	components: {
-		TitledList,
-	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 
@@ -183,6 +181,34 @@ export default defineComponent({
 			subscribedToCredentialType: '',
 			listeningForAuthChange: false,
 		};
+	},
+	watch: {
+		'node.parameters': {
+			immediate: true,
+			deep: true,
+			handler(newValue: INodeParameters, oldValue: INodeParameters) {
+				// When active node parameters change, check if authentication type has been changed
+				// and set `subscribedToCredentialType` to corresponding credential type
+				const isActive = this.node.name === this.ndvStore.activeNode?.name;
+				const nodeType = this.nodeType;
+				// Only do this for active node and if it's listening for auth change
+				if (isActive && nodeType && this.listeningForAuthChange) {
+					if (this.mainNodeAuthField && oldValue && newValue) {
+						const newAuth = newValue[this.mainNodeAuthField.name];
+
+						if (newAuth) {
+							const credentialType = getNodeCredentialForSelectedAuthType(
+								nodeType,
+								newAuth.toString(),
+							);
+							if (credentialType) {
+								this.subscribedToCredentialType = credentialType.name;
+							}
+						}
+					}
+				}
+			},
+		},
 	},
 	mounted() {
 		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
@@ -242,34 +268,6 @@ export default defineComponent({
 				}
 			});
 		});
-	},
-	watch: {
-		'node.parameters': {
-			immediate: true,
-			deep: true,
-			handler(newValue: INodeParameters, oldValue: INodeParameters) {
-				// When active node parameters change, check if authentication type has been changed
-				// and set `subscribedToCredentialType` to corresponding credential type
-				const isActive = this.node.name === this.ndvStore.activeNode?.name;
-				const nodeType = this.nodeType;
-				// Only do this for active node and if it's listening for auth change
-				if (isActive && nodeType && this.listeningForAuthChange) {
-					if (this.mainNodeAuthField && oldValue && newValue) {
-						const newAuth = newValue[this.mainNodeAuthField.name];
-
-						if (newAuth) {
-							const credentialType = getNodeCredentialForSelectedAuthType(
-								nodeType,
-								newAuth.toString(),
-							);
-							if (credentialType) {
-								this.subscribedToCredentialType = credentialType.name;
-							}
-						}
-					}
-				}
-			},
-		},
 	},
 	computed: {
 		...mapStores(

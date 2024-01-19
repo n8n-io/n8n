@@ -139,11 +139,9 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Value',
 						name: 'objectValue',
-						type: 'string',
+						type: 'json',
 						default: '={}',
 						typeOptions: {
-							editor: 'json',
-							editorLanguage: 'json',
 							rows: 2,
 						},
 						displayOptions: {

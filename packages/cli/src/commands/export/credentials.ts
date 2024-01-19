@@ -1,7 +1,6 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
-import type { FindOptionsWhere } from 'typeorm';
 import { Credentials } from 'n8n-core';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
@@ -107,13 +106,9 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<ICredentialsDb> = {};
-		if (flags.id) {
-			findQuery.id = flags.id;
-		}
-
-		const credentials: ICredentialsDb[] =
-			await Container.get(CredentialsRepository).findBy(findQuery);
+		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).findBy(
+			flags.id ? { id: flags.id } : {},
+		);
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {

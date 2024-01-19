@@ -1,7 +1,7 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
-			:modelValue="dialogVisible"
+			:model-value="dialogVisible"
 			append-to-body
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
@@ -13,11 +13,11 @@
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
 					<div @keydown.stop @keydown.esc="onKeyDownEsc()">
 						<n8n-input
+							ref="inputField"
 							v-model="tempValue"
 							type="textarea"
-							ref="inputField"
 							:placeholder="$locale.nodeText().placeholder(parameter, path)"
-							:readOnly="isReadOnly"
+							:read-only="isReadOnly"
 							:rows="15"
 							@update:modelValue="valueChanged"
 						/>
@@ -39,6 +39,20 @@ export default defineComponent({
 			tempValue: '', // el-input does not seem to work without v-model so add one
 		};
 	},
+	watch: {
+		async dialogVisible() {
+			if (this.dialogVisible === true) {
+				await nextTick();
+				(this.$refs.inputField as HTMLInputElement).focus();
+			}
+		},
+		modelValue(value: string) {
+			this.tempValue = value;
+		},
+	},
+	mounted() {
+		this.tempValue = this.modelValue as string;
+	},
 	methods: {
 		valueChanged(value: string) {
 			this.$emit('update:modelValue', value);
@@ -56,20 +70,6 @@ export default defineComponent({
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
 			return false;
-		},
-	},
-	mounted() {
-		this.tempValue = this.modelValue as string;
-	},
-	watch: {
-		async dialogVisible() {
-			if (this.dialogVisible === true) {
-				await nextTick();
-				(this.$refs.inputField as HTMLInputElement).focus();
-			}
-		},
-		modelValue(value: string) {
-			this.tempValue = value;
 		},
 	},
 });

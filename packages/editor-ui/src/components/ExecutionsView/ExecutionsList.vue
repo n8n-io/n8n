@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.container">
-		<executions-sidebar
+		<ExecutionsSidebar
 			:executions="executions"
 			:loading="loading && !executions.length"
-			:loadingMore="loadingMore"
-			:temporaryExecution="temporaryExecution"
+			:loading-more="loadingMore"
+			:temporary-execution="temporaryExecution"
 			:auto-refresh="autoRefresh"
 			@update:autoRefresh="onAutoRefreshToggle"
 			@reloadExecutions="setExecutions"
@@ -12,7 +12,7 @@
 			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
 		/>
-		<div :class="$style.content" v-if="!hidePreview">
+		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
 				@deleteCurrentExecution="onDeleteCurrentExecution"
@@ -58,7 +58,6 @@ import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
-import { debounceHelper } from '@/mixins/debounce';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -69,6 +68,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -76,10 +76,21 @@ const MAX_LOADING_ATTEMPTS = 5;
 const LOAD_MORE_PAGE_SIZE = 100;
 
 export default defineComponent({
-	name: 'executions-list',
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	name: 'ExecutionsList',
 	components: {
 		ExecutionsSidebar,
+	},
+	mixins: [executionHelpers, workflowHelpers],
+	setup() {
+		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
+
+		return {
+			externalHooks,
+			callDebounced,
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -89,15 +100,6 @@ export default defineComponent({
 			temporaryExecution: null as IExecutionsSummary | null,
 			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
-		};
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	computed: {
@@ -231,7 +233,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

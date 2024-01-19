@@ -17,7 +17,7 @@ import type {
 
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';

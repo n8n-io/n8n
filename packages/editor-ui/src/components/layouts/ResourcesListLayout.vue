@@ -1,6 +1,6 @@
 <template>
-	<page-view-layout>
-		<template #aside v-if="showAside">
+	<PageViewLayout>
+		<template v-if="showAside" #aside>
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
 					{{ i18n.baseText(`${resourceKey}.heading`) }}
@@ -13,16 +13,16 @@
 						size="large"
 						block
 						:disabled="disabled"
-						@click="$emit('click:add', $event)"
 						data-test-id="resources-list-add"
+						@click="$emit('click:add', $event)"
 					>
 						{{ i18n.baseText(`${resourceKey}.add`) }}
 					</n8n-button>
 				</slot>
 			</div>
 
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
-				<resource-ownership-select
+			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
+				<ResourceOwnershipSelect
 					v-model="isOwnerSubview"
 					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
 					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
@@ -52,22 +52,22 @@
 							)
 						"
 						:description="i18n.baseText(`${resourceKey}.empty.description`)"
-						:buttonText="i18n.baseText(`${resourceKey}.empty.button`)"
-						buttonType="secondary"
+						:button-text="i18n.baseText(`${resourceKey}.empty.button`)"
+						button-type="secondary"
 						@click:button="$emit('click:add', $event)"
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list :overflow="type !== 'list'" v-else>
+			<PageViewLayoutList v-else :overflow="type !== 'list'">
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
 							<n8n-input
-								:modelValue="filtersModel.search"
+								ref="search"
+								:model-value="filtersModel.search"
 								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
 								clearable
-								ref="search"
 								data-test-id="resources-list-search"
 								@update:modelValue="onSearch"
 							>
@@ -79,17 +79,17 @@
 								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
-										data-test-id="resources-list-sort-item"
 										:key="sortOption"
+										data-test-id="resources-list-sort-item"
 										:value="sortOption"
 										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
 									/>
 								</n8n-select>
-								<resource-filters-dropdown
+								<ResourceFiltersDropdown
 									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
-									:modelValue="filtersModel"
+									:model-value="filtersModel"
 									:shareable="shareable"
 									@update:modelValue="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
@@ -97,7 +97,7 @@
 									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
 									</template>
-								</resource-filters-dropdown>
+								</ResourceFiltersDropdown>
 							</div>
 						</div>
 					</div>
@@ -107,7 +107,7 @@
 					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
 							{{ i18n.baseText(`${resourceKey}.filters.active`) }}
-							<n8n-link data-test-id="workflows-filter-reset" @click="resetFilters" size="small">
+							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
 								{{ i18n.baseText(`${resourceKey}.filters.active.reset`) }}
 							</n8n-link>
 						</n8n-info-tip>
@@ -120,8 +120,8 @@
 
 				<div
 					v-if="filteredAndSortedSubviewResources.length > 0"
-					:class="$style.listWrapper"
 					ref="listWrapperRef"
+					:class="$style.listWrapper"
 				>
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
@@ -132,7 +132,7 @@
 						item-key="id"
 					>
 						<template #default="{ item, updateItemSize }">
-							<slot :data="item" :updateItemSize="updateItemSize" />
+							<slot :data="item" :update-item-size="updateItemSize" />
 						</template>
 						<template #postListContent>
 							<slot name="postListContent" />
@@ -144,8 +144,8 @@
 						:class="$style.datatable"
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
-						:currentPage="currentPage"
-						:rowsPerPage="rowsPerPage"
+						:current-page="currentPage"
+						:rows-per-page="rowsPerPage"
 						@update:currentPage="setCurrentPage"
 						@update:rowsPerPage="setRowsPerPage"
 					>
@@ -155,7 +155,7 @@
 					</n8n-datatable>
 				</div>
 
-				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
+				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
 					{{ i18n.baseText(`${resourceKey}.noResults`) }}
 					<template v-if="shouldSwitchToAllSubview">
 						<span v-if="!filtersModel.search">
@@ -177,9 +177,9 @@
 				</n8n-text>
 
 				<slot name="postamble" />
-			</page-view-layout-list>
+			</PageViewLayoutList>
 		</template>
-	</page-view-layout>
+	</PageViewLayout>
 </template>
 
 <script lang="ts">
@@ -191,13 +191,13 @@ import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
+import { useDebounce } from '@/composables/useDebounce';
 
 export interface IResource {
 	id: string;
@@ -220,8 +220,7 @@ type IResourceKeyType = 'credentials' | 'workflows';
 type SearchRef = InstanceType<typeof N8nInput>;
 
 export default defineComponent({
-	name: 'resources-list-layout',
-	mixins: [debounceHelper],
+	name: 'ResourcesListLayout',
 	components: {
 		PageViewLayout,
 		PageViewLayoutList,
@@ -289,9 +288,11 @@ export default defineComponent({
 	},
 	setup() {
 		const i18n = useI18n();
+		const { callDebounced } = useDebounce();
 
 		return {
 			i18n,
+			callDebounced,
 		};
 	},
 	data() {
@@ -388,6 +389,37 @@ export default defineComponent({
 			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
 		},
 	},
+	watch: {
+		isOwnerSubview() {
+			this.sendSubviewTelemetry();
+		},
+		filters(value) {
+			this.filtersModel = value;
+		},
+		'filtersModel.ownedBy'(value) {
+			if (value) {
+				this.setOwnerSubview(false);
+			}
+			this.sendFiltersTelemetry('ownedBy');
+		},
+		'filtersModel.sharedWith'() {
+			this.sendFiltersTelemetry('sharedWith');
+		},
+		'filtersModel.search'() {
+			void this.callDebounced(
+				this.sendFiltersTelemetry,
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
+		},
+		sortBy(newValue) {
+			this.$emit('sort', newValue);
+			this.sendSortingTelemetry();
+		},
+	},
+	mounted() {
+		void this.onMounted();
+	},
 	methods: {
 		async onMounted() {
 			await this.initialize();
@@ -483,37 +515,6 @@ export default defineComponent({
 		onSearch(search: string) {
 			this.filtersModel.search = search;
 			this.$emit('update:filters', this.filtersModel);
-		},
-	},
-	mounted() {
-		void this.onMounted();
-	},
-	watch: {
-		isOwnerSubview() {
-			this.sendSubviewTelemetry();
-		},
-		filters(value) {
-			this.filtersModel = value;
-		},
-		'filtersModel.ownedBy'(value) {
-			if (value) {
-				this.setOwnerSubview(false);
-			}
-			this.sendFiltersTelemetry('ownedBy');
-		},
-		'filtersModel.sharedWith'() {
-			this.sendFiltersTelemetry('sharedWith');
-		},
-		'filtersModel.search'() {
-			void this.callDebounced(
-				'sendFiltersTelemetry',
-				{ debounceTime: 1000, trailing: true },
-				'search',
-			);
-		},
-		sortBy(newValue) {
-			this.$emit('sort', newValue);
-			this.sendSortingTelemetry();
 		},
 	},
 });

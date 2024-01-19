@@ -16,11 +16,13 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 import type { InternalHooks } from '@/InternalHooks';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');
 	const internalHooks = mock<InternalHooks>();
 	const userService = mockInstance(UserService);
+	const userRepository = mockInstance(UserRepository);
 	const settingsRepository = mock<SettingsRepository>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
@@ -30,6 +32,7 @@ describe('OwnerController', () => {
 		userService,
 		Container.get(PasswordUtility),
 		mock(),
+		userRepository,
 	);
 
 	describe('setupOwner', () => {
@@ -87,12 +90,12 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
-			userService.save.calledWith(anyObject()).mockResolvedValue(user);
+			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userService.save).toHaveBeenCalledWith(user);
+			expect(userRepository.save).toHaveBeenCalledWith(user);
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);

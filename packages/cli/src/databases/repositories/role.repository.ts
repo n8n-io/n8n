@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import type { RoleNames, RoleScopes } from '../entities/Role';
 import { Role } from '../entities/Role';
 import { User } from '../entities/User';
@@ -31,5 +31,12 @@ export class RoleRepository extends Repository<Role> {
 			acc[item.role_name] = typeof item.count === 'number' ? item.count : parseInt(item.count, 10);
 			return acc;
 		}, {});
+	}
+
+	async getIdsInScopeWorkflowByNames(roleNames: RoleNames[]) {
+		return this.find({
+			select: ['id'],
+			where: { name: In(roleNames), scope: 'workflow' },
+		}).then((role) => role.map(({ id }) => id));
 	}
 }

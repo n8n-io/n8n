@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { computed, ref } from 'vue';
+import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { listenForCredentialChanges, useCredentialsStore } from '@/stores/credentials.store';
 import { assert } from '@/utils/assert';
 import CredentialsDropdown from './CredentialsDropdown.vue';
 import { useI18n } from '@/composables/useI18n';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 
 const props = defineProps({
 	appName: {
@@ -31,6 +32,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const i18n = useI18n();
 
+const wasModalOpenedFromHere = ref(false);
+
 const availableCredentials = computed(() => {
 	return credentialsStore.getCredentialsByType(props.credentialType);
 });
@@ -48,27 +51,30 @@ const onCredentialSelected = (credentialId: string) => {
 };
 const createNewCredential = () => {
 	uiStore.openNewCredential(props.credentialType, true);
+	wasModalOpenedFromHere.value = true;
 	$emit('credentialModalOpened');
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
 	uiStore.openExistingCredential(props.selectedCredentialId);
+	wasModalOpenedFromHere.value = true;
 	$emit('credentialModalOpened');
 };
 
 listenForCredentialChanges({
 	store: credentialsStore,
 	onCredentialCreated: (credential) => {
-		// TODO: We should have a better way to detect if credential created was due to
-		// user opening the credential modal from this component, as there might be
-		// two CredentialPicker components on the same page with same credential type.
-		if (credential.type !== props.credentialType) {
+		if (!wasModalOpenedFromHere.value) {
 			return;
 		}
 
 		$emit('credentialSelected', credential.id);
 	},
 	onCredentialDeleted: (deletedCredentialId) => {
+		if (!wasModalOpenedFromHere.value) {
+			return;
+		}
+
 		if (deletedCredentialId !== props.selectedCredentialId) {
 			return;
 		}
@@ -80,6 +86,15 @@ listenForCredentialChanges({
 			$emit('credentialSelected', optionsWoDeleted[0]);
 		} else {
 			$emit('credentialDeselected');
+		}
+	},
+});
+
+listenForModalChanges({
+	store: uiStore,
+	onModalClosed(modalName) {
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && wasModalOpenedFromHere.value) {
+			wasModalOpenedFromHere.value = false;
 		}
 	},
 });
@@ -104,16 +119,16 @@ listenForCredentialChanges({
 					[$style.invisible]: !props.selectedCredentialId,
 				}"
 				:title="i18n.baseText('nodeCredentials.updateCredential')"
-				@click="editCredential()"
 				data-test-id="credential-edit-button"
+				@click="editCredential()"
 			/>
 		</div>
 
 		<n8n-button
 			v-else
 			:label="`Create new ${props.appName} credential`"
-			@click="createNewCredential"
 			data-test-id="create-credential"
+			@click="createNewCredential"
 		/>
 	</div>
 </template>

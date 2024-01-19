@@ -18,7 +18,7 @@ import {
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
 import { useI18n } from '@/composables/useI18n';
-import { useDebounceHelper } from '@/composables/useDebounce';
+import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -29,9 +29,10 @@ interface Props {
 	value: FilterValue;
 	path: string;
 	node: INode | null;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const { callDebounced } = useDebounceHelper();
+const { callDebounced } = useDebounce();
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
@@ -60,6 +61,8 @@ const state = reactive<{ paramValue: FilterValue }>({
 const maxConditions = computed(
 	() => props.parameter.typeOptions?.filter?.maxConditions ?? DEFAULT_MAX_CONDITIONS,
 );
+
+const singleCondition = computed(() => props.parameter.typeOptions?.multipleValues === false);
 
 const maxConditionsReached = computed(
 	() => maxConditions.value <= state.paramValue.conditions.length,
@@ -125,50 +128,56 @@ function getIssues(index: number): string[] {
 </script>
 
 <template>
-	<div :class="$style.filter" :data-test-id="`filter-${parameter.name}`">
+	<div
+		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
+		:data-test-id="`filter-${parameter.name}`"
+	>
 		<n8n-input-label
+			v-if="!singleCondition"
 			:label="parameter.displayName"
 			:underline="true"
-			:showOptions="true"
-			:showExpressionSelector="false"
+			:show-options="true"
+			:show-expression-selector="false"
 			color="text-dark"
 		>
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
-					<combinator-select
+					<CombinatorSelect
 						v-if="index !== 0"
-						:readOnly="index !== 1"
+						:read-only="index !== 1 || readOnly"
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
 						@combinatorChange="onCombinatorChange"
 					/>
 
-					<condition
+					<Condition
 						:condition="condition"
 						:index="index"
 						:options="state.paramValue.options"
-						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
-						:canRemove="index !== 0 || state.paramValue.conditions.length > 1"
+						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+						:read-only="readOnly"
+						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
+						:class="$style.condition"
 						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
-					></condition>
+					></Condition>
 				</div>
 			</div>
-			<div :class="$style.addConditionWrapper">
+			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
-					@click="addCondition"
 					:class="$style.addCondition"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 					:disabled="maxConditionsReached"
 					data-test-id="filter-add-condition"
+					@click="addCondition"
 				/>
 			</div>
 		</div>
@@ -193,6 +202,20 @@ function getIssues(index: number): string[] {
 	margin-top: var(--spacing-2xs);
 	margin-bottom: calc(var(--spacing-2xs) * -1);
 	margin-left: var(--spacing-l);
+}
+
+.condition {
+	padding-left: var(--spacing-l);
+}
+
+.single {
+	.condition {
+		padding-left: 0;
+	}
+
+	.content {
+		margin-top: calc(var(--spacing-xs) * -1);
+	}
 }
 
 .addConditionWrapper {

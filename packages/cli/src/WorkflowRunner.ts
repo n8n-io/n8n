@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
+import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { WorkflowExecute } from 'n8n-core';
 
@@ -12,6 +10,7 @@ import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	IPinData,
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -28,6 +27,7 @@ import { fork } from 'child_process';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IExecutionResponse,
@@ -37,7 +37,6 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
-
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -46,10 +45,9 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { Container } from 'typedi';
-import { InternalHooks } from './InternalHooks';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { Logger } from './Logger';
+import { InternalHooks } from '@/InternalHooks';
+import { Logger } from '@/Logger';
+import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 
 export class WorkflowRunner {
 	logger: Logger;
@@ -268,7 +266,8 @@ export class WorkflowRunner {
 	): Promise<string> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData =
+				await Container.get(WorkflowStaticDataService).getStaticDataById(workflowId);
 		}
 
 		const nodeTypes = Container.get(NodeTypes);
@@ -284,6 +283,11 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
+		let pinData: IPinData | undefined;
+		if (data.executionMode === 'manual') {
+			pinData = data.pinData ?? data.workflowData.pinData;
+		}
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: data.workflowData.name,
@@ -293,7 +297,7 @@ export class WorkflowRunner {
 			nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
-			pinData: data.pinData || data.workflowData.pinData,
+			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
@@ -321,7 +325,7 @@ export class WorkflowRunner {
 			);
 
 			try {
-				await PermissionChecker.check(workflow, data.userId);
+				await Container.get(PermissionChecker).check(workflow, data.userId);
 			} catch (error) {
 				ErrorReporter.error(error);
 				// Create a failed execution with the data for the node
@@ -666,7 +670,8 @@ export class WorkflowRunner {
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData =
+				await Container.get(WorkflowStaticDataService).getStaticDataById(workflowId);
 		}
 
 		data.restartExecutionId = restartExecutionId;

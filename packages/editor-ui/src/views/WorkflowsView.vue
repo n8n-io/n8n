@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
@@ -20,8 +20,8 @@
 						size="large"
 						block
 						:disabled="disabled"
-						@click="addWorkflow"
 						data-test-id="resources-list-add"
+						@click="addWorkflow"
 					>
 						{{ $locale.baseText(`workflows.add`) }}
 					</n8n-button>
@@ -32,17 +32,17 @@
 			</n8n-tooltip>
 		</template>
 		<template #default="{ data, updateItemSize }">
-			<workflow-card
+			<WorkflowCard
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data"
+				:read-only="readOnlyEnv"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
-				:readOnly="readOnlyEnv"
 			/>
 		</template>
 		<template #postListContent>
-			<suggested-templates-section
+			<SuggestedTemplatesSection
 				v-for="(section, key) in suggestedTemplates?.sections"
 				:key="key"
 				:section="section"
@@ -54,7 +54,7 @@
 			/>
 		</template>
 		<template #empty>
-			<suggested-templates-page v-if="suggestedTemplates" />
+			<SuggestedTemplatesPage v-if="suggestedTemplates" />
 			<div v-else>
 				<div class="text-center mt-s">
 					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
@@ -81,8 +81,8 @@
 					<n8n-card
 						:class="$style.emptyStateCard"
 						hoverable
-						@click="addWorkflow"
 						data-test-id="new-workflow-card"
+						@click="addWorkflow"
 					>
 						<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 						<n8n-text size="large" class="mt-xs" color="text-base">
@@ -93,7 +93,7 @@
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
-			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
+			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -103,8 +103,8 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:modelValue="filters.tags"
-					:createEnabled="false"
+					:model-value="filters.tags"
+					:create-enabled="false"
 					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
@@ -118,7 +118,7 @@
 				/>
 				<n8n-select
 					data-test-id="status-dropdown"
-					:modelValue="filters.status"
+					:model-value="filters.status"
 					@update:modelValue="setKeyValue('status', $event)"
 				>
 					<n8n-option
@@ -132,7 +132,7 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
@@ -151,7 +151,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -164,7 +163,6 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
-	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -194,6 +192,9 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -222,6 +223,27 @@ const WorkflowsView = defineComponent({
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
 		},
+	},
+	watch: {
+		'filters.tags'() {
+			this.sendFiltersTelemetry('tags');
+		},
+	},
+	mounted() {
+		this.setFiltersFromQueryString();
+
+		void this.usersStore.showPersonalizationSurvey();
+
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
 		addWorkflow() {
@@ -345,27 +367,6 @@ const WorkflowsView = defineComponent({
 				};
 			}
 		},
-	},
-	watch: {
-		'filters.tags'() {
-			this.sendFiltersTelemetry('tags');
-		},
-	},
-	mounted() {
-		this.setFiltersFromQueryString();
-
-		void this.usersStore.showPersonalizationSurvey();
-
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
 	},
 });
 

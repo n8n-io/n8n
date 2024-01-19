@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -22,7 +22,7 @@
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
@@ -68,18 +68,18 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
-	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
 	},
+	mixins: [workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -105,41 +105,6 @@ export default defineComponent({
 			notFoundError: false,
 		};
 	},
-	methods: {
-		async openTemplateSetup(id: string, e: PointerEvent) {
-			if (!this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
-				const telemetryPayload = {
-					source: 'workflow',
-					template_id: id,
-					wf_template_repo_session_id: this.templatesStore.currentSessionId,
-				};
-
-				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-					withPostHog: true,
-				});
-				await this.externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			}
-
-			await openTemplateCredentialSetup({
-				posthogStore: this.posthogStore,
-				router: this.$router,
-				templateId: id,
-				inNewBrowserTab: e.metaKey || e.ctrlKey,
-			});
-		},
-		onHidePreview() {
-			this.showPreview = false;
-		},
-		scrollToTop() {
-			const contentArea = document.getElementById('content');
-
-			if (contentArea) {
-				contentArea.scrollTo({
-					top: 0,
-				});
-			}
-		},
-	},
 	watch: {
 		template(template: ITemplatesWorkflowFull) {
 			if (template) {
@@ -164,6 +129,33 @@ export default defineComponent({
 		}
 
 		this.loading = false;
+	},
+	methods: {
+		async openTemplateSetup(id: string, e: PointerEvent) {
+			await useTemplateWorkflow({
+				posthogStore: this.posthogStore,
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: e.metaKey || e.ctrlKey,
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
+				templatesStore: useTemplatesStore(),
+				source: 'template_preview',
+			});
+		},
+		onHidePreview() {
+			this.showPreview = false;
+		},
+		scrollToTop() {
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
+		},
 	},
 });
 </script>

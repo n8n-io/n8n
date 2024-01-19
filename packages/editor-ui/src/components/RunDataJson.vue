@@ -1,20 +1,20 @@
 <template>
 	<div :class="$style.jsonDisplay">
 		<Suspense>
-			<run-data-json-actions
+			<RunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
-				:sessioId="sessionId"
-				:displayMode="displayMode"
-				:distanceFromActive="distanceFromActive"
-				:selectedJsonPath="selectedJsonPath"
-				:jsonData="jsonData"
-				:paneType="paneType"
+				:sessio-id="sessionId"
+				:display-mode="displayMode"
+				:distance-from-active="distanceFromActive"
+				:selected-json-path="selectedJsonPath"
+				:json-data="jsonData"
+				:pane-type="paneType"
 			/>
 		</Suspense>
-		<draggable
+		<Draggable
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -22,13 +22,13 @@
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
-			<vue-json-pretty
+			<VueJsonPretty
 				:data="jsonData"
 				:deep="10"
-				:showLength="true"
-				:selectedValue="selectedJsonPath"
-				rootPath=""
-				selectableType="single"
+				:show-length="true"
+				:selected-value="selectedJsonPath"
+				root-path=""
+				selectable-type="single"
 				class="json-data"
 				@update:selectedValue="selectedJsonPath = $event"
 			>
@@ -69,8 +69,8 @@
 						class="ph-no-capture"
 					/>
 				</template>
-			</vue-json-pretty>
-		</draggable>
+			</VueJsonPretty>
+		</Draggable>
 	</div>
 </template>
 
@@ -98,7 +98,7 @@ const RunDataJsonActions = defineAsyncComponent(
 );
 
 export default defineComponent({
-	name: 'run-data-json',
+	name: 'RunDataJson',
 	components: {
 		VueJsonPretty,
 		Draggable,

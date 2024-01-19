@@ -17,16 +17,16 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:calloutText="actionBoxConfig.calloutText"
-				:calloutTheme="actionBoxConfig.calloutTheme"
+				:callout-text="actionBoxConfig.calloutText"
+				:callout-theme="actionBoxConfig.calloutTheme"
 			/>
 		</div>
-		<div :class="$style.cardsContainer" v-else-if="loading">
-			<community-package-card
+		<div v-else-if="loading" :class="$style.cardsContainer">
+			<CommunityPackageCard
 				v-for="n in 2"
 				:key="'index-' + n"
 				:loading="true"
-			></community-package-card>
+			></CommunityPackageCard>
 		</div>
 		<div
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
@@ -35,18 +35,18 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:buttonText="getEmptyStateButtonText"
-				:calloutText="actionBoxConfig.calloutText"
-				:calloutTheme="actionBoxConfig.calloutTheme"
+				:button-text="getEmptyStateButtonText"
+				:callout-text="actionBoxConfig.calloutText"
+				:callout-theme="actionBoxConfig.calloutTheme"
 				@click:button="onClickEmptyStateButton"
 			/>
 		</div>
-		<div :class="$style.cardsContainer" v-else>
-			<community-package-card
+		<div v-else :class="$style.cardsContainer">
+			<CommunityPackageCard
 				v-for="communityPackage in communityNodesStore.getInstalledPackages"
 				:key="communityPackage.packageName"
-				:communityPackage="communityPackage"
-			></community-package-card>
+				:community-package="communityPackage"
+			></CommunityPackageCard>
 		</div>
 	</div>
 </template>
@@ -74,10 +74,10 @@ const PACKAGE_COUNT_THRESHOLD = 31;
 
 export default defineComponent({
 	name: 'SettingsCommunityNodesView',
-	mixins: [pushConnection],
 	components: {
 		CommunityPackageCard,
 	},
+	mixins: [pushConnection],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
 

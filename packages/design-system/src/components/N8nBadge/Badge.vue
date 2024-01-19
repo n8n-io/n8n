@@ -1,8 +1,8 @@
 <template>
 	<span :class="['n8n-badge', $style[theme]]">
-		<n8n-text :size="size" :bold="bold" :compact="true">
+		<N8nText :size="size" :bold="bold" :compact="true">
 			<slot></slot>
-		</n8n-text>
+		</N8nText>
 	</span>
 </template>
 
@@ -12,6 +12,9 @@ import N8nText from '../N8nText';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
+	components: {
+		N8nText,
+	},
 	props: {
 		theme: {
 			type: String,
@@ -29,9 +32,6 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-	},
-	components: {
-		N8nText,
 	},
 });
 </script>

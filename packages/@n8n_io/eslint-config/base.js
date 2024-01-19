@@ -473,7 +473,7 @@ const config = (module.exports = {
 			},
 		},
 		{
-			files: ['test/**/*.ts', 'src/__tests__/*.ts'],
+			files: ['test/**/*.ts', '**/__tests__/*.ts'],
 			rules: {
 				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':

@@ -1,3 +1,4 @@
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
@@ -15,7 +16,7 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
-	updateRole,
+	updateGlobalRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -28,6 +29,7 @@ import type {
 	IUserResponse,
 	IUsersState,
 	CurrentUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
@@ -40,7 +42,7 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope, ScopeLevel } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
@@ -301,7 +303,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
+		async inviteUsers(
+			params: Array<{ email: string; role: InvitableRoleName }>,
+		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
 			this.addUsers(
@@ -313,11 +317,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			);
 			return users;
 		},
-		async reinviteUser(params: { email: string }): Promise<void> {
+		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
-				{ email: params.email },
-			]);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}
@@ -379,9 +381,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			await confirmEmail(useRootStore().getRestApiContext);
 		},
 
-		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+		async updateGlobalRole({ id, newRoleName }: UpdateGlobalRolePayload) {
 			const rootStore = useRootStore();
-			await updateRole(rootStore.getRestApiContext, { id, role });
+			await updateGlobalRole(rootStore.getRestApiContext, { id, newRoleName });
 			await this.fetchUsers();
 		},
 	},

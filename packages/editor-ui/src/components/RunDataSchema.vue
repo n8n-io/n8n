@@ -72,10 +72,10 @@ const onDragEnd = (el: HTMLElement) => {
 		<n8n-info-tip v-if="isDataEmpty">{{
 			i18n.baseText('dataMapping.schemaView.emptyData')
 		}}</n8n-info-tip>
-		<draggable
+		<Draggable
 			v-else
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -84,20 +84,20 @@ const onDragEnd = (el: HTMLElement) => {
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
 			<div :class="$style.schema">
-				<run-data-schema-item
+				<RunDataSchemaItem
 					:schema="schema"
 					:level="0"
 					:parent="null"
-					:paneType="paneType"
-					:subKey="`${schema.type}-0-0`"
-					:mappingEnabled="mappingEnabled"
-					:draggingPath="draggingPath"
-					:distanceFromActive="distanceFromActive"
+					:pane-type="paneType"
+					:sub-key="`${schema.type}-0-0`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
 					:node="node"
 					:search="search"
 				/>
 			</div>
-		</draggable>
+		</Draggable>
 	</div>
 </template>
 

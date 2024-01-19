@@ -688,7 +688,7 @@ export class Telegram implements INodeType {
 			// ----------------------------------
 
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -709,11 +709,12 @@ export class Telegram implements INodeType {
 				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
 				required: true,
+				hint: 'The name of the input binary field containing the file to be written',
 				displayOptions: {
 					show: {
 						operation: [

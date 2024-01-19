@@ -115,8 +115,6 @@ export class RespondToWebhook implements INodeType {
 				},
 				default: '{\n  "myField": "value"\n}',
 				typeOptions: {
-					editor: 'json',
-					editorLanguage: 'json',
 					rows: 4,
 				},
 				description: 'The HTTP response JSON data',

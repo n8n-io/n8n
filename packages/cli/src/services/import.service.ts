@@ -1,7 +1,6 @@
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
-import type { EntityManager } from 'typeorm';
 
 import { Logger } from '@/Logger';
 import * as Db from '@/Db';
@@ -72,7 +71,7 @@ export class ImportService {
 
 				if (!workflow.tags?.length) continue;
 
-				await this.setTags(tx, workflow);
+				await this.tagRepository.setTags(tx, this.dbTags, workflow);
 
 				for (const tag of workflow.tags) {
 					await tx.upsert(WorkflowTagMapping, { tagId: tag.id, workflowId }, [
@@ -110,44 +109,6 @@ export class ImportService {
 			if (match) nodeCredential.id = match.id;
 
 			node.credentials[type] = nodeCredential;
-		}
-	}
-
-	/**
-	 * Set tags on workflow to import while ensuring all tags exist in the database,
-	 * either by matching incoming to existing tags or by creating them first.
-	 */
-	private async setTags(tx: EntityManager, workflow: WorkflowEntity) {
-		if (!workflow?.tags?.length) return;
-
-		for (let i = 0; i < workflow.tags.length; i++) {
-			const importTag = workflow.tags[i];
-
-			if (!importTag.name) continue;
-
-			const identicalMatch = this.dbTags.find(
-				(dbTag) =>
-					dbTag.id === importTag.id &&
-					dbTag.createdAt &&
-					importTag.createdAt &&
-					dbTag.createdAt.getTime() === new Date(importTag.createdAt).getTime(),
-			);
-
-			if (identicalMatch) {
-				workflow.tags[i] = identicalMatch;
-				continue;
-			}
-
-			const nameMatch = this.dbTags.find((dbTag) => dbTag.name === importTag.name);
-
-			if (nameMatch) {
-				workflow.tags[i] = nameMatch;
-				continue;
-			}
-
-			const tagEntity = this.tagRepository.create(importTag);
-
-			workflow.tags[i] = await tx.save<TagEntity>(tagEntity);
 		}
 	}
 }

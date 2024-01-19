@@ -1,6 +1,6 @@
 <template>
 	<div ref="target">
-		<slot :droppable="droppable" :activeDrop="activeDrop"></slot>
+		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
 	</div>
 </template>
 

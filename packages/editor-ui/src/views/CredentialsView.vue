@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
@@ -11,7 +11,7 @@
 		@update:filters="filters = $event"
 	>
 		<template #default="{ data }">
-			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -23,11 +23,11 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:modelValue="filters.type"
+					ref="typeInput"
+					:model-value="filters.type"
 					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
 					@update:modelValue="setKeyValue('type', $event)"
 				>
@@ -40,7 +40,7 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
@@ -97,6 +97,23 @@ export default defineComponent({
 			return this.credentialsStore.credentialTypesById;
 		},
 	},
+	watch: {
+		'filters.type'() {
+			this.sendFiltersTelemetry('type');
+		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
+	},
 	methods: {
 		addCredential() {
 			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
@@ -142,23 +159,6 @@ export default defineComponent({
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
-	},
-	mounted() {
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

@@ -4,12 +4,12 @@
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]"
-			v-html="htmlContent"
 			@click="onClick"
+			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks" :key="index">
-				<n8n-loading :loading="loading" :rows="loadingRows" animated variant="p" />
+				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
 		</div>
@@ -62,10 +62,10 @@ export interface Options {
 }
 
 export default defineComponent({
+	name: 'N8nMarkdown',
 	components: {
 		N8nLoading,
 	},
-	name: 'n8n-markdown',
 	props: {
 		content: {
 			type: String,

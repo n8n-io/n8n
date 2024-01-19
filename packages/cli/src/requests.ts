@@ -1,31 +1,20 @@
 import type express from 'express';
 import type {
 	BannerName,
-	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	IDataObject,
-	INode,
 	INodeCredentialTestRequest,
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
-	IPinData,
-	IRunData,
 	IUser,
-	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
-import type {
-	PublicUser,
-	IExecutionDeleteFilter,
-	IWorkflowDb,
-	SecretsProvider,
-	SecretsProviderState,
-} from '@/Interfaces';
-import type { Role, RoleNames, RoleScopes } from '@db/entities/Role';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
+import type { Role, RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
@@ -47,6 +36,7 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 }
+
 export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
@@ -55,6 +45,11 @@ export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
+}
+
+export class UserRoleChangePayload {
+	@IsIn(['member', 'admin'])
+	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<
@@ -74,55 +69,6 @@ export type AuthenticatedRequest<
 	mailer?: UserManagementMailer;
 	globalMemberRole?: Role;
 };
-
-// ----------------------------------
-//           /workflows
-// ----------------------------------
-
-export declare namespace WorkflowRequest {
-	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
-		name: string;
-		nodes: INode[];
-		connections: IConnections;
-		settings: IWorkflowSettings;
-		active: boolean;
-		tags: string[];
-		hash: string;
-		meta: Record<string, unknown>;
-	}>;
-
-	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
-		pinData: IPinData;
-		startNodes?: string[];
-		destinationNode?: string;
-	};
-
-	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
-
-	type Get = AuthenticatedRequest<{ id: string }>;
-
-	type Delete = Get;
-
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		CreateUpdatePayload,
-		{ forceSave?: string }
-	>;
-
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
-
-	type GetAllActive = AuthenticatedRequest;
-
-	type GetActivationError = Get;
-
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
-
-	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
-}
 
 // ----------------------------------
 //            list query
@@ -213,37 +159,11 @@ export declare namespace CredentialRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
-	type NewName = WorkflowRequest.NewName;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
 	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
-}
-
-// ----------------------------------
-//           /executions
-// ----------------------------------
-
-export declare namespace ExecutionRequest {
-	namespace QueryParam {
-		type GetAll = {
-			filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
-			limit: string;
-			lastId: string;
-			firstId: string;
-		};
-
-		type GetAllCurrent = {
-			filter: string; // '{ workflowId: string }'
-		};
-	}
-
-	type GetAll = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAll>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
-	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAllCurrent>;
 }
 
 // ----------------------------------
@@ -332,12 +252,7 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type ChangeRole = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{ newRole?: { scope?: RoleScopes; name?: RoleNames } },
-		{}
-	>;
+	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
 
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -574,4 +489,14 @@ export declare namespace WorkflowHistoryRequest {
 		{ workflowId: string; versionId: string },
 		WorkflowHistory
 	>;
+}
+
+// ----------------------------------
+//        /active-workflows
+// ----------------------------------
+
+export declare namespace ActiveWorkflowRequest {
+	type GetAllActive = AuthenticatedRequest;
+
+	type GetActivationError = AuthenticatedRequest<{ id: string }>;
 }

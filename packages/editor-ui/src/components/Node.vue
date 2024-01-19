@@ -1,36 +1,37 @@
 <template>
 	<div
+		:id="nodeId"
+		:ref="data.name"
 		:class="nodeWrapperClass"
 		:style="nodeWrapperStyles"
-		:id="nodeId"
 		data-test-id="canvas-node"
-		:ref="data.name"
 		:data-name="data.name"
+		:data-node-type="nodeType?.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
-		<div class="select-background" v-show="isSelected"></div>
+		<div v-show="isSelected" class="select-background"></div>
 		<div
 			:class="{
 				'node-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'menu-open': isContextMenuOpen,
 				'disable-pointer-events': disablePointerEvents,
 			}"
 		>
 			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
 				:class="nodeClass"
 				:style="nodeStyle"
 				@click.left="onClick"
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
 			>
-				<i class="trigger-icon" v-if="isTriggerNode">
+				<i v-if="isTriggerNode" class="trigger-icon">
 					<n8n-tooltip placement="bottom">
 						<template #content>
 							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
 						</template>
-						<font-awesome-icon icon="bolt" size="lg" />
+						<FontAwesomeIcon icon="bolt" size="lg" />
 					</n8n-tooltip>
 				</i>
 				<div
@@ -40,9 +41,9 @@
 					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
-								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+								<TitledList :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
-							<font-awesome-icon icon="exclamation-triangle" />
+							<FontAwesomeIcon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
@@ -50,24 +51,24 @@
 							<template #content>
 								<div v-text="waiting"></div>
 							</template>
-							<font-awesome-icon icon="clock" />
+							<FontAwesomeIcon icon="clock" />
 						</n8n-tooltip>
 					</div>
 					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
-						<font-awesome-icon icon="thumbtack" />
+						<FontAwesomeIcon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
 					<span v-else-if="nodeExecutionStatus === 'unknown'">
 						<!-- Do nothing, unknown means the node never executed -->
 					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
-						<font-awesome-icon icon="check" />
+						<FontAwesomeIcon icon="check" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
 				</div>
 
 				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
-					<font-awesome-icon icon="sync-alt" spin />
+					<FontAwesomeIcon icon="sync-alt" spin />
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
@@ -97,22 +98,22 @@
 
 				<NodeIcon
 					class="node-icon"
-					:nodeType="nodeType"
+					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
-					:colorDefault="iconColorDefault"
-					:disabled="this.data.disabled"
+					:color-default="iconColorDefault"
+					:disabled="data.disabled"
 				/>
 			</div>
 
-			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
+			<div v-if="!isReadOnly" v-show="!hideActions" class="node-options no-select-on-click">
 				<n8n-icon-button
 					data-test-id="execute-node-button"
 					type="tertiary"
 					text
 					icon="play"
 					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.executeNode')"
+					:title="$locale.baseText('node.testStep')"
 					@click="executeNode"
 				/>
 				<n8n-icon-button
@@ -124,11 +125,11 @@
 				/>
 			</div>
 			<div
+				v-if="showDisabledLinethrough"
 				:class="{
 					'disabled-linethrough': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
-				v-if="showDisabledLinethrough"
 			></div>
 		</div>
 		<div class="node-description">
@@ -159,7 +160,6 @@ import {
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { pinData } from '@/mixins/pinData';
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -177,7 +177,6 @@ import TitledList from '@/components/TitledList.vue';
 import { get } from 'lodash-es';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -187,22 +186,18 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useDeviceSupport } from 'n8n-design-system';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'Node',
-	setup() {
-		const contextMenu = useContextMenu();
-		const externalHooks = useExternalHooks();
-		const nodeHelpers = useNodeHelpers();
-
-		return { contextMenu, externalHooks, nodeHelpers };
-	},
-	mixins: [nodeBase, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
 		NodeIcon,
 	},
+	mixins: [nodeBase, workflowHelpers],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -217,10 +212,29 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	setup(props) {
+		const workflowsStore = useWorkflowsStore();
+		const contextMenu = useContextMenu();
+		const externalHooks = useExternalHooks();
+		const nodeHelpers = useNodeHelpers();
+		const node = workflowsStore.getNodeByName(props.name);
+		const pinnedData = usePinnedData(node);
+		const deviceSupport = useDeviceSupport();
+		const { callDebounced } = useDebounce();
+
+		return {
+			contextMenu,
+			externalHooks,
+			nodeHelpers,
+			pinnedData,
+			deviceSupport,
+			callDebounced,
+		};
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
-			return this.hasPinData && !this.isProductionExecutionPreview;
+			return this.pinnedData.hasData.value && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
@@ -247,7 +261,7 @@ export default defineComponent({
 				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
 			)
 				return true;
-			if (this.hasPinData) return false;
+			if (this.pinnedData.hasData.value) return false;
 			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
@@ -531,7 +545,7 @@ export default defineComponent({
 				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
-				!this.hasPinData &&
+				!this.pinnedData.hasData.value &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&
@@ -676,7 +690,7 @@ export default defineComponent({
 		},
 
 		onClick(event: MouseEvent) {
-			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
@@ -693,7 +707,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -1022,6 +1036,11 @@ export default defineComponent({
 				left: -67px;
 			}
 		}
+
+		&[data-node-type='@n8n/n8n-nodes-langchain.chatTrigger'] {
+			--configurable-node-min-input-count: 1;
+			--configurable-node-input-width: 176px;
+		}
 	}
 
 	&--trigger .node-default .node-box {
@@ -1160,17 +1179,6 @@ export default defineComponent({
 .drop-add-node-label {
 	z-index: 10;
 }
-
-.jtk-connector.success:not(.jtk-hover) {
-	path:not(.jtk-connector-outline) {
-		stroke: var(--color-success-light);
-	}
-	path[jtk-overlay-id='reverse-arrow'],
-	path[jtk-overlay-id='endpoint-arrow'],
-	path[jtk-overlay-id='midpoint-arrow'] {
-		fill: var(--color-success-light);
-	}
-}
 </style>
 
 <style lang="scss">
@@ -1243,7 +1251,6 @@ export default defineComponent({
 		white-space: nowrap;
 		font-size: var(--font-size-s);
 		font-weight: var(--font-weight-regular);
-		color: var(--color-success);
 		margin-top: -15px;
 
 		&.floating {

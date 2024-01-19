@@ -23,6 +23,8 @@ export interface IQuote {
 	invoice_items?: IItem[];
 	line_items?: IItem[];
 	invoice_number?: string;
+	// eslint-disable-next-line id-denylist
+	number?: string;
 	invoice_status_id?: number;
 	is_amount_discount?: boolean;
 	is_quote?: boolean;

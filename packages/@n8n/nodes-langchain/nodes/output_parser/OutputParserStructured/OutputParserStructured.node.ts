@@ -133,8 +133,6 @@ export class OutputParserStructured implements INodeType {
 }`,
 				typeOptions: {
 					rows: 10,
-					editor: 'json',
-					editorLanguage: 'json',
 				},
 				required: true,
 			},

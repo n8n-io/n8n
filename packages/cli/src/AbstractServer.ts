@@ -7,7 +7,6 @@ import isbot from 'isbot';
 
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -21,6 +20,7 @@ import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import { ActiveWebhooks } from '@/ActiveWebhooks';
 
 @Service()
 export abstract class AbstractServer {
@@ -31,8 +31,6 @@ export abstract class AbstractServer {
 	readonly app: express.Application;
 
 	protected externalHooks: ExternalHooks;
-
-	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected protocol: string;
 
@@ -162,7 +160,6 @@ export abstract class AbstractServer {
 		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
 		this.externalHooks = Container.get(ExternalHooks);
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.setupHealthCheck();
 
@@ -179,16 +176,13 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+			const activeWebhooks = Container.get(ActiveWebhooks);
 
 			// Register a handler for active forms
-			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWorkflowRunner));
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWebhooks));
 
 			// Register a handler for active webhooks
-			this.app.all(
-				`/${this.endpointWebhook}/:path(*)`,
-				webhookRequestHandler(activeWorkflowRunner),
-			);
+			this.app.all(`/${this.endpointWebhook}/:path(*)`, webhookRequestHandler(activeWebhooks));
 
 			// Register a handler for waiting forms
 			this.app.all(
@@ -214,7 +208,7 @@ export abstract class AbstractServer {
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(
 				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+				send(async (req) => testWebhooks.cancelWebhook(req.params.id)),
 			);
 		}
 

@@ -12,8 +12,8 @@
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="$style.executionDetails"
 			v-if="activeExecution"
+			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
 			<div>
@@ -80,7 +80,7 @@
 			</div>
 			<div>
 				<n8n-button
-					size="large"
+					size="medium"
 					:type="debugButtonData.type"
 					:class="{
 						[$style.debugLink]: true,
@@ -96,22 +96,22 @@
 							},
 						}"
 					>
-						<span @click="handleDebugLinkClick" data-test-id="execution-debug-button">{{
+						<span data-test-id="execution-debug-button" @click="handleDebugLinkClick">{{
 							debugButtonData.text
 						}}</span>
 					</router-link>
 				</n8n-button>
 
-				<el-dropdown
+				<ElDropdown
 					v-if="executionUIDetails?.name === 'error'"
+					ref="retryDropdown"
 					trigger="click"
 					class="mr-xs"
 					@command="handleRetryClick"
-					ref="retryDropdown"
 				>
 					<span class="retry-button">
 						<n8n-icon-button
-							size="large"
+							size="medium"
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
@@ -129,22 +129,22 @@
 							</el-dropdown-item>
 						</el-dropdown-menu>
 					</template>
-				</el-dropdown>
+				</ElDropdown>
 				<n8n-icon-button
 					:title="$locale.baseText('executionDetails.deleteExecution')"
 					icon="trash"
-					size="large"
+					size="medium"
 					type="tertiary"
 					data-test-id="execution-preview-delete-button"
 					@click="onDeleteExecution"
 				/>
 			</div>
 		</div>
-		<workflow-preview
+		<WorkflowPreview
 			mode="execution"
-			loaderType="spinner"
-			:executionId="executionId"
-			:executionMode="executionMode"
+			loader-type="spinner"
+			:execution-id="executionId"
+			:execution-mode="executionMode"
 		/>
 	</div>
 </template>
@@ -162,21 +162,21 @@ import { MODAL_CONFIRM, VIEWS } from '@/constants';
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
 export default defineComponent({
-	name: 'execution-preview',
-	mixins: [executionHelpers],
+	name: 'ExecutionPreview',
 	components: {
 		ElDropdown,
 		WorkflowPreview,
 	},
-	data() {
-		return {
-			VIEWS,
-		};
-	},
+	mixins: [executionHelpers],
 	setup() {
 		return {
 			...useMessage(),
 			...useExecutionDebugging(),
+		};
+	},
+	data() {
+		return {
+			VIEWS,
 		};
 	},
 	computed: {

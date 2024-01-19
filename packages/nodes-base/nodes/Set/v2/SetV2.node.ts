@@ -157,7 +157,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Include Binary Data',
+					displayName: 'Include Binary File',
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,

@@ -109,8 +109,12 @@ export const TIME = {
 	MINUTE: 60 * 1000,
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
-};
+} as const;
 
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
+
+export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;

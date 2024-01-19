@@ -755,9 +755,15 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number },
+	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
-	connection.addClass('success');
+	const classNames: string[] = ['success'];
+
+	if (output.classNames) {
+		classNames.push(...output.classNames);
+	}
+
+	connection.addClass(classNames.join(' '));
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
@@ -771,7 +777,7 @@ export const addConnectionOutputSuccess = (
 					const container = document.createElement('div');
 					const span = document.createElement('span');
 
-					container.classList.add('connection-run-items-label');
+					container.classList.add(...['connection-run-items-label', ...classNames]);
 					span.classList.add('floating');
 					span.innerHTML = getRunItemsLabel(output);
 					container.appendChild(span);
@@ -788,6 +794,27 @@ export const addConnectionOutputSuccess = (
 
 	(connection.endpoints || []).forEach((endpoint) => {
 		connection.instance.repaint(endpoint.element);
+	});
+};
+
+export const addClassesToOverlays = ({
+	connection,
+	overlayIds,
+	classNames,
+	includeConnector,
+}: {
+	connection: Connection;
+	overlayIds: string[];
+	classNames: string[];
+	includeConnector?: boolean;
+}) => {
+	overlayIds.forEach((overlayId) => {
+		const overlay = getOverlay(connection, overlayId);
+
+		overlay?.canvas?.classList.add(...classNames);
+		if (includeConnector) {
+			connection.connector.canvas?.classList.add(...classNames);
+		}
 	});
 };
 

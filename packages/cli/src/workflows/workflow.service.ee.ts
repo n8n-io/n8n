@@ -1,39 +1,36 @@
-import type { EntityManager } from 'typeorm';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { Service } from 'typedi';
+import omit from 'lodash/omit';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { UserService } from '@/services/user.service';
-import { WorkflowService } from './workflow.service';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { Logger } from '@/Logger';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
 } from './workflows.types';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
-import { RoleService } from '@/services/role.service';
-import { Service } from 'typedi';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class EnterpriseWorkflowService {
 	constructor(
-		private readonly workflowService: WorkflowService,
-		private readonly userService: UserService,
-		private readonly roleService: RoleService,
+		private readonly logger: Logger,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	async isOwned(
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.workflowService.getSharing(
+		const sharing = await this.sharedWorkflowRepository.getSharing(
 			user,
 			workflowId,
 			{ allowGlobalScope: false },
@@ -45,30 +42,6 @@ export class EnterpriseWorkflowService {
 		const { workflow } = sharing;
 
 		return { ownsWorkflow: true, workflow };
-	}
-
-	async share(
-		transaction: EntityManager,
-		workflow: WorkflowEntity,
-		shareWithIds: string[],
-	): Promise<SharedWorkflow[]> {
-		const users = await this.userService.getByIds(transaction, shareWithIds);
-		const role = await this.roleService.findWorkflowEditorRole();
-
-		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
-			if (user.isPending) {
-				return acc;
-			}
-			const entity: Partial<SharedWorkflow> = {
-				workflowId: workflow.id,
-				userId: user.id,
-				roleId: role?.id,
-			};
-			acc.push(this.sharedWorkflowRepository.create(entity));
-			return acc;
-		}, []);
-
-		return transaction.save(newSharedWorkflows);
 	}
 
 	addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
@@ -111,7 +84,7 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await CredentialsService.getManyByIds(
+		const workflowCredentials = await this.credentialsRepository.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);
@@ -169,11 +142,7 @@ export class EnterpriseWorkflowService {
 		const allCredentials = await CredentialsService.getMany(user);
 
 		try {
-			return WorkflowHelpers.validateWorkflowCredentialUsage(
-				workflow,
-				previousVersion,
-				allCredentials,
-			);
+			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				throw new BadRequestError(error.message);
@@ -182,5 +151,91 @@ export class EnterpriseWorkflowService {
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
 		}
+	}
+
+	validateWorkflowCredentialUsage(
+		newWorkflowVersion: WorkflowEntity,
+		previousWorkflowVersion: WorkflowEntity,
+		credentialsUserHasAccessTo: CredentialsEntity[],
+	) {
+		/**
+		 * We only need to check nodes that use credentials the current user cannot access,
+		 * since these can be 2 possibilities:
+		 * - Same ID already exist: it's a read only node and therefore cannot be changed
+		 * - It's a new node which indicates tampering and therefore must fail saving
+		 */
+
+		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
+
+		const nodesWithCredentialsUserDoesNotHaveAccessTo = this.getNodesWithInaccessibleCreds(
+			newWorkflowVersion,
+			allowedCredentialIds,
+		);
+
+		// If there are no nodes with credentials the user does not have access to we can skip the rest
+		if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+			return newWorkflowVersion;
+		}
+
+		const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+
+		// If it's a new node we can't allow it to be saved
+		// since it uses creds the node doesn't have access
+		const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
+			!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+
+		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
+			if (isTamperingAttempt(node.id)) {
+				this.logger.verbose('Blocked workflow update due to tampering attempt', {
+					nodeType: node.type,
+					nodeName: node.name,
+					nodeId: node.id,
+					nodeCredentials: node.credentials,
+				});
+				// Node is new, so this is probably a tampering attempt. Throw an error
+				throw new NodeOperationError(
+					node,
+					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
+				);
+			}
+			// Replace the node with the previous version of the node
+			// Since it cannot be modified (read only node)
+			const nodeIdx = newWorkflowVersion.nodes.findIndex(
+				(newWorkflowNode) => newWorkflowNode.id === node.id,
+			);
+
+			this.logger.debug('Replacing node with previous version when saving updated workflow', {
+				nodeType: node.type,
+				nodeName: node.name,
+				nodeId: node.id,
+			});
+			const previousNodeVersion = previousWorkflowVersion.nodes.find(
+				(previousNode) => previousNode.id === node.id,
+			);
+			// Allow changing only name, position and disabled status for read-only nodes
+			Object.assign(
+				newWorkflowVersion.nodes[nodeIdx],
+				omit(previousNodeVersion, ['name', 'position', 'disabled']),
+			);
+		});
+
+		return newWorkflowVersion;
+	}
+
+	/** Get all nodes in a workflow where the node credential is not accessible to the user. */
+	getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
+		if (!workflow.nodes) {
+			return [];
+		}
+		return workflow.nodes.filter((node) => {
+			if (!node.credentials) return false;
+
+			const allUsedCredentials = Object.values(node.credentials);
+
+			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
+			return allUsedCredentialIds.some(
+				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
+			);
+		});
 	}
 }

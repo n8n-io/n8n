@@ -107,6 +107,7 @@ export class MessageEventBusDestinationWebhook
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;

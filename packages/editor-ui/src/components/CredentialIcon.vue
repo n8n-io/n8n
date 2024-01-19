@@ -1,8 +1,8 @@
 <template>
 	<div>
 		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
-		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" :size="28" />
-		<span :class="$style.fallback" v-else></span>
+		<NodeIcon v-else-if="relevantNode" :node-type="relevantNode" :size="28" />
+		<span v-else :class="$style.fallback"></span>
 	</div>
 </template>
 
