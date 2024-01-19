@@ -31,6 +31,8 @@ const validateUrl = async (kind, name, documentationUrl) =>
 
 const checkLinks = async (kind) => {
 	let types = require(path.join(nodesBaseDir, `dist/types/${kind}.json`));
+	if (kind === 'credentials')
+      types = types.filter((type) => type.displayName !== 'SendInBlue');
 	if (kind === 'nodes')
 		types = types.filter(({ codex }) => !!codex?.resources?.primaryDocumentation);
 	const limit = pLimit(30);
