@@ -20,9 +20,9 @@ describe('jwt.issueJWT', () => {
 		it('should default to expire in 7 days', () => {
 			const defaultInSeconds = 7 * Time.days.toSeconds;
 			const mockUser = mock<User>({ password: 'passwordHash' });
-			const { token, expiresInSeconds } = issueJWT(mockUser);
+			const { token, expiresIn } = issueJWT(mockUser);
 
-			expect(expiresInSeconds).toBe(defaultInSeconds);
+			expect(expiresIn).toBe(defaultInSeconds);
 			const decodedToken = jwtService.verify(token);
 			if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 				fail('Expected exp and iat to be defined');
@@ -48,9 +48,9 @@ describe('jwt.issueJWT', () => {
 
 		it('should apply it to tokens', () => {
 			const mockUser = mock<User>({ password: 'passwordHash' });
-			const { token, expiresInSeconds } = issueJWT(mockUser);
+			const { token, expiresIn } = issueJWT(mockUser);
 
-			expect(expiresInSeconds).toBe(testDurationSeconds);
+			expect(expiresIn).toBe(testDurationSeconds);
 			const decodedToken = jwtService.verify(token);
 			if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 				fail('Expected exp and iat to be defined on decodedToken');

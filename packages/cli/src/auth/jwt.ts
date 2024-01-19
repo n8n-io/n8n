@@ -44,7 +44,7 @@ export function issueJWT(user: User): JwtToken {
 
 	return {
 		token: signedToken,
-		expiresInSeconds,
+		expiresIn: expiresInSeconds,
 	};
 }
 
@@ -88,7 +88,7 @@ export async function resolveJwt(token: string): Promise<User> {
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = issueJWT(user);
 	res.cookie(AUTH_COOKIE_NAME, userData.token, {
-		maxAge: userData.expiresInSeconds * Time.seconds.toMilliseconds,
+		maxAge: userData.expiresIn * Time.seconds.toMilliseconds,
 		httpOnly: true,
 		sameSite: 'lax',
 	});
