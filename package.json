@@ -29,7 +29,7 @@
     "test:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui  --filter=!n8n-nodes-base test",
     "test:nodes": "pnpm --filter=n8n-nodes-base test",
     "test:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui test",
-    "watch": "turbo run watch",
+    "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
     "cypress:install": "cypress install",
