@@ -7,6 +7,7 @@ import type {
 	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 import type { IAttachment, IRecord } from '../helpers/interfaces';
@@ -87,6 +88,7 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IRecord[],
 	fieldNames: string | string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	if (typeof fieldNames === 'string') {
 		fieldNames = fieldNames.split(',').map((item) => item.trim());
@@ -99,6 +101,9 @@ export async function downloadRecordAttachments(
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = flattenOutput(record as unknown as IDataObject);
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {
