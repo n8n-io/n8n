@@ -764,7 +764,7 @@ export const schema = {
 		},
 		// TODO: Is it ok to add units here?
 		jwtSessionDurationHours: {
-			doc: 'Set a specific expiration date for the JWTs.',
+			doc: 'Set a specific expiration date for the JWTs in hours.',
 			format: Number,
 			default: 168,
 			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
