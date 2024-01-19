@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
@@ -14,8 +14,9 @@ import { ApplicationError } from 'n8n-workflow';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
-	const expiresInHours = config.get('userManagement.jwtSessionDurationHours');
-	const expiresInSeconds = expiresInHours * 60 * 60;
+	const expiresInHours = config.getEnv('userManagement.jwtSessionDurationHours');
+	const expiresInSeconds = expiresInHours * Time.hours.toSeconds;
+
 	const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
 	const payload: JwtPayload = {
