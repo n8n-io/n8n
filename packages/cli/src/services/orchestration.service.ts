@@ -53,7 +53,7 @@ export class OrchestrationService {
 	async init() {
 		if (this.isInitialized) return;
 
-		await this.initPublisher();
+		if (config.get('executions.mode') === 'queue') await this.initPublisher();
 
 		if (this.isMultiMainSetupEnabled) {
 			await this.multiMainSetup.init();

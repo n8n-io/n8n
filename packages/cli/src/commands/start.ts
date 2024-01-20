@@ -213,6 +213,8 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
 			!Container.get(License).isMultipleMainInstancesLicensed()
@@ -225,6 +227,8 @@ export class Start extends BaseCommand {
 		await orchestrationService.init();
 
 		await Container.get(OrchestrationHandlerMainService).init();
+
+		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup.addListener('leadershipChange', async () => {
 			if (orchestrationService.isLeader) {
@@ -355,23 +359,21 @@ export class Start extends BaseCommand {
 			this.pruningService.startPruning();
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			const orchestrationService = Container.get(OrchestrationService);
+		if (config.getEnv('executions.mode') !== 'queue') return;
 
-			await orchestrationService.init();
+		const orchestrationService = Container.get(OrchestrationService);
 
-			orchestrationService.multiMainSetup.addListener('leadershipChange', async () => {
-				if (orchestrationService.isLeader) {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.startPruning();
-					}
-				} else {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.stopPruning();
-					}
-				}
-			});
-		}
+		await orchestrationService.init();
+
+		if (!orchestrationService.isMultiMainSetupEnabled) return;
+
+		orchestrationService.multiMainSetup.addListener('leadershipChange', async () => {
+			if (orchestrationService.isLeader) {
+				if (this.pruningService.isPruningEnabled()) this.pruningService.startPruning();
+			} else {
+				if (this.pruningService.isPruningEnabled()) this.pruningService.stopPruning();
+			}
+		});
 	}
 
 	async catch(error: Error) {
