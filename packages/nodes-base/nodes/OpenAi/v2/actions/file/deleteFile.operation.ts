@@ -46,6 +46,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['deleteFile'],
+		resource: ['file'],
 	},
 };
 

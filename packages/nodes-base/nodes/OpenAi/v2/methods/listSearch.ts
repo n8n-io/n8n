@@ -45,9 +45,9 @@ export async function modelCompletionSearch(
 	let { data } = await apiRequest.call(this, 'GET', '/models');
 	data = data?.filter((model: IDataObject) => (model.id as string).startsWith('gpt-'));
 
-	if (filter) {
-		const results: INodeListSearchItems[] = [];
+	let results: INodeListSearchItems[] = [];
 
+	if (filter) {
 		for (const model of data || []) {
 			if ((model.id as string)?.toLowerCase().includes(filter.toLowerCase())) {
 				results.push({
@@ -56,18 +56,18 @@ export async function modelCompletionSearch(
 				});
 			}
 		}
-
-		return {
-			results,
-		};
 	} else {
-		return {
-			results: (data || []).map((model: IDataObject) => ({
-				name: (model.id as string).toUpperCase(),
-				value: model.id as string,
-			})),
-		};
+		results = (data || []).map((model: IDataObject) => ({
+			name: (model.id as string).toUpperCase(),
+			value: model.id as string,
+		}));
 	}
+
+	results = results.sort((a, b) => a.name.localeCompare(b.name));
+
+	return {
+		results,
+	};
 }
 
 export async function assistantSearch(

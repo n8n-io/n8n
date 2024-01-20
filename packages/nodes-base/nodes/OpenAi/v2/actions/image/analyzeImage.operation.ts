@@ -128,6 +128,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['analyzeImage'],
+		resource: ['image'],
 	},
 };
 

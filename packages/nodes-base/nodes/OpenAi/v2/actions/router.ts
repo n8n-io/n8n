@@ -1,29 +1,46 @@
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
-import * as operations from './operations';
+import * as audio from './audio';
+import * as file from './file';
+import * as image from './image';
+import * as text from './text';
 
-type OpenAiType =
-	| 'generateImage'
-	| 'analyzeImage'
-	| 'createModeration'
-	| 'generateAudio'
-	| 'transcribeRecording'
-	| 'translateRecording'
-	| 'uploadFile'
-	| 'deleteFile'
-	| 'listFiles'
-	| 'messageModel'
-	| 'messageAssistant';
+import type { OpenAiType } from './node.type';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
+	let responseData;
 
 	const items = this.getInputData();
-	const operation = this.getNodeParameter('operation', 0) as OpenAiType;
+	const resource = this.getNodeParameter<OpenAiType>('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
+
+	const openAiTypeData = {
+		resource,
+		operation,
+	} as OpenAiType;
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const responseData = await operations[operation].execute.call(this, i);
+			switch (openAiTypeData.resource) {
+				case 'audio':
+					responseData = await audio[openAiTypeData.operation].execute.call(this, i);
+					break;
+				case 'file':
+					responseData = await file[openAiTypeData.operation].execute.call(this, i);
+					break;
+				case 'image':
+					responseData = await image[openAiTypeData.operation].execute.call(this, i);
+					break;
+				case 'text':
+					responseData = await text[openAiTypeData.operation].execute.call(this, i);
+					break;
+				default:
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${operation}" is not supported!`,
+					);
+			}
 
 			returnData.push(...responseData);
 		} catch (error) {

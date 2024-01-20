@@ -50,6 +50,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['uploadFile'],
+		resource: ['file'],
 	},
 };
 

@@ -54,6 +54,11 @@ const properties: INodeProperties[] = [
 					minValue: 1,
 					maxValue: 10,
 				},
+				displayOptions: {
+					show: {
+						'/model': ['dall-e-2'],
+					},
+				},
 			},
 			{
 				displayName: 'Quality',
@@ -165,6 +170,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['generateImage'],
+		resource: ['image'],
 	},
 };
 

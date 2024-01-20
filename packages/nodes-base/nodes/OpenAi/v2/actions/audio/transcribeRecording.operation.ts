@@ -37,6 +37,14 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Language of the Audio File',
+				name: 'language',
+				type: 'string',
+				description:
+					'The language of the input audio. Supplying the input language in <a href="https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes" target="_blank">ISO-639-1</a> format will improve accuracy and latency.',
+				default: '',
+			},
+			{
 				displayName: 'Output Randomness (Temperature)',
 				name: 'temperature',
 				type: 'number',
@@ -53,7 +61,8 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['translateRecording'],
+		operation: ['transcribeRecording'],
+		resource: ['audio'],
 	},
 };
 
@@ -69,6 +78,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	formData.append('model', model);
 
+	if (options.language) {
+		formData.append('language', options.language);
+	}
+
 	if (options.temperature) {
 		formData.append('temperature', options.temperature.toString());
 	}
@@ -81,7 +94,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		contentType: binaryData.mimeType,
 	});
 
-	const response = await apiRequest.call(this, 'POST', '/audio/translations', {
+	const response = await apiRequest.call(this, 'POST', '/audio/transcriptions', {
 		option: { formData },
 		headers: {
 			'Content-Type': 'multipart/form-data',

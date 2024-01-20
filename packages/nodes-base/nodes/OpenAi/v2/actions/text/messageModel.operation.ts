@@ -177,6 +177,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['messageModel'],
+		resource: ['text'],
 	},
 };
 

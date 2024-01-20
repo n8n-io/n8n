@@ -124,6 +124,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['generateAudio'],
+		resource: ['audio'],
 	},
 };
 

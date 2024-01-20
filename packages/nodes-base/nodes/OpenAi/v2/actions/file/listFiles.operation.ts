@@ -40,6 +40,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['listFiles'],
+		resource: ['file'],
 	},
 };
 

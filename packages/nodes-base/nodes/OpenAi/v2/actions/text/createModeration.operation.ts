@@ -43,6 +43,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['createModeration'],
+		resource: ['text'],
 	},
 };
 

@@ -125,6 +125,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['messageAssistant'],
+		resource: ['text'],
 	},
 };
 
