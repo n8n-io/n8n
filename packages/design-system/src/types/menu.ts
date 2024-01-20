@@ -1,4 +1,6 @@
 import type { ElTooltipProps } from 'element-plus';
+import type { AnchorHTMLAttributes } from 'vue';
+import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 
 export type IMenuItem = {
 	id: string;
@@ -7,22 +9,32 @@ export type IMenuItem = {
 	secondaryIcon?: {
 		name: string;
 		size?: 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
-		tooltip?: ElTooltipProps;
+		tooltip?: Partial<ElTooltipProps>;
 	};
 	customIconSize?: 'medium' | 'small';
 	available?: boolean;
 	position?: 'top' | 'bottom';
-	type?: 'default' | 'link';
-	properties?: ILinkMenuItemProperties;
-	// For router menus populate only one of those arrays:
-	// If menu item can be activated on certain route names (easy mode)
+
+	/** Use this for external links */
+	link?: ILinkMenuItemProperties;
+	/** Use this for defining a vue-router target */
+	route?: RouterLinkProps;
+	/**
+	 * If given, item will be activated on these route names. Note that if
+	 * route is provided, it will be highlighted automatically
+	 */
 	activateOnRouteNames?: string[];
-	// For more specific matching, we can use paths
 	activateOnRoutePaths?: string[];
+
 	children?: IMenuItem[];
+};
+
+export type IRouteMenuItemProperties = {
+	route: RouteLocationRaw;
 };
 
 export type ILinkMenuItemProperties = {
 	href: string;
-	newWindow?: boolean;
+	target?: AnchorHTMLAttributes['target'];
+	rel?: AnchorHTMLAttributes['rel'];
 };

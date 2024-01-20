@@ -57,7 +57,7 @@ export const capitalizeFirstLetter = (text: string): string => {
 };
 
 export const getBannerRowHeight = async (): Promise<number> => {
-	return new Promise((resolve) => {
+	return await new Promise((resolve) => {
 		setTimeout(() => {
 			resolve(document.getElementById('banners')?.clientHeight ?? 0);
 		}, 0);
