@@ -52,6 +52,7 @@
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
     "dateformat": "^3.0.3",
+    "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
