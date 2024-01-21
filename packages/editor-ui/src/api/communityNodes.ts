@@ -13,16 +13,16 @@ export async function installNewPackage(
 	context: IRestApiContext,
 	name: string,
 ): Promise<PublicInstalledPackage> {
-	return post(context.baseUrl, '/community-packages', { name });
+	return await post(context.baseUrl, '/community-packages', { name });
 }
 
 export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {
-	return makeRestApiRequest(context, 'DELETE', '/community-packages', { name });
+	return await makeRestApiRequest(context, 'DELETE', '/community-packages', { name });
 }
 
 export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
 ): Promise<PublicInstalledPackage> {
-	return makeRestApiRequest(context, 'PATCH', '/community-packages', { name });
+	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name });
 }

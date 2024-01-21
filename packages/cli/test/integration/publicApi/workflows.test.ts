@@ -18,7 +18,7 @@ import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflow
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
 import { Push } from '@/push';
-import { ExecutionsService } from '@/executions/executions.service';
+import { ExecutionService } from '@/executions/execution.service';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -31,7 +31,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
 
 mockInstance(Push);
-mockInstance(ExecutionsService);
+mockInstance(ExecutionService);
 
 beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();

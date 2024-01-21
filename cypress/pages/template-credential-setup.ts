@@ -1,4 +1,6 @@
 import { CredentialsModal, MessageBox } from './modals';
+import * as formStep from '../composables/setup-template-form-step';
+import { overrideFeatureFlag } from '../composables/featureFlags';
 
 export type TemplateTestData = {
 	id: number;
@@ -24,30 +26,24 @@ export const getters = {
 	skipLink: () => cy.get('a:contains("Skip")'),
 	title: (title: string) => cy.get(`h1:contains(${title})`),
 	infoCallout: () => cy.getByTestId('info-callout'),
-	createAppCredentialsButton: (appName: string) =>
-		cy.get(`button:contains("Create new ${appName} credential")`),
-	appCredentialSteps: () => cy.getByTestId('setup-credentials-form-step'),
-	stepHeading: ($el: JQuery<HTMLElement>) =>
-		cy.wrap($el).findChildByTestId('credential-step-heading'),
-	stepDescription: ($el: JQuery<HTMLElement>) =>
-		cy.wrap($el).findChildByTestId('credential-step-description'),
-};
-
-export const visitTemplateCredentialSetupPage = (templateId: number) => {
-	cy.visit(`/templates/${templateId}/setup`);
 };
 
 export const enableTemplateCredentialSetupFeatureFlag = () => {
-	cy.window().then((win) => {
-		win.featureFlags.override('016_template_credential_setup', true);
-	});
+	overrideFeatureFlag('017_template_credential_setup_v2', true);
+};
+
+export const visitTemplateCredentialSetupPage = (templateId: number) => {
+	cy.visit(`templates/${templateId}/setup`);
+	enableTemplateCredentialSetupFeatureFlag();
+
+	formStep.getFormStep().eq(0).should('be.visible');
 };
 
 /**
  * Fills in dummy credentials for the given app name.
  */
 export const fillInDummyCredentialsForApp = (appName: string) => {
-	getters.createAppCredentialsButton(appName).click();
+	formStep.getCreateAppCredentialsButton(appName).click();
 	credentialsModal.getters.editCredentialModal().find('input:first()').type('test');
 	credentialsModal.actions.save(false);
 	credentialsModal.actions.close();
@@ -61,4 +57,14 @@ export const fillInDummyCredentialsForApp = (appName: string) => {
 export const fillInDummyCredentialsForAppWithConfirm = (appName: string) => {
 	fillInDummyCredentialsForApp(appName);
 	messageBox.actions.cancel();
+};
+
+/**
+ * Finishes the credential setup by clicking the continue button.
+ */
+export const finishCredentialSetup = () => {
+	cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+	getters.continueButton().should('be.enabled');
+	getters.continueButton().click();
+	cy.wait('@createWorkflow');
 };

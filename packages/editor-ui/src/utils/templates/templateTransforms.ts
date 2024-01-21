@@ -2,7 +2,11 @@ import type { IWorkflowTemplateNode, IWorkflowTemplateNodeCredentials } from '@/
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';
-import type { INodeCredentials, INodeCredentialsDetails } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeCredentials,
+	INodeCredentialsDetails,
+} from 'n8n-workflow';
 
 export type IWorkflowTemplateNodeWithCredentials = IWorkflowTemplateNode &
 	Required<Pick<IWorkflowTemplateNode, 'credentials'>>;
@@ -17,6 +21,11 @@ const credentialKeySymbol = Symbol('credentialKey');
  */
 export type TemplateCredentialKey = string & { [credentialKeySymbol]: never };
 
+export type TemplateNodeWithRequiredCredential = {
+	node: IWorkflowTemplateNode;
+	requiredCredentials: INodeCredentialDescription[];
+};
+
 /**
  * Forms a key from credential type name and credential name
  */
@@ -30,8 +39,12 @@ export const keyFromCredentialTypeAndName = (
  * different versions of n8n may have different credential formats.
  */
 export const normalizeTemplateNodeCredentials = (
-	credentials: IWorkflowTemplateNodeCredentials,
+	credentials?: IWorkflowTemplateNodeCredentials,
 ): NormalizedTemplateNodeCredentials => {
+	if (!credentials) {
+		return {};
+	}
+
 	return Object.fromEntries(
 		Object.entries(credentials).map(([key, value]) => {
 			return typeof value === 'string' ? [key, value] : [key, value.name];

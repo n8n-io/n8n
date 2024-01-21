@@ -151,7 +151,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -171,7 +170,6 @@ const WorkflowsView = defineComponent({
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
 	},
-	mixins: [genericHelpers],
 	data() {
 		return {
 			filters: {
@@ -194,6 +192,9 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},

@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
-import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '../constants';
+import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
@@ -43,11 +43,30 @@ const tabs = ref([
 const currentTab = ref('cdn');
 
 const webhookNode = computed(() => {
-	return workflowsStore.workflow.nodes.find((node) => node.type === WEBHOOK_NODE_TYPE);
+	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
+		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
+		if (node) {
+			// This has to be kept up-to-date with the mode in the Chat-Trigger node
+			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {
+				continue;
+			}
+
+			return {
+				type,
+				node,
+			};
+		}
+	}
+
+	return null;
 });
 
 const webhookUrl = computed(() => {
-	return `${rootStore.getWebhookUrl}${webhookNode.value ? `/${webhookNode.value.webhookId}` : ''}`;
+	const url = `${rootStore.getWebhookUrl}${
+		webhookNode.value ? `/${webhookNode.value.node.webhookId}` : ''
+	}`;
+
+	return webhookNode.value?.type === CHAT_TRIGGER_NODE_TYPE ? `${url}/chat` : url;
 });
 
 function indentLines(code: string, indent: string = '	') {
@@ -57,7 +76,7 @@ function indentLines(code: string, indent: string = '	') {
 		.join('\n');
 }
 
-const importCode = 'import';
+const importCode = 'import'; // To avoid vite from parsing the import statement
 const commonCode = computed(() => ({
 	import: `${importCode} '@n8n/chat/style.css';
 ${importCode} { createChat } from '@n8n/chat';`,
@@ -126,29 +145,38 @@ function closeDialog() {
 				<n8n-tabs v-model="currentTab" :options="tabs" />
 
 				<div v-if="currentTab !== 'cdn'">
-					<n8n-text>
-						{{ i18n.baseText('chatEmbed.install') }}
-					</n8n-text>
+					<div class="mb-s">
+						<n8n-text>
+							{{ i18n.baseText('chatEmbed.install') }}
+						</n8n-text>
+					</div>
 					<CodeNodeEditor :model-value="commonCode.install" is-read-only />
 				</div>
 
-				<n8n-text>
-					<i18n-t :keypath="`chatEmbed.paste.${currentTab}`">
-						<template #code>
-							<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
-						</template>
-					</i18n-t>
-				</n8n-text>
+				<div class="mb-s">
+					<n8n-text>
+						<i18n-t :keypath="`chatEmbed.paste.${currentTab}`">
+							<template #code>
+								<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
+							</template>
+						</i18n-t>
+					</n8n-text>
+				</div>
+
 				<HtmlEditor v-if="currentTab === 'cdn'" :model-value="cdnCode" is-read-only />
 				<HtmlEditor v-if="currentTab === 'vue'" :model-value="vueCode" is-read-only />
 				<CodeNodeEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
 				<CodeNodeEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
 
-				<n8n-info-tip>
+				<n8n-text>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
-					<n8n-link :href="i18n.baseText('chatEmbed.url')" new-window size="small" bold>
+					<n8n-link :href="i18n.baseText('chatEmbed.url')" new-window bold>
 						{{ i18n.baseText('chatEmbed.packageInfo.link') }}
 					</n8n-link>
+				</n8n-text>
+
+				<n8n-info-tip class="mt-s">
+					{{ i18n.baseText('chatEmbed.chatTriggerNode') }}
 				</n8n-info-tip>
 			</div>
 		</template>

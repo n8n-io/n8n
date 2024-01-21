@@ -290,3 +290,148 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 	image: [],
 	full: true,
 } satisfies ITemplatesWorkflowFull;
+
+/** Template that doesn't contain nodes requiring credentials */
+export const fullCreateApiEndpointTemplate = {
+	id: 1750,
+	name: 'Creating an API endpoint',
+	views: 13265,
+	recentViews: 9899,
+	totalViews: 13265,
+	createdAt: '2022-07-06T14:45:19.659Z',
+	description:
+		'**Task:**\nCreate a simple API endpoint using the Webhook and Respond to Webhook nodes\n\n**Why:**\nYou can prototype or replace a backend process with a single workflow\n\n**Main use cases:**\nReplace backend logic with a workflow',
+	workflow: {
+		meta: { instanceId: '8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd' },
+		nodes: [
+			{
+				id: 'f80aceed-b676-42aa-bf25-f7a44408b1bc',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				position: [375, 115],
+				webhookId: '6f7b288e-1efe-4504-a6fd-660931327269',
+				parameters: {
+					path: '6f7b288e-1efe-4504-a6fd-660931327269',
+					options: {},
+					responseMode: 'responseNode',
+				},
+				typeVersion: 1,
+			},
+			{
+				id: '3b9ec913-0bbe-4906-bf8e-da352b556655',
+				name: 'Note1',
+				type: 'n8n-nodes-base.stickyNote',
+				position: [355, -25],
+				parameters: {
+					width: 600,
+					height: 280,
+					content:
+						'## Create a simple API endpoint\n\nIn this workflow we show how to create a simple API endpoint with `Webhook` and `Respond to Webhook` nodes\n\n',
+				},
+				typeVersion: 1,
+			},
+			{
+				id: '9c36dae5-0700-450c-9739-e9f3eff31bfe',
+				name: 'Respond to Webhook',
+				type: 'n8n-nodes-base.respondToWebhook',
+				position: [815, 115],
+				parameters: {
+					options: {},
+					respondWith: 'text',
+					responseBody:
+						'=The URL of the Google search query for the term "{{$node["Webhook"].json["query"]["first_name"]}} {{$node["Webhook"].json["query"]["last_name"]}}" is: {{$json["product"]}}',
+				},
+				typeVersion: 1,
+			},
+			{
+				id: '5a228fcb-78b9-4a28-95d2-d7c9fdf1d4ea',
+				name: 'Create URL string',
+				type: 'n8n-nodes-base.set',
+				position: [595, 115],
+				parameters: {
+					values: {
+						string: [
+							{
+								name: 'product',
+								value:
+									'=https://www.google.com/search?q={{$json["query"]["first_name"]}}+{{$json["query"]["last_name"]}}',
+							},
+						],
+					},
+					options: {},
+					keepOnlySet: true,
+				},
+				typeVersion: 1,
+			},
+			{
+				id: 'e7971820-45a8-4dc8-ba4c-b3220d65307a',
+				name: 'Note3',
+				type: 'n8n-nodes-base.stickyNote',
+				position: [355, 275],
+				parameters: {
+					width: 600,
+					height: 220,
+					content:
+						'### How to use it\n1. Execute the workflow so that the webhook starts listening\n2. Make a test request by pasting, **in a new browser tab**, the test URL from the `Webhook` node and appending the following test at the end `?first_name=bob&last_name=dylan`\n\nYou will receive the following output in the new tab `The URL of the Google search query for the term "bob dylan" is: https://www.google.com/search?q=bob+dylan`\n\n',
+				},
+				typeVersion: 1,
+			},
+		],
+		connections: {
+			Webhook: { main: [[{ node: 'Create URL string', type: 'main', index: 0 }]] },
+			'Create URL string': { main: [[{ node: 'Respond to Webhook', type: 'main', index: 0 }]] },
+		},
+	},
+	lastUpdatedBy: 1,
+	workflowInfo: null,
+	user: { username: 'jon-n8n' },
+	nodes: [
+		{
+			id: 38,
+			icon: 'fa:pen',
+			name: 'n8n-nodes-base.set',
+			defaults: { name: 'Edit Fields', color: '#0000FF' },
+			iconData: { icon: 'pen', type: 'icon' },
+			categories: [{ id: 9, name: 'Core Nodes' }],
+			displayName: 'Edit Fields (Set)',
+			typeVersion: 3,
+		},
+		{
+			id: 47,
+			icon: 'file:webhook.svg',
+			name: 'n8n-nodes-base.webhook',
+			defaults: { name: 'Webhook' },
+			iconData: {
+				type: 'file',
+				fileBuffer:
+					'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciICB2aWV3Qm94PSIwIDAgNDggNDgiIHdpZHRoPSI0OHB4IiBoZWlnaHQ9IjQ4cHgiPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0zNSwzN2MtMi4yLDAtNC0xLjgtNC00czEuOC00LDQtNHM0LDEuOCw0LDRTMzcuMiwzNywzNSwzN3oiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUsNDNjLTMsMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEsMS40LDIuOSwyLjMsNC43LDIuM2MzLjMsMCw2LTIuNyw2LTZzLTIuNy02LTYtNiBjLTEsMC0yLDAuMy0yLjksMC43bC0xLjcsMUwyMy4zLDE2bDMuNS0xLjlsNS4zLDkuNGMxLTAuMywyLTAuNSwzLTAuNWM1LjUsMCwxMCw0LjUsMTAsMTBTNDAuNSw0MywzNSw0M3oiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMTQsNDNDOC41LDQzLDQsMzguNSw0LDMzYzAtNC42LDMuMS04LjUsNy41LTkuN2wxLDMuOUM5LjksMjcuOSw4LDMwLjMsOCwzM2MwLDMuMywyLjcsNiw2LDYgczYtMi43LDYtNnYtMmgxNXY0SDIzLjhDMjIuOSwzOS42LDE4LjgsNDMsMTQsNDN6Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0iTTE0LDM3Yy0yLjIsMC00LTEuOC00LTRzMS44LTQsNC00czQsMS44LDQsNFMxNi4yLDM3LDE0LDM3eiIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSwxOWMtMi4yLDAtNC0xLjgtNC00czEuOC00LDQtNHM0LDEuOCw0LDRTMjcuMiwxOSwyNSwxOXoiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTUuNywzNEwxMi4zLDMybDUuOS05LjdjLTItMS45LTMuMi00LjUtMy4yLTcuM2MwLTUuNSw0LjUtMTAsMTAtMTBjNS41LDAsMTAsNC41LDEwLDEwIGMwLDAuOS0wLjEsMS43LTAuMywyLjVsLTMuOS0xYzAuMS0wLjUsMC4yLTEsMC4yLTEuNWMwLTMuMy0yLjctNi02LTZzLTYsMi43LTYsNmMwLDIuMSwxLjEsNCwyLjksNS4xbDEuNywxTDE1LjcsMzR6Ii8+PC9zdmc+Cg==',
+			},
+			categories: [
+				{ id: 5, name: 'Development' },
+				{ id: 9, name: 'Core Nodes' },
+			],
+			displayName: 'Webhook',
+			typeVersion: 1,
+		},
+		{
+			id: 535,
+			icon: 'file:webhook.svg',
+			name: 'n8n-nodes-base.respondToWebhook',
+			defaults: { name: 'Respond to Webhook' },
+			iconData: {
+				type: 'file',
+				fileBuffer:
+					'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciICB2aWV3Qm94PSIwIDAgNDggNDgiIHdpZHRoPSI0OHB4IiBoZWlnaHQ9IjQ4cHgiPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0zNSwzN2MtMi4yLDAtNC0xLjgtNC00czEuOC00LDQtNHM0LDEuOCw0LDRTMzcuMiwzNywzNSwzN3oiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUsNDNjLTMsMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEsMS40LDIuOSwyLjMsNC43LDIuM2MzLjMsMCw2LTIuNyw2LTZzLTIuNy02LTYtNiBjLTEsMC0yLDAuMy0yLjksMC43bC0xLjcsMUwyMy4zLDE2bDMuNS0xLjlsNS4zLDkuNGMxLTAuMywyLTAuNSwzLTAuNWM1LjUsMCwxMCw0LjUsMTAsMTBTNDAuNSw0MywzNSw0M3oiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMTQsNDNDOC41LDQzLDQsMzguNSw0LDMzYzAtNC42LDMuMS04LjUsNy41LTkuN2wxLDMuOUM5LjksMjcuOSw4LDMwLjMsOCwzM2MwLDMuMywyLjcsNiw2LDYgczYtMi43LDYtNnYtMmgxNXY0SDIzLjhDMjIuOSwzOS42LDE4LjgsNDMsMTQsNDN6Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0iTTE0LDM3Yy0yLjIsMC00LTEuOC00LTRzMS44LTQsNC00czQsMS44LDQsNFMxNi4yLDM3LDE0LDM3eiIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSwxOWMtMi4yLDAtNC0xLjgtNC00czEuOC00LDQtNHM0LDEuOCw0LDRTMjcuMiwxOSwyNSwxOXoiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTUuNywzNEwxMi4zLDMybDUuOS05LjdjLTItMS45LTMuMi00LjUtMy4yLTcuM2MwLTUuNSw0LjUtMTAsMTAtMTBjNS41LDAsMTAsNC41LDEwLDEwIGMwLDAuOS0wLjEsMS43LTAuMywyLjVsLTMuOS0xYzAuMS0wLjUsMC4yLTEsMC4yLTEuNWMwLTMuMy0yLjctNi02LTZzLTYsMi43LTYsNmMwLDIuMSwxLjEsNCwyLjksNS4xbDEuNywxTDE1LjcsMzR6Ii8+PC9zdmc+Cg==',
+			},
+			categories: [
+				{ id: 7, name: 'Utility' },
+				{ id: 9, name: 'Core Nodes' },
+			],
+			displayName: 'Respond to Webhook',
+			typeVersion: 1,
+		},
+	],
+	categories: [{ id: 20, name: 'Building Blocks' }],
+	image: [],
+	full: true,
+} satisfies ITemplatesWorkflowFull;

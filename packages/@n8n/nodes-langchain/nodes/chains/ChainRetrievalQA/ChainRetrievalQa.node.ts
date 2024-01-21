@@ -18,7 +18,7 @@ export class ChainRetrievalQa implements INodeType {
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -82,6 +82,18 @@ export class ChainRetrievalQa implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+					},
+				},
+			},
 		],
 	};
 
@@ -114,6 +126,6 @@ export class ChainRetrievalQa implements INodeType {
 			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
-		return this.prepareOutputData(returnData);
+		return await this.prepareOutputData(returnData);
 	}
 }

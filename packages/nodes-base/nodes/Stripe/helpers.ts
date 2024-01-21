@@ -32,7 +32,7 @@ export async function stripeApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 }
 
 /**

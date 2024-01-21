@@ -1,44 +1,48 @@
 <template>
-	<div ref="htmlEditor"></div>
+	<div :class="$style.editor">
+		<div ref="htmlEditor"></div>
+		<slot name="suffix" />
+	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { format } from 'prettier';
-import htmlParser from 'prettier/plugins/html';
-import cssParser from 'prettier/plugins/postcss';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
-import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history, redo, undo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 import {
+	LanguageSupport,
 	bracketMatching,
 	ensureSyntaxTree,
 	foldGutter,
 	indentOnInput,
-	LanguageSupport,
 } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+import { autoCloseTags, html, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
+import htmlParser from 'prettier/plugins/html';
+import cssParser from 'prettier/plugins/postcss';
+import { defineComponent } from 'vue';
 
+import { htmlEditorEventBus } from '@/event-bus';
+import { expressionManager } from '@/mixins/expressionManager';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { htmlEditorEventBus } from '@/event-bus';
-import { expressionManager } from '@/mixins/expressionManager';
-import { theme } from './theme';
-import { nonTakenRanges } from './utils';
+import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
+import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
+import { nonTakenRanges } from './utils';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -49,6 +53,10 @@ export default defineComponent({
 			required: true,
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
@@ -90,15 +98,21 @@ export default defineComponent({
 				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
 				autoCloseTags,
 				expressionInputHandler(),
-				keymap.of([
-					indentWithTab,
-					{ key: 'Enter', run: insertNewlineAndIndent },
-					{ key: 'Mod-z', run: undo },
-					{ key: 'Mod-Shift-z', run: redo },
-				]),
+				Prec.highest(
+					keymap.of([
+						...tabKeyMap,
+						...enterKeyMap,
+						{ key: 'Mod-z', run: undo },
+						{ key: 'Mod-Shift-z', run: redo },
+					]),
+				),
 				indentOnInput(),
-				theme({
+				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
+					maxHeight: this.fillParent ? '100%' : '40vh',
+					minHeight: '20vh',
+					rows: this.rows,
+					highlightColors: 'html',
 				}),
 				lineNumbers(),
 				highlightActiveLineGutter(),
@@ -288,4 +302,12 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.editor {
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
+}
+</style>

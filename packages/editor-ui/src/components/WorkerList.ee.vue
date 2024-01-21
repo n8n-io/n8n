@@ -22,7 +22,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
@@ -39,7 +38,7 @@ export default defineComponent({
 	name: 'WorkerList',
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
-	mixins: [pushConnection, genericHelpers, executionHelpers],
+	mixins: [pushConnection, executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,

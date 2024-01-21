@@ -104,7 +104,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
+		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}
 
 	@Post('/dismiss-banner')

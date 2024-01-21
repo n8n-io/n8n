@@ -272,7 +272,7 @@ export default defineComponent({
 			this.loading = true;
 
 			const saveWorkflowPromise = async () => {
-				return new Promise<string>((resolve) => {
+				return await new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
 							resolve(this.workflow.id);
@@ -439,7 +439,7 @@ export default defineComponent({
 				);
 
 				if (shouldSave === MODAL_CONFIRM) {
-					return this.onSave();
+					return await this.onSave();
 				}
 			}
 

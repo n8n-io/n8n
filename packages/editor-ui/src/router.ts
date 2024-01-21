@@ -7,58 +7,61 @@ import type {
 	RouteLocationRaw,
 	RouteLocationNormalized,
 } from 'vue-router';
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 
-const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
-const ErrorView = async () => import('./views/ErrorView.vue');
-const ForgotMyPasswordView = async () => import('./views/ForgotMyPasswordView.vue');
-const MainHeader = async () => import('@/components/MainHeader/MainHeader.vue');
-const MainSidebar = async () => import('@/components/MainSidebar.vue');
-const NodeView = async () => import('@/views/NodeView.vue');
-const WorkflowExecutionsList = async () => import('@/components/ExecutionsView/ExecutionsList.vue');
+const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
+const ErrorView = async () => await import('./views/ErrorView.vue');
+const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
+const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
+const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const NodeView = async () => await import('@/views/NodeView.vue');
+const WorkflowExecutionsList = async () =>
+	await import('@/components/ExecutionsView/ExecutionsList.vue');
 const ExecutionsLandingPage = async () =>
-	import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
-const ExecutionPreview = async () => import('@/components/ExecutionsView/ExecutionPreview.vue');
-const SettingsView = async () => import('./views/SettingsView.vue');
-const SettingsLdapView = async () => import('./views/SettingsLdapView.vue');
-const SettingsPersonalView = async () => import('./views/SettingsPersonalView.vue');
-const SettingsUsersView = async () => import('./views/SettingsUsersView.vue');
-const SettingsCommunityNodesView = async () => import('./views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () => import('./views/SettingsApiView.vue');
-const SettingsLogStreamingView = async () => import('./views/SettingsLogStreamingView.vue');
-const SettingsFakeDoorView = async () => import('./views/SettingsFakeDoorView.vue');
-const SetupView = async () => import('./views/SetupView.vue');
-const SigninView = async () => import('./views/SigninView.vue');
-const SignupView = async () => import('./views/SignupView.vue');
-const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
-const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+	await import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
+const ExecutionPreview = async () =>
+	await import('@/components/ExecutionsView/ExecutionPreview.vue');
+const SettingsView = async () => await import('./views/SettingsView.vue');
+const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
+const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
+const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
+const SettingsCommunityNodesView = async () =>
+	await import('./views/SettingsCommunityNodesView.vue');
+const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
+const SettingsFakeDoorView = async () => await import('./views/SettingsFakeDoorView.vue');
+const SetupView = async () => await import('./views/SetupView.vue');
+const SigninView = async () => await import('./views/SigninView.vue');
+const SignupView = async () => await import('./views/SignupView.vue');
+const TemplatesCollectionView = async () => await import('@/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflowView.vue');
 const SetupWorkflowFromTemplateView = async () =>
-	import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
-const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
-const CredentialsView = async () => import('@/views/CredentialsView.vue');
-const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
-const WorkflowsView = async () => import('@/views/WorkflowsView.vue');
-const VariablesView = async () => import('@/views/VariablesView.vue');
-const SettingsUsageAndPlan = async () => import('./views/SettingsUsageAndPlan.vue');
-const SettingsSso = async () => import('./views/SettingsSso.vue');
-const SignoutView = async () => import('@/views/SignoutView.vue');
-const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
-const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
-const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
-const WorkerView = async () => import('./views/WorkerView.vue');
-const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
-const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
+	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
+const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
+const CredentialsView = async () => await import('@/views/CredentialsView.vue');
+const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
+const VariablesView = async () => await import('@/views/VariablesView.vue');
+const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
+const SettingsSso = async () => await import('./views/SettingsSso.vue');
+const SignoutView = async () => await import('@/views/SignoutView.vue');
+const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
+const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
+const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
+const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
+const WorkerView = async () => await import('./views/WorkerView.vue');
+const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
+const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
@@ -755,6 +758,19 @@ export const routes = [
 	},
 ] as Array<RouteRecordRaw & RouteConfig>;
 
+function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
+	if (!route.meta) {
+		route.meta = {};
+	}
+	route.meta.readOnlyCanvas = !EDITABLE_CANVAS_VIEWS.includes((route?.name ?? '') as VIEWS);
+
+	if (route.children) {
+		route.children = route.children.map(withCanvasReadOnlyMeta);
+	}
+
+	return route;
+}
+
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
 	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
@@ -764,77 +780,93 @@ const router = createRouter({
 			to.meta.setScrollPosition(0);
 		}
 	},
-	routes,
+	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
 router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {
-	/**
-	 * Initialize application core
-	 * This step executes before first route is loaded and is required for permission checks
-	 */
+	try {
+		/**
+		 * Initialize application core
+		 * This step executes before first route is loaded and is required for permission checks
+		 */
 
-	await initializeCore();
+		await initializeCore();
 
-	/**
-	 * Redirect to setup page. User should be redirected to this only once
-	 */
+		/**
+		 * Redirect to setup page. User should be redirected to this only once
+		 */
 
-	const settingsStore = useSettingsStore();
-	if (settingsStore.showSetupPage) {
-		if (to.name === VIEWS.SETUP) {
-			return next();
+		const settingsStore = useSettingsStore();
+		if (settingsStore.showSetupPage) {
+			if (to.name === VIEWS.SETUP) {
+				return next();
+			}
+
+			return next({ name: VIEWS.SETUP });
 		}
 
-		return next({ name: VIEWS.SETUP });
-	}
+		/**
+		 * Verify user permissions for current route
+		 */
 
-	/**
-	 * Verify user permissions for current route
-	 */
+		const routeMiddleware = to.meta?.middleware ?? [];
+		const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
+		for (const middlewareName of routeMiddleware) {
+			let nextCalled = false;
+			const middlewareNext = ((location: RouteLocationRaw): void => {
+				next(location);
+				nextCalled = true;
+			}) as NavigationGuardNext;
 
-	const routeMiddleware = to.meta?.middleware ?? [];
-	const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
-	for (const middlewareName of routeMiddleware) {
-		let nextCalled = false;
-		const middlewareNext = ((location: RouteLocationRaw): void => {
-			next(location);
-			nextCalled = true;
-		}) as NavigationGuardNext;
+			const middlewareOptions = routeMiddlewareOptions[middlewareName];
+			const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
+			await middlewareFn(to, from, middlewareNext, middlewareOptions);
 
-		const middlewareOptions = routeMiddlewareOptions[middlewareName];
-		const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
-		await middlewareFn(to, from, middlewareNext, middlewareOptions);
+			if (nextCalled) {
+				return;
+			}
+		}
 
-		if (nextCalled) {
-			return;
+		return next();
+	} catch (failure) {
+		if (isNavigationFailure(failure)) {
+			console.log(failure);
+		} else {
+			console.error(failure);
 		}
 	}
-
-	return next();
 });
 
 router.afterEach((to, from) => {
-	const telemetry = useTelemetry();
-	const uiStore = useUIStore();
-	const templatesStore = useTemplatesStore();
+	try {
+		const telemetry = useTelemetry();
+		const uiStore = useUIStore();
+		const templatesStore = useTemplatesStore();
 
-	/**
-	 * Run external hooks
-	 */
+		/**
+		 * Run external hooks
+		 */
 
-	void useExternalHooks().run('main.routeChange', { from, to });
+		void useExternalHooks().run('main.routeChange', { from, to });
 
-	/**
-	 * Track current view for telemetry
-	 */
+		/**
+		 * Track current view for telemetry
+		 */
 
-	uiStore.currentView = (to.name as string) ?? '';
-	if (to.meta?.templatesEnabled) {
-		templatesStore.setSessionId();
-	} else {
-		templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+		uiStore.currentView = (to.name as string) ?? '';
+		if (to.meta?.templatesEnabled) {
+			templatesStore.setSessionId();
+		} else {
+			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+		}
+		telemetry.page(to);
+	} catch (failure) {
+		if (isNavigationFailure(failure)) {
+			console.log(failure);
+		} else {
+			console.error(failure);
+		}
 	}
-	telemetry.page(to);
 });
 
 export default router;

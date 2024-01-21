@@ -65,7 +65,9 @@ import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@/composables/useI18n';
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+const ParameterInputList = defineAsyncComponent(
+	async () => await import('./ParameterInputList.vue'),
+);
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {

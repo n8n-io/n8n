@@ -1,7 +1,8 @@
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
-import { ApplicationError, type IWebhookData } from 'n8n-workflow';
+import { CacheService } from '@/services/cache/cache.service';
+import { type IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
+import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 
 export type TestWebhookRegistration = {
 	sessionId?: string;
@@ -14,72 +15,64 @@ export type TestWebhookRegistration = {
 export class TestWebhookRegistrationsService {
 	constructor(private readonly cacheService: CacheService) {}
 
-	private readonly cacheKey = 'test-webhook';
+	private readonly cacheKey = 'test-webhooks';
 
 	async register(registration: TestWebhookRegistration) {
-		const key = this.toKey(registration.webhook);
+		const hashKey = this.toKey(registration.webhook);
 
-		await this.cacheService.set(key, registration);
+		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+
+		/**
+		 * Multi-main setup: In a manual webhook execution, the main process that
+		 * handles a webhook might not be the same as the main process that created
+		 * the webhook. If so, after the test webhook has been successfully executed,
+		 * the handler process commands the creator process to clear its test webhooks.
+		 * We set a TTL on the key so that it is cleared even on creator process crash,
+		 * with an additional buffer to ensure this safeguard expiration will not delete
+		 * the key before the regular test webhook timeout fetches the key to delete it.
+		 */
+		const ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER;
+
+		await this.cacheService.expire(this.cacheKey, ttl);
 	}
 
 	async deregister(arg: IWebhookData | string) {
 		if (typeof arg === 'string') {
-			await this.cacheService.delete(arg);
+			await this.cacheService.deleteFromHash(this.cacheKey, arg);
 		} else {
-			const key = this.toKey(arg);
-			await this.cacheService.delete(key);
+			const hashKey = this.toKey(arg);
+			await this.cacheService.deleteFromHash(this.cacheKey, hashKey);
 		}
 	}
 
 	async get(key: string) {
-		return this.cacheService.get<TestWebhookRegistration>(key);
+		return await this.cacheService.getHashValue<TestWebhookRegistration>(this.cacheKey, key);
 	}
 
 	async getAllKeys() {
-		const keys = await this.cacheService.keys();
+		const hash = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
 
-		if (this.cacheService.isMemoryCache()) {
-			return keys.filter((key) => key.startsWith(this.cacheKey));
-		}
+		if (!hash) return [];
 
-		const prefix = 'n8n:cache'; // prepended by Redis cache
-		const extendedCacheKey = `${prefix}:${this.cacheKey}`;
-
-		return keys
-			.filter((key) => key.startsWith(extendedCacheKey))
-			.map((key) => key.slice(`${prefix}:`.length));
+		return Object.keys(hash);
 	}
 
 	async getAllRegistrations() {
-		const keys = await this.getAllKeys();
+		const hash = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
 
-		return this.cacheService.getMany<TestWebhookRegistration>(keys);
-	}
+		if (!hash) return [];
 
-	async updateWebhookProperties(newProperties: IWebhookData) {
-		const key = this.toKey(newProperties);
-
-		const registration = await this.cacheService.get<TestWebhookRegistration>(key);
-
-		if (!registration) {
-			throw new ApplicationError('Failed to find test webhook registration', { extra: { key } });
-		}
-
-		registration.webhook = newProperties;
-
-		await this.cacheService.set(key, registration);
+		return Object.values(hash);
 	}
 
 	async deregisterAll() {
-		const testWebhookKeys = await this.getAllKeys();
-
-		await this.cacheService.deleteMany(testWebhookKeys);
+		await this.cacheService.delete(this.cacheKey);
 	}
 
 	toKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {
 		const { webhookId, httpMethod, path: webhookPath } = webhook;
 
-		if (!webhookId) return `${this.cacheKey}:${httpMethod}|${webhookPath}`;
+		if (!webhookId) return [httpMethod, webhookPath].join('|');
 
 		let path = webhookPath;
 
@@ -89,6 +82,6 @@ export class TestWebhookRegistrationsService {
 			path = path.slice(cutFromIndex);
 		}
 
-		return `${this.cacheKey}:${httpMethod}|${webhookId}|${path.split('/').length}`;
+		return [httpMethod, webhookId, path.split('/').length].join('|');
 	}
 }

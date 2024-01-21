@@ -6,11 +6,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
 	name: 'ExecutionTime',
-	mixins: [genericHelpers],
 	props: ['startTime'],
 	data() {
 		return {
@@ -24,7 +22,7 @@ export default defineComponent({
 				return '...';
 			}
 			const msPassed = this.nowTime - new Date(this.startTime).getTime();
-			return this.displayTimer(msPassed);
+			return this.$locale.displayTimer(msPassed);
 		},
 	},
 	mounted() {
@@ -46,9 +44,3 @@ export default defineComponent({
 	},
 });
 </script>
-
-<style lang="scss">
-// .data-display-wrapper {
-
-// }
-</style>

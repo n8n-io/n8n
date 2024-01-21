@@ -346,6 +346,29 @@ describe('POST /invitations', () => {
 		assertInvitedUsersOnDb(storedUser);
 	});
 
+	test('should reinvite member', async () => {
+		mailer.invite.mockResolvedValue({ emailSent: false });
+
+		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'member' }]);
+
+		await ownerAgent
+			.post('/invitations')
+			.send([{ email: randomEmail(), role: 'member' }])
+			.expect(200);
+	});
+
+	test('should reinvite admin if licensed', async () => {
+		license.isAdvancedPermissionsLicensed.mockReturnValue(true);
+		mailer.invite.mockResolvedValue({ emailSent: false });
+
+		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'admin' }]);
+
+		await ownerAgent
+			.post('/invitations')
+			.send([{ email: randomEmail(), role: 'admin' }])
+			.expect(200);
+	});
+
 	test('should fail to create admin shell if not licensed', async () => {
 		license.isAdvancedPermissionsLicensed.mockReturnValue(false);
 		mailer.invite.mockResolvedValue({ emailSent: false });

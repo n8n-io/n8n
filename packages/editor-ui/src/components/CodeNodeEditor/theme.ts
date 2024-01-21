@@ -29,14 +29,18 @@ const BASE_STYLING = {
 
 interface ThemeSettings {
 	isReadOnly?: boolean;
-	customMaxHeight?: string;
-	customMinHeight?: number;
+	maxHeight?: string;
+	minHeight?: string;
+	rows?: number;
+	highlightColors?: 'default' | 'html';
 }
 
 export const codeNodeEditorTheme = ({
 	isReadOnly,
-	customMaxHeight,
-	customMinHeight,
+	minHeight,
+	maxHeight,
+	rows,
+	highlightColors,
 }: ThemeSettings) => [
 	EditorView.theme({
 		'&': {
@@ -85,11 +89,13 @@ export const codeNodeEditorTheme = ({
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-
-			maxHeight: customMaxHeight ?? '100%',
+			maxHeight: maxHeight ?? '100%',
 			...(isReadOnly
 				? {}
-				: { minHeight: customMinHeight ? `${Number(customMinHeight) * 1.3}em` : '10em' }),
+				: { minHeight: rows && rows !== -1 ? `${Number(rows + 1) * 1.3}em` : 'auto' }),
+		},
+		'.cm-gutter,.cm-content': {
+			minHeight: rows && rows !== -1 ? 'auto' : minHeight ?? 'calc(35vh - var(--spacing-2xl))',
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
@@ -106,47 +112,97 @@ export const codeNodeEditorTheme = ({
 			color: 'var(--color-text-base)',
 		},
 	}),
-	syntaxHighlighting(
-		HighlightStyle.define([
-			{
-				tag: tags.comment,
-				color: 'var(--color-code-tags-comment)',
-			},
-			{
-				tag: [tags.string, tags.special(tags.brace)],
-				color: 'var(--color-code-tags-string)',
-			},
-			{
-				tag: [tags.number, tags.self, tags.bool, tags.null],
-				color: 'var(--color-code-tags-primitive)',
-			},
-			{
-				tag: tags.keyword,
-				color: 'var(--color-code-tags-keyword)',
-			},
-			{
-				tag: tags.operator,
-				color: 'var(--color-code-tags-operator)',
-			},
-			{
-				tag: [
-					tags.variableName,
-					tags.propertyName,
-					tags.attributeName,
-					tags.regexp,
-					tags.className,
-					tags.typeName,
-				],
-				color: 'var(--color-code-tags-variable)',
-			},
-			{
-				tag: [
-					tags.definition(tags.typeName),
-					tags.definition(tags.propertyName),
-					tags.function(tags.variableName),
-				],
-				color: 'var(--color-code-tags-definition)',
-			},
-		]),
-	),
+	highlightColors === 'html'
+		? syntaxHighlighting(
+				HighlightStyle.define([
+					{ tag: tags.keyword, color: '#c678dd' },
+					{
+						tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
+						color: '#e06c75',
+					},
+					{ tag: [tags.function(tags.variableName), tags.labelName], color: '#61afef' },
+					{
+						tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)],
+						color: '#d19a66',
+					},
+					{ tag: [tags.definition(tags.name), tags.separator], color: '#abb2bf' },
+					{
+						tag: [
+							tags.typeName,
+							tags.className,
+							tags.number,
+							tags.changed,
+							tags.annotation,
+							tags.modifier,
+							tags.self,
+							tags.namespace,
+						],
+						color: '#e06c75',
+					},
+					{
+						tag: [
+							tags.operator,
+							tags.operatorKeyword,
+							tags.url,
+							tags.escape,
+							tags.regexp,
+							tags.link,
+							tags.special(tags.string),
+						],
+						color: '#56b6c2',
+					},
+					{ tag: [tags.meta, tags.comment], color: '#7d8799' },
+					{ tag: tags.strong, fontWeight: 'bold' },
+					{ tag: tags.emphasis, fontStyle: 'italic' },
+					{ tag: tags.strikethrough, textDecoration: 'line-through' },
+					{ tag: tags.link, color: '#7d8799', textDecoration: 'underline' },
+					{ tag: tags.heading, fontWeight: 'bold', color: '#e06c75' },
+					{ tag: [tags.atom, tags.bool, tags.special(tags.variableName)], color: '#d19a66' },
+					{ tag: [tags.processingInstruction, tags.string, tags.inserted], color: '#98c379' },
+					{ tag: tags.invalid, color: 'red', 'font-weight': 'bold' },
+				]),
+		  )
+		: syntaxHighlighting(
+				HighlightStyle.define([
+					{
+						tag: tags.comment,
+						color: 'var(--color-code-tags-comment)',
+					},
+					{
+						tag: [tags.string, tags.special(tags.brace)],
+						color: 'var(--color-code-tags-string)',
+					},
+					{
+						tag: [tags.number, tags.self, tags.bool, tags.null],
+						color: 'var(--color-code-tags-primitive)',
+					},
+					{
+						tag: tags.keyword,
+						color: 'var(--color-code-tags-keyword)',
+					},
+					{
+						tag: tags.operator,
+						color: 'var(--color-code-tags-operator)',
+					},
+					{
+						tag: [
+							tags.variableName,
+							tags.propertyName,
+							tags.attributeName,
+							tags.regexp,
+							tags.className,
+							tags.typeName,
+						],
+						color: 'var(--color-code-tags-variable)',
+					},
+					{
+						tag: [
+							tags.definition(tags.typeName),
+							tags.definition(tags.propertyName),
+							tags.function(tags.variableName),
+						],
+						color: 'var(--color-code-tags-definition)',
+					},
+				]),
+		  ),
 ];

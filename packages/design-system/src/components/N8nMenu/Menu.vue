@@ -59,6 +59,7 @@ import N8nMenuItem from '../N8nMenuItem';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import type { IMenuItem, RouteObject } from '../../types';
+import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
 export default defineComponent({
 	name: 'N8nMenu',
@@ -128,14 +129,10 @@ export default defineComponent({
 	},
 	mounted() {
 		if (this.mode === 'router') {
-			const found = this.items.find((item) => {
-				return (
-					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.currentRoute.name || '')) ||
-					(Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.currentRoute.path))
-				);
-			});
+			const found = this.items.find((item) =>
+				doesMenuItemMatchCurrentRoute(item, this.currentRoute),
+			);
+
 			this.activeTab = found ? found.id : '';
 		} else {
 			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
@@ -145,19 +142,6 @@ export default defineComponent({
 	},
 	methods: {
 		onSelect(item: IMenuItem): void {
-			if (item && item.type === 'link' && item.properties) {
-				const href: string = item.properties.href;
-				if (!href) {
-					return;
-				}
-
-				if (item.properties.newWindow) {
-					window.open(href);
-				} else {
-					window.location.assign(item.properties.href);
-				}
-			}
-
 			if (this.mode === 'tabs') {
 				this.activeTab = item.id;
 			}

@@ -29,6 +29,7 @@ import type {
 	IUserResponse,
 	IUsersState,
 	CurrentUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
@@ -214,7 +215,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			inviterId: string;
 		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
-			return validateSignupToken(rootStore.getRestApiContext, params);
+			return await validateSignupToken(rootStore.getRestApiContext, params);
 		},
 		async acceptInvitation(params: {
 			inviteeId: string;
@@ -302,7 +303,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string; role: IRole }>): Promise<IInviteResponse[]> {
+		async inviteUsers(
+			params: Array<{ email: string; role: InvitableRoleName }>,
+		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
 			this.addUsers(
@@ -314,18 +317,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			);
 			return users;
 		},
-		async reinviteUser(params: { email: string }): Promise<void> {
+		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
-				{ email: params.email },
-			]);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
-			return getPasswordResetLink(rootStore.getRestApiContext, params);
+			return await getPasswordResetLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
@@ -343,11 +344,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
-			return getMfaQR(rootStore.getRestApiContext);
+			return await getMfaQR(rootStore.getRestApiContext);
 		},
 		async verifyMfaToken(data: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			return verifyMfaToken(rootStore.getRestApiContext, data);
+			return await verifyMfaToken(rootStore.getRestApiContext, data);
 		},
 		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();

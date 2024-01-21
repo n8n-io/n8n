@@ -38,12 +38,12 @@ import {
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+	SETUP_CREDENTIALS_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
-	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
 	IUser,
@@ -84,66 +84,46 @@ try {
 	}
 } catch (e) {}
 
+export type UiStore = ReturnType<typeof useUIStore>;
+
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
 		theme: savedTheme,
 		modals: {
-			[ABOUT_MODAL_KEY]: {
-				open: false,
-			},
-			[CHAT_EMBED_MODAL_KEY]: {
-				open: false,
-			},
-			[CHANGE_PASSWORD_MODAL_KEY]: {
-				open: false,
-			},
-			[CONTACT_PROMPT_MODAL_KEY]: {
-				open: false,
-			},
-			[CREDENTIAL_SELECT_MODAL_KEY]: {
-				open: false,
-			},
+			...Object.fromEntries(
+				[
+					ABOUT_MODAL_KEY,
+					CHAT_EMBED_MODAL_KEY,
+					CHANGE_PASSWORD_MODAL_KEY,
+					CONTACT_PROMPT_MODAL_KEY,
+					CREDENTIAL_SELECT_MODAL_KEY,
+					DUPLICATE_MODAL_KEY,
+					ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+					PERSONALIZATION_MODAL_KEY,
+					INVITE_USER_MODAL_KEY,
+					TAGS_MANAGER_MODAL_KEY,
+					VALUE_SURVEY_MODAL_KEY,
+					VERSIONS_MODAL_KEY,
+					WORKFLOW_LM_CHAT_MODAL_KEY,
+					WORKFLOW_SETTINGS_MODAL_KEY,
+					WORKFLOW_SHARE_MODAL_KEY,
+					WORKFLOW_ACTIVE_MODAL_KEY,
+					COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+					MFA_SETUP_MODAL_KEY,
+					SOURCE_CONTROL_PUSH_MODAL_KEY,
+					SOURCE_CONTROL_PULL_MODAL_KEY,
+					EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+					DEBUG_PAYWALL_MODAL_KEY,
+					WORKFLOW_HISTORY_VERSION_RESTORE,
+					SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+					SETUP_CREDENTIALS_MODAL_KEY,
+				].map((modalKey) => [modalKey, { open: false }]),
+			),
 			[DELETE_USER_MODAL_KEY]: {
 				open: false,
 				activeId: null,
-			},
-			[DUPLICATE_MODAL_KEY]: {
-				open: false,
-			},
-			[ONBOARDING_CALL_SIGNUP_MODAL_KEY]: {
-				open: false,
-			},
-			[PERSONALIZATION_MODAL_KEY]: {
-				open: false,
-			},
-			[INVITE_USER_MODAL_KEY]: {
-				open: false,
-			},
-			[TAGS_MANAGER_MODAL_KEY]: {
-				open: false,
-			},
-			[VALUE_SURVEY_MODAL_KEY]: {
-				open: false,
-			},
-			[VERSIONS_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_LM_CHAT_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_SHARE_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_ACTIVE_MODAL_KEY]: {
-				open: false,
-			},
-			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
-				open: false,
 			},
 			[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
 				open: false,
@@ -155,9 +135,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: '',
 				httpNodeParameters: '',
 			},
-			[MFA_SETUP_MODAL_KEY]: {
-				open: false,
-			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
 				data: undefined,
@@ -167,24 +144,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
-			},
-			[SOURCE_CONTROL_PUSH_MODAL_KEY]: {
-				open: false,
-			},
-			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
-				open: false,
-			},
-			[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: {
-				open: false,
-			},
-			[DEBUG_PAYWALL_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
-				open: false,
-			},
-			[SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY]: {
-				open: false,
 			},
 		},
 		modalStack: [],
@@ -216,7 +175,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
-		sidebarMenuItems: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
@@ -463,17 +421,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				return name !== openModalName;
 			});
 		},
-		closeAllModals(): void {
-			Object.keys(this.modals).forEach((name) => {
-				if (this.modals[name].open) {
-					this.modals[name] = {
-						...this.modals[name],
-						open: false,
-					};
-				}
-			});
-			this.modalStack = [];
-		},
 		draggableStartDragging(type: string, data: string): void {
 			this.draggable = {
 				isDragging: true,
@@ -524,21 +471,21 @@ export const useUIStore = defineStore(STORES.UI, {
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return fetchNextOnboardingPrompt(instanceId, currentUser);
+			return await fetchNextOnboardingPrompt(instanceId, currentUser);
 		},
 		async applyForOnboardingCall(email: string): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return applyForOnboardingCall(instanceId, currentUser, email);
+			return await applyForOnboardingCall(instanceId, currentUser, email);
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -579,10 +526,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		resetSelectedNodes(): void {
 			this.selectedNodes = [];
 		},
-		addSidebarMenuItems(menuItems: IMenuItem[]) {
-			const updated = this.sidebarMenuItems.concat(menuItems);
-			this.sidebarMenuItems = updated;
-		},
 		setCurlCommand(payload: { name: string; command: string }): void {
 			this.modals[payload.name] = {
 				...this.modals[payload.name],
@@ -600,7 +543,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,
@@ -672,3 +615,44 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForModalChanges = (opts: {
+	store: UiStore;
+	onModalOpened?: (name: keyof Modals) => void;
+	onModalClosed?: (name: keyof Modals) => void;
+}) => {
+	const { store, onModalClosed, onModalOpened } = opts;
+	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
+
+	return store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async () => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'openModal': {
+					const modalName = args[0];
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'openModalWithData': {
+					const { name: modalName } = args[0] ?? {};
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'closeModal': {
+					const modalName = args[0];
+					onModalClosed?.(modalName);
+					break;
+				}
+			}
+		});
+	});
+};

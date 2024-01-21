@@ -35,7 +35,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ExecutionsService } from './executions/executions.service';
+import { ExecutionService } from './executions/execution.service';
 import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
@@ -74,7 +74,7 @@ export class ActiveWorkflowRunner {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly executionService: ExecutionsService,
+		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
 	) {}
@@ -89,7 +89,7 @@ export class ActiveWorkflowRunner {
 	}
 
 	async getAllWorkflowActivationErrors() {
-		return this.activationErrorsService.getAll();
+		return await this.activationErrorsService.getAll();
 	}
 
 	/**
@@ -305,7 +305,7 @@ export class ActiveWorkflowRunner {
 		};
 
 		const workflowRunner = new WorkflowRunner();
-		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		return await workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	/**
@@ -425,7 +425,7 @@ export class ActiveWorkflowRunner {
 
 				void this.activeWorkflows.remove(workflowData.id);
 
-				void this.activationErrorsService.set(workflowData.id, error.message);
+				void this.activationErrorsService.register(workflowData.id, error.message);
 
 				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
@@ -630,13 +630,13 @@ export class ActiveWorkflowRunner {
 			// Workflow got now successfully activated so make sure nothing is left in the queue
 			this.removeQueuedWorkflowActivation(workflowId);
 
-			await this.activationErrorsService.unset(workflowId);
+			await this.activationErrorsService.deregister(workflowId);
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-			await this.activationErrorsService.set(workflowId, error.message);
+			await this.activationErrorsService.register(workflowId, error.message);
 
 			throw e;
 		}
@@ -757,7 +757,7 @@ export class ActiveWorkflowRunner {
 			);
 		}
 
-		await this.activationErrorsService.unset(workflowId);
+		await this.activationErrorsService.deregister(workflowId);
 
 		if (this.queuedActivations[workflowId] !== undefined) {
 			this.removeQueuedWorkflowActivation(workflowId);
@@ -824,6 +824,6 @@ export class ActiveWorkflowRunner {
 	}
 
 	async removeActivationError(workflowId: string) {
-		await this.activationErrorsService.unset(workflowId);
+		await this.activationErrorsService.deregister(workflowId);
 	}
 }
