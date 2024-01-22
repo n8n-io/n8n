@@ -29,9 +29,7 @@ export async function asanaApiRequest(
 		method,
 		body: method === 'GET' || method === 'HEAD' || method === 'DELETE' ? null : { data: body },
 		qs: query,
-		url:
-			uri ||
-			`https://app.asana.com/api/1.0/${endpoint.startsWith('/') ? endpoint.slice(1) : endpoint}`,
+		url: uri || `https://app.asana.com/api/1.0${endpoint}`,
 		json: true,
 	};
 

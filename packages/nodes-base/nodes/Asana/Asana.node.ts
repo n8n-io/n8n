@@ -143,7 +143,7 @@ export class Asana implements INodeType {
 					{
 						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get many substasks',
+						description: 'Get many subtasks',
 						action: 'Get many subtasks',
 					},
 				],
