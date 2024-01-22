@@ -153,7 +153,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v5.8.3
+        uses: cypress-io/github-action@v6.6.1
         with:
           install: false
           start: pnpm start
