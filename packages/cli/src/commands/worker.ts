@@ -1,11 +1,9 @@
+import { Container } from 'typedi';
+import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
-import { Container } from 'typedi';
-
-import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
-
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -20,13 +18,11 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
-import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -36,11 +32,11 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
+import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { BaseCommand } from './BaseCommand';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -48,8 +44,8 @@ export class Worker extends BaseCommand {
 	static examples = ['$ n8n worker --concurrency=5'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		concurrency: flags.integer({
+		help: Flags.help({ char: 'h' }),
+		concurrency: Flags.integer({
 			default: 10,
 			description: 'How many jobs can run in parallel.',
 		}),
@@ -257,7 +253,7 @@ export class Worker extends BaseCommand {
 		};
 	}
 
-	constructor(argv: string[], cmdConfig: IConfig) {
+	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
@@ -333,8 +329,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async initQueue() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Worker);
+		const { flags } = await this.parse(Worker);
 
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
@@ -495,8 +490,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Worker);
+		const { flags } = await this.parse(Worker);
 
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
