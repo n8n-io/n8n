@@ -1,5 +1,4 @@
 import config from '@/config';
-import { BinaryDataService } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -25,11 +24,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	beforeAll(async () => {
 		await testDb.init();
 
-		pruningService = new PruningService(
-			mockInstance(Logger),
-			Container.get(ExecutionRepository),
-			mockInstance(BinaryDataService),
-		);
+		pruningService = new PruningService(mockInstance(Logger), Container.get(ExecutionRepository));
 
 		workflow = await createWorkflow();
 	});

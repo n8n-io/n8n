@@ -1,8 +1,7 @@
 import { Service } from 'typedi';
-import { BinaryDataService } from 'n8n-core';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { jsonStringify } from 'n8n-workflow';
 import { OnShutdown } from '@/decorators/OnShutdown';
@@ -25,7 +24,6 @@ export class PruningService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	private isPruningEnabled() {
@@ -129,7 +127,7 @@ export class PruningService {
 	}
 
 	/**
-	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
+	 * Permanently remove all soft-deleted executions and their associated data, in a pruning cycle.
 	 * @return Delay in ms after which the next cycle should be started
 	 */
 	private async hardDeleteOnPruningCycle() {
@@ -146,7 +144,7 @@ export class PruningService {
 		try {
 			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
 
-			await this.binaryDataService.deleteMany(ids);
+			await this.executionRepository.deleteAssociatedData(ids);
 
 			await this.executionRepository.deleteByIds(executionIds);
 
