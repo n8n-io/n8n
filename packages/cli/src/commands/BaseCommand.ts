@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { Command } from '@oclif/command';
-import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
+import { Command } from '@oclif/core';
+import { ExitError } from '@oclif/core/lib/errors';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
