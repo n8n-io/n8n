@@ -1,3 +1,30 @@
+## [1.25.1](https://github.com/n8n-io/n8n/compare/n8n@1.25.0...n8n@1.25.1) (2024-01-22)
+
+
+### Bug Fixes
+
+* **AMQP Trigger Node:** Properly close connection after manual test step ([#8396](https://github.com/n8n-io/n8n/issues/8396)) ([ef676b7](https://github.com/n8n-io/n8n/commit/ef676b7c01d6334c61f53c72a1a4d78027643419))
+* **Asana Node:** Fix issue when connecting to the new Asana environment ([#8404](https://github.com/n8n-io/n8n/issues/8404)) ([7c7a8eb](https://github.com/n8n-io/n8n/commit/7c7a8ebd957c814507a9b0f261b6e2b72bc8c9a6))
+* **AWS SQS Node:** Fix issue preventing data from being sent correctly ([#8382](https://github.com/n8n-io/n8n/issues/8382)) ([d3f0c24](https://github.com/n8n-io/n8n/commit/d3f0c2467399e0e50ca3fc96f4b2ccb779a63e1a))
+* Change the UI text for some filter operations ([#8360](https://github.com/n8n-io/n8n/issues/8360)) ([960f436](https://github.com/n8n-io/n8n/commit/960f436628fcea871a3790bafc08e0dd4fb669f7))
+* **core:** Adjust starter node priority for manual executions with pinned activators ([#8386](https://github.com/n8n-io/n8n/issues/8386)) ([50d17e1](https://github.com/n8n-io/n8n/commit/50d17e1c8eb1063c1a7788c44753dba031a9e02f))
+* **core:** Errors are returned on the success branch if error item has other keys in addition to 'error' ([#8380](https://github.com/n8n-io/n8n/issues/8380)) ([ef5c8ca](https://github.com/n8n-io/n8n/commit/ef5c8cae0465819e2f3a4f7ff99af511ab4f9937))
+* **core:** Missing pairedItem fixes ([#8394](https://github.com/n8n-io/n8n/issues/8394)) ([66e0810](https://github.com/n8n-io/n8n/commit/66e08109d5575afd6fa0b1b81c9e83b1a66f8c25))
+* **Discord Node:** Remove requirement on message for webhooks ([#8377](https://github.com/n8n-io/n8n/issues/8377)) ([6c51dcc](https://github.com/n8n-io/n8n/commit/6c51dcc8b6cfb49bea3c7f8b647781a1d629bf69))
+* **editor:** Add pinned data for freshly added nodes ([#8323](https://github.com/n8n-io/n8n/issues/8323)) ([26c6fe3](https://github.com/n8n-io/n8n/commit/26c6fe3e84fac3e512e007d1c3f4753fb272fe92))
+* **editor:** Enable ctrl/cmd click in workflow editor header ([#8387](https://github.com/n8n-io/n8n/issues/8387)) ([6aefab6](https://github.com/n8n-io/n8n/commit/6aefab65845f32372f8f1a9cbb5dd5d442dddf9f))
+* **editor:** Fix doclines for `plus` and `minus` ([#8405](https://github.com/n8n-io/n8n/issues/8405)) ([2579302](https://github.com/n8n-io/n8n/commit/2579302afd9845112c007207ffee21ea80071c14))
+* **editor:** Fix invisible community package update button ([#8406](https://github.com/n8n-io/n8n/issues/8406)) ([a0aae45](https://github.com/n8n-io/n8n/commit/a0aae4546c6567076e90724b74af6f59aea7c7ad))
+* **editor:** Fix secondary icon for environments on sidebar menu item ([#8407](https://github.com/n8n-io/n8n/issues/8407)) ([a11e7cd](https://github.com/n8n-io/n8n/commit/a11e7cdf9fb5ba526c60f0d880aa82b436c14602))
+* **editor:** Open native context menu when editing Sticky ([#8370](https://github.com/n8n-io/n8n/issues/8370)) ([e49e49f](https://github.com/n8n-io/n8n/commit/e49e49f96bfff898fd6a47227211e1b23db93bd8))
+* **editor:** Use web native <a> element in nav menus ([#8385](https://github.com/n8n-io/n8n/issues/8385)) ([9584abc](https://github.com/n8n-io/n8n/commit/9584abc643116a2811dc74079c441cea51b686b0))
+* Fix issue preventing secrets with a - in the path from being imported ([#8378](https://github.com/n8n-io/n8n/issues/8378)) ([e47a0d5](https://github.com/n8n-io/n8n/commit/e47a0d5b79ecae1d12c0d434c9bce58c25ea6d36))
+* Force posthog recording to be disabled outside cloud ([#8374](https://github.com/n8n-io/n8n/issues/8374)) ([356812c](https://github.com/n8n-io/n8n/commit/356812cea5a3b85387a52fa8d2577edf6f96d288))
+* **Microsoft SQL Node:** Prevent MSSQL max parameters error by chunking ([#8390](https://github.com/n8n-io/n8n/issues/8390)) ([f898982](https://github.com/n8n-io/n8n/commit/f898982e66d7cdd1f0451b2c0442bc37c7becf75))
+* **Notion Node:** Fix is_empty query on formula fields ([#8397](https://github.com/n8n-io/n8n/issues/8397)) ([e541508](https://github.com/n8n-io/n8n/commit/e54150823bd9cef8830d63a742e640b8f9ccc884))
+
+
+
 # [1.25.0](https://github.com/n8n-io/n8n/compare/n8n@1.24.0...n8n@1.25.0) (2024-01-17)
 
 
