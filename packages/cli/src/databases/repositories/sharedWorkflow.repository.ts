@@ -1,10 +1,9 @@
 import { Service } from 'typedi';
 import { DataSource, Repository, In, Not } from 'typeorm';
-import type { EntityManager, FindOptionsSelect, FindOptionsWhere } from 'typeorm';
-import { SharedWorkflow } from '../entities/SharedWorkflow';
+import type { EntityManager, FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { SharedWorkflow, type WorkflowSharingRole } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
-import type { Role } from '../entities/Role';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
@@ -35,22 +34,29 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 	async findByWorkflowIds(workflowIds: string[]) {
 		return await this.find({
-			relations: ['role', 'user'],
+			relations: ['user'],
 			where: {
-				role: {
-					name: 'owner',
-					scope: 'workflow',
-				},
+				role: 'owner',
 				workflowId: In(workflowIds),
 			},
 		});
+	}
+
+	async findSharingRole(
+		userId: string,
+		workflowId: string,
+	): Promise<WorkflowSharingRole | undefined> {
+		return await this.findOne({
+			select: ['role'],
+			where: { workflowId, userId },
+		}).then((shared) => shared?.role);
 	}
 
 	async findSharing(
 		workflowId: string,
 		user: User,
 		scope: Scope,
-		{ roles, extraRelations }: { roles?: string[]; extraRelations?: string[] } = {},
+		{ roles, extraRelations }: { roles?: WorkflowSharingRole[]; extraRelations?: string[] } = {},
 	) {
 		const where: FindOptionsWhere<SharedWorkflow> = {
 			workflow: { id: workflowId },
@@ -61,18 +67,18 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		}
 
 		if (roles) {
-			where.role = { name: In(roles) };
+			where.role = In(roles);
 		}
 
-		const relations = ['workflow', 'role'];
+		const relations = ['workflow'];
 
 		if (extraRelations) relations.push(...extraRelations);
 
 		return await this.findOne({ relations, where });
 	}
 
-	async makeOwnerOfAllWorkflows(user: User, role: Role) {
-		return await this.update({ userId: Not(user.id), roleId: role.id }, { user });
+	async makeOwnerOfAllWorkflows(user: User) {
+		return await this.update({ userId: Not(user.id), role: 'owner' }, { user });
 	}
 
 	async getSharing(
@@ -109,7 +115,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[], roleId: string) {
+	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[]) {
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {
 				return acc;
@@ -117,7 +123,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			const entity: Partial<SharedWorkflow> = {
 				workflowId: workflow.id,
 				userId: user.id,
-				roleId,
+				role: 'editor',
 			};
 			acc.push(this.create(entity));
 			return acc;
@@ -126,12 +132,15 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return await transaction.save(newSharedWorkflows);
 	}
 
-	async findWithFields(workflowIds: string[], { fields }: { fields: string[] }) {
+	async findWithFields(
+		workflowIds: string[],
+		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
+	) {
 		return await this.find({
 			where: {
 				workflowId: In(workflowIds),
 			},
-			select: fields as FindOptionsSelect<SharedWorkflow>,
+			select,
 		});
 	}
 

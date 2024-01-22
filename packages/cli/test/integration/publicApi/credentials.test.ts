@@ -1,5 +1,4 @@
 import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
 import { randomApiKey, randomName, randomString } from '../shared/random';
@@ -7,13 +6,11 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
-import { getAllRoles } from '../shared/db/roles';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-let credentialOwnerRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -24,17 +21,13 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const [_, fetchedCredentialOwnerRole] = await getAllRoles();
-
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
 	owner = await addApiKey(await createUserShell('owner'));
 	member = await createUser({ role: 'member', apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('owner');
 
 	await utils.initCredentialsTypes();
 });
@@ -70,11 +63,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials', 'role'],
+			relations: ['user', 'credentials'],
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
 
-		expect(sharedCredential.role).toEqual(credentialOwnerRole);
+		expect(sharedCredential.role).toEqual('owner');
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 

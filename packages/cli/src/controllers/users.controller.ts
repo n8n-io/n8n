@@ -23,7 +23,6 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { plainToInstance } from 'class-transformer';
-import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
@@ -45,7 +44,6 @@ export class UsersController {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly roleService: RoleService,
 		private readonly userService: UserService,
 	) {}
 
@@ -187,11 +185,6 @@ export class UsersController {
 			telemetryData.migration_user_id = transferId;
 		}
 
-		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleService.findWorkflowOwnerRole(),
-			this.roleService.findCredentialOwnerRole(),
-		]);
-
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
 
@@ -201,7 +194,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+						where: { userId: userToDelete.id, role: 'owner' },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -216,7 +209,7 @@ export class UsersController {
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
 					SharedWorkflow,
-					{ user: userToDelete, role: workflowOwnerRole },
+					{ user: userToDelete, role: 'owner' },
 					{ user: transferee },
 				);
 
@@ -227,7 +220,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+						where: { userId: userToDelete.id, role: 'owner' },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -242,7 +235,7 @@ export class UsersController {
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: credentialOwnerRole },
+					{ user: userToDelete, role: 'owner' },
 					{ user: transferee },
 				);
 
@@ -264,11 +257,11 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+				where: { userId: userToDelete.id, role: 'owner' },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+				where: { userId: userToDelete.id, role: 'owner' },
 			}),
 		]);
 

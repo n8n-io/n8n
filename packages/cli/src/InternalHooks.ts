@@ -24,9 +24,9 @@ import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
 import type { GlobalRole, User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
-import { NodeTypes } from './NodeTypes';
+import { NodeTypes } from '@/NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { RoleService } from './services/role.service';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
 import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
 import { InstanceSettings } from 'n8n-core';
@@ -52,7 +52,7 @@ export class InternalHooks {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
-		private roleService: RoleService,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
 		eventsService: EventsService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
@@ -166,9 +166,9 @@ export class InternalHooks {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await this.roleService.findRoleByUserAndWorkflow(user.id, workflow.id);
+			const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
 			if (role) {
-				userRole = role.name === 'owner' ? 'owner' : 'sharee';
+				userRole = role === 'owner' ? 'owner' : 'sharee';
 			}
 		}
 
@@ -371,9 +371,9 @@ export class InternalHooks {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await this.roleService.findRoleByUserAndWorkflow(userId, workflow.id);
+					const role = await this.sharedWorkflowRepository.findSharingRole(userId, workflow.id);
 					if (role) {
-						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+						userRole = role === 'owner' ? 'owner' : 'sharee';
 					}
 				}
 

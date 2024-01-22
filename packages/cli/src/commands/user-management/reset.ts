@@ -6,7 +6,6 @@ import { SettingsRepository } from '@db/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { RoleService } from '@/services/role.service';
 import { BaseCommand } from '../BaseCommand';
 
 const defaultUserProps = {
@@ -25,14 +24,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
-
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner, workflowOwnerRole);
-		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(
-			owner,
-			credentialOwnerRole,
-		);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
 
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
@@ -46,7 +39,7 @@ export class Reset extends BaseCommand {
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
 				user: owner,
-				role: credentialOwnerRole,
+				role: 'owner',
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);

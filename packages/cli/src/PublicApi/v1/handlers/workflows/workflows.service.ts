@@ -1,10 +1,9 @@
+import { Container } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { Role } from '@db/entities/Role';
+import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import config from '@/config';
-import Container from 'typedi';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
@@ -43,7 +42,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
-	role: Role,
+	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
 	return await Db.transaction(async (transactionManager) => {
 		const newWorkflow = new WorkflowEntity();

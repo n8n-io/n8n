@@ -1,20 +1,19 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { License } from '@/License';
 
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { getCredentialOwnerRole } from './shared/db/roles';
 import { createManyUsers, createUser } from './shared/db/users';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import Container from 'typedi';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { License } from '@/License';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
@@ -28,13 +27,11 @@ let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	const credentialOwnerRole = await getCredentialOwnerRole();
-
 	owner = await createUser({ role: 'owner' });
 	member = await createUser({ role: 'member' });
 	secondMember = await createUser({ role: 'member' });
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('owner');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);

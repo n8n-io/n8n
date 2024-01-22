@@ -16,7 +16,6 @@ import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
-import { getCredentialOwnerRole } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { License } from '@/License';
@@ -42,8 +41,6 @@ const license = testServer.license;
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
-	const credentialOwnerRole = await getCredentialOwnerRole();
-
 	owner = await createUser({ role: 'owner' });
 	member = await createUser({ role: 'member' });
 	anotherMember = await createUser({ role: 'member' });
@@ -52,7 +49,7 @@ beforeAll(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('owner');
 
 	await utils.initNodeTypes();
 });

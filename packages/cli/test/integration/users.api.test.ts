@@ -1,12 +1,14 @@
 import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { SuperAgentTest } from 'supertest';
 
 import { UsersController } from '@/controllers/users.controller';
+import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ExecutionService } from '@/executions/execution.service';
 
 import { getCredentialById, saveCredential } from './shared/db/credentials';
-import { getCredentialOwnerRole, getWorkflowOwnerRole } from './shared/db/roles';
 import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
 import { createWorkflow, getWorkflowById } from './shared/db/workflows';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -14,11 +16,6 @@ import { validateUser } from './shared/utils/users';
 import { randomName } from './shared/random';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-
-import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
-import { ExecutionService } from '@/executions/execution.service';
 import { mockInstance } from '../shared/mocking';
 
 mockInstance(ExecutionService);
@@ -234,8 +231,6 @@ describe('DELETE /users/:id', () => {
 	let owner: User;
 	let member: User;
 	let ownerAgent: SuperAgentTest;
-	let workflowOwnerRole: Role;
-	let credentialOwnerRole: Role;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
@@ -243,9 +238,6 @@ describe('DELETE /users/:id', () => {
 		owner = await createOwner();
 		member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
-
-		workflowOwnerRole = await getWorkflowOwnerRole();
-		credentialOwnerRole = await getCredentialOwnerRole();
 	});
 
 	test('should delete user and their resources', async () => {
@@ -253,7 +245,7 @@ describe('DELETE /users/:id', () => {
 
 		const savedCredential = await saveCredential(
 			{ name: randomName(), type: '', data: {}, nodesAccess: [] },
-			{ user: member, role: credentialOwnerRole },
+			{ user: member, role: 'owner' },
 		);
 
 		const response = await ownerAgent.delete(`/users/${member.id}`);
@@ -265,12 +257,12 @@ describe('DELETE /users/:id', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			relations: ['user'],
-			where: { userId: member.id, roleId: workflowOwnerRole.id },
+			where: { userId: member.id, role: 'owner' },
 		});
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			relations: ['user'],
-			where: { userId: member.id, roleId: credentialOwnerRole.id },
+			where: { userId: member.id, role: 'owner' },
 		});
 
 		const workflow = await getWorkflowById(savedWorkflow.id);
@@ -297,7 +289,7 @@ describe('DELETE /users/:id', () => {
 				{ name: randomName(), type: '', data: {}, nodesAccess: [] },
 				{
 					user: member,
-					role: credentialOwnerRole,
+					role: 'owner',
 				},
 			),
 		]);

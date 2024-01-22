@@ -18,6 +18,7 @@ import { OrchestrationHandlerWorkerService } from '@/services/orchestration/work
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
+import * as testDb from '../shared/testDb';
 import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig = new Config({ root: __dirname });
@@ -39,6 +40,11 @@ beforeAll(async () => {
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
 	mockInstance(OrchestrationService);
+	await testDb.init();
+});
+
+afterAll(async () => {
+	await testDb.terminate();
 });
 
 test('worker initializes all its components', async () => {
