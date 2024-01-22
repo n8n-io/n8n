@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { In } from 'typeorm';
 import type { IUser } from 'n8n-workflow';
@@ -11,10 +12,8 @@ import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { getCredentialOwnerRole } from './shared/db/roles';
 import { createManyUsers, createUser, createUserShell } from './shared/db/users';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import Container from 'typedi';
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
@@ -27,8 +26,6 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	const credentialOwnerRole = await getCredentialOwnerRole();
-
 	owner = await createUser({ role: 'owner' });
 	member = await createUser({ role: 'member' });
 	anotherMember = await createUser({ role: 'member' });
@@ -36,7 +33,7 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('owner');
 });
 
 beforeEach(async () => {
@@ -342,7 +339,6 @@ describe('PUT /credentials/:id/share', () => {
 		expect(response.body.data).toBeUndefined();
 
 		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id },
 		});
 
@@ -351,13 +347,11 @@ describe('PUT /credentials/:id/share', () => {
 
 		sharedCredentials.forEach((sharedCredential) => {
 			if (sharedCredential.userId === owner.id) {
-				expect(sharedCredential.role.name).toBe('owner');
-				expect(sharedCredential.role.scope).toBe('credential');
+				expect(sharedCredential.role).toBe('owner');
 				return;
 			}
 			expect(shareWithIds).toContain(sharedCredential.userId);
-			expect(sharedCredential.role.name).toBe('user');
-			expect(sharedCredential.role.scope).toBe('credential');
+			expect(sharedCredential.role).toBe('user');
 		});
 	});
 
@@ -377,25 +371,21 @@ describe('PUT /credentials/:id/share', () => {
 
 		// check that sharings got correctly set in DB
 		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
 		});
 
 		expect(sharedCredentials.length).toBe(memberIds.length);
 
 		sharedCredentials.forEach((sharedCredential) => {
-			expect(sharedCredential.role.name).toBe('user');
-			expect(sharedCredential.role.scope).toBe('credential');
+			expect(sharedCredential.role).toBe('user');
 		});
 
 		// check that owner still exists
 		const ownerSharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: owner.id },
 		});
 
-		expect(ownerSharedCredential.role.name).toBe('owner');
-		expect(ownerSharedCredential.role.scope).toBe('credential');
+		expect(ownerSharedCredential.role).toBe('owner');
 	});
 
 	test('should respond 403 for non-existing credentials', async () => {

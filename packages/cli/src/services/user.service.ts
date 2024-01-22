@@ -10,7 +10,6 @@ import { Logger } from '@/Logger';
 import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
@@ -23,7 +22,6 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
-		private readonly roleService: RoleService,
 		private readonly urlService: UrlService,
 	) {}
 

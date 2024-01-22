@@ -615,7 +615,7 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const sharing = dbWorkflow.shared.find((shared) => shared.role.name === 'owner');
+			const sharing = dbWorkflow.shared.find((shared) => shared.role === 'owner');
 
 			if (!sharing) {
 				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);

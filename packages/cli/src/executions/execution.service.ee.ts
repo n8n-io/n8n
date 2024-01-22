@@ -22,7 +22,7 @@ export class EnterpriseExecutionsService {
 
 		if (!execution) return;
 
-		const relations = ['shared', 'shared.user', 'shared.role'];
+		const relations = ['shared', 'shared.user'];
 
 		const workflow = (await this.workflowRepository.get(
 			{ id: execution.workflowId },

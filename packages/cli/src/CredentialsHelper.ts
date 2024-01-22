@@ -786,10 +786,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credential = await this.sharedCredentialsRepository.findOne({
 			where: {
-				role: {
-					scope: 'credential',
-					name: 'owner',
-				},
+				role: 'owner',
 				user: {
 					role: 'owner',
 				},

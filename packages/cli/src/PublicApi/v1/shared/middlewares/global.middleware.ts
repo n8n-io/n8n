@@ -6,12 +6,12 @@ import { Container } from 'typedi';
 import type { AuthenticatedRequest, PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 import { License } from '@/License';
-import type { RoleName } from '@/databases/entities/Role';
+import type { GlobalRole } from '@db/entities/User';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
 export const authorize =
-	(authorizedRoles: readonly RoleName[]) =>
+	(authorizedRoles: readonly GlobalRole[]) =>
 	(
 		req: AuthenticatedRequest,
 		res: express.Response,

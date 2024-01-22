@@ -23,7 +23,6 @@ import {
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -42,9 +41,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const role = await Container.get(RoleService).findWorkflowOwnerRole();
-
-			const createdWorkflow = await createWorkflow(workflow, req.user, role);
+			const createdWorkflow = await createWorkflow(workflow, req.user, 'owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,

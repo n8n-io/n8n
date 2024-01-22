@@ -1,8 +1,6 @@
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories/role.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -39,7 +37,6 @@ const tablesToTruncate = [
 	'installed_packages',
 	'installed_nodes',
 	'user',
-	'role',
 	'variables',
 ];
 
@@ -87,7 +84,6 @@ export class E2EController {
 
 	constructor(
 		license: License,
-		private readonly roleRepo: RoleRepository,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly userRepo: UserRepository,
 		private readonly workflowRunner: ActiveWorkflowRunner,
@@ -148,7 +144,7 @@ export class E2EController {
 	private async truncateAll() {
 		for (const table of tablesToTruncate) {
 			try {
-				const { connection } = this.roleRepo.manager;
+				const { connection } = this.settingsRepo.manager;
 				await connection.query(
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
@@ -163,20 +159,6 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const roles: Array<[Role['name'], Role['scope']]> = [
-			['owner', 'global'],
-			['member', 'global'],
-			['admin', 'global'],
-			['owner', 'workflow'],
-			['owner', 'credential'],
-			['user', 'credential'],
-			['editor', 'workflow'],
-		];
-
-		await this.roleRepo.save(
-			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-		);
-
 		const instanceOwner = this.userRepo.create({
 			id: uuid(),
 			...owner,
