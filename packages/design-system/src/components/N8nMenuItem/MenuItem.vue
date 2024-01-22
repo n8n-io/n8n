@@ -63,13 +63,16 @@
 					<span :class="$style.label">{{ item.label }}</span>
 					<N8nTooltip
 						v-if="item.secondaryIcon"
-						:class="$style.secondaryIcon"
 						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
 						:content="item.secondaryIcon?.tooltip?.content"
 						:disabled="compact || !item.secondaryIcon?.tooltip?.content"
 						:show-after="tooltipDelay"
 					>
-						<N8nIcon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
+						<N8nIcon
+							:class="$style.secondaryIcon"
+							:icon="item.secondaryIcon.name"
+							:size="item.secondaryIcon.size || 'small'"
+						/>
 					</N8nTooltip>
 				</ElMenuItem>
 			</ConditionalRouterLink>
@@ -274,6 +277,7 @@ export default defineComponent({
 	align-items: center;
 	justify-content: flex-end;
 	flex: 1;
+	margin-left: 20px;
 }
 
 .label {
