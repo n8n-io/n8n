@@ -123,9 +123,7 @@ export class AsanaTrigger implements INodeType {
 
 				const workspace = this.getNodeParameter('workspace') as string;
 
-				const endpoint = '/webhooks';
-
-				const { data } = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
+				const { data } = await asanaApiRequest.call(this, 'GET', '/webhooks', {}, { workspace });
 
 				for (const webhook of data) {
 					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
@@ -151,14 +149,12 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const endpoint = '/webhooks';
-
 				const body = {
 					resource,
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await asanaApiRequest.call(this, 'POST', '/webhooks', body);
 
 				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
@@ -173,11 +169,10 @@ export class AsanaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
-						await asanaApiRequest.call(this, 'DELETE', endpoint, body);
+						await asanaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`, body);
 					} catch (error) {
 						return false;
 					}

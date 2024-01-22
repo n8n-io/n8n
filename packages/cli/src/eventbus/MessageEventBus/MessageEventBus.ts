@@ -32,7 +32,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { Logger } from '@/Logger';
 import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
 
@@ -207,7 +207,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await Container.get(SingleMainSetup).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(OrchestrationService).publish('restartEventBus');
 		}
 		return destination;
 	}
@@ -233,7 +233,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await Container.get(SingleMainSetup).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(OrchestrationService).publish('restartEventBus');
 		}
 		return result;
 	}

@@ -74,6 +74,7 @@
     "sanitize-html": "2.10.0",
     "vue": "^3.3.4",
     "vue-boring-avatars": "^1.3.0",
+    "vue-router": "^4.2.2",
     "xss": "^1.0.14"
   }
 }

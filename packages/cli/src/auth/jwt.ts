@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
@@ -14,7 +14,9 @@ import { ApplicationError } from 'n8n-workflow';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
-	const expiresIn = 7 * 86400000; // 7 days
+	const expiresInHours = config.getEnv('userManagement.jwtSessionDurationHours');
+	const expiresInSeconds = expiresInHours * Time.hours.toSeconds;
+
 	const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
 	const payload: JwtPayload = {
@@ -37,12 +39,12 @@ export function issueJWT(user: User): JwtToken {
 	}
 
 	const signedToken = Container.get(JwtService).sign(payload, {
-		expiresIn: expiresIn / 1000 /* in seconds */,
+		expiresIn: expiresInSeconds,
 	});
 
 	return {
 		token: signedToken,
-		expiresIn,
+		expiresIn: expiresInSeconds,
 	};
 }
 
@@ -86,7 +88,7 @@ export async function resolveJwt(token: string): Promise<User> {
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = issueJWT(user);
 	res.cookie(AUTH_COOKIE_NAME, userData.token, {
-		maxAge: userData.expiresIn,
+		maxAge: userData.expiresIn * Time.seconds.toMilliseconds,
 		httpOnly: true,
 		sameSite: 'lax',
 	});

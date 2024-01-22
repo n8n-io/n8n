@@ -13,6 +13,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -1083,3 +1084,63 @@ export function isElementIntersection(
 
 	return isWithinVerticalBounds && isWithinHorizontalBounds;
 }
+
+export const getJSPlumbEndpoints = (
+	node: INodeUi | null,
+	instance: BrowserJsPlumbInstance,
+): Endpoint[] => {
+	const nodeEl = instance.getManagedElement(node?.id);
+
+	const endpoints = instance?.getEndpoints(nodeEl);
+	return endpoints;
+};
+
+export const getPlusEndpoint = (
+	node: INodeUi | null,
+	outputIndex: number,
+	instance: BrowserJsPlumbInstance,
+): Endpoint | undefined => {
+	const endpoints = getJSPlumbEndpoints(node, instance);
+	return endpoints.find(
+		(endpoint: Endpoint) =>
+			// @ts-ignore
+			endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
+	);
+};
+
+export const getJSPlumbConnection = (
+	sourceNode: INodeUi | null,
+	sourceOutputIndex: number,
+	targetNode: INodeUi | null,
+	targetInputIndex: number,
+	connectionType: ConnectionTypes,
+	sourceNodeType: INodeTypeDescription | null,
+	instance: BrowserJsPlumbInstance,
+): Connection | undefined => {
+	if (!sourceNode || !targetNode) {
+		return;
+	}
+
+	const sourceId = sourceNode.id;
+	const targetId = targetNode.id;
+
+	const sourceEndpoint = getOutputEndpointUUID(sourceId, connectionType, sourceOutputIndex);
+	const targetEndpoint = getInputEndpointUUID(targetId, connectionType, targetInputIndex);
+
+	const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
+	const sourceNodeOutputName =
+		typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
+	const scope = getEndpointScope(sourceNodeOutputName);
+
+	// @ts-ignore
+	const connections = instance?.getConnections({
+		scope,
+		source: sourceId,
+		target: targetId,
+	}) as Connection[];
+
+	return connections.find((connection: Connection) => {
+		const uuids = connection.getUuids();
+		return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
+	});
+};
