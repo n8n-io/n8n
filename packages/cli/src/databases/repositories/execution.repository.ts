@@ -603,6 +603,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		}
 	}
+
 	async getExecutionsCountForPublicApi(data: {
 		limit: number;
 		lastId?: string;
