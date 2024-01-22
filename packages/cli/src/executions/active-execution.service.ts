@@ -5,9 +5,10 @@ import { Queue } from '@/Queue';
 import { WaitTracker } from '@/WaitTracker';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { getStatusUsingPreviousExecutionStatusMethod } from '@/executions/executionHelpers';
+import config from '@/config';
 
 import type { ExecutionSummary } from 'n8n-workflow';
-import type { IExecutionBase, IExecutionsCurrentSummary, IExecutionsStopData } from '@/Interfaces';
+import type { IExecutionBase, IExecutionsCurrentSummary } from '@/Interfaces';
 import type { GetManyActiveFilter } from './execution.types';
 
 @Service()
@@ -19,6 +20,8 @@ export class ActiveExecutionService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly waitTracker: WaitTracker,
 	) {}
+
+	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
 
 	async findOne(executionId: string, accessibleWorkflowIds: string[]) {
 		return await this.executionRepository.findIfAccessible(executionId, accessibleWorkflowIds);
@@ -55,22 +58,6 @@ export class ActiveExecutionService {
 			.sort((a, b) => Number(b.id) - Number(a.id));
 	}
 
-	async stopOneInRegularMode(execution: IExecutionBase) {
-		const result = await this.activeExecutions.stopExecution(execution.id);
-
-		if (result) {
-			return {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
-				finished: result.finished,
-				status: result.status,
-			};
-		}
-
-		return await this.waitTracker.stopExecution(execution.id);
-	}
-
 	// ----------------------------------
 	//           queue mode
 	// ----------------------------------
@@ -104,7 +91,7 @@ export class ActiveExecutionService {
 		});
 	}
 
-	async stopOneInQueueMode(execution: IExecutionBase): Promise<IExecutionsStopData> {
+	async stop(execution: IExecutionBase) {
 		const result = await this.activeExecutions.stopExecution(execution.id);
 
 		if (result) {
@@ -116,6 +103,10 @@ export class ActiveExecutionService {
 				status: result.status,
 			};
 		}
+
+		if (!this.isRegularMode) return await this.waitTracker.stopExecution(execution.id);
+
+		// queue mode
 
 		try {
 			return await this.waitTracker.stopExecution(execution.id);

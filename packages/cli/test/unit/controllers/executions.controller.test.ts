@@ -73,22 +73,7 @@ describe('ExecutionsController', () => {
 			expect(activeExecutionService.findOne).toHaveBeenCalledWith('999', ['123']);
 		});
 
-		it('should stop execution in queue mode', async () => {
-			getEnv.calledWith('executions.mode').mockReturnValue('queue');
-			activeExecutionService.findOne.mockResolvedValue(execution);
-
-			await new ExecutionsController(
-				mock(),
-				mock(),
-				workflowSharingService,
-				activeExecutionService,
-			).stop(req);
-
-			expect(activeExecutionService.stopOneInQueueMode).toHaveBeenCalled();
-			expect(activeExecutionService.stopOneInRegularMode).not.toHaveBeenCalled();
-		});
-
-		it('should stop execution in regular mode', async () => {
+		it('should call `ActiveExecutionService.stop()`', async () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('regular');
 			activeExecutionService.findOne.mockResolvedValue(execution);
 
@@ -99,8 +84,7 @@ describe('ExecutionsController', () => {
 				activeExecutionService,
 			).stop(req);
 
-			expect(activeExecutionService.stopOneInRegularMode).toHaveBeenCalled();
-			expect(activeExecutionService.stopOneInQueueMode).not.toHaveBeenCalled();
+			expect(activeExecutionService.stop).toHaveBeenCalled();
 		});
 	});
 });

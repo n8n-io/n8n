@@ -59,9 +59,7 @@ export class ExecutionsController {
 
 		if (!execution) throw new NotFoundError('Execution not found');
 
-		return this.isQueueMode
-			? await this.activeExecutionService.stopOneInQueueMode(execution)
-			: await this.activeExecutionService.stopOneInRegularMode(execution);
+		return await this.activeExecutionService.stop(execution);
 	}
 
 	@Get('/:id')

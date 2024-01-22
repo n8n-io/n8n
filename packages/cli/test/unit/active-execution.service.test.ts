@@ -1,5 +1,6 @@
-import { mock } from 'jest-mock-extended';
+import { mock, mockFn } from 'jest-mock-extended';
 import { ActiveExecutionService } from '@/executions/active-execution.service';
+import config from '@/config';
 import type { ExecutionRepository } from '@db/repositories/execution.repository';
 import type { ActiveExecutions } from '@/ActiveExecutions';
 import type { Job, Queue } from '@/Queue';
@@ -23,45 +24,52 @@ describe('ActiveExecutionsService', () => {
 		waitTracker,
 	);
 
+	const getEnv = mockFn<(typeof config)['getEnv']>();
+	config.getEnv = getEnv;
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	describe('stopOneInRegularMode()', () => {
-		it('should call `ActiveExecutions.stopExecution()`', async () => {
-			const execution = mock<IExecutionBase>({ id: '123' });
+	describe('stop()', () => {
+		describe('in regular mode', () => {
+			getEnv.calledWith('executions.mode').mockReturnValue('regular');
 
-			await activeExecutionService.stopOneInRegularMode(execution);
+			it('should call `ActiveExecutions.stopExecution()`', async () => {
+				const execution = mock<IExecutionBase>({ id: '123' });
 
-			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				await activeExecutionService.stop(execution);
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+			});
+
+			it('should call `WaitTracker.stopExecution()` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+				activeExecutions.stopExecution.mockResolvedValue(undefined);
+				const execution = mock<IExecutionBase>({ id: '123' });
+
+				await activeExecutionService.stop(execution);
+
+				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+			});
 		});
 
-		it('should call `WaitTracker.stopExecution()` if `ActiveExecutions.stopExecution()` found no execution', async () => {
-			activeExecutions.stopExecution.mockResolvedValue(undefined);
-			const execution = mock<IExecutionBase>({ id: '123' });
+		describe('in queue mode', () => {
+			it('should call `ActiveExecutions.stopExecution()`', async () => {
+				const execution = mock<IExecutionBase>({ id: '123' });
 
-			await activeExecutionService.stopOneInRegularMode(execution);
+				await activeExecutionService.stop(execution);
 
-			expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-		});
-	});
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+			});
 
-	describe('stopOneInQueueMode()', () => {
-		it('should call `ActiveExecutions.stopExecution()`', async () => {
-			const execution = mock<IExecutionBase>({ id: '123' });
+			it('should call `WaitTracker.stopExecution` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+				activeExecutions.stopExecution.mockResolvedValue(undefined);
+				const execution = mock<IExecutionBase>({ id: '123' });
 
-			await activeExecutionService.stopOneInRegularMode(execution);
+				await activeExecutionService.stop(execution);
 
-			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
-		});
-
-		it('should call `WaitTracker.stopExecution` if `ActiveExecutions.stopExecution()` found no execution', async () => {
-			activeExecutions.stopExecution.mockResolvedValue(undefined);
-			const execution = mock<IExecutionBase>({ id: '123' });
-
-			await activeExecutionService.stopOneInRegularMode(execution);
-
-			expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+			});
 		});
 	});
 
