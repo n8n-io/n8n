@@ -10,7 +10,16 @@ export type ChatCompletion = {
 		message: {
 			role: string;
 			content: string;
+			tool_calls?: Array<{
+				id: string;
+				type: 'function';
+				function: {
+					name: string;
+					arguments: string;
+				};
+			}>;
 		};
+		finish_reason?: 'tool_calls';
 	}>;
 	usage: {
 		prompt_tokens: number;

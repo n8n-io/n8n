@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
@@ -83,6 +84,66 @@ const properties: INodeProperties[] = [
 							},
 						],
 						default: 'user',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Tools',
+		name: 'tools',
+		type: 'fixedCollection',
+		typeOptions: {
+			sortable: true,
+			multipleValues: true,
+		},
+		placeholder: 'Add Tool',
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Function Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. get_current_weather',
+					},
+					{
+						displayName: 'Function Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. Get the current weather in a given location',
+					},
+					{
+						displayName: 'Parameters (Properties)',
+						name: 'properties',
+						type: 'json',
+						typeOptions: {
+							rows: 5,
+						},
+						description:
+							'The parameters that the function accepts, refer to <a href="https://platform.openai.com/docs/guides/function-calling?lang=node.js" target="_blank">the documentation</a> for more information',
+						default:
+							'{\n  "location": {\n    "type": "string",\n     "description": "The city or state"\n},\n  "unit": { \n    "type": "string", \n    "enum": ["celsius", "fahrenheit"] \n  }\n}',
+						validateType: 'object',
+					},
+					{
+						displayName: 'Function Code (JavaScript)',
+						name: 'jsCode',
+						type: 'string',
+						description:
+							"Specify function that accepts a single parameter of type object with properties matching tool's Parameters",
+						typeOptions: {
+							editor: 'codeNodeEditor',
+							editorLanguage: 'javaScript',
+						},
+						default:
+							'//Specify function body that matches tool\'s Parameters\nfunction getCurrentWeather(location, unit = "fahrenheit") {\n  if (location === \'tokyo\') {\n    return { location: "Tokyo", temperature: "10", unit: "celsius" };\n  } else {\n    return { location, temperature: "unknown" };\n  }\n}\n\n//Return your function\nreturn getCurrentWeather;',
+						noDataExpression: true,
 					},
 				],
 			},
@@ -186,6 +247,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
+	const toolsValues = this.getNodeParameter('tools.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 
@@ -201,16 +263,74 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
+	let tools;
+	const toolFunctions: IDataObject = {};
+	if (toolsValues.length) {
+		tools = [];
+		for (const tool of toolsValues) {
+			toolFunctions[tool.name as string] = tool.jsCode as string;
+
+			const toolProperties: IDataObject =
+				typeof tool.properties === 'string'
+					? jsonParse(tool.properties)
+					: (tool.properties as IDataObject);
+
+			tools.push({
+				type: 'function',
+				function: {
+					name: tool.name,
+					description: tool.description,
+					parameters: {
+						type: 'object',
+						properties: toolProperties,
+						required: Object.keys(toolProperties),
+					},
+				},
+			});
+		}
+	}
+
 	const body: IDataObject = {
 		model,
 		messages,
+		tools,
 		response_format,
 		...options,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
 		body,
 	})) as ChatCompletion;
+
+	let toolCalls = response.choices[0].message.tool_calls;
+
+	while (toolCalls && toolCalls.length) {
+		messages.push(response.choices[0].message);
+
+		for (const toolCall of toolCalls) {
+			const functionName = toolCall.function.name;
+			const functionToCall = toolFunctions[functionName];
+			const functionArgs = toolCall.function.arguments;
+
+			let functionResponse = this.evaluateExpression(`{{(${functionToCall})(${functionArgs})}}`, i);
+
+			if (typeof functionResponse === 'object') {
+				functionResponse = JSON.stringify(functionResponse);
+			}
+
+			messages.push({
+				tool_call_id: toolCall.id,
+				role: 'tool',
+				content: functionResponse,
+			});
+		}
+
+		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+			body,
+		})) as ChatCompletion;
+
+		toolCalls = response.choices[0].message.tool_calls;
+	}
 
 	if (response_format) {
 		response.choices = response.choices.map((choice) => {
