@@ -1,13 +1,13 @@
 import { Authorized, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { License } from '@/License';
 
 @Authorized()
 @RestController('/orchestration')
 export class OrchestrationController {
 	constructor(
-		private readonly singleMainSetup: SingleMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly licenseService: License,
 	) {}
 
@@ -20,20 +20,20 @@ export class OrchestrationController {
 	async getWorkersStatus(req: OrchestrationRequest.Get) {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 		const id = req.params.id;
-		return await this.singleMainSetup.getWorkerStatus(id);
+		return await this.orchestrationService.getWorkerStatus(id);
 	}
 
 	@RequireGlobalScope('orchestration:read')
 	@Post('/worker/status')
 	async getWorkersStatusAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return await this.singleMainSetup.getWorkerStatus();
+		return await this.orchestrationService.getWorkerStatus();
 	}
 
 	@RequireGlobalScope('orchestration:list')
 	@Post('/worker/ids')
 	async getWorkerIdsAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return await this.singleMainSetup.getWorkerIds();
+		return await this.orchestrationService.getWorkerIds();
 	}
 }

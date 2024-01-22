@@ -187,7 +187,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(

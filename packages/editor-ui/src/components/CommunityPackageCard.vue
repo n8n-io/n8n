@@ -43,7 +43,7 @@
 							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick" />
+					<n8n-button outline label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
 					<template #content>

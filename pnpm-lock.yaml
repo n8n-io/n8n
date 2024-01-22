@@ -867,6 +867,9 @@ importers:
       vue-boring-avatars:
         specifier: ^1.3.0
         version: 1.3.0(vue@3.3.4)
+      vue-router:
+        specifier: ^4.2.2
+        version: 4.2.2(vue@3.3.4)
       xss:
         specifier: ^1.0.14
         version: 1.0.14
@@ -1063,6 +1066,9 @@ importers:
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
+      email-providers:
+        specifier: ^2.0.1
+        version: 2.0.1
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -14663,6 +14669,11 @@ packages:
       vue: 3.3.4
     transitivePeerDependencies:
       - '@vue/composition-api'
+    dev: false
+
+  /email-providers@2.0.1:
+    resolution: {integrity: sha512-lFWdT7sJilGO0UOO25D3urNH7Np1XTB/7GD/9nGM4YxNqAzkunuJyt9ZyG4cZ+UEGqH/lbK4vczg0B6NtyPflw==}
+    engines: {node: '>=16'}
     dev: false
 
   /emittery@0.13.1:

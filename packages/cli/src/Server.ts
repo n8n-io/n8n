@@ -93,7 +93,7 @@ import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
 import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
-import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 const exec = promisify(callbackExec);
 
@@ -243,7 +243,10 @@ export class Server extends AbstractServer {
 			ExecutionsController,
 		];
 
-		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
+		if (
+			process.env.NODE_ENV !== 'production' &&
+			Container.get(OrchestrationService).isMultiMainSetupEnabled
+		) {
 			const { DebugController } = await import('@/controllers/debug.controller');
 			controllers.push(DebugController);
 		}

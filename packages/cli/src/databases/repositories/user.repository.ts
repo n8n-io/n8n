@@ -10,7 +10,7 @@ export class UserRepository extends Repository<User> {
 		super(User, dataSource.manager);
 	}
 
-	async findManybyIds(userIds: string[]) {
+	async findManyByIds(userIds: string[]) {
 		return await this.find({
 			where: { id: In(userIds) },
 			relations: ['globalRole'],

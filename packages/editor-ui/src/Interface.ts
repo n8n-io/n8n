@@ -1270,7 +1270,6 @@ export interface UIState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sidebarMenuItems: IMenuItem[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
