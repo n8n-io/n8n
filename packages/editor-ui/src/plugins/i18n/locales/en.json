@@ -739,7 +739,7 @@
 	"mainSidebar.showMessage.stopExecution.title": "Execution stopped",
 	"mainSidebar.templates": "Templates",
 	"mainSidebar.workflows": "Workflows",
-	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected mode is active, so no workflows changes are allowed. Change this in Settings, under 'Source Control'",
+	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected instances prevent editing workflows (recommended for production environments). <a target=\"_blank\" href=\"https://docs.n8n.io/source-control-environments/\">More info</a>",
 	"mainSidebar.executions": "All executions",
 	"mainSidebar.workersView": "Workers",
 	"menuActions.duplicate": "Duplicate",
