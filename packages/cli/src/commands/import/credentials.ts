@@ -1,9 +1,10 @@
-import { flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
 import { Cipher } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
-import { Container } from 'typedi';
 import type { EntityManager } from 'typeorm';
+
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -28,15 +29,15 @@ export class ImportCredentialsCommand extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		input: flags.string({
+		help: Flags.help({ char: 'h' }),
+		input: Flags.string({
 			char: 'i',
 			description: 'Input file name or directory if --separate is used',
 		}),
-		separate: flags.boolean({
+		separate: Flags.boolean({
 			description: 'Imports *.json files from directory provided by --input',
 		}),
-		userId: flags.string({
+		userId: Flags.string({
 			description: 'The ID of the user to assign the imported credentials to',
 		}),
 	};
@@ -51,8 +52,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	async run(): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ImportCredentialsCommand);
+		const { flags } = await this.parse(ImportCredentialsCommand);
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
