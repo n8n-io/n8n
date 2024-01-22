@@ -15,7 +15,7 @@ export class WorkflowHistoryManager {
 			clearInterval(this.pruneTimer);
 		}
 
-		this.pruneTimer = setInterval(async () => this.prune(), WORKFLOW_HISTORY_PRUNE_INTERVAL);
+		this.pruneTimer = setInterval(async () => await this.prune(), WORKFLOW_HISTORY_PRUNE_INTERVAL);
 	}
 
 	shutdown() {

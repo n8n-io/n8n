@@ -25,7 +25,7 @@ export async function getSharedWorkflow(
 	user: User,
 	workflowId?: string | undefined,
 ): Promise<SharedWorkflow | null> {
-	return Container.get(SharedWorkflowRepository).findOne({
+	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
 			...(!['owner', 'admin'].includes(user.globalRole.name) && { userId: user.id }),
 			...(workflowId && { workflowId }),
@@ -35,7 +35,7 @@ export async function getSharedWorkflow(
 }
 
 export async function getWorkflowById(id: string): Promise<WorkflowEntity | null> {
-	return Container.get(WorkflowRepository).findOne({
+	return await Container.get(WorkflowRepository).findOne({
 		where: { id },
 	});
 }
@@ -45,7 +45,7 @@ export async function createWorkflow(
 	user: User,
 	role: Role,
 ): Promise<WorkflowEntity> {
-	return Db.transaction(async (transactionManager) => {
+	return await Db.transaction(async (transactionManager) => {
 		const newWorkflow = new WorkflowEntity();
 		Object.assign(newWorkflow, workflow);
 		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
@@ -70,18 +70,18 @@ export async function setWorkflowAsActive(workflow: WorkflowEntity) {
 }
 
 export async function setWorkflowAsInactive(workflow: WorkflowEntity) {
-	return Container.get(WorkflowRepository).update(workflow.id, {
+	return await Container.get(WorkflowRepository).update(workflow.id, {
 		active: false,
 		updatedAt: new Date(),
 	});
 }
 
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
-	return Container.get(WorkflowRepository).remove(workflow);
+	return await Container.get(WorkflowRepository).remove(workflow);
 }
 
 export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return Container.get(WorkflowRepository).update(workflowId, updateData);
+	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

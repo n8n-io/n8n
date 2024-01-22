@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(
@@ -42,7 +42,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions

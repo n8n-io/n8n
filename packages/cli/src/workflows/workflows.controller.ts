@@ -1,22 +1,27 @@
+import { Service } from 'typedi';
 import express from 'express';
 import { v4 as uuid } from 'uuid';
-
 import axios from 'axios';
+
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
+import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
+import type { RoleNames } from '@db/entities/Role';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ListQuery } from '@/requests';
-import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { WorkflowService } from './workflow.service';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
-import Container, { Service } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
@@ -24,20 +29,17 @@ import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { Logger } from '@/Logger';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NamingService } from '@/services/naming.service';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { RoleNames } from '@/databases/entities/Role';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NamingService } from '@/services/naming.service';
+import { UserOnboardingService } from '@/services/userOnboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
 import { WorkflowRequest } from './workflow.request';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { WorkflowExecutionService } from './workflowExecution.service';
+import { WorkflowSharingService } from './workflowSharing.service';
 
 @Service()
 @Authorized()
@@ -53,8 +55,11 @@ export class WorkflowsController {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
+		private readonly userOnboardingService: UserOnboardingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 	) {}
@@ -142,9 +147,12 @@ export class WorkflowsController {
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
 			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
-			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, roles);
+			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
+				req.user,
+				roles,
+			);
 
-			const { workflows: data, count } = await Container.get(WorkflowService).getMany(
+			const { workflows: data, count } = await this.workflowService.getMany(
 				sharedWorkflowIds,
 				req.listQueryOptions,
 			);
@@ -166,7 +174,7 @@ export class WorkflowsController {
 		const onboardingFlowEnabled =
 			!config.getEnv('workflows.onboardingFlowDisabled') &&
 			!req.user.settings?.isOnboarded &&
-			(await isBelowOnboardingThreshold(req.user));
+			(await this.userOnboardingService.isBelowThreshold(req.user));
 
 		return { name, onboardingFlowEnabled };
 	}
@@ -321,7 +329,11 @@ export class WorkflowsController {
 			}
 		}
 
-		return this.workflowService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
+		return await this.workflowExecutionService.executeManually(
+			req.body,
+			req.user,
+			GenericHelpers.getSessionId(req),
+		);
 	}
 
 	@Put('/:workflowId/share')

@@ -150,7 +150,9 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
+const RunDataAi = defineAsyncComponent(
+	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
+);
 
 interface ChatMessage {
 	text: string;

@@ -102,7 +102,7 @@ export class AuthController {
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
 		void this.internalHooks.onUserLoginFailed({
 			user: email,
@@ -150,7 +150,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+		return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 	}
 
 	/**
@@ -187,7 +187,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(

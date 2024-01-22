@@ -90,7 +90,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function testProviderConnection(id: string, data: ExternalSecretsProvider['data']) {
-		return externalSecretsApi.testExternalSecretsProviderConnection(
+		return await externalSecretsApi.testExternalSecretsProviderConnection(
 			rootStore.getRestApiContext,
 			id,
 			data,

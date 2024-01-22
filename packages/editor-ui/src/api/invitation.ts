@@ -19,12 +19,12 @@ export async function inviteUsers(
 	context: IRestApiContext,
 	params: Array<{ email: string; role: InvitableRoleName }>,
 ) {
-	return makeRestApiRequest<IInviteResponse[]>(context, 'POST', '/invitations', params);
+	return await makeRestApiRequest<IInviteResponse[]>(context, 'POST', '/invitations', params);
 }
 
 export async function acceptInvitation(context: IRestApiContext, params: AcceptInvitationParams) {
 	const { inviteeId, ...props } = params;
-	return makeRestApiRequest<CurrentUserResponse>(
+	return await makeRestApiRequest<CurrentUserResponse>(
 		context,
 		'POST',
 		`/invitations/${params.inviteeId}/accept`,

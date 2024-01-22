@@ -23,7 +23,6 @@ const properties: INodeProperties[] = [
 		name: 'content',
 		type: 'string',
 		default: '',
-		required: true,
 		description: 'The content of the message (up to 2000 characters)',
 		placeholder: 'e.g. My message',
 		typeOptions: {

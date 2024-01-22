@@ -49,7 +49,7 @@ export class PostHogClient {
 
 		// cannot use local evaluation because that requires PostHog personal api key with org-wide
 		// https://github.com/PostHog/posthog/issues/4849
-		return this.postHog.getAllFlags(fullId, {
+		return await this.postHog.getAllFlags(fullId, {
 			personProperties: {
 				created_at_timestamp: user.createdAt.getTime().toString(),
 			},

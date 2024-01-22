@@ -53,7 +53,7 @@ export class UserManagementMailer {
 	async verifyConnection(): Promise<void> {
 		if (!this.mailer) throw new ApplicationError('No mailer configured.');
 
-		return this.mailer.verifyConnection();
+		return await this.mailer.verifyConnection();
 	}
 
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {

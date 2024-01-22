@@ -4,7 +4,7 @@ import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { ExecutionRequest } from '@/requests';
+import { ExecutionRequest } from '@/executions/execution.request';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -49,12 +49,12 @@ export class WorkflowStatisticsController {
 
 	@Get('/:id/counts/')
 	async getCounts(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<number>> {
-		return this.getData(req.params.id, 'count', 0);
+		return await this.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
 	async getTimes(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<Date | null>> {
-		return this.getData(req.params.id, 'latestEvent', null);
+		return await this.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')

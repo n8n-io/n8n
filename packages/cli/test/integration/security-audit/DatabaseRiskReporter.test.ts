@@ -55,7 +55,7 @@ test('should report expressions in queries', async () => {
 			],
 		};
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
@@ -110,7 +110,7 @@ test('should report expressions in query params', async () => {
 			],
 		};
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
@@ -162,7 +162,7 @@ test('should report unused query params', async () => {
 			],
 		};
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);

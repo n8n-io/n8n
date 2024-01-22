@@ -2,7 +2,6 @@ import type express from 'express';
 import { Container } from 'typedi';
 import { replaceCircularReferences } from 'n8n-workflow';
 
-import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
@@ -26,14 +25,16 @@ export = {
 			const { id } = req.params;
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, false);
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
 			await Container.get(ExecutionRepository).hardDelete({
-				workflowId: execution.workflowId as string,
+				workflowId: execution.workflowId,
 				executionId: execution.id,
 			});
 
@@ -57,7 +58,9 @@ export = {
 			const { includeData = false } = req.query;
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, includeData);
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
 
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
@@ -105,13 +108,15 @@ export = {
 				excludedExecutionsIds: runningExecutionsIds,
 			};
 
-			const executions = await getExecutions(filters);
+			const executions =
+				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 
-			const count = await getExecutionsCount(filters);
+			const count =
+				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
 			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
 				user_id: req.user.id,

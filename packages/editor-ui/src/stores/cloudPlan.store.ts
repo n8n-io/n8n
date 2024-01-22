@@ -79,7 +79,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getAutoLoginCode = async (): Promise<{ code: string }> => {
-		return getAdminPanelLoginCode(rootStore.getRestApiContext);
+		return await getAdminPanelLoginCode(rootStore.getRestApiContext);
 	};
 
 	const getOwnerCurrentPlan = async () => {
