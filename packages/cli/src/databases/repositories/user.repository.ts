@@ -84,4 +84,14 @@ export class UserRepository extends Repository<User> {
 
 		return findManyOptions;
 	}
+
+	/**
+	 * Get emails of users who have completed setup, by user IDs.
+	 */
+	async getEmailsByIds(userIds: string[]) {
+		return await this.find({
+			select: ['email'],
+			where: { id: In(userIds), password: Not(IsNull()) },
+		});
+	}
 }

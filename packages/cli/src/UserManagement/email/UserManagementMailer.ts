@@ -9,7 +9,7 @@ import { NodeMailer } from './NodeMailer';
 import { ApplicationError } from 'n8n-workflow';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
-type TemplateName = 'invite' | 'passwordReset';
+type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
 
 const templates: Partial<Record<TemplateName, Template>> = {};
 
@@ -79,6 +79,52 @@ export class UserManagementMailer {
 
 		// If mailer does not exist it means mail has been disabled.
 		// No error, just say no email was sent.
+		return result ?? { emailSent: false };
+	}
+
+	async notifyWorkflowShared({
+		recipientEmails,
+		workflowName,
+		baseUrl,
+		workflowId,
+		sharerFirstName,
+	}: {
+		recipientEmails: string[];
+		workflowName: string;
+		baseUrl: string;
+		workflowId: string;
+		sharerFirstName: string;
+	}) {
+		const populateTemplate = await getTemplate('workflowShared', 'workflowShared.html');
+
+		const result = await this.mailer?.sendMail({
+			emailRecipients: recipientEmails,
+			subject: `${sharerFirstName} has shared an n8n workflow with you`,
+			body: populateTemplate({ workflowName, workflowUrl: `${baseUrl}/workflow/${workflowId}` }),
+		});
+
+		return result ?? { emailSent: false };
+	}
+
+	async notifyCredentialsShared({
+		sharerFirstName,
+		credentialsName,
+		recipientEmails,
+		baseUrl,
+	}: {
+		sharerFirstName: string;
+		credentialsName: string;
+		recipientEmails: string[];
+		baseUrl: string;
+	}) {
+		const populateTemplate = await getTemplate('credentialsShared', 'credentialsShared.html');
+
+		const result = await this.mailer?.sendMail({
+			emailRecipients: recipientEmails,
+			subject: `${sharerFirstName} has shared an n8n credential with you`,
+			body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
+		});
+
 		return result ?? { emailSent: false };
 	}
 }
