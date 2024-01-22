@@ -161,7 +161,7 @@ const properties: INodeProperties[] = [
 							editorLanguage: 'javaScript',
 						},
 						default:
-							'//Specify function body that matches tool\'s Parameters\nfunction getCurrentWeather(location, unit = "fahrenheit") {\n  if (location === \'tokyo\') {\n    return { location: "Tokyo", temperature: "10", unit: "celsius" };\n  } else {\n    return { location, temperature: "unknown" };\n  }\n}\n\n//Return your function\nreturn getCurrentWeather;',
+							'(parameters) => {\n  const {location, unit} = parameters;\n  if (location === \'tokyo\') {\n    return { location: "Tokyo", temperature: "10", unit };\n  } else {\n    return { location, temperature: "unknown" };\n  }\n}',
 						noDataExpression: true,
 						displayOptions: {
 							show: {
