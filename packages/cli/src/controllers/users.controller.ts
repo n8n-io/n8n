@@ -172,7 +172,7 @@ export class UsersController {
 
 		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
 
-		const users = await this.userRepository.findManybyIds(userIds);
+		const users = await this.userRepository.findManyByIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(
