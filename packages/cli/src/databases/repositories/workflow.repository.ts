@@ -213,6 +213,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.update({ active: true }, { active: false });
 	}
 
+	async activateAll() {
+		return await this.update({ active: false }, { active: true });
+	}
+
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ active: activeState });
 	}
