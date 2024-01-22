@@ -650,7 +650,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
-		console.log('[findIfShared] executionId', executionId);
 		return await this.findSingleExecution(executionId, {
 			where: {
 				workflowId: In(sharedWorkflowIds),
