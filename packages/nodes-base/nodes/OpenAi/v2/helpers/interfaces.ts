@@ -47,3 +47,11 @@ export type ThreadMessage = {
 	run_id: string;
 	metadata: IDataObject;
 };
+
+export type ExternalApiCallOptions = {
+	callExternalApi: boolean;
+	url: string;
+	method: string;
+	requestOptions: IDataObject;
+	sendParametersIn: string;
+};

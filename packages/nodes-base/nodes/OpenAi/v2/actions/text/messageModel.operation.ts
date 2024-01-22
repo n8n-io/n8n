@@ -3,11 +3,12 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	IDataObject,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
-import type { ChatCompletion } from '../../helpers/interfaces';
+import type { ChatCompletion, ExternalApiCallOptions } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -132,6 +133,24 @@ const properties: INodeProperties[] = [
 						validateType: 'object',
 					},
 					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Function',
+								value: 'function',
+								description: 'Provide a javaScript function to be called',
+							},
+							{
+								name: 'External API Call',
+								value: 'api',
+								description: 'Call an external API to get the response',
+							},
+						],
+						default: 'function',
+					},
+					{
 						displayName: 'Function Code (JavaScript)',
 						name: 'jsCode',
 						type: 'string',
@@ -144,6 +163,89 @@ const properties: INodeProperties[] = [
 						default:
 							'//Specify function body that matches tool\'s Parameters\nfunction getCurrentWeather(location, unit = "fahrenheit") {\n  if (location === \'tokyo\') {\n    return { location: "Tokyo", temperature: "10", unit: "celsius" };\n  } else {\n    return { location, temperature: "unknown" };\n  }\n}\n\n//Return your function\nreturn getCurrentWeather;',
 						noDataExpression: true,
+						displayOptions: {
+							show: {
+								type: ['function'],
+							},
+						},
+					},
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. https://wikipedia.org/api',
+						validateType: 'url',
+						displayOptions: {
+							show: {
+								type: ['api'],
+							},
+						},
+					},
+					{
+						displayName: 'Method',
+						name: 'method',
+						type: 'options',
+						options: [
+							{
+								name: 'GET',
+								value: 'GET',
+							},
+							{
+								name: 'POST',
+								value: 'POST',
+							},
+							{
+								name: 'PUT',
+								value: 'PUT',
+							},
+							{
+								name: 'PATCH',
+								value: 'PATCH',
+							},
+						],
+						default: 'GET',
+						displayOptions: {
+							show: {
+								type: ['api'],
+							},
+						},
+					},
+					{
+						displayName: 'Request Options',
+						name: 'requestOptions',
+						type: 'json',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '{\n  "body": {},\n  "qs": {},\n  "headers": {}\n}',
+						validateType: 'object',
+						displayOptions: {
+							show: {
+								type: ['api'],
+							},
+						},
+					},
+					{
+						displayName: 'Send Parameters in...',
+						name: 'sendParametersIn',
+						type: 'options',
+						options: [
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Query String',
+								value: 'qs',
+							},
+						],
+						default: 'qs',
+						displayOptions: {
+							show: {
+								type: ['api'],
+							},
+						},
 					},
 				],
 			},
@@ -264,11 +366,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	let tools;
-	const toolFunctions: IDataObject = {};
+	const toolFunctions: { [key: string]: string | ExternalApiCallOptions } = {};
 	if (toolsValues.length) {
 		tools = [];
+
 		for (const tool of toolsValues) {
 			toolFunctions[tool.name as string] = tool.jsCode as string;
+
+			if (tool.type === 'api') {
+				toolFunctions[tool.name as string] = {
+					callExternalApi: true,
+					url: tool.uri as string,
+					method: tool.method as string,
+					requestOptions:
+						typeof tool.requestOptions === 'string'
+							? jsonParse(tool.requestOptions)
+							: (tool.requestOptions as IDataObject),
+					sendParametersIn: tool.sendParametersIn as string,
+				};
+			} else {
+				toolFunctions[tool.name as string] = tool.jsCode as string;
+			}
 
 			const toolProperties: IDataObject =
 				typeof tool.properties === 'string'
@@ -309,10 +427,51 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		for (const toolCall of toolCalls) {
 			const functionName = toolCall.function.name;
-			const functionToCall = toolFunctions[functionName];
 			const functionArgs = toolCall.function.arguments;
 
-			let functionResponse = this.evaluateExpression(`{{(${functionToCall})(${functionArgs})}}`, i);
+			const functionToCall = toolFunctions[functionName];
+
+			let functionResponse;
+			if (typeof functionToCall === 'object' && functionToCall.callExternalApi) {
+				const { url, method, sendParametersIn } = functionToCall;
+				const requestOptions =
+					typeof functionToCall.requestOptions === 'string'
+						? jsonParse<IDataObject>(functionToCall.requestOptions)
+						: functionToCall.requestOptions;
+
+				const externalRequestOptions: IHttpRequestOptions = {
+					url,
+					method: method as 'GET' | 'POST',
+				};
+
+				if (requestOptions.headers && Object.keys(requestOptions.headers).length) {
+					externalRequestOptions.headers = requestOptions.headers as IDataObject;
+				}
+
+				if (requestOptions.qs && Object.keys(requestOptions.qs).length) {
+					externalRequestOptions.qs = requestOptions.qs as IDataObject;
+				}
+
+				if (requestOptions.body && Object.keys(requestOptions.body).length) {
+					externalRequestOptions.body = requestOptions.body as IDataObject;
+				}
+
+				if (sendParametersIn === 'body') {
+					externalRequestOptions.body = {
+						...((externalRequestOptions.body as IDataObject) || {}),
+						...jsonParse<IDataObject>(functionArgs),
+					};
+				} else {
+					externalRequestOptions.qs = {
+						...((externalRequestOptions.qs as IDataObject) || {}),
+						...jsonParse<IDataObject>(functionArgs),
+					};
+				}
+
+				functionResponse = await this.helpers.httpRequest(externalRequestOptions);
+			} else {
+				functionResponse = this.evaluateExpression(`{{(${functionToCall})(${functionArgs})}}`, i);
+			}
 
 			if (typeof functionResponse === 'object') {
 				functionResponse = JSON.stringify(functionResponse);
