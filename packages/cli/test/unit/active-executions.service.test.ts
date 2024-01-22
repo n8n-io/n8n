@@ -36,7 +36,7 @@ describe('ActiveExecutionsService', () => {
 			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
 		});
 
-		it('should call `waitTracker.stopExecution()` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+		it('should call `WaitTracker.stopExecution()` if `ActiveExecutions.stopExecution()` found no execution', async () => {
 			activeExecutions.stopExecution.mockResolvedValue(undefined);
 			const execution = mock<IExecutionBase>({ id: '123' });
 
@@ -55,7 +55,7 @@ describe('ActiveExecutionsService', () => {
 			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
 		});
 
-		it('should call `waitTracker.stopExecution` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+		it('should call `WaitTracker.stopExecution` if `ActiveExecutions.stopExecution()` found no execution', async () => {
 			activeExecutions.stopExecution.mockResolvedValue(undefined);
 			const execution = mock<IExecutionBase>({ id: '123' });
 
