@@ -1,0 +1,111 @@
+{
+  "name": "My workflow 35",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6666-9999-77777",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        880,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "teamId": {
+          "__rl": true,
+          "value": "e25bae35-7bcc-4fb7-b4f2-0d5caef251fd",
+          "mode": "list",
+          "cachedResultName": "Retail"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "19:dff84a49e5124cc89dff0192c621ea0f@thread.tacv2",
+          "mode": "list",
+          "cachedResultName": "General",
+          "cachedResultUrl": "https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/Retail?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=False"
+        }
+      },
+      "id": "6666-5555-77777",
+      "name": "Microsoft Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        380
+      ],
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "6isd5ytvA0qV78eK",
+          "name": "Microsoft Teams account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#teams('e25bae35-7bcc-4fb7-b4f2-0d5caef251fd')/channels/$entity",
+          "id": "19:dff84a49e5124cc89dff0192c621ea0f@thread.tacv2",
+          "createdDateTime": "2022-03-26T17:16:51Z",
+          "displayName": "General",
+          "description": "Description of Retail",
+          "isFavoriteByDefault": null,
+          "email": "Retail@5w1hb7.onmicrosoft.com",
+          "tenantId": "tenantId-111-222-333",
+          "webUrl": "https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/General?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=True",
+          "membershipType": "standard"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Teams": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "021e8e46-fd28-4dfb-bd94-b288a8541940",
+  "id": "i3NYGF0LXV4qDFV9",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}
