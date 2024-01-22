@@ -9,7 +9,6 @@ import type { OpenAiType } from './node.type';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
-	let responseData;
 
 	const items = this.getInputData();
 	const resource = this.getNodeParameter<OpenAiType>('resource', 0);
@@ -20,27 +19,30 @@ export async function router(this: IExecuteFunctions) {
 		operation,
 	} as OpenAiType;
 
+	let execute;
+	switch (openAiTypeData.resource) {
+		case 'audio':
+			execute = audio[openAiTypeData.operation].execute;
+			break;
+		case 'file':
+			execute = file[openAiTypeData.operation].execute;
+			break;
+		case 'image':
+			execute = image[openAiTypeData.operation].execute;
+			break;
+		case 'text':
+			execute = text[openAiTypeData.operation].execute;
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		try {
-			switch (openAiTypeData.resource) {
-				case 'audio':
-					responseData = await audio[openAiTypeData.operation].execute.call(this, i);
-					break;
-				case 'file':
-					responseData = await file[openAiTypeData.operation].execute.call(this, i);
-					break;
-				case 'image':
-					responseData = await image[openAiTypeData.operation].execute.call(this, i);
-					break;
-				case 'text':
-					responseData = await text[openAiTypeData.operation].execute.call(this, i);
-					break;
-				default:
-					throw new NodeOperationError(
-						this.getNode(),
-						`The operation "${operation}" is not supported!`,
-					);
-			}
+			const responseData = await execute.call(this, i);
 
 			returnData.push(...responseData);
 		} catch (error) {
