@@ -4,10 +4,10 @@ import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { ExecutionRequest } from '@/executions/execution.types';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { StatisticsRequest } from './workflow-statistics.types';
 
 interface WorkflowStatisticsData<T> {
 	productionSuccess: T;
@@ -29,7 +29,7 @@ export class WorkflowStatisticsController {
 	 */
 	// TODO: move this into a new decorator `@ValidateWorkflowPermission`
 	@Middleware()
-	async hasWorkflowAccess(req: ExecutionRequest.GetOne, res: Response, next: NextFunction) {
+	async hasWorkflowAccess(req: StatisticsRequest.GetOne, res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
 
@@ -48,17 +48,17 @@ export class WorkflowStatisticsController {
 	}
 
 	@Get('/:id/counts/')
-	async getCounts(req: ExecutionRequest.GetOne): Promise<WorkflowStatisticsData<number>> {
+	async getCounts(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<number>> {
 		return await this.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
-	async getTimes(req: ExecutionRequest.GetOne): Promise<WorkflowStatisticsData<Date | null>> {
+	async getTimes(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<Date | null>> {
 		return await this.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')
-	async getDataLoaded(req: ExecutionRequest.GetOne): Promise<IWorkflowStatisticsDataLoaded> {
+	async getDataLoaded(req: StatisticsRequest.GetOne): Promise<IWorkflowStatisticsDataLoaded> {
 		// Get flag
 		const workflowId = req.params.id;
 
