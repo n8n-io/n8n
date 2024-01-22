@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import config from '@/config';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
@@ -14,7 +14,7 @@ import { Push } from '@/push';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { mockInstance } from '../../shared/mocking';
 
-const os = Container.get(SingleMainSetup);
+const os = Container.get(OrchestrationService);
 const handler = Container.get(OrchestrationHandlerMainService);
 mockInstance(ActiveWorkflowRunner);
 

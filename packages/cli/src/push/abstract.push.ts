@@ -3,7 +3,7 @@ import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import type { Logger } from '@/Logger';
 import type { User } from '@db/entities/User';
-import type { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import type { OrchestrationService } from '@/services/orchestration.service';
 
 /**
  * Abstract class for two-way push communication.
@@ -21,7 +21,7 @@ export abstract class AbstractPush<T> extends EventEmitter {
 
 	constructor(
 		protected readonly logger: Logger,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 	) {
 		super();
 	}
@@ -84,10 +84,10 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		 * the webhook. If so, the handler process commands the creator process to
 		 * relay the former's execution lifecyle events to the creator's frontend.
 		 */
-		if (this.multiMainSetup.isEnabled && !this.hasSessionId(sessionId)) {
+		if (this.orchestrationService.isMultiMainSetupEnabled && !this.hasSessionId(sessionId)) {
 			const payload = { type, args: data, sessionId };
 
-			void this.multiMainSetup.publish('relay-execution-lifecycle-event', payload);
+			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
 
 			return;
 		}
