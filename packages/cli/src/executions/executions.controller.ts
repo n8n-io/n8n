@@ -38,6 +38,32 @@ export class ExecutionsController {
 		return await this.executionService.findMany(req, workflowIds);
 	}
 
+	@Get('/active')
+	async getActive(req: ExecutionRequest.GetManyActive) {
+		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		return this.isQueueMode
+			? await this.activeExecutionService.findManyInQueueMode(filter, workflowIds)
+			: await this.activeExecutionService.findManyInRegularMode(filter, workflowIds);
+	}
+
+	@Post('/active/:id/stop')
+	async stop(req: ExecutionRequest.Stop) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const execution = await this.activeExecutionService.findOne(req.params.id, workflowIds);
+
+		if (!execution) throw new NotFoundError('Execution not found');
+
+		return this.isQueueMode
+			? await this.activeExecutionService.stopOneInQueueMode(execution)
+			: await this.activeExecutionService.stopOneInRegularMode(execution);
+	}
+
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
@@ -65,31 +91,5 @@ export class ExecutionsController {
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
 		return await this.executionService.delete(req, workflowIds);
-	}
-
-	@Get('/active')
-	async getActive(req: ExecutionRequest.GetManyActive) {
-		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
-
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
-
-		return this.isQueueMode
-			? await this.activeExecutionService.findManyInQueueMode(filter, workflowIds)
-			: await this.activeExecutionService.findManyInRegularMode(filter, workflowIds);
-	}
-
-	@Post('/active/:id/stop')
-	async stop(req: ExecutionRequest.Stop) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
-
-		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
-
-		const execution = await this.activeExecutionService.findOne(req.params.id, workflowIds);
-
-		if (!execution) throw new NotFoundError('Execution not found');
-
-		return this.isQueueMode
-			? await this.activeExecutionService.stopOneInQueueMode(execution)
-			: await this.activeExecutionService.stopOneInRegularMode(execution);
 	}
 }

@@ -158,7 +158,9 @@ export class ExecutionService {
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
 
+		console.log('req.params', req.params);
 		const { id: executionId } = req.params;
+		console.log('[findOne] executionId', executionId);
 		const execution = await this.executionRepository.findIfShared(executionId, sharedWorkflowIds);
 
 		if (!execution) {

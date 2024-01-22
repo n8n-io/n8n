@@ -81,6 +81,7 @@ export class ActiveExecutionService {
 			.map((execution) => execution.id);
 
 		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+
 		const activeProductionExecutionIds = activeJobs.map((job) => job.data.executionId);
 
 		const activeExecutionIds = activeProductionExecutionIds.concat(activeManualExecutionIds);

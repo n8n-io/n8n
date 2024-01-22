@@ -1,58 +1,119 @@
 import { mock } from 'jest-mock-extended';
-import { In, Not } from 'typeorm';
-import type { User } from '@db/entities/User';
+import { ActiveExecutionService } from '@/executions/active-execution.service';
 import type { ExecutionRepository } from '@db/repositories/execution.repository';
 import type { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveExecutionService } from '@/executions/active-execution.service';
-import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import type { Job, Queue } from '@/Queue';
+import type { IExecutionBase, IExecutionsCurrentSummary } from '@/Interfaces';
+import type { WaitTracker } from '@/WaitTracker';
 
 describe('ActiveExecutionsService', () => {
-	const user = mock<User>();
 	const queue = mock<Queue>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const executionRepository = mock<ExecutionRepository>();
-	const workflowSharingService = mock<WorkflowSharingService>();
-	const service = new ActiveExecutionService(
+	const waitTracker = mock<WaitTracker>();
+
+	const jobIds = ['j1', 'j2'];
+	const jobs = jobIds.map((executionId) => mock<Job>({ data: { executionId } }));
+
+	const activeExecutionService = new ActiveExecutionService(
 		mock(),
 		queue,
 		activeExecutions,
 		executionRepository,
-		mock(),
-		workflowSharingService,
+		waitTracker,
 	);
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
-	describe('getQueueModeExecutions', () => {
-		it('should return a list of currently running queue mode executions when there are active and waiting jobs in the queue', async () => {
-			const jobs = [{ executionId: '1' }, { executionId: '2' }, { executionId: '3' }].map(
-				({ executionId }, index) => {
-					return {
-						id: index,
-						data: { executionId, loadStaticData: false },
-					} as Job;
-				},
-			);
+	describe('stopOneInRegularMode()', () => {
+		it('should call `ActiveExecutions.stopExecution()`', async () => {
+			const execution = mock<IExecutionBase>({ id: '123' });
+
+			await activeExecutionService.stopOneInRegularMode(execution);
+
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+		});
+
+		it('should call `waitTracker.stopExecution()` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+			activeExecutions.stopExecution.mockResolvedValue(undefined);
+			const execution = mock<IExecutionBase>({ id: '123' });
+
+			await activeExecutionService.stopOneInRegularMode(execution);
+
+			expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+		});
+	});
+
+	describe('stopOneInQueueMode()', () => {
+		it('should call `ActiveExecutions.stopExecution()`', async () => {
+			const execution = mock<IExecutionBase>({ id: '123' });
+
+			await activeExecutionService.stopOneInRegularMode(execution);
+
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+		});
+
+		it('should call `waitTracker.stopExecution` if `ActiveExecutions.stopExecution()` found no execution', async () => {
+			activeExecutions.stopExecution.mockResolvedValue(undefined);
+			const execution = mock<IExecutionBase>({ id: '123' });
+
+			await activeExecutionService.stopOneInRegularMode(execution);
+
+			expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+		});
+	});
+
+	describe('findManyInQueueMode()', () => {
+		it('should query for active jobs, waiting jobs, and in-memory executions', async () => {
+			const sharedWorkflowIds = ['123'];
+			const filter = {};
+			const executionIds = ['e1', 'e2'];
+			const summaries = executionIds.map((e) => mock<IExecutionsCurrentSummary>({ id: e }));
+
+			activeExecutions.getActiveExecutions.mockReturnValue(summaries);
 			queue.getJobs.mockResolvedValue(jobs);
-			activeExecutions.getActiveExecutions.mockReturnValue([]);
-			workflowSharingService.getSharedWorkflowIds.calledWith(user).mockResolvedValue(['w1', 'w2']);
 			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+			executionRepository.getManyActive.mockResolvedValue([]);
 
-			const result = await service.findManyInQueueMode(user, {});
+			await activeExecutionService.findManyInQueueMode(filter, sharedWorkflowIds);
 
-			expect(result).toEqual([]);
 			expect(queue.getJobs).toHaveBeenCalledWith(['active', 'waiting']);
-			expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user);
-			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith({
-				select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
-				order: { id: 'DESC' },
-				where: {
-					id: In(['1', '2', '3']),
-					status: Not(In(['finished', 'stopped', 'failed', 'crashed'])),
-					workflowId: In(['w1', 'w2']),
-				},
-			});
+
+			expect(executionRepository.getManyActive).toHaveBeenCalledWith(
+				jobIds.concat(executionIds),
+				sharedWorkflowIds,
+				filter,
+			);
+		});
+	});
+
+	describe('findManyInRegularMode()', () => {
+		it('should return summaries of in-memory executions', async () => {
+			const sharedWorkflowIds = ['123'];
+			const filter = {};
+			const executionIds = ['e1', 'e2'];
+			const summaries = executionIds.map((e) =>
+				mock<IExecutionsCurrentSummary>({ id: e, workflowId: '123', status: 'running' }),
+			);
+
+			activeExecutions.getActiveExecutions.mockReturnValue(summaries);
+
+			const result = await activeExecutionService.findManyInRegularMode(filter, sharedWorkflowIds);
+
+			expect(result).toEqual([
+				expect.objectContaining({
+					id: 'e1',
+					workflowId: '123',
+					status: 'running',
+				}),
+				expect.objectContaining({
+					id: 'e2',
+					workflowId: '123',
+					status: 'running',
+				}),
+			]);
 		});
 	});
 });
