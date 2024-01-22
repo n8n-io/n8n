@@ -212,11 +212,17 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 
 .dropArea {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
+	flex-wrap: wrap;
 	justify-content: center;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-xs);
 	color: var(--color-text-dark);
-	gap: 0.5ch;
+	gap: 1ch;
+	min-height: 24px;
+
+	> span {
+		white-space: nowrap;
+	}
 }
 
 .or {
@@ -245,12 +251,12 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 		flex-direction: column;
 		align-items: center;
 		gap: var(--spacing-3xs);
-		min-height: 15vh;
+		min-height: 20vh;
 	}
 
 	.droppable .dropArea {
 		flex-direction: row;
-		gap: 0.5ch;
+		gap: 1ch;
 	}
 
 	.content {

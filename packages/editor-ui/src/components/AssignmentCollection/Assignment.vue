@@ -3,9 +3,12 @@ import type { IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import type { AssignmentValue, INodeProperties, NodePropertyTypes } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
+import { resolveParameter } from '@/mixins/workflowHelpers';
+import { isObject } from '@jsplumb/util';
 
 interface Props {
 	path: string;
@@ -41,6 +44,7 @@ const nameParameter = computed<INodeProperties>(() => ({
 	name: '',
 	displayName: '',
 	default: '',
+	requiresDataPath: 'single',
 	placeholder: 'name',
 	type: 'string',
 }));
@@ -52,6 +56,27 @@ const valueParameter = computed<INodeProperties>(() => ({
 	placeholder: 'value',
 	type: assignmentTypeToNodePropType((assignment.value.type as NodePropertyTypes) ?? 'string'),
 }));
+
+const hint = computed(() => {
+	if (!assignment.value.value.startsWith('=')) {
+		return '';
+	}
+
+	try {
+		const resolvedValue = resolveParameter(assignment.value.value) as unknown;
+
+		if (isObject(resolvedValue)) {
+			return JSON.stringify(resolvedValue);
+		}
+		if (typeof resolvedValue === 'boolean' || typeof resolvedValue === 'number') {
+			return resolvedValue.toString();
+		}
+
+		return resolvedValue as string;
+	} catch (error) {
+		return '';
+	}
+});
 
 const onAssignmentNameChange = (update: IUpdateInformation): void => {
 	assignment.value.name = update.value as string;
@@ -92,51 +117,55 @@ const onBlur = (): void => {
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
-		<InputTriple middle-width="100px">
-			<template #left>
-				<ParameterInputFull
-					:key="nameParameter.type"
-					display-options
-					hide-label
-					hide-hint
-					is-single-line
-					:is-read-only="isReadOnly"
-					:parameter="nameParameter"
-					:value="assignment.name"
-					:path="`${path}.name`"
-					data-test-id="assignment-name"
-					@update="onAssignmentNameChange"
-					@blur="onBlur"
-				/>
-			</template>
-			<template v-if="!hideType" #middle>
-				<TypeSelect
-					:class="$style.select"
-					:model-value="assignment.type ?? 'string'"
-					:is-read-only="isReadOnly"
-					@update:model-value="onAssignmentTypeChange"
-				>
-				</TypeSelect>
-			</template>
-			<template #right="{ breakpoint }">
-				<ParameterInputFull
-					:key="valueParameter.type"
-					display-options
-					hide-label
-					hide-hint
-					is-single-line
-					is-assignment
-					:is-read-only="isReadOnly"
-					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
-					:parameter="valueParameter"
-					:value="assignment.value"
-					:path="`${path}.value`"
-					data-test-id="assignment-value"
-					@update="onAssignmentValueChange"
-					@blur="onBlur"
-				/>
-			</template>
-		</InputTriple>
+
+		<div :class="$style.inputs">
+			<InputTriple middle-width="100px">
+				<template #left>
+					<ParameterInputFull
+						:key="nameParameter.type"
+						display-options
+						hide-label
+						hide-hint
+						is-single-line
+						:is-read-only="isReadOnly"
+						:parameter="nameParameter"
+						:value="assignment.name"
+						:path="`${path}.name`"
+						data-test-id="assignment-name"
+						@update="onAssignmentNameChange"
+						@blur="onBlur"
+					/>
+				</template>
+				<template v-if="!hideType" #middle>
+					<TypeSelect
+						:class="$style.select"
+						:model-value="assignment.type ?? 'string'"
+						:is-read-only="isReadOnly"
+						@update:model-value="onAssignmentTypeChange"
+					>
+					</TypeSelect>
+				</template>
+				<template #right="{ breakpoint }">
+					<ParameterInputFull
+						:key="valueParameter.type"
+						display-options
+						hide-label
+						hide-hint
+						is-single-line
+						is-assignment
+						:is-read-only="isReadOnly"
+						:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
+						:parameter="valueParameter"
+						:value="assignment.value"
+						:path="`${path}.value`"
+						data-test-id="assignment-value"
+						@update="onAssignmentValueChange"
+						@blur="onBlur"
+					/>
+				</template>
+			</InputTriple>
+			<ParameterInputHint :class="$style.hint" :hint="hint" single-line />
+		</div>
 
 		<div :class="$style.status">
 			<ParameterIssues v-if="issues.length > 0" :issues="issues" />
@@ -160,6 +189,20 @@ const onBlur = (): void => {
 			opacity: 1;
 		}
 	}
+}
+
+.inputs {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+
+	> div {
+		flex-grow: 1;
+	}
+}
+
+.hint {
+	padding-left: var(--spacing-4xs);
 }
 
 .remove {

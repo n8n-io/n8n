@@ -41,6 +41,7 @@ const onDrop = (value: string) => {
 
 .droppable {
 	border-color: var(--color-ndv-droppable-parameter);
+	border-width: 1.5px;
 	background: var(--color-ndv-droppable-parameter-background);
 }
 
