@@ -365,9 +365,7 @@ export class Start extends BaseCommand {
 	async initPruning() {
 		this.pruningService = Container.get(PruningService);
 
-		if (this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
-		}
+		this.pruningService.startPruning();
 
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
@@ -380,13 +378,13 @@ export class Start extends BaseCommand {
 		orchestrationService.multiMainSetup
 			.addListener('leadershipChange', async () => {
 				if (orchestrationService.isLeader) {
-					if (this.pruningService.isPruningEnabled()) this.pruningService.startPruning();
+					this.pruningService.startPruning();
 				} else {
-					if (this.pruningService.isPruningEnabled()) this.pruningService.stopPruning();
+					this.pruningService.stopPruning();
 				}
 			})
 			.addListener('leadershipVacant', () => {
-				if (this.pruningService.isPruningEnabled()) this.pruningService.stopPruning();
+				this.pruningService.stopPruning();
 			});
 	}
 
