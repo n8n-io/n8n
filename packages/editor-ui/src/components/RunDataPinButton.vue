@@ -12,7 +12,6 @@ type Props = {
 	};
 	dataPinningDocsUrl: string;
 	pinnedData: ReturnType<typeof usePinnedData>;
-	isTooltipVisible?: boolean;
 	disabled: boolean;
 };
 
@@ -28,7 +27,7 @@ const visible = computed(() =>
 </script>
 
 <template>
-	<n8n-tooltip v-show="true" placement="bottom-end" :visible="visible">
+	<n8n-tooltip placement="bottom-end" :visible="visible">
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
