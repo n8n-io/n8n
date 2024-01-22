@@ -32,12 +32,14 @@ function simplifyMessages(messages: BaseMessage[]) {
 	return transformedMessages;
 }
 
+// This node is deprecated. Use MemoryManager instead.
 export class MemoryChatRetriever implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
 		group: ['transform'],
+		hidden: true,
 		version: 1,
 		description: 'Retrieve chat messages from memory and use them in the workflow',
 		defaults: {
@@ -70,6 +72,12 @@ export class MemoryChatRetriever implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
+				displayName: "This node is deprecated. Use 'Chat Memory Manager' node instead.",
+				type: 'notice',
+				default: '',
+				name: 'deprecatedNotice',
+			},
+			{
 				displayName: 'Simplify Output',
 				name: 'simplifyOutput',
 				type: 'boolean',
@@ -90,7 +98,7 @@ export class MemoryChatRetriever implements INodeType {
 		const messages = await memory?.chatHistory.getMessages();
 
 		if (simplifyOutput && messages) {
-			return this.prepareOutputData(simplifyMessages(messages));
+			return await this.prepareOutputData(simplifyMessages(messages));
 		}
 
 		const serializedMessages =
@@ -99,6 +107,6 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
-		return this.prepareOutputData(serializedMessages);
+		return await this.prepareOutputData(serializedMessages);
 	}
 }

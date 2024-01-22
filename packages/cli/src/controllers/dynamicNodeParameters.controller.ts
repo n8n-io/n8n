@@ -57,7 +57,7 @@ export class DynamicNodeParametersController {
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
 
 		if (methodName) {
-			return this.service.getOptionsViaMethodName(
+			return await this.service.getOptionsViaMethodName(
 				methodName,
 				path,
 				additionalData,
@@ -68,7 +68,7 @@ export class DynamicNodeParametersController {
 		}
 
 		if (loadOptions) {
-			return this.service.getOptionsViaLoadOptions(
+			return await this.service.getOptionsViaLoadOptions(
 				jsonParse(loadOptions),
 				additionalData,
 				nodeTypeAndVersion,
@@ -87,7 +87,7 @@ export class DynamicNodeParametersController {
 		const { path, methodName, filter, paginationToken } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceLocatorResults(
+		return await this.service.getResourceLocatorResults(
 			methodName,
 			path,
 			additionalData,
@@ -106,7 +106,7 @@ export class DynamicNodeParametersController {
 		const { path, methodName } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceMappingFields(
+		return await this.service.getResourceMappingFields(
 			methodName,
 			path,
 			additionalData,

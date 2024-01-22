@@ -10,7 +10,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import * as losslessJSON from 'lossless-json';
 
@@ -139,7 +139,7 @@ export async function handleGetAll(
 		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
-	return goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
+	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {

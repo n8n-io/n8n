@@ -102,7 +102,7 @@ EECredentialsController.post(
 			mergedCredentials.data = EECredentials.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return EECredentials.test(req.user, mergedCredentials);
+		return await EECredentials.test(req.user, mergedCredentials);
 	}),
 );
 

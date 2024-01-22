@@ -11,6 +11,15 @@ export class WorkflowStaticDataService {
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
+	/** Returns the static data of workflow */
+	async getStaticDataById(workflowId: string) {
+		const workflowData = await this.workflowRepository.findOne({
+			select: ['staticData'],
+			where: { id: workflowId },
+		});
+		return workflowData?.staticData ?? {};
+	}
+
 	/** Saves the static data if it changed */
 	async saveStaticData(workflow: Workflow): Promise<void> {
 		if (workflow.staticData.__dataChanged === true) {

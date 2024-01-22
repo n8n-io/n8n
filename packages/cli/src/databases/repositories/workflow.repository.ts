@@ -26,14 +26,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async get(where: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
-		return this.findOne({
+		return await this.findOne({
 			where,
 			relations: options?.relations,
 		});
 	}
 
 	async getAllActive() {
-		return this.find({
+		return await this.find({
 			where: { active: true },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		});
@@ -48,7 +48,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async findById(workflowId: string) {
-		return this.findOne({
+		return await this.findOne({
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		});
@@ -61,7 +61,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
 
-		return this.find(options);
+		return await this.find(options);
 	}
 
 	async getActiveTriggerCount() {
@@ -88,7 +88,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		workflowId: string,
 		userIds: string[],
 	): Promise<DeleteResult> {
-		return transaction.delete(SharedWorkflow, {
+		return await transaction.delete(SharedWorkflow, {
 			workflowId,
 			userId: Not(In(userIds)),
 		});
@@ -96,7 +96,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
 		const qb = this.createQueryBuilder('workflow');
-		return qb
+		return await qb
 			.update()
 			.set({
 				triggerCount,
@@ -185,35 +185,35 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async findStartingWith(workflowName: string): Promise<Array<{ name: string }>> {
-		return this.find({
+		return await this.find({
 			select: ['name'],
 			where: { name: Like(`${workflowName}%`) },
 		});
 	}
 
 	async findIn(workflowIds: string[]) {
-		return this.find({
+		return await this.find({
 			select: ['id', 'name'],
 			where: { id: In(workflowIds) },
 		});
 	}
 
 	async findWebhookBasedActiveWorkflows() {
-		return this.createQueryBuilder('workflow')
+		return await (this.createQueryBuilder('workflow')
 			.select('DISTINCT workflow.id, workflow.name')
 			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
-			.execute() as Promise<Array<{ id: string; name: string }>>;
+			.execute() as Promise<Array<{ id: string; name: string }>>);
 	}
 
 	async updateActiveState(workflowId: string, newState: boolean) {
-		return this.update({ id: workflowId }, { active: newState });
+		return await this.update({ id: workflowId }, { active: newState });
 	}
 
 	async deactivateAll() {
-		return this.update({ active: true }, { active: false });
+		return await this.update({ active: true }, { active: false });
 	}
 
 	async findByActiveState(activeState: boolean) {
-		return this.findBy({ active: activeState });
+		return await this.findBy({ active: activeState });
 	}
 }

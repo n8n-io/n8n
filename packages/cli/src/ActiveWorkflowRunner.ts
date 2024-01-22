@@ -35,7 +35,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ExecutionsService } from './executions/executions.service';
+import { ExecutionService } from './executions/execution.service';
 import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
@@ -74,7 +74,7 @@ export class ActiveWorkflowRunner {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly multiMainSetup: MultiMainSetup,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly executionService: ExecutionsService,
+		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
 	) {}
@@ -89,7 +89,7 @@ export class ActiveWorkflowRunner {
 	}
 
 	async getAllWorkflowActivationErrors() {
-		return this.activationErrorsService.getAll();
+		return await this.activationErrorsService.getAll();
 	}
 
 	/**
@@ -305,7 +305,7 @@ export class ActiveWorkflowRunner {
 		};
 
 		const workflowRunner = new WorkflowRunner();
-		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		return await workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	/**

@@ -4,15 +4,18 @@ import {
 	DataSource,
 	In,
 	IsNull,
+	LessThan,
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
+	Raw,
 	Repository,
 } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
 	FindOneOptions,
+	FindOperator,
 	FindOptionsWhere,
 	SelectQueryBuilder,
 } from 'typeorm';
@@ -32,7 +35,6 @@ import type {
 } from '@/Interfaces';
 
 import config from '@/config';
-import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
 import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
@@ -229,7 +231,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { connections, nodes, name, settings } = workflowData ?? {};
 		await this.executionDataRepository.insert({
 			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData?.id },
+			workflowData: { connections, nodes, name, settings, id: workflowData.id },
 			data: stringify(data),
 		});
 		return String(executionId);
@@ -249,7 +251,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
+		return await Promise.all([
+			this.delete(ids.executionId),
+			this.binaryDataService.deleteMany([ids]),
+		]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {
@@ -436,7 +441,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getIdsSince(date: Date) {
-		return this.find({
+		return await this.find({
 			select: ['id'],
 			where: {
 				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
@@ -472,7 +477,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const [timeBasedWhere, countBasedWhere] = toPrune;
 
-		return this.createQueryBuilder()
+		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
 			.where({
@@ -514,7 +519,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async deleteByIds(executionIds: string[]) {
-		return this.delete({ id: In(executionIds) });
+		return await this.delete({ id: In(executionIds) });
 	}
 
 	async getWaitingExecutions() {
@@ -532,7 +537,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
 		}
 
-		return this.findMultipleExecutions({
+		return await this.findMultipleExecutions({
 			select: ['id', 'waitTill'],
 			where,
 			order: {
@@ -540,4 +545,130 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		});
 	}
+
+	async getExecutionsCountForPublicApi(data: {
+		limit: number;
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedWorkflowIds?: string[];
+	}): Promise<number> {
+		const executions = await this.count({
+			where: {
+				...(data.lastId && { id: LessThan(data.lastId) }),
+				...(data.status && { ...this.getStatusCondition(data.status) }),
+				...(data.workflowIds && { workflowId: In(data.workflowIds) }),
+				...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
+			},
+			take: data.limit,
+		});
+
+		return executions;
+	}
+
+	private getStatusCondition(status: ExecutionStatus) {
+		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
+
+		if (status === 'success') {
+			condition.status = 'success';
+		} else if (status === 'waiting') {
+			condition.status = 'waiting';
+		} else if (status === 'error') {
+			condition.status = In(['error', 'crashed', 'failed']);
+		}
+
+		return condition;
+	}
+
+	async getExecutionsForPublicApi(params: {
+		limit: number;
+		includeData?: boolean;
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedExecutionsIds?: string[];
+	}): Promise<IExecutionBase[]> {
+		let where: FindOptionsWhere<IExecutionFlattedDb> = {};
+
+		if (params.lastId && params.excludedExecutionsIds?.length) {
+			where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
+				lastId: params.lastId,
+				excludedExecutionsIds: params.excludedExecutionsIds,
+			});
+		} else if (params.lastId) {
+			where.id = LessThan(params.lastId);
+		} else if (params.excludedExecutionsIds?.length) {
+			where.id = Not(In(params.excludedExecutionsIds));
+		}
+
+		if (params.status) {
+			where = { ...where, ...this.getStatusCondition(params.status) };
+		}
+
+		if (params.workflowIds) {
+			where = { ...where, workflowId: In(params.workflowIds) };
+		}
+
+		return await this.findMultipleExecutions(
+			{
+				select: [
+					'id',
+					'mode',
+					'retryOf',
+					'retrySuccessId',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'waitTill',
+					'finished',
+				],
+				where,
+				order: { id: 'DESC' },
+				take: params.limit,
+				relations: ['executionData'],
+			},
+			{
+				includeData: params.includeData,
+				unflattenData: true,
+			},
+		);
+	}
+
+	async getExecutionInWorkflowsForPublicApi(
+		id: string,
+		workflowIds: string[],
+		includeData?: boolean,
+	): Promise<IExecutionBase | undefined> {
+		return await this.findSingleExecution(id, {
+			where: {
+				workflowId: In(workflowIds),
+			},
+			includeData,
+			unflattenData: true,
+		});
+	}
+
+	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: {
+				workflowId: In(sharedWorkflowIds),
+			},
+			includeData: true,
+			unflattenData: false,
+		});
+	}
+}
+
+export interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string> | string;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	waitTill?: FindOperator<any> | boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
 }

@@ -5,11 +5,11 @@ export async function getSingleton(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 ): Promise<any> {
-	return cockpitApiRequest.call(this, 'get', `/singletons/get/${resourceName}`);
+	return await cockpitApiRequest.call(this, 'get', `/singletons/get/${resourceName}`);
 }
 
 export async function getAllSingletonNames(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', '/singletons/listSingletons', {});
+	return await cockpitApiRequest.call(this, 'GET', '/singletons/listSingletons', {});
 }

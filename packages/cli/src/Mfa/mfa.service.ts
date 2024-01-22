@@ -25,7 +25,7 @@ export class MfaService {
 			secret,
 			recoveryCodes,
 		);
-		return this.userRepository.update(userId, {
+		return await this.userRepository.update(userId, {
 			mfaSecret: encryptedSecret,
 			mfaRecoveryCodes: encryptedRecoveryCodes,
 		});
