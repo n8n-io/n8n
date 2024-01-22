@@ -81,5 +81,10 @@ export type ProjectScopes = GetScopeLevel<'project'>;
 export type ResourceScopes = GetScopeLevel<'resource'>;
 export type ScopeLevels = GlobalScopes & (ProjectScopes | (ProjectScopes & ResourceScopes));
 
+export type MaskLevel = 'sharing';
+export type GetMaskLevel<T extends MaskLevel> = Record<T, Scope[]>;
+export type SharingMasks = GetMaskLevel<'sharing'>;
+export type MaskLevels = SharingMasks;
+
 export type ScopeMode = 'oneOf' | 'allOf';
 export type ScopeOptions = { mode: ScopeMode };

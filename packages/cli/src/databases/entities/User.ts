@@ -140,6 +140,7 @@ export class User extends WithTimestamps implements IUser {
 			{
 				global: this.globalScopes,
 			},
+			undefined,
 			scopeOptions,
 		);
 	}

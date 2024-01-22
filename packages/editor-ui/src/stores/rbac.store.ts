@@ -92,6 +92,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 						? scopesByResourceId.value[context.resourceType][context.resourceId]
 						: [],
 			},
+			undefined,
 			options,
 		);
 	}
