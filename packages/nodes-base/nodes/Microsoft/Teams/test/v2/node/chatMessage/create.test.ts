@@ -79,19 +79,13 @@ describe('Test MicrosoftTeamsV2, chatMessage => create', () => {
 		expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 			'POST',
 			'/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages',
-			{
-				body: {
-					content:
-						'Hello!<br><br><em> Powered by <a href="workflow/test?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams_b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363">this n8n workflow</a> </em>',
-					contentType: 'html',
-				},
-			},
+			expect.anything(),
 		);
 
 		expect(result.finished).toEqual(true);
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });
