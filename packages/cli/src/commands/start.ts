@@ -247,6 +247,12 @@ export class Start extends BaseCommand {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});
+
+		orchestrationService.multiMainSetup.addListener('leadershipVacant', async () => {
+			this.logger.debug('[Leadership vacant] Removing all trigger- and poller-based workflows...');
+
+			await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+		});
 	}
 
 	async run() {
@@ -373,6 +379,10 @@ export class Start extends BaseCommand {
 			} else {
 				if (this.pruningService.isPruningEnabled()) this.pruningService.stopPruning();
 			}
+		});
+
+		orchestrationService.multiMainSetup.addListener('leadershipVacant', () => {
+			if (this.pruningService.isPruningEnabled()) this.pruningService.stopPruning();
 		});
 	}
 
