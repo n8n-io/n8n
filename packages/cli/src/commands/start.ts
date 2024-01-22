@@ -22,10 +22,9 @@ import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import type { IConfig } from '@oclif/config';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { UrlService } from '@/services/url.service';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -104,10 +103,10 @@ export class Start extends BaseCommand {
 
 			await this.externalHooks?.run('n8n.stop', []);
 
-			if (Container.get(MultiMainSetup).isEnabled) {
+			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
-				await Container.get(MultiMainSetup).shutdown();
+				await Container.get(OrchestrationService).shutdown();
 			}
 
 			await Container.get(InternalHooks).onN8nStop();
@@ -216,43 +215,48 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		// queue mode in single-main scenario
-
-		if (!config.getEnv('multiMainSetup.enabled')) {
-			await Container.get(SingleMainSetup).init();
-			await Container.get(OrchestrationHandlerMainService).init();
-			return;
-		}
-
-		// queue mode in multi-main scenario
-
-		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
+		const orchestrationService = Container.get(OrchestrationService);
+
+		await orchestrationService.init();
+
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		const multiMainSetup = Container.get(MultiMainSetup);
+		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
-		await multiMainSetup.init();
+		orchestrationService.multiMainSetup
+			.addListener('leadershipChange', async () => {
+				if (orchestrationService.isLeader) {
+					this.logger.debug('[Leadership change] Clearing all activation errors...');
 
-		multiMainSetup.on('leadershipChange', async () => {
-			if (multiMainSetup.isLeader) {
-				this.logger.debug('[Leadership change] Clearing all activation errors...');
+					await this.activeWorkflowRunner.clearAllActivationErrors();
 
-				await this.activeWorkflowRunner.clearAllActivationErrors();
+					this.logger.debug(
+						'[Leadership change] Adding all trigger- and poller-based workflows...',
+					);
 
-				this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
+					await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+				} else {
+					this.logger.debug(
+						'[Leadership change] Removing all trigger- and poller-based workflows...',
+					);
 
-				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
-			} else {
+					await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				}
+			})
+			.addListener('leadershipVacant', async () => {
 				this.logger.debug(
-					'[Leadership change] Removing all trigger- and poller-based workflows...',
+					'[Leadership vacant] Removing all trigger- and poller-based workflows...',
 				);
 
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
-			}
-		});
+			});
 	}
 
 	async run() {
@@ -361,27 +365,27 @@ export class Start extends BaseCommand {
 	async initPruning() {
 		this.pruningService = Container.get(PruningService);
 
-		if (this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
-		}
+		this.pruningService.startPruning();
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			const multiMainSetup = Container.get(MultiMainSetup);
+		if (config.getEnv('executions.mode') !== 'queue') return;
 
-			await multiMainSetup.init();
+		const orchestrationService = Container.get(OrchestrationService);
 
-			multiMainSetup.on('leadershipChange', async () => {
-				if (multiMainSetup.isLeader) {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.startPruning();
-					}
+		await orchestrationService.init();
+
+		if (!orchestrationService.isMultiMainSetupEnabled) return;
+
+		orchestrationService.multiMainSetup
+			.addListener('leadershipChange', async () => {
+				if (orchestrationService.isLeader) {
+					this.pruningService.startPruning();
 				} else {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.stopPruning();
-					}
+					this.pruningService.stopPruning();
 				}
+			})
+			.addListener('leadershipVacant', () => {
+				this.pruningService.stopPruning();
 			});
-		}
 	}
 
 	async catch(error: Error) {
