@@ -77,5 +77,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	if (options.type) {
 		body.membershipType = options.type as string;
 	}
-	return microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
+	return await microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
 }

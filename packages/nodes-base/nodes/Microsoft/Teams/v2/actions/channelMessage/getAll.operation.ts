@@ -23,7 +23,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
-		return microsoftApiRequestAllItems.call(
+		return await microsoftApiRequestAllItems.call(
 			this,
 			'value',
 			'GET',

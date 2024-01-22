@@ -105,5 +105,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		delete body.assignedTo;
 	}
 
-	return microsoftApiRequest.call(this, 'POST', '/v1.0/planner/tasks', body);
+	return await microsoftApiRequest.call(this, 'POST', '/v1.0/planner/tasks', body);
 }

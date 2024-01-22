@@ -22,7 +22,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
-		return microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/chats/${chatId}/messages`);
+		return await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			`/v1.0/chats/${chatId}/messages`,
+		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		const responseData = await microsoftApiRequestAllItems.call(

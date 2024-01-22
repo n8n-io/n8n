@@ -103,14 +103,14 @@ export async function execute(
 
 	if (options.makeReply) {
 		const replyToId = options.makeReply as string;
-		return microsoftApiRequest.call(
+		return await microsoftApiRequest.call(
 			this,
 			'POST',
 			`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
 			body,
 		);
 	} else {
-		return microsoftApiRequest.call(
+		return await microsoftApiRequest.call(
 			this,
 			'POST',
 			`/beta/teams/${teamId}/channels/${channelId}/messages`,

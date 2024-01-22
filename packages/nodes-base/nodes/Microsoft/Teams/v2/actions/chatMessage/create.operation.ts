@@ -87,5 +87,5 @@ export async function execute(
 		instanceId,
 	);
 
-	return microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+	return await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
 }

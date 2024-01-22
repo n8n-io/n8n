@@ -21,7 +21,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);
 	if (returnAll) {
-		return microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/teams/${teamId}/channels`);
+		return await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			`/v1.0/teams/${teamId}/channels`,
+		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		const responseData = await microsoftApiRequestAllItems.call(

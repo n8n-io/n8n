@@ -26,16 +26,17 @@ const properties: INodeProperties[] = [
 				displayName: 'Assigned To',
 				name: 'assignedTo',
 				description: 'Who the task should be assigned to',
+				hint: "Select 'Team' from options first",
 				required: false,
 				typeOptions: {
-					loadOptionsDependsOn: ['updateFields.groupId.balue'],
+					loadOptionsDependsOn: ['updateFields.groupId.value'],
 				},
 			},
 			{
 				...bucketRLC,
 				required: false,
 				typeOptions: {
-					loadOptionsDependsOn: ['updateFields.planId.balue'],
+					loadOptionsDependsOn: ['updateFields.planId.value'],
 				},
 			},
 			{
@@ -70,8 +71,9 @@ const properties: INodeProperties[] = [
 			{
 				...planRLC,
 				required: false,
+				hint: "Select 'Team' from options first",
 				typeOptions: {
-					loadOptionsDependsOn: ['updateFields.groupId.balue'],
+					loadOptionsDependsOn: ['updateFields.groupId.value'],
 				},
 			},
 			{
@@ -102,7 +104,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const updateFields = this.getNodeParameter('updateFields', i);
 
 	for (const key of Object.keys(updateFields)) {
-		if (updateFields.groupId) {
+		if (key === 'groupId') {
 			// tasks are assigned to a plan and bucket, group is used for filtering
 			delete updateFields.groupId;
 			continue;

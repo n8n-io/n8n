@@ -55,7 +55,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
 			.id;
 		if (returnAll) {
-			return microsoftApiRequestAllItems.call(
+			return await microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
@@ -76,7 +76,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
 		const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 		if (returnAll) {
-			return microsoftApiRequestAllItems.call(
+			return await microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
