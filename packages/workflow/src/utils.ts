@@ -107,7 +107,7 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 

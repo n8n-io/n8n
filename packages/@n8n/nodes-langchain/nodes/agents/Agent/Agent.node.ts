@@ -252,15 +252,15 @@ export class Agent implements INodeType {
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
 
 		if (agentType === 'conversationalAgent') {
-			return conversationalAgentExecute.call(this);
+			return await conversationalAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
-			return openAiFunctionsAgentExecute.call(this);
+			return await openAiFunctionsAgentExecute.call(this);
 		} else if (agentType === 'reActAgent') {
-			return reActAgentAgentExecute.call(this);
+			return await reActAgentAgentExecute.call(this);
 		} else if (agentType === 'sqlAgent') {
-			return sqlAgentAgentExecute.call(this);
+			return await sqlAgentAgentExecute.call(this);
 		} else if (agentType === 'planAndExecuteAgent') {
-			return planAndExecuteAgentExecute.call(this);
+			return await planAndExecuteAgentExecute.call(this);
 		}
 
 		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);

@@ -17,25 +17,25 @@ import type { User } from '@db/entities/User';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { chooseRandomly } from './shared/random';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance } from '../shared/mocking';
 import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { ExecutionsService } from '@/executions/executions.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
 mockInstance(SecretsHelper);
-mockInstance(ExecutionsService);
+mockInstance(ExecutionService);
 mockInstance(WorkflowService);
 
 const webhookService = mockInstance(WebhookService);
-const multiMainSetup = mockInstance(MultiMainSetup, {
-	isEnabled: false,
+const orchestrationService = mockInstance(OrchestrationService, {
+	isMultiMainSetupEnabled: false,
 	isLeader: false,
 	isFollower: false,
 });
@@ -266,8 +266,8 @@ describe('add()', () => {
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', true);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', true);
 
 					const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 					const addTriggersAndPollersSpy = jest.spyOn(
@@ -290,8 +290,8 @@ describe('add()', () => {
 				test('should add triggers and pollers only', async () => {
 					const mode = 'leadershipChange';
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', true);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', true);
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
@@ -318,8 +318,8 @@ describe('add()', () => {
 				test('should not add webhooks, triggers or pollers', async () => {
 					const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', false);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', false);
 
 					const workflow = await createWorkflow({ active: true }, owner);
 

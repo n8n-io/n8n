@@ -74,27 +74,27 @@ export class Queue {
 	}
 
 	async add(jobData: JobData, jobOptions: object): Promise<Job> {
-		return this.jobQueue.add(jobData, jobOptions);
+		return await this.jobQueue.add(jobData, jobOptions);
 	}
 
 	async getJob(jobId: JobId): Promise<Job | null> {
-		return this.jobQueue.getJob(jobId);
+		return await this.jobQueue.getJob(jobId);
 	}
 
 	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
-		return this.jobQueue.getJobs(jobTypes);
+		return await this.jobQueue.getJobs(jobTypes);
 	}
 
 	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
-		return this.jobQueue.process(concurrency, fn);
+		return await this.jobQueue.process(concurrency, fn);
 	}
 
 	async ping(): Promise<string> {
-		return this.jobQueue.client.ping();
+		return await this.jobQueue.client.ping();
 	}
 
 	async pause(isLocal?: boolean): Promise<void> {
-		return this.jobQueue.pause(isLocal);
+		return await this.jobQueue.pause(isLocal);
 	}
 
 	getBullObjectInstance(): JobQueue {

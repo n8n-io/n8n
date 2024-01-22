@@ -43,7 +43,7 @@ export async function customerIoApiRequest(
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {

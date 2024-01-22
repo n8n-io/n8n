@@ -530,7 +530,7 @@ export class Redis implements INodeType {
 
 				let item: INodeExecutionData;
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					item = { json: {} };
+					item = { json: {}, pairedItem: { item: itemIndex } };
 
 					if (operation === 'delete') {
 						const keyDelete = this.getNodeParameter('key', itemIndex) as string;

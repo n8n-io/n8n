@@ -11,7 +11,7 @@ export class RoleRepository extends Repository<Role> {
 	}
 
 	async findRole(scope: RoleScopes, name: RoleNames) {
-		return this.findOne({ where: { scope, name } });
+		return await this.findOne({ where: { scope, name } });
 	}
 
 	/**
@@ -34,7 +34,7 @@ export class RoleRepository extends Repository<Role> {
 	}
 
 	async getIdsInScopeWorkflowByNames(roleNames: RoleNames[]) {
-		return this.find({
+		return await this.find({
 			select: ['id'],
 			where: { name: In(roleNames), scope: 'workflow' },
 		}).then((role) => role.map(({ id }) => id));

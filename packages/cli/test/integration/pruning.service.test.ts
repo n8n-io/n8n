@@ -47,7 +47,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	async function findAllExecutions() {
-		return Container.get(ExecutionRepository).find({
+		return await Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
 			withDeleted: true,
 		});

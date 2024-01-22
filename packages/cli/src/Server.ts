@@ -101,7 +101,7 @@ import { CollaborationService } from './collaboration/collaboration.service';
 import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
-import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowSharingService } from './workflows/workflowSharing.service';
 
 const exec = promisify(callbackExec);
@@ -209,8 +209,9 @@ export class Server extends AbstractServer {
 				order: { createdAt: 'ASC' },
 				where: {},
 			})
-			.then(async (workflow) =>
-				Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+			.then(
+				async (workflow) =>
+					await Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 			);
 
 		Container.get(CollaborationService);
@@ -251,7 +252,10 @@ export class Server extends AbstractServer {
 			ExecutionsController,
 		];
 
-		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
+		if (
+			process.env.NODE_ENV !== 'production' &&
+			Container.get(OrchestrationService).isMultiMainSetupEnabled
+		) {
 			const { DebugController } = await import('@/controllers/debug.controller');
 			controllers.push(DebugController);
 		}
@@ -277,6 +281,11 @@ export class Server extends AbstractServer {
 
 		if (isMfaFeatureEnabled()) {
 			controllers.push(MFAController);
+		}
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			const { CtaController } = await import('@/controllers/cta.controller');
+			controllers.push(CtaController);
 		}
 
 		controllers.forEach((controller) => registerController(app, controller));

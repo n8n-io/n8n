@@ -178,7 +178,7 @@ export class ActiveExecutions {
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
-		return this.getPostExecutePromise(executionId);
+		return await this.getPostExecutePromise(executionId);
 	}
 
 	/**
@@ -197,7 +197,7 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
-		return waitPromise.promise();
+		return await waitPromise.promise();
 	}
 
 	/**
