@@ -1,11 +1,16 @@
 import { Service } from 'typedi';
 import type { AbstractEventMessage } from '@/eventbus/EventMessageClasses/AbstractEventMessage';
-import { OrchestrationService } from '../../orchestration.base.service';
+import { OrchestrationService } from '../../orchestration.service';
+import config from '@/config';
 
 @Service()
 export class OrchestrationWorkerService extends OrchestrationService {
 	sanityCheck(): boolean {
-		return this.isInitialized && this.isQueueMode && this.isWorkerInstance;
+		return (
+			this.isInitialized &&
+			config.get('executions.mode') === 'queue' &&
+			config.get('generic.instanceType') === 'worker'
+		);
 	}
 
 	async publishToEventLog(message: AbstractEventMessage) {

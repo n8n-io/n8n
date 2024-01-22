@@ -667,6 +667,7 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 
 export interface JwtToken {
 	token: string;
+	/** The amount of seconds after which the JWT will expire. **/
 	expiresIn: number;
 }
 
