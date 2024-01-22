@@ -1,7 +1,7 @@
-import { flags } from '@oclif/command';
-import { BaseCommand } from '../BaseCommand';
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import Container from 'typedi';
+import { BaseCommand } from '../BaseCommand';
 
 export class UpdateWorkflowCommand extends BaseCommand {
 	static description = 'Update workflows';
@@ -12,21 +12,20 @@ export class UpdateWorkflowCommand extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		active: flags.string({
+		help: Flags.help({ char: 'h' }),
+		active: Flags.string({
 			description: 'Active state the workflow/s should be set to',
 		}),
-		all: flags.boolean({
+		all: Flags.boolean({
 			description: 'Operate on all workflows',
 		}),
-		id: flags.string({
+		id: Flags.string({
 			description: 'The ID of the workflow to operate on',
 		}),
 	};
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(UpdateWorkflowCommand);
+		const { flags } = await this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
 			console.info('Either option "--all" or "--id" have to be set!');

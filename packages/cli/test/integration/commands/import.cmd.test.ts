@@ -1,4 +1,4 @@
-import * as Config from '@oclif/config';
+import { Config } from '@oclif/core';
 
 import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
@@ -7,6 +7,8 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { getAllWorkflows } from '../shared/db/workflows';
+
+const oclifConfig = new Config({ root: __dirname });
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -23,12 +25,11 @@ afterAll(async () => {
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
-	const config: Config.IConfig = new Config.Config({ root: __dirname });
 	const before = await getAllWorkflows();
 	expect(before.length).toBe(0);
 	const importer = new ImportWorkflowsCommand(
 		['--separate', '--input=./test/integration/commands/importWorkflows/separate'],
-		config,
+		oclifConfig,
 	);
 	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
@@ -50,12 +51,11 @@ test('import:workflow should import active workflow and deactivate it', async ()
 });
 
 test('import:workflow should import active workflow from combined file and deactivate it', async () => {
-	const config: Config.IConfig = new Config.Config({ root: __dirname });
 	const before = await getAllWorkflows();
 	expect(before.length).toBe(0);
 	const importer = new ImportWorkflowsCommand(
 		['--input=./test/integration/commands/importWorkflows/combined/combined.json'],
-		config,
+		oclifConfig,
 	);
 	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
