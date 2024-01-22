@@ -1,15 +1,15 @@
-.fade-move,
-.fade-enter-active,
-.fade-leave-active {
-	transition: all 1s cubic-bezier(0.55, 0, 0.1, 1);
+.executions-list-move,
+.executions-list-enter-active,
+.executions-list-leave-active {
+	transition: all $executions-list-animation-duration cubic-bezier(0.55, 0, 0.1, 1);
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.executions-list-enter-from,
+.executions-list-leave-to {
 	opacity: 0;
 	transform: scaleY(0.01) translate(-100px, 0);
 }
 
-.fade-leave-active {
+.executions-list-leave-active {
 	position: absolute;
 }

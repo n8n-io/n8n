@@ -40,12 +40,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		const data = Object.values(executionsById.value);
 
 		data.sort((a, b) => {
-			if (a.finished === undefined) {
-				return -1;
-			}
-			if (b.finished === undefined) {
-				return 1;
-			}
 			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
 		});
 
@@ -57,12 +51,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		const data = Object.values(runningExecutionsById.value);
 
 		data.sort((a, b) => {
-			if (a.finished === undefined) {
-				return -1;
-			}
-			if (b.finished === undefined) {
-				return 1;
-			}
 			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
 		});
 

@@ -4,7 +4,7 @@
 			<div :class="$style.execListHeader">
 				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
-					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
+					<n8n-loading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
 						v-else
 						:model-value="executionsStore.autoRefresh"
@@ -15,7 +15,7 @@
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
 					<ExecutionFilter
-						v-show="!isMounting"
+						v-show="isMounted"
 						:workflows="workflows"
 						@filter-changed="onFilterChanged"
 					/>
@@ -36,7 +36,7 @@
 				@update:model-value="handleCheckAllExistingChange"
 			/>
 
-			<div v-if="isMounting">
+			<div v-if="!isMounted">
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
@@ -63,7 +63,7 @@
 						<th></th>
 					</tr>
 				</thead>
-				<TransitionGroup tag="tbody" name="fade">
+				<TransitionGroup tag="tbody" name="executions-list">
 					<ExecutionsGlobalListItem
 						v-for="execution in executionsStore.filteredExecutions"
 						:key="execution.id"
@@ -72,7 +72,7 @@
 						:selected="selectedItems[execution.id] || allExistingSelected"
 						@stop="stopExecution"
 						@delete="deleteExecution"
-						@select="selectExecution"
+						@select="toggleSelectExecution"
 						@retry-saved="retrySavedExecution"
 						@retry-original="retryOriginalExecution"
 					/>
@@ -80,7 +80,7 @@
 			</table>
 
 			<div
-				v-if="!executionsStore.filteredExecutions.length && !isMounting && !executionsStore.loading"
+				v-if="!executionsStore.filteredExecutions.length && isMounted && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
@@ -103,7 +103,7 @@
 				/>
 			</div>
 			<div
-				v-else-if="!isMounting && !executionsStore.loading"
+				v-else-if="isMounted && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-all-loaded"
 			>
@@ -111,15 +111,15 @@
 			</div>
 		</div>
 		<div
-			v-if="numSelected > 0"
+			v-if="selectedCount > 0"
 			:class="$style.selectionOptions"
 			data-test-id="selected-executions-info"
 		>
 			<span>
 				{{
 					i18n.baseText('executionsList.selected', {
-						adjustToNumber: numSelected,
-						interpolate: { numSelected: `${numSelected}` },
+						adjustToNumber: selectedCount,
+						interpolate: { count: `${selectedCount}` },
 					})
 				}}
 			</span>
@@ -150,7 +150,7 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -184,20 +184,10 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			isMounting: true,
-			finishedExecutions: [] as IExecutionsSummary[],
-			finishedExecutionsCount: 0,
-			finishedExecutionsCountEstimated: false,
-
+			isMounted: false,
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
-
-			filter: {} as ExecutionFilterType,
-
 			selectedItems: {} as { [key: string]: boolean },
-
-			workflows: [] as IWorkflowShortResponse[],
 		};
 	},
 	mounted() {
@@ -220,7 +210,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore, useExecutionsStore),
-		numSelected(): number {
+		selectedCount(): number {
 			if (this.allExistingSelected) {
 				return this.executionsStore.executionsCount;
 			}
@@ -229,6 +219,15 @@ export default defineComponent({
 		},
 		pageTitle() {
 			return this.i18n.baseText('executionsList.workflowExecutions');
+		},
+		workflows(): IWorkflowDb[] {
+			return [
+				{
+					id: 'all',
+					name: this.i18n.baseText('executionsList.allWorkflows'),
+				} as IWorkflowDb,
+				...this.workflowsStore.allWorkflows,
+			];
 		},
 	},
 	methods: {
@@ -256,12 +255,11 @@ export default defineComponent({
 				this.selectAllVisibleExecutions();
 			}
 		},
-		selectExecution(execution: IExecutionsSummary) {
+		toggleSelectExecution(execution: IExecutionsSummary) {
 			const executionId = execution.id;
 			if (this.selectedItems[executionId]) {
-				const { [executionId]: removedSelectedItem, ...remainingSelectedItems } =
-					this.selectedItems;
-				this.selectedItems = remainingSelectedItems;
+				const { [executionId]: removedSelectedItem, ...rest } = this.selectedItems;
+				this.selectedItems = rest;
 			} else {
 				this.selectedItems = {
 					...this.selectedItems,
@@ -273,11 +271,10 @@ export default defineComponent({
 			this.allExistingSelected =
 				Object.keys(this.selectedItems).length === this.executionsStore.executionsCount;
 		},
-		// @TODO
 		async handleDeleteSelected() {
 			const deleteExecutions = await this.confirm(
 				this.i18n.baseText('executionsList.confirmMessage.message', {
-					interpolate: { numSelected: this.numSelected.toString() },
+					interpolate: { count: this.selectedCount.toString() },
 				}),
 				this.i18n.baseText('executionsList.confirmMessage.headline'),
 				{
@@ -324,7 +321,7 @@ export default defineComponent({
 			this.executionsStore.setFilters(filters);
 			await this.refreshData();
 			this.handleClearSelection();
-			this.isMounting = false;
+			this.isMounted = true;
 		},
 		getExecutionWorkflowName(execution: IExecutionsSummary): string {
 			return (
@@ -374,26 +371,20 @@ export default defineComponent({
 
 			this.adjustSelectionAfterMoreItemsLoaded();
 		},
+		selectAllVisibleExecutions() {
+			this.executionsStore.filteredExecutions.forEach((execution: IExecutionsSummary) => {
+				this.selectedItems[execution.id] = true;
+			});
+		},
+		adjustSelectionAfterMoreItemsLoaded() {
+			if (this.allExistingSelected) {
+				this.allVisibleSelected = true;
+				this.selectAllVisibleExecutions();
+			}
+		},
 		async loadWorkflows() {
 			try {
-				const workflows =
-					(await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
-				workflows.sort((a, b) => {
-					if (a.name.toLowerCase() < b.name.toLowerCase()) {
-						return -1;
-					}
-					if (a.name.toLowerCase() > b.name.toLowerCase()) {
-						return 1;
-					}
-					return 0;
-				});
-
-				workflows.unshift({
-					id: 'all',
-					name: this.i18n.baseText('executionsList.allWorkflows'),
-				} as IWorkflowShortResponse);
-
-				this.workflows = workflows;
+				await this.workflowsStore.fetchAllWorkflows();
 			} catch (error) {
 				this.showError(error, this.i18n.baseText('executionsList.showError.loadWorkflows.title'));
 			}
@@ -461,25 +452,14 @@ export default defineComponent({
 				await this.executionsStore.deleteExecutions({ ids: [execution.id] });
 
 				if (this.allVisibleSelected) {
-					this.selectedItems = {};
-					this.selectAllVisibleExecutions();
+					const { [execution.id]: _, ...rest } = this.selectedItems;
+					this.selectedItems = rest;
 				}
 			} catch (error) {
 				this.showError(
 					error,
 					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
-			}
-		},
-		selectAllVisibleExecutions() {
-			this.executionsStore.filteredExecutions.forEach((execution: IExecutionsSummary) => {
-				this.selectedItems = { ...this.selectedItems, [execution.id]: true };
-			});
-		},
-		adjustSelectionAfterMoreItemsLoaded() {
-			if (this.allExistingSelected) {
-				this.allVisibleSelected = true;
-				this.selectAllVisibleExecutions();
 			}
 		},
 		onDocumentVisibilityChange() {
@@ -584,7 +564,6 @@ export default defineComponent({
 	td {
 		height: 100%;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-table-row-background);
 
 		&:not(:first-child, :nth-last-child(-n + 3)) {
 			width: 100%;

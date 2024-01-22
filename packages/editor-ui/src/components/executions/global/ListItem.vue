@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
+import { onMounted, PropType } from 'vue';
 import { ref, computed, useCssModule } from 'vue';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
@@ -30,6 +30,7 @@ const style = useCssModule();
 const i18n = useI18n();
 const router = useRouter();
 
+const showMountingAnimation = ref(false);
 const isStopping = ref(false);
 
 const isRunning = computed(() => {
@@ -52,6 +53,14 @@ const isExecutionRetriable = computed(() => {
 		props.execution.retrySuccessId === undefined &&
 		!props.execution.waitTill
 	);
+});
+
+const classes = computed(() => {
+	return {
+		[style.executionListItem]: true,
+		[style.mounting]: showMountingAnimation.value,
+		[style[props.execution.status ?? '']]: !!props.execution.status,
+	};
 });
 
 const formattedStartedAtDate = computed(() => {
@@ -123,13 +132,16 @@ const statusTextTranslationPath = computed(() => {
 	}
 });
 
+// onMounted(() => {
+// 	showMountingAnimation.value = true;
+// 	setTimeout(() => {
+// 		showMountingAnimation.value = true;
+// 	}, 600);
+// });
+
 function formatDate(fullDate: Date | string | number) {
 	const { date, time } = convertToDisplayDate(fullDate);
 	return locale.baseText('executionsList.started', { interpolate: { time, date } });
-}
-
-function getRowClass(execution: IExecutionsSummary) {
-	return [style.executionListItem, style[execution.status ?? '']].join(' ');
 }
 
 function displayExecution() {
@@ -154,7 +166,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 }
 </script>
 <template>
-	<tr :class="getRowClass(execution)">
+	<tr :class="classes">
 		<td>
 			<el-checkbox
 				v-if="execution.stoppedAt !== undefined && execution.id"
@@ -284,8 +296,37 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 </template>
 
 <style lang="scss" module>
+@import '@/styles/variables';
+
+@keyframes execution-item-animation {
+	0% {
+		background-color: var(--color-table-row-background);
+	}
+	25% {
+		background-color: var(--color-table-row-highlight-background);
+	}
+	100% {
+		background-color: var(--color-table-row-background);
+	}
+}
+
 .executionListItem {
 	color: var(--color-text-base);
+
+	td {
+		transition: background 0.3s ease;
+		animation: execution-item-animation $executions-list-item-animation-duration ease-out;
+		animation-delay: $executions-list-item-animation-delay;
+		background: var(--color-table-row-background);
+	}
+
+	&:nth-child(even) td {
+		--color-table-row-background: var(--color-table-row-even-background);
+	}
+
+	&:hover td {
+		background: var(--color-table-row-hover-background);
+	}
 
 	td:first-child {
 		width: 30px;
@@ -302,14 +343,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 			vertical-align: middle;
 			margin-right: var(--spacing-xs);
 		}
-	}
-
-	&:nth-child(even) td {
-		background: var(--color-table-row-even-background);
-	}
-
-	&:hover td {
-		background: var(--color-table-row-hover-background);
 	}
 
 	&.crashed td:first-child::before,
