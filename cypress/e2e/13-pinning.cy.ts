@@ -157,22 +157,24 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.executeWorkflow();
 
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then((response) => {
-			expect(response.status).to.eq(200);
-		});
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+			},
+		);
 
 		workflowPage.actions.openNode('End');
 
-		ndv.getters.outputTableRow(1).should('exist')
+		ndv.getters.outputTableRow(1).should('exist');
 		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
 	});
 });
 
 function setExpressionOnStringValueInSet(expression: string) {
 	cy.get('button').contains('Test step').click();
-	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
-	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
+	ndv.getters.assignmentCollectionAdd('assignments').click();
+	ndv.getters.assignmentValue('assignments').contains('Expression').invoke('show').click();
 
 	ndv.getters
 		.inlineExpressionEditorInput()
