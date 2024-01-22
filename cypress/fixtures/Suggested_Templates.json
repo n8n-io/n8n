@@ -42,7 +42,7 @@
 													{
 															"parameters": {},
 															"id": "551313bb-1e01-4133-9956-e6f09968f2ce",
-															"name": "When clicking \"Test Workflow\"",
+															"name": "When clicking \"Test workflow\"",
 															"type": "n8n-nodes-base.manualTrigger",
 															"typeVersion": 1,
 															"position": [
@@ -92,7 +92,7 @@
 													}
 											],
 											"connections": {
-													"When clicking \"Test Workflow\"": {
+													"When clicking \"Test workflow\"": {
 															"main": [
 																	[
 																			{
@@ -191,7 +191,7 @@
 													{
 															"parameters": {},
 															"id": "551313bb-1e01-4133-9956-e6f09968f2ce",
-															"name": "When clicking \"Test Workflow\"",
+															"name": "When clicking \"Test workflow\"",
 															"type": "n8n-nodes-base.manualTrigger",
 															"typeVersion": 1,
 															"position": [
@@ -241,7 +241,7 @@
 													}
 											],
 											"connections": {
-													"When clicking \"Test Workflow\"": {
+													"When clicking \"Test workflow\"": {
 															"main": [
 																	[
 																			{
@@ -374,7 +374,7 @@
 													{
 															"parameters": {},
 															"id": "551313bb-1e01-4133-9956-e6f09968f2ce",
-															"name": "When clicking \"Test Workflow\"",
+															"name": "When clicking \"Test workflow\"",
 															"type": "n8n-nodes-base.manualTrigger",
 															"typeVersion": 1,
 															"position": [
@@ -424,7 +424,7 @@
 													}
 											],
 											"connections": {
-													"When clicking \"Test Workflow\"": {
+													"When clicking \"Test workflow\"": {
 															"main": [
 																	[
 																			{
@@ -524,7 +524,7 @@
 													{
 															"parameters": {},
 															"id": "551313bb-1e01-4133-9956-e6f09968f2ce",
-															"name": "When clicking \"Test Workflow\"",
+															"name": "When clicking \"Test workflow\"",
 															"type": "n8n-nodes-base.manualTrigger",
 															"typeVersion": 1,
 															"position": [
@@ -574,7 +574,7 @@
 													}
 											],
 											"connections": {
-													"When clicking \"Test Workflow\"": {
+													"When clicking \"Test workflow\"": {
 															"main": [
 																	[
 																			{
