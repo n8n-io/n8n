@@ -3,7 +3,7 @@ import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 
 import config from '@/config';
-import { isSharingEnabled } from './UserManagementHelper';
+import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -18,6 +18,7 @@ export class PermissionChecker {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly roleService: RoleService,
 		private readonly ownershipService: OwnershipService,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -46,7 +47,7 @@ export class PermissionChecker {
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && isSharingEnabled()) {
+		if (workflow.id && this.license.isSharingEnabled()) {
 			const workflowSharings = await this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
@@ -98,7 +99,7 @@ export class PermissionChecker {
 		let policy =
 			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
 
-		if (!isSharingEnabled()) {
+		if (!this.license.isSharingEnabled()) {
 			// Community version allows only same owner workflows
 			policy = 'workflowsFromSameOwner';
 		}

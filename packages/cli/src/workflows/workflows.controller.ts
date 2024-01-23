@@ -21,7 +21,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ListQuery } from '@/requests';
 import { WorkflowService } from './workflow.service';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
@@ -62,6 +62,7 @@ export class WorkflowsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
+		private readonly license: License,
 	) {}
 
 	@Post('/')
@@ -88,7 +89,7 @@ export class WorkflowsController {
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used workflows
 
@@ -146,7 +147,7 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
+			const roles: RoleNames[] = this.license.isSharingEnabled() ? [] : ['owner'];
 			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
 				req.user,
 				roles,
@@ -217,7 +218,7 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { id: workflowId } = req.params;
 
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			const relations = ['shared', 'shared.user', 'shared.role'];
 			if (!config.getEnv('workflowTagsDisabled')) {
 				relations.push('tags');
@@ -276,7 +277,7 @@ export class WorkflowsController {
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			updateData = await this.enterpriseWorkflowService.preventTampering(
 				updateData,
 				workflowId,
@@ -289,8 +290,8 @@ export class WorkflowsController {
 			updateData,
 			workflowId,
 			tags,
-			isSharingEnabled() ? forceSave : true,
-			isSharingEnabled() ? undefined : ['owner'],
+			this.license.isSharingEnabled() ? forceSave : true,
+			this.license.isSharingEnabled() ? undefined : ['owner'],
 		);
 
 		return updatedWorkflow;
@@ -316,7 +317,7 @@ export class WorkflowsController {
 
 	@Post('/run')
 	async runManually(req: WorkflowRequest.ManualRun) {
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			const workflow = this.workflowRepository.create(req.body.workflowData);
 
 			if (req.body.workflowData.id !== undefined) {
@@ -338,7 +339,7 @@ export class WorkflowsController {
 
 	@Put('/:workflowId/share')
 	async share(req: WorkflowRequest.Share) {
-		if (!isSharingEnabled()) throw new NotFoundError('Route not found');
+		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
 
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
