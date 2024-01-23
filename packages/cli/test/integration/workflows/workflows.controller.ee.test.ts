@@ -7,7 +7,6 @@ import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import { Push } from '@/push';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
@@ -25,6 +24,7 @@ import {
 } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
+import { License } from '@/License';
 import { UserManagementMailer } from '@/UserManagement/email';
 
 let globalMemberRole: Role;
@@ -39,7 +39,7 @@ let saveCredential: SaveCredentialFunction;
 const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
 mockInstance(Push);
 
-const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],

@@ -3,7 +3,6 @@ import { In } from 'typeorm';
 import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
@@ -16,10 +15,11 @@ import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from 
 import { createManyUsers, createUser, createUserShell } from './shared/db/users';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import Container from 'typedi';
+import { License } from '@/License';
 import { mockInstance } from '../shared/mocking';
 import { UserManagementMailer } from '@/UserManagement/email';
 
-const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let globalMemberRole: Role;
