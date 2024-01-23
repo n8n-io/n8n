@@ -58,7 +58,6 @@ export class UpdateWorkflowCommand extends BaseCommand {
 		} else {
 			this.logger.info(`${action} all workflows`);
 			if (newState) {
-				// TODO: Maybe there should be an `updateActiveStateForAll(state)`?
 				await Container.get(WorkflowRepository).activateAll();
 			} else {
 				await Container.get(WorkflowRepository).deactivateAll();
