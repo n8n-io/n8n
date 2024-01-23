@@ -103,7 +103,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.role = 'member';
+	user.role = 'global:member';
 	// generates a password that is not used or known to the user
 	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

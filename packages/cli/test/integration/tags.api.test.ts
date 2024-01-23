@@ -9,7 +9,7 @@ let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });
 
 beforeAll(async () => {
-	const ownerShell = await createUserShell('owner');
+	const ownerShell = await createUserShell('global:owner');
 	authOwnerAgent = testServer.authAgentFor(ownerShell);
 });
 

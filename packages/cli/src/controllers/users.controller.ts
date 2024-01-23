@@ -194,7 +194,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, role: 'owner' },
+						where: { userId: userToDelete.id, role: 'workflow:owner' },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -209,7 +209,7 @@ export class UsersController {
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
 					SharedWorkflow,
-					{ user: userToDelete, role: 'owner' },
+					{ user: userToDelete, role: 'workflow:owner' },
 					{ user: transferee },
 				);
 
@@ -220,7 +220,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, role: 'owner' },
+						where: { userId: userToDelete.id, role: 'credential:owner' },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -235,7 +235,7 @@ export class UsersController {
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: 'owner' },
+					{ user: userToDelete, role: 'credential:owner' },
 					{ user: transferee },
 				);
 
@@ -257,11 +257,11 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { userId: userToDelete.id, role: 'owner' },
+				where: { userId: userToDelete.id, role: 'workflow:owner' },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, role: 'owner' },
+				where: { userId: userToDelete.id, role: 'credential:owner' },
 			}),
 		]);
 
@@ -309,11 +309,11 @@ export class UsersController {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.role === 'admin' && targetUser.role === 'owner') {
+		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
 			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.role === 'owner' && targetUser.role === 'owner') {
+		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 

@@ -113,7 +113,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			.andWhere('workflow.active = :isActive', { isActive: true })
 			.andWhere('workflow_statistics.name = :name', { name: StatisticsNames.productionSuccess })
 			.andWhere('workflow_statistics.count >= 5')
-			.andWhere('role = :roleName', { roleName: 'owner' })
+			.andWhere('role = :roleName', { roleName: 'workflow:owner' })
 			.getCount();
 	}
 }

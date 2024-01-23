@@ -54,7 +54,10 @@ export class AuthController {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
-			if (preliminaryUser?.role === 'owner' || preliminaryUser?.settings?.allowSSOManualLogin) {
+			if (
+				preliminaryUser?.role === 'global:owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
@@ -62,7 +65,7 @@ export class AuthController {
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			const preliminaryUser = await handleEmailLogin(email, password);
-			if (preliminaryUser?.role === 'owner') {
+			if (preliminaryUser?.role === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {

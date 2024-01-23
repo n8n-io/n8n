@@ -65,7 +65,7 @@
 				<template #actions="{ user }">
 					<n8n-select
 						v-if="user.id !== usersStore.currentUserId"
-						:model-value="user?.role || 'member'"
+						:model-value="user?.role || 'global:member'"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
 						@update:modelValue="onRoleChange(user, $event)"
@@ -208,7 +208,7 @@ export default defineComponent({
 		async onReinvite(userId: string) {
 			const user = this.usersStore.getUserById(userId);
 			if (user?.email && user?.role) {
-				if (!['admin', 'member'].includes(user.role)) {
+				if (!['global:admin', 'global:member'].includes(user.role)) {
 					throw new Error('Invalid role name on reinvite');
 				}
 				try {

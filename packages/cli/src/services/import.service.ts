@@ -57,7 +57,7 @@ export class ImportService {
 
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'owner' }, [
+				await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
 					'workflowId',
 					'userId',
 				]);

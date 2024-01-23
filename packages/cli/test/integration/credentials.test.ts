@@ -27,11 +27,11 @@ let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner' });
-	member = await createUser({ role: 'member' });
-	secondMember = await createUser({ role: 'member' });
+	owner = await createUser({ role: 'global:owner' });
+	member = await createUser({ role: 'global:member' });
+	secondMember = await createUser({ role: 'global:member' });
 
-	saveCredential = affixRoleToSaveCredential('owner');
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
@@ -66,7 +66,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'member',
+			role: 'global:member',
 		});
 
 		const [savedCredential1] = await Promise.all([

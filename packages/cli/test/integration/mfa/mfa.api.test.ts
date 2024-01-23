@@ -21,7 +21,7 @@ const testServer = utils.setupTestServer({
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
-	owner = await createUser({ role: 'owner' });
+	owner = await createUser({ role: 'global:owner' });
 
 	config.set('userManagement.disabled', false);
 });

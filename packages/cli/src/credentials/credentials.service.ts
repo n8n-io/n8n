@@ -85,7 +85,7 @@ export class CredentialsService {
 		// access credentials they don't own.
 		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
 			where.userId = user.id;
-			where.role = 'owner';
+			where.role = 'credential:owner';
 		}
 
 		return await Container.get(SharedCredentialsRepository).findOne({ where, relations });
@@ -196,7 +196,7 @@ export class CredentialsService {
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
-				role: 'owner',
+				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
 			});

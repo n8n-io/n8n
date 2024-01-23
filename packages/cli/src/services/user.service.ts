@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import { User } from '@db/entities/User';
+import { type AssignableRole, User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
@@ -160,7 +160,7 @@ export class UserService {
 	private async sendEmails(
 		owner: User,
 		toInviteUsers: { [key: string]: string },
-		role: 'member' | 'admin',
+		role: AssignableRole,
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
@@ -222,7 +222,7 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
+	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
 		const emails = attributes.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);

@@ -46,7 +46,7 @@ import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const isInstanceOwner = (user: IUserResponse | null) => user?.role === 'owner';
+const isInstanceOwner = (user: IUserResponse | null) => user?.role === 'global:owner';
 const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {

@@ -33,7 +33,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	async makeOwnerOfAllCredentials(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'owner' }, { user });
+		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
 	}
 
 	/**
@@ -43,7 +43,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		const sharings = await this.find({
 			where: {
 				userId,
-				role: In(['owner', 'user']),
+				role: In(['credential:owner', 'credential:user']),
 			},
 		});
 
@@ -54,7 +54,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return await this.find({
 			where: {
 				userId: In(userIds),
-				role: 'owner',
+				role: 'credential:owner',
 			},
 		});
 	}

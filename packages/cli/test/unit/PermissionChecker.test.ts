@@ -81,7 +81,7 @@ let permissionChecker: PermissionChecker;
 beforeAll(async () => {
 	await testDb.init();
 
-	saveCredential = affixRoleToSaveCredential('owner');
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	permissionChecker = Container.get(PermissionChecker);
 });
@@ -244,7 +244,7 @@ describe('check()', () => {
 		await Container.get(SharedWorkflowRepository).save({
 			workflow: workflowEntity,
 			user: member,
-			role: 'owner',
+			role: 'workflow:owner',
 		});
 
 		const workflow = new Workflow(workflowDetails);

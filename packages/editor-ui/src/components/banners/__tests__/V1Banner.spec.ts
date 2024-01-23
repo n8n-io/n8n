@@ -22,7 +22,7 @@ describe('V1 Banner', () => {
 
 	it('should render banner with dismiss call if user is owner', () => {
 		vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-			role: 'owner',
+			role: 'global:owner',
 		});
 
 		const { container } = render(V1Banner);

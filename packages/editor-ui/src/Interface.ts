@@ -685,9 +685,9 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV2
 	| IPersonalizationSurveyAnswersV3;
 
-export type IRole = 'default' | 'owner' | 'member' | 'admin';
+export type IRole = 'default' | 'global:owner' | 'global:member' | 'global:admin';
 
-export type InvitableRoleName = 'member' | 'admin';
+export type InvitableRoleName = 'global:member' | 'global:admin';
 
 export interface IUserResponse {
 	id: string;

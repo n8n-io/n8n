@@ -168,7 +168,7 @@ export class InternalHooks {
 		if (user.id && workflow.id) {
 			const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
 			if (role) {
-				userRole = role === 'owner' ? 'owner' : 'sharee';
+				userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
 			}
 		}
 
@@ -373,7 +373,7 @@ export class InternalHooks {
 				if (userId) {
 					const role = await this.sharedWorkflowRepository.findSharingRole(userId, workflow.id);
 					if (role) {
-						userRole = role === 'owner' ? 'owner' : 'sharee';
+						userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
 					}
 				}
 

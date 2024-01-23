@@ -27,7 +27,7 @@ describe('Owner shell', () => {
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell('owner');
+		ownerShell = await createUserShell('global:owner');
 		await addApiKey(ownerShell);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
@@ -57,7 +57,7 @@ describe('Owner shell', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(role).toBe('owner');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
@@ -166,7 +166,7 @@ describe('Member', () => {
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			role: 'member',
+			role: 'global:member',
 			apiKey: randomApiKey(),
 		});
 		authMemberAgent = testServer.authAgentFor(member);
@@ -199,7 +199,7 @@ describe('Member', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(role).toBe('member');
+			expect(role).toBe('global:member');
 			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
@@ -305,7 +305,7 @@ describe('Owner', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await createUser({ role: 'owner' });
+		const owner = await createUser({ role: 'global:owner' });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -332,7 +332,7 @@ describe('Owner', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(role).toBe('owner');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
 			const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });

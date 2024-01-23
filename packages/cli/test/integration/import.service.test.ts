@@ -62,7 +62,7 @@ describe('ImportService', () => {
 		await importService.importWorkflows([workflowToImport], owner.id);
 
 		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
-			where: { workflowId: workflowToImport.id, userId: owner.id, role: 'owner' },
+			where: { workflowId: workflowToImport.id, userId: owner.id, role: 'workflow:owner' },
 		});
 
 		expect(dbSharing.userId).toBe(owner.id);

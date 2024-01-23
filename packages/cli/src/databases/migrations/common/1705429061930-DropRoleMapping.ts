@@ -50,12 +50,15 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const idColumn = escape.columnName(idColumns[table]);
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
 		const roleColumn = escape.columnName(roleColumnName);
+		const scope = roleScopes[table];
+		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
+		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
 		const subQuery = `
-        SELECT R.name as role, T.${idColumn} as id
+        SELECT ${roleField} as role, T.${idColumn} as id
         FROM ${tableName} T
         LEFT JOIN ${roleTable} R
-        ON T.${roleColumn} = R.id and R.scope = :scope`;
-		const swQuery = ['mariadb', 'mysqldb'].includes(dbType)
+        ON T.${roleColumn} = R.id and R.scope = '${scope}'`;
+		const swQuery = isMySQL
 			? `UPDATE ${tableName}, (${subQuery}) as mapping
             SET ${tableName}.role = mapping.role
             WHERE ${tableName}.${idColumn} = mapping.id`
@@ -63,7 +66,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
             SET role = mapping.role
             FROM (${subQuery}) as mapping
             WHERE ${tableName}.${idColumn} = mapping.id`;
-		await runQuery(swQuery, { scope: roleScopes[table] });
+		await runQuery(swQuery);
 
 		await addNotNull(table, 'role');
 
@@ -87,18 +90,21 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		}: MigrationContext,
 	) {
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
-		await addColumns('user', [column(roleColumnName).int]);
+		await addColumns(table, [column(roleColumnName).int]);
 
 		const roleTable = escape.tableName('role');
 		const tableName = escape.tableName(table);
 		const idColumn = escape.columnName(idColumns[table]);
 		const roleColumn = escape.columnName(roleColumnName);
+		const scope = roleScopes[table];
+		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
+		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
 		const subQuery = `
-			SELECT R.id as role_id, T.id as id
+			SELECT R.id as role_id, T.${idColumn} as id
 			FROM ${tableName} T
 			LEFT JOIN ${roleTable} R
-			ON T.role = R.name and R.scope = :scope`;
-		const query = ['mariadb', 'mysqldb'].includes(dbType)
+			ON T.role = ${roleField} and R.scope = '${scope}'`;
+		const query = isMySQL
 			? `UPDATE ${tableName}, (${subQuery}) as mapping
 				SET ${tableName}.${roleColumn} = mapping.role_id
 				WHERE ${tableName}.${idColumn} = mapping.id`
@@ -106,14 +112,14 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 				SET ${roleColumn} = mapping.role_id
 				FROM (${subQuery}) as mapping
 				WHERE ${tableName}.${idColumn} = mapping.id`;
-		await runQuery(query, { scope: roleScopes[table] });
+		await runQuery(query);
 
 		await addNotNull(table, roleColumnName);
 		await addForeignKey(
 			table,
 			roleColumnName,
 			['role', 'id'],
-			`FK_${tablePrefix}foreignKeySuffixes[table]`,
+			`FK_${tablePrefix}${foreignKeySuffixes[table]}`,
 		);
 
 		await dropColumns(table, ['role']);

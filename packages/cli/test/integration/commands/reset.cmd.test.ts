@@ -26,11 +26,11 @@ afterAll(async () => {
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('user-management:reset should reset DB to default user state', async () => {
-	await createUser({ role: 'owner' });
+	await createUser({ role: 'global:owner' });
 
 	await Reset.run();
 
-	const user = await Container.get(UserRepository).findOneBy({ role: 'owner' });
+	const user = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

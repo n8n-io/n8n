@@ -24,7 +24,7 @@ const watchers = new Watchers();
 const watchedWorkflowExecuteAfter = jest.spyOn(watchers, 'workflowExecuteAfter');
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner' });
+	owner = await createUser({ role: 'global:owner' });
 
 	mockInstance(Push);
 	Container.set(Push, new Push());

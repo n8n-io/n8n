@@ -51,7 +51,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		await Container.get(SharedWorkflowRepository).save({
 			user,
 			workflow,
-			role: 'owner',
+			role: 'workflow:owner',
 		});
 	}
 	return workflow;
@@ -61,7 +61,7 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = users.map((user) => ({
 		userId: user.id,
 		workflowId: workflow.id,
-		role: 'editor',
+		role: 'workflow:editor',
 	}));
 	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }

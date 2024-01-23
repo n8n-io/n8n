@@ -31,7 +31,11 @@ describe('UserRepository', () => {
 
 			const usersByRole = await userRepository.countUsersByRole();
 
-			expect(usersByRole).toStrictEqual({ admin: 2, member: 3, owner: 1 });
+			expect(usersByRole).toStrictEqual({
+				'global:admin': 2,
+				'global:member': 3,
+				'global:owner': 1,
+			});
 		});
 	});
 });

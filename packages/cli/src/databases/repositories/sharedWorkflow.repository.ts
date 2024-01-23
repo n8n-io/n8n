@@ -36,7 +36,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return await this.find({
 			relations: ['user'],
 			where: {
-				role: 'owner',
+				role: 'workflow:owner',
 				workflowId: In(workflowIds),
 			},
 		});
@@ -78,7 +78,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async makeOwnerOfAllWorkflows(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'owner' }, { user });
+		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
 	}
 
 	async getSharing(
@@ -108,7 +108,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	): Promise<SharedWorkflow[]> {
 		return await this.find({
 			where: {
-				...(!['owner', 'admin'].includes(user.role) && { userId: user.id }),
+				...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
 				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 			},
 			...(options.relations && { relations: options.relations }),
@@ -123,7 +123,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			const entity: Partial<SharedWorkflow> = {
 				workflowId: workflow.id,
 				userId: user.id,
-				role: 'editor',
+				role: 'workflow:editor',
 			};
 			acc.push(this.create(entity));
 			return acc;

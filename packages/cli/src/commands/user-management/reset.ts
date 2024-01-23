@@ -13,7 +13,7 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
-	role: 'owner',
+	role: 'global:owner',
 };
 
 export class Reset extends BaseCommand {
@@ -39,7 +39,7 @@ export class Reset extends BaseCommand {
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
 				user: owner,
-				role: 'owner',
+				role: 'credential:owner',
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
@@ -53,7 +53,7 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'owner' });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
 		if (owner) return owner;
 
@@ -63,7 +63,7 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ role: 'owner' });
+		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
 	}
 
 	async catch(error: Error): Promise<void> {

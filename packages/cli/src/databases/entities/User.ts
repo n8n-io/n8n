@@ -21,13 +21,14 @@ import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 
-const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
-	owner: ownerPermissions,
-	member: memberPermissions,
-	admin: adminPermissions,
-};
+export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
+export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
 
-export type GlobalRole = 'owner' | 'admin' | 'member';
+const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
+	'global:owner': ownerPermissions,
+	'global:member': memberPermissions,
+	'global:admin': adminPermissions,
+};
 
 @Entity()
 export class User extends WithTimestamps implements IUser {
@@ -124,7 +125,7 @@ export class User extends WithTimestamps implements IUser {
 
 	@AfterLoad()
 	computeIsOwner(): void {
-		this.isOwner = this.role === 'owner';
+		this.isOwner = this.role === 'global:owner';
 	}
 
 	get globalScopes() {

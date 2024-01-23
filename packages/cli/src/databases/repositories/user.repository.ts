@@ -1,9 +1,9 @@
 import { Service } from 'typedi';
 import type { EntityManager, FindManyOptions } from 'typeorm';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
-import { User } from '../entities/User';
 import type { ListQuery } from '@/requests';
 
+import { type GlobalRole, User } from '../entities/User';
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
@@ -50,11 +50,14 @@ export class UserRepository extends Repository<User> {
 		const rows = (await this.createQueryBuilder()
 			.select(['role', 'COUNT(role) as count'])
 			.groupBy('role')
-			.execute()) as Array<{ role: string; count: string }>;
-		return rows.reduce<Record<string, number>>((acc, row) => {
-			acc[row.role] = parseInt(row.count, 10);
-			return acc;
-		}, {});
+			.execute()) as Array<{ role: GlobalRole; count: string }>;
+		return rows.reduce(
+			(acc, row) => {
+				acc[row.role] = parseInt(row.count, 10);
+				return acc;
+			},
+			{} as Record<GlobalRole, number>,
+		);
 	}
 
 	async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
@@ -85,7 +88,7 @@ export class UserRepository extends Repository<User> {
 			findManyOptions.where = otherFilters;
 
 			if (isOwner !== undefined) {
-				findManyOptions.where.role = isOwner ? 'owner' : Not('owner');
+				findManyOptions.where.role = isOwner ? 'global:owner' : Not('global:owner');
 			}
 		}
 

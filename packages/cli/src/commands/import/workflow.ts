@@ -137,7 +137,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 	}
 
 	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'owner' });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 		if (!owner) {
 			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}

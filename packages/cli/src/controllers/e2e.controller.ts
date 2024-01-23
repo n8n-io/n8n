@@ -163,7 +163,7 @@ export class E2EController {
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
-			role: 'owner',
+			role: 'global:owner',
 		});
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
@@ -177,7 +177,7 @@ export class E2EController {
 			id: uuid(),
 			...admin,
 			password: await this.passwordUtility.hash(admin.password),
-			role: 'admin',
+			role: 'global:admin',
 		});
 
 		const users = [];
@@ -190,7 +190,7 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					role: 'member',
+					role: 'global:member',
 				}),
 			);
 		}

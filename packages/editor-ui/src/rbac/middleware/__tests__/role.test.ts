@@ -15,7 +15,7 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: 'owner',
+					role: 'global:owner',
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 
@@ -54,7 +54,7 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: 'owner',
+					role: 'global:owner',
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 

@@ -55,7 +55,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fill out a member shell', async () => {
-		const memberShell = await createUserShell('member');
+		const memberShell = await createUserShell('global:member');
 
 		const memberData = {
 			inviterId: owner.id,
@@ -89,7 +89,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(role).toBe('member');
+		expect(role).toBe('global:member');
 		expect(apiKey).not.toBeDefined();
 		expect(globalScopes).toBeDefined();
 		expect(globalScopes).not.toHaveLength(0);
@@ -107,7 +107,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fill out an admin shell', async () => {
-		const adminShell = await createUserShell('admin');
+		const adminShell = await createUserShell('global:admin');
 
 		const memberData = {
 			inviterId: owner.id,
@@ -141,7 +141,7 @@ describe('POST /invitations/:id/accept', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(role).toBe('admin');
+		expect(role).toBe('global:admin');
 		expect(apiKey).not.toBeDefined();
 		expect(globalScopes).toBeDefined();
 		expect(globalScopes).not.toHaveLength(0);
@@ -163,7 +163,7 @@ describe('POST /invitations/:id/accept', () => {
 
 		const memberShell = await Container.get(UserRepository).save({
 			email: memberShellEmail,
-			role: 'member',
+			role: 'global:member',
 		});
 
 		const invalidPayloads = [
@@ -212,7 +212,7 @@ describe('POST /invitations/:id/accept', () => {
 	});
 
 	test('should fail with already accepted invite', async () => {
-		const member = await createUser({ role: 'member' });
+		const member = await createUser({ role: 'global:member' });
 
 		const memberData = {
 			inviterId: owner.id,
@@ -326,7 +326,7 @@ describe('POST /invitations', () => {
 
 		const response = await ownerAgent
 			.post('/invitations')
-			.send([{ email: randomEmail(), role: 'admin' }])
+			.send([{ email: randomEmail(), role: 'global:admin' }])
 			.expect(200);
 
 		const [result] = response.body.data as UserInvitationResponse[];
@@ -341,11 +341,11 @@ describe('POST /invitations', () => {
 	test('should reinvite member', async () => {
 		mailer.invite.mockResolvedValue({ emailSent: false });
 
-		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'member' }]);
+		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'global:member' }]);
 
 		await ownerAgent
 			.post('/invitations')
-			.send([{ email: randomEmail(), role: 'member' }])
+			.send([{ email: randomEmail(), role: 'global:member' }])
 			.expect(200);
 	});
 
@@ -353,11 +353,11 @@ describe('POST /invitations', () => {
 		license.isAdvancedPermissionsLicensed.mockReturnValue(true);
 		mailer.invite.mockResolvedValue({ emailSent: false });
 
-		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'admin' }]);
+		await ownerAgent.post('/invitations').send([{ email: randomEmail(), role: 'global:admin' }]);
 
 		await ownerAgent
 			.post('/invitations')
-			.send([{ email: randomEmail(), role: 'admin' }])
+			.send([{ email: randomEmail(), role: 'global:admin' }])
 			.expect(200);
 	});
 
@@ -367,7 +367,7 @@ describe('POST /invitations', () => {
 
 		await ownerAgent
 			.post('/invitations')
-			.send([{ email: randomEmail(), role: 'admin' }])
+			.send([{ email: randomEmail(), role: 'global:admin' }])
 			.expect(403);
 	});
 
@@ -376,7 +376,7 @@ describe('POST /invitations', () => {
 
 		mailer.invite.mockResolvedValue({ emailSent: true });
 
-		const memberShell = await createUserShell('member');
+		const memberShell = await createUserShell('global:member');
 
 		const newUser = randomEmail();
 

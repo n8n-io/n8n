@@ -62,7 +62,7 @@ EECredentialsController.get(
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
-		if (!includeDecryptedData || !userSharing || userSharing.role !== 'owner') {
+		if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
 			const { data: _, ...rest } = credential;
 			return { ...rest };
 		}
@@ -153,7 +153,7 @@ EECredentialsController.put(
 				'shared',
 			])
 		)
-			.filter((e) => e.role === 'owner')
+			.filter((e) => e.role === 'credential:owner')
 			.map((e) => e.userId);
 
 		let amountRemoved: number | null = null;

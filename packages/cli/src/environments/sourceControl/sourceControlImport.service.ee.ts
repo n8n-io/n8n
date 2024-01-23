@@ -240,17 +240,17 @@ export class SourceControlImportService {
 				}
 
 				const existingSharedWorkflowOwnerByRoleId = allSharedWorkflows.find(
-					(e) => e.workflowId === importedWorkflow.id && e.role === 'owner',
+					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
 				);
 				const existingSharedWorkflowOwnerByUserId = allSharedWorkflows.find(
-					(e) => e.workflowId === importedWorkflow.id && e.role === 'owner',
+					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
 				);
 				if (!existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
 					// no owner exists yet, so create one
 					await Container.get(SharedWorkflowRepository).insert({
 						workflowId: importedWorkflow.id,
 						userId: workflowOwnerId,
-						role: 'owner',
+						role: 'workflow:owner',
 					});
 				} else if (existingSharedWorkflowOwnerByRoleId) {
 					// skip, because the workflow already has a global owner
@@ -262,7 +262,7 @@ export class SourceControlImportService {
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
 						},
-						{ role: 'owner' },
+						{ role: 'workflow:owner' },
 					);
 				}
 				if (existingWorkflow?.active) {
@@ -308,7 +308,7 @@ export class SourceControlImportService {
 			select: ['userId', 'credentialsId', 'role'],
 			where: {
 				credentialsId: In(candidateIds),
-				role: 'owner',
+				role: 'credential:owner',
 			},
 		});
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
@@ -341,7 +341,7 @@ export class SourceControlImportService {
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
 					newSharedCredential.userId = userId;
-					newSharedCredential.role = 'owner';
+					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [
 						'credentialsId',

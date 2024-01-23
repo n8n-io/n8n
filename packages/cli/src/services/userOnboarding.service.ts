@@ -26,7 +26,7 @@ export class UserOnboardingService {
 			.find({
 				where: {
 					userId: user.id,
-					role: 'owner',
+					role: 'workflow:owner',
 				},
 				select: ['workflowId'],
 			})

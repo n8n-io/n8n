@@ -37,7 +37,7 @@ export class EnterpriseWorkflowService {
 			['workflow'],
 		);
 
-		if (!sharing || sharing.role !== 'owner') return { ownsWorkflow: false };
+		if (!sharing || sharing.role !== 'workflow:owner') return { ownsWorkflow: false };
 
 		const { workflow } = sharing;
 
@@ -54,7 +54,7 @@ export class EnterpriseWorkflowService {
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
-			if (role === 'owner') {
+			if (role === 'workflow:owner') {
 				workflow.ownedBy = { id, email, firstName, lastName };
 				return;
 			}
@@ -101,7 +101,7 @@ export class EnterpriseWorkflowService {
 			};
 			credential.shared?.forEach(({ user, role }) => {
 				const { id, email, firstName, lastName } = user;
-				if (role === 'owner') {
+				if (role === 'credential:owner') {
 					workflowCredential.ownedBy = { id, email, firstName, lastName };
 				} else {
 					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });

@@ -21,7 +21,7 @@ let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeEach(async () => {
-	ownerShell = await createUserShell('owner');
+	ownerShell = await createUserShell('global:owner');
 	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
@@ -63,7 +63,7 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(role).toBe('owner');
+		expect(role).toBe('global:owner');
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).not.toHaveLength(0);
 

@@ -34,7 +34,7 @@ describe('OAuth1CredentialController', () => {
 		id: '123',
 		password: 'password',
 		authIdentities: [],
-		role: 'owner',
+		role: 'global:owner',
 	});
 	const credential = mock<CredentialsEntity>({
 		id: '1',

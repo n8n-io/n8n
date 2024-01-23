@@ -44,7 +44,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'owner',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -79,7 +79,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'owner',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -107,7 +107,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'owner',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });

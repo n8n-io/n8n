@@ -19,7 +19,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		password: await hash(password ?? randomValidPassword(), 10),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		role: role ?? 'member',
+		role: role ?? 'global:member',
 		...rest,
 	});
 	user.computeIsOwner();
@@ -67,21 +67,21 @@ export async function createUserWithMfaEnabled(
 }
 
 export async function createOwner() {
-	return await createUser({ role: 'owner' });
+	return await createUser({ role: 'global:owner' });
 }
 
 export async function createMember() {
-	return await createUser({ role: 'member' });
+	return await createUser({ role: 'global:member' });
 }
 
 export async function createAdmin() {
-	return await createUser({ role: 'admin' });
+	return await createUser({ role: 'global:admin' });
 }
 
 export async function createUserShell(role: GlobalRole): Promise<User> {
 	const shell: Partial<User> = { role };
 
-	if (role !== 'owner') {
+	if (role !== 'global:owner') {
 		shell.email = randomEmail();
 	}
 
@@ -104,7 +104,7 @@ export async function createManyUsers(
 				password: await hash(password ?? randomValidPassword(), 10),
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
-				role: role ?? 'member',
+				role: role ?? 'global:member',
 				...rest,
 			}),
 		),

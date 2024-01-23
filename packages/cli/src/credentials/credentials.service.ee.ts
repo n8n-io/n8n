@@ -16,7 +16,7 @@ export class EECredentialsService extends CredentialsService {
 			'credentials',
 		]);
 
-		if (!sharing || sharing.role !== 'owner') return { ownsCredential: false };
+		if (!sharing || sharing.role !== 'credential:owner') return { ownsCredential: false };
 
 		const { credentials: credential } = sharing;
 
@@ -72,7 +72,7 @@ export class EECredentialsService extends CredentialsService {
 				Container.get(SharedCredentialsRepository).create({
 					credentialsId: credential.id,
 					userId: user.id,
-					role: 'user',
+					role: 'credential:user',
 				}),
 			);
 

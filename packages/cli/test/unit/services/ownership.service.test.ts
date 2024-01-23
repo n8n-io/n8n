@@ -24,7 +24,7 @@ describe('OwnershipService', () => {
 			const mockNonOwner = new User();
 
 			const sharedWorkflow = Object.assign(new SharedWorkflow(), {
-				role: 'owner',
+				role: 'workflow:owner',
 				user: mockOwner,
 			});
 
@@ -51,8 +51,8 @@ describe('OwnershipService', () => {
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'owner', user: owner },
-				{ role: 'editor', user: editor },
+				{ role: 'credential:owner', user: owner },
+				{ role: 'credential:editor', user: editor },
 			] as SharedCredentials[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
@@ -81,8 +81,8 @@ describe('OwnershipService', () => {
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'owner', user: owner },
-				{ role: 'editor', user: editor },
+				{ role: 'workflow:owner', user: owner },
+				{ role: 'workflow:editor', user: editor },
 			] as SharedWorkflow[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(workflow);
@@ -109,7 +109,7 @@ describe('OwnershipService', () => {
 
 			const credential = mockCredential();
 
-			credential.shared = [{ role: 'owner', user: owner }] as SharedCredentials[];
+			credential.shared = [{ role: 'credential:owner', user: owner }] as SharedCredentials[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
 
@@ -129,7 +129,7 @@ describe('OwnershipService', () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'owner' },
+				where: { role: 'global:owner' },
 			});
 		});
 	});

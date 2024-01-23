@@ -33,7 +33,7 @@ function setUser(role: IRole) {
 }
 
 function setupOwnerAndCloudDeployment() {
-	setUser('owner');
+	setUser('global:owner');
 	settingsStore.setSettings(
 		merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 			n8nMetadata: {
@@ -75,19 +75,19 @@ describe('UI store', () => {
 		[
 			'default',
 			'production',
-			'owner',
+			'global:owner',
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'default',
 			'development',
-			'owner',
+			'global:owner',
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'cloud',
 			'production',
-			'owner',
+			'global:owner',
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
 				'/account/change-plan',
 			)}&utm_campaign=utm-test-campaign&source=test_source`,
@@ -95,7 +95,7 @@ describe('UI store', () => {
 		[
 			'cloud',
 			'production',
-			'member',
+			'global:member',
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 	])(

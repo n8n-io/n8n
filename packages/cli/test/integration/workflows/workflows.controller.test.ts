@@ -179,7 +179,7 @@ describe('GET /workflows', () => {
 	test('should return workflows', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
-			role: 'owner',
+			role: 'credential:owner',
 		});
 
 		const nodes: INode[] = [

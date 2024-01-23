@@ -30,14 +30,14 @@ let saveCredential: SaveCredentialFunction;
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner' });
-	member = await createUser({ role: 'member' });
-	anotherMember = await createUser({ role: 'member' });
+	owner = await createUser({ role: 'global:owner' });
+	member = await createUser({ role: 'global:member' });
+	anotherMember = await createUser({ role: 'global:member' });
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = affixRoleToSaveCredential('owner');
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 });
 
 beforeEach(async () => {
@@ -86,7 +86,7 @@ describe('router should switch based on flag', () => {
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: 'member',
+			role: 'global:member',
 		});
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -150,7 +150,7 @@ describe('GET /credentials', () => {
 
 	test('should return only relevant creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'member',
+			role: 'global:member',
 		});
 
 		await saveCredential(randomCredentialPayload(), { user: member2 });
@@ -226,7 +226,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve non-owned cred for owner', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'member',
+			role: 'global:member',
 		});
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
@@ -265,7 +265,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve owned cred for member', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: 'member',
+			role: 'global:member',
 		});
 		const authMemberAgent = testServer.authAgentFor(member1);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
@@ -333,7 +333,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2, member3, member4, member5] = await createManyUsers(5, {
-			role: 'member',
+			role: 'global:member',
 		});
 		const shareWithIds = [member1.id, member2.id, member3.id];
 
@@ -355,11 +355,11 @@ describe('PUT /credentials/:id/share', () => {
 
 		sharedCredentials.forEach((sharedCredential) => {
 			if (sharedCredential.userId === owner.id) {
-				expect(sharedCredential.role).toBe('owner');
+				expect(sharedCredential.role).toBe('credential:owner');
 				return;
 			}
 			expect(shareWithIds).toContain(sharedCredential.userId);
-			expect(sharedCredential.role).toBe('user');
+			expect(sharedCredential.role).toBe('credential:user');
 		});
 
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
@@ -367,7 +367,7 @@ describe('PUT /credentials/:id/share', () => {
 
 	test('should share the credential with the provided userIds', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: 'member',
+			role: 'global:member',
 		});
 		const memberIds = [member1.id, member2.id, member3.id];
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -387,7 +387,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials.length).toBe(memberIds.length);
 
 		sharedCredentials.forEach((sharedCredential) => {
-			expect(sharedCredential.role).toBe('user');
+			expect(sharedCredential.role).toBe('credential:user');
 		});
 
 		// check that owner still exists
@@ -395,7 +395,7 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id, userId: owner.id },
 		});
 
-		expect(ownerSharedCredential.role).toBe('owner');
+		expect(ownerSharedCredential.role).toBe('credential:owner');
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
@@ -443,7 +443,7 @@ describe('PUT /credentials/:id/share', () => {
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		const tempUser = await createUser({ role: 'member' });
+		const tempUser = await createUser({ role: 'global:member' });
 
 		const response = await authAnotherMemberAgent
 			.put(`/credentials/${savedCredential.id}/share`)
@@ -474,7 +474,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 
 	test('should ignore pending sharee', async () => {
-		const memberShell = await createUserShell('member');
+		const memberShell = await createUserShell('global:member');
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
@@ -525,7 +525,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'member',
+			role: 'global:member',
 		});
 
 		await shareCredentialWithUsers(savedCredential, [member1, member2]);

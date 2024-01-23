@@ -3,7 +3,7 @@ import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
 
-export type CredentialSharingRole = 'owner' | 'user';
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
 @Entity()
 export class SharedCredentials extends WithTimestamps {

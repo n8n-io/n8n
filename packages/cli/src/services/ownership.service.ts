@@ -25,7 +25,7 @@ export class OwnershipService {
 		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'owner' },
+			where: { workflowId, role: 'workflow:owner' },
 			relations: ['user'],
 		});
 
@@ -54,7 +54,7 @@ export class OwnershipService {
 		shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
-			if (role === 'owner') {
+			if (role === 'credential:owner' || role === 'workflow:owner') {
 				entity.ownedBy = { id, email, firstName, lastName };
 			} else {
 				entity.sharedWith.push({ id, email, firstName, lastName });
@@ -66,7 +66,7 @@ export class OwnershipService {
 
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
-			where: { role: 'owner' },
+			where: { role: 'global:owner' },
 		});
 	}
 }

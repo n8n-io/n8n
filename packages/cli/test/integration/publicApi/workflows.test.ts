@@ -32,12 +32,12 @@ mockInstance(ExecutionService);
 
 beforeAll(async () => {
 	owner = await createUser({
-		role: 'owner',
+		role: 'global:owner',
 		apiKey: randomApiKey(),
 	});
 
 	member = await createUser({
-		role: 'member',
+		role: 'global:member',
 		apiKey: randomApiKey(),
 	});
 
@@ -691,7 +691,7 @@ describe('POST /workflows', () => {
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
-		expect(sharedWorkflow?.role).toEqual('owner');
+		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
 	test('should create workflow history version when licensed', async () => {
@@ -1110,6 +1110,6 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
-		expect(sharedWorkflow?.role).toEqual('owner');
+		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 });

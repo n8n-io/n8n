@@ -42,7 +42,7 @@ describe('Auth Middleware', () => {
 	describe('Routes requiring Authorization', () => {
 		let authMemberAgent: SuperAgentTest;
 		beforeAll(async () => {
-			const member = await createUser({ role: 'member' });
+			const member = await createUser({ role: 'global:member' });
 			authMemberAgent = testServer.authAgentFor(member);
 		});
 

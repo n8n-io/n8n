@@ -116,7 +116,7 @@ export class WorkflowsController {
 			const newSharedWorkflow = new SharedWorkflow();
 
 			Object.assign(newSharedWorkflow, {
-				role: 'owner',
+				role: 'workflow:owner',
 				user: req.user,
 				workflow: savedWorkflow,
 			});
@@ -146,7 +146,9 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: WorkflowSharingRole[] = this.license.isSharingEnabled() ? [] : ['owner'];
+			const roles: WorkflowSharingRole[] = this.license.isSharingEnabled()
+				? []
+				: ['workflow:owner'];
 			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
 				req.user,
 				roles,
@@ -276,7 +278,8 @@ export class WorkflowsController {
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		if (this.license.isSharingEnabled()) {
+		const isSharingEnabled = this.license.isSharingEnabled();
+		if (isSharingEnabled) {
 			updateData = await this.enterpriseWorkflowService.preventTampering(
 				updateData,
 				workflowId,
@@ -289,8 +292,8 @@ export class WorkflowsController {
 			updateData,
 			workflowId,
 			tags,
-			this.license.isSharingEnabled() ? forceSave : true,
-			this.license.isSharingEnabled() ? undefined : ['owner'],
+			isSharingEnabled ? forceSave : true,
+			isSharingEnabled ? undefined : ['workflow:owner'],
 		);
 
 		return updatedWorkflow;
@@ -376,7 +379,7 @@ export class WorkflowsController {
 				['shared'],
 			)
 		)
-			.filter((e) => e.role === 'owner')
+			.filter((e) => e.role === 'workflow:owner')
 			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];

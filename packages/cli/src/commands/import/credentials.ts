@@ -150,14 +150,14 @@ export class ImportCredentialsCommand extends BaseCommand {
 			{
 				credentialsId: result.identifiers[0].id as string,
 				userId: user.id,
-				role: 'owner',
+				role: 'credential:owner',
 			},
 			['credentialsId', 'userId'],
 		);
 	}
 
 	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'owner' });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 		if (!owner) {
 			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}

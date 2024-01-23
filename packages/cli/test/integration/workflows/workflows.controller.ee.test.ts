@@ -41,15 +41,15 @@ const license = testServer.license;
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner' });
-	member = await createUser({ role: 'member' });
-	anotherMember = await createUser({ role: 'member' });
+	owner = await createUser({ role: 'global:owner' });
+	member = await createUser({ role: 'global:member' });
+	anotherMember = await createUser({ role: 'global:member' });
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = affixRoleToSaveCredential('owner');
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initNodeTypes();
 });
@@ -215,7 +215,7 @@ describe('PUT /workflows/:id', () => {
 	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
-		const tempUser = await createUser({ role: 'member' });
+		const tempUser = await createUser({ role: 'global:member' });
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
@@ -992,7 +992,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 describe('getSharedWorkflowIds', () => {
 	it('should show all workflows to owners', async () => {
-		owner.role = 'owner';
+		owner.role = 'global:owner';
 		const workflow1 = await createWorkflow({}, member);
 		const workflow2 = await createWorkflow({}, anotherMember);
 		const sharedWorkflowIds =
@@ -1003,7 +1003,7 @@ describe('getSharedWorkflowIds', () => {
 	});
 
 	it('should show shared workflows to users', async () => {
-		member.role = 'member';
+		member.role = 'global:member';
 		const workflow1 = await createWorkflow({}, anotherMember);
 		const workflow2 = await createWorkflow({}, anotherMember);
 		const workflow3 = await createWorkflow({}, anotherMember);

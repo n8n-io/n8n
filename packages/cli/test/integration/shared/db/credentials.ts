@@ -75,7 +75,7 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 		Container.get(SharedCredentialsRepository).create({
 			userId: user.id,
 			credentialsId: credential.id,
-			role: 'user',
+			role: 'credential:user',
 		}),
 	);
 	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);

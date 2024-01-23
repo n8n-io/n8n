@@ -21,13 +21,13 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	owner = await addApiKey(await createUserShell('owner'));
-	member = await createUser({ role: 'member', apiKey: randomApiKey() });
+	owner = await addApiKey(await createUserShell('global:owner'));
+	member = await createUser({ role: 'global:member', apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	saveCredential = affixRoleToSaveCredential('owner');
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initCredentialsTypes();
 });
@@ -67,7 +67,7 @@ describe('POST /credentials', () => {
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
 
-		expect(sharedCredential.role).toEqual('owner');
+		expect(sharedCredential.role).toEqual('credential:owner');
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
@@ -146,7 +146,7 @@ describe('DELETE /credentials/:id', () => {
 
 	test('should delete owned cred for member but leave others untouched', async () => {
 		const anotherMember = await createUser({
-			role: 'member',
+			role: 'global:member',
 			apiKey: randomApiKey(),
 		});
 

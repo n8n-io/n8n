@@ -47,7 +47,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner', password: 'password' });
+	owner = await createUser({ role: 'global:owner', password: 'password' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
@@ -87,7 +87,7 @@ const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<L
 };
 
 test('Member role should not be able to access ldap routes', async () => {
-	const member = await createUser({ role: 'member' });
+	const member = await createUser({ role: 'global:member' });
 	const authAgent = testServer.authAgentFor(member);
 	await authAgent.get('/ldap/config').expect(403);
 	await authAgent.put('/ldap/config').expect(403);
@@ -159,7 +159,7 @@ describe('PUT /ldap/config', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'member' }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 		const configuration = ldapConfig;
 
@@ -271,7 +271,10 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await createLdapUser({ role: 'member', email: ldapUserEmail }, ldapUserId);
+			const member = await createLdapUser(
+				{ role: 'global:member', email: ldapUserEmail },
+				ldapUserId,
+			);
 
 			const synchronization = await runTest([
 				{
@@ -297,7 +300,10 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await createLdapUser({ role: 'member', email: ldapUserEmail }, ldapUserId);
+			const member = await createLdapUser(
+				{ role: 'global:member', email: ldapUserEmail },
+				ldapUserId,
+			);
 
 			const synchronization = await runTest([]);
 
@@ -378,7 +384,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					role: 'member',
+					role: 'global:member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: randomName(),
@@ -411,7 +417,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					role: 'member',
+					role: 'global:member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: ldapUser.sn,
@@ -440,7 +446,7 @@ describe('POST /ldap/sync', () => {
 		});
 
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
-			const member = await createLdapUser({ role: 'member' }, uniqueId());
+			const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
@@ -527,7 +533,7 @@ describe('POST /login', () => {
 
 		await createLdapUser(
 			{
-				role: 'member',
+				role: 'global:member',
 				email: ldapUser.mail,
 				firstName: 'firstname',
 				lastName: 'lastname',
@@ -561,7 +567,7 @@ describe('POST /login', () => {
 		};
 
 		await createUser({
-			role: 'member',
+			role: 'global:member',
 			email: ldapUser.mail,
 			firstName: ldapUser.givenName,
 			lastName: 'lastname',
@@ -576,7 +582,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'member' }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 		await authOwnerAgent.post(`/users/${member.id}`);
 	});
@@ -585,7 +591,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'member' }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
 		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);

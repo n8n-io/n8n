@@ -68,7 +68,7 @@ export async function saveCredential(
 		const newSharedCredential = new SharedCredentials();
 
 		Object.assign(newSharedCredential, {
-			role: 'owner',
+			role: 'credential:owner',
 			user,
 			credentials: savedCredential,
 		});

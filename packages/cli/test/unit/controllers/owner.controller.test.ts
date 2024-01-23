@@ -76,7 +76,7 @@ describe('OwnerController', () => {
 		it('should setup the instance owner successfully', async () => {
 			const user = mock<User>({
 				id: 'userId',
-				role: 'owner',
+				role: 'global:owner',
 				authIdentities: [],
 			});
 			const req = mock<OwnerRequest.Post>({

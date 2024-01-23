@@ -29,9 +29,9 @@ let workflowRunner: ActiveWorkflowRunner;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'owner', apiKey: randomApiKey() });
-	user1 = await createUser({ role: 'member', apiKey: randomApiKey() });
-	user2 = await createUser({ role: 'member', apiKey: randomApiKey() });
+	owner = await createUser({ role: 'global:owner', apiKey: randomApiKey() });
+	user1 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
+	user2 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
 
 	// TODO: mock BinaryDataService instead
 	await utils.initBinaryDataService();

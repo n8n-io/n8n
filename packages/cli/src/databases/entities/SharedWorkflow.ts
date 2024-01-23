@@ -3,7 +3,7 @@ import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
 
-export type WorkflowSharingRole = 'owner' | 'editor' | 'user';
+export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor' | 'workflow:user';
 
 @Entity()
 export class SharedWorkflow extends WithTimestamps {

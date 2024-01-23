@@ -160,7 +160,7 @@ export const mapLdapUserToDbUser = (
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (toCreate) {
-		user.role = 'member';
+		user.role = 'global:member';
 		user.password = randomPassword();
 		user.disabled = false;
 	} else {
@@ -263,7 +263,7 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
 	const user = await Container.get(UserRepository).save({
 		password: randomPassword(),
-		role: 'member',
+		role: 'global:member',
 		...data,
 	});
 	await createLdapAuthIdentity(user, ldapId);

@@ -251,7 +251,7 @@ export class WorkflowService {
 			workflowId,
 			user,
 			'workflow:delete',
-			{ roles: ['owner'] },
+			{ roles: ['workflow:owner'] },
 		);
 
 		if (!sharedWorkflow) {

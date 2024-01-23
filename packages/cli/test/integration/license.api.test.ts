@@ -18,8 +18,8 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
 beforeAll(async () => {
-	owner = await createUserShell('owner');
-	member = await createUserShell('member');
+	owner = await createUserShell('global:owner');
+	member = await createUserShell('global:member');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);

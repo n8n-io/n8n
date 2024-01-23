@@ -30,7 +30,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 
 export = {
 	createWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
@@ -41,7 +41,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const createdWorkflow = await createWorkflow(workflow, req.user, 'owner');
+			const createdWorkflow = await createWorkflow(workflow, req.user, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,
@@ -56,7 +56,7 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
@@ -71,7 +71,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -92,7 +92,7 @@ export = {
 		},
 	],
 	getWorkflows: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
@@ -101,7 +101,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (['owner', 'admin'].includes(req.user.role)) {
+			if (['global:owner', 'global:admin'].includes(req.user.role)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
@@ -156,7 +156,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
@@ -218,7 +218,7 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -252,7 +252,7 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
