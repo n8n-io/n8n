@@ -34,6 +34,7 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
+				mock(),
 			).getActive(req);
 
 			expect(activeExecutionService.findManyInQueueMode).toHaveBeenCalled();
@@ -48,6 +49,7 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
+				mock(),
 			).getActive(req);
 
 			expect(activeExecutionService.findManyInQueueMode).not.toHaveBeenCalled();
@@ -67,6 +69,7 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
+				mock(),
 			).stop(req);
 
 			await expect(promise).rejects.toThrow(NotFoundError);
@@ -82,6 +85,7 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
+				mock(),
 			).stop(req);
 
 			expect(activeExecutionService.stop).toHaveBeenCalled();

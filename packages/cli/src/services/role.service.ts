@@ -4,7 +4,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { CacheService } from '@/services/cache/cache.service';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { InvalidRoleError } from '@/errors/invalid-role.error';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 
 @Service()
 export class RoleService {
@@ -12,6 +12,7 @@ export class RoleService {
 		private roleRepository: RoleRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
+		private readonly license: License,
 	) {
 		void this.populateCache();
 	}
@@ -103,6 +104,6 @@ export class RoleService {
 	}
 
 	async findCredentialOwnerRoleId() {
-		return isSharingEnabled() ? undefined : (await this.findCredentialOwnerRole()).id;
+		return this.license.isSharingEnabled() ? undefined : (await this.findCredentialOwnerRole()).id;
 	}
 }
