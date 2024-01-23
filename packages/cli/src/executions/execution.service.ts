@@ -395,7 +395,7 @@ export class ExecutionService {
 	// ----------------------------------
 
 	/**
-	 * Find the twenty most recent executions with a status of `success` or `error`.
+	 * Find the `n` most recent executions with a status of `success` or `error`.
 	 */
 	async findLatestFinished(n: number) {
 		return await this.executionRepository.findLatestFinished(n);
