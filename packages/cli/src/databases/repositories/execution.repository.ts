@@ -767,7 +767,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				'workflow.name',
 			])
 			.innerJoin('execution.workflow', 'workflow')
-			.limit(filter.limit ?? 20)
+			.limit(filter.limit)
 			.orderBy({ 'execution.id': 'DESC' })
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
