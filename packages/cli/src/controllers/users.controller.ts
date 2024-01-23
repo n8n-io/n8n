@@ -102,8 +102,9 @@ export class UsersController {
 		const users = await this.userRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(async (u) =>
-				this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
+			users.map(
+				async (u) =>
+					await this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
 			),
 		);
 
@@ -171,7 +172,7 @@ export class UsersController {
 
 		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
 
-		const users = await this.userRepository.findManybyIds(userIds);
+		const users = await this.userRepository.findManyByIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(

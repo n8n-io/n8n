@@ -118,9 +118,9 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 				namedParameters,
 				{},
 			);
-			return queryRunner.query(query, parameters) as Promise<T>;
+			return await (queryRunner.query(query, parameters) as Promise<T>);
 		} else {
-			return queryRunner.query(sql) as Promise<T>;
+			return await (queryRunner.query(sql) as Promise<T>);
 		}
 	},
 	runInBatches: async <T>(

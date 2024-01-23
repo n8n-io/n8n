@@ -251,7 +251,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
-			`/executions-current/${executionId}/stop`,
+			`/executions/active/${executionId}/stop`,
 		);
 	}
 

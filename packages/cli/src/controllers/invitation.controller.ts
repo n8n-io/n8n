@@ -136,7 +136,7 @@ export class InvitationController {
 
 		const validPassword = this.passwordUtility.validate(password);
 
-		const users = await this.userRepository.findManybyIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -177,6 +177,9 @@ export class InvitationController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return this.userService.toPublic(updatedUser, { posthog: this.postHog, withScopes: true });
+		return await this.userService.toPublic(updatedUser, {
+			posthog: this.postHog,
+			withScopes: true,
+		});
 	}
 }

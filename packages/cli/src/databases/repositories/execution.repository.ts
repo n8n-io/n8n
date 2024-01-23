@@ -23,7 +23,7 @@ import { parse, stringify } from 'flatted';
 import {
 	ApplicationError,
 	type ExecutionStatus,
-	type IExecutionsSummary,
+	type ExecutionSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
@@ -41,6 +41,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
+import type { GetManyActiveFilter } from '@/executions/execution.types';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -251,7 +252,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
+		return await Promise.all([
+			this.delete(ids.executionId),
+			this.binaryDataService.deleteMany([ids]),
+		]);
 	}
 
 	async updateStatus(executionId: string, status: ExecutionStatus) {
@@ -340,7 +344,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		excludedExecutionIds: string[],
 		accessibleWorkflowIds: string[],
 		additionalFilters?: { lastId?: string; firstId?: string },
-	): Promise<IExecutionsSummary[]> {
+	): Promise<ExecutionSummary[]> {
 		if (accessibleWorkflowIds.length === 0) {
 			return [];
 		}
@@ -438,7 +442,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getIdsSince(date: Date) {
-		return this.find({
+		return await this.find({
 			select: ['id'],
 			where: {
 				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
@@ -474,7 +478,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const [timeBasedWhere, countBasedWhere] = toPrune;
 
-		return this.createQueryBuilder()
+		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
 			.where({
@@ -516,7 +520,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async deleteByIds(executionIds: string[]) {
-		return this.delete({ id: In(executionIds) });
+		return await this.delete({ id: In(executionIds) });
 	}
 
 	async getWaitingExecutions() {
@@ -534,7 +538,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
 		}
 
-		return this.findMultipleExecutions({
+		return await this.findMultipleExecutions({
 			select: ['id', 'waitTill'],
 			where,
 			order: {
@@ -606,7 +610,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where = { ...where, workflowId: In(params.workflowIds) };
 		}
 
-		return this.findMultipleExecutions(
+		return await this.findMultipleExecutions(
 			{
 				select: [
 					'id',
@@ -636,7 +640,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		workflowIds: string[],
 		includeData?: boolean,
 	): Promise<IExecutionBase | undefined> {
-		return this.findSingleExecution(id, {
+		return await this.findSingleExecution(id, {
 			where: {
 				workflowId: In(workflowIds),
 			},
@@ -646,12 +650,53 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
-		return this.findSingleExecution(executionId, {
+		return await this.findSingleExecution(executionId, {
 			where: {
 				workflowId: In(sharedWorkflowIds),
 			},
 			includeData: true,
 			unflattenData: false,
+		});
+	}
+
+	async findIfAccessible(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: { workflowId: In(accessibleWorkflowIds) },
+		});
+	}
+
+	async getManyActive(
+		activeExecutionIds: string[],
+		accessibleWorkflowIds: string[],
+		filter?: GetManyActiveFilter,
+	) {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			id: In(activeExecutionIds),
+			status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
+		};
+
+		if (filter) {
+			const { workflowId, status, finished } = filter;
+			if (workflowId && accessibleWorkflowIds.includes(workflowId)) {
+				where.workflowId = workflowId;
+			} else {
+				where.workflowId = In(accessibleWorkflowIds);
+			}
+			if (status) {
+				// @ts-ignore
+				where.status = In(status);
+			}
+			if (finished !== undefined) {
+				where.finished = finished;
+			}
+		} else {
+			where.workflowId = In(accessibleWorkflowIds);
+		}
+
+		return await this.findMultipleExecutions({
+			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
+			order: { id: 'DESC' },
+			where,
 		});
 	}
 }

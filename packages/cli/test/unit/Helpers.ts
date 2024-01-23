@@ -5,7 +5,7 @@ import type { INodeTypeData } from 'n8n-workflow';
  * the macrotask queue and so called at the next iteration of the event loop
  * after all promises in the microtask queue have settled first.
  */
-export const flushPromises = async () => new Promise(setImmediate);
+export const flushPromises = async () => await new Promise(setImmediate);
 
 export function mockNodeTypesData(
 	nodeNames: string[],

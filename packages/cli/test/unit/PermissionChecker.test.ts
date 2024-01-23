@@ -123,7 +123,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => permissionChecker.check(workflow, userId)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflow, userId)).not.toThrow();
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
@@ -153,7 +153,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => permissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should allow if workflow creds are valid subset', async () => {
@@ -200,7 +200,7 @@ describe('check()', () => {
 			],
 		});
 
-		expect(async () => permissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {

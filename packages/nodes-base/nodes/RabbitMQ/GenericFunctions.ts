@@ -36,7 +36,7 @@ export async function rabbitmqConnect(
 		}
 	}
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			const connection = await amqplib.connect(credentialData, optsData);
 
@@ -73,7 +73,7 @@ export async function rabbitmqConnectQueue(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertQueue(queue, options);
 
@@ -104,7 +104,7 @@ export async function rabbitmqConnectExchange(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertExchange(exchange, type, options);
 			resolve(channel);

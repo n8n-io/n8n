@@ -13,6 +13,7 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -477,7 +478,8 @@ export class MergeV1 implements INodeType {
 				returnData.push.apply(returnData, this.getInputData(1));
 			}
 		} else if (mode === 'wait') {
-			returnData.push({ json: {} });
+			const pairedItem = generatePairedItemData(this.getInputData(0).length);
+			returnData.push({ json: {}, pairedItem });
 		}
 
 		return [returnData];

@@ -60,6 +60,6 @@ describe('Test MicrosoftOutlookV2, folderMessage => getAll', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

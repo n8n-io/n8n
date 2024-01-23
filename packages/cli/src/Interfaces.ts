@@ -18,7 +18,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
-	IExecutionsSummary,
+	ExecutionSummary,
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
@@ -170,8 +170,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 
 export interface IExecutionsListResponse {
 	count: number;
-	// results: IExecutionShortResponse[];
-	results: IExecutionsSummary[];
+	results: ExecutionSummary[];
 	estimated: boolean;
 }
 
@@ -190,12 +189,6 @@ export interface IExecutionsCurrentSummary {
 	mode: WorkflowExecuteMode;
 	workflowId: string;
 	status?: ExecutionStatus;
-}
-
-export interface IExecutionDeleteFilter {
-	deleteBefore?: Date;
-	filters?: IDataObject;
-	ids?: string[];
 }
 
 export interface IExecutingWorkflowData {
@@ -667,6 +660,7 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 
 export interface JwtToken {
 	token: string;
+	/** The amount of seconds after which the JWT will expire. **/
 	expiresIn: number;
 }
 

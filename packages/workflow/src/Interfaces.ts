@@ -2158,7 +2158,7 @@ export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
 
-export interface IExecutionsSummary {
+export interface ExecutionSummary {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;

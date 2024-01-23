@@ -98,7 +98,7 @@ export class MemoryChatRetriever implements INodeType {
 		const messages = await memory?.chatHistory.getMessages();
 
 		if (simplifyOutput && messages) {
-			return this.prepareOutputData(simplifyMessages(messages));
+			return await this.prepareOutputData(simplifyMessages(messages));
 		}
 
 		const serializedMessages =
@@ -107,6 +107,6 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
-		return this.prepareOutputData(serializedMessages);
+		return await this.prepareOutputData(serializedMessages);
 	}
 }

@@ -145,8 +145,8 @@ export async function reduceAsync<T, R>(
 	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
 	init: Promise<R> = Promise.resolve({} as R),
 ): Promise<R> {
-	return arr.reduce(async (promiseAcc, item) => {
-		return reducer(await promiseAcc, item);
+	return await arr.reduce(async (promiseAcc, item) => {
+		return await reducer(await promiseAcc, item);
 	}, init);
 }
 
@@ -157,12 +157,12 @@ export const prepareRequestBody = async (
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce(async (acc, entry) => {
+		return await parameters.reduce(async (acc, entry) => {
 			const result = await acc;
 			set(result, entry.name, entry.value);
 			return result;
 		}, Promise.resolve({}));
 	} else {
-		return reduceAsync(parameters, defaultReducer);
+		return await reduceAsync(parameters, defaultReducer);
 	}
 };
