@@ -64,7 +64,8 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			}
 		}
 
-		this.logger.info('Done');
+		this.logger.info('Activation or deactivation will not take effect if n8n is running.');
+		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
 	}
 
 	async catch(error: Error) {
