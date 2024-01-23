@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import type { CredentialRequest } from '@/requests';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
@@ -24,7 +24,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
-	if (!isSharingEnabled()) {
+	if (!Container.get(License).isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;

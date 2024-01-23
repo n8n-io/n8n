@@ -3,7 +3,6 @@ import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
 
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -23,11 +22,12 @@ import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
+import { License } from '@/License';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 const license = testServer.license;
@@ -640,7 +640,7 @@ describe('POST /workflows/run', () => {
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 		const workflowRepository = Container.get(WorkflowRepository);
 
-		sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
+		sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled');
 		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
 		workflow = workflowRepository.create({ id: uuid() });
 	});
