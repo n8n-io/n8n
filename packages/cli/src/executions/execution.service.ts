@@ -411,8 +411,8 @@ export class ExecutionService {
 	/**
 	 * Find multiple executions and their count based on a query.
 	 */
-	async findManyByQuery(filter: GetManyQuery) {
-		const results = await this.executionRepository.findManyByQuery(filter);
+	async findManyByQuery(query: GetManyQuery) {
+		const results = await this.executionRepository.findManyByQuery(query);
 
 		return { count: results.length, estimated: false, results };
 	}

@@ -802,14 +802,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 }
 
 export type GetManyQuery = Partial<{
-	id: FindOperator<string> | string;
+	id: FindOperator<string> | string; // @TODO: Do we need typeorm operators here?
 	finished: boolean;
 	mode: string;
 	retryOf: string;
 	retrySuccessId: string;
 	status: ExecutionStatus[];
 	workflowId: string;
-	waitTill: FindOperator<ExecutionEntity> | boolean;
+	waitTill: FindOperator<ExecutionEntity> | boolean; // @TODO: Do we need typeorm operators here?
 	metadata: Array<{ key: string; value: string }>;
 	startedAfter: string;
 	startedBefore: string;
