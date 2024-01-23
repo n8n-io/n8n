@@ -20,6 +20,7 @@ import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+import type { ProjectRelation } from './ProjectRelation';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -84,6 +85,9 @@ export class User extends WithTimestamps implements IUser {
 
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
+
+	@OneToMany('ProjectRelation', 'user')
+	projectRelations: ProjectRelation[];
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
