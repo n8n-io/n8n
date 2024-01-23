@@ -241,7 +241,6 @@ export class InternalHooks {
 		if ('executionData' in data) {
 			payload = {
 				executionId,
-				userId: data.userId ?? undefined,
 				workflowId: data.workflowData.id?.toString(),
 				isManual: data.executionMode === 'manual',
 				workflowName: data.workflowData.name,

@@ -326,7 +326,6 @@ export class WorkflowsController {
 
 		return await this.workflowExecutionService.executeManually(
 			req.body,
-			req.user,
 			GenericHelpers.getSessionId(req),
 		);
 	}

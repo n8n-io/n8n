@@ -218,7 +218,6 @@ export class ExecutionService {
 			executionData: execution.data,
 			retryOf: req.params.id,
 			workflowData: execution.workflowData,
-			userId: req.user.id,
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;

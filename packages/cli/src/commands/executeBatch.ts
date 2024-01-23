@@ -12,9 +12,7 @@ import pick from 'lodash/pick';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
-import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 
 import { BaseCommand } from './BaseCommand';
@@ -48,8 +46,6 @@ export class ExecuteBatch extends BaseCommand {
 	static debug = false;
 
 	static executionTimeout = 3 * 60 * 1000;
-
-	static instanceOwner: User;
 
 	static examples = [
 		'$ n8n executeBatch',
@@ -275,8 +271,6 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.githubWorkflow) {
 			ExecuteBatch.githubWorkflow = true;
 		}
-
-		ExecuteBatch.instanceOwner = await Container.get(OwnershipService).getInstanceOwner();
 
 		const query = Container.get(WorkflowRepository).createQueryBuilder('workflows');
 
@@ -641,7 +635,6 @@ export class ExecuteBatch extends BaseCommand {
 					executionMode: 'cli',
 					startNodes: [startingNode.name],
 					workflowData,
-					userId: ExecuteBatch.instanceOwner.id,
 				};
 
 				const workflowRunner = new WorkflowRunner();

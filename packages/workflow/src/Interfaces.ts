@@ -1674,7 +1674,6 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
-	userId?: string;
 	staticData?: Workflow['staticData'];
 }
 
@@ -1944,7 +1943,6 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 }

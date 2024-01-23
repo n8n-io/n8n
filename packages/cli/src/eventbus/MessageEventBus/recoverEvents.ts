@@ -177,7 +177,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 			};
 			const workflowHooks = getWorkflowHooksMain(
 				{
-					userId: '',
 					workflowData: executionEntry.workflowData,
 					executionMode: executionEntry.mode,
 					executionData,

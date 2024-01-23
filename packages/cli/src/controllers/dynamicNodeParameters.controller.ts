@@ -54,7 +54,7 @@ export class DynamicNodeParametersController {
 	async getOptions(req: DynamicNodeParametersRequest.Options): Promise<INodePropertyOptions[]> {
 		const { path, methodName, loadOptions } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase(currentNodeParameters);
 
 		if (methodName) {
 			return await this.service.getOptionsViaMethodName(
@@ -86,7 +86,7 @@ export class DynamicNodeParametersController {
 	): Promise<INodeListSearchResult | undefined> {
 		const { path, methodName, filter, paginationToken } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase(currentNodeParameters);
 		return await this.service.getResourceLocatorResults(
 			methodName,
 			path,
@@ -105,7 +105,7 @@ export class DynamicNodeParametersController {
 	): Promise<ResourceMapperFields | undefined> {
 		const { path, methodName } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase(currentNodeParameters);
 		return await this.service.getResourceMappingFields(
 			methodName,
 			path,

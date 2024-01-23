@@ -188,7 +188,7 @@ describe('runWorkflow()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const additionalData = await AdditionalData.getBase('fake-user-id');
+		const additionalData = await AdditionalData.getBase();
 
 		const runSpy = jest
 			.spyOn(WorkflowRunner.prototype, 'run')
@@ -351,7 +351,7 @@ describe('addWebhooks()', () => {
 		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([mockWebhook]);
 		webhookService.createWebhook.mockReturnValue(mockWebhookEntity);
 
-		const additionalData = await AdditionalData.getBase('fake-user-id');
+		const additionalData = await AdditionalData.getBase();
 
 		const dbWorkflow = await createWorkflow({ active: true }, owner);
 

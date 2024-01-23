@@ -43,7 +43,6 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
@@ -228,7 +227,6 @@ export class WorkflowRunner {
 						executionId!,
 						data.workflowData,
 						executionData,
-						data.userId,
 					);
 					if (externalHooks.exists('workflow.postExecute')) {
 						try {
@@ -300,7 +298,6 @@ export class WorkflowRunner {
 			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -325,7 +322,8 @@ export class WorkflowRunner {
 			);
 
 			try {
-				await Container.get(PermissionChecker).check(workflow, data.userId);
+				// TODO: move this check out of here to wherever manual execution is triggered
+				// await Container.get(PermissionChecker).check(workflow, data.userId);
 			} catch (error) {
 				ErrorReporter.error(error);
 				// Create a failed execution with the data for the node

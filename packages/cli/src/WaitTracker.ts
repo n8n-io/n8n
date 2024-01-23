@@ -7,7 +7,6 @@ import { Container, Service } from 'typedi';
 import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
 @Service()
@@ -24,7 +23,6 @@ export class WaitTracker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly ownershipService: OwnershipService,
 	) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
@@ -152,14 +150,11 @@ export class WaitTracker {
 			if (!fullExecutionData.workflowData.id) {
 				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
-			const workflowId = fullExecutionData.workflowData.id;
-			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				userId: user.id,
 			};
 
 			// Start the execution again

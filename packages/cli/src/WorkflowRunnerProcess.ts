@@ -158,7 +158,6 @@ class WorkflowRunnerProcess {
 			return failedExecutionData;
 		}
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -210,9 +209,7 @@ class WorkflowRunnerProcess {
 			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
-				additionalData.userId,
 				options?.inputData,
-				options?.parentWorkflowId,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
@@ -242,12 +239,7 @@ class WorkflowRunnerProcess {
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
-				void Container.get(InternalHooks).onWorkflowPostExecute(
-					executionId,
-					workflowData,
-					result,
-					additionalData.userId,
-				);
+				void Container.get(InternalHooks).onWorkflowPostExecute(executionId, workflowData, result);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
 			} catch (e) {

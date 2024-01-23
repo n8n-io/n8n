@@ -55,13 +55,9 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
-import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
 import { Logger } from './Logger';
-import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
 
@@ -236,22 +232,8 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
-	let user: User;
-	if (
-		(workflowData as WorkflowEntity).shared?.length &&
-		(workflowData as WorkflowEntity).shared[0].user
-	) {
-		user = (workflowData as WorkflowEntity).shared[0].user;
-	} else {
-		try {
-			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
-		} catch (error) {
-			throw new NotFoundError('Cannot find workflow');
-		}
-	}
-
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
@@ -528,7 +510,6 @@ export async function executeWebhook(
 			sessionId,
 			workflowData,
 			pinData,
-			userId: user.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;

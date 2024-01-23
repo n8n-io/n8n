@@ -249,9 +249,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -298,7 +296,6 @@ export class ActiveWorkflowRunner {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
-			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -621,7 +618,7 @@ export class ActiveWorkflowRunner {
 				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
 			}
 
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 			if (shouldAddWebhooks) {
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);

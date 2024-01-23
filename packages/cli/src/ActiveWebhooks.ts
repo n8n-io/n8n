@@ -102,9 +102,7 @@ export class ActiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

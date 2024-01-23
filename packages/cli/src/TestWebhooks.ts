@@ -207,7 +207,6 @@ export class TestWebhooks implements IWebhookManager {
 	 * For every webhook call to listen for, also activate the webhook.
 	 */
 	async needsWebhook(
-		userId: string,
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		runData?: IRunData,
@@ -254,8 +253,6 @@ export class TestWebhooks implements IWebhookManager {
 			 * Hence store the `userId` and recreate additional data when needed.
 			 */
 			const { workflowExecuteAdditionalData: _, ...cacheableWebhook } = webhook;
-
-			cacheableWebhook.userId = userId;
 
 			const registration: TestWebhookRegistration = {
 				sessionId,
@@ -380,11 +377,9 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
-			const { userId, staticData } = webhook;
+			const { staticData } = webhook;
 
-			if (userId) {
-				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
-			}
+			webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase();
 
 			if (staticData) workflow.staticData = staticData;
 

@@ -44,7 +44,6 @@ export class WorkflowExecutionService {
 			startNodes,
 			destinationNode,
 		}: WorkflowRequest.ManualRunPayload,
-		user: User,
 		sessionId?: string,
 	) {
 		const pinnedTrigger = this.selectPinnedActivatorStarter(workflowData, startNodes, pinData);
@@ -57,10 +56,9 @@ export class WorkflowExecutionService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 			const needsWebhook = await this.testWebhooks.needsWebhook(
-				user.id,
 				workflowData,
 				additionalData,
 				runData,
@@ -83,7 +81,6 @@ export class WorkflowExecutionService {
 			sessionId,
 			startNodes,
 			workflowData,
-			userId: user.id,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
@@ -227,7 +224,6 @@ export class WorkflowExecutionService {
 				executionMode,
 				executionData: runExecutionData,
 				workflowData,
-				userId: runningUser.id,
 			};
 
 			const workflowRunner = new WorkflowRunner();

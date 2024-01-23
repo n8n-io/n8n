@@ -24,13 +24,11 @@ const workflowEntity = mock<IWorkflowDb>({ id: generateNanoId(), nodes: [] });
 
 const httpMethod = 'GET';
 const path = uuid();
-const userId = '04ab4baf-85df-478f-917b-d303934a97de';
 
 const webhook = mock<IWebhookData>({
 	httpMethod,
 	path,
 	workflowId: workflowEntity.id,
-	userId,
 });
 
 const registrations = mock<TestWebhookRegistrationsService>();
@@ -45,7 +43,6 @@ describe('TestWebhooks', () => {
 
 	describe('needsWebhook()', () => {
 		const args: Parameters<typeof testWebhooks.needsWebhook> = [
-			userId,
 			workflowEntity,
 			mock<IWorkflowExecuteAdditionalData>(),
 		];
@@ -128,7 +125,7 @@ describe('TestWebhooks', () => {
 
 			await testWebhooks.deactivateWebhooks(workflow);
 
-			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
+			expect(mockedAdditionalData.getBase).toHaveBeenCalled();
 		});
 	});
 });
