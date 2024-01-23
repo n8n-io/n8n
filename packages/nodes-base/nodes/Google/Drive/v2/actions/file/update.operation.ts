@@ -203,7 +203,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				{ uploadType: 'resumable' },
 				undefined,
 				{
-					resolveWithFullResponse: true,
+					returnFullResponse: true,
 				},
 			);
 			const uploadUrl = resumableUpload.headers.location;
