@@ -2164,7 +2164,7 @@ export interface ExecutionSummary {
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;

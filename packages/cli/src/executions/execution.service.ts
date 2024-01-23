@@ -333,6 +333,9 @@ export class ExecutionService {
 	async findManyByQuery(query: GetManyQuery) {
 		const results = await this.executionRepository.findManyByQuery(query);
 
+		// @TODO: count total filtered executions, instead of
+		// only filtered executions in range made up of limit, firstId, and lastId
+
 		return { count: results.length, estimated: false, results };
 	}
 }

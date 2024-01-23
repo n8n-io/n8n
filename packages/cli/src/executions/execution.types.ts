@@ -5,7 +5,7 @@ import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
 		type GetMany = {
-			filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
+			filter: string; // stringified `FilterFields`
 			limit: string;
 			lastId: string;
 			firstId: string;
@@ -29,7 +29,7 @@ export declare namespace ExecutionRequest {
 	}
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
-		getManyQuery: GetManyQuery; // once parsed from query params
+		getManyQuery: GetManyQuery; // parsed from query params
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
@@ -49,7 +49,7 @@ export type GetManyActiveFilter = {
 	finished?: boolean;
 };
 
-export type GetManyQuery = Partial<{
+type FilterFields = Partial<{
 	id: string;
 	finished: boolean;
 	mode: string;
@@ -61,8 +61,16 @@ export type GetManyQuery = Partial<{
 	metadata: Array<{ key: string; value: string }>;
 	startedAfter: string;
 	startedBefore: string;
+}>;
+
+type RangeFields = Partial<{
 	limit: number;
 	firstId: string;
 	lastId: string;
+}>;
+
+type AccessFields = Partial<{
 	accessibleWorkflowIds: string[];
 }>;
+
+export type GetManyQuery = FilterFields & RangeFields & AccessFields;

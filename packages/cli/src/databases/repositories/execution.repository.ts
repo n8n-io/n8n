@@ -42,6 +42,7 @@ import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { GetManyActiveFilter, GetManyQuery } from '@/executions/execution.types';
+import { MissingAccessibleWorkflowIdsError } from '@/errors/missing-accessible-workflow-ids.error';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -618,74 +619,82 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	//            new API
 	// ----------------------------------
 
-	async findLatestFinished(n: number) {
+	/**
+	 * Fields to include in the summary of an execution.
+	 */
+	private summaryFields = {
+		id: true,
+		workflowId: true,
+		mode: true,
+		retryOf: true,
+		status: true,
+		startedAt: true,
+		stoppedAt: true,
+	};
+
+	async findLatestFinished(n: number): Promise<ExecutionSummary[]> {
 		const findManyOptions: FindManyOptions<ExecutionEntity> = {
-			where: { status: In(['success', 'error']) },
-			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
+			select: this.summaryFields,
+			where: { status: In(['success', 'error']) }, // @TODO: Failed?
 			order: { stoppedAt: 'DESC' },
 			take: n,
 		};
 
-		return (await this.find(findManyOptions)) as ExecutionSummary[];
+		return await this.find(findManyOptions);
 	}
 
-	async findAllActive() {
+	async findAllActive(): Promise<ExecutionSummary[]> {
 		const findManyOptions: FindManyOptions<ExecutionEntity> = {
+			select: this.summaryFields,
 			where: { status: In(['new', 'running', 'waiting']) },
-			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 			order: { stoppedAt: 'DESC' },
 		};
 
-		return (await this.find(findManyOptions)) as ExecutionSummary[];
+		return await this.find(findManyOptions);
 	}
 
-	async findManyByQuery(query: GetManyQuery) {
-		const { accessibleWorkflowIds } = query;
+	async findManyByQuery(query: GetManyQuery): Promise<ExecutionSummary[]> {
+		if (!query.accessibleWorkflowIds) throw new MissingAccessibleWorkflowIdsError(query);
 
-		if (!accessibleWorkflowIds)
-			throw new ApplicationError(
-				'Missing accessible workflow IDs in query to retrieve many executions',
-				{ extra: { query } },
-			);
+		const {
+			accessibleWorkflowIds,
+			limit,
+			firstId,
+			lastId,
+			status,
+			finished,
+			workflowId,
+			startedBefore,
+			startedAfter,
+			metadata,
+		} = query;
+
+		const fields = Object.keys(this.summaryFields)
+			.concat(['waitTill', 'retrySuccessId'])
+			.map((key) => `execution.${key}`)
+			.concat('workflow.name AS workflowName');
 
 		const qb = this.createQueryBuilder('execution')
-			.select([
-				'execution.id',
-				'execution.finished',
-				'execution.mode',
-				'execution.retryOf',
-				'execution.retrySuccessId',
-				'execution.status',
-				'execution.startedAt',
-				'execution.stoppedAt',
-				'execution.workflowId',
-				'execution.waitTill',
-				'workflow.name',
-			])
+			.select(fields)
 			.innerJoin('execution.workflow', 'workflow')
-			.limit(query.limit)
 			.orderBy({ 'execution.id': 'DESC' })
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
-		if (query?.firstId) qb.andWhere('execution.id > :firstId', { firstId: query.firstId });
+		if (limit) qb.limit(limit);
+		if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
+		if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 
-		if (query?.lastId) qb.andWhere('execution.id < :lastId', { lastId: query.lastId });
+		if (status) qb.andWhere('execution.status IN (:...status)', { status });
+		if (finished) qb.andWhere({ finished });
+		if (workflowId) qb.andWhere({ workflowId });
+		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
+		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
-		if (query?.status) qb.andWhere('execution.status IN (:...status)', { status: query.status });
-
-		if (query?.workflowId) qb.andWhere({ workflowId: query.workflowId });
-
-		if (query?.finished) qb.andWhere({ finished: query.finished });
-
-		if (query?.startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(query.startedBefore) });
-
-		if (query?.startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(query.startedAfter) });
-
-		if (query?.metadata && isAdvancedExecutionFiltersEnabled()) {
+		if (metadata) {
 			qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 
-			for (const md of query.metadata) {
-				qb.andWhere('md.key = :key AND md.value = :value', md);
+			for (const keyValue of metadata) {
+				qb.andWhere('md.key = :key AND md.value = :value', keyValue);
 			}
 		}
 

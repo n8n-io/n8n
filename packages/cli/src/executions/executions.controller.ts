@@ -60,6 +60,8 @@ export class ExecutionsController {
 
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
+		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
+
 		return await this.executionService.findManyByQuery(query);
 	}
 
