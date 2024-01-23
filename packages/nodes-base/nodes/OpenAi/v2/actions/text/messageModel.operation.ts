@@ -376,7 +376,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			if (tool.type === 'api') {
 				toolFunctions[tool.name as string] = {
 					callExternalApi: true,
-					url: tool.uri as string,
+					url: tool.url as string,
 					method: tool.method as string,
 					requestOptions:
 						typeof tool.requestOptions === 'string'
