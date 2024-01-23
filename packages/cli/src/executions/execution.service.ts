@@ -21,7 +21,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from './execution.request';
+import type { ExecutionRequest } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
@@ -78,15 +78,7 @@ export class ExecutionService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async getExecutionsList(req: ExecutionRequest.GetAll, sharedWorkflowIds: string[]) {
-		if (sharedWorkflowIds.length === 0) {
-			return {
-				count: 0,
-				estimated: false,
-				results: [],
-			};
-		}
-
+	async findMany(req: ExecutionRequest.GetMany, sharedWorkflowIds: string[]) {
 		// parse incoming filter object and remove non-valid fields
 		let filter: IGetExecutionsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
@@ -160,8 +152,8 @@ export class ExecutionService {
 		};
 	}
 
-	async getExecution(
-		req: ExecutionRequest.Get,
+	async findOne(
+		req: ExecutionRequest.GetOne,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
@@ -184,9 +176,7 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retryExecution(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
-		if (!sharedWorkflowIds.length) return false;
-
+	async retry(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
 		const { id: executionId } = req.params;
 		const execution = (await this.executionRepository.findIfShared(
 			executionId,
@@ -298,12 +288,7 @@ export class ExecutionService {
 		return !!executionData.finished;
 	}
 
-	async deleteExecutions(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		if (sharedWorkflowIds.length === 0) {
-			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
-			return;
-		}
+	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
 		let requestFilters;
 		if (requestFiltersRaw) {
