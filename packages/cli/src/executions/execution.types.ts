@@ -1,5 +1,4 @@
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
-import type { GetManyQuery as GetManyQuery } from '@/databases/repositories/execution.repository';
 import type { AuthenticatedRequest } from '@/requests';
 import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 
@@ -30,7 +29,7 @@ export declare namespace ExecutionRequest {
 	}
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
-		getManyQuery: GetManyQuery; // once parsed
+		getManyQuery: GetManyQuery; // once parsed from query params
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
@@ -49,3 +48,21 @@ export type GetManyActiveFilter = {
 	status?: ExecutionStatus;
 	finished?: boolean;
 };
+
+export type GetManyQuery = Partial<{
+	id: string;
+	finished: boolean;
+	mode: string;
+	retryOf: string;
+	retrySuccessId: string;
+	status: ExecutionStatus[];
+	workflowId: string;
+	waitTill: boolean;
+	metadata: Array<{ key: string; value: string }>;
+	startedAfter: string;
+	startedBefore: string;
+	limit: number;
+	firstId: string;
+	lastId: string;
+	accessibleWorkflowIds: string[];
+}>;

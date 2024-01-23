@@ -11,7 +11,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
- * Middleware to parse the query string for a request to get many executions.
+ * Middleware to parse the query string for a request to retrieve many executions.
  */
 export const parseGetManyQuery = (
 	req: ExecutionRequest.GetMany,

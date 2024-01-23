@@ -41,7 +41,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { GetManyActiveFilter } from '@/executions/execution.types';
+import type { GetManyActiveFilter, GetManyQuery } from '@/executions/execution.types';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -800,22 +800,3 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await qb.getMany();
 	}
 }
-
-export type GetManyQuery = Partial<{
-	id: FindOperator<string> | string; // @TODO: Do we need typeorm operators here?
-	finished: boolean;
-	mode: string;
-	retryOf: string;
-	retrySuccessId: string;
-	status: ExecutionStatus[];
-	workflowId: string;
-	waitTill: FindOperator<ExecutionEntity> | boolean; // @TODO: Do we need typeorm operators here?
-	metadata: Array<{ key: string; value: string }>;
-	startedAfter: string;
-	startedBefore: string;
-
-	limit: number;
-	firstId: string;
-	lastId: string;
-	accessibleWorkflowIds: string[];
-}>;

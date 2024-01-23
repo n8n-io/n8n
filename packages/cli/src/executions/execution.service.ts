@@ -21,14 +21,11 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from './execution.types';
+import type { ExecutionRequest, GetManyQuery } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
-import type {
-	GetManyQuery,
-	IGetExecutionsQueryFilter,
-} from '@db/repositories/execution.repository';
+import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
