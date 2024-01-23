@@ -1,5 +1,5 @@
+import { Config } from '@oclif/core';
 import { Worker } from '@/commands/worker';
-import * as Config from '@oclif/config';
 import config from '@/config';
 import { Telemetry } from '@/telemetry';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
@@ -20,7 +20,7 @@ import { OrchestrationService } from '@/services/orchestration.service';
 
 import { mockInstance } from '../../shared/mocking';
 
-const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
+const oclifConfig = new Config({ root: __dirname });
 
 beforeAll(async () => {
 	config.set('executions.mode', 'queue');
