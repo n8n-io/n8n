@@ -94,6 +94,8 @@ const properties: INodeProperties[] = [
 		displayName: 'Tools',
 		name: 'tools',
 		type: 'fixedCollection',
+		description:
+			'A list of tools(functions) the model may call to receive additional data or to do some processing',
 		typeOptions: {
 			sortable: true,
 			multipleValues: true,
@@ -106,14 +108,14 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Function Name',
+						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
 						placeholder: 'e.g. get_current_weather',
 					},
 					{
-						displayName: 'Function Description',
+						displayName: 'Description',
 						name: 'description',
 						type: 'string',
 						default: '',
@@ -151,7 +153,7 @@ const properties: INodeProperties[] = [
 						default: 'function',
 					},
 					{
-						displayName: 'Function Code (JavaScript)',
+						displayName: 'Code (JavaScript)',
 						name: 'jsCode',
 						type: 'string',
 						description:
@@ -251,13 +253,15 @@ const properties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Request Options',
+						displayName: 'Additional Request Options',
 						name: 'requestOptions',
 						type: 'json',
 						typeOptions: {
 							rows: 5,
 						},
 						default: '{\n  "headers": {},\n  "qs": {},\n  "body": {}\n}',
+						description:
+							'Use this if you need to set additional options for the request like authorization headers',
 						validateType: 'object',
 						displayOptions: {
 							show: {
