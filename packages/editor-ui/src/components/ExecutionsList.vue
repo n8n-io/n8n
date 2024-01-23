@@ -332,9 +332,9 @@ export default defineComponent({
 		getWorkflowName(workflowId: string): string | undefined {
 			return this.workflows.find((data) => data.id === workflowId)?.name;
 		},
-		async loadActiveExecutions(): Promise<void> {
-			if (isEmpty(this.executionsStore.runningExecutionsFilters.metadata)) {
-				await this.executionsStore.fetchRunningExecutions();
+		async loadCurrentExecutions(): Promise<void> {
+			if (isEmpty(this.executionsStore.currentExecutionsFilters.metadata)) {
+				await this.executionsStore.fetchCurrentExecutions();
 			}
 		},
 		async loadFinishedExecutions(): Promise<void> {
@@ -425,7 +425,7 @@ export default defineComponent({
 		},
 		async refreshData() {
 			try {
-				await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
+				await Promise.all([this.loadCurrentExecutions(), this.loadFinishedExecutions()]);
 			} catch (error) {
 				this.showError(error, this.i18n.baseText('executionsList.showError.refreshData.title'));
 			}
