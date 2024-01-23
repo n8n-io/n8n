@@ -2,16 +2,13 @@ import { Service } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
-	JsonObject,
 	ExecutionError,
 	INode,
 	IRunExecutionData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
-
+import { ApplicationError, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import config from '@/config';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
@@ -23,7 +20,6 @@ import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest, GetManyQuery } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -79,80 +75,6 @@ export class ExecutionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 	) {}
-
-	async findMany(req: ExecutionRequest.GetMany, sharedWorkflowIds: string[]) {
-		// parse incoming filter object and remove non-valid fields
-		let filter: IGetExecutionsQueryFilter | undefined = undefined;
-		if (req.query.filter) {
-			try {
-				const filterJson: JsonObject = jsonParse(req.query.filter);
-				if (filterJson) {
-					Object.keys(filterJson).map((key) => {
-						if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];
-					});
-					if (jsonSchemaValidate(filterJson, schemaGetExecutionsQueryFilter).valid) {
-						filter = filterJson as IGetExecutionsQueryFilter;
-					}
-				}
-			} catch (error) {
-				this.logger.error('Failed to parse filter', {
-					userId: req.user.id,
-					filter: req.query.filter,
-				});
-				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
-			}
-		}
-
-		// safeguard against querying workflowIds not shared with the user
-		const workflowId = filter?.workflowId?.toString();
-		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
-			this.logger.verbose(
-				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
-			);
-			return {
-				count: 0,
-				estimated: false,
-				results: [],
-			};
-		}
-
-		const limit = req.query.limit
-			? parseInt(req.query.limit, 10)
-			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
-
-		const executingWorkflowIds: string[] = [];
-
-		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await this.queue.getJobs(['active', 'waiting']);
-			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
-		}
-
-		// We may have manual executions even with queue so we must account for these.
-		executingWorkflowIds.push(...this.activeExecutions.getActiveExecutions().map(({ id }) => id));
-
-		const { count, estimated } = await this.executionRepository.countExecutions(
-			filter,
-			sharedWorkflowIds,
-			executingWorkflowIds,
-			req.user.hasGlobalScope('workflow:list'),
-		);
-
-		const formattedExecutions = await this.executionRepository.searchExecutions(
-			filter,
-			limit,
-			executingWorkflowIds,
-			sharedWorkflowIds,
-			{
-				lastId: req.query.lastId,
-				firstId: req.query.firstId,
-			},
-		);
-		return {
-			count,
-			results: formattedExecutions,
-			estimated,
-		};
-	}
 
 	async findOne(
 		req: ExecutionRequest.GetOne,
