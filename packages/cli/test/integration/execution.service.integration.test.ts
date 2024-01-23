@@ -6,6 +6,14 @@ import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createManyExecutions } from './shared/db/executions';
 import * as testDb from './shared/testDb';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { ExecutionStatus } from 'n8n-workflow';
+
+const manyExecutions = async (n: number, status: ExecutionStatus, workflow: WorkflowEntity) => {
+	return await createManyExecutions(n, workflow, async () => {
+		return await createExecution({ status }, workflow);
+	});
+};
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
@@ -36,13 +44,8 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				createManyExecutions(3, workflow, async () => {
-					return await createExecution({ status: 'success' }, workflow);
-				}),
-
-				createManyExecutions(3, workflow, async () => {
-					return await createExecution({ status: 'unknown' }, workflow);
-				}),
+				manyExecutions(3, 'success', workflow),
+				manyExecutions(3, 'unknown', workflow),
 			]);
 
 			const executions = await executionService.findLatestFinished(2);
@@ -59,13 +62,8 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				createManyExecutions(3, workflow, async () => {
-					return await createExecution({ status: 'error' }, workflow);
-				}),
-
-				createManyExecutions(3, workflow, async () => {
-					return await createExecution({ status: 'unknown' }, workflow);
-				}),
+				manyExecutions(3, 'error', workflow),
+				manyExecutions(3, 'unknown', workflow),
 			]);
 
 			const executions = await executionService.findLatestFinished(2);
@@ -76,6 +74,30 @@ describe('ExecutionService', () => {
 
 			expect(first.status).toBe('error');
 			expect(second.status).toBe('error');
+		});
+	});
+
+	describe('findAllActive', () => {
+		it('should return all new, running, and waiting executions', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				manyExecutions(2, 'new', workflow),
+				manyExecutions(2, 'running', workflow),
+				manyExecutions(2, 'waiting', workflow),
+				manyExecutions(2, 'success', workflow),
+				manyExecutions(2, 'unknown', workflow),
+			]);
+
+			const executions = await executionService.findAllActive();
+
+			expect(executions).toHaveLength(6);
+
+			executions.forEach((execution) => {
+				if (!execution.status) fail('Expected status');
+
+				expect(['new', 'running', 'waiting'].includes(execution.status)).toBe(true);
+			});
 		});
 	});
 });
