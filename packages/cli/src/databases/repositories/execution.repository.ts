@@ -750,7 +750,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findManyByQuery(query: GetManyQuery) {
 		const { accessibleWorkflowIds } = query;
 
-		if (!accessibleWorkflowIds) throw new ApplicationError('Expected accessible workflow IDs');
+		if (!accessibleWorkflowIds)
+			throw new ApplicationError(
+				'Missing accessible workflow IDs in query to retrieve many executions',
+				{ extra: { query } },
+			);
 
 		const qb = this.createQueryBuilder('execution')
 			.select([
