@@ -648,7 +648,12 @@ export class InternalHooks {
 
 	async onUserTransactionalEmail(userTransactionalEmailData: {
 		user_id: string;
-		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		message_type:
+			| 'Reset password'
+			| 'New user invite'
+			| 'Resend invite'
+			| 'Workflow shared'
+			| 'Credentials shared';
 		public_api: boolean;
 	}): Promise<void> {
 		return await this.telemetry.track(
@@ -737,7 +742,12 @@ export class InternalHooks {
 
 	async onEmailFailed(failedEmailData: {
 		user: User;
-		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		message_type:
+			| 'Reset password'
+			| 'New user invite'
+			| 'Resend invite'
+			| 'Workflow shared'
+			| 'Credentials shared';
 		public_api: boolean;
 	}): Promise<void> {
 		void Promise.all([
