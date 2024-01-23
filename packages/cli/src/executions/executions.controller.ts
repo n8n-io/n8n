@@ -11,7 +11,7 @@ import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
 import { License } from '@/License';
-import { parseGetManyQueryString } from './filter.middleware';
+import { parseGetManyQuery } from './query.middleware';
 
 @Authorized()
 @RestController('/executions')
@@ -32,7 +32,7 @@ export class ExecutionsController {
 			: await this.workflowSharingService.getSharedWorkflowIds(user, ['owner']);
 	}
 
-	@Get('/', { middlewares: [parseGetManyQueryString] })
+	@Get('/', { middlewares: [parseGetManyQuery] })
 	@RequireGlobalScope('workflow:list')
 	async getMany(req: ExecutionRequest.GetMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user);
@@ -41,13 +41,13 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		const { getManyFilter: filter } = req;
+		const { getManyQuery: query } = req;
 
-		if (filter.workflowId && !accessibleWorkflowIds.includes(filter.workflowId)) {
+		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		if (filter.status?.length === 0) {
+		if (query.status?.length === 0) {
 			const [active, latestFinished] = await Promise.all([
 				this.executionService.findAllActive(),
 				this.executionService.findLatestFinished(20),
@@ -58,9 +58,9 @@ export class ExecutionsController {
 			return { count: results.length, estimated: false, results };
 		}
 
-		filter.accessibleWorkflowIds = accessibleWorkflowIds;
+		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
-		return await this.executionService.findManyByFilter(filter);
+		return await this.executionService.findManyByQuery(query);
 	}
 
 	@Get('/active')

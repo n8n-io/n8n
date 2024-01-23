@@ -100,4 +100,8 @@ describe('ExecutionService', () => {
 			});
 		});
 	});
+
+	describe('findManyByQuery', () => {
+		// @TODO
+	});
 });

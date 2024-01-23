@@ -26,7 +26,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type {
-	GetManyFilter,
+	GetManyQuery,
 	IGetExecutionsQueryFilter,
 } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -409,10 +409,10 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find multiple executions and their count based on a filter.
+	 * Find multiple executions and their count based on a query.
 	 */
-	async findManyByFilter(filter: GetManyFilter) {
-		const results = await this.executionRepository.findManyByFilter(filter);
+	async findManyByQuery(filter: GetManyQuery) {
+		const results = await this.executionRepository.findManyByQuery(filter);
 
 		return { count: results.length, estimated: false, results };
 	}

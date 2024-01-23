@@ -747,8 +747,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return (await this.find(findManyOptions)) as ExecutionSummary[];
 	}
 
-	async findManyByFilter(filter: GetManyFilter) {
-		const { accessibleWorkflowIds } = filter;
+	async findManyByQuery(query: GetManyQuery) {
+		const { accessibleWorkflowIds } = query;
 
 		if (!accessibleWorkflowIds) throw new ApplicationError('Expected accessible workflow IDs');
 
@@ -767,28 +767,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				'workflow.name',
 			])
 			.innerJoin('execution.workflow', 'workflow')
-			.limit(filter.limit)
+			.limit(query.limit)
 			.orderBy({ 'execution.id': 'DESC' })
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
-		if (filter?.firstId) qb.andWhere('execution.id > :firstId', { firstId: filter.firstId });
+		if (query?.firstId) qb.andWhere('execution.id > :firstId', { firstId: query.firstId });
 
-		if (filter?.lastId) qb.andWhere('execution.id < :lastId', { lastId: filter.lastId });
+		if (query?.lastId) qb.andWhere('execution.id < :lastId', { lastId: query.lastId });
 
-		if (filter?.status) qb.andWhere('execution.status IN (:...status)', { status: filter.status });
+		if (query?.status) qb.andWhere('execution.status IN (:...status)', { status: query.status });
 
-		if (filter?.workflowId) qb.andWhere({ workflowId: filter.workflowId });
+		if (query?.workflowId) qb.andWhere({ workflowId: query.workflowId });
 
-		if (filter?.finished) qb.andWhere({ finished: filter.finished });
+		if (query?.finished) qb.andWhere({ finished: query.finished });
 
-		if (filter?.startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(filter.startedBefore) });
+		if (query?.startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(query.startedBefore) });
 
-		if (filter?.startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(filter.startedAfter) });
+		if (query?.startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(query.startedAfter) });
 
-		if (filter?.metadata && isAdvancedExecutionFiltersEnabled()) {
+		if (query?.metadata && isAdvancedExecutionFiltersEnabled()) {
 			qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 
-			for (const md of filter.metadata) {
+			for (const md of query.metadata) {
 				qb.andWhere('md.key = :key AND md.value = :value', md);
 			}
 		}
@@ -797,7 +797,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 }
 
-export type GetManyFilter = Partial<{
+export type GetManyQuery = Partial<{
 	id: FindOperator<string> | string;
 	finished: boolean;
 	mode: string;
