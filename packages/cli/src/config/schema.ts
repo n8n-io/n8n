@@ -852,6 +852,18 @@ export const schema = {
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
 				},
+				workflowShared: {
+					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
+				},
+				credentialsShared: {
+					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
+				},
 			},
 		},
 		authenticationMethod: {
