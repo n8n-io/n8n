@@ -196,9 +196,9 @@ export function executeFilterCondition(
 				case 'notEndsWith':
 					return !left.endsWith(right);
 				case 'regex':
-					return new RegExp(parseRegexPattern(right)).test(left);
+					return parseRegexPattern(right).test(left);
 				case 'notRegex':
-					return !new RegExp(parseRegexPattern(right)).test(left);
+					return !parseRegexPattern(right).test(left);
 			}
 
 			break;
