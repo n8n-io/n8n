@@ -51,6 +51,7 @@ export type ThreadMessage = {
 export type ExternalApiCallOptions = {
 	callExternalApi: boolean;
 	url: string;
+	path: string;
 	method: string;
 	requestOptions: IDataObject;
 	sendParametersIn: string;

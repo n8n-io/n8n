@@ -170,19 +170,6 @@ const properties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'URL',
-						name: 'url',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. https://wikipedia.org/api',
-						validateType: 'url',
-						displayOptions: {
-							show: {
-								type: ['api'],
-							},
-						},
-					},
-					{
 						displayName: 'Method',
 						name: 'method',
 						type: 'options',
@@ -212,14 +199,12 @@ const properties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Request Options',
-						name: 'requestOptions',
-						type: 'json',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '{\n  "body": {},\n  "qs": {},\n  "headers": {}\n}',
-						validateType: 'object',
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. https://wikipedia.org/api',
+						validateType: 'url',
 						displayOptions: {
 							show: {
 								type: ['api'],
@@ -239,8 +224,41 @@ const properties: INodeProperties[] = [
 								name: 'Query String',
 								value: 'qs',
 							},
+							{
+								name: 'Path',
+								value: 'path',
+							},
 						],
 						default: 'qs',
+						displayOptions: {
+							show: {
+								type: ['api'],
+							},
+						},
+					},
+					{
+						displayName: 'Path',
+						name: 'path',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. /weather/{latitude}/{longitude}',
+						hint: "Use {parameter_name} to indicate where the parameter's value should be inserted",
+						displayOptions: {
+							show: {
+								type: ['api'],
+								sendParametersIn: ['path'],
+							},
+						},
+					},
+					{
+						displayName: 'Request Options',
+						name: 'requestOptions',
+						type: 'json',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '{\n  "headers": {},\n  "qs": {},\n  "body": {}\n}',
+						validateType: 'object',
 						displayOptions: {
 							show: {
 								type: ['api'],
@@ -377,6 +395,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				toolFunctions[tool.name as string] = {
 					callExternalApi: true,
 					url: tool.url as string,
+					path: tool.path as string,
 					method: tool.method as string,
 					requestOptions:
 						typeof tool.requestOptions === 'string'
@@ -433,7 +452,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 			let functionResponse;
 			if (typeof functionToCall === 'object' && functionToCall.callExternalApi) {
-				const { url, method, sendParametersIn } = functionToCall;
+				const { url, method, sendParametersIn, path } = functionToCall;
 				const requestOptions =
 					typeof functionToCall.requestOptions === 'string'
 						? jsonParse<IDataObject>(functionToCall.requestOptions)
@@ -461,11 +480,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 						...((externalRequestOptions.body as IDataObject) || {}),
 						...jsonParse<IDataObject>(functionArgs),
 					};
-				} else {
+				} else if (sendParametersIn === 'qs') {
 					externalRequestOptions.qs = {
 						...((externalRequestOptions.qs as IDataObject) || {}),
 						...jsonParse<IDataObject>(functionArgs),
 					};
+				} else {
+					const functionArgsObject = jsonParse<IDataObject>(functionArgs);
+					let parsedPath = path;
+
+					for (const [key, value] of Object.entries(functionArgsObject)) {
+						parsedPath = parsedPath.replace(`{${key}}`, String(value));
+					}
+
+					externalRequestOptions.url = `${url}${encodeURI(parsedPath)}`;
 				}
 
 				functionResponse = await this.helpers.httpRequest(externalRequestOptions);
