@@ -43,6 +43,20 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { GetManyActiveFilter } from '@/executions/execution.types';
 
+export interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string> | string;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	waitTill?: FindOperator<any> | boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+}
+
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
 	filters?: IGetExecutionsQueryFilter,
@@ -81,6 +95,14 @@ function parseFiltersToQueryBuilder(
 		});
 	}
 }
+
+const lessThanOrEqual = (date: string): unknown => {
+	return LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+};
+
+const moreThanOrEqual = (date: string): unknown => {
+	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+};
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
@@ -699,18 +721,97 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where,
 		});
 	}
+
+	// ----------------------------------
+	//            new API
+	// ----------------------------------
+
+	async findLatestFinished(n: number) {
+		const findManyOptions: FindManyOptions<ExecutionEntity> = {
+			where: { status: In(['success', 'error']) },
+			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
+			order: { stoppedAt: 'DESC' },
+			take: n,
+		};
+
+		return (await this.find(findManyOptions)) as ExecutionSummary[];
+	}
+
+	async findAllActive() {
+		const findManyOptions: FindManyOptions<ExecutionEntity> = {
+			where: { status: In(['new', 'running', 'waiting']) },
+			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
+			order: { stoppedAt: 'DESC' },
+		};
+
+		return (await this.find(findManyOptions)) as ExecutionSummary[];
+	}
+
+	async findManyByFilter(filter: GetManyFilter) {
+		const { accessibleWorkflowIds } = filter;
+
+		if (!accessibleWorkflowIds) throw new ApplicationError('Expected accessible workflow IDs');
+
+		const qb = this.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.status',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowId',
+				'execution.waitTill',
+				'workflow.name',
+			])
+			.innerJoin('execution.workflow', 'workflow')
+			.limit(filter.limit ?? 20)
+			.orderBy({ 'execution.id': 'DESC' })
+			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+
+		if (filter?.firstId) qb.andWhere('execution.id > :firstId', { firstId: filter.firstId });
+
+		if (filter?.lastId) qb.andWhere('execution.id < :lastId', { lastId: filter.lastId });
+
+		if (filter?.status) qb.andWhere('execution.status IN (:...status)', { status: filter.status });
+
+		if (filter?.workflowId) qb.andWhere({ workflowId: filter.workflowId });
+
+		if (filter?.finished) qb.andWhere({ finished: filter.finished });
+
+		if (filter?.startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(filter.startedBefore) });
+
+		if (filter?.startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(filter.startedAfter) });
+
+		if (filter?.metadata && isAdvancedExecutionFiltersEnabled()) {
+			qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
+
+			for (const md of filter.metadata) {
+				qb.andWhere('md.key = :key AND md.value = :value', md);
+			}
+		}
+
+		return await qb.getMany();
+	}
 }
 
-export interface IGetExecutionsQueryFilter {
-	id?: FindOperator<string> | string;
-	finished?: boolean;
-	mode?: string;
-	retryOf?: string;
-	retrySuccessId?: string;
-	status?: ExecutionStatus[];
-	workflowId?: string;
-	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
-	startedAfter?: string;
-	startedBefore?: string;
-}
+export type GetManyFilter = Partial<{
+	id: FindOperator<string> | string;
+	finished: boolean;
+	mode: string;
+	retryOf: string;
+	retrySuccessId: string;
+	status: ExecutionStatus[];
+	workflowId: string;
+	waitTill: FindOperator<ExecutionEntity> | boolean;
+	metadata: Array<{ key: string; value: string }>;
+	startedAfter: string;
+	startedBefore: string;
+
+	limit: number;
+	firstId: string;
+	lastId: string;
+	accessibleWorkflowIds: string[];
+}>;

@@ -1,4 +1,5 @@
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import type { GetManyFilter } from '@/databases/repositories/execution.repository';
 import type { AuthenticatedRequest } from '@/requests';
 import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 
@@ -28,7 +29,9 @@ export declare namespace ExecutionRequest {
 		};
 	}
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany>;
+	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
+		getManyFilter: GetManyFilter; // once parsed
+	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
 

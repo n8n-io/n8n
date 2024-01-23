@@ -25,14 +25,17 @@ import type { ExecutionRequest } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
-import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
+import type {
+	GetManyFilter,
+	IGetExecutionsQueryFilter,
+} from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-const schemaGetExecutionsQueryFilter = {
+export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
@@ -65,7 +68,9 @@ const schemaGetExecutionsQueryFilter = {
 	},
 };
 
-const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
+export const allowedExecutionsQueryFilterFields = Object.keys(
+	schemaGetExecutionsQueryFilter.properties,
+);
 
 @Service()
 export class ExecutionService {
@@ -383,5 +388,32 @@ export class ExecutionService {
 		};
 
 		await this.executionRepository.createNewExecution(fullExecutionData);
+	}
+
+	// ----------------------------------
+	//            new API
+	// ----------------------------------
+
+	/**
+	 * Find the twenty most recent executions with a status of `success` or `error`.
+	 */
+	async findLatestFinished(n: number) {
+		return await this.executionRepository.findLatestFinished(n);
+	}
+
+	/**
+	 * Find all executions with a status of `new`, `running`, and `waiting`.
+	 */
+	async findAllActive() {
+		return await this.executionRepository.findAllActive();
+	}
+
+	/**
+	 * Find multiple executions and their count based on a filter.
+	 */
+	async findManyByFilter(filter: GetManyFilter) {
+		const results = await this.executionRepository.findManyByFilter(filter);
+
+		return { count: results.length, estimated: false, results };
 	}
 }

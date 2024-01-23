@@ -1,7 +1,7 @@
 import type { GetManyActiveFilter } from './execution.types';
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -10,6 +10,8 @@ import config from '@/config';
 import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
+import { License } from '@/License';
+import { parseGetManyQueryString } from './filter.middleware';
 
 @Authorized()
 @RestController('/executions')
@@ -21,21 +23,44 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activeExecutionService: ActiveExecutionService,
+		private readonly license: License,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User) {
-		return isSharingEnabled()
+		return this.license.isSharingEnabled()
 			? await this.workflowSharingService.getSharedWorkflowIds(user)
 			: await this.workflowSharingService.getSharedWorkflowIds(user, ['owner']);
 	}
 
-	@Get('/')
+	@Get('/', { middlewares: [parseGetManyQueryString] })
+	@RequireGlobalScope('workflow:list')
 	async getMany(req: ExecutionRequest.GetMany) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user);
 
-		if (workflowIds.length === 0) return { count: 0, estimated: false, results: [] };
+		if (accessibleWorkflowIds.length === 0) {
+			return { count: 0, estimated: false, results: [] };
+		}
 
-		return await this.executionService.findMany(req, workflowIds);
+		const { getManyFilter: filter } = req;
+
+		if (filter.workflowId && !accessibleWorkflowIds.includes(filter.workflowId)) {
+			return { count: 0, estimated: false, results: [] };
+		}
+
+		if (filter.status?.length === 0) {
+			const [active, latestFinished] = await Promise.all([
+				this.executionService.findAllActive(),
+				this.executionService.findLatestFinished(20),
+			]);
+
+			const results = active.concat(latestFinished);
+
+			return { count: results.length, estimated: false, results };
+		}
+
+		filter.accessibleWorkflowIds = accessibleWorkflowIds;
+
+		return await this.executionService.findManyByFilter(filter);
 	}
 
 	@Get('/active')
