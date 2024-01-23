@@ -40,7 +40,7 @@ describe('RunDataPinButton.vue', () => {
 	beforeEach(cleanup);
 
 	it('shows default tooltip content only on button hover', async () => {
-		const { getByRole, queryByRole } = renderComponent();
+		const { getByRole, queryByRole, emitted } = renderComponent();
 
 		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
@@ -49,10 +49,13 @@ describe('RunDataPinButton.vue', () => {
 
 		expect(getByRole('tooltip')).toBeVisible();
 		expect(getByRole('tooltip')).toHaveTextContent('More info');
+
+		await userEvent.click(getByRole('button'));
+		expect(emitted().togglePinData).toBeDefined();
 	});
 
 	it('shows binary data tooltip content only on disabled button hover', async () => {
-		const { getByRole, queryByRole } = renderComponent({
+		const { getByRole, queryByRole, emitted } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: true,
@@ -69,6 +72,9 @@ describe('RunDataPinButton.vue', () => {
 
 		expect(getByRole('tooltip')).toBeVisible();
 		expect(getByRole('tooltip')).toHaveTextContent('disabled');
+
+		await userEvent.click(getByRole('button'));
+		expect(emitted().togglePinData).not.toBeDefined();
 	});
 
 	it('shows pin data discoverability tooltip immediately (not on hover)', async () => {
