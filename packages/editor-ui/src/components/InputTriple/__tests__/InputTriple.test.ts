@@ -1,5 +1,4 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import userEvent from '@testing-library/user-event';
 import InputTriple from '../InputTriple.vue';
 
 const renderComponent = createComponentRenderer(InputTriple);
