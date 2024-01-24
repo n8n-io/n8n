@@ -191,7 +191,7 @@ export const wrapMigration = (migration: Migration) => {
 			if (down) {
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
-					await runDisablingForeignKeys(this, context, up);
+					await runDisablingForeignKeys(this, context, down);
 				} else {
 					await down.call(this, context);
 				}
