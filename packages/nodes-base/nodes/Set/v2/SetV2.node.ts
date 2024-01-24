@@ -125,7 +125,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Keep Only Set Fields',
+			displayName: 'Exclude Other Input Fields',
 			name: 'keepOnlySetFields',
 			type: 'boolean',
 			default: false,
@@ -138,7 +138,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Include in Output',
+			displayName: 'Input Fields to Include',
 			name: 'include',
 			type: 'options',
 			description: 'How to select the fields you want to include in your output items',
@@ -151,17 +151,17 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					name: 'All Input Fields',
+					name: 'All',
 					value: INCLUDE.ALL,
 					description: 'Also include all unchanged fields from the input',
 				},
 				{
-					name: 'Selected Input Fields',
+					name: 'Selected',
 					value: INCLUDE.SELECTED,
 					description: 'Also include the fields listed in the parameter “Fields to Include”',
 				},
 				{
-					name: 'All Input Fields Except',
+					name: 'All Except',
 					value: INCLUDE.EXCEPT,
 					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
 				},
