@@ -286,7 +286,7 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 const getPropertyValues = (
 	nodeValues: INodeParameters,
 	propertyName: string,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	nodeValuesRoot: INodeParameters,
 ) => {
 	let value;
