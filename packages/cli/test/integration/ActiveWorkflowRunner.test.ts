@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
-import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWebhookData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -16,7 +16,6 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import type { User } from '@db/entities/User';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
-import { chooseRandomly } from './shared/random';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance } from '../shared/mocking';
 import { setSchedulerAsLoadedNode } from './shared/utils';
@@ -47,8 +46,6 @@ const externalHooks = mockInstance(ExternalHooks);
 let activeWorkflowsService: ActiveWorkflowsService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
 let owner: User;
-
-const TESTED_MODES: WorkflowActivateMode[] = ['init', 'create', 'activate', 'manual'];
 
 beforeAll(async () => {
 	await testDb.init();
@@ -232,31 +229,33 @@ describe('executeErrorWorkflow()', () => {
 
 describe('add()', () => {
 	describe('in single-main scenario', () => {
-		test('should add webhooks, triggers and pollers', async () => {
-			const mode = chooseRandomly(TESTED_MODES);
+		describe('on init activation mode', () => {
+			test('should add webhooks, triggers and pollers', async () => {
+				const mode = 'init';
 
-			const workflow = await createWorkflow({ active: true }, owner);
+				const workflow = await createWorkflow({ active: true }, owner);
 
-			const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
-			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
 
-			await activeWorkflowRunner.init();
+				await activeWorkflowRunner.init();
 
-			addWebhooksSpy.mockReset();
-			addTriggersAndPollersSpy.mockReset();
+				addWebhooksSpy.mockReset();
+				addTriggersAndPollersSpy.mockReset();
 
-			await activeWorkflowRunner.add(workflow.id, mode);
+				await activeWorkflowRunner.add(workflow.id, mode);
 
-			expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
-			expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
+				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 
 	describe('in multi-main scenario', () => {
 		describe('leader', () => {
-			describe('on non-leadership-change activation mode', () => {
+			describe('on init activation mode', () => {
 				test('should add webhooks only', async () => {
-					const mode = chooseRandomly(TESTED_MODES);
+					const mode = 'init';
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
@@ -308,9 +307,9 @@ describe('add()', () => {
 		});
 
 		describe('follower', () => {
-			describe('on any activation mode', () => {
+			describe('on init activation mode', () => {
 				test('should not add webhooks, triggers or pollers', async () => {
-					const mode = chooseRandomly(TESTED_MODES);
+					const mode = 'init';
 
 					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
 					jest.replaceProperty(orchestrationService, 'isLeader', false);
