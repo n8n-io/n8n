@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, PropType } from 'vue';
+import type { PropType } from 'vue';
 import { ref, computed, useCssModule } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
@@ -30,7 +30,6 @@ const style = useCssModule();
 const i18n = useI18n();
 const router = useRouter();
 
-const showMountingAnimation = ref(false);
 const isStopping = ref(false);
 
 const isRunning = computed(() => {
@@ -58,7 +57,6 @@ const isExecutionRetriable = computed(() => {
 const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
-		[style.mounting]: showMountingAnimation.value,
 		[style[props.execution.status ?? '']]: !!props.execution.status,
 	};
 });
@@ -131,13 +129,6 @@ const statusTextTranslationPath = computed(() => {
 			return 'executionsList.statusUnknown';
 	}
 });
-
-// onMounted(() => {
-// 	showMountingAnimation.value = true;
-// 	setTimeout(() => {
-// 		showMountingAnimation.value = true;
-// 	}, 600);
-// });
 
 function formatDate(fullDate: Date | string | number) {
 	const { date, time } = convertToDisplayDate(fullDate);
