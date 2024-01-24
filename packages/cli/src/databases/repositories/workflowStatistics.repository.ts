@@ -5,7 +5,6 @@ import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatist
 import type { User } from '@/databases/entities/User';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { Role } from '@/databases/entities/Role';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -110,12 +109,11 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				'shared_workflow',
 				'shared_workflow.workflowId = workflow_statistics.workflowId',
 			)
-			.innerJoin(Role, 'role', 'role.id = shared_workflow.roleId')
 			.where('shared_workflow.userId = :userId', { userId })
 			.andWhere('workflow.active = :isActive', { isActive: true })
 			.andWhere('workflow_statistics.name = :name', { name: StatisticsNames.productionSuccess })
 			.andWhere('workflow_statistics.count >= 5')
-			.andWhere('role.name = :roleName', { roleName: 'owner' })
+			.andWhere('role = :roleName', { roleName: 'workflow:owner' })
 			.getCount();
 	}
 }

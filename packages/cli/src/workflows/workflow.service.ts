@@ -8,6 +8,7 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
@@ -60,7 +61,7 @@ export class WorkflowService {
 		workflowId: string,
 		tagIds?: string[],
 		forceSave?: boolean,
-		roles?: string[],
+		roles?: WorkflowSharingRole[],
 	): Promise<WorkflowEntity> {
 		const shared = await this.sharedWorkflowRepository.findSharing(
 			workflowId,
@@ -250,7 +251,7 @@ export class WorkflowService {
 			workflowId,
 			user,
 			'workflow:delete',
-			{ roles: ['owner'] },
+			{ roles: ['workflow:owner'] },
 		);
 
 		if (!sharedWorkflow) {

@@ -56,7 +56,6 @@ export const createPasswordSha = (user: User) =>
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	const user = await Container.get(UserRepository).findOne({
 		where: { id: jwtPayload.id },
-		relations: ['globalRole'],
 	});
 
 	let passwordHash = null;

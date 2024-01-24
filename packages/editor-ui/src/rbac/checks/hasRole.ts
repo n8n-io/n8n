@@ -8,7 +8,7 @@ export const hasRole: RBACPermissionCheck<RolePermissionOptions> = (checkRoles) 
 	const currentUser = usersStore.currentUser;
 
 	if (currentUser && checkRoles) {
-		const userRole = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole?.name;
+		const userRole = currentUser.isDefaultUser ? ROLE.Default : currentUser.role;
 		return checkRoles.includes(userRole as IRole);
 	}
 

@@ -5,7 +5,7 @@ import Container from 'typedi';
 
 export = {
 	generateAudit: [
-		authorize(['owner', 'admin']),
+		authorize(['global:owner', 'global:admin']),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
 				const { SecurityAuditService } = await import('@/security-audit/SecurityAudit.service');
