@@ -4,24 +4,21 @@ import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
 
-export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
-	return {
-		user: ['id', 'email', 'firstName', 'lastName', 'createdAt', 'updatedAt', 'isPending'],
-		role: ['id', 'name', 'scope', 'createdAt', 'updatedAt'],
-	}[table];
-};
-
 export async function getUser(data: {
 	withIdentifier: string;
 	includeRole?: boolean;
 }): Promise<User | null> {
-	return await Container.get(UserRepository).findOne({
-		where: {
-			...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
-			...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
-		},
-		relations: data?.includeRole ? ['globalRole'] : undefined,
-	});
+	return await Container.get(UserRepository)
+		.findOne({
+			where: {
+				...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
+				...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
+			},
+		})
+		.then((user) => {
+			if (user && !data?.includeRole) delete (user as Partial<User>).role;
+			return user;
+		});
 }
 
 export async function getAllUsersAndCount(data: {
@@ -31,19 +28,29 @@ export async function getAllUsersAndCount(data: {
 }): Promise<[User[], number]> {
 	const users = await Container.get(UserRepository).find({
 		where: {},
-		relations: data?.includeRole ? ['globalRole'] : undefined,
 		skip: data.offset,
 		take: data.limit,
 	});
+	if (!data?.includeRole) {
+		users.forEach((user) => {
+			delete (user as Partial<User>).role;
+		});
+	}
 	const count = await Container.get(UserRepository).count();
 	return [users, count];
 }
 
+const userProperties = [
+	'id',
+	'email',
+	'firstName',
+	'lastName',
+	'createdAt',
+	'updatedAt',
+	'isPending',
+];
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {
-	return pick(
-		user,
-		getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : []),
-	);
+	return pick(user, userProperties.concat(options?.includeRole ? ['role'] : []));
 }
 
 export function clean(user: User, options?: { includeRole: boolean }): Partial<User>;

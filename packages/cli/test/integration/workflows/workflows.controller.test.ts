@@ -6,7 +6,6 @@ import type { INode, IPinData } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleService } from '@/services/role.service';
 import type { ListQuery } from '@/requests';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -180,7 +179,7 @@ describe('GET /workflows', () => {
 	test('should return workflows', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
-			role: await Container.get(RoleService).findCredentialOwnerRole(),
+			role: 'credential:owner',
 		});
 
 		const nodes: INode[] = [

@@ -5,7 +5,6 @@ import { Container } from 'typedi';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
@@ -18,7 +17,6 @@ import {
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
 import { License } from '@/License';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
@@ -45,13 +43,6 @@ export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLE
  */
 export const randomPassword = (): string => {
 	return Math.random().toString(36).slice(-8);
-};
-
-/**
- * Return the user role to be assigned to LDAP users
- */
-export const getLdapUserRole = async (): Promise<Role> => {
-	return await Container.get(RoleService).findGlobalMemberRole();
 };
 
 /**
@@ -102,7 +93,7 @@ export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
 	return await Container.get(AuthIdentityRepository).findOne({
-		relations: ['user', 'user.globalRole'],
+		relations: ['user'],
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
@@ -113,7 +104,6 @@ export const getAuthIdentityByLdapId = async (
 export const getUserByEmail = async (email: string): Promise<User | null> => {
 	return await Container.get(UserRepository).findOne({
 		where: { email },
-		relations: ['globalRole'],
 	});
 };
 
@@ -164,13 +154,13 @@ export const getLdapUsers = async (): Promise<User[]> => {
 export const mapLdapUserToDbUser = (
 	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
-	role?: Role,
+	toCreate = false,
 ): [string, User] => {
 	const user = new User();
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
-	if (role) {
-		user.globalRole = role;
+	if (toCreate) {
+		user.role = 'global:member';
 		user.password = randomPassword();
 		user.disabled = false;
 	} else {
@@ -270,10 +260,10 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId));
 };
 
-export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>, ldapId: string) => {
+export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
 	const user = await Container.get(UserRepository).save({
 		password: randomPassword(),
-		globalRole: role,
+		role: 'global:member',
 		...data,
 	});
 	await createLdapAuthIdentity(user, ldapId);

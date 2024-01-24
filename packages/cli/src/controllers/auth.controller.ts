@@ -55,7 +55,7 @@ export class AuthController {
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.role === 'global:owner' ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;
@@ -65,7 +65,7 @@ export class AuthController {
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			const preliminaryUser = await handleEmailLogin(email, password);
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (preliminaryUser?.role === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
@@ -138,7 +138,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userRepository.findOneOrFail({ where: {}, relations: ['globalRole'] });
+			user = await this.userRepository.findOneOrFail({ where: {} });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',
