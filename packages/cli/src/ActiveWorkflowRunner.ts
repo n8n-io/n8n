@@ -570,7 +570,10 @@ export class ActiveWorkflowRunner {
 		 * running when the former leader became unresponsive.
 		 */
 		if (this.orchestrationService.isMultiMainSetupEnabled) {
-			if (activationMode !== 'leadershipChange') {
+			if (activationMode === 'update') {
+				shouldAddWebhooks = true;
+				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
+			} else if (activationMode !== 'leadershipChange') {
 				shouldAddWebhooks = this.orchestrationService.isLeader;
 				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
 			} else {
@@ -759,7 +762,7 @@ export class ActiveWorkflowRunner {
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
 		try {
-			if (this.orchestrationService.isLeader) await this.clearWebhooks(workflowId);
+			await this.clearWebhooks(workflowId);
 		} catch (error) {
 			ErrorReporter.error(error);
 			this.logger.error(
