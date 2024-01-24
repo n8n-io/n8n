@@ -96,7 +96,9 @@ interface NodeView {
 
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
 	return nodes
-		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.filter(
+			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
+		)
 		.map((node) => ({
 			key: node.name,
 			type: 'node',

@@ -1,28 +1,47 @@
-export const prettifyOperation = (operation: string) => {
-	switch (operation) {
-		case 'messageModel':
-			return 'Message Model';
-		case 'messageAssistant':
-			return 'Message Assistant';
-		case 'uploadFile':
-			return 'Upload File';
-		case 'listFiles':
-			return 'List Files';
-		case 'deleteFile':
-			return 'Delete File';
-		case 'generateImage':
-			return 'Generate Image';
-		case 'generateAudio':
-			return 'Generate Audio';
-		case 'transcribeRecording':
-			return 'Transcribe Recording';
-		case 'translateRecording':
-			return 'Translate Recording';
-		case 'analyzeImage':
-			return 'Analyze Image';
-		case 'createModeration':
-			return 'Create Moderation';
-		default:
-			return operation;
-	}
-};
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { OpenAI as OpenAIClient } from 'openai';
+import type { StructuredTool } from 'langchain/tools';
+
+// Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
+// since these functions are not exported
+
+/**
+ * Formats a `StructuredTool` instance into a format that is compatible
+ * with OpenAI's ChatCompletionFunctions. It uses the `zodToJsonSchema`
+ * function to convert the schema of the `StructuredTool` into a JSON
+ * schema, which is then used as the parameters for the OpenAI function.
+ */
+export function formatToOpenAIFunction(
+	tool: StructuredTool,
+): OpenAIClient.Chat.ChatCompletionCreateParams.Function {
+	return {
+		name: tool.name,
+		description: tool.description,
+		parameters: zodToJsonSchema(tool.schema),
+	};
+}
+
+export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.ChatCompletionTool {
+	const schema = zodToJsonSchema(tool.schema);
+	return {
+		type: 'function',
+		function: {
+			name: tool.name,
+			description: tool.description,
+			parameters: schema,
+		},
+	};
+}
+
+export function formatToOpenAIAssistantTool(
+	tool: StructuredTool,
+): OpenAIClient.Beta.AssistantCreateParams.AssistantToolsFunction {
+	return {
+		type: 'function',
+		function: {
+			name: tool.name,
+			description: tool.description,
+			parameters: zodToJsonSchema(tool.schema),
+		},
+	};
+}

@@ -14,22 +14,23 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
+				name: 'Classify Text for Violations',
+				value: 'createModeration',
+				action: 'Classify text for violations',
+				description: 'Check whether content complies with usage policies',
+			},
+			{
 				name: 'Message a Model',
 				value: 'messageModel',
 				action: 'Message a model',
-				description: 'Send messages to a model',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
+				description: 'Create a completion with GPT 3, 4, etc.',
 			},
 			{
 				name: 'Message an Assistant',
 				value: 'messageAssistant',
 				action: 'Message an assistant',
 				description: 'Send messages to an assistant',
-			},
-			{
-				name: 'Classify Text for Violations',
-				value: 'createModeration',
-				action: 'Classify text for violations',
-				description: 'Check whether content complies with usage policies',
 			},
 		],
 		default: 'messageModel',

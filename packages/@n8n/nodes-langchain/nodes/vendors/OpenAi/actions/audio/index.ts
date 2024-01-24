@@ -39,6 +39,18 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'OpenAI API limits the size of the audio file to 25 MB',
+		name: 'fileSizeLimitNotice',
+		type: 'notice',
+		default: ' ',
+		displayOptions: {
+			show: {
+				resource: ['audio'],
+				operation: ['translateRecording', 'transcribeRecording'],
+			},
+		},
+	},
 	...generateAudio.description,
 	...transcribeRecording.description,
 	...translateRecording.description,

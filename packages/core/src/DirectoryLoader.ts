@@ -247,7 +247,11 @@ export abstract class DirectoryLoader {
 		isCustom: boolean;
 	}) {
 		try {
-			let codex = node.description.codex;
+			let codex;
+
+			if (!isCustom) {
+				codex = node.description.codex;
+			}
 
 			if (codex === undefined) {
 				codex = this.getCodex(filePath);

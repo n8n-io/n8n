@@ -1,12 +1,51 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import * as audio from './audio';
 import * as file from './file';
 import * as image from './image';
 import * as text from './text';
 
-import { prettifyOperation } from '../helpers/utils';
+const prettifyOperation = (operation: string) => {
+	switch (operation) {
+		case 'messageModel':
+			return 'Message Model';
+		case 'messageAssistant':
+			return 'Message Assistant';
+		case 'uploadFile':
+			return 'Upload File';
+		case 'listFiles':
+			return 'List Files';
+		case 'deleteFile':
+			return 'Delete File';
+		case 'generateImage':
+			return 'Generate Image';
+		case 'generateAudio':
+			return 'Generate Audio';
+		case 'transcribeRecording':
+			return 'Transcribe Recording';
+		case 'translateRecording':
+			return 'Translate Recording';
+		case 'analyzeImage':
+			return 'Analyze Image';
+		case 'createModeration':
+			return 'Create Moderation';
+		default:
+			return operation;
+	}
+};
+
+const configureNodeInputs = (operation: string, nativeTools: string[]) => {
+	if (operation === 'messageAssistant' && nativeTools.includes('customTools')) {
+		return [
+			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+		];
+	}
+
+	return [NodeConnectionType.Main];
+};
 
 // eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 export const versionDescription: INodeTypeDescription = {
@@ -34,7 +73,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: ['main'],
+	inputs: `={{(${configureNodeInputs})($parameter.operation, $parameter.nativeTools)}}`,
 	outputs: ['main'],
 	credentials: [
 		{
@@ -50,20 +89,20 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Text',
-					value: 'text',
-				},
-				{
 					name: 'Audio',
 					value: 'audio',
+				},
+				{
+					name: 'File',
+					value: 'file',
 				},
 				{
 					name: 'Image',
 					value: 'image',
 				},
 				{
-					name: 'File',
-					value: 'file',
+					name: 'Text',
+					value: 'text',
 				},
 			],
 			default: 'text',

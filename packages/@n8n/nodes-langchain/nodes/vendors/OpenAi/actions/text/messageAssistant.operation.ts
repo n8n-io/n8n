@@ -1,14 +1,91 @@
-import type {
-	INodeProperties,
-	IExecuteFunctions,
-	INodeExecutionData,
-	IDataObject,
-} from 'n8n-workflow';
-import { sleep, NodeOperationError, jsonParse, updateDisplayOptions } from 'n8n-workflow';
-import { apiRequest } from '../../transport';
-import type { ThreadMessage } from '../../helpers/interfaces';
+import { AgentExecutor } from 'langchain/agents';
+import type { Tool } from 'langchain/tools';
+import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
+
+import { OpenAI as OpenAIClient } from 'openai';
+
+import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+
+import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
+	{
+		displayName: 'Mode',
+		name: 'mode',
+		type: 'options',
+		noDataExpression: true,
+		default: 'existing',
+		options: [
+			{
+				name: 'Use New Assistant',
+				value: 'new',
+			},
+			{
+				name: 'Use Existing Assistant',
+				value: 'existing',
+			},
+		],
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		description: 'The name of the assistant. The maximum length is 256 characters.',
+		placeholder: 'e.g. My Assistant',
+		required: true,
+		displayOptions: {
+			show: {
+				mode: ['new'],
+			},
+		},
+	},
+	{
+		displayName: 'Instructions',
+		name: 'instructions',
+		type: 'string',
+		description: 'How the Assistant and model should behave or respond',
+		default: '',
+		typeOptions: {
+			rows: 5,
+		},
+		displayOptions: {
+			show: {
+				mode: ['new'],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: 'gpt-3.5-turbo-1106', cachedResultName: 'GPT-3.5-TURBO-1106' },
+		required: true,
+		displayOptions: {
+			show: {
+				mode: ['new'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'modelCompletionSearch',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. gpt-4',
+			},
+		],
+	},
 	{
 		displayName: 'Assistant',
 		name: 'assistantId',
@@ -17,6 +94,11 @@ const properties: INodeProperties[] = [
 			'Assistant to respond to the message. You can add, modify or remove assistants in the <a href="https://platform.openai.com/playground?mode=assistant" target="_blank">playground</a>.',
 		default: { mode: 'list', value: '' },
 		required: true,
+		displayOptions: {
+			show: {
+				mode: ['existing'],
+			},
+		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -36,86 +118,82 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Text Input',
-		name: 'content',
+		displayName: 'Text',
+		name: 'text',
 		type: 'string',
-		placeholder: 'e.g. How does AI work? Explain it in simple terms.',
-		default: '',
+		required: true,
+		default: '={{ $json.chatInput }}',
+		placeholder: 'e.g. Hello, how can you help me?',
 		typeOptions: {
 			rows: 2,
 		},
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		displayName: 'OpenAI Tools',
+		name: 'nativeTools',
+		type: 'multiOptions',
+		default: [],
+		options: [
+			{
+				name: 'Code Interpreter',
+				value: 'code_interpreter',
+			},
+			{
+				name: 'Custom Tools',
+				value: 'customTools',
+			},
+			{
+				name: 'Knowledge Retrieval',
+				value: 'retrieval',
+			},
+		],
+	},
+	{
+		displayName: 'Connect your own custom tools to this node on the canvas',
+		name: 'noticeTools',
+		type: 'notice',
+		displayOptions: { show: { nativeTools: ['customTools'] } },
+		default: '',
+	},
+	{
+		displayName:
+			'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+		name: 'noticeTools',
+		type: 'notice',
+		typeOptions: {
+			noticeTheme: 'info',
+		},
+		displayOptions: { show: { nativeTools: ['retrieval'] } },
+		default: '',
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
+		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Files',
-				name: 'files',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options
-				type: 'multiOptions',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description:
-					'Files that the message should use. There can be a maximum of 10 files attached to a message. Useful for tools like retrieval and code_interpreter that can access and use files.',
-				typeOptions: {
-					loadOptionsMethod: 'getAssistantFiles',
-				},
-				default: [],
-			},
-			{
-				displayName: 'Metadata',
-				name: 'metadata',
-				placeholder: 'e.g. {"issue_type": "order_problem", "priority": "high"}',
-				type: 'json',
-				default: '={}',
-				typeOptions: {
-					rows: 2,
-				},
-				validateType: 'object',
-			},
-			{
-				displayName: 'Thread ID',
-				name: 'threadId',
+				displayName: 'Base URL',
+				name: 'baseURL',
+				default: 'https://api.openai.com/v1',
+				description: 'Override the default base URL for the API',
 				type: 'string',
-				default: '',
-				description:
-					'The ID of the thread to send the message to, if not set a new thread will be created',
 			},
 			{
-				displayName: 'Return Entire Thread',
-				name: 'returnEntireThread',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to return the entire thread or just the asssistant response',
-			},
-			{
-				displayName: 'Polling Interval (MS)',
-				name: 'pollingInterval',
+				displayName: 'Max Retries',
+				name: 'maxRetries',
+				default: 2,
+				description: 'Maximum number of retries to attempt',
 				type: 'number',
-				description:
-					'Assistant takes time to respond, this option sets how often to n8n will check for a response, helps to avoid rate limits',
-				default: 2000,
-				typeOptions: {
-					minValue: 1000,
-				},
 			},
 			{
-				displayName: 'Delete Thread',
-				name: 'deleteThread',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to delete the thread after the assistant has responded',
+				displayName: 'Timeout',
+				name: 'timeout',
+				default: 10000,
+				description: 'Maximum amount of time a request is allowed to take in milliseconds',
+				type: 'number',
 			},
 		],
 	},
@@ -131,100 +209,79 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const assistant_id = this.getNodeParameter('assistantId', i, '', { extractValue: true });
-	const content = this.getNodeParameter('content', i) as string;
-	const options = this.getNodeParameter('options', i);
+	const credentials = await this.getCredentials('openAiApi');
+	const nativeTools = this.getNodeParameter('nativeTools', i, []) as string[];
 
-	const headers = {
-		'OpenAI-Beta': 'assistants=v1',
+	const input = this.getNodeParameter('text', i) as string;
+	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
+
+	const options = this.getNodeParameter('options', i, {}) as {
+		baseURL?: string;
+		maxRetries: number;
+		timeout: number;
 	};
 
-	const file_ids = options.files as string[];
-
-	let metadata = options.metadata as IDataObject;
-	if (typeof metadata === 'string') {
-		metadata = jsonParse(metadata as string);
+	if (input === undefined) {
+		throw new NodeOperationError(this.getNode(), "The 'text' parameter is empty.");
 	}
 
-	let theradId = options.threadId as string;
+	const client = new OpenAIClient({
+		apiKey: credentials.apiKey as string,
+		maxRetries: options.maxRetries ?? 2,
+		timeout: options.timeout ?? 10000,
+		baseURL: options.baseURL,
+	});
+	let agent;
 
-	let runId;
-	if (theradId) {
-		const body = {
-			role: 'user',
-			content,
-			file_ids,
-			metadata,
-		};
+	const nativeToolsParsed: OpenAIToolType = [];
+	let tools;
 
-		await apiRequest.call(this, 'POST', `/threads/${theradId}/messages`, { body, headers });
+	for (const tool of nativeTools) {
+		if (['code_interpreter', 'retrieval'].includes(tool)) {
+			nativeToolsParsed.push({ type: tool as 'code_interpreter' | 'retrieval' });
+		}
+		if (tool === 'customTools') {
+			tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		}
+	}
 
-		runId = (
-			await apiRequest.call(this, 'POST', `/threads/${theradId}/runs`, {
-				body: { assistant_id },
-				headers,
-			})
-		).id;
+	const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
+	const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
+
+	// Existing agent, update tools with currently assigned
+	if (assistantId) {
+		agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+
+		await client.beta.assistants.update(assistantId, {
+			tools: newTools,
+		});
 	} else {
-		const body = {
-			assistant_id,
-			thread: {
-				messages: [{ role: 'user', content, file_ids, metadata }],
-			},
-		};
+		const name = this.getNodeParameter('name', i, '') as string;
+		const instructions = this.getNodeParameter('instructions', i, '') as string;
+		const model = this.getNodeParameter('model', i, 'gpt-3.5-turbo-1106', {
+			extractValue: true,
+		}) as string;
 
-		const { id, thread_id } = await apiRequest.call(this, 'POST', '/threads/runs', {
-			body,
-			headers,
+		agent = await OpenAIAssistantRunnable.createAssistant({
+			model,
+			client,
+			instructions,
+			name,
+			tools: newTools,
+			asAgent: true,
 		});
-
-		theradId = thread_id;
-		runId = id;
 	}
 
-	const pollingInterval = (options.pollingInterval as number) || 2000;
+	const agentExecutor = AgentExecutor.fromAgentAndTools({
+		agent,
+		tools: tools ?? [],
+	});
 
-	while (true) {
-		await sleep(pollingInterval);
+	const response = await agentExecutor.call({
+		content: input,
+		signal: this.getExecutionCancelSignal(),
+		timeout: options.timeout ?? 10000,
+	});
 
-		const { status } = await apiRequest.call(this, 'GET', `/threads/${theradId}/runs/${runId}`, {
-			headers,
-		});
-
-		if (status === 'completed') {
-			break;
-		}
-
-		if (['expired', 'cancelled', 'failed', 'requires_action'].includes(status)) {
-			throw new NodeOperationError(this.getNode(), `Run stopped with status: '${status}'`);
-		}
-	}
-
-	let data = (
-		await apiRequest.call(this, 'GET', `/threads/${theradId}/messages`, {
-			headers,
-		})
-	).data;
-
-	const simplify = this.getNodeParameter('simplify', i) as boolean;
-
-	if (simplify) {
-		data = (data as ThreadMessage[]).map((message) => ({
-			id: message.id,
-			thread_id: message.thread_id,
-			role: message.role,
-			...message.content[0],
-		}));
-	}
-
-	if (options.deleteThread) {
-		await apiRequest.call(this, 'DELETE', `/threads/${theradId}`, { headers });
-	}
-
-	return [
-		{
-			json: options.returnEntireThread ? { thread: data } : data[0],
-			pairedItem: { item: i },
-		},
-	];
+	return [{ json: response, pairedItem: { item: i } }];
 }
