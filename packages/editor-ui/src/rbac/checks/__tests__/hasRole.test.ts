@@ -12,7 +12,7 @@ describe('Checks', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					globalRole: { name: ROLE.Owner },
+					role: 'global:owner',
 				},
 			} as ReturnType<typeof useUsersStore>);
 
@@ -23,7 +23,7 @@ describe('Checks', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					globalRole: { name: ROLE.Member },
+					role: 'global:member',
 				},
 			} as ReturnType<typeof useUsersStore>);
 

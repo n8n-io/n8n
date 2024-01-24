@@ -1,9 +1,8 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindOptionsWhere } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { DataSource, In, Not, Repository } from 'typeorm';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
-import type { Role } from '../entities/Role';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -26,15 +25,15 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[]) {
 		return await this.find({
-			relations: ['credentials', 'role', 'user'],
+			relations: ['credentials', 'user'],
 			where: {
 				credentialsId: In(credentialIds),
 			},
 		});
 	}
 
-	async makeOwnerOfAllCredentials(user: User, role: Role) {
-		return await this.update({ userId: Not(user.id), roleId: role.id }, { user });
+	async makeOwnerOfAllCredentials(user: User) {
+		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
 	}
 
 	/**
@@ -42,23 +41,22 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	 */
 	async getAccessibleCredentials(userId: string) {
 		const sharings = await this.find({
-			relations: ['role'],
 			where: {
 				userId,
-				role: { name: In(['owner', 'user']), scope: 'credential' },
+				role: In(['credential:owner', 'credential:user']),
 			},
 		});
 
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async findSharings(userIds: string[], roleId?: string) {
-		const where: FindOptionsWhere<SharedCredentials> = { userId: In(userIds) };
-
-		// If credential sharing is not enabled, get only credentials owned by this user
-		if (roleId) where.roleId = roleId;
-
-		return await this.find({ where });
+	async findOwnedSharings(userIds: string[]) {
+		return await this.find({
+			where: {
+				userId: In(userIds),
+				role: 'credential:owner',
+			},
+		});
 	}
 
 	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {

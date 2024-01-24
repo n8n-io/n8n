@@ -23,7 +23,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
-import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -85,13 +84,8 @@ export class CredentialsService {
 		// global credential permissions. This allows the user to
 		// access credentials they don't own.
 		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			Object.assign(where, {
-				userId: user.id,
-				role: { name: 'owner' },
-			});
-			if (!relations.includes('role')) {
-				relations.push('role');
-			}
+			where.userId = user.id;
+			where.role = 'credential:owner';
 		}
 
 		return await Container.get(SharedCredentialsRepository).findOne({ where, relations });
@@ -194,8 +188,6 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Container.get(RoleService).findCredentialOwnerRole();
-
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
@@ -204,7 +196,7 @@ export class CredentialsService {
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
-				role,
+				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
 			});

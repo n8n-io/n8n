@@ -68,7 +68,6 @@ import type {
 	IPersonalizationSurveyVersions,
 	IUser,
 	ILogInStatus,
-	IRole,
 } from '@/Interface';
 
 /*
@@ -84,13 +83,12 @@ function isPersonalizationSurveyV2OrLater(
 	return 'version' in data;
 }
 
-export type Roles = { [R in IRole as Capitalize<R>]: R };
-export const ROLE: Roles = {
-	Owner: 'owner',
-	Member: 'member',
-	Admin: 'admin',
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
 	Default: 'default', // default user with no email when setting up instance
-};
+} as const;
 
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user

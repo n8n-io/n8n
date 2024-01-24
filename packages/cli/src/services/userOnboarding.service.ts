@@ -4,7 +4,6 @@ import { In } from 'typeorm';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
 @Service()
@@ -12,7 +11,6 @@ export class UserOnboardingService {
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly roleService: RoleService,
 		private readonly userService: UserService,
 	) {}
 
@@ -24,12 +22,11 @@ export class UserOnboardingService {
 		let belowThreshold = true;
 		const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-		const workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 		const ownedWorkflowsIds = await this.sharedWorkflowRepository
 			.find({
 				where: {
 					userId: user.id,
-					roleId: workflowOwnerRole?.id,
+					role: 'workflow:owner',
 				},
 				select: ['workflowId'],
 			})
