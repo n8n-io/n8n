@@ -1,15 +1,15 @@
+import Container from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import * as testDb from './shared/testDb';
-import { RoleRepository } from '@/databases/repositories/role.repository';
-import Container from 'typedi';
 
-describe('RoleRepository', () => {
-	let roleRepository: RoleRepository;
+describe('UserRepository', () => {
+	let userRepository: UserRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		roleRepository = Container.get(RoleRepository);
+		userRepository = Container.get(UserRepository);
 
 		await testDb.truncate(['User']);
 	});
@@ -29,9 +29,13 @@ describe('RoleRepository', () => {
 				createMember(),
 			]);
 
-			const usersByRole = await roleRepository.countUsersByRole();
+			const usersByRole = await userRepository.countUsersByRole();
 
-			expect(usersByRole).toStrictEqual({ admin: 2, member: 3, owner: 1 });
+			expect(usersByRole).toStrictEqual({
+				'global:admin': 2,
+				'global:member': 3,
+				'global:owner': 1,
+			});
 		});
 	});
 });

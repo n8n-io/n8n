@@ -14,8 +14,7 @@ import type {
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import type { Role, RoleNames } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
+import { AssignableRole, type User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -48,8 +47,8 @@ export class UserSettingsUpdatePayload {
 }
 
 export class UserRoleChangePayload {
-	@IsIn(['member', 'admin'])
-	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
+	@IsIn(['global:admin', 'global:member'])
+	newRoleName: AssignableRole;
 }
 
 export type AuthlessRequest<
@@ -67,7 +66,6 @@ export type AuthenticatedRequest<
 > = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
 	mailer?: UserManagementMailer;
-	globalMemberRole?: Role;
 };
 
 // ----------------------------------
@@ -225,7 +223,7 @@ export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<
 		{},
 		{},
-		Array<{ email: string; role?: 'member' | 'admin' }>
+		Array<{ email: string; role?: AssignableRole }>
 	>;
 
 	export type InviteResponse = {

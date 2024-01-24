@@ -147,7 +147,7 @@ credentialsController.patch(
 				allowGlobalScope: true,
 				globalScope: 'credential:update',
 			},
-			['credentials', 'role'],
+			['credentials'],
 		);
 
 		if (!sharing) {
@@ -163,7 +163,7 @@ credentialsController.patch(
 			);
 		}
 
-		if (sharing.role.name !== 'owner' && !req.user.hasGlobalScope('credential:update')) {
+		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:update')) {
 			Container.get(Logger).info(
 				'Attempt to update credential blocked due to lack of permissions',
 				{
@@ -216,7 +216,7 @@ credentialsController.delete(
 				allowGlobalScope: true,
 				globalScope: 'credential:delete',
 			},
-			['credentials', 'role'],
+			['credentials'],
 		);
 
 		if (!sharing) {
@@ -232,7 +232,7 @@ credentialsController.delete(
 			);
 		}
 
-		if (sharing.role.name !== 'owner' && !req.user.hasGlobalScope('credential:delete')) {
+		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:delete')) {
 			Container.get(Logger).info(
 				'Attempt to delete credential blocked due to lack of permissions',
 				{

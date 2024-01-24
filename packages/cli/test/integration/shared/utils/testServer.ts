@@ -249,11 +249,6 @@ export const setupTestServer = ({
 						registerController(app, BinaryDataController);
 						break;
 
-					case 'role':
-						const { RoleController } = await import('@/controllers/role.controller');
-						registerController(app, RoleController);
-						break;
-
 					case 'debug':
 						const { DebugController } = await import('@/controllers/debug.controller');
 						registerController(app, DebugController);

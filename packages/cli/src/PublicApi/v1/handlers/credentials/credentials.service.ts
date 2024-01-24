@@ -9,7 +9,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
-import { RoleService } from '@/services/role.service';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
@@ -20,14 +19,13 @@ export async function getCredentials(credentialId: string): Promise<ICredentials
 export async function getSharedCredentials(
 	userId: string,
 	credentialId: string,
-	relations?: string[],
 ): Promise<SharedCredentials | null> {
 	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
 			userId,
 			credentialsId: credentialId,
 		},
-		relations,
+		relations: ['credentials'],
 	});
 }
 
@@ -60,8 +58,6 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Container.get(RoleService).findCredentialOwnerRole();
-
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
 	return await Db.transaction(async (transactionManager) => {
@@ -72,7 +68,7 @@ export async function saveCredential(
 		const newSharedCredential = new SharedCredentials();
 
 		Object.assign(newSharedCredential, {
-			role,
+			role: 'credential:owner',
 			user,
 			credentials: savedCredential,
 		});

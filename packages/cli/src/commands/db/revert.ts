@@ -3,7 +3,7 @@ import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/Logger';
-import { getConnectionOptions } from '@/Db';
+import { getConnectionOptions, setSchema } from '@/Db';
 import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import config from '@/config';
@@ -40,6 +40,7 @@ export class DbRevertMigrationCommand extends Command {
 
 		this.connection = new Connection(connectionOptions);
 		await this.connection.initialize();
+		if (dbType === 'postgresdb') await setSchema(this.connection);
 		await this.connection.undoLastMigration();
 		await this.connection.destroy();
 	}

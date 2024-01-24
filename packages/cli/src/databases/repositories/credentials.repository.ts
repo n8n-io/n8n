@@ -45,7 +45,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
+		const defaultRelations = ['shared', 'shared.user'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
@@ -81,7 +81,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
 
 		if (withSharings) {
-			findManyOptions.relations = ['shared', 'shared.user', 'shared.role'];
+			findManyOptions.relations = ['shared', 'shared.user'];
 		}
 
 		return await this.find(findManyOptions);
