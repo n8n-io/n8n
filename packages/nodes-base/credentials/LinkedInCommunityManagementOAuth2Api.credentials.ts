@@ -1,11 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class LinkedInOAuth2Api implements ICredentialType {
-	name = 'linkedInOAuth2Api';
+const scopes = ['w_member_social', 'w_organization_social', 'r_basicprofile'];
+
+export class LinkedInCommunityManagementOAuth2Api implements ICredentialType {
+	name = 'linkedInCommunityManagementOAuth2Api';
 
 	extends = ['oAuth2Api'];
 
-	displayName = 'LinkedIn OAuth2 API';
+	displayName = 'LinkedIn Community Management OAuth2 API';
 
 	documentationUrl = 'linkedIn';
 
@@ -15,13 +17,6 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'grantType',
 			type: 'hidden',
 			default: 'authorizationCode',
-		},
-		{
-			displayName: 'Organization Support',
-			name: 'organizationSupport',
-			type: 'boolean',
-			default: true,
-			description: 'Whether to request permissions to post as an organization',
 		},
 		{
 			displayName: 'Authorization URL',
@@ -41,10 +36,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default:
-				'=w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social": $self["legacy"] === true ? ",r_liteprofile,r_emailaddress" : ",profile,email,openid"}}',
-			description:
-				'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -57,13 +49,6 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-		},
-		{
-			displayName: 'Legacy',
-			name: 'legacy',
-			type: 'boolean',
-			default: true,
-			description: 'Whether to use the legacy API',
 		},
 	];
 }
