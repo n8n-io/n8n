@@ -12,6 +12,7 @@ const onDrop = (value: string) => {
 	<DraggableTarget type="mapping" @drop="onDrop">
 		<template #default="{ droppable, activeDrop }">
 			<div
+				data-test-id="drop-area"
 				:class="{ [$style.area]: true, [$style.active]: activeDrop, [$style.droppable]: droppable }"
 			>
 				<slot :active="activeDrop" :droppable="droppable"></slot>

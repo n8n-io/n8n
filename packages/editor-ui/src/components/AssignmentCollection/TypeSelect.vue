@@ -12,7 +12,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', type: string): void;
+	(event: 'update:model-value', type: string): void;
 }>();
 
 const i18n = useI18n();
@@ -22,7 +22,7 @@ const types = ASSIGNMENT_TYPES;
 const icon = computed(() => types.find((type) => type.type === props.modelValue)?.icon ?? 'cube');
 
 const onTypeChange = (type: string): void => {
-	emit('update:modelValue', type);
+	emit('update:model-value', type);
 };
 </script>
 

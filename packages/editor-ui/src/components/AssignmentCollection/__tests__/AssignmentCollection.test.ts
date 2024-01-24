@@ -3,8 +3,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
-import * as workflowHelpers from '../../mixins/workflowHelpers';
-import AssignmentCollection from '../AssignmentCollection/AssignmentCollection.vue';
+import * as workflowHelpers from '@/mixins/workflowHelpers';
+import AssignmentCollection from '../AssignmentCollection.vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 const DEFAULT_SETUP = {
