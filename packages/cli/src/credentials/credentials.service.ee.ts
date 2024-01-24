@@ -1,10 +1,9 @@
+import { Container } from 'typedi';
 import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
-import { RoleService } from '@/services/role.service';
-import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
@@ -15,10 +14,9 @@ export class EECredentialsService extends CredentialsService {
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
 		const sharing = await this.getSharing(user, credentialId, { allowGlobalScope: false }, [
 			'credentials',
-			'role',
 		]);
 
-		if (!sharing || sharing.role.name !== 'owner') return { ownsCredential: false };
+		if (!sharing || sharing.role !== 'credential:owner') return { ownsCredential: false };
 
 		const { credentials: credential } = sharing;
 
@@ -67,7 +65,6 @@ export class EECredentialsService extends CredentialsService {
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
 		const users = await Container.get(UserRepository).getByIds(transaction, shareWithIds);
-		const role = await Container.get(RoleService).findCredentialUserRole();
 
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)
@@ -75,7 +72,7 @@ export class EECredentialsService extends CredentialsService {
 				Container.get(SharedCredentialsRepository).create({
 					credentialsId: credential.id,
 					userId: user.id,
-					roleId: role?.id,
+					role: 'credential:user',
 				}),
 			);
 

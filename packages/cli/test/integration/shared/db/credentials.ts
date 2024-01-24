@@ -1,12 +1,11 @@
+import { Container } from 'typedi';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
-import type { ICredentialsDb } from '@/Interfaces';
-import { RoleService } from '@/services/role.service';
-import type { CredentialPayload } from '../types';
-import Container from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
+import type { ICredentialsDb } from '@/Interfaces';
+import type { CredentialPayload } from '../types';
 
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
@@ -48,7 +47,7 @@ export async function createCredentials(attributes: Partial<CredentialsEntity> =
  */
 export async function saveCredential(
 	credentialPayload: CredentialPayload,
-	{ user, role }: { user: User; role: Role },
+	{ user, role }: { user: User; role: CredentialSharingRole },
 ) {
 	const newCredential = new CredentialsEntity();
 
@@ -72,18 +71,17 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleService).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Container.get(SharedCredentialsRepository).create({
 			userId: user.id,
 			credentialsId: credential.id,
-			roleId: role?.id,
+			role: 'credential:user',
 		}),
 	);
 	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 }
 
-export function affixRoleToSaveCredential(role: Role) {
+export function affixRoleToSaveCredential(role: CredentialSharingRole) {
 	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
 		await saveCredential(credentialPayload, { user, role });
 }

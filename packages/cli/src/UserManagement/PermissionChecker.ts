@@ -5,7 +5,6 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import config from '@/config';
 import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -16,7 +15,6 @@ export class PermissionChecker {
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly roleService: RoleService,
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
 	) {}
@@ -37,7 +35,6 @@ export class PermissionChecker {
 
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
-			relations: ['globalRole'],
 		});
 
 		if (user.hasGlobalScope('workflow:execute')) return;
@@ -56,12 +53,8 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const roleId = await this.roleService.findCredentialOwnerRoleId();
-
-		const credentialSharings = await this.sharedCredentialsRepository.findSharings(
-			workflowUserIds,
-			roleId,
-		);
+		const credentialSharings =
+			await this.sharedCredentialsRepository.findOwnedSharings(workflowUserIds);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 

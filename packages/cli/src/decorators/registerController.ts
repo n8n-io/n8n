@@ -36,9 +36,7 @@ export const createAuthMiddleware =
 
 		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
 
-		const { globalRole } = user;
-		if (authRole === 'any' || (globalRole.scope === authRole[0] && globalRole.name === authRole[1]))
-			return next();
+		if (authRole === 'any' || authRole === user.role) return next();
 
 		res.status(403).json({ status: 'error', message: 'Unauthorized' });
 	};
