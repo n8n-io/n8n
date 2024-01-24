@@ -1,3 +1,324 @@
+<script lang="ts" setup>
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from 'vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
+import ExecutionsGlobalListItem from '@/components/executions/global/ListItem.vue';
+import { MODAL_CONFIRM } from '@/constants';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { isEmpty } from '@/utils/typesUtils';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExecutionsStore } from '@/stores/executions.store';
+
+const emit = defineEmits(['closeModal']);
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+const externalHooks = useExternalHooks();
+const workflowsStore = useWorkflowsStore();
+const executionsStore = useExecutionsStore();
+
+const isMounted = ref(false);
+const allVisibleSelected = ref(false);
+const allExistingSelected = ref(false);
+const selectedItems = ref<Record<string, boolean>>({});
+
+const message = useMessage();
+const toast = useToast();
+
+const selectedCount = computed(() => {
+	if (allExistingSelected.value) {
+		return executionsStore.executionsCount;
+	}
+
+	return Object.keys(selectedItems.value).length;
+});
+
+const pageTitle = computed(() => {
+	return i18n.baseText('executionsList.workflowExecutions');
+});
+
+const workflows = computed<IWorkflowDb[]>(() => {
+	return [
+		{
+			id: 'all',
+			name: i18n.baseText('executionsList.allWorkflows'),
+		} as IWorkflowDb,
+		...workflowsStore.allWorkflows,
+	];
+});
+
+onBeforeMount(async () => {
+	await loadWorkflows();
+
+	void externalHooks.run('executionsList.openDialog');
+	telemetry.track('User opened Executions log', {
+		workflow_id: workflowsStore.workflowId,
+	});
+});
+
+onMounted(() => {
+	setPageTitle(`n8n - ${pageTitle.value}`);
+
+	void executionsStore.initialize();
+	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
+});
+
+onBeforeUnmount(() => {
+	executionsStore.terminate();
+	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
+});
+
+async function handleAutoRefreshToggle(value: boolean) {
+	if (value) {
+		await executionsStore.startAutoRefreshInterval();
+	} else {
+		executionsStore.stopAutoRefreshInterval();
+	}
+}
+
+function handleCheckAllExistingChange() {
+	allExistingSelected.value = !allExistingSelected.value;
+	allVisibleSelected.value = !allExistingSelected.value;
+	handleCheckAllVisibleChange();
+}
+
+function handleCheckAllVisibleChange() {
+	allVisibleSelected.value = !allVisibleSelected.value;
+	if (!allVisibleSelected.value) {
+		allExistingSelected.value = false;
+		selectedItems.value = {};
+	} else {
+		selectAllVisibleExecutions();
+	}
+}
+
+function toggleSelectExecution(execution: ExecutionSummary) {
+	const executionId = execution.id;
+	if (selectedItems.value[executionId]) {
+		const { [executionId]: removedSelectedItem, ...rest } = selectedItems.value;
+		selectedItems.value = rest;
+	} else {
+		selectedItems.value = {
+			...selectedItems.value,
+			[executionId]: true,
+		};
+	}
+	allVisibleSelected.value =
+		Object.keys(selectedItems.value).length === executionsStore.filteredExecutions.length;
+	allExistingSelected.value =
+		Object.keys(selectedItems.value).length === executionsStore.executionsCount;
+}
+
+async function handleDeleteSelected() {
+	const deleteExecutions = await message.confirm(
+		i18n.baseText('executionsList.confirmMessage.message', {
+			interpolate: { count: selectedCount.value.toString() },
+		}),
+		i18n.baseText('executionsList.confirmMessage.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('executionsList.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('executionsList.confirmMessage.cancelButtonText'),
+		},
+	);
+
+	if (deleteExecutions !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await executionsStore.deleteExecutions({
+			filters: executionsStore.executionsFilters,
+			...(allExistingSelected.value
+				? { deleteBefore: executionsStore.executions[0].startedAt as Date }
+				: {
+						ids: Object.keys(selectedItems.value),
+				  }),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
+		return;
+	}
+
+	toast.showMessage({
+		title: i18n.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+		type: 'success',
+	});
+
+	handleClearSelection();
+}
+
+function handleClearSelection() {
+	allVisibleSelected.value = false;
+	allExistingSelected.value = false;
+	selectedItems.value = {};
+}
+
+async function onFilterChanged(filters: ExecutionFilterType) {
+	executionsStore.setFilters(filters);
+	await refreshData();
+	handleClearSelection();
+	isMounted.value = true;
+}
+
+function getExecutionWorkflowName(execution: ExecutionSummary): string {
+	return (
+		getWorkflowName(execution.workflowId ?? '') || i18n.baseText('executionsList.unsavedWorkflow')
+	);
+}
+
+function getWorkflowName(workflowId: string): string | undefined {
+	return workflows.value.find((data: IWorkflowDb) => data.id === workflowId)?.name;
+}
+
+async function loadCurrentExecutions(): Promise<void> {
+	if (isEmpty(executionsStore.currentExecutionsFilters.metadata)) {
+		await executionsStore.fetchCurrentExecutions();
+	}
+}
+
+async function loadFinishedExecutions(): Promise<void> {
+	if (executionsStore.filters.status === 'running') {
+		return;
+	}
+
+	await executionsStore.fetchPastExecutions();
+
+	if (executionsStore.executions.length === 0) {
+		handleClearSelection();
+	}
+}
+
+async function loadMore() {
+	if (executionsStore.filters.status === 'running') {
+		return;
+	}
+
+	let lastId: string | undefined;
+	if (executionsStore.executions.length !== 0) {
+		const lastItem = executionsStore.executions.slice(-1)[0];
+		lastId = lastItem.id;
+	}
+
+	try {
+		await executionsStore.fetchPastExecutions(executionsStore.executionsFilters, lastId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
+		return;
+	}
+
+	adjustSelectionAfterMoreItemsLoaded();
+}
+
+function selectAllVisibleExecutions() {
+	executionsStore.filteredExecutions.forEach((execution: ExecutionSummary) => {
+		selectedItems.value[execution.id] = true;
+	});
+}
+
+function adjustSelectionAfterMoreItemsLoaded() {
+	if (allExistingSelected.value) {
+		allVisibleSelected.value = true;
+		selectAllVisibleExecutions();
+	}
+}
+
+async function loadWorkflows() {
+	try {
+		await workflowsStore.fetchAllWorkflows();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.loadWorkflows.title'));
+	}
+}
+
+async function retrySavedExecution(execution: ExecutionSummary) {
+	await retryExecution(execution, true);
+}
+
+async function retryOriginalExecution(execution: ExecutionSummary) {
+	await retryExecution(execution, false);
+}
+
+async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
+	try {
+		const retrySuccessful = await executionsStore.retryExecution(execution.id, loadWorkflow);
+
+		if (retrySuccessful) {
+			toast.showMessage({
+				title: i18n.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+				type: 'error',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.retryExecution.title'));
+	}
+
+	telemetry.track('User clicked retry execution button', {
+		workflow_id: workflowsStore.workflowId,
+		execution_id: execution.id,
+		retry_type: loadWorkflow ? 'current' : 'original',
+	});
+}
+
+async function refreshData() {
+	try {
+		await Promise.all([loadCurrentExecutions(), loadFinishedExecutions()]);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
+	}
+}
+
+async function stopExecution(execution: ExecutionSummary) {
+	try {
+		await executionsStore.stopCurrentExecution(execution.id);
+
+		toast.showMessage({
+			title: i18n.baseText('executionsList.showMessage.stopExecution.title'),
+			message: i18n.baseText('executionsList.showMessage.stopExecution.message', {
+				interpolate: { activeExecutionId: execution.id },
+			}),
+			type: 'success',
+		});
+
+		await refreshData();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.stopExecution.title'));
+	}
+}
+
+async function deleteExecution(execution: ExecutionSummary) {
+	try {
+		await executionsStore.deleteExecutions({ ids: [execution.id] });
+
+		if (allVisibleSelected.value) {
+			const { [execution.id]: _, ...rest } = selectedItems.value;
+			selectedItems.value = rest;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
+	}
+}
+
+function onDocumentVisibilityChange() {
+	if (document.visibilityState === 'hidden') {
+		executionsStore.stopAutoRefreshInterval();
+	} else {
+		void executionsStore.startAutoRefreshInterval();
+	}
+}
+</script>
+
 <template>
 	<div :class="['executions-list', $style.execListWrapper]">
 		<div :class="$style.execList">
@@ -138,340 +459,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import ExecutionsGlobalListItem from '@/components/executions/global/ListItem.vue';
-import { MODAL_CONFIRM } from '@/constants';
-import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
-import type { IExecutionsSummary } from 'n8n-workflow';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isEmpty } from '@/utils/typesUtils';
-import { setPageTitle } from '@/utils/htmlUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useRoute } from 'vue-router';
-import { useExecutionsStore } from '@/stores/executions.store';
-
-export default defineComponent({
-	name: 'ExecutionsList',
-	components: {
-		ExecutionFilter,
-		ExecutionsGlobalListItem,
-	},
-	mixins: [executionHelpers],
-	setup() {
-		const i18n = useI18n();
-		const telemetry = useTelemetry();
-		const externalHooks = useExternalHooks();
-		const route = useRoute();
-
-		return {
-			i18n,
-			telemetry,
-			externalHooks,
-			route,
-			...useToast(),
-			...useMessage(),
-		};
-	},
-	data() {
-		return {
-			isMounted: false,
-			allVisibleSelected: false,
-			allExistingSelected: false,
-			selectedItems: {} as { [key: string]: boolean },
-		};
-	},
-	mounted() {
-		setPageTitle(`n8n - ${this.pageTitle}`);
-
-		void this.executionsStore.initialize();
-		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
-	},
-	async created() {
-		await this.loadWorkflows();
-
-		void this.externalHooks.run('executionsList.openDialog');
-		this.telemetry.track('User opened Executions log', {
-			workflow_id: this.workflowsStore.workflowId,
-		});
-	},
-	beforeUnmount() {
-		this.executionsStore.terminate();
-		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
-	},
-	computed: {
-		...mapStores(useUIStore, useWorkflowsStore, useExecutionsStore),
-		selectedCount(): number {
-			if (this.allExistingSelected) {
-				return this.executionsStore.executionsCount;
-			}
-
-			return Object.keys(this.selectedItems).length;
-		},
-		pageTitle() {
-			return this.i18n.baseText('executionsList.workflowExecutions');
-		},
-		workflows(): IWorkflowDb[] {
-			return [
-				{
-					id: 'all',
-					name: this.i18n.baseText('executionsList.allWorkflows'),
-				} as IWorkflowDb,
-				...this.workflowsStore.allWorkflows,
-			];
-		},
-	},
-	methods: {
-		closeDialog() {
-			this.$emit('closeModal');
-		},
-		async handleAutoRefreshToggle(value: boolean) {
-			if (value) {
-				await this.executionsStore.startAutoRefreshInterval();
-			} else {
-				this.executionsStore.stopAutoRefreshInterval();
-			}
-		},
-		handleCheckAllExistingChange() {
-			this.allExistingSelected = !this.allExistingSelected;
-			this.allVisibleSelected = !this.allExistingSelected;
-			this.handleCheckAllVisibleChange();
-		},
-		handleCheckAllVisibleChange() {
-			this.allVisibleSelected = !this.allVisibleSelected;
-			if (!this.allVisibleSelected) {
-				this.allExistingSelected = false;
-				this.selectedItems = {};
-			} else {
-				this.selectAllVisibleExecutions();
-			}
-		},
-		toggleSelectExecution(execution: IExecutionsSummary) {
-			const executionId = execution.id;
-			if (this.selectedItems[executionId]) {
-				const { [executionId]: removedSelectedItem, ...rest } = this.selectedItems;
-				this.selectedItems = rest;
-			} else {
-				this.selectedItems = {
-					...this.selectedItems,
-					[executionId]: true,
-				};
-			}
-			this.allVisibleSelected =
-				Object.keys(this.selectedItems).length === this.executionsStore.filteredExecutions.length;
-			this.allExistingSelected =
-				Object.keys(this.selectedItems).length === this.executionsStore.executionsCount;
-		},
-		async handleDeleteSelected() {
-			const deleteExecutions = await this.confirm(
-				this.i18n.baseText('executionsList.confirmMessage.message', {
-					interpolate: { count: this.selectedCount.toString() },
-				}),
-				this.i18n.baseText('executionsList.confirmMessage.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: this.i18n.baseText('executionsList.confirmMessage.confirmButtonText'),
-					cancelButtonText: this.i18n.baseText('executionsList.confirmMessage.cancelButtonText'),
-				},
-			);
-
-			if (deleteExecutions !== MODAL_CONFIRM) {
-				return;
-			}
-
-			try {
-				await this.executionsStore.deleteExecutions({
-					filters: this.executionsStore.executionsFilters,
-					...(this.allExistingSelected
-						? { deleteBefore: this.executionsStore.executions[0].startedAt as Date }
-						: {
-								ids: Object.keys(this.selectedItems),
-						  }),
-				});
-			} catch (error) {
-				this.showError(
-					error,
-					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
-				);
-				return;
-			}
-
-			this.showMessage({
-				title: this.i18n.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				type: 'success',
-			});
-
-			this.handleClearSelection();
-		},
-		handleClearSelection(): void {
-			this.allVisibleSelected = false;
-			this.allExistingSelected = false;
-			this.selectedItems = {};
-		},
-		async onFilterChanged(filters: ExecutionFilterType) {
-			this.executionsStore.setFilters(filters);
-			await this.refreshData();
-			this.handleClearSelection();
-			this.isMounted = true;
-		},
-		getExecutionWorkflowName(execution: IExecutionsSummary): string {
-			return (
-				this.getWorkflowName(execution.workflowId ?? '') ||
-				this.i18n.baseText('executionsList.unsavedWorkflow')
-			);
-		},
-		getWorkflowName(workflowId: string): string | undefined {
-			return this.workflows.find((data) => data.id === workflowId)?.name;
-		},
-		async loadCurrentExecutions(): Promise<void> {
-			if (isEmpty(this.executionsStore.currentExecutionsFilters.metadata)) {
-				await this.executionsStore.fetchCurrentExecutions();
-			}
-		},
-		async loadFinishedExecutions(): Promise<void> {
-			if (this.executionsStore.filters.status === 'running') {
-				return;
-			}
-
-			await this.executionsStore.fetchPastExecutions();
-
-			if (this.executionsStore.executions.length === 0) {
-				this.handleClearSelection();
-			}
-		},
-		async loadMore() {
-			if (this.executionsStore.filters.status === 'running') {
-				return;
-			}
-
-			let lastId: string | undefined;
-			if (this.executionsStore.executions.length !== 0) {
-				const lastItem = this.executionsStore.executions.slice(-1)[0];
-				lastId = lastItem.id;
-			}
-
-			try {
-				await this.executionsStore.fetchPastExecutions(
-					this.executionsStore.executionsFilters,
-					lastId,
-				);
-			} catch (error) {
-				this.showError(error, this.i18n.baseText('executionsList.showError.loadMore.title'));
-				return;
-			}
-
-			this.adjustSelectionAfterMoreItemsLoaded();
-		},
-		selectAllVisibleExecutions() {
-			this.executionsStore.filteredExecutions.forEach((execution: IExecutionsSummary) => {
-				this.selectedItems[execution.id] = true;
-			});
-		},
-		adjustSelectionAfterMoreItemsLoaded() {
-			if (this.allExistingSelected) {
-				this.allVisibleSelected = true;
-				this.selectAllVisibleExecutions();
-			}
-		},
-		async loadWorkflows() {
-			try {
-				await this.workflowsStore.fetchAllWorkflows();
-			} catch (error) {
-				this.showError(error, this.i18n.baseText('executionsList.showError.loadWorkflows.title'));
-			}
-		},
-		async retrySavedExecution(execution: IExecutionsSummary) {
-			await this.retryExecution(execution, true);
-		},
-		async retryOriginalExecution(execution: IExecutionsSummary) {
-			await this.retryExecution(execution, false);
-		},
-		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
-			try {
-				const retrySuccessful = await this.executionsStore.retryExecution(
-					execution.id,
-					loadWorkflow,
-				);
-
-				if (retrySuccessful) {
-					this.showMessage({
-						title: this.i18n.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						type: 'success',
-					});
-				} else {
-					this.showMessage({
-						title: this.i18n.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						type: 'error',
-					});
-				}
-			} catch (error) {
-				this.showError(error, this.i18n.baseText('executionsList.showError.retryExecution.title'));
-			}
-
-			this.telemetry.track('User clicked retry execution button', {
-				workflow_id: this.workflowsStore.workflowId,
-				execution_id: execution.id,
-				retry_type: loadWorkflow ? 'current' : 'original',
-			});
-		},
-		async refreshData() {
-			try {
-				await Promise.all([this.loadCurrentExecutions(), this.loadFinishedExecutions()]);
-			} catch (error) {
-				this.showError(error, this.i18n.baseText('executionsList.showError.refreshData.title'));
-			}
-		},
-		async stopExecution(execution: IExecutionsSummary) {
-			try {
-				await this.executionsStore.stopCurrentExecution(execution.id);
-
-				this.showMessage({
-					title: this.i18n.baseText('executionsList.showMessage.stopExecution.title'),
-					message: this.i18n.baseText('executionsList.showMessage.stopExecution.message', {
-						interpolate: { activeExecutionId: execution.id },
-					}),
-					type: 'success',
-				});
-
-				await this.refreshData();
-			} catch (error) {
-				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
-			}
-		},
-		async deleteExecution(execution: IExecutionsSummary) {
-			try {
-				await this.executionsStore.deleteExecutions({ ids: [execution.id] });
-
-				if (this.allVisibleSelected) {
-					const { [execution.id]: _, ...rest } = this.selectedItems;
-					this.selectedItems = rest;
-				}
-			} catch (error) {
-				this.showError(
-					error,
-					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
-				);
-			}
-		},
-		onDocumentVisibilityChange() {
-			if (document.visibilityState === 'hidden') {
-				this.executionsStore.stopAutoRefreshInterval();
-			} else {
-				void this.executionsStore.startAutoRefreshInterval();
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .execListWrapper {

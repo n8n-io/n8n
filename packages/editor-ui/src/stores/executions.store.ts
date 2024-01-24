@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ExecutionStatus, IDataObject, IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject, ExecutionSummary } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -33,7 +33,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const autoRefreshTimeout = ref<NodeJS.Timeout | null>(null);
 	const autoRefreshDelay = ref(4 * 1000); // Refresh data every 4 secs
 
-	const executionsById = ref<Record<string, IExecutionsSummary>>({});
+	const executionsById = ref<Record<string, ExecutionSummary>>({});
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
@@ -46,7 +46,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return data;
 	});
 
-	const currentExecutionsById = ref<Record<string, IExecutionsSummary>>({});
+	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
@@ -78,7 +78,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	});
 
 	const executionsByWorkflowId = computed(() =>
-		executions.value.reduce<Record<string, IExecutionsSummary[]>>((acc, execution) => {
+		executions.value.reduce<Record<string, ExecutionSummary[]>>((acc, execution) => {
 			if (!acc[execution.workflowId]) {
 				acc[execution.workflowId] = [];
 			}
@@ -98,7 +98,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
-	function addExecution(execution: IExecutionsSummary) {
+	function addExecution(execution: ExecutionSummary) {
 		executionsById.value[execution.id] = {
 			...execution,
 			status: execution.status ?? getExecutionStatus(execution),
@@ -106,7 +106,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
-	function addRunningExecution(execution: IExecutionsSummary) {
+	function addRunningExecution(execution: ExecutionSummary) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
 			status: execution.status ?? getExecutionStatus(execution),
@@ -134,7 +134,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopAutoRefreshInterval();
 	}
 
-	function getExecutionStatus(execution: IExecutionsSummary): ExecutionStatus {
+	function getExecutionStatus(execution: ExecutionSummary): ExecutionStatus {
 		if (execution.status) {
 			return execution.status;
 		} else {
@@ -185,10 +185,10 @@ export const useExecutionsStore = defineStore('executions', () => {
 	async function fetchCurrentExecutions(filter = currentExecutionsFilters.value) {
 		loading.value = true;
 		try {
-			const data = await makeRestApiRequest<IExecutionsSummary[]>(
+			const data = await makeRestApiRequest<ExecutionSummary[]>(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions-current',
+				'/executions/active',
 				{
 					...(filter ? { filter } : {}),
 				},

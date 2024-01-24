@@ -4,6 +4,7 @@ import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
 	IWorkflowShortResponse,
+	IWorkflowDb,
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
@@ -16,7 +17,7 @@ import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
 
 export type ExecutionFilterProps = {
-	workflows?: IWorkflowShortResponse[];
+	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	popoverPlacement?: Placement;
 	teleported?: boolean;
 };

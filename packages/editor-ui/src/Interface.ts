@@ -34,7 +34,7 @@ import {
 	type INodeListSearchItems,
 	type NodeParameterValueType,
 	type IDisplayOptions,
-	type IExecutionsSummary,
+	type ExecutionSummary,
 	type FeatureFlags,
 	type ExecutionStatus,
 	type ITelemetryTrackProperties,
@@ -397,7 +397,7 @@ export interface IExecutionShortResponse {
 
 export interface IExecutionsListResponse {
 	count: number;
-	results: IExecutionsSummary[];
+	results: ExecutionSummary[];
 	estimated: boolean;
 }
 
@@ -1063,8 +1063,8 @@ export interface IUsedCredential {
 export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
-	activeWorkflowExecution: IExecutionsSummary | null;
-	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
@@ -1398,8 +1398,8 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
-	currentWorkflowExecutions: IExecutionsSummary[];
-	activeWorkflowExecution: IExecutionsSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
 	finishedExecutionsCount: number;
 }
 export interface IWorkflowsMap {

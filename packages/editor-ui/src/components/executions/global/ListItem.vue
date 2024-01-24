@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, PropType } from 'vue';
 import { ref, computed, useCssModule } from 'vue';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { useRouter } from 'vue-router';
@@ -13,7 +13,7 @@ const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'dele
 
 const props = defineProps({
 	execution: {
-		type: Object as PropType<IExecutionsSummary>,
+		type: Object as PropType<ExecutionSummary>,
 		required: true,
 	},
 	selected: {
