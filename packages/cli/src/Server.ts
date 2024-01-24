@@ -55,11 +55,9 @@ import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.con
 import { ExecutionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite, IDiagnosticInfo } from '@/Interfaces';
-import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { WaitTracker } from '@/WaitTracker';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
@@ -101,10 +99,6 @@ const exec = promisify(callbackExec);
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
 
-	private waitTracker: WaitTracker;
-
-	private activeExecutionsInstance: ActiveExecutions;
-
 	private presetCredentialsLoaded: boolean;
 
 	private loadNodesAndCredentials: LoadNodesAndCredentials;
@@ -129,9 +123,6 @@ export class Server extends AbstractServer {
 			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
 		}
-
-		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-		this.waitTracker = Container.get(WaitTracker);
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
