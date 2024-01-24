@@ -2,7 +2,7 @@ import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse, TargetItem } from '@/Interface';
 import { isNotNull } from '@/utils/typeGuards';
 
-const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
+export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -12,7 +12,10 @@ export function getPairedItemId(node: string, run: number, output: number, item:
 	return `${node}_r${run}_o${output}_i${item}`;
 }
 
-export function getSourceItems(data: IExecutionResponse, target: TargetItem): TargetItem[] {
+export function getSourceItems(
+	data: Partial<IExecutionResponse>,
+	target: TargetItem,
+): TargetItem[] {
 	if (!data?.data?.resultData?.runData) {
 		return [];
 	}
@@ -185,7 +188,7 @@ function getItemsCount(runData: IRunData) {
 	return itemsCount;
 }
 
-export function getPairedItemsMapping(executionResponse: IExecutionResponse | null): {
+export function getPairedItemsMapping(executionResponse: Partial<IExecutionResponse> | null): {
 	[itemId: string]: Set<string>;
 } {
 	if (!executionResponse?.data?.resultData?.runData) {

@@ -6,7 +6,7 @@ import {
 	MAX_ITEM_COUNT_FOR_PAIRING,
 } from '../pairedItemUtils';
 
-const MOCK_EXECUTION: IExecutionResponse = {
+const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 	data: {
 		startData: {},
 		resultData: {
