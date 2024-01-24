@@ -55,11 +55,9 @@ import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.con
 import { ExecutionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite, IDiagnosticInfo } from '@/Interfaces';
-import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { WaitTracker } from '@/WaitTracker';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
@@ -91,7 +89,6 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
-import { RoleController } from './controllers/role.controller';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -100,10 +97,6 @@ const exec = promisify(callbackExec);
 @Service()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
-
-	private waitTracker: WaitTracker;
-
-	private activeExecutionsInstance: ActiveExecutions;
 
 	private presetCredentialsLoaded: boolean;
 
@@ -129,9 +122,6 @@ export class Server extends AbstractServer {
 			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
 		}
-
-		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-		this.waitTracker = Container.get(WaitTracker);
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
@@ -237,7 +227,6 @@ export class Server extends AbstractServer {
 			VariablesController,
 			InvitationController,
 			VariablesController,
-			RoleController,
 			ActiveWorkflowsController,
 			WorkflowsController,
 			ExecutionsController,

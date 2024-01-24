@@ -84,7 +84,7 @@ export class ActiveWebhooks implements IWebhookManager {
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (workflowData === null) {

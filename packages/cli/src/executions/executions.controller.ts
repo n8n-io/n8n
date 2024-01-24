@@ -3,7 +3,7 @@ import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import type { User } from '@/databases/entities/User';
 import config from '@/config';
@@ -21,12 +21,13 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activeExecutionService: ActiveExecutionService,
+		private readonly license: License,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User) {
-		return isSharingEnabled()
+		return this.license.isSharingEnabled()
 			? await this.workflowSharingService.getSharedWorkflowIds(user)
-			: await this.workflowSharingService.getSharedWorkflowIds(user, ['owner']);
+			: await this.workflowSharingService.getSharedWorkflowIds(user, ['workflow:owner']);
 	}
 
 	@Get('/')
@@ -68,7 +69,7 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return isSharingEnabled()
+		return this.license.isSharingEnabled()
 			? await this.enterpriseExecutionService.findOne(req, workflowIds)
 			: await this.executionService.findOne(req, workflowIds);
 	}

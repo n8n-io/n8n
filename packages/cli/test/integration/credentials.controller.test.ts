@@ -5,7 +5,6 @@ import { setupTestServer } from './shared/utils/';
 import { randomCredentialPayload as payload } from './shared/random';
 import { saveCredential } from './shared/db/credentials';
 import { createMember, createOwner } from './shared/db/users';
-import { getCredentialOwnerRole } from './shared/db/roles';
 
 const { any } = expect;
 
@@ -26,10 +25,14 @@ type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndShared
 describe('GET /credentials', () => {
 	describe('should return', () => {
 		test('all credentials for owner', async () => {
-			const role = await getCredentialOwnerRole();
-
-			const { id: id1 } = await saveCredential(payload(), { user: owner, role });
-			const { id: id2 } = await saveCredential(payload(), { user: member, role });
+			const { id: id1 } = await saveCredential(payload(), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			const { id: id2 } = await saveCredential(payload(), {
+				user: member,
+				role: 'credential:owner',
+			});
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -47,13 +50,11 @@ describe('GET /credentials', () => {
 		});
 
 		test('only own credentials for member', async () => {
-			const role = await getCredentialOwnerRole();
-
 			const firstMember = member;
 			const secondMember = await createMember();
 
-			const c1 = await saveCredential(payload(), { user: firstMember, role });
-			const c2 = await saveCredential(payload(), { user: secondMember, role });
+			const c1 = await saveCredential(payload(), { user: firstMember, role: 'credential:owner' });
+			const c2 = await saveCredential(payload(), { user: secondMember, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(firstMember)
@@ -72,8 +73,7 @@ describe('GET /credentials', () => {
 
 	describe('filter', () => {
 		test('should filter credentials by field: name - full match', async () => {
-			const role = await getCredentialOwnerRole();
-			const savedCred = await saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -97,8 +97,7 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: name - partial match', async () => {
-			const role = await getCredentialOwnerRole();
-			const savedCred = await saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const partialName = savedCred.name.slice(3);
 
@@ -124,9 +123,7 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: type - full match', async () => {
-			const role = await getCredentialOwnerRole();
-
-			const savedCred = await saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -150,9 +147,7 @@ describe('GET /credentials', () => {
 		});
 
 		test('should filter credentials by field: type - partial match', async () => {
-			const role = await getCredentialOwnerRole();
-
-			const savedCred = await saveCredential(payload(), { user: owner, role });
+			const savedCred = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const partialType = savedCred.type.slice(3);
 
@@ -180,10 +175,8 @@ describe('GET /credentials', () => {
 
 	describe('select', () => {
 		test('should select credential field: id', async () => {
-			const role = await getCredentialOwnerRole();
-
-			await saveCredential(payload(), { user: owner, role });
-			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -197,10 +190,8 @@ describe('GET /credentials', () => {
 		});
 
 		test('should select credential field: name', async () => {
-			const role = await getCredentialOwnerRole();
-
-			await saveCredential(payload(), { user: owner, role });
-			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -214,10 +205,8 @@ describe('GET /credentials', () => {
 		});
 
 		test('should select credential field: type', async () => {
-			const role = await getCredentialOwnerRole();
-
-			await saveCredential(payload(), { user: owner, role });
-			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
@@ -233,10 +222,8 @@ describe('GET /credentials', () => {
 
 	describe('take', () => {
 		test('should return n credentials or less, without skip', async () => {
-			const role = await getCredentialOwnerRole();
-
-			await saveCredential(payload(), { user: owner, role });
-			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response = await testServer
 				.authAgentFor(owner)
@@ -260,10 +247,8 @@ describe('GET /credentials', () => {
 		});
 
 		test('should return n credentials or less, with skip', async () => {
-			const role = await getCredentialOwnerRole();
-
-			await saveCredential(payload(), { user: owner, role });
-			await saveCredential(payload(), { user: owner, role });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
 			const response = await testServer
 				.authAgentFor(owner)

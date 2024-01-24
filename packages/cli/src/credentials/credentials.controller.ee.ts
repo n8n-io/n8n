@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import type { CredentialRequest } from '@/requests';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
@@ -24,7 +24,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
-	if (!isSharingEnabled()) {
+	if (!Container.get(License).isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
@@ -45,7 +45,7 @@ EECredentialsController.get(
 
 		let credential = await Container.get(CredentialsRepository).findOne({
 			where: { id: credentialId },
-			relations: ['shared', 'shared.role', 'shared.user'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (!credential) {
@@ -62,7 +62,7 @@ EECredentialsController.get(
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
-		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
+		if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
 			const { data: _, ...rest } = credential;
 			return { ...rest };
 		}
@@ -151,10 +151,9 @@ EECredentialsController.put(
 		const ownerIds = (
 			await EECredentials.getSharings(Db.getConnection().createEntityManager(), credentialId, [
 				'shared',
-				'shared.role',
 			])
 		)
-			.filter((e) => e.role.name === 'owner')
+			.filter((e) => e.role === 'credential:owner')
 			.map((e) => e.userId);
 
 		let amountRemoved: number | null = null;
