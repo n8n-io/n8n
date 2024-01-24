@@ -26,6 +26,7 @@ import find from 'lodash/find';
 
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
+import { nodeLog } from './Helper';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -212,6 +213,14 @@ const versionDescription: INodeTypeDescription = {
 				},
 			],
 		},
+		{
+			displayName: 'Debug',
+			name: 'nodeDebug',
+			type: 'boolean',
+			isNodeSetting: true,
+			default: false,
+			noDataExpression: true,
+		},
 	],
 };
 
@@ -280,6 +289,7 @@ export class EmailReadImapV2 implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
@@ -291,6 +301,9 @@ export class EmailReadImapV2 implements INodeType {
 
 		const staticData = this.getWorkflowStaticData('node');
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
+		if (nodeDebug) {
+			nodeLog('Loaded static data for node "EmailReadImap"', { staticData });
+		}
 
 		let connection: ImapSimple;
 		let closeFunctionWasCalled = false;
@@ -578,6 +591,12 @@ export class EmailReadImapV2 implements INodeType {
 							this.logger.debug('Querying for new messages on node "EmailReadImap"', {
 								searchCriteria,
 							});
+
+							if (nodeDebug) {
+								nodeLog('Querying for new messages on node "EmailReadImap"', {
+									searchCriteria,
+								});
+							}
 						}
 
 						try {
@@ -599,6 +618,9 @@ export class EmailReadImapV2 implements INodeType {
 				},
 				onupdate: async (seqno: number, info) => {
 					this.logger.verbose(`Email Read Imap:update ${seqno}`, info as IDataObject);
+					if (nodeDebug) {
+						nodeLog(`Email Read Imap:update ${seqno}`, info as IDataObject);
+					}
 				},
 			};
 
@@ -622,10 +644,19 @@ export class EmailReadImapV2 implements INodeType {
 				conn.on('close', async (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
 						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');
+						if (nodeDebug) {
+							nodeLog('Email Read Imap: Connected closed for forced reconnecting');
+						}
 					} else if (closeFunctionWasCalled) {
 						this.logger.debug('Email Read Imap: Shutting down workflow - connected closed');
+						if (nodeDebug) {
+							nodeLog('Email Read Imap: Shutting down workflow - connected closed');
+						}
 					} else {
 						this.logger.error('Email Read Imap: Connected closed unexpectedly');
+						if (nodeDebug) {
+							nodeLog('Email Read Imap: Connected closed unexpectedly');
+						}
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
 				});
@@ -634,6 +665,11 @@ export class EmailReadImapV2 implements INodeType {
 					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
+					if (nodeDebug) {
+						nodeLog(`IMAP connection experienced an error: (${errorCode})`, {
+							error: error as Error,
+						});
+					}
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await closeFunction();
 					this.emitError(error as Error);
@@ -650,6 +686,9 @@ export class EmailReadImapV2 implements INodeType {
 
 		const handleReconnect = async () => {
 			this.logger.verbose('Forcing reconnect to IMAP server');
+			if (nodeDebug) {
+				nodeLog('Forcing reconnect to IMAP server');
+			}
 			try {
 				isCurrentlyReconnecting = true;
 				if (connection.closeBox) await connection.closeBox(false);
