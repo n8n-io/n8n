@@ -18,7 +18,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest, GetManyQuery } from './execution.types';
+import type { ExecutionRequest, FindMany } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -27,6 +27,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import config from '@/config';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -328,14 +329,27 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find multiple executions and their count based on a query.
+	 * Find a range of executions that satisfy a query, along with the count of
+	 * all existing executions that satisfy the query.
 	 */
-	async findManyByQuery(query: GetManyQuery) {
-		const results = await this.executionRepository.findManyByQuery(query);
+	async findManyWithCount(query: FindMany.RangeQuery) {
+		const executions = await this.executionRepository.findManyByRangeQuery(query);
 
-		// @TODO: count total filtered executions, instead of
-		// only filtered executions in range made up of limit, firstId, and lastId
+		if (config.getEnv('database.type') === 'postgresdb') {
+			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
-		return { count: results.length, estimated: false, results };
+			if (liveRows === -1) return { count: -1, estimated: false, results: executions };
+
+			if (liveRows > 100_000) {
+				// likely too high to fetch exact count fast
+				return { count: liveRows, estimated: true, results: executions };
+			}
+		}
+
+		const { range: _, ...countQuery } = query;
+
+		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
+
+		return { count, estimated: false, results: executions };
 	}
 }

@@ -41,8 +41,8 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { GetManyActiveFilter, GetManyQuery } from '@/executions/execution.types';
-import { MissingAccessibleWorkflowIdsError } from '@/errors/missing-accessible-workflow-ids.error';
+import type { GetManyActiveFilter, FindMany } from '@/executions/execution.types';
+import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -620,7 +620,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// ----------------------------------
 
 	/**
-	 * Fields to include in the summary of an execution.
+	 * Fields to include in the summary of an execution when querying for many.
 	 */
 	private summaryFields = {
 		id: true,
@@ -653,14 +653,36 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	async findManyByQuery(query: GetManyQuery): Promise<ExecutionSummary[]> {
-		if (!query.accessibleWorkflowIds) throw new MissingAccessibleWorkflowIdsError(query);
+	async findManyByRangeQuery(query: FindMany.RangeQuery): Promise<ExecutionSummary[]> {
+		return await this.toQueryBuilder(query).getMany();
+	}
 
+	async fetchCount(query: FindMany.CountQuery) {
+		return await this.toQueryBuilder(query).getCount();
+	}
+
+	async getLiveExecutionRowsOnPostgres() {
+		const pgSql =
+			"SELECT n_live_tup as estimate FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+
+		try {
+			const rows = (await this.query(pgSql)) as Array<{ estimate: string }>;
+
+			if (rows.length !== 1) throw new PostgresLiveRowsRetrievalError(rows);
+
+			const [row] = rows;
+
+			return parseInt(row.estimate, 10);
+		} catch (error) {
+			if (error instanceof Error) this.logger.error(error.message, { error });
+
+			return -1;
+		}
+	}
+
+	private toQueryBuilder(query: FindMany.Query) {
 		const {
 			accessibleWorkflowIds,
-			limit,
-			firstId,
-			lastId,
 			status,
 			finished,
 			workflowId,
@@ -670,19 +692,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
-			.concat(['waitTill', 'retrySuccessId'])
+			.concat(['waitTill', 'retrySuccessId']) // @TODO: Needed?
 			.map((key) => `execution.${key}`)
 			.concat('workflow.name AS workflowName');
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
 			.innerJoin('execution.workflow', 'workflow')
-			.orderBy({ 'execution.id': 'DESC' })
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
-		if (limit) qb.limit(limit);
-		if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
-		if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+		if (query.kind === 'range') {
+			qb.orderBy({ 'execution.id': 'DESC' });
+
+			const { limit, firstId, lastId } = query.range;
+
+			qb.limit(limit);
+
+			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
+			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (finished) qb.andWhere({ finished });
@@ -693,11 +721,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (metadata) {
 			qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 
-			for (const keyValue of metadata) {
-				qb.andWhere('md.key = :key AND md.value = :value', keyValue);
+			for (const item of metadata) {
+				qb.andWhere('md.key = :key AND md.value = :value', item);
 			}
 		}
 
-		return await qb.getMany();
+		return qb;
 	}
 }

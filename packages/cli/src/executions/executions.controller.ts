@@ -11,7 +11,7 @@ import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
 import { License } from '@/License';
-import { parseGetManyQuery } from './query.middleware';
+import { parseRangeQuery } from './parse-range-query.middleware';
 
 @Authorized()
 @RestController('/executions')
@@ -32,7 +32,7 @@ export class ExecutionsController {
 			: await this.workflowSharingService.getSharedWorkflowIds(user, ['owner']);
 	}
 
-	@Get('/', { middlewares: [parseGetManyQuery] })
+	@Get('/', { middlewares: [parseRangeQuery] })
 	@RequireGlobalScope('workflow:list')
 	async getMany(req: ExecutionRequest.GetMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user);
@@ -41,7 +41,7 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		const { getManyQuery: query } = req;
+		const { rangeQuery: query } = req;
 
 		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
 			return { count: 0, estimated: false, results: [] };
@@ -62,7 +62,7 @@ export class ExecutionsController {
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
 
-		return await this.executionService.findManyByQuery(query);
+		return await this.executionService.findManyWithCount(query);
 	}
 
 	@Get('/active')

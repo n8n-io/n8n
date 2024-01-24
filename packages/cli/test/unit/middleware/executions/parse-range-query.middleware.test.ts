@@ -1,10 +1,10 @@
-import { parseGetManyQuery } from '@/executions/query.middleware';
+import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 import type { NextFunction } from 'express';
 import { mock } from 'jest-mock-extended';
 import type * as express from 'express';
 import type { ExecutionRequest } from '@/executions/execution.types';
 
-describe('Execution query middleware', () => {
+describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>();
 	const nextFn: NextFunction = jest.fn();
 
@@ -22,9 +22,9 @@ describe('Execution query middleware', () => {
 			},
 		});
 
-		parseGetManyQuery(req, res, nextFn);
+		parseRangeQuery(req, res, nextFn);
 
-		expect(req.getManyQuery).toEqual({ status: ['waiting'], limit: 20 });
+		expect(req.rangeQuery.status).toEqual(['waiting']);
 		expect(nextFn).toBeCalledTimes(1);
 	});
 
@@ -38,9 +38,10 @@ describe('Execution query middleware', () => {
 			},
 		});
 
-		parseGetManyQuery(req, res, nextFn);
+		parseRangeQuery(req, res, nextFn);
 
-		expect(req.getManyQuery).toEqual({ id: '123', workflowId: '456', limit: 20 });
+		expect(req.rangeQuery.id).toBe('123');
+		expect(req.rangeQuery.workflowId).toBe('456');
 		expect(nextFn).toBeCalledTimes(1);
 	});
 
@@ -54,9 +55,10 @@ describe('Execution query middleware', () => {
 			},
 		});
 
-		parseGetManyQuery(req, res, nextFn);
+		parseRangeQuery(req, res, nextFn);
 
-		expect(req.getManyQuery).toEqual({ firstId: '111', lastId: '999', limit: 20 });
+		expect(req.rangeQuery.range.firstId).toBe('111');
+		expect(req.rangeQuery.range.lastId).toBe('999');
 		expect(nextFn).toBeCalledTimes(1);
 	});
 
@@ -70,9 +72,9 @@ describe('Execution query middleware', () => {
 			},
 		});
 
-		parseGetManyQuery(req, res, nextFn);
+		parseRangeQuery(req, res, nextFn);
 
-		expect(req.getManyQuery).toEqual({ limit: 50 });
+		expect(req.rangeQuery.range.limit).toEqual(50);
 		expect(nextFn).toBeCalledTimes(1);
 	});
 });

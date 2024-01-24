@@ -29,7 +29,7 @@ export declare namespace ExecutionRequest {
 	}
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
-		getManyQuery: GetManyQuery; // parsed from query params
+		rangeQuery: FindMany.RangeQuery; // parsed from query params
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
@@ -63,14 +63,22 @@ type FilterFields = Partial<{
 	startedBefore: string;
 }>;
 
-type RangeFields = Partial<{
-	limit: number;
-	firstId: string;
-	lastId: string;
-}>;
+type RangeFields = {
+	range: {
+		limit: number;
+		firstId?: string;
+		lastId?: string;
+	};
+};
 
-type AccessFields = Partial<{
-	accessibleWorkflowIds: string[];
-}>;
+type AccessFields = {
+	accessibleWorkflowIds?: string[];
+};
 
-export type GetManyQuery = FilterFields & RangeFields & AccessFields;
+export namespace FindMany {
+	export type Query = RangeQuery | CountQuery;
+
+	export type RangeQuery = { kind: 'range' } & FilterFields & AccessFields & RangeFields;
+
+	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
+}
