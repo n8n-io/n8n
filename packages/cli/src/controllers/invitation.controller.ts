@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import validator from 'validator';
 
 import config from '@/config';
 import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
@@ -12,12 +13,11 @@ import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
-import validator from 'validator';
+import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized()
 @RestController('/invitations')
@@ -91,13 +91,13 @@ export class InvitationController {
 				);
 			}
 
-			if (invite.role && !['member', 'admin'].includes(invite.role)) {
+			if (invite.role && !['global:member', 'global:admin'].includes(invite.role)) {
 				throw new BadRequestError(
-					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'member' or 'admin'.`,
+					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'global:member' or 'global:admin'.`,
 				);
 			}
 
-			if (invite.role === 'admin' && !this.license.isAdvancedPermissionsLicensed()) {
+			if (invite.role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
 				throw new UnauthorizedError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 				);
@@ -106,7 +106,7 @@ export class InvitationController {
 
 		const attributes = req.body.map(({ email, role }) => ({
 			email,
-			role: role ?? 'member',
+			role: role ?? 'global:member',
 		}));
 
 		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);

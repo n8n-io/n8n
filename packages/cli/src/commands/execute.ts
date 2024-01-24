@@ -1,5 +1,6 @@
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
 import { promises as fs } from 'fs';
-import { flags } from '@oclif/command';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
@@ -9,7 +10,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
+
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -19,14 +20,14 @@ export class Execute extends BaseCommand {
 	static examples = ['$ n8n execute --id=5', '$ n8n execute --file=workflow.json'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		file: flags.string({
+		help: Flags.help({ char: 'h' }),
+		file: Flags.string({
 			description: 'path to a workflow file to execute',
 		}),
-		id: flags.string({
+		id: Flags.string({
 			description: 'id of the workflow to execute',
 		}),
-		rawOutput: flags.boolean({
+		rawOutput: Flags.boolean({
 			description: 'Outputs only JSON data, with no other text',
 		}),
 	};
@@ -38,8 +39,7 @@ export class Execute extends BaseCommand {
 	}
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Execute);
+		const { flags } = await this.parse(Execute);
 
 		if (!flags.id && !flags.file) {
 			this.logger.info('Either option "--id" or "--file" have to be set!');

@@ -23,12 +23,10 @@ import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { UM_FIX_INSTRUCTION } from '@/constants';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -57,36 +55,6 @@ export class SourceControlImportService {
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
-	}
-
-	private async getOwnerGlobalRole() {
-		const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		if (!globalOwnerRole) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return globalOwnerRole;
-	}
-
-	private async getCredentialOwnerRole() {
-		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
-
-		if (!credentialOwnerRole) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return credentialOwnerRole;
-	}
-
-	private async getWorkflowOwnerRole() {
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-
-		if (!workflowOwnerRole) {
-			throw new ApplicationError(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return workflowOwnerRole;
 	}
 
 	public async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
@@ -222,7 +190,6 @@ export class SourceControlImportService {
 	}
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
-		const ownerWorkflowRole = await this.getWorkflowOwnerRole();
 		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
@@ -230,7 +197,7 @@ export class SourceControlImportService {
 		});
 		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).findWithFields(
 			candidateIds,
-			{ fields: ['workflowId', 'roleId', 'userId'] },
+			{ select: ['workflowId', 'role', 'userId'] },
 		);
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
@@ -273,35 +240,29 @@ export class SourceControlImportService {
 				}
 
 				const existingSharedWorkflowOwnerByRoleId = allSharedWorkflows.find(
-					(e) =>
-						e.workflowId === importedWorkflow.id &&
-						e.roleId.toString() === ownerWorkflowRole.id.toString(),
+					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
 				);
 				const existingSharedWorkflowOwnerByUserId = allSharedWorkflows.find(
-					(e) =>
-						e.workflowId === importedWorkflow.id &&
-						e.roleId.toString() === workflowOwnerId.toString(),
+					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
 				);
 				if (!existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
 					// no owner exists yet, so create one
 					await Container.get(SharedWorkflowRepository).insert({
 						workflowId: importedWorkflow.id,
 						userId: workflowOwnerId,
-						roleId: ownerWorkflowRole.id,
+						role: 'workflow:owner',
 					});
 				} else if (existingSharedWorkflowOwnerByRoleId) {
 					// skip, because the workflow already has a global owner
 				} else if (existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
-					// if the worklflow has a non-global owner that is referenced by the owner file,
+					// if the workflow has a non-global owner that is referenced by the owner file,
 					// and no existing global owner, update the owner to the user referenced in the owner file
 					await Container.get(SharedWorkflowRepository).update(
 						{
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
 						},
-						{
-							roleId: ownerWorkflowRole.id,
-						},
+						{ role: 'workflow:owner' },
 					);
 				}
 				if (existingWorkflow?.active) {
@@ -343,13 +304,11 @@ export class SourceControlImportService {
 			},
 			select: ['id', 'name', 'type', 'data'],
 		});
-		const ownerCredentialRole = await this.getCredentialOwnerRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
 		const existingSharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			select: ['userId', 'credentialsId', 'roleId'],
+			select: ['userId', 'credentialsId', 'role'],
 			where: {
 				credentialsId: In(candidateIds),
-				roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
+				role: 'credential:owner',
 			},
 		});
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
@@ -382,7 +341,7 @@ export class SourceControlImportService {
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
 					newSharedCredential.userId = userId;
-					newSharedCredential.roleId = ownerCredentialRole.id;
+					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [
 						'credentialsId',
