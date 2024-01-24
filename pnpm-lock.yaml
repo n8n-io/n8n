@@ -374,8 +374,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n_io/license-sdk':
-        specifier: 2.7.2
-        version: 2.7.2
+        specifier: 2.9.1
+        version: 2.9.1
       '@oclif/core':
         specifier: 3.18.1
         version: 3.18.1
@@ -6153,14 +6153,14 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.7.2:
-    resolution: {integrity: sha512-GalBo+2YxbFUR1I7cx3JDEiippqKw8ml3FdFK9hRRB9NfpP+H0QYnWf/sGOmKcb4nZ2lqU38nU7ZdIF96jBkXg==}
+  /@n8n_io/license-sdk@2.9.1:
+    resolution: {integrity: sha512-e5S54zpFmHmQyC7cnt5YYWCRUgpCatx9kt/exUglNVjmghYSCeHrwgzKf21+D8JpjW9OHxHcStNVl9woba+cdw==}
     engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 5.26.4
+      undici: 6.4.0
     dev: false
 
   /@n8n_io/riot-tmpl@4.0.0:
@@ -25909,6 +25909,13 @@ packages:
   /undici@5.26.4:
     resolution: {integrity: sha512-OG+QOf0fTLtazL9P9X7yqWxQ+Z0395Wk6DSkyTxtaq3wQEjIroVe7Y4asCX/vcCxYpNGMnwz8F0qbRYUoaQVMw==}
     engines: {node: '>=14.0'}
+    dependencies:
+      '@fastify/busboy': 2.0.0
+    dev: false
+
+  /undici@6.4.0:
+    resolution: {integrity: sha512-wYaKgftNqf6Je7JQ51YzkEkEevzOgM7at5JytKO7BjaURQpERW8edQSMrr2xb+Yv4U8Yg47J24+lc9+NbeXMFA==}
+    engines: {node: '>=18.0'}
     dependencies:
       '@fastify/busboy': 2.0.0
     dev: false

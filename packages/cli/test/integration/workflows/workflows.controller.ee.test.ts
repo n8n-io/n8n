@@ -7,7 +7,6 @@ import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import { Push } from '@/push';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
@@ -25,6 +24,8 @@ import {
 } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
+import { License } from '@/License';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -38,12 +39,13 @@ let saveCredential: SaveCredentialFunction;
 const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
 mockInstance(Push);
 
-const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
 });
 const license = testServer.license;
+const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
 	const globalOwnerRole = await getGlobalOwnerRole();
@@ -68,6 +70,10 @@ beforeEach(async () => {
 	activeWorkflowRunner.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
+});
+
+afterEach(() => {
+	jest.clearAllMocks();
 });
 
 describe('router should switch based on flag', () => {
@@ -107,6 +113,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should succeed when sharing with invalid user-id', async () => {
@@ -133,6 +140,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(3);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should override sharing', async () => {
@@ -154,6 +162,7 @@ describe('PUT /workflows/:id', () => {
 
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
 		expect(secondSharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
@@ -167,6 +176,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should allow sharing by the instance owner', async () => {
@@ -180,6 +190,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should not allow sharing by another shared member', async () => {
@@ -195,6 +206,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('PUT /workflows/:id/share should not allow sharing with self by another non-shared member', async () => {
@@ -208,6 +220,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(1);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
@@ -223,6 +236,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(1);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
 	});
 });
 

@@ -3,7 +3,6 @@ import { In } from 'typeorm';
 import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
@@ -16,8 +15,11 @@ import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from 
 import { createManyUsers, createUser, createUserShell } from './shared/db/users';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import Container from 'typedi';
+import { License } from '@/License';
+import { mockInstance } from '../shared/mocking';
+import { UserManagementMailer } from '@/UserManagement/email';
 
-const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let globalMemberRole: Role;
@@ -27,6 +29,7 @@ let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
+const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
 	const globalOwnerRole = await getGlobalOwnerRole();
@@ -45,6 +48,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
+});
+
+afterEach(() => {
+	jest.clearAllMocks();
 });
 
 // ----------------------------------------
@@ -363,6 +370,8 @@ describe('PUT /credentials/:id/share', () => {
 			expect(sharedCredential.role.name).toBe('user');
 			expect(sharedCredential.role.scope).toBe('credential');
 		});
+
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should share the credential with the provided userIds', async () => {
@@ -400,6 +409,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(ownerSharedCredential.role.name).toBe('owner');
 		expect(ownerSharedCredential.role.scope).toBe('credential');
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should respond 403 for non-existing credentials', async () => {
@@ -408,6 +418,7 @@ describe('PUT /credentials/:id/share', () => {
 			.send({ shareWithIds: [member.id] });
 
 		expect(response.statusCode).toBe(403);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for shared members', async () => {
@@ -424,6 +435,7 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id },
 		});
 		expect(sharedCredentials).toHaveLength(2);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing with self', async () => {
@@ -439,6 +451,7 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id },
 		});
 		expect(sharedCredentials).toHaveLength(1);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing', async () => {
@@ -455,6 +468,7 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id },
 		});
 		expect(sharedCredentials).toHaveLength(1);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 200 for non-owned credentials for owners', async () => {
@@ -469,6 +483,7 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id },
 		});
 		expect(sharedCredentials).toHaveLength(2);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should ignore pending sharee', async () => {
@@ -487,6 +502,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should ignore non-existing sharee', async () => {
@@ -504,6 +520,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -515,6 +532,7 @@ describe('PUT /credentials/:id/share', () => {
 		]);
 
 		responses.forEach((response) => expect(response.statusCode).toBe(400));
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 	test('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -537,6 +555,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 });
 

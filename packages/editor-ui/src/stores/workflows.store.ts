@@ -64,7 +64,7 @@ import { findLast } from 'lodash-es';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import {
 	getActiveWorkflows,
-	getCurrentExecutions,
+	getActiveExecutions,
 	getExecutionData,
 	getExecutions,
 	getNewWorkflow,
@@ -1276,7 +1276,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
-		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+		async getActiveExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
 			let sendData = {};
 			if (filter) {
 				sendData = {
@@ -1287,7 +1287,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions-current',
+				'/executions/active',
 				sendData,
 			);
 		},
@@ -1355,7 +1355,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
-				`/executions-current/${executionId}/stop`,
+				`/executions/active/${executionId}/stop`,
 			);
 		},
 
@@ -1370,7 +1370,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			try {
 				const rootStore = useRootStore();
 				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
-					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
+					activeExecutions = await getActiveExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});
 				}

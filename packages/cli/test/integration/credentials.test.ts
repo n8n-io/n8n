@@ -1,7 +1,6 @@
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { ListQuery } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -16,9 +15,10 @@ import { createManyUsers, createUser } from './shared/db/users';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { License } from '@/License';
 
 // mock that credentialsSharing is not enabled
-jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let globalOwnerRole: Role;
