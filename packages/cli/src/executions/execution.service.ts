@@ -28,6 +28,8 @@ import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
+import { WaitTracker } from '@/WaitTracker';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -75,6 +77,7 @@ export class ExecutionService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly waitTracker: WaitTracker,
 	) {}
 
 	async findOne(
@@ -314,6 +317,10 @@ export class ExecutionService {
 	//            new API
 	// ----------------------------------
 
+	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
+
+	private readonly isQueueMode = config.getEnv('executions.mode') === 'queue';
+
 	/**
 	 * Find the `n` most recent executions with a status of `success` or `error`.
 	 */
@@ -351,5 +358,48 @@ export class ExecutionService {
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
 		return { count, estimated: false, results: executions };
+	}
+
+	async stop(executionId: string) {
+		const execution = await this.executionRepository.findOneBy({ id: executionId });
+
+		if (!execution) throw new NotFoundError('Execution not found');
+
+		const stopResult = await this.activeExecutions.stopExecution(execution.id);
+
+		if (stopResult) return this.toExecutionStopResult(execution);
+
+		if (this.isRegularMode) {
+			return await this.waitTracker.stopExecution(execution.id);
+		}
+
+		// queue mode
+
+		try {
+			return await this.waitTracker.stopExecution(execution.id);
+		} catch {
+			// @TODO: Why are we swallowing this error in queue mode?
+		}
+
+		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
+
+		if (job) {
+			await this.queue.stopJob(job);
+		} else {
+			this.logger.debug('Job to stop no longer in queue', { jobId: execution.id });
+		}
+
+		return this.toExecutionStopResult(execution);
+	}
+
+	private toExecutionStopResult(execution: ExecutionEntity) {
+		return {
+			mode: execution.mode,
+			startedAt: new Date(execution.startedAt),
+			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
+			finished: execution.finished,
+			status: execution.status,
+		};
 	}
 }

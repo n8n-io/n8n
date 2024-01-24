@@ -1,4 +1,3 @@
-import type { GetManyActiveFilter } from './execution.types';
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
 import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/decorators';
@@ -7,9 +6,7 @@ import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import type { User } from '@/databases/entities/User';
 import config from '@/config';
-import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ActiveExecutionService } from './active-execution.service';
 import { License } from '@/License';
 import { parseRangeQuery } from './parse-range-query.middleware';
 
@@ -22,7 +19,6 @@ export class ExecutionsController {
 		private readonly executionService: ExecutionService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
-		private readonly activeExecutionService: ActiveExecutionService,
 		private readonly license: License,
 	) {}
 
@@ -65,28 +61,13 @@ export class ExecutionsController {
 		return await this.executionService.findManyWithCount(query);
 	}
 
-	@Get('/active')
-	async getActive(req: ExecutionRequest.GetManyActive) {
-		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
-
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
-
-		return this.isQueueMode
-			? await this.activeExecutionService.findManyInQueueMode(filter, workflowIds)
-			: await this.activeExecutionService.findManyInRegularMode(filter, workflowIds);
-	}
-
-	@Post('/active/:id/stop')
+	@Post('/stop/:id')
 	async stop(req: ExecutionRequest.Stop) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		const execution = await this.activeExecutionService.findOne(req.params.id, workflowIds);
-
-		if (!execution) throw new NotFoundError('Execution not found');
-
-		return await this.activeExecutionService.stop(execution);
+		return await this.executionService.stop(req.params.id);
 	}
 
 	@Get('/:id')
